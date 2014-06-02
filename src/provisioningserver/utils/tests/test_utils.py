@@ -75,6 +75,7 @@ from provisioningserver.utils import (
     ExternalProcessError,
     filter_dict,
     find_ip_via_arp,
+    find_mac_via_arp,
     get_all_interface_addresses,
     get_mtime,
     incremental_write,
@@ -1320,6 +1321,50 @@ class TestFindIPViaARP(MAASTestCase):
             call_capture_and_check,
             MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("192.168.0.1", ip_address_observed)
+
+
+class TestFindMACViaARP(MAASTestCase):
+
+    def patch_call(self, output):
+        """Replace `call_capture_and_check` with one that returns `output`."""
+        fake = self.patch(provisioningserver.utils, 'call_capture_and_check')
+        fake.return_value = output
+        return fake
+
+    def test__resolves_IP_address_to_MAC(self):
+        sample = """\
+        Address HWtype  HWaddress Flags Mask            Iface
+        192.168.100.20 (incomplete)                              virbr1
+        192.168.0.104 (incomplete)                              eth0
+        192.168.0.5 (incomplete)                              eth0
+        192.168.0.2 (incomplete)                              eth0
+        192.168.0.100 (incomplete)                              eth0
+        192.168.122.20 ether   52:54:00:02:86:4b   C                     virbr0
+        192.168.0.4 (incomplete)                              eth0
+        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
+        """
+
+        call_capture_and_check = self.patch_call(sample)
+        mac_address_observed = find_mac_via_arp("192.168.122.20")
+        self.assertThat(
+            call_capture_and_check,
+            MockCalledOnceWith(['arp', '-n']))
+        self.assertEqual("52:54:00:02:86:4b", mac_address_observed)
+
+    def test__returns_consistent_output(self):
+        ip = factory.getRandomIPAddress()
+        macs = [
+            '52:54:00:02:86:4b',
+            '90:f6:52:f6:17:92',
+            ]
+        lines = ['%s ether %s C eth0' % (ip, mac) for mac in macs]
+        self.patch_call('\n'.join(lines))
+        one_result = find_mac_via_arp(ip)
+        self.patch_call('\n'.join(reversed(lines)))
+        other_result = find_mac_via_arp(ip)
+
+        self.assertIn(one_result, macs)
+        self.assertEqual(one_result, other_result)
 
 
 class TestAsynchronousDecorator(MAASTestCase):

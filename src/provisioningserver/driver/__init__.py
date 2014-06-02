@@ -139,7 +139,14 @@ builtin_architectures = [
     Architecture(
         name="armhf/generic", description="armhf/generic",
         pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
-    Architecture(name="ppc64el/generic", description="ppc64el"),
+    # PPC64EL needs a rootdelay for PowerNV. The disk controller
+    # in the hardware, takes a little bit longer to come up then
+    # the initrd wants to wait. Set this to 60 seconds, just to
+    # give the booting machine enough time. This doesn't slow down
+    # the booting process, it just increases the timeout.
+    Architecture(
+        name="ppc64el/generic", description="ppc64el",
+        kernel_options=['rootdelay=60']),
 ]
 for arch in builtin_architectures:
     ArchitectureRegistry.register_item(arch.name, arch)

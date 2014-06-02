@@ -99,6 +99,10 @@ class BootMethod:
 
     __metaclass__ = ABCMeta
 
+    # Path prefix that is used for the pxelinux.cfg. Used for
+    # the dhcpd.conf that is generated.
+    path_prefix = None
+
     @abstractproperty
     def name(self):
         """Name of the boot method."""
@@ -223,12 +227,14 @@ class BootMethodRegistry(Registry):
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi import UEFIBootMethod
 from provisioningserver.boot.powerkvm import PowerKVMBootMethod
+from provisioningserver.boot.powernv import PowerNVBootMethod
 
 
 builtin_boot_methods = [
     PXEBootMethod(),
     UEFIBootMethod(),
     PowerKVMBootMethod(),
+    PowerNVBootMethod(),
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)
