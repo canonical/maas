@@ -1351,8 +1351,8 @@ class TestFindIPViaARP(MAASTestCase):
 class TestFindMACViaARP(MAASTestCase):
 
     def patch_call(self, output):
-        """Replace `call_capture_and_check` with one that returns `output`."""
-        fake = self.patch(provisioningserver.utils, 'call_capture_and_check')
+        """Replace `call_and_check` with one that returns `output`."""
+        fake = self.patch(provisioningserver.utils, 'call_and_check')
         fake.return_value = output
         return fake
 
@@ -1369,10 +1369,10 @@ class TestFindMACViaARP(MAASTestCase):
         192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
         """
 
-        call_capture_and_check = self.patch_call(sample)
+        call_and_check = self.patch_call(sample)
         mac_address_observed = find_mac_via_arp("192.168.122.20")
         self.assertThat(
-            call_capture_and_check,
+            call_and_check,
             MockCalledOnceWith(['arp', '-n']))
         self.assertEqual("52:54:00:02:86:4b", mac_address_observed)
 

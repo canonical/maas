@@ -837,7 +837,7 @@ def find_mac_via_arp(ip):
     :param ip: The ip address, e.g. '192.168.1.1'.
     """
 
-    output = call_capture_and_check(['arp', '-n']).split('\n')
+    output = call_and_check(['arp', '-n']).split('\n')
 
     for line in sorted(output):
         columns = line.split()
