@@ -23,6 +23,7 @@ import time
 from django.contrib.auth.models import User
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -41,6 +42,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
+    StaticIPAddress,
     Tag,
     Zone,
     )
@@ -345,6 +347,14 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             mac.networks.add(*networks)
         return mac
+
+    def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO):
+        """Create and return a StaticIPAddress model object."""
+        if ip is None:
+            ip = self.getRandomIPAddress()
+        ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type)
+        ipaddress.save()
+        return ipaddress
 
     def make_dhcp_lease(self, nodegroup=None, ip=None, mac=None):
         """Create a :class:`DHCPLease`."""

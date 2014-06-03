@@ -51,7 +51,7 @@ from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.filestorage import FileStorage
-from maasserver.models.ipaddress import StaticIPAddress
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.network import Network
