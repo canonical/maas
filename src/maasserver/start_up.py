@@ -18,7 +18,10 @@ __all__ = [
 
 from textwrap import dedent
 
-from django.db import connection
+from django.db import (
+    connection,
+    transaction,
+    )
 from maasserver import (
     eventloop,
     locks,
@@ -51,8 +54,9 @@ def start_up():
     but this method uses file-based locking to ensure that the methods it calls
     internally are not ran concurrently.
     """
-    with locks.startup:
-        inner_start_up()
+    with transaction.atomic():
+        with locks.startup:
+            inner_start_up()
 
     eventloop.start().wait(10)
 
