@@ -69,7 +69,7 @@ Y.extend(OSReleaseWidget, Y.Widget, {
         var srcNode = this.get('srcNode');
         var options = srcNode.all('option');
         var selected = false;
-        Y.Array.each(options, function(option) {
+        options.each(function(option) {
             var sel = this.modifyOption(option, newOSValue);
             if(selected == false) {
                 selected = sel;
