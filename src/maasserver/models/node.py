@@ -59,6 +59,7 @@ from maasserver.fields import (
     JSONObjectField,
     MAC,
     )
+from maasserver.models import StaticIPAddress
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
@@ -563,7 +564,58 @@ class Node(CleanSave, TimestampedModel):
             return self.hostname
 
     def ip_addresses(self):
-        """IP addresses allocated to this node."""
+        """IP addresses allocated to this node.
+
+        Return the current IP addresses for this Node, or the empty
+        list if there are none.
+        """
+        # The static IP addresses are assigned/removed when a node is
+        # allocated/deallocated.
+        # The dynamic IP addresses are used by enlisting or commissioning
+        # nodes.  This information is re-built periodically based on the
+        # content of the DHCP lease file, the DB mappings can thus contain
+        # outdated information for a short time.  They are returned here
+        # for backward-compatiblity reasons (the static IP addresses were
+        # introduced after the dynamic IP addresses) as only the static
+        # mappings are guaranteed to be, well, static.
+        static_ips = self.static_ip_addresses()
+        if len(static_ips) != 0:
+            return static_ips
+        else:
+            return self.dynamic_ip_addresses()
+
+    def static_ip_addresses(self):
+        """Static IP addresses allocated to this node."""
+        # If the macaddresses and the ips have been prefetched (a la
+        # nodes = nodes.prefetch_related('macaddress_set__ip_addresses')),
+        # use the cache.
+        mac_cache = self.macaddress_set.all()._result_cache
+        can_use_cache = (
+            mac_cache is not None and
+            (
+                len(mac_cache) == 0
+                or
+                (
+                    len(mac_cache) > 0 and
+                    # If the first MAC has it's IP addresses cached, assume
+                    # we can use the cache for all the MACs.
+                    mac_cache[0].ip_addresses.all()._result_cache is not None
+                )
+            )
+        )
+        if can_use_cache:
+            return sum(
+                [
+                    [ipaddr.ip for ipaddr in mac.ip_addresses.all()]
+                    for mac in self.macaddress_set.all()
+                ],
+                [])
+        else:
+            return StaticIPAddress.objects.filter(
+                macaddress__node=self).values_list('ip', flat=True)
+
+    def dynamic_ip_addresses(self):
+        """Dynamic IP addresses allocated to this node."""
         macs = [mac.mac_address for mac in self.macaddress_set.all()]
         dhcpleases_qs = self.nodegroup.dhcplease_set.all()
         if dhcpleases_qs._result_cache is not None:

@@ -832,6 +832,7 @@ class NodesHandler(OperationsHandler):
 
         # Prefetch related objects that are needed for rendering the result.
         nodes = nodes.prefetch_related('macaddress_set__node')
+        nodes = nodes.prefetch_related('macaddress_set__ip_addresses')
         nodes = nodes.prefetch_related('tags')
         nodes = nodes.select_related('nodegroup')
         nodes = nodes.prefetch_related('nodegroup__dhcplease_set')

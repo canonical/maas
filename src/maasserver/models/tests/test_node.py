@@ -530,7 +530,7 @@ class NodeTest(MAASServerTestCase):
             (NODE_STATUS.READY, None, node.agent_name),
             (node.status, node.owner, ''))
 
-    def test_ip_addresses_queries_leases(self):
+    def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_node()
         macs = [factory.make_mac_address(node=node) for i in range(2)]
         leases = [
@@ -538,12 +538,12 @@ class NodeTest(MAASServerTestCase):
                 nodegroup=node.nodegroup, mac=mac.mac_address)
             for mac in macs]
         self.assertItemsEqual(
-            [lease.ip for lease in leases], node.ip_addresses())
+            [lease.ip for lease in leases], node.dynamic_ip_addresses())
 
-    def test_ip_addresses_uses_result_cache(self):
-        # ip_addresses has a specialized code path for the case where the
-        # node group's set of DHCP leases is already cached in Django's ORM.
-        # This test exercises that code path.
+    def test_dynamic_ip_addresses_uses_result_cache(self):
+        # dynamic_ip_addresses has a specialized code path for the case where
+        # the node group's set of DHCP leases is already cached in Django's
+        # ORM.  This test exercises that code path.
         node = factory.make_node()
         macs = [factory.make_mac_address(node=node) for i in range(2)]
         leases = [
@@ -560,12 +560,12 @@ class NodeTest(MAASServerTestCase):
         query = Node.objects.filter(id=node.id)
         query = query.prefetch_related('nodegroup__dhcplease_set')
         # The cache is populated.  This is the condition that triggers the
-        # separate code path in Node.ip_addresses().
+        # separate code path in Node.dynamic_ip_addresses().
         self.assertIsNotNone(
             query[0].nodegroup.dhcplease_set.all()._result_cache)
 
-        # ip_addresses() still returns the node's leased addresses.
-        num_queries, addresses = count_queries(query[0].ip_addresses)
+        # dynamic_ip_addresses() still returns the node's leased addresses.
+        num_queries, addresses = count_queries(query[0].dynamic_ip_addresses)
         # It only takes one query: to get the node's MAC addresses.
         self.assertEqual(1, num_queries)
         # The result is not a query set, so this isn't hiding a further query.
@@ -574,7 +574,7 @@ class NodeTest(MAASServerTestCase):
         # We still get exactly the right IP addresses.
         self.assertItemsEqual([lease.ip for lease in leases], addresses)
 
-    def test_ip_addresses_filters_by_mac_addresses(self):
+    def test_dynamic_ip_addresses_filters_by_mac_addresses(self):
         node = factory.make_node()
         # Another node in the same nodegroup has some IP leases.  The one thing
         # that tells ip_addresses what nodes these leases belong to are their
@@ -586,7 +586,63 @@ class NodeTest(MAASServerTestCase):
                 nodegroup=node.nodegroup, mac=mac.mac_address)
         # The other node's leases do not get mistaken for ones that belong to
         # our original node.
-        self.assertItemsEqual([], other_node.ip_addresses())
+        self.assertItemsEqual([], other_node.dynamic_ip_addresses())
+
+    def test_static_ip_addresses_returns_static_ip_addresses(self):
+        node = factory.make_node()
+        [mac2, mac3] = [
+            factory.make_mac_address(node=node) for i in range(2)]
+        ip1 = factory.make_staticipaddress(mac=mac2)
+        ip2 = factory.make_staticipaddress(mac=mac3)
+        # Create another node with a static IP address.
+        other_node = factory.make_node(nodegroup=node.nodegroup, mac=True)
+        factory.make_staticipaddress(mac=other_node.macaddress_set.all()[0])
+        self.assertItemsEqual([ip1.ip, ip2.ip], node.static_ip_addresses())
+
+    def test_static_ip_addresses_uses_result_cache(self):
+        # static_ip_addresses has a specialized code path for the case where
+        # the node's static IPs are already cached in Django's ORM.  This
+        # test exercises that code path.
+        node = factory.make_node()
+        [mac2, mac3] = [
+            factory.make_mac_address(node=node) for i in range(2)]
+        ip1 = factory.make_staticipaddress(mac=mac2)
+        ip2 = factory.make_staticipaddress(mac=mac3)
+
+        # Don't address the node directly; address it through a query with
+        # prefetched static IPs, to ensure that the query cache for those
+        # IP addresses.
+        query = Node.objects.filter(id=node.id)
+        query = query.prefetch_related('macaddress_set__ip_addresses')
+
+        # dynamic_ip_addresses() still returns the node's leased addresses.
+        num_queries, addresses = count_queries(query[0].static_ip_addresses)
+        self.assertEqual(0, num_queries)
+        # The result is not a query set, so this isn't hiding a further query.
+        self.assertIsInstance(addresses, list)
+        # We still get exactly the right IP addresses.
+        self.assertItemsEqual([ip1.ip, ip2.ip], addresses)
+
+    def test_ip_addresses_returns_static_ip_addresses(self):
+        # If both static and dynamic IP addresses are present, the static
+        # addresses take precedence: they are allocated and deallocated in
+        # a synchronous fashion whereas the dynamic addresses are updated
+        # periodically.
+        node = factory.make_node(mac=True)
+        mac = node.macaddress_set.all()[0]
+        # Create a dynamic IP attached to the node.
+        factory.make_dhcp_lease(
+            nodegroup=node.nodegroup, mac=mac.mac_address)
+        # Create a static IP attached to the node.
+        ip = factory.make_staticipaddress(mac=mac)
+        self.assertItemsEqual([ip.ip], node.ip_addresses())
+
+    def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
+        node = factory.make_node(mac=True)
+        lease = factory.make_dhcp_lease(
+            nodegroup=node.nodegroup,
+            mac=node.macaddress_set.all()[0].mac_address)
+        self.assertItemsEqual([lease.ip], node.ip_addresses())
 
     def test_release_turns_on_netboot(self):
         node = factory.make_node(

@@ -39,6 +39,7 @@ from maasserver.models import (
     MACAddress,
     Network,
     Node,
+    MACStaticIPAddressLink,
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
@@ -348,12 +349,20 @@ class Factory(maastesting.factory.Factory):
             mac.networks.add(*networks)
         return mac
 
-    def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO):
-        """Create and return a StaticIPAddress model object."""
+    def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
+                             mac=None):
+        """Create and return a StaticIPAddress model object.
+
+        If a non-None `mac` is passed, connect this IP address to the
+        given MAC Address.
+        """
         if ip is None:
             ip = self.getRandomIPAddress()
         ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type)
         ipaddress.save()
+        if mac is not None:
+            MACStaticIPAddressLink(
+                mac_address=mac, ip_address=ipaddress).save()
         return ipaddress
 
     def make_dhcp_lease(self, nodegroup=None, ip=None, mac=None):
