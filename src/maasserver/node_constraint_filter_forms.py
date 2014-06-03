@@ -24,6 +24,7 @@ from django.core.exceptions import ValidationError
 from django.db.models import Q
 from maasserver.fields import mac_validator
 from maasserver.forms import (
+    MultipleChoiceField,
     UnconstrainedMultipleChoiceField,
     ValidatorMultipleChoiceField,
     )
@@ -140,11 +141,45 @@ def detect_nonexistent_zone_names(names):
     return sorted(set(names) - existing_names)
 
 
+def describe_single_constraint_value(value):
+    """Return an atomic constraint value as human-readable text.
+
+    :param value: Simple form value for some constraint.
+    :return: String representation of `value`, or `None` if the value
+        means that the constraint was not set.
+    """
+    if value is None or value == '':
+        return None
+    else:
+        return '%s' % value
+
+
+def describe_multi_constraint_value(value):
+    """Return a multi-valued constraint value as human-readable text.
+
+    :param value: Sequence form value for some constraint.
+    :return: String representation of `value`, or `None` if the value
+        means that the constraint was not set.
+    """
+    if value is None or len(value) == 0:
+        return None
+    else:
+        if isinstance(value, (set, dict, frozenset)):
+            # Order unordered containers for consistency.
+            sequence = sorted(value)
+        else:
+            # Keep ordered containers in their original order.
+            sequence = value
+        return ','.join(map(describe_single_constraint_value, sequence))
+
+
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
     name = forms.CharField(label="Host name", required=False)
 
+    # This becomes a multiple-choice field during cleaning, to accommodate
+    # architecture wildcards.
     arch = forms.CharField(label="Architecture", required=False)
 
     cpu_count = forms.FloatField(
@@ -199,6 +234,11 @@ class AcquireNodeForm(RenamableFieldsForm):
         return form
 
     def clean_arch(self):
+        """Turn `arch` parameter into a list of architecture names.
+
+        Even though `arch` is a single-value field, it turns into a list
+        during cleaning.  The architecture parameter may be a wildcard.
+        """
         # Import list_all_usable_architectures as part of its module, not
         # directly, so that patch_usable_architectures can easily patch it
         # for testing purposes.
@@ -284,6 +324,45 @@ class AcquireNodeForm(RenamableFieldsForm):
                 msg = "No such constraint."
                 self._errors[constraint] = self.error_class([msg])
         return super(AcquireNodeForm, self).clean()
+
+    def describe_constraint(self, field_name):
+        """Return a human-readable representation of a constraint.
+
+        Turns a constraint value as passed to the form into a Juju-like
+        representation for display: `name=foo`.  Multi-valued constraints are
+        shown as comma-separated values, e.g. `tags=do,re,mi`.
+
+        :param field_name: Name of the constraint on this form, e.g. `zone`.
+        :return: A constraint string, or `None` if the constraint is not set.
+        """
+        value = self.cleaned_data[field_name]
+        if isinstance(self.fields[field_name], MultipleChoiceField):
+            output = describe_multi_constraint_value(value)
+        elif field_name == 'arch' and not isinstance(value, (bytes, unicode)):
+            # The arch field is a special case.  It's defined as a string
+            # field, but may become a list/tuple/... of strings in cleaning.
+            output = describe_multi_constraint_value(value)
+        else:
+            output = describe_single_constraint_value(value)
+        if output is None:
+            return None
+        else:
+            return '%s=%s' % (field_name, output)
+
+    def describe_constraints(self):
+        """Return a human-readable representation of the given constraints.
+
+        The description is Juju-like, e.g. `arch=amd64 cpu=16 zone=rack3`.
+        Constraints are listed in alphabetical order.
+        """
+        constraints = (
+            self.describe_constraint(name)
+            for name in sorted(self.fields.keys())
+            )
+        return ' '.join(
+            constraint
+            for constraint in constraints
+            if constraint is not None)
 
     def filter_nodes(self, nodes):
         """Return the subset of nodes that match the form's constraints.

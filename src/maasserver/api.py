@@ -907,7 +907,16 @@ class NodesHandler(OperationsHandler):
             nodes = form.filter_nodes(nodes)
             node = get_first(nodes)
             if node is None:
-                raise NodesNotAvailable("No matching node is available.")
+                constraints = form.describe_constraints()
+                if constraints == '':
+                    # No constraints.  That means no nodes at all were
+                    # available.
+                    message = "No node available."
+                else:
+                    message = (
+                        "No available node matches constraints: %s"
+                        % constraints)
+                raise NodesNotAvailable(message)
             agent_name = request.data.get('agent_name', '')
             node.acquire(
                 request.user, get_oauth_token(request),

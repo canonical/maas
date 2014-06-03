@@ -513,6 +513,24 @@ class TestNodesAPI(APITestCase):
         # Fails with Conflict error: resource can't satisfy request.
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
+    def test_POST_acquire_failure_shows_no_constraints_if_none_given(self):
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'acquire'})
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual("No node available.", response.content)
+
+    def test_POST_acquire_failure_shows_constraints_if_given(self):
+        hostname = factory.make_name('host')
+        response = self.client.post(
+            reverse('nodes_handler'), {
+                'op': 'acquire',
+                'name': hostname,
+                })
+        self.assertEqual(httplib.CONFLICT, response.status_code)
+        self.assertEqual(
+            "No available node matches constraints: name=%s" % hostname,
+            response.content)
+
     def test_POST_acquire_ignores_already_allocated_node(self):
         factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())

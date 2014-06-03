@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from random import randint
+
 from django import forms
 from django.core.exceptions import ValidationError
 from maasserver.fields import MAC
@@ -159,6 +161,12 @@ class TestRenamableFieldsForm(MAASServerTestCase):
 
 
 class TestAcquireNodeForm(MAASServerTestCase):
+
+    def set_usable_arch(self):
+        """Produce an arbitrary, valid, architecture name."""
+        arch = '%s/%s' % (factory.make_name('arch'), factory.make_name('sub'))
+        patch_usable_architectures(self, [arch])
+        return arch
 
     def test_strict_form_checks_unknown_constraints(self):
         data = {'unknown_constraint': 'boo'}
@@ -615,3 +623,72 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             {node},
             {'networks': [network.name]})
+
+    def test_describe_constraints_returns_empty_if_no_constraints(self):
+        form = AcquireNodeForm(data={})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual('', form.describe_constraints())
+
+    def test_describe_constraints_shows_simple_constraint(self):
+        hostname = factory.make_name('host')
+        form = AcquireNodeForm(data={'name': hostname})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual('name=%s' % hostname, form.describe_constraints())
+
+    def test_describe_constraints_shows_arch_as_special_case(self):
+        # The "arch" field is technically a single-valued string field
+        # on the form, but its "cleaning" produces a list of strings.
+        arch = self.set_usable_arch()
+        form = AcquireNodeForm(data={'arch': arch})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual('arch=%s' % arch, form.describe_constraints())
+
+    def test_describe_constraints_shows_multi_constraint(self):
+        tag = factory.make_tag()
+        form = AcquireNodeForm(data={'tags': [tag.name]})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual('tags=%s' % tag.name, form.describe_constraints())
+
+    def test_describe_constraints_sorts_constraints(self):
+        hostname = factory.make_name('host')
+        zone = factory.make_zone()
+        form = AcquireNodeForm(data={'name': hostname, 'zone': zone})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            'name=%s zone=%s' % (hostname, zone),
+            form.describe_constraints())
+
+    def test_describe_constraints_combines_constraint_values(self):
+        tag1 = factory.make_tag()
+        tag2 = factory.make_tag()
+        form = AcquireNodeForm(data={'tags': [tag1.name, tag2.name]})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            'tags=%s,%s' % tuple(sorted([tag1.name, tag2.name])),
+            form.describe_constraints())
+
+    def test_describe_constraints_shows_all_constraints(self):
+        constraints = {
+            'name': factory.make_name('host'),
+            'arch': self.set_usable_arch(),
+            'cpu_count': randint(1, 32),
+            'mem': randint(1024, 256 * 1024),
+            'tags': [factory.make_tag().name],
+            'networks': [factory.make_network().name],
+            'not_networks': [factory.make_network().name],
+            'connected_to': [factory.getRandomMACAddress()],
+            'not_connected_to': [factory.getRandomMACAddress()],
+            'zone': factory.make_zone(),
+            'not_in_zone': [factory.make_zone().name],
+            }
+        form = AcquireNodeForm(data=constraints)
+        self.assertTrue(form.is_valid(), form.errors)
+        # Check first: we didn't forget to test any attributes.  When we add
+        # a constraint to the form, we'll have to add it here as well.
+        self.assertItemsEqual(form.fields.keys(), constraints.keys())
+
+        described_constraints = {
+            constraint.split('=', 1)[0]
+            for constraint in form.describe_constraints().split()
+            }
+        self.assertItemsEqual(constraints.keys(), described_constraints)
