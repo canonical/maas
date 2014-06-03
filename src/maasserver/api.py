@@ -272,6 +272,8 @@ DISPLAYED_NODE_FIELDS = (
     'memory',
     'storage',
     'status',
+    'osystem',
+    'distro_series',
     'netboot',
     'power_type',
     'tag_names',
