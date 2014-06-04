@@ -54,6 +54,12 @@ class MACAddress(CleanSave, TimestampedModel):
         'maasserver.StaticIPAddress',
         through='maasserver.MACStaticIPAddressLink', blank=True)
 
+    # Will be set only once we know on which cluster interface this MAC
+    # is connected, normally after the first DHCPLease appears.
+    cluster_interface = ForeignKey(
+        'NodeGroupInterface', editable=False, blank=True, null=True,
+        default=None)
+
     # future columns: tags, nic_name, metadata, bonding info
 
     objects = BulkManager()
