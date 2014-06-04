@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 from itertools import (
+    chain,
     imap,
     islice,
     repeat,
@@ -597,19 +598,21 @@ class Node(CleanSave, TimestampedModel):
                 or
                 (
                     len(mac_cache) > 0 and
-                    # If the first MAC has it's IP addresses cached, assume
+                    # If the first MAC has its IP addresses cached, assume
                     # we can use the cache for all the MACs.
                     mac_cache[0].ip_addresses.all()._result_cache is not None
                 )
             )
         )
         if can_use_cache:
-            return sum(
-                [
-                    [ipaddr.ip for ipaddr in mac.ip_addresses.all()]
-                    for mac in self.macaddress_set.all()
-                ],
-                [])
+            # The cache is populated: return the static IP addresses of all the
+            # node's MAC addresses.
+            macs = self.macaddress_set.all()
+            node_ip_addresses = [
+                [ipaddr.ip for ipaddr in mac.ip_addresses.all()]
+                for mac in macs
+            ]
+            return list(chain(*node_ip_addresses))
         else:
             return StaticIPAddress.objects.filter(
                 macaddress__node=self).values_list('ip', flat=True)
