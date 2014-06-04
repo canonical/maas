@@ -71,7 +71,7 @@ Y.extend(OSReleaseWidget, Y.Widget, {
         var selected = false;
         options.each(function(option) {
             var sel = this.modifyOption(option, newOSValue);
-            if(selected == false) {
+            if (selected === false) {
                 selected = sel;
             }
         }, this);
@@ -79,7 +79,7 @@ Y.extend(OSReleaseWidget, Y.Widget, {
         // We skip selection on first load, as Django will already
         // provide the users, current selection. Without this the
         // current selection will be clobered.
-        if(this.initialSkip == true) {
+        if (this.initialSkip === true) {
             this.initialSkip = false;
             return;
         }
@@ -105,8 +105,8 @@ Y.extend(OSReleaseWidget, Y.Widget, {
 
         // If "Default OS" is selected, then
         // only show "Default OS Release".
-        if(newOSValue == '') {
-            if(value == '') {
+        if(newOSValue === '') {
+            if(value === '') {
                 option.removeClass('hidden');
                 option.set('selected', 'selected');
             }
@@ -115,9 +115,9 @@ Y.extend(OSReleaseWidget, Y.Widget, {
             }
         }
         else {
-            if(split_value[0] == newOSValue) {
+            if(split_value[0] === newOSValue) {
                 option.removeClass('hidden');
-                if(split_value[1] == '' && !this.initialSkip) {
+                if(split_value[1] === '' && !this.initialSkip) {
                     selected = true;
                     option.set('selected', 'selected');
                 }
@@ -138,12 +138,12 @@ Y.extend(OSReleaseWidget, Y.Widget, {
         var first_option = null;
         Y.Array.each(options, function(option) {
             if(!option.hasClass('hidden')) {
-                if(first_option == null) {
+                if(first_option === null) {
                     first_option = option;
-                }   
+                }
             }
         });
-        if(first_option != null) {
+        if(first_option !== null) {
             first_option.set('selected', 'selected');
         }
     }

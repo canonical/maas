@@ -146,7 +146,7 @@ lint-doc:
 
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f -print0 | xargs -r0 $(pocketlint)
+	@find $(sources) -type f -print0 '(' -name '*.html' -o -name '*.js' ')' | xargs -r0 $(pocketlint)
 
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc

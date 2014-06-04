@@ -30,7 +30,7 @@ suite.add(new Y.maas.testing.TestCase({
         var called = false;
         this.widget.switchTo = function() {
             called = true;
-        }
+        };
         this.widget.bindTo(Y.one('#id_osystem'), 'change');
         Y.Assert.isTrue(called);
     },
@@ -39,7 +39,7 @@ suite.add(new Y.maas.testing.TestCase({
         var options = [];
         this.widget.modifyOption = function(option, value) {
             options.push(option);
-        }
+        };
         this.widget.bindTo(Y.one('#id_osystem'), 'change');
         var expected = Y.one('#id_distro_series').all('option');
         Y.ArrayAssert.containsItems(expected, options);
@@ -54,7 +54,7 @@ suite.add(new Y.maas.testing.TestCase({
         var called = false;
         this.widget.selectVisableOption = function() {
             called = true;
-        }
+        };
         this.widget.initialSkip = false;
         this.widget.bindTo(Y.one('#id_osystem'), 'change');
         Y.Assert.isTrue(called);
@@ -183,7 +183,7 @@ suite.add(new Y.maas.testing.TestCase({
             args: ["selected", "selected"]
             });
 
-        var options = Y.Array([option, option2])
+        var options = Y.Array([option, option2]);
         this.widget.selectVisableOption(options);
         Y.Mock.verify(option);
         Y.Mock.verify(option2);
