@@ -2,6 +2,22 @@
 Changelog
 =========
 
+1.5.3
+=====
+
+Bug fix update
+--------------
+
+ - Reduce number of celery tasks emitted when updating a cluster controller
+   (LP: #1324944)
+ - Fix VirshSSH template which was referencing invalid attributes
+   (LP: #1324966)
+ - Fix a start up problem where a database lock was being taken outside of
+   a transaction (LP: #1325759)
+ - Reformat badly formatted Architecture error message (LP: #1301465)
+ - Final changes to support ppc64el (now known as PowerNV) (LP: #1315154)
+
+
 1.5.2
 =====
 
