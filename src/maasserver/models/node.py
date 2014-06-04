@@ -72,7 +72,7 @@ from maasserver.utils import (
     strip_domain,
     )
 from piston.models import Token
-from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.tasks import (
     power_off,
     power_on,

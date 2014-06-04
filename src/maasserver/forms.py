@@ -114,7 +114,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.network import make_network
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')

@@ -253,7 +253,7 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.driver import (
+from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
     )

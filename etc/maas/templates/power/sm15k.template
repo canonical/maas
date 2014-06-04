@@ -27,7 +27,7 @@ issue_ipmi_command() {
 # Control power using REST v0.9
 issue_rest_v09_command() {
 python - << END
-from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k_v09
+from provisioningserver.drivers.hardware.seamicro import power_control_seamicro15k_v09
 power_control_seamicro15k_v09("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
 END
 }
@@ -35,7 +35,7 @@ END
 # Control power using REST v2
 issue_rest_v2_command() {
 python - << END
-from provisioningserver.custom_hardware.seamicro import power_control_seamicro15k_v2
+from provisioningserver.drivers.hardware.seamicro import power_control_seamicro15k_v2
 power_control_seamicro15k_v2("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
 END
 }

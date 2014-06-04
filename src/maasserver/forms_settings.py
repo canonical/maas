@@ -25,7 +25,7 @@ from socket import gethostname
 from django import forms
 from maasserver.models.config import DEFAULT_OS
 from maasserver.utils.forms import compose_invalid_choice_text
-from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."

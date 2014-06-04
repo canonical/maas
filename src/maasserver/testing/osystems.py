@@ -22,7 +22,7 @@ from random import randint
 from maasserver import forms
 from maasserver.testing.factory import factory
 from provisioningserver.boot.tests.test_tftppath import make_osystem
-from provisioningserver.driver import BOOT_IMAGE_PURPOSE
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 
 
 def make_osystem_with_releases(testcase, osystem_name=None, releases=None,

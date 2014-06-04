@@ -111,7 +111,7 @@ from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
-from provisioningserver.driver.os_ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools import TestCase
 from testtools.matchers import (
     AllMatch,

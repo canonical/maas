@@ -21,7 +21,7 @@ import os
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver import kernel_opts
-from provisioningserver.driver import (
+from provisioningserver.drivers import (
     Architecture,
     ArchitectureRegistry,
     )

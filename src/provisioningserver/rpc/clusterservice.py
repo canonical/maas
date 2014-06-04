@@ -28,7 +28,7 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import Config
-from provisioningserver.driver import (
+from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )

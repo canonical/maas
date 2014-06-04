@@ -23,7 +23,7 @@ import time
 import urllib2
 import urlparse
 
-import provisioningserver.custom_hardware.utils as utils
+import provisioningserver.utils as utils
 from seamicroclient import exceptions as seamicro_exceptions
 from seamicroclient.v2 import client as seamicro_client
 

@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.custom_hardware.virsh`.
+"""Tests for `provisioningserver.drivers.hardware.virsh`.
 """
 
 from __future__ import (
@@ -25,10 +25,8 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import call
-from provisioningserver.custom_hardware import (
-    utils,
-    virsh,
-    )
+from provisioningserver.drivers.hardware import virsh
+import provisioningserver.utils as utils
 
 
 SAMPLE_IFLIST = dedent("""

@@ -63,6 +63,38 @@ import tempita
 from twisted.internet.defer import maybeDeferred
 from twisted.python.threadable import isInIOThread
 
+from apiclient.maas_client import (
+    MAASClient,
+    MAASDispatcher,
+    MAASOAuth,
+    )
+from provisioningserver.auth import get_recorded_api_credentials
+from provisioningserver.cluster_config import get_maas_url
+import simplejson as json
+
+
+def create_node(mac, arch, power_type, power_parameters):
+    api_credentials = get_recorded_api_credentials()
+    if api_credentials is None:
+        raise Exception('Not creating node: no API key yet.')
+    client = MAASClient(
+        MAASOAuth(*api_credentials), MAASDispatcher(),
+        get_maas_url())
+
+    data = {
+        'architecture': arch,
+        'power_type': power_type,
+        'power_parameters': json.dumps(power_parameters),
+        'mac_addresses': mac,
+        'autodetect_nodegroup': 'true'
+    }
+    return client.post('/api/1.0/nodes/', 'new', **data)
+
+
+def escape_string(data):
+    return repr(data).decode("ascii")
+
+
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
 # mark, mimicking the "replace" strategy when encoding and decoding.

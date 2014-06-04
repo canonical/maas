@@ -63,8 +63,8 @@ from metadataserver.models import (
 from netaddr import IPAddress
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
-from provisioningserver.driver import OperatingSystemRegistry
-from provisioningserver.driver.os_ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub

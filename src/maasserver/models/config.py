@@ -29,7 +29,7 @@ from django.db.models import (
 from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import JSONObjectField
-from provisioningserver.driver.os_ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 DEFAULT_OS = UbuntuOS()

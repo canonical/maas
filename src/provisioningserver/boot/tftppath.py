@@ -24,7 +24,7 @@ from itertools import chain
 from logging import getLogger
 import os.path
 
-from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )

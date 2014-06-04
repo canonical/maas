@@ -42,11 +42,11 @@ from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
     )
-from provisioningserver.custom_hardware.seamicro import (
+from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
-from provisioningserver.custom_hardware.ucsm import probe_and_enlist_ucsm
-from provisioningserver.custom_hardware.virsh import probe_virsh_and_enlist
+from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
+from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.dhcp import (
     config,
     detect,

@@ -32,7 +32,7 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     locate_tftp_path,
     )
-from provisioningserver.driver import (
+from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
     )

@@ -4,7 +4,7 @@
 
 {{py: from provisioningserver.utils import escape_py_literal}}
 python - << END
-from provisioningserver.custom_hardware.ucsm import power_control_ucsm
+from provisioningserver.drivers.hardware.ucsm import power_control_ucsm
 power_control_ucsm(
     {{escape_py_literal(power_address) | safe}},
     {{escape_py_literal(power_user) | safe}},

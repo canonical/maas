@@ -21,7 +21,7 @@ __all__ = [
 from collections import namedtuple
 import os
 
-from provisioningserver.driver import ArchitectureRegistry
+from provisioningserver.drivers import ArchitectureRegistry
 
 
 class EphemeralImagesDirectoryNotFound(Exception):

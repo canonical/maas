@@ -16,13 +16,13 @@ __all__ = []
 
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from provisioningserver.driver import (
+from provisioningserver.drivers import (
     Architecture,
     ArchitectureRegistry,
     BootResourceRegistry,
-    OperatingSystemRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.testing import RegistryFixture
 
 

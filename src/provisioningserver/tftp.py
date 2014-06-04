@@ -27,7 +27,7 @@ from urlparse import (
 
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.cluster_config import get_cluster_uuid
-from provisioningserver.driver import ArchitectureRegistry
+from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.utils import (
     deferred,

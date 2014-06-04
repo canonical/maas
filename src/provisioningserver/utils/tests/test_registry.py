@@ -42,7 +42,7 @@ class TestRegistry(MAASTestCase):
 
     def test_is_singleton_over_multiple_imports(self):
         Registry.register_item("resource1", sentinel.resource1)
-        from provisioningserver.driver import Registry as Registry2
+        from provisioningserver.drivers import Registry as Registry2
         Registry2.register_item("resource2", sentinel.resource2)
         self.assertItemsEqual(
             [("resource1", sentinel.resource1),

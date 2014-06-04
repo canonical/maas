@@ -5,7 +5,7 @@
 
 issue_virsh_command() {
 python - << END
-from provisioningserver.custom_hardware.virsh import power_control_virsh
+from provisioningserver.drivers.hardware.virsh import power_control_virsh
 power_control_virsh(
     {{repr(power_address).decode("ascii") | safe}},
     {{repr(power_id).decode("ascii") | safe}},

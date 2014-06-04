@@ -41,7 +41,7 @@ from maastesting.fakemethod import FakeMethod
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
-from provisioningserver.driver import BOOT_IMAGE_PURPOSE
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.kernel_opts import KernelParameters
 from testtools.matchers import (
     Contains,

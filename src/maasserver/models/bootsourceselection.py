@@ -26,7 +26,7 @@ import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.driver.os_ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 def list_release_choices():

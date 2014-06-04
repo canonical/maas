@@ -75,7 +75,7 @@ from lxml.etree import (
     tostring,
     XML,
     )
-import provisioningserver.custom_hardware.utils as utils
+import provisioningserver.utils as utils
 
 
 str = None

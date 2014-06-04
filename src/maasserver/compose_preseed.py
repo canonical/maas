@@ -20,7 +20,7 @@ from urllib import urlencode
 
 from maasserver.enum import NODE_STATUS
 from maasserver.utils import absolute_reverse
-from provisioningserver.driver import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 import yaml
 
 

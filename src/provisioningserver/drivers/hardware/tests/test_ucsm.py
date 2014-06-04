@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for ``provisioningserver.custom_hardware.ucsm``."""
+"""Tests for ``provisioningserver.drivers.hardware.ucsm``."""
 
 from __future__ import (
     absolute_import,
@@ -36,11 +36,8 @@ from mock import (
     call,
     Mock,
     )
-from provisioningserver.custom_hardware import (
-    ucsm,
-    utils,
-    )
-from provisioningserver.custom_hardware.ucsm import (
+from provisioningserver.drivers.hardware import ucsm
+from provisioningserver.drivers.hardware.ucsm import (
     get_children,
     get_first_booter,
     get_macs,
@@ -62,6 +59,7 @@ from provisioningserver.custom_hardware.ucsm import (
     UCSM_XML_API,
     UCSM_XML_API_Error,
     )
+import provisioningserver.utils as utils
 
 
 def make_api(url='http://url', user='u', password='p',

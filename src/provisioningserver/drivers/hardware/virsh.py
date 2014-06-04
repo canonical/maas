@@ -16,7 +16,7 @@ __all__ = [
 
 from lxml import etree
 import pexpect
-import provisioningserver.custom_hardware.utils as utils
+import provisioningserver.utils as utils
 
 
 XPATH_ARCH = "/domain/os/type/@arch"

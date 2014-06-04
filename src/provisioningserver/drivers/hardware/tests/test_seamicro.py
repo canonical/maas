@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.custom_hardware.seamicro`.
+"""Tests for `provisioningserver.drivers.hardware.seamicro`.
 """
 
 from __future__ import (
@@ -29,7 +29,8 @@ from mock import (
     call,
     Mock,
     )
-from provisioningserver.custom_hardware.seamicro import (
+from provisioningserver.drivers.hardware import seamicro
+from provisioningserver.drivers.hardware.seamicro import (
     find_seamicro15k_servers,
     power_control_seamicro15k_v09,
     power_control_seamicro15k_v2,
@@ -40,7 +41,7 @@ from provisioningserver.custom_hardware.seamicro import (
     SeaMicroError,
     select_seamicro15k_api_version,
     )
-import provisioningserver.custom_hardware.utils
+import provisioningserver.utils as utils
 
 
 class FakeResponse(object):
@@ -151,7 +152,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
 
     def configure_get_result(self, result=None):
         self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09, 'get',
+            SeaMicroAPIV09, 'get',
             Mock(return_value=result))
 
     def test_login_and_logout(self):
@@ -188,7 +189,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
             }
         self.configure_get_result(result)
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09,
+            SeaMicroAPIV09,
             'put')
         url = 'http://%s/' % factory.getRandomString()
         api = SeaMicroAPIV09(url)
@@ -263,7 +264,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro,
+            seamicro,
             'get_seamicro15k_api')
         mock.return_value = return_value
         return mock, ip, username, password
@@ -298,7 +299,7 @@ class TestSeaMicro(MAASTestCase):
     def configure_api_v09_login(self, token=None):
         token = token or factory.getRandomString()
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09,
+            SeaMicroAPIV09,
             'login')
         mock.return_value = token
         return mock
@@ -331,10 +332,10 @@ class TestSeaMicro(MAASTestCase):
                 },
             }
         self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09, 'get',
+            SeaMicroAPIV09, 'get',
             Mock(return_value=result))
         mock_create_node = self.patch(
-            provisioningserver.custom_hardware.utils,
+            utils,
             'create_node')
 
         probe_seamicro15k_and_enlist(
@@ -361,7 +362,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09,
+            SeaMicroAPIV09,
             'power_server')
 
         power_control_seamicro15k_v09(ip, username, password, '25', 'on')
@@ -375,7 +376,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09,
+            SeaMicroAPIV09,
             'power_server')
         mock.side_effect = SeaMicroAPIV09Error("mock error", response_code=401)
 
@@ -390,7 +391,7 @@ class TestSeaMicro(MAASTestCase):
         username = factory.getRandomString()
         password = factory.getRandomString()
         mock = self.patch(
-            provisioningserver.custom_hardware.seamicro.SeaMicroAPIV09,
+            SeaMicroAPIV09,
             'power_server')
         mock.side_effect = SeaMicroAPIV09Error("mock error")
 
@@ -414,11 +415,11 @@ class TestSeaMicro(MAASTestCase):
         fake_client.servers.servers.append(fake_server_0)
         fake_client.servers.servers.append(fake_server_1)
         mock_get_api = self.patch(
-            provisioningserver.custom_hardware.seamicro,
+            seamicro,
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
         mock_create_node = self.patch(
-            provisioningserver.custom_hardware.utils,
+            utils,
             'create_node')
 
         probe_seamicro15k_and_enlist(
@@ -459,7 +460,7 @@ class TestSeaMicro(MAASTestCase):
         mock_power_on = self.patch(fake_server, 'power_on')
 
         mock_get_api = self.patch(
-            provisioningserver.custom_hardware.seamicro,
+            seamicro,
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
 

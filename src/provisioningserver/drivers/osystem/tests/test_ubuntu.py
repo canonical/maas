@@ -18,8 +18,8 @@ from itertools import product
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.driver import BOOT_IMAGE_PURPOSE
-from provisioningserver.driver.os_ubuntu import (
+from provisioningserver.drivers.osystem.ubuntu import (
+    BOOT_IMAGE_PURPOSE,
     COMMISIONING_DISTRO_SERIES,
     COMMISIONING_DISTRO_SERIES_DEFAULT,
     DISTRO_SERIES_CHOICES,
