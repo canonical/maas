@@ -87,6 +87,13 @@ class StaticIPAddressManager(Manager):
         ipaddress.save()
         return ipaddress
 
+    def deallocate_by_node(self, node):
+        """Given a node, deallocate all of its AUTO StaticIPAddresses."""
+        qs = self.filter(
+            alloc_type=IPADDRESS_TYPE.AUTO).filter(
+            macaddress__node=node)
+        qs.delete()
+
 
 class StaticIPAddress(CleanSave, TimestampedModel):
 
@@ -97,8 +104,10 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     ip = GenericIPAddressField(
         unique=True, null=False, editable=False, blank=False)
 
-    # The MACIPAddressLink table is used to link IPAddress to
-    # MACAddress.  See MACAddress.ip_addresses.
+    # The MACStaticIPAddressLink table is used to link StaticIPAddress to
+    # MACAddress.  See MACAddress.ip_addresses, and the reverse relation
+    # self.macaddress_set (which will only ever contain one MAC due to
+    # the unique FK restriction on the link table).
 
     alloc_type = IntegerField(
         editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
@@ -106,4 +115,24 @@ class StaticIPAddress(CleanSave, TimestampedModel):
     objects = StaticIPAddressManager()
 
     def __unicode__(self):
-        return "<IPAddress %s>" % self.ip
+        # Attempt to show the symbolic alloc_type name if possible.
+
+        # __iter__ does not work here for some reason, so using
+        # iteritems().
+        # XXX: convert this into a reverse_map_enum in maasserver.utils.
+        for k,v in IPADDRESS_TYPE.__dict__.iteritems():
+            if v == self.alloc_type:
+                strtype = k
+                break
+        else:
+            # Should never get here, but defensive coding FTW.
+            strtype = "%s" % self.alloc_type
+        return "<StaticIPAddress: <%s:type=%s>>" % (self.ip, strtype)
+
+    def deallocate(self):
+        """Mark this IP address as no longer in use.
+
+        After return, this object is no longer valid.
+        """
+        self.delete()
+

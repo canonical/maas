@@ -16,12 +16,14 @@ __all__ = []
 
 
 from django.core.exceptions import ValidationError
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressExhaustion,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import map_enum
 from netaddr import (
     IPAddress,
     IPRange,
@@ -44,8 +46,55 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             StaticIPAddressExhaustion,
             StaticIPAddress.objects.allocate_new, low, high)
 
+    def test_deallocate_by_node_removes_addresses(self):
+        node = factory.make_node()
+        [mac1, mac2] = [
+            factory.make_mac_address(node=node) for _ in range(2)]
+        factory.make_staticipaddress(mac=mac1)
+        factory.make_staticipaddress(mac=mac2)
+        StaticIPAddress.objects.deallocate_by_node(node)
+        # Check the DB is cleared.
+        self.assertEqual([], list(StaticIPAddress.objects.all()))
+        # Check the link table is cleared.
+        self.assertEqual([], list(node.static_ip_addresses()))
+
+    def test_deallocate_by_node_ignores_other_nodes(self):
+        node1 = factory.make_node()
+        mac1 = factory.make_mac_address(node=node1)
+        factory.make_staticipaddress(mac=mac1)
+        node2 = factory.make_node()
+        mac2 = factory.make_mac_address(node=node2)
+        ip2 = factory.make_staticipaddress(mac=mac2)
+
+        StaticIPAddress.objects.deallocate_by_node(node1)
+        self.assertItemsEqual([ip2.ip], node2.static_ip_addresses())
+
+    def test_deallocate_only_deletes_auto_types(self):
+        node = factory.make_node()
+        mac = factory.make_mac_address(node=node)
+        alloc_types = map_enum(IPADDRESS_TYPE).values()
+        for alloc_type in alloc_types:
+            factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
+
+        StaticIPAddress.objects.deallocate_by_node(node)
+        types_without_auto = set(alloc_types)
+        types_without_auto.discard(IPADDRESS_TYPE.AUTO)
+        self.assertItemsEqual(
+            types_without_auto,
+            [ip.alloc_type for ip in StaticIPAddress.objects.all()])
+
 
 class StaticIPAddressTest(MAASServerTestCase):
+
+    def test_repr_with_valid_type(self):
+        actual = "%s" % factory.make_staticipaddress(
+            ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.AUTO)
+        self.assertEqual("<StaticIPAddress: <10.0.0.1:type=AUTO>>", actual)
+
+    def test_repr_with_invalid_type(self):
+        actual = "%s" % factory.make_staticipaddress(
+            ip="10.0.0.1", alloc_type=99999)
+        self.assertEqual("<StaticIPAddress: <10.0.0.1:type=99999>>", actual)
 
     def test_stores_to_database(self):
         ipaddress = factory.make_staticipaddress()
@@ -54,3 +103,14 @@ class StaticIPAddressTest(MAASServerTestCase):
     def test_invalid_address_raises_validation_error(self):
         ip = StaticIPAddress(ip='256.0.0.0.0')
         self.assertRaises(ValidationError, ip.full_clean)
+
+    def test_deallocate_removes_object(self):
+        ipaddress = factory.make_staticipaddress()
+        ipaddress.deallocate()
+        self.assertEqual([], list(StaticIPAddress.objects.all()))
+
+    def test_deallocate_ignores_other_objects(self):
+        ipaddress = factory.make_staticipaddress()
+        ipaddress2 = factory.make_staticipaddress()
+        ipaddress.deallocate()
+        self.assertEqual([ipaddress2], list(StaticIPAddress.objects.all()))
