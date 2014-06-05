@@ -24,6 +24,7 @@ from django.db.models import (
     ManyToManyField,
     )
 from maasserver import DefaultMeta
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.fields import (
     MAC,
     MACAddressField,
@@ -85,3 +86,34 @@ class MACAddress(CleanSave, TimestampedModel):
     def get_networks(self):
         """Return networks to which this MAC is connected, sorted by name."""
         return self.networks.all().order_by('name')
+
+    def claim_static_ip(self, alloc_type=IPADDRESS_TYPE.AUTO):
+        """Assign a static IP to this MAC.
+
+        TODO: Also set a host DHCP entry.
+
+        :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
+        :return: A :class:`StaticIPAddress` object. Returns None if
+            the cluster_interface is not yet known, or the
+            static_ip_range_low/high values values are not set on the
+            cluster_interface.
+        :raises: StaticIPAddressExhaustion if there are not enough IPs left.
+        """
+        if self.cluster_interface is None:
+            # We need to know this to allocate an IP, so return nothing.
+            return None
+
+        low = self.cluster_interface.static_ip_range_low
+        high = self.cluster_interface.static_ip_range_high
+        if not low or not high:
+            # low/high can be None or blank if not defined yet.
+            return None
+
+        # Avoid circular imports.
+        from maasserver.models import (
+            MACStaticIPAddressLink,
+            StaticIPAddress,
+            )
+        sip = StaticIPAddress.objects.allocate_new(low, high, alloc_type)
+        MACStaticIPAddressLink(mac_address=self, ip_address=sip).save()
+        return sip

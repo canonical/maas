@@ -17,7 +17,11 @@ __all__ = []
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
-from maasserver.models import MACAddress
+from maasserver.enum import IPADDRESS_TYPE
+from maasserver.models import (
+    MACAddress,
+    StaticIPAddress,
+    )
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -76,3 +80,45 @@ class MACAddressTest(MAASServerTestCase):
         mac = MACAddress(
             mac_address=bytes_mac, node=factory.make_node())
         self.assertEqual(bytes_mac, mac.__str__())
+
+
+class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
+
+    def make_node_with_mac_attached_to_nodegroupinterface(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(mac=True, nodegroup=nodegroup)
+        low_ip, high_ip = factory.make_ip_range()
+        ngi = factory.make_node_group_interface(
+            nodegroup, static_ip_range_low=low_ip.ipv4().format(),
+            static_ip_range_high=high_ip.ipv4().format())
+        mac = node.get_primary_mac()
+        mac.cluster_interface = ngi
+        mac.save()
+        return node
+
+    def test_claim_static_ip_returns_none_if_no_cluster_interface(self):
+        # If mac.cluster_interface is None, we can't allocate any IP.
+        mac = factory.make_mac_address()
+        self.assertIsNone(mac.claim_static_ip())
+
+    def test_claim_static_ip_reserves_an_ip_address(self):
+        node = self.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        claimed_ip = mac.claim_static_ip()
+        self.assertIsInstance(claimed_ip, StaticIPAddress)
+        self.assertNotEqual([], list(node.static_ip_addresses()))
+        self.assertEqual(
+            IPADDRESS_TYPE.AUTO, StaticIPAddress.objects.all()[0].alloc_type)
+
+    def test_claim_static_ip_sets_type_as_required(self):
+        node = self.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        claimed_ip = mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        self.assertEqual(IPADDRESS_TYPE.STICKY, claimed_ip.alloc_type)
+
+    def test_claim_static_ip_returns_none_if_no_static_range_defined(self):
+        node = self.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        mac.cluster_interface.static_ip_range_low = None
+        mac.cluster_interface.static_ip_range_high = None
+        self.assertIsNone(mac.claim_static_ip())
