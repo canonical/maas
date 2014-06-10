@@ -229,6 +229,7 @@ Y.extend(AddNodeWidget, Y.Widget, {
             .set('text', "Add node");
         this.get('srcNode').append(heading).append(this.createForm());
         this.setUpDistroSeriesField();
+        this.setUpLicenseKeyField();
         this.setUpPowerParameterField();
         this.initializeNodes();
     },
@@ -245,6 +246,22 @@ Y.extend(AddNodeWidget, Y.Widget, {
                 srcNode: '#id_distro_series'
                 });
             widget.bindTo(Y.one('#id_osystem'), 'change');
+            widget.render();
+        }
+    },
+
+    /**
+     * If the 'license_key' field is present, setup the linked
+     * 'license_key' field.
+     *
+     * @method setUpLicenseKeyField
+     */
+    setUpLicenseKeyField: function() {
+        if (Y.Lang.isValue(Y.one('.license_key'))) {
+            var widget = new Y.maas.license_key.LicenseKeyWidget({
+                srcNode: '.license_key'
+                });
+            widget.bindTo(Y.one('#id_distro_series'), 'change');
             widget.render();
         }
     },
@@ -433,5 +450,5 @@ module.showAddNodeWidget = function(cfg) {
 
 }, '0.1', {'requires': ['io', 'node', 'widget', 'event', 'event-custom',
                         'maas.morph', 'maas.enums', 'maas.power_parameters',
-                        'maas.os_distro_select']}
+                        'maas.os_distro_select', 'maas.license_key']}
 );

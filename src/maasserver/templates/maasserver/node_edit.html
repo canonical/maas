@@ -11,7 +11,7 @@
   <script type="text/javascript">
   <!--
   YUI().use(
-    'maas.enums', 'maas.power_parameters', 'maas.os_distro_select',
+    'maas.enums', 'maas.power_parameters', 'maas.os_distro_select', 'maas.license_key',
     function (Y) {
     Y.on('load', function() {
       // Create OSDistroWidget so that the release field will be
@@ -21,6 +21,14 @@
           });
       releaseWidget.bindTo(Y.one('.osystem').one('select'), 'change');
       releaseWidget.render();
+
+      // Create LicenseKeyWidget so that the license key field will be
+      // show when a release is selected that requires it.
+      var licenseKeyWidget = new Y.maas.license_key.LicenseKeyWidget({
+          srcNode: '.license_key'
+          });
+      licenseKeyWidget.bindTo(Y.one('.distro_series').one('select'), 'change');
+      licenseKeyWidget.render();
 
       // Create LinkedContentWidget widget so that the power_parameter field
       // will be updated each time the value of the power_type field changes.

@@ -260,6 +260,54 @@ class TestNodeAPI(APITestCase):
             ),
             (response.status_code, json.loads(response.content)))
 
+    def test_POST_start_sets_license_key(self):
+        node = factory.make_node(
+            owner=self.logged_in_user, mac=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem.get_default_release()
+        license_key = factory.getRandomString()
+        self.patch(osystem, 'requires_license_key').return_value = True
+        self.patch(osystem, 'validate_license_key').return_value = True
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'start',
+                'osystem': osystem.name,
+                'distro_series': distro_series,
+                'license_key': license_key,
+                })
+        self.assertEqual(
+            (httplib.OK, node.system_id),
+            (response.status_code, json.loads(response.content)['system_id']))
+        self.assertEqual(
+            license_key, reload_object(node).license_key)
+
+    def test_POST_start_validates_license_key(self):
+        node = factory.make_node(
+            owner=self.logged_in_user, mac=True,
+            power_type='ether_wake',
+            architecture=make_usable_architecture(self))
+        osystem = make_usable_osystem(self)
+        distro_series = osystem.get_default_release()
+        license_key = factory.getRandomString()
+        self.patch(osystem, 'requires_license_key').return_value = True
+        self.patch(osystem, 'validate_license_key').return_value = False
+        response = self.client.post(
+            self.get_node_uri(node), {
+                'op': 'start',
+                'osystem': osystem.name,
+                'distro_series': distro_series,
+                'license_key': license_key,
+                })
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'license_key': [
+                    "Invalid license key."]}
+            ),
+            (response.status_code, json.loads(response.content)))
+
     def test_POST_start_may_be_repeated(self):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
@@ -317,6 +365,17 @@ class TestNodeAPI(APITestCase):
         self.client.post(self.get_node_uri(node), {'op': 'release'})
         self.assertEqual('', reload_object(node).osystem)
         self.assertEqual('', reload_object(node).distro_series)
+
+    def test_POST_release_resets_license_key(self):
+        osystem = factory.getRandomOS()
+        release = factory.getRandomRelease(osystem)
+        license_key = factory.getRandomString()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
+            osystem=osystem.name, distro_series=release,
+            license_key=license_key)
+        self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual('', reload_object(node).license_key)
 
     def test_POST_release_resets_agent_name(self):
         agent_name = factory.make_name('agent-name')

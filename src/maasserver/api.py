@@ -427,15 +427,19 @@ class NodeHandler(OperationsHandler):
         """
         user_data = request.POST.get('user_data', None)
         series = request.POST.get('distro_series', None)
+        license_key = request.POST.get('license_key', None)
         if user_data is not None:
             user_data = b64decode(user_data)
-        if series is not None:
+        if series is not None or license_key is not None:
             node = Node.objects.get_node_or_404(
                 system_id=system_id, user=request.user,
                 perm=NODE_PERMISSION.EDIT)
             Form = get_node_edit_form(request.user)
             form = Form(instance=node)
-            form.set_distro_series(series=series)
+            if series is not None:
+                form.set_distro_series(series=series)
+            if license_key is not None:
+                form.set_license_key(license_key=license_key)
             if form.is_valid():
                 form.save()
             else:

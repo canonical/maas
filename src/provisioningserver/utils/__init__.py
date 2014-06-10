@@ -55,22 +55,21 @@ import sys
 import tempfile
 from time import time
 
-from crochet import run_in_reactor
-from lockfile import FileLock
-from lxml import etree
-import netifaces
-import tempita
-from twisted.internet.defer import maybeDeferred
-from twisted.python.threadable import isInIOThread
-
 from apiclient.maas_client import (
     MAASClient,
     MAASDispatcher,
     MAASOAuth,
     )
+from crochet import run_in_reactor
+from lockfile import FileLock
+from lxml import etree
+import netifaces
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
+import tempita
+from twisted.internet.defer import maybeDeferred
+from twisted.python.threadable import isInIOThread
 
 
 def create_node(mac, arch, power_type, power_parameters):

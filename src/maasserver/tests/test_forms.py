@@ -16,6 +16,7 @@ __all__ = []
 
 from cStringIO import StringIO
 import json
+import random
 
 from django import forms
 from django.conf import settings
@@ -48,6 +49,7 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
+    get_release_requires_key,
     initialize_node_group,
     InstanceListField,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
@@ -273,6 +275,19 @@ class TestHelpers(MAASServerTestCase):
         expected = {}
         expected[os_name] = [release]
         self.assertEqual(expected, list_all_usable_releases([osystem]))
+
+    def test_get_release_requires_key(self):
+        releases = [
+            (factory.make_name('release'), random.choice(['', '*']))
+            for _ in range(3)
+            ]
+        names = [name for name, _ in releases]
+        output = [key for _, key in releases]
+        osystem = make_usable_osystem(self, releases=[names])
+        self.patch(osystem, 'requires_license_key').side_effect = output
+        for release, expected in releases:
+            self.assertEqual(
+                expected, get_release_requires_key(osystem, release))
 
     def test_remove_None_values_removes_None_values_in_dict(self):
         random_input = factory.getRandomString()
@@ -505,6 +520,7 @@ class TestNodeForm(MAASServerTestCase):
                 'architecture',
                 'osystem',
                 'distro_series',
+                'license_key',
                 'nodegroup',
             ], list(form.fields))
 
@@ -634,6 +650,37 @@ class TestNodeForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
+    def test_rejects_missing_license_key(self):
+        osystem = make_usable_osystem(self)
+        release = osystem.get_default_release()
+        self.patch(osystem, 'requires_license_key').return_value = True
+        mock_validate = self.patch(osystem, 'validate_license_key')
+        mock_validate.return_value = True
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem.name,
+            'distro_series': '%s/%s*' % (osystem.name, release),
+            })
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['license_key'], form._errors.keys())
+
+    def test_calls_validate_license_key(self):
+        osystem = make_usable_osystem(self)
+        release = osystem.get_default_release()
+        self.patch(osystem, 'requires_license_key').return_value = True
+        mock_validate = self.patch(osystem, 'validate_license_key')
+        mock_validate.return_value = True
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem.name,
+            'distro_series': '%s/%s*' % (osystem.name, release),
+            'license_key': factory.getRandomString(),
+            })
+        self.assertTrue(form.is_valid())
+        mock_validate.assert_called_once()
+
 
 class TestAdminNodeForm(MAASServerTestCase):
 
@@ -647,6 +694,7 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'architecture',
                 'osystem',
                 'distro_series',
+                'license_key',
                 'power_type',
                 'power_parameters',
                 'cpu_count',

@@ -524,6 +524,8 @@ class Node(CleanSave, TimestampedModel):
 
     netboot = BooleanField(default=True)
 
+    license_key = CharField(max_length=30, null=True, blank=True)
+
     # This field can't be null, but we can't enforce that in the
     # database schema because we can only create the default value from
     # a complete schema, after schema migration.  We can't use custom
@@ -925,6 +927,7 @@ class Node(CleanSave, TimestampedModel):
         self.set_netboot()
         self.osystem = ''
         self.distro_series = ''
+        self.license_key = ''
         self.save()
 
     def set_netboot(self, on=True):

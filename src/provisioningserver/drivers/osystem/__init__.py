@@ -83,6 +83,24 @@ class OperatingSystem:
         :returns: list of supported purposes
         """
 
+    def requires_license_key(self, release):
+        """Returns whether the given release requires a licese key.
+
+        :param release: Release
+        :returns: True if requires license key, false otherwise.
+        """
+        return False
+
+    def validate_license_key(self, release, key):
+        """Validates a license key for a release. This is only called if
+        the release requires a license key.
+
+        :param release: Release
+        :param key: License key
+        :returns: True if valid, false otherwise
+        """
+        raise NotImplementedError()
+
     def compose_preseed(self, node, token, metadata_url):
         """Composes the preseed for the given node.
 

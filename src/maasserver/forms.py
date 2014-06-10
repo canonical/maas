@@ -257,18 +257,36 @@ def list_all_usable_releases(osystems):
     return distro_series
 
 
+def get_release_requires_key(osystem, release):
+    """Return astrisk for any release that requires
+    a license key.
+
+    This is used by the JS, to display the licese_key field.
+    """
+    if osystem.requires_license_key(release):
+        return '*'
+    return ''
+
+
 def list_release_choices(releases):
     """Return Django "choices" list for `releases`."""
     choices = [('', 'Default OS Release')]
     for key, value in releases.items():
         osystem = OperatingSystemRegistry[key]
         options = osystem.format_release_choices(value)
+        requires_key = get_release_requires_key(osystem, '')
         choices += [(
-            '%s/' % osystem.name,
+            '%s/%s' % (osystem.name, requires_key),
             'Latest %s Release' % osystem.title
             )]
-        choices += [
-            ('%s/%s' % (osystem.name, name), title)
+        choices += [(
+            '%s/%s%s' % (
+                osystem.name,
+                name,
+                get_release_requires_key(osystem, name)
+                ),
+            title
+            )
             for name, title in options
             ]
     return choices
@@ -278,10 +296,15 @@ def get_distro_series_inital(instance):
     """Returns the distro_series initial value for the instance."""
     osystem = instance.osystem
     series = instance.distro_series
+    os_obj = OperatingSystemRegistry.get_item(osystem)
+    if os_obj is not None:
+        key_required = get_release_requires_key(os_obj, series)
+    else:
+        key_required = ''
     if osystem is not None and osystem != '':
         if series is None:
             series = ''
-        return '%s/%s' % (osystem, series)
+        return '%s/%s%s' % (osystem, series, key_required)
     return None
 
 
@@ -295,6 +318,8 @@ def clean_distro_series_field(form, field, os_field):
     :returns: clean distro_series field value
     """
     new_distro_series = form.cleaned_data.get(field)
+    if '*' in new_distro_series:
+        new_distro_series = new_distro_series.replace('*', '')
     if new_distro_series is None or '/' not in new_distro_series:
         return new_distro_series
     os, release = new_distro_series.split('/', 1)
@@ -397,6 +422,22 @@ class NodeForm(ModelForm):
             is_valid = False
         return is_valid
 
+    def clean_license_key(self):
+        key = self.cleaned_data.get('license_key')
+        osystem = self.cleaned_data.get('osystem')
+        distro = self.cleaned_data.get('distro_series')
+        if osystem != '':
+            os_obj = OperatingSystemRegistry.get_item(osystem)
+            if os_obj is not None and os_obj.requires_license_key(distro):
+                if not key or len(key) == 0:
+                    raise ValidationError(
+                        "This OS/Release requires a license_key")
+                if not os_obj.validate_license_key(distro, key):
+                    raise ValidationError(
+                        "Invalid license key.")
+                return key
+        return ''
+
     def set_distro_series(self, series=''):
         """Sets the osystem and distro_series, from the provided
         distro_series.
@@ -411,10 +452,20 @@ class NodeForm(ModelForm):
         if series is not None and series != '':
             osystem = get_osystem_from_release(series)
             if osystem is not None:
+                key_required = get_release_requires_key(osystem, series)
                 self.data['osystem'] = osystem.name
-                self.data['distro_series'] = '%s/%s' % (osystem.name, series)
+                self.data['distro_series'] = '%s/%s%s' % (
+                    osystem.name,
+                    series,
+                    key_required,
+                    )
             else:
                 self.data['distro_series'] = series
+
+    def set_license_key(self, license_key=''):
+        """Sets the license key."""
+        self.is_bound = True
+        self.data['license_key'] = license_key
 
     hostname = forms.CharField(
         label="Host name", required=False, help_text=(
@@ -424,6 +475,11 @@ class NodeForm(ModelForm):
             "by the domain defined on the cluster; if the cluster controller "
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
+
+    license_key = forms.CharField(
+        label="License Key (Required)", required=False, help_text=(
+            "License key for operating system"),
+        max_length=30)
 
     class Meta:
         model = Node
@@ -435,6 +491,7 @@ class NodeForm(ModelForm):
             'architecture',
             'osystem',
             'distro_series',
+            'license_key',
             )
 
 

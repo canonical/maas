@@ -42,11 +42,6 @@ from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
     )
-from provisioningserver.drivers.hardware.seamicro import (
-    probe_seamicro15k_and_enlist,
-    )
-from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
-from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.dhcp import (
     config,
     detect,
@@ -58,6 +53,11 @@ from provisioningserver.dns.config import (
     set_up_options_conf,
     setup_rndc,
     )
+from provisioningserver.drivers.hardware.seamicro import (
+    probe_seamicro15k_and_enlist,
+    )
+from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
+from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.import_images import boot_resources
 from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import (
