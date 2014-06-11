@@ -25,7 +25,7 @@ body {
 
 div.document {
     width: {{ page_width }};
-    margin: 30px auto 0 auto;
+    margin: 10px auto 0 auto;
 }
 
 div.documentwrapper {
@@ -69,6 +69,11 @@ div.footer a {
 }
 
 div.related {
+    width: {{ page_width }};
+    margin: 10px auto 0 auto;
+}
+
+div.related h3 {
     display: none;
 }
 
