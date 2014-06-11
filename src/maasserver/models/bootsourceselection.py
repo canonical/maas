@@ -26,14 +26,6 @@ import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-
-
-def list_release_choices():
-    """Return Django "choices" list for Ubuntu releases."""
-    osystem = UbuntuOS()
-    releases = osystem.get_supported_releases()
-    return osystem.format_release_choices(releases)
 
 
 class BootSourceSelectionManager(Manager):
@@ -51,8 +43,7 @@ class BootSourceSelection(CleanSave, TimestampedModel):
     boot_source = ForeignKey('maasserver.BootSource', blank=False)
 
     release = CharField(
-        max_length=20, choices=list_release_choices(), blank=True,
-        default='',
+        max_length=20, blank=True, default='',
         help_text="The Ubuntu release for which to import resources.")
 
     arches = djorm_pgarray.fields.ArrayField(dbtype="text")

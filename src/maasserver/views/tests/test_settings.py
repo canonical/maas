@@ -154,9 +154,11 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_deploy_POST(self):
         self.client_log_in(as_admin=True)
-        new_osystem = factory.getRandomOS()
+        osystem_name = factory.make_name('os')
+        release_name = factory.make_name('release')
+        new_osystem = factory.make_operating_system(
+            name=osystem_name, release=release_name)
         new_default_osystem = new_osystem.name
-        new_default_distro_series = factory.getRandomRelease(new_osystem)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -165,7 +167,7 @@ class SettingsTest(MAASServerTestCase):
                     'default_osystem': new_default_osystem,
                     'default_distro_series': '%s/%s' % (
                         new_default_osystem,
-                        new_default_distro_series
+                        release_name,
                         ),
                 }))
 
@@ -173,7 +175,7 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(
             (
                 new_default_osystem,
-                new_default_distro_series,
+                release_name,
             ),
             (
                 Config.objects.get_config('default_osystem'),

@@ -23,41 +23,56 @@ __all__ = [
 from socket import gethostname
 
 from django import forms
-from maasserver.models.config import DEFAULT_OS
+from maasserver.models.config import (
+    Config,
+    DEFAULT_OS,
+    )
 from maasserver.utils.forms import compose_invalid_choice_text
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from maasserver.utils.os import (
+    list_all_usable_osystems,
+    list_all_usable_releases,
+    list_osystem_choices,
+    list_release_choices,
+    )
 
 
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
-
-
-def list_osystem_choices():
-    osystems = [osystem for _, osystem in OperatingSystemRegistry]
-    osystems = sorted(osystems, key=lambda osystem: osystem.title)
-    return [
-        (osystem.name, osystem.title)
-        for osystem in osystems
-        ]
-
-
-def list_release_choices():
-    osystems = [osystem for _, osystem in OperatingSystemRegistry]
-    choices = []
-    for osystem in osystems:
-        supported = sorted(osystem.get_supported_releases())
-        options = osystem.format_release_choices(supported)
-        options = [
-            ('%s/%s' % (osystem.name, name), title)
-            for name, title in options
-            ]
-        choices += options
-    return choices
 
 
 def list_commisioning_choices():
     releases = DEFAULT_OS.get_supported_commissioning_releases()
     options = DEFAULT_OS.format_release_choices(releases)
     return list(options)
+
+
+def make_default_osystem_field(*args, **kwargs):
+    """Build and return the default_osystem field."""
+    usable_oses = list_all_usable_osystems()
+    os_choices = list_osystem_choices(usable_oses)
+    field = forms.ChoiceField(
+        initial = Config.objects.get_config('default_osystem'),
+        choices = os_choices,
+        error_messages = {
+            'invalid_choice': compose_invalid_choice_text(
+                'osystem', os_choices)
+        },
+        **kwargs)
+    return field
+
+
+def make_default_distro_series_field(*args, **kwargs):
+    usable_oses = list_all_usable_osystems()
+    release_choices = list_release_choices(
+        list_all_usable_releases(usable_oses))
+    field = forms.ChoiceField(
+        initial = Config.objects.get_config('default_distro_series'),
+        choices = release_choices,
+        error_messages = {
+            'invalid_choice': compose_invalid_choice_text(
+                'release', release_choices)
+        },
+        **kwargs)
+    return field
 
 
 CONFIG_ITEMS = {
@@ -162,32 +177,21 @@ CONFIG_ITEMS = {
         }
     },
     'default_osystem': {
-        'default': DEFAULT_OS.name,
-        'form': forms.ChoiceField,
+        'form': make_default_osystem_field,
         'form_kwargs': {
             'label': "Default operating system used for deployment",
-            'choices': list_osystem_choices(),
             'required': False,
-            'error_messages': {
-                'invalid_choice': compose_invalid_choice_text(
-                    'osystem',
-                    list_osystem_choices())},
+            # This field's `choices` and `error_messages` are populated
+            # at run-time to avoid a race condition.
         }
     },
     'default_distro_series': {
-        'default': '%s/%s' % (
-            DEFAULT_OS.name,
-            DEFAULT_OS.get_default_release()
-            ),
-        'form': forms.ChoiceField,
+        'form': make_default_distro_series_field,
         'form_kwargs': {
             'label': "Default OS release used for deployment",
-            'choices': list_release_choices(),
             'required': False,
-            'error_messages': {
-                'invalid_choice': compose_invalid_choice_text(
-                    'distro_series',
-                    list_release_choices())},
+            # This field's `choices` and `error_messages` are populated
+            # at run-time to avoid a race condition.
         }
     },
     'commissioning_distro_series': {

@@ -33,7 +33,6 @@ from provisioningserver.boot.tftppath import (
     locate_tftp_path,
     )
 from provisioningserver.drivers.osystem import (
-    OperatingSystem,
     OperatingSystemRegistry,
     )
 from provisioningserver.import_images.boot_image_mapping import (
@@ -48,45 +47,12 @@ from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     )
 from provisioningserver.testing.config import set_tftp_root
+from provisioningserver.testing.os import FakeOS
 from testtools.matchers import (
     Not,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
-
-
-class FakeOS(OperatingSystem):
-
-    name = ""
-    title = ""
-
-    def __init__(self, name, purpose, releases=None):
-        self.name = name
-        self.title = name
-        self.purpose = purpose
-        if releases is None:
-            self.fake_list = [
-                factory.getRandomString()
-                for _ in range(3)
-                ]
-        else:
-            self.fake_list = releases
-
-    def get_boot_image_purposes(self, *args):
-        return self.purpose
-
-    def get_supported_releases(self):
-        return self.fake_list
-
-    def get_default_release(self):
-        return self.fake_list[0]
-
-    def format_release_choices(self, releases):
-        return [
-            (release, release)
-            for release in releases
-            if release in self.fake_list
-            ]
 
 
 def make_image(params, purpose, metadata=None):

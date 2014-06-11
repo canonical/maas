@@ -44,6 +44,7 @@ from maasserver.forms import (
     CommissioningForm,
     CommissioningScriptForm,
     ConfigForm,
+    DeployForm,
     DownloadProgressForm,
     EditUserForm,
     get_action_form,
@@ -78,6 +79,7 @@ from maasserver.forms import (
     ValidatorMultipleChoiceField,
     ZoneForm,
     )
+from provisioningserver.drivers.osystem import ubuntu
 from maasserver.models import (
     Config,
     MACAddress,
@@ -239,6 +241,28 @@ class TestHelpers(MAASServerTestCase):
         osystem = make_usable_osystem(self, os_name)
         self.assertEqual(
             [osystem], list_all_usable_osystems())
+
+    def test_list_all_usable_osystems_omits_oses_without_boot_images(self):
+        usable_os_name = factory.make_name('os')
+        unusable_os_name = factory.make_name('os')
+        self.make_usable_boot_images(osystem=usable_os_name)
+        usable_os = make_usable_osystem(self, usable_os_name)
+        unusable_os = make_usable_osystem(self, unusable_os_name)
+
+        usable_os_list = list_all_usable_osystems()
+        self.assertIn(usable_os, usable_os_list)
+        self.assertNotIn(unusable_os, usable_os_list)
+
+    def test_list_all_usable_osystems_omits_oses_not_supported(self):
+        usable_os_name = factory.make_name('os')
+        unusable_os_name = factory.make_name('os')
+        self.make_usable_boot_images(osystem=usable_os_name)
+        self.make_usable_boot_images(osystem=unusable_os_name)
+        usable_os = make_usable_osystem(self, usable_os_name)
+
+        usable_os_list = list_all_usable_osystems()
+        self.assertIn(usable_os, usable_os_list)
+        self.assertNotIn(unusable_os_name, [os.name for os in usable_os_list])
 
     def test_list_all_usable_releases_combines_nodegroups(self):
         expected = {}
@@ -2146,3 +2170,39 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         boot_source_selection = form.save()
         self.assertAttributes(boot_source_selection, params)
+
+
+class TestDeployForm(MAASServerTestCase):
+    """Tests for `DeployForm`."""
+
+    def test_uses_live_data(self):
+        # The DeployForm uses the database rather than just relying on
+        # hard-coded stuff.
+        os_name = factory.make_name('os')
+        release_name = factory.make_name('release')
+        factory.make_operating_system(
+            name=os_name, release=release_name)
+        release_name = "%s/%s" % (os_name, release_name)
+        deploy_form = DeployForm()
+        os_names = [
+            name for name, title in deploy_form.fields['default_osystem'].choices]
+        release_names = [
+            name for name, title in deploy_form.fields['default_distro_series'].choices]
+        self.assertIn(os_name, os_names)
+        self.assertIn(release_name, release_names)
+
+    def test_accepts_new_values(self):
+        os_name = 'ubuntu'
+        release_name = factory.make_name('release')
+        # XXX 2014-06-10 gmb:
+        #     We have to poke the release into the DISTRO_SERIES_CHOICES
+        #     dict, because otherwise it won't show up in the availble
+        #     releases on the DeployForm.
+        ubuntu.DISTRO_SERIES_CHOICES[release_name] = release_name.title()
+        factory.make_operating_system(name=os_name, release=release_name)
+        params = {
+            'default_osystem': os_name,
+            'default_distro_series': "%s/%s" % (os_name, release_name),
+            }
+        form = DeployForm(data=params)
+        self.assertTrue(form.is_valid())
