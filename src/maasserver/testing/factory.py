@@ -222,13 +222,21 @@ class Factory(maastesting.factory.Factory):
     def get_interface_fields(self, ip=None, router_ip=None, network=None,
                              subnet_mask=None, broadcast_ip=None,
                              ip_range_low=None, ip_range_high=None,
-                             interface=None, management=None, **kwargs):
+                             interface=None, management=None,
+                             static_ip_range_low=None,
+                             static_ip_range_high=None, **kwargs):
         if network is None:
             network = factory.getRandomNetwork()
         if subnet_mask is None:
             subnet_mask = unicode(network.netmask)
         if broadcast_ip is None:
             broadcast_ip = unicode(network.broadcast)
+        if static_ip_range_low is None or static_ip_range_high is None:
+            static_low, static_high = self.make_ip_range()
+            if static_ip_range_low is None:
+                static_ip_range_low = unicode(static_low)
+            if static_ip_range_high is None:
+                static_ip_range_high = unicode(static_high)
         if ip_range_low is None:
             ip_range_low = unicode(IPAddress(network.first))
         if ip_range_high is None:
@@ -246,6 +254,8 @@ class Factory(maastesting.factory.Factory):
             broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low,
             ip_range_high=ip_range_high,
+            static_ip_range_low=static_ip_range_low,
+            static_ip_range_high=static_ip_range_high,
             router_ip=router_ip,
             ip=ip,
             management=management,
@@ -255,7 +265,8 @@ class Factory(maastesting.factory.Factory):
                         ip=None, router_ip=None, network=None,
                         subnet_mask=None, broadcast_ip=None, ip_range_low=None,
                         ip_range_high=None, interface=None, management=None,
-                        status=None, maas_url='', **kwargs):
+                        status=None, maas_url='', static_ip_range_low=None,
+                        static_ip_range_high=None, **kwargs):
         """Create a :class:`NodeGroup`.
 
         If network (an instance of IPNetwork) is provided, use it to populate
@@ -277,7 +288,9 @@ class Factory(maastesting.factory.Factory):
             ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            interface=interface, management=management)
+            interface=interface, management=management,
+            static_ip_range_low=static_ip_range_low,
+            static_ip_range_high=static_ip_range_high)
         interface_settings.update(kwargs)
         return NodeGroup.objects.new(
             name=name, uuid=uuid, cluster_name=cluster_name, status=status,
@@ -306,12 +319,16 @@ class Factory(maastesting.factory.Factory):
                                   router_ip=None, network=None,
                                   subnet_mask=None, broadcast_ip=None,
                                   ip_range_low=None, ip_range_high=None,
-                                  interface=None, management=None, **kwargs):
+                                  interface=None, management=None,
+                                  static_ip_range_low=None,
+                                  static_ip_range_high=None, **kwargs):
         interface_settings = self.get_interface_fields(
             ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            interface=interface, management=management)
+            interface=interface, management=management,
+            static_ip_range_low=static_ip_range_low,
+            static_ip_range_high=static_ip_range_high)
         interface_settings.update(**kwargs)
         interface = NodeGroupInterface(
             nodegroup=nodegroup, **interface_settings)

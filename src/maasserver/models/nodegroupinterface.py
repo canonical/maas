@@ -75,13 +75,19 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     router_ip = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None)
     ip_range_low = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        help_text="Lowest IP number of the range for dynamic IPs.")
     ip_range_high = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        help_text="Highest IP number of the range for dynamic IPs.")
     static_ip_range_low = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        help_text="Lowest IP number of the range for static IPs, must be same"
+                  " network as dynamic range.")
     static_ip_range_high = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        help_text="Highest IP number of the range for static IPs, must be same"
+                  " network as dynamic range.")
 
     # Foreign DHCP server address, if any, that was detected on this
     # interface.

@@ -62,7 +62,8 @@ class NodeGroupManager(Manager):
             ip_range_high=None, dhcp_key='', interface='',
             status=NODEGROUP_STATUS.DEFAULT,
             management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
-            cluster_name=None, maas_url=''):
+            cluster_name=None, maas_url='',
+            static_ip_range_low=None, static_ip_range_high=None):
         """Create a :class:`NodeGroup` with the given parameters.
 
         This method will:
@@ -91,7 +92,9 @@ class NodeGroupManager(Manager):
                 nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
                 broadcast_ip=broadcast_ip, router_ip=router_ip,
                 interface=interface, ip_range_low=ip_range_low,
-                ip_range_high=ip_range_high, management=management)
+                ip_range_high=ip_range_high, management=management,
+                static_ip_range_low=static_ip_range_low,
+                static_ip_range_high=static_ip_range_high)
             nginterface.save()
         return nodegroup
 

@@ -1803,7 +1803,9 @@ class NodeGroupHandler(OperationsHandler):
 
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',
-    'broadcast_ip', 'ip_range_low', 'ip_range_high')
+    'broadcast_ip', 'ip_range_low', 'ip_range_high',
+    'static_ip_range_low', 'static_ip_range_high',
+    )
 
 
 class NodeGroupInterfacesHandler(OperationsHandler):
@@ -1841,10 +1843,16 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         :type broadcast_ip: unicode (IP Address)
         :param router_ip: Address of default gateway.
         :type router_ip: unicode (IP Address)
-        :param ip_range_low: Lowest IP address to assign to clients.
+        :param ip_range_low: Lowest dynamic IP address to assign to clients.
         :type ip_range_low: unicode (IP Address)
-        :param ip_range_high: Highest IP address to assign to clients.
+        :param ip_range_high: Highest dynamic IP address to assign to clients.
         :type ip_range_high: unicode (IP Address)
+        :param static_ip_range_low: Lowest static IP address to assign to
+            clients.
+        :type static_ip_range_low: unicode (IP Address)
+        :param static_ip_range_high: Highest static IP address to assign to
+            clients.
+        :type static_ip_range_high: unicode (IP Address)
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
@@ -1908,10 +1916,16 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :type broadcast_ip: unicode (IP Address)
         :param router_ip: Address of default gateway.
         :type router_ip: unicode (IP Address)
-        :param ip_range_low: Lowest IP address to assign to clients.
+        :param ip_range_low: Lowest dynamic IP address to assign to clients.
         :type ip_range_low: unicode (IP Address)
-        :param ip_range_high: Highest IP address to assign to clients.
+        :param ip_range_high: Highest dynamic IP address to assign to clients.
         :type ip_range_high: unicode (IP Address)
+        :param static_ip_range_low: Lowest static IP address to assign to
+            clients.
+        :type static_ip_range_low: unicode (IP Address)
+        :param static_ip_range_high: Highest static IP address to assign to
+            clients.
+        :type static_ip_range_high: unicode (IP Address)
         """
         nodegroupinterface = self.get_interface(request, uuid, interface)
         form = NodeGroupInterfaceForm(

@@ -1069,6 +1069,7 @@ def make_interface_settings(network=None, management=None):
         management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
     # Pick upper and lower boundaries of IP range, with upper > lower.
     ip_range_low, ip_range_high = factory.make_ip_range(network)
+    static_ip_range_low, static_ip_range_high = factory.make_ip_range(network)
     return {
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
@@ -1077,13 +1078,16 @@ def make_interface_settings(network=None, management=None):
         'router_ip': factory.getRandomIPInNetwork(network),
         'ip_range_low': unicode(ip_range_low),
         'ip_range_high': unicode(ip_range_high),
+        'static_ip_range_low': unicode(static_ip_range_low),
+        'static_ip_range_high': unicode(static_ip_range_high),
         'management': management,
     }
 
 
 nullable_fields = [
     'subnet_mask', 'broadcast_ip', 'router_ip', 'ip_range_low',
-    'ip_range_high']
+    'ip_range_high', 'static_ip_range_low', 'static_ip_range_high',
+    ]
 
 
 class TestNodeGroupInterfaceForm(MAASServerTestCase):

@@ -1131,6 +1131,8 @@ class NodeGroupInterfaceForm(ModelForm):
             'router_ip',
             'ip_range_low',
             'ip_range_high',
+            'static_ip_range_low',
+            'static_ip_range_high',
             )
 
 

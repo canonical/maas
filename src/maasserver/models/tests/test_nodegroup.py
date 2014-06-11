@@ -63,6 +63,8 @@ def make_dhcp_settings():
         'router_ip': factory.getRandomIPInNetwork(network),
         'ip_range_low': factory.getRandomIPInNetwork(network),
         'ip_range_high': factory.getRandomIPInNetwork(network),
+        'static_ip_range_low': factory.getRandomIPInNetwork(network),
+        'static_ip_range_high': factory.getRandomIPInNetwork(network),
         }
 
 
