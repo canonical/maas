@@ -51,7 +51,6 @@ from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.filestorage import FileStorage
-from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.network import Network
@@ -59,6 +58,7 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.sshkey import SSHKey
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile

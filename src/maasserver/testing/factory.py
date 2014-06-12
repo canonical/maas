@@ -370,17 +370,37 @@ class Factory(maastesting.factory.Factory):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.getRandomMACAddress())
 
-    def make_mac_address(self, address=None, node=None, networks=None):
+    def make_mac_address(self, address=None, node=None, networks=None,
+                         **kwargs):
         """Create a MACAddress model object."""
         if node is None:
             node = self.make_node()
         if address is None:
             address = self.getRandomMACAddress()
-        mac = MACAddress(mac_address=MAC(address), node=node)
+        mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
         mac.save()
         if networks is not None:
             mac.networks.add(*networks)
         return mac
+
+    def make_node_with_mac_attached_to_nodegroupinterface(
+            self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP, **kwargs):
+        """Create a Node that has a MACAddress which has a
+        NodeGroupInterface.
+
+        :param **kwargs: Additional parameters to pass to make_node.
+        """
+        nodegroup = self.make_node_group()
+        node = self.make_node(mac=True, nodegroup=nodegroup, **kwargs)
+        low_ip, high_ip = factory.make_ip_range()
+        ngi = self.make_node_group_interface(
+            nodegroup, static_ip_range_low=low_ip.ipv4().format(),
+            static_ip_range_high=high_ip.ipv4().format(),
+            management=management)
+        mac = node.get_primary_mac()
+        mac.cluster_interface = ngi
+        mac.save()
+        return node
 
     def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
                              mac=None):

@@ -17,6 +17,7 @@ __all__ = []
 from datetime import timedelta
 import random
 
+import celery
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
@@ -45,7 +46,10 @@ from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
+from maasserver.utils import (
+    ignore_unused,
+    map_enum,
+    )
 from maastesting.djangotestcase import count_queries
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
@@ -55,12 +59,12 @@ from metadataserver.models import (
     NodeUserData,
     )
 from provisioningserver.power.poweraction import PowerAction
+from provisioningserver.tasks import Omshell
 from testtools.matchers import (
     AllMatch,
     Contains,
     Equals,
     MatchesAll,
-    MatchesListwise,
     Not,
     )
 
@@ -294,19 +298,26 @@ class NodeTest(MAASServerTestCase):
         lease = factory.make_dhcp_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
-        mocked_task = self.patch(node_module, "remove_dhcp_host_map")
-        mocked_apply_async = self.patch(mocked_task, "apply_async")
+        self.patch(Omshell, 'remove')
         node.delete()
-        args, kwargs = mocked_apply_async.call_args
-        expected = (
-            Equals(kwargs['queue']),
+        self.assertThat(
+            self.celery.tasks[0]['kwargs'],
             Equals({
                 'ip_address': lease.ip,
                 'server_address': "127.0.0.1",
                 'omapi_key': lease.nodegroup.dhcp_key,
                 }))
-        observed = node.work_queue, kwargs['kwargs']
-        self.assertThat(observed, MatchesListwise(expected))
+
+    def test_delete_dynamic_host_maps_sends_to_correct_queue(self):
+        lease = factory.make_dhcp_lease()
+        node = factory.make_node(nodegroup=lease.nodegroup)
+        node.add_mac_address(lease.mac)
+        self.patch(Omshell, 'remove')
+        option_call = self.patch(celery.canvas.Signature, 'set')
+        work_queue = node.work_queue
+        node.delete()
+        args, kwargs = option_call.call_args
+        self.assertEqual(work_queue, kwargs['queue'])
 
     def test_delete_node_removes_multiple_host_maps(self):
         lease1 = factory.make_dhcp_lease()
@@ -314,10 +325,9 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(nodegroup=lease1.nodegroup)
         node.add_mac_address(lease1.mac)
         node.add_mac_address(lease2.mac)
-        mocked_task = self.patch(node_module, "remove_dhcp_host_map")
-        mocked_apply_async = self.patch(mocked_task, "apply_async")
+        self.patch(Omshell, 'remove')
         node.delete()
-        self.assertEqual(2, mocked_apply_async.call_count)
+        self.assertEqual(2, len(self.celery.tasks))
 
     def test_set_random_hostname_set_hostname(self):
         # Blank out enlistment_domain.
@@ -986,6 +996,26 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(architecture=full_arch)
         self.assertEqual((main_arch, sub_arch), node.split_arch())
 
+    def test_mac_addresses_on_managed_interfaces_returns_only_managed(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+
+        mac_with_no_interface = factory.make_mac_address(node=node)
+        unmanaged_interface = factory.make_node_group_interface(
+            nodegroup=node.nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        mac_with_unmanaged_interface = factory.make_mac_address(
+            node=node, cluster_interface=unmanaged_interface)
+        ignore_unused(mac_with_no_interface, mac_with_unmanaged_interface)
+
+        observed = node.mac_addresses_on_managed_interfaces()
+        self.assertItemsEqual([node.get_primary_mac()], observed)
+
+    def test_mac_addresses_on_managed_interfaces_returns_empty_if_none(self):
+        node = factory.make_node(mac=True)
+        observed = node.mac_addresses_on_managed_interfaces()
+        self.assertItemsEqual([], observed)
+
 
 class NodeRoutersTest(MAASServerTestCase):
 
@@ -1401,3 +1431,66 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
+
+    def test_claim_static_ips_ignores_unmanaged_macs(self):
+        node = factory.make_node()
+        factory.make_mac_address(node=node)
+        observed = node.claim_static_ips()
+        self.assertItemsEqual([], observed)
+
+    def test_claim_static_ips_creates_task_for_each_managed_mac(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node(nodegroup=nodegroup)
+
+        # Add some MACs attached to managed interfaces.
+        number_of_macs = 2
+        for _ in range(0, number_of_macs):
+            low_ip, high_ip = factory.make_ip_range()
+            ngi = factory.make_node_group_interface(
+                nodegroup, static_ip_range_low=low_ip.ipv4().format(),
+                static_ip_range_high=high_ip.ipv4().format(),
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+            factory.make_mac_address(node=node, cluster_interface=ngi)
+
+        observed = node.claim_static_ips()
+        expected = [
+            'provisioningserver.tasks.add_new_dhcp_host_map'] * number_of_macs
+
+        self.assertEqual(
+            expected,
+            [task.task for task in observed]
+            )
+
+    def test_claim_static_ips_creates_deletion_task(self):
+        # If dhcp leases exist before creating a static IP, the code
+        # should attempt to remove their host maps.
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        factory.make_dhcp_lease(
+            nodegroup=node.nodegroup, mac=node.get_primary_mac().mac_address)
+
+        observed = node.claim_static_ips()
+
+        self.assertEqual(
+            [
+                'celery.chain',
+                'provisioningserver.tasks.add_new_dhcp_host_map',
+            ],
+            [
+                task.task for task in observed
+            ])
+
+        # Probe the chain to make sure it has the deletion task.
+        self.assertEqual(
+            'provisioningserver.tasks.remove_dhcp_host_map',
+            observed[0].tasks[0].task,
+            )
+
+    def test_claim_static_ips_ignores_interface_with_no_static_range(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        ngi = node.get_primary_mac().cluster_interface
+        ngi.static_ip_range_low = None
+        ngi.static_ip_range_high = None
+        ngi.save()
+
+        observed = node.claim_static_ips()
+        self.assertItemsEqual([], observed)

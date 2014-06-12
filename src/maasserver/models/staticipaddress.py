@@ -120,7 +120,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         # __iter__ does not work here for some reason, so using
         # iteritems().
         # XXX: convert this into a reverse_map_enum in maasserver.utils.
-        for k,v in IPADDRESS_TYPE.__dict__.iteritems():
+        for k, v in IPADDRESS_TYPE.__dict__.iteritems():
             if v == self.alloc_type:
                 strtype = k
                 break
@@ -135,4 +135,3 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         After return, this object is no longer valid.
         """
         self.delete()
-

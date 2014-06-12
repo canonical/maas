@@ -28,6 +28,7 @@ import re
 from string import whitespace
 from uuid import uuid1
 
+import celery
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -54,16 +55,17 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import NodeStateViolation
 from maasserver.fields import (
     JSONObjectField,
     MAC,
     )
-from maasserver.models import StaticIPAddress
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
@@ -74,6 +76,7 @@ from maasserver.utils import (
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.tasks import (
+    add_new_dhcp_host_map,
     power_off,
     power_on,
     remove_dhcp_host_map,
@@ -566,6 +569,55 @@ class Node(CleanSave, TimestampedModel):
         else:
             return self.hostname
 
+    def claim_static_ips(self):
+        """Assign static IPs for our MACs and return a list of Celery tasks
+        that need executing.  If nothing needs executing, the empty list
+        is returned.
+
+        Each MAC on the node that is connected to a managed cluster
+        interface will get an IP.
+
+        This operation is atomic, claiming an IP on a particular MAC fails
+        then none of the MACs will get an IP and StaticIPAddressExhaustion
+        is raised.
+        """
+        # TODO: Release claimed MACs inside loop if fail to claim single
+        # one (ie make this atomic).
+        tasks = []
+        # Get a new AUTO static IP for each MAC on a managed interface.
+        macs = self.mac_addresses_on_managed_interfaces()
+        for mac in macs:
+            sip = mac.claim_static_ip()
+            # This is creating a list of celery 'Signatures' which will be
+            # chained together later.  Normally the result of each
+            # chained task is passed to the next, but we don't want that
+            # here.  We can avoid it by making the Signatures
+            # "immutable", and this is done with the "si()" call on the
+            # task, which produces an immutable Signature.
+            # See docs.celeryproject.org/en/latest/userguide/canvas.html
+
+            # "sip" may be None if the static range is not yet
+            # defined, which will be the case when migrating from older
+            # versions of the code.  If it is None we just ignore this
+            # MAC.
+            if sip is not None:
+                dhcp_key = self.nodegroup.dhcp_key
+                mapping = {sip.ip: mac.mac_address}
+                # XXX See bug 1039362 regarding server_address.
+                dhcp_task = add_new_dhcp_host_map.si(
+                    mappings=mapping, server_address='127.0.0.1',
+                    shared_key=dhcp_key)
+                dhcp_task.set(queue=self.work_queue)
+                tasks.append(dhcp_task)
+        if len(tasks) > 0:
+            # Delete any existing dynamic maps as the first task.
+            del_existing = self._build_dynamic_host_map_deletion_task()
+            if del_existing is not None:
+                # del_existing is a chain so does not need an explicit
+                # queue to be set as each subtask will have one.
+                tasks.insert(0, del_existing)
+        return tasks
+
     def ip_addresses(self):
         """IP addresses allocated to this node.
 
@@ -631,6 +683,16 @@ class Node(CleanSave, TimestampedModel):
         else:
             query = dhcpleases_qs.filter(mac__in=macs)
             return query.values_list('ip', flat=True)
+
+    def mac_addresses_on_managed_interfaces(self):
+        """Return MACAddresses for this node that have a managed cluster
+        interface."""
+        # Avoid circular imports
+        from maasserver.models import MACAddress
+        unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        return MACAddress.objects.filter(
+            node=self, cluster_interface__isnull=False).exclude(
+            cluster_interface__management=unmanaged)
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
@@ -761,6 +823,22 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(
                 "Cannot delete node %s: node is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+        # Delete any dynamic host maps in the DHCP server.
+        self._delete_dynamic_host_maps()
+        # Delete the related mac addresses.
+        # The DHCPLease objects corresponding to these MACs will be deleted
+        # as well. See maasserver/models/dhcplease:delete_lease().
+        self.macaddress_set.all().delete()
+
+        super(Node, self).delete()
+
+    def _build_dynamic_host_map_deletion_task(self):
+        """Create a chained celery task that will delete this node's dhcp
+        host maps.
+
+        Return None if there is nothing to delete.
+        """
+        tasks = []
         nodegroup = self.nodegroup
         if len(nodegroup.get_managed_interfaces()) > 0:
             # Delete the host map(s) in the DHCP server.
@@ -772,14 +850,19 @@ class Node(CleanSave, TimestampedModel):
                     ip_address=lease.ip,
                     server_address="127.0.0.1",
                     omapi_key=nodegroup.dhcp_key)
-                remove_dhcp_host_map.apply_async(
-                    queue=nodegroup.uuid, kwargs=task_kwargs)
-        # Delete the related mac addresses.
-        # The DHCPLease objects corresponding to these MACs will be deleted
-        # as well. See maasserver/models/dhcplease:delete_lease().
-        self.macaddress_set.all().delete()
+                task = remove_dhcp_host_map.si(**task_kwargs)
+                task.set(queue=self.work_queue)
+                tasks.append(task)
+        if len(tasks) > 0:
+            return celery.chain(tasks)
+        return None
 
-        super(Node, self).delete()
+    def _delete_dynamic_host_maps(self):
+        """If any DHCPLeases exist for this node, remove any associated
+        host maps."""
+        chain = self._build_dynamic_host_map_deletion_task()
+        if chain is not None:
+            chain.apply_async()
 
     def set_random_hostname(self):
         """Set 5 character `hostname` using non-ambiguous characters.
