@@ -122,5 +122,3 @@ def get_distro_series_inital(instance):
             series = ''
         return '%s/%s%s' % (osystem, series, key_required)
     return None
-
-

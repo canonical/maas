@@ -50,9 +50,9 @@ def make_default_osystem_field(*args, **kwargs):
     usable_oses = list_all_usable_osystems()
     os_choices = list_osystem_choices(usable_oses)
     field = forms.ChoiceField(
-        initial = Config.objects.get_config('default_osystem'),
-        choices = os_choices,
-        error_messages = {
+        initial=Config.objects.get_config('default_osystem'),
+        choices=os_choices,
+        error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'osystem', os_choices)
         },
@@ -65,9 +65,9 @@ def make_default_distro_series_field(*args, **kwargs):
     release_choices = list_release_choices(
         list_all_usable_releases(usable_oses))
     field = forms.ChoiceField(
-        initial = Config.objects.get_config('default_distro_series'),
-        choices = release_choices,
-        error_messages = {
+        initial=Config.objects.get_config('default_distro_series'),
+        choices=release_choices,
+        error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'release', release_choices)
         },

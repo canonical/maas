@@ -68,7 +68,7 @@ Y.extend(LicenseKeyWidget, Y.Widget, {
         var srcNode = this.get('srcNode');
         // Values that do not contain an astrick do not
         // require the license_key field.
-        if(newReleaseValue.indexOf('*') == -1) {
+        if(newReleaseValue.indexOf('*') === -1) {
             srcNode.addClass('hidden');
         }
         else {

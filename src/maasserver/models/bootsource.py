@@ -69,7 +69,7 @@ class BootSource(CleanSave, TimestampedModel):
         """Return the current `BootSource` as a dict.
 
         The dict will contain the details of the `BootSource` and all
-        its `BootSourceSelection`s.
+        its `BootSourceSelection` items.
 
         If the `BootSource` has keyring_data, that data will be returned
         base64 encoded. Otherwise the `BootSource` will have a value in

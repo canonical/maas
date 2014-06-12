@@ -25,7 +25,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     testBindToHidesLicenseKey: function() {
         var widget = new Y.maas.license_key.LicenseKeyWidget({
-            srcNode: '.license_key',
+            srcNode: '.license_key'
             });
         widget.bindTo(Y.one('#id_distro_series'), 'change');
 
@@ -35,7 +35,7 @@ suite.add(new Y.maas.testing.TestCase({
 
     testUpdateToNonHideShowsLicenseKey: function() {
         var widget = new Y.maas.license_key.LicenseKeyWidget({
-            srcNode: '.license_key',
+            srcNode: '.license_key'
             });
         widget.bindTo(Y.one('#id_distro_series'), 'change');
 

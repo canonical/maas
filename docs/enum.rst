@@ -17,6 +17,3 @@ MAAS Enums
 
 .. autoclass:: maasserver.enum.NODE_STATUS
    :members:
-
-.. autoclass:: maasserver.enum.DISTRO_SERIES
-   :members:

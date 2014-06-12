@@ -79,7 +79,6 @@ from maasserver.forms import (
     ValidatorMultipleChoiceField,
     ZoneForm,
     )
-from provisioningserver.drivers.osystem import ubuntu
 from maasserver.models import (
     Config,
     MACAddress,
@@ -115,6 +114,7 @@ from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
+from provisioningserver.drivers.osystem import ubuntu
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools import TestCase
 from testtools.matchers import (
@@ -2184,10 +2184,10 @@ class TestDeployForm(MAASServerTestCase):
             name=os_name, release=release_name)
         release_name = "%s/%s" % (os_name, release_name)
         deploy_form = DeployForm()
-        os_names = [
-            name for name, title in deploy_form.fields['default_osystem'].choices]
-        release_names = [
-            name for name, title in deploy_form.fields['default_distro_series'].choices]
+        os_choices = deploy_form.fields['default_osystem'].choices
+        os_names = [name for name, title in os_choices]
+        release_choices = deploy_form.fields['default_distro_series'].choices
+        release_names = [name for name, title in release_choices]
         self.assertIn(os_name, os_names)
         self.assertIn(release_name, release_names)
 
