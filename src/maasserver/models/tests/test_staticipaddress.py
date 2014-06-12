@@ -17,9 +17,9 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import IPADDRESS_TYPE
+from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
-    StaticIPAddressExhaustion,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase

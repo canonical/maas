@@ -18,6 +18,7 @@ from operator import attrgetter
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import IPADDRESS_TYPE
+from maasserver.exceptions import StaticIPAddressTypeClash
 from maasserver.models import (
     MACAddress,
     StaticIPAddress,
@@ -122,3 +123,21 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
         mac.cluster_interface.static_ip_range_low = None
         mac.cluster_interface.static_ip_range_high = None
         self.assertIsNone(mac.claim_static_ip())
+
+    def test_claim_static_ip_raises_if_clashing_type(self):
+        node = self.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        iptype = factory.getRandomEnum(IPADDRESS_TYPE)
+        iptype2 = factory.getRandomEnum(IPADDRESS_TYPE, but_not=[iptype])
+        mac.claim_static_ip(alloc_type=iptype)
+        self.assertRaises(
+            StaticIPAddressTypeClash,
+            mac.claim_static_ip, alloc_type=iptype2)
+
+    def test_claim_static_ip_returns_existing_if_claiming_same_type(self):
+        node = self.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        iptype = factory.getRandomEnum(IPADDRESS_TYPE)
+        ip = mac.claim_static_ip(alloc_type=iptype)
+        self.assertEqual(
+            ip, mac.claim_static_ip(alloc_type=iptype))

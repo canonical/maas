@@ -21,7 +21,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     'StaticIPAddress',
-    'StaticIPAddressExhaustion',
     ]
 
 
@@ -32,16 +31,13 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
+from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPRange,
     )
-
-
-class StaticIPAddressExhaustion(Exception):
-    """Raised when no more static IPs are available during allocation."""
 
 
 class StaticIPAddressManager(Manager):

@@ -25,6 +25,7 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
+from maasserver.exceptions import StaticIPAddressTypeClash
 from maasserver.fields import (
     MAC,
     MACAddressField,
@@ -96,9 +97,30 @@ class MACAddress(CleanSave, TimestampedModel):
         :return: A :class:`StaticIPAddress` object. Returns None if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the
-            cluster_interface.
+            cluster_interface. If an IP already exists for this type, it
+            is always returned with no further allocation.
         :raises: StaticIPAddressExhaustion if there are not enough IPs left.
+        :raises: StaticIPAddressTypeClash if an IP already exists with a
+            different type.
         """
+        # Avoid circular import.
+        from maasserver.models.staticipaddress import StaticIPAddress
+
+        # Check for clashing type.  This depends on database
+        # serialisation to avoid being a race.
+        clash = StaticIPAddress.objects.filter(macaddress=self).exclude(
+            alloc_type=alloc_type)
+        if clash.exists():
+            raise StaticIPAddressTypeClash(
+                "%s already has an IP with a different type" % self)
+
+        # Check to see if an IP with the same type already exists.
+        try:
+            return StaticIPAddress.objects.get(
+                macaddress=self, alloc_type=alloc_type)
+        except StaticIPAddress.DoesNotExist:
+            pass
+
         if self.cluster_interface is None:
             # We need to know this to allocate an IP, so return nothing.
             return None

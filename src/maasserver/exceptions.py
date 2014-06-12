@@ -22,6 +22,8 @@ __all__ = [
     "NodeStateViolation",
     "NodeGroupMisconfiguration",
     "IteratorReusedError",
+    "StaticIPAddressExhaustion",
+    "StaticIPAddressTypeClash",
     ]
 
 
@@ -113,3 +115,12 @@ class ClusterUnavailable(MAASAPIException):
 
 class IteratorReusedError(Exception):
     """Raise when a :class:`UseOnceIterator` gets reused."""
+
+
+class StaticIPAddressExhaustion(MAASException):
+    """Raised when no more static IPs are available during allocation."""
+
+
+class StaticIPAddressTypeClash(MAASException):
+    """Raised when trying to allocate an IP for a MAC where one of another
+    type already exists."""
