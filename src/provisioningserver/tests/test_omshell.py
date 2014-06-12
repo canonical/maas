@@ -197,6 +197,16 @@ class TestOmshell(MAASTestCase):
         self.patch(shell, '_run').return_value = (0, output)
         self.assertIsNone(shell.remove(ip_address))
 
+    def test_remove_works_when_object_already_removed(self):
+        server_address = factory.getRandomString()
+        shared_key = factory.getRandomString()
+        ip_address = factory.getRandomIPAddress()
+        shell = Omshell(server_address, shared_key)
+
+        output = "obj: <null>\nobj: host\ncan't open object: not found\n"
+        self.patch(shell, '_run').return_value = (0, output)
+        self.assertIsNone(shell.remove(ip_address))
+
 
 class Test_generate_omapi_key(MAASTestCase):
     """Tests for omshell.generate_omapi_key"""

@@ -188,5 +188,11 @@ class Omshell:
             last_line = lines[-1]
         except IndexError:
             last_line = ""
-        if last_line != "obj: <null>":
+        if last_line == "obj: <null>":
+            # Success.
+            pass
+        elif "can't open object: not found" in output:
+            # It was already removed. Consider success.
+            pass
+        else:
             raise ExternalProcessError(returncode, self.command, output)
