@@ -21,6 +21,7 @@ __all__ = [
 import datetime
 from functools import partial
 import httplib
+import io
 from itertools import (
     imap,
     islice,
@@ -32,6 +33,7 @@ import random
 import string
 import subprocess
 import time
+import urllib2
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
@@ -284,6 +286,19 @@ class Factory:
             subprocess.check_call(['tar', '-C', source, '-czf', tarball, '.'])
 
         return tarball
+
+    def make_response(self, status_code, content, content_type=None):
+        """Return a similar response to that which `urllib2` returns."""
+        if content_type is None:
+            headers_raw = b""
+        else:
+            if isinstance(content_type, unicode):
+                content_type = content_type.encode("ascii")
+            headers_raw = b"Content-Type: %s" % content_type
+        headers = httplib.HTTPMessage(io.BytesIO(headers_raw))
+        return urllib2.addinfourl(
+            fp=io.BytesIO(content), headers=headers,
+            url=None, code=status_code)
 
 
 # Create factory singleton.

@@ -19,6 +19,8 @@ from argparse import (
     Namespace,
     )
 import doctest
+import httplib
+import json
 import os
 from random import randint
 import re
@@ -37,6 +39,8 @@ from textwrap import dedent
 import time
 import types
 
+from apiclient.maas_client import MAASClient
+from apiclient.testing.credentials import make_api_credentials
 from crochet import EventualResult
 from fixtures import (
     EnvironmentVariableFixture,
@@ -49,7 +53,10 @@ from maastesting import (
     )
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
@@ -62,6 +69,7 @@ from netifaces import (
     AF_INET6,
     )
 import provisioningserver
+from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import (
     ActionScript,
     asynchronous,
@@ -69,6 +77,7 @@ from provisioningserver.utils import (
     AtomicWriteScript,
     call_and_check,
     classify,
+    create_node,
     ensure_dir,
     escape_py_literal,
     ExternalProcessError,
@@ -1446,6 +1455,7 @@ class TestSynchronousDecorator(MAASTestCase):
 
 
 class TestQuotePyLiteral(MAASTestCase):
+
     def test_uses_repr(self):
         string = factory.make_name('string')
         repr_mock = self.patch(provisioningserver.utils, 'repr')
@@ -1462,3 +1472,83 @@ class TestQuotePyLiteral(MAASTestCase):
         value = escape_py_literal(string)
         self.assertThat(ascii_value.decode, MockCalledOnceWith('ascii'))
         self.assertEqual(value, output)
+
+
+class TestCreateNode(PservTestCase):
+
+    def test_passes_on_no_duplicate_macs(self):
+        url = '/api/1.0/nodes/'
+        uuid = 'node-' + factory.getRandomUUID()
+        macs = [factory.getRandomMACAddress() for x in range(3)]
+        arch = factory.make_name('architecture')
+        power_type = factory.make_name('power_type')
+        power_parameters = {
+            'power_address': factory.getRandomIPAddress(),
+            'power_user': factory.make_name('power_user'),
+            'power_pass': factory.make_name('power_pass'),
+            'power_control': None,
+            'system_id': uuid
+        }
+
+        make_api_credentials()
+        provisioningserver.auth.record_api_credentials(
+            ':'.join(make_api_credentials()))
+        self.set_maas_url()
+        get = self.patch(MAASClient, 'get')
+        post = self.patch(MAASClient, 'post')
+
+        # Test for no duplicate macs
+        get_data = []
+        response = factory.make_response(
+            httplib.OK, json.dumps(get_data),
+            'application/json')
+        get.return_value = response
+        create_node(macs, arch, power_type, power_parameters)
+        post_data = {
+            'architecture': arch,
+            'power_type': power_type,
+            'power_parameters': json.dumps(power_parameters),
+            'mac_addresses': macs,
+            'autodetect_nodegroup': 'true'
+        }
+        self.assertThat(post, MockCalledOnceWith(url, 'new', **post_data))
+
+    def test_errors_on_duplicate_macs(self):
+        url = '/api/1.0/nodes/'
+        uuid = 'node-' + factory.getRandomUUID()
+        macs = [factory.getRandomMACAddress() for x in range(3)]
+        arch = factory.make_name('architecture')
+        power_type = factory.make_name('power_type')
+        power_parameters = {
+            'power_address': factory.getRandomIPAddress(),
+            'power_user': factory.make_name('power_user'),
+            'power_pass': factory.make_name('power_pass'),
+            'power_control': None,
+            'system_id': uuid
+        }
+
+        make_api_credentials()
+        provisioningserver.auth.record_api_credentials(
+            ':'.join(make_api_credentials()))
+        self.set_maas_url()
+        get = self.patch(MAASClient, 'get')
+        post = self.patch(MAASClient, 'post')
+
+        # Test for a duplicate mac
+        resource_uri1 = url + "%s/macs/%s/" % (uuid, macs[0])
+        get_data = [
+            {
+                "macaddress_set": [
+                    {
+                        "resource_uri": resource_uri1,
+                        "mac_address": macs[0]
+                    }
+                ]
+            }
+        ]
+        response = factory.make_response(
+            httplib.OK, json.dumps(get_data),
+            'application/json')
+        get.return_value = response
+        create_node(macs, arch, power_type, power_parameters)
+        self.assertThat(post, MockNotCalled())

@@ -273,7 +273,7 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
     power_control = power_control or 'ipmi'
 
     servers = find_seamicro15k_servers(ip, username, password, power_control)
-    for system_id, mac in servers:
+    for system_id, macs in servers:
         params = {
             'power_address': ip,
             'power_user': username,
@@ -282,7 +282,7 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
             'system_id': system_id
         }
 
-        utils.create_node(mac, 'amd64', 'sm15k', params)
+        utils.create_node(macs, 'amd64', 'sm15k', params)
 
 
 def power_control_seamicro15k_v09(ip, username, password, server_id,

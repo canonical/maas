@@ -16,6 +16,7 @@ __all__ = [
     "ActionScript",
     "atomic_write",
     "call_and_check",
+    "create_node",
     "deferred",
     "ensure_dir",
     "filter_dict",
@@ -60,6 +61,7 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
+import bson
 from crochet import run_in_reactor
 from lockfile import FileLock
 from lxml import etree
@@ -72,7 +74,22 @@ from twisted.internet.defer import maybeDeferred
 from twisted.python.threadable import isInIOThread
 
 
-def create_node(mac, arch, power_type, power_parameters):
+def node_exists(macs, url, client):
+    decoders = {
+        "application/json": lambda data: json.loads(data),
+        "application/bson": lambda data: bson.BSON(data).decode(),
+    }
+    response = client.get(url,
+                          op='list',
+                          mac_address=macs)
+    content = response.read()
+    content_type = response.headers.gettype()
+    decode = decoders[content_type]
+    content = decode(content)
+    return len(content) > 0
+
+
+def create_node(macs, arch, power_type, power_parameters):
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
         raise Exception('Not creating node: no API key yet.')
@@ -84,15 +101,13 @@ def create_node(mac, arch, power_type, power_parameters):
         'architecture': arch,
         'power_type': power_type,
         'power_parameters': json.dumps(power_parameters),
-        'mac_addresses': mac,
+        'mac_addresses': macs,
         'autodetect_nodegroup': 'true'
     }
-    return client.post('/api/1.0/nodes/', 'new', **data)
-
-
-def escape_string(data):
-    return repr(data).decode("ascii")
-
+    url = '/api/1.0/nodes/'
+    if node_exists(macs, url, client):
+        return
+    return client.post(url, 'new', **data)
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question

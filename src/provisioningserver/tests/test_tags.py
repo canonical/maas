@@ -16,7 +16,6 @@ __all__ = []
 
 import doctest
 import httplib
-import io
 from itertools import chain
 import json
 from textwrap import dedent
@@ -47,20 +46,6 @@ from testtools.matchers import (
     )
 
 
-def make_response(status_code, content, content_type=None):
-    """Return a similar response to that which `urllib2` returns."""
-    if content_type is None:
-        headers_raw = b""
-    else:
-        if isinstance(content_type, unicode):
-            content_type = content_type.encode("ascii")
-        headers_raw = b"Content-Type: %s" % content_type
-    headers = httplib.HTTPMessage(io.BytesIO(headers_raw))
-    return urllib2.addinfourl(
-        fp=io.BytesIO(content), headers=headers,
-        url=None, code=status_code)
-
-
 class TestProcessResponse(PservTestCase):
 
     def setUp(self):
@@ -69,24 +54,28 @@ class TestProcessResponse(PservTestCase):
 
     def test_process_OK_response_with_JSON_content(self):
         data = {"abc": 123}
-        response = make_response(
+        response = factory.make_response(
             httplib.OK, json.dumps(data), "application/json")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_OK_response_with_BSON_content(self):
         data = {"abc": 123}
-        response = make_response(
+        response = factory.make_response(
             httplib.OK, bson.BSON.encode(data), "application/bson")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_OK_response_with_other_content(self):
         data = factory.getRandomBytes()
-        response = make_response(
+        response = factory.make_response(
             httplib.OK, data, "application/octet-stream")
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_not_OK_response(self):
-        response = make_response(httplib.NOT_FOUND, b"", "application/json")
+        response = factory.make_response(
+            httplib.NOT_FOUND,
+            b"",
+            "application/json"
+        )
         response.url = factory.getRandomString()
         error = self.assertRaises(
             urllib2.HTTPError, tags.process_response, response)
@@ -527,7 +516,7 @@ class TestTagUpdating(PservTestCase):
 
     def test_get_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
-        response = make_response(
+        response = factory.make_response(
             httplib.OK,
             b'["system-id1", "system-id2"]',
             'application/json',
@@ -552,7 +541,11 @@ class TestTagUpdating(PservTestCase):
             },
         }
         content = bson.BSON.encode(data)
-        response = make_response(httplib.OK, content, 'application/bson')
+        response = factory.make_response(
+            httplib.OK,
+            content,
+            'application/bson'
+        )
         post = self.patch(client, 'post')
         post.return_value = response
         result = tags.get_details_for_nodes(
@@ -565,7 +558,11 @@ class TestTagUpdating(PservTestCase):
     def test_post_updated_nodes_calls_correct_api_and_parses_result(self):
         client, uuid = self.fake_cached_knowledge()
         content = b'{"added": 1, "removed": 2}'
-        response = make_response(httplib.OK, content, 'application/json')
+        response = factory.make_response(
+            httplib.OK,
+            content,
+            'application/json'
+        )
         post_mock = MagicMock(return_value=response)
         self.patch(client, 'post', post_mock)
         name = factory.make_name('tag')
@@ -631,13 +628,13 @@ class TestTagUpdating(PservTestCase):
     def test_process_node_tags_integration(self):
         self.set_secrets()
         get_nodes = FakeMethod(
-            result=make_response(
+            result=factory.make_response(
                 httplib.OK,
                 b'["system-id1", "system-id2"]',
                 'application/json',
             ))
         post_hw_details = FakeMethod(
-            result=make_response(
+            result=factory.make_response(
                 httplib.OK,
                 bson.BSON.encode({
                     'system-id1': {'lshw': b'<node />'},
@@ -647,7 +644,7 @@ class TestTagUpdating(PservTestCase):
             ))
         get_fake = MultiFakeMethod([get_nodes])
         post_update_fake = FakeMethod(
-            result=make_response(
+            result=factory.make_response(
                 httplib.OK,
                 b'{"added": 1, "removed": 1}',
                 'application/json',
