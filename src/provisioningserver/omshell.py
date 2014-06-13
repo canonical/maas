@@ -182,13 +182,14 @@ class Omshell:
         returncode, output = self._run(stdin)
 
         # If the omshell worked, the last line should reference a null
-        # object.
-        lines = output.strip().splitlines()
+        # object.  We need to strip blanks, newlines and '>' characters
+        # for this to work.
+        lines = output.strip('\n >').splitlines()
         try:
             last_line = lines[-1]
         except IndexError:
             last_line = ""
-        if last_line == "obj: <null>":
+        if "obj: <null" in last_line:
             # Success.
             pass
         elif "can't open object: not found" in output:
