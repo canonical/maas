@@ -32,9 +32,7 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     locate_tftp_path,
     )
-from provisioningserver.drivers.osystem import (
-    OperatingSystemRegistry,
-    )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )

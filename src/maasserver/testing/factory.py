@@ -64,9 +64,7 @@ from netaddr import IPAddress
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.drivers.osystem.ubuntu import (
-    UbuntuOS,
-    )
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.testing.os import FakeOS
 
 # We have a limited number of public keys:

@@ -154,7 +154,7 @@ NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
 
 
 class IPADDRESS_TYPE:
-    """The vocabulary of possible types of `IPAddress`."""
+    """The vocabulary of possible types of `StaticIPAddress`."""
     # Automatically assigned.
     AUTO = 0
 
