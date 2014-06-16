@@ -66,6 +66,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.utils import (
     call_and_check,
+    ExternalProcessError,
     find_ip_via_arp,
     sudo_write_file,
     )
@@ -391,6 +392,14 @@ def restart_dhcp_server():
 DISABLED_DHCP_SERVER = "# DHCP server stopped."
 
 
+# Upstart issues an "Unknown instance"-type error when trying to stop an
+# already-stopped service.
+# A bit weird that the error message ends with colon but that's the
+# error Upstart spits out.
+ALREADY_STOPPED_MESSAGE = 'stop: Unknown instance:'
+ALREADY_STOPPED_RETURNCODE = 1
+
+
 @task
 @log_exception_text
 def stop_dhcp_server():
@@ -399,7 +408,23 @@ def stop_dhcp_server():
     # around.
     sudo_write_file(
         celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
-    call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'])
+    try:
+        # Use LC_ALL=C because we use the returned error message when
+        # errors occur.
+        call_and_check(
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
+            env={'LC_ALL': 'C'}
+        )
+    except ExternalProcessError as error:
+        # Upstart issues an "Unknown instance"-type error when trying to
+        # stop an already-stopped service.  Ignore this error.
+        is_already_stopped_error = (
+            error.returncode == ALREADY_STOPPED_RETURNCODE and
+            error.output.strip() == ALREADY_STOPPED_MESSAGE
+        )
+        if is_already_stopped_error:
+            return
+        raise
 
 
 @task

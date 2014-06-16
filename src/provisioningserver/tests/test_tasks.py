@@ -72,6 +72,8 @@ from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
+    ALREADY_STOPPED_MESSAGE,
+    ALREADY_STOPPED_RETURNCODE,
     enlist_nodes_from_ucsm,
     import_boot_images,
     Omshell,
@@ -337,9 +339,38 @@ class TestDHCPTasks(PservTestCase):
         self.patch(tasks, 'sudo_write_file')
         stop_dhcp_server()
         self.assertThat(tasks.call_and_check, MockCalledOnceWith(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop']))
+            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
+            env={'LC_ALL': 'C'}))
         self.assertThat(tasks.sudo_write_file, MockCalledOnceWith(
             celery_config.DHCP_CONFIG_FILE, tasks.DISABLED_DHCP_SERVER))
+
+    def test_stop_dhcp_server_ignores_already_stopped_error(self):
+        # Add whitespaces around the error message to make sure they
+        # are stipped off.
+        output = ' ' + ALREADY_STOPPED_MESSAGE + '\n'
+        exception = utils.ExternalProcessError(
+            ALREADY_STOPPED_RETURNCODE, [], output=output)
+        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'sudo_write_file')
+        self.assertIsNone(stop_dhcp_server())
+
+    def test_stop_dhcp_server_raises_other_returncodes(self):
+        # Use a returncode that is *not* ALREADY_STOPPED_RETURNCODE.
+        returncode = ALREADY_STOPPED_RETURNCODE + 1
+        exception = utils.ExternalProcessError(
+            returncode, [], output=ALREADY_STOPPED_MESSAGE)
+        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'sudo_write_file')
+        self.assertRaises(utils.ExternalProcessError, stop_dhcp_server)
+
+    def test_stop_dhcp_server_raises_other_error_outputs(self):
+        # Use an error output that is *not* ALREADY_STOPPED_MESSAGE.
+        output = factory.getRandomString()
+        exception = utils.ExternalProcessError(
+            ALREADY_STOPPED_RETURNCODE, [], output=output)
+        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'sudo_write_file')
+        self.assertRaises(utils.ExternalProcessError, stop_dhcp_server)
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):
