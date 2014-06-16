@@ -51,6 +51,10 @@ from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+    )
 import tempita
 
 
@@ -131,12 +135,12 @@ def get_curtin_config(node):
     :param node: The node for which to generate the configuration.
     :rtype: unicode.
     """
+    osystem = node.get_osystem()
     series = node.get_distro_series()
-    context = get_preseed_context(series, node.nodegroup)
     template = load_preseed_template(
-        node, USERDATA_TYPE.CURTIN, series)
-    context = get_preseed_context(series, nodegroup=node.nodegroup)
-    context.update(get_node_preseed_context(node, series))
+        node, USERDATA_TYPE.CURTIN, osystem, series)
+    context = get_preseed_context(osystem, series, nodegroup=node.nodegroup)
+    context.update(get_node_preseed_context(node, osystem, series))
     context.update(get_curtin_context(node))
 
     return template.substitute(**context)
@@ -157,10 +161,31 @@ def get_curtin_context(node):
 
 
 def get_preseed_type_for(node):
-    if node.should_use_traditional_installer():
-        return PRESEED_TYPE.DEFAULT
+    """Returns the preseed type for the node.
+
+    This is determined using tags and what the booting
+    operating system supports. If the node is to boot using
+    fast-path installer, but the operating system does not
+    support that mode then the default installer will be used.
+    If the node is to boot using the default installer but
+    the operating system only boots using the fast-path installer
+    then it will boot using the fast-path installer.
+    """
+    if node.status == NODE_STATUS.COMMISSIONING:
+        return PRESEED_TYPE.COMMISSIONING
+    os_name = node.get_osystem()
+    release = node.get_distro_series()
+    arch, subarch = node.split_arch()
+    osystem = OperatingSystemRegistry[os_name]
+    purposes = osystem.get_boot_image_purposes(
+        arch, subarch, release, None)
+    if node.should_use_fastpath_installer():
+        if BOOT_IMAGE_PURPOSE.XINSTALL in purposes:
+            return PRESEED_TYPE.CURTIN
     else:
-        return PRESEED_TYPE.CURTIN
+        if BOOT_IMAGE_PURPOSE.INSTALL not in purposes:
+            return PRESEED_TYPE.CURTIN
+    return PRESEED_TYPE.DEFAULT
 
 
 def get_preseed(node):
@@ -418,7 +443,7 @@ def get_node_preseed_context(node, osystem='', release=''):
         'driver': driver,
         'driver_package': driver.get('package', ''),
         'node': node,
-        'preseed_data': compose_preseed(node),
+        'preseed_data': compose_preseed(get_preseed_type_for(node), node),
         'node_disable_pxe_url': node_disable_pxe_url,
         'node_disable_pxe_data': node_disable_pxe_data,
     }

@@ -19,7 +19,10 @@ __all__ = [
 
 from random import randint
 
-from maasserver import forms
+from maasserver import (
+    forms,
+    forms_settings,
+    )
 from maasserver.testing.factory import factory
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
@@ -73,7 +76,12 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
         distro_series[osystem.name] = osystem.get_supported_releases()
     testcase.patch(forms, 'list_all_usable_osystems').return_value = osystems
     testcase.patch(
+        forms_settings, 'list_all_usable_osystems').return_value = osystems
+    testcase.patch(
         forms, 'list_all_usable_releases').return_value = distro_series
+    testcase.patch(
+        forms_settings,
+        'list_all_usable_releases').return_value = distro_series
 
 
 def make_usable_osystem(testcase, osystem_name=None, releases=None,

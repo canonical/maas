@@ -54,9 +54,11 @@ from maasserver.preseed import (
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maasserver.utils.network import make_network
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from testtools.matchers import (
     AllMatch,
     Contains,
@@ -734,14 +736,50 @@ class TestCurtinUtilities(MAASServerTestCase):
             ))
         self.assertIn(msg, "%s" % error)
 
-    def test_get_preseed_type_for(self):
-        normal = factory.make_node()
-        normal.use_traditional_installer()
-        fpi = factory.make_node()
-        fpi.use_fastpath_installer()
+    def test_get_preseed_type_for_commissioning(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.assertEqual(
+            PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
-        self.assertEqual(PRESEED_TYPE.DEFAULT, get_preseed_type_for(normal))
-        self.assertEqual(PRESEED_TYPE.CURTIN, get_preseed_type_for(fpi))
+    def test_get_preseed_type_for_default(self):
+        osystem = make_usable_osystem(
+            self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
+        node = factory.make_node(
+            osystem=osystem.name,
+            distro_series=factory.getRandomRelease(osystem))
+        node.use_traditional_installer()
+        self.assertEqual(
+            PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
+
+    def test_get_preseed_type_for_curtin(self):
+        osystem = make_usable_osystem(
+            self, purposes=[BOOT_IMAGE_PURPOSE.XINSTALL])
+        node = factory.make_node(
+            osystem=osystem.name,
+            distro_series=factory.getRandomRelease(osystem))
+        node.use_fastpath_installer()
+        self.assertEqual(
+            PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
+
+    def test_get_preseed_type_for_default_when_curtin_not_supported(self):
+        osystem = make_usable_osystem(
+            self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
+        node = factory.make_node(
+            osystem=osystem.name,
+            distro_series=factory.getRandomRelease(osystem))
+        node.use_fastpath_installer()
+        self.assertEqual(
+            PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
+
+    def test_get_preseed_type_for_curtin_when_default_not_supported(self):
+        osystem = make_usable_osystem(
+            self, purposes=[BOOT_IMAGE_PURPOSE.XINSTALL])
+        node = factory.make_node(
+            osystem=osystem.name,
+            distro_series=factory.getRandomRelease(osystem))
+        node.use_traditional_installer()
+        self.assertEqual(
+            PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
 
 class TestRenderPreseedArchives(MAASServerTestCase):
@@ -766,7 +804,7 @@ class TestRenderPreseedArchives(MAASServerTestCase):
 
     def test_render_preseed_uses_default_archives_arm(self):
         node = factory.make_node(architecture=make_usable_architecture(
-            self, with_subarch=False, arch_name="armhf"))
+            self, arch_name="armhf", subarch_name="generic"))
         default_snippets = [
             "d-i     mirror/http/hostname string ports.ubuntu.com",
             "d-i     mirror/http/directory string /ubuntu-ports",

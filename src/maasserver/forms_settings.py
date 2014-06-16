@@ -28,7 +28,7 @@ from maasserver.models.config import (
     DEFAULT_OS,
     )
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.os import (
+from maasserver.utils.osystems import (
     list_all_usable_osystems,
     list_all_usable_releases,
     list_osystem_choices,

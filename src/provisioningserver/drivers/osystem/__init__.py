@@ -101,9 +101,10 @@ class OperatingSystem:
         """
         raise NotImplementedError()
 
-    def compose_preseed(self, node, token, metadata_url):
+    def compose_preseed(self, preseed_type, node, token, metadata_url):
         """Composes the preseed for the given node.
 
+        :param preseed_type: Preseed type to compose.
         :param node: Node preseed needs generating.
         :param token: OAuth token for url.
         :param metadata_url: Metdata url for node.
@@ -119,8 +120,10 @@ class OperatingSystemRegistry(Registry):
 
 
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.drivers.osystem.centos import CentOS
 builtin_osystems = [
     UbuntuOS(),
+    CentOS(),
     ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

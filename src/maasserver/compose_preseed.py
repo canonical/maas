@@ -18,7 +18,7 @@ __all__ = [
 
 from urllib import urlencode
 
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import PRESEED_TYPE
 from maasserver.utils import absolute_reverse
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 import yaml
@@ -83,16 +83,14 @@ def _compose_cloud_init_preseed(token, metadata_url):
     })
 
 
-def compose_preseed(node):
+def compose_preseed(preseed_type, node):
     """Put together preseed data for `node`.
 
-    This produces preseed data in different formats depending on the node's
-    state: if it's Commissioning, it boots into commissioning mode with its
-    own profile, its own user_data, and also its own preseed format.  It's
-    basically a network boot.
-    Otherwise, it will get a different format that feeds directly into the
-    installer.
+    This produces preseed data for the node in different formats depending
+    on the preseed_type.
 
+    :param preseed_type: The type of preseed to compose.
+    :type preseed_type: string
     :param node: The node to compose preseed data for.
     :type node: Node
     :return: Preseed data containing the information the node needs in order
@@ -102,17 +100,21 @@ def compose_preseed(node):
     from metadataserver.models import NodeKey
     token = NodeKey.objects.get_token_for_node(node)
     base_url = node.nodegroup.maas_url
-    if node.status == NODE_STATUS.COMMISSIONING:
+    if preseed_type == PRESEED_TYPE.COMMISSIONING:
         return compose_commissioning_preseed(token, base_url)
     else:
         osystem = OperatingSystemRegistry[node.get_osystem()]
         metadata_url = absolute_reverse('metadata', base_url=base_url)
+        if preseed_type == PRESEED_TYPE.CURTIN:
+            metadata_url = absolute_reverse(
+                'curtin-metadata', base_url=base_url)
         try:
-            return osystem.compose_preseed(node, token, metadata_url)
+            return osystem.compose_preseed(
+                preseed_type, node, token, metadata_url)
         except NotImplementedError:
             pass
 
-        if node.should_use_traditional_installer():
-            return compose_cloud_init_preseed(token, base_url)
-        else:
+        if preseed_type == PRESEED_TYPE.CURTIN:
             return compose_curtin_preseed(token, base_url)
+        else:
+            return compose_cloud_init_preseed(token, base_url)

@@ -168,6 +168,7 @@ from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
     NODEGROUP_STATUS,
+    PRESEED_TYPE,
     )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
@@ -231,6 +232,7 @@ from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
+    get_preseed_type_for,
     )
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.third_party_drivers import get_third_party_driver
@@ -253,10 +255,6 @@ from metadataserver.models import (
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
-from provisioningserver.drivers.osystem import (
-    BOOT_IMAGE_PURPOSE,
-    OperatingSystemRegistry,
-    )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
@@ -2426,16 +2424,10 @@ def get_boot_purpose(node, osystem, arch, subarch, series, label):
     elif node.status == NODE_STATUS.ALLOCATED:
         # Install the node if netboot is enabled, otherwise boot locally.
         if node.netboot:
-            if node.should_use_traditional_installer():
-                return "install"
+            preseed_type = get_preseed_type_for(node)
+            if preseed_type == PRESEED_TYPE.CURTIN:
+                return "xinstall"
             else:
-                # Return normal install if the booting operating system
-                # doesn't support xinstall.
-                osystem_obj = OperatingSystemRegistry[osystem]
-                purposes = osystem_obj.get_boot_image_purposes(
-                    arch, subarch, series, label)
-                if BOOT_IMAGE_PURPOSE.XINSTALL in purposes:
-                    return "xinstall"
                 return "install"
         else:
             return "local"  # TODO: Investigate.
@@ -2546,6 +2538,12 @@ def pxeconfig(request):
     # Get the purpose, without a selected label
     purpose = get_boot_purpose(
         node, osystem, arch, subarch, series, label=None)
+
+    # If we are booting with "xinstall", then we should always return the
+    # commissioning operating system and distro_series.
+    if purpose == "xinstall":
+        osystem = Config.objects.get_config('commissioning_osystem')
+        series = Config.objects.get_config('commissioning_distro_series')
 
     # We use as our default label the label of the most recent image for
     # the criteria we've assembled above. If there is no latest image

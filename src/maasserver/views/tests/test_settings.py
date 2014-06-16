@@ -31,6 +31,7 @@ from maasserver.testing import (
     reload_object,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 
 
@@ -154,19 +155,17 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_deploy_POST(self):
         self.client_log_in(as_admin=True)
-        osystem_name = factory.make_name('os')
-        release_name = factory.make_name('release')
-        new_osystem = factory.make_operating_system(
-            name=osystem_name, release=release_name)
-        new_default_osystem = new_osystem.name
+        osystem = make_usable_osystem(self)
+        osystem_name = osystem.name
+        release_name = factory.getRandomRelease(osystem)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
                 prefix='deploy',
                 data={
-                    'default_osystem': new_default_osystem,
+                    'default_osystem': osystem_name,
                     'default_distro_series': '%s/%s' % (
-                        new_default_osystem,
+                        osystem_name,
                         release_name,
                         ),
                 }))
@@ -174,7 +173,7 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code, response.content)
         self.assertEqual(
             (
-                new_default_osystem,
+                osystem_name,
                 release_name,
             ),
             (

@@ -112,7 +112,7 @@ from maasserver.node_action import (
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.network import make_network
-from maasserver.utils.os import (
+from maasserver.utils.osystems import (
     get_distro_series_inital,
     get_release_requires_key,
     list_all_usable_osystems,

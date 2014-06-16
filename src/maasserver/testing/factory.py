@@ -65,7 +65,6 @@ from netaddr import IPAddress
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.testing.os import FakeOS
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub
@@ -170,19 +169,6 @@ class Factory(maastesting.factory.Factory):
             node.save()
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
-
-    def make_operating_system(self, name=None, release=None):
-        """Make an :class:`OperatingSystem`."""
-        if name is None:
-            name = self.make_name('os')
-        if release is None:
-            release = self.make_name('release')
-        self.make_boot_image(release=release, osystem=name)
-        new_operating_system = FakeOS(
-            name=name, purpose="install", releases=[release])
-        OperatingSystemRegistry.register_item(
-            new_operating_system.name, new_operating_system)
-        return new_operating_system
 
     def make_node(self, mac=False, hostname=None, status=None,
                   architecture="i386/generic", updated=None,

@@ -114,7 +114,6 @@ from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
-from provisioningserver.drivers.osystem import ubuntu
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools import TestCase
 from testtools.matchers import (
@@ -2178,10 +2177,9 @@ class TestDeployForm(MAASServerTestCase):
     def test_uses_live_data(self):
         # The DeployForm uses the database rather than just relying on
         # hard-coded stuff.
-        os_name = factory.make_name('os')
-        release_name = factory.make_name('release')
-        factory.make_operating_system(
-            name=os_name, release=release_name)
+        osystem = make_usable_osystem(self)
+        os_name = osystem.name
+        release_name = factory.getRandomRelease(osystem)
         release_name = "%s/%s" % (os_name, release_name)
         deploy_form = DeployForm()
         os_choices = deploy_form.fields['default_osystem'].choices
@@ -2192,14 +2190,9 @@ class TestDeployForm(MAASServerTestCase):
         self.assertIn(release_name, release_names)
 
     def test_accepts_new_values(self):
-        os_name = 'ubuntu'
-        release_name = factory.make_name('release')
-        # XXX 2014-06-10 gmb:
-        #     We have to poke the release into the DISTRO_SERIES_CHOICES
-        #     dict, because otherwise it won't show up in the availble
-        #     releases on the DeployForm.
-        ubuntu.DISTRO_SERIES_CHOICES[release_name] = release_name.title()
-        factory.make_operating_system(name=os_name, release=release_name)
+        osystem = make_usable_osystem(self)
+        os_name = osystem.name
+        release_name = factory.getRandomRelease(osystem)
         params = {
             'default_osystem': os_name,
             'default_distro_series': "%s/%s" % (os_name, release_name),
