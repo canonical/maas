@@ -1484,8 +1484,12 @@ class BulkNodeActionForm(forms.Form):
                     if action_instance.is_permitted():
                         # Do not let execute() raise a redirect exception
                         # because this action is part of a bulk operation.
-                        action_instance.execute(allow_redirect=False)
-                        done += 1
+                        try:
+                            action_instance.execute(allow_redirect=False)
+                        except NodeActionError:
+                            not_actionable += 1
+                        else:
+                            done += 1
                     else:
                         not_permitted += 1
             else:
@@ -1521,6 +1525,12 @@ class BulkNodeActionForm(forms.Form):
         transition was not allowed and the number of nodes for which the
         action could not be performed because the user does not have the
         required permission.
+
+        Currently, in the event of a NodeActionError this is thrown into the
+        "not actionable" bucket in lieu of an overhaul of this form to
+        properly report errors for part-failing actions.  In this case
+        the transaction will still be valid for the actions that did complete
+        successfully.
         """
         action_name = self.cleaned_data['action']
         system_ids = self.cleaned_data['system_id']

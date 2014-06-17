@@ -1680,6 +1680,25 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [[], node3.system_id],
             [existing_nodes, node3_system_id])
 
+    def test_perform_action_catches_start_action_errors(self):
+        error_text = factory.getRandomString(prefix="NodeActionError")
+        exc = NodeActionError(error_text)
+        self.patch(StartNode, "execute").side_effect = exc
+        user = factory.make_user()
+        factory.make_sshkey(user)
+        node = factory.make_node(status=NODE_STATUS.READY, owner=user)
+        form = BulkNodeActionForm(
+            user=user,
+            data=dict(
+                action=StartNode.name,
+                system_id=[node.system_id]))
+
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 1, 0],
+            [done, not_actionable, not_permitted])
+
     def test_first_action_is_empty(self):
         form = BulkNodeActionForm(user=factory.make_admin())
         action = form.fields['action']
