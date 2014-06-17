@@ -28,7 +28,10 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.exceptions import NodeStateViolation
+from maasserver.exceptions import (
+    NodeStateViolation,
+    StaticIPAddressExhaustion,
+    )
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
@@ -42,6 +45,7 @@ from maasserver.models.node import (
     NODE_TRANSITIONS,
     validate_hostname,
     )
+from maasserver.models.staticipaddress import StaticIPAddressManager
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -51,6 +55,10 @@ from maasserver.utils import (
     map_enum,
     )
 from maastesting.djangotestcase import count_queries
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.fields import Bin
@@ -298,6 +306,7 @@ class NodeTest(MAASServerTestCase):
         lease = factory.make_dhcp_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
+        # Prevent actual omshell commands from being called in the task.
         self.patch(Omshell, 'remove')
         node.delete()
         self.assertThat(
@@ -312,6 +321,7 @@ class NodeTest(MAASServerTestCase):
         lease = factory.make_dhcp_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
+        # Prevent actual omshell commands from being called in the task.
         self.patch(Omshell, 'remove')
         option_call = self.patch(celery.canvas.Signature, 'set')
         work_queue = node.work_queue
@@ -319,12 +329,29 @@ class NodeTest(MAASServerTestCase):
         args, kwargs = option_call.call_args
         self.assertEqual(work_queue, kwargs['queue'])
 
+    def test_delete_dynamic_host_maps_leaves_static_addresses_alone(self):
+        # DHCPLeases can be associated with host maps written due to
+        # staticipaddress entries. When deleting a node, we must not
+        # delete those static entries because a) some are permanent, b)
+        # they should all get deleted when nodes are released anyway.
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        sip = mac.claim_static_ip()
+        factory.make_dhcp_lease(
+            ip=sip.ip.format(), nodegroup=node.nodegroup,
+            mac=mac.mac_address.get_raw())
+        # Prevent actual omshell commands from being called in the task.
+        self.patch(Omshell, 'remove')
+        node.delete()
+        self.assertItemsEqual([], self.celery.tasks)
+
     def test_delete_node_removes_multiple_host_maps(self):
         lease1 = factory.make_dhcp_lease()
         lease2 = factory.make_dhcp_lease(nodegroup=lease1.nodegroup)
         node = factory.make_node(nodegroup=lease1.nodegroup)
         node.add_mac_address(lease1.mac)
         node.add_mac_address(lease2.mac)
+        # Prevent actual omshell commands from being called in the task.
         self.patch(Omshell, 'remove')
         node.delete()
         self.assertEqual(2, len(self.celery.tasks))
@@ -540,6 +567,34 @@ class NodeTest(MAASServerTestCase):
             (NODE_STATUS.READY, None, node.agent_name),
             (node.status, node.owner, ''))
 
+    def test_release_deletes_static_ip_host_maps(self):
+        user = factory.make_user()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED)
+        sip = node.get_primary_mac().claim_static_ip()
+        delete_static_host_maps = self.patch(node, 'delete_static_host_maps')
+        node.release()
+        expected = [sip.ip.format()]
+        self.assertThat(delete_static_host_maps, MockCalledOnceWith(expected))
+
+    def test_delete_static_host_maps(self):
+        user = factory.make_user()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED)
+        sip = node.get_primary_mac().claim_static_ip()
+        self.patch(Omshell, 'remove')
+        set_call = self.patch(celery.canvas.Signature, 'set')
+        node.delete_static_host_maps([sip.ip.format()])
+        self.assertThat(
+            self.celery.tasks[0]['kwargs'],
+            Equals({
+                'ip_address': sip.ip.format(),
+                'server_address': "127.0.0.1",
+                'omapi_key': node.nodegroup.dhcp_key,
+                }))
+        args, kwargs = set_call.call_args
+        self.assertEqual(node.work_queue, kwargs['queue'])
+
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_node()
         macs = [factory.make_mac_address(node=node) for i in range(2)]
@@ -683,6 +738,14 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(
             (1, 'provisioningserver.tasks.power_off'),
             (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
+
+    def test_release_deallocates_static_ips(self):
+        deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            power_type='ether_wake')
+        node.release()
+        self.assertThat(deallocate, MockCalledOnceWith(node))
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in Declared state, accept_enlistment()
@@ -1304,13 +1367,69 @@ class NodeManagerTest(MAASServerTestCase):
                 self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
+    def test_start_nodes_issues_dhcp_host_task(self):
+        user = factory.make_user()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, power_type='ether_wake')
+        omshell_create = self.patch(Omshell, 'create')
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        # Check that the single node was started, and that the tasks
+        # issued are all there and in the right order.
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            [
+                'provisioningserver.tasks.add_new_dhcp_host_map',
+                'provisioningserver.tasks.power_on',
+            ],
+            [
+                task['task'].name for task in self.celery.tasks
+            ])
+
+        # Also check that Omshell.create() was called with the right
+        # parameters.
+        mac = node.get_primary_mac()
+        [ip] = mac.ip_addresses.all()
+        expected_ip = ip.ip
+        expected_mac = mac.mac_address
+        args, kwargs = omshell_create.call_args
+        self.assertEqual((expected_ip, expected_mac), args)
+
+    def test_start_nodes_clears_existing_dynamic_maps(self):
+        user = factory.make_user()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, power_type='ether_wake')
+        factory.make_dhcp_lease(
+            nodegroup=node.nodegroup, mac=node.get_primary_mac().mac_address)
+        self.patch(Omshell, 'create')
+        self.patch(Omshell, 'remove')
+        output = Node.objects.start_nodes([node.system_id], user)
+
+        # Check that the single node was started, and that the tasks
+        # issued are all there and in the right order.
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            [
+                'provisioningserver.tasks.remove_dhcp_host_map',
+                'provisioningserver.tasks.add_new_dhcp_host_map',
+                'provisioningserver.tasks.power_on',
+            ],
+            [
+                task['task'].name for task in self.celery.tasks
+            ])
+
     def test_start_nodes_task_routed_to_nodegroup_worker(self):
+        # Startup jobs are chained, so the normal way of inspecting a
+        # task directly for routing options doesn't work here, because
+        # in EAGER mode that we use in the test suite, the options are
+        # not passed all the way down to the tasks.  Instead, we patch
+        # some celery code to inspect the options that were passed.
         user = factory.make_user()
         node, mac = self.make_node_with_mac(
             user, power_type='ether_wake')
-        task = self.patch(node_module, 'power_on')
+        option_call = self.patch(celery.canvas.Signature, 'set')
         Node.objects.start_nodes([node.system_id], user)
-        args, kwargs = task.apply_async.call_args
+        args, kwargs = option_call.call_args
         self.assertEqual(node.work_queue, kwargs['queue'])
 
     def test_start_nodes_does_not_attempt_power_task_if_no_power_type(self):
@@ -1432,6 +1551,9 @@ class NodeManagerTest(MAASServerTestCase):
         node.set_netboot(False)
         self.assertFalse(node.netboot)
 
+
+class NodeStaticIPClaimingTest(MAASServerTestCase):
+
     def test_claim_static_ips_ignores_unmanaged_macs(self):
         node = factory.make_node()
         factory.make_mac_address(node=node)
@@ -1494,3 +1616,21 @@ class NodeManagerTest(MAASServerTestCase):
 
         observed = node.claim_static_ips()
         self.assertItemsEqual([], observed)
+
+    def test_claim_static_ips_deallocates_if_cant_complete_all_macs(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        self.patch(
+            MACAddress,
+            'claim_static_ip').side_effect = StaticIPAddressExhaustion
+        deallocate_call = self.patch(
+            StaticIPAddressManager, 'deallocate_by_node')
+        self.assertRaises(StaticIPAddressExhaustion, node.claim_static_ips)
+        self.assertThat(deallocate_call, MockCalledOnceWith(node))
+
+    def test_claim_static_ips_does_not_deallocate_if_completes_all_macs(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        deallocate_call = self.patch(
+            StaticIPAddressManager, 'deallocate_by_node')
+        node.claim_static_ips()
+
+        self.assertThat(deallocate_call, MockNotCalled())

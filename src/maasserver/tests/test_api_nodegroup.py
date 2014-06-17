@@ -238,24 +238,6 @@ class TestNodeGroupAPI(APITestCase):
                 for dhcplease in DHCPLease.objects.filter(nodegroup=nodegroup)
             ])
 
-    def test_update_leases_adds_new_leases_on_worker(self):
-        nodegroup = factory.make_node_group()
-        client = make_worker_client(nodegroup)
-        self.patch(Omshell, 'create', FakeMethod())
-        new_leases = factory.make_random_leases()
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps(new_leases),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-        self.assertEqual(
-            [(new_leases.keys()[0], new_leases.values()[0])],
-            Omshell.create.extract_args())
-
     def test_update_leases_does_not_add_old_leases(self):
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()

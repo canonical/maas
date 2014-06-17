@@ -56,6 +56,18 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         # Check the link table is cleared.
         self.assertEqual([], list(node.static_ip_addresses()))
 
+    def test_deallocate_by_node_returns_deallocated_ips(self):
+        node = factory.make_node()
+        [mac1, mac2] = [
+            factory.make_mac_address(node=node) for _ in range(2)]
+        ip1 = factory.make_staticipaddress(mac=mac1)
+        ip2 = factory.make_staticipaddress(mac=mac2)
+        observed = StaticIPAddress.objects.deallocate_by_node(node)
+        self.assertItemsEqual(
+            [ip1.ip.format(), ip2.ip.format()],
+            observed
+            )
+
     def test_deallocate_by_node_ignores_other_nodes(self):
         node1 = factory.make_node()
         mac1 = factory.make_mac_address(node=node1)

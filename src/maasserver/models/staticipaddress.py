@@ -88,7 +88,9 @@ class StaticIPAddressManager(Manager):
         qs = self.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).filter(
             macaddress__node=node)
+        deallocated_ips = [record.ip.format() for record in qs]
         qs.delete()
+        return deallocated_ips
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):

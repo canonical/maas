@@ -91,7 +91,10 @@ class MACAddress(CleanSave, TimestampedModel):
     def claim_static_ip(self, alloc_type=IPADDRESS_TYPE.AUTO):
         """Assign a static IP to this MAC.
 
-        TODO: Also set a host DHCP entry.
+        It is the caller's responsibility to create a celery Task that will
+        write the dhcp host.  It is not done here because celery doesn't
+        guarantee job ordering, and if the host entry is written after
+        the host boots it is too late.
 
         :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
         :return: A :class:`StaticIPAddress` object. Returns None if

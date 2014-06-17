@@ -1578,10 +1578,7 @@ class NodeGroupHandler(OperationsHandler):
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)
         leases = json.loads(leases)
-        new_leases = DHCPLease.objects.update_leases(nodegroup, leases)
-        if len(new_leases) > 0:
-            nodegroup.add_dhcp_host_maps(
-                {ip: leases[ip] for ip in new_leases if ip in leases})
+        DHCPLease.objects.update_leases(nodegroup, leases)
         return HttpResponse("Leases updated.", status=httplib.OK)
 
     @admin_method

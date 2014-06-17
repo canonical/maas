@@ -41,7 +41,6 @@ from piston.models import (
     )
 from provisioningserver.omshell import generate_omapi_key
 from provisioningserver.tasks import (
-    add_new_dhcp_host_map,
     add_seamicro15k,
     add_virsh,
     enlist_nodes_from_ucsm,
@@ -329,14 +328,3 @@ class NodeGroup(TimestampedModel):
         """
         args = (url, username, password)
         enlist_nodes_from_ucsm.apply_async(queue=self.uuid, args=args)
-
-    def add_dhcp_host_maps(self, new_leases):
-        if len(new_leases) > 0 and len(self.get_managed_interfaces()) > 0:
-            # XXX JeroenVermeulen 2012-08-21, bug=1039362: the DHCP
-            # server is currently always local to the worker system, so
-            # use 127.0.0.1 as the DHCP server address.
-            task_kwargs = dict(
-                mappings=new_leases, server_address='127.0.0.1',
-                shared_key=self.dhcp_key)
-            add_new_dhcp_host_map.apply_async(
-                queue=self.uuid, kwargs=task_kwargs)

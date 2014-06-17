@@ -35,14 +35,12 @@ from maasserver.utils import map_enum
 from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
-from maastesting.fakemethod import FakeMethod
 from mock import (
     call,
     Mock,
     )
 from provisioningserver.omshell import (
     generate_omapi_key,
-    Omshell,
     )
 from testresources import FixtureResource
 from testtools.matchers import (
@@ -287,31 +285,6 @@ class TestNodeGroup(MAASServerTestCase):
     def test_work_queue_returns_uuid(self):
         nodegroup = factory.make_node_group()
         self.assertEqual(nodegroup.uuid, nodegroup.work_queue)
-
-    def test_add_dhcp_host_maps_adds_maps_if_managing_dhcp(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        nodegroup = factory.make_node_group()
-        leases = factory.make_random_leases()
-        nodegroup.add_dhcp_host_maps(leases)
-        self.assertEqual(
-            [(leases.keys()[0], leases.values()[0])],
-            Omshell.create.extract_args())
-
-    def test_add_dhcp_host_maps_does_nothing_if_not_managing_dhcp(self):
-        self.patch(Omshell, 'create', FakeMethod())
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        leases = factory.make_random_leases()
-        nodegroup.add_dhcp_host_maps(leases)
-        self.assertEqual([], Omshell.create.extract_args())
-
-    def test_fires_tasks_routed_to_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
-        task = self.patch(nodegroup_module, 'add_new_dhcp_host_map')
-        leases = factory.make_random_leases()
-        nodegroup.add_dhcp_host_maps(leases)
-        args, kwargs = task.apply_async.call_args
-        self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
     def test_manages_dns_returns_True_if_managing_DNS(self):
         nodegroup = factory.make_node_group(
