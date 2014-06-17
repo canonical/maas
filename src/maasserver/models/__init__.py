@@ -28,6 +28,7 @@ __all__ = [
     'NodeGroup',
     'NodeGroupInterface',
     'SSHKey',
+    'SSLKey',
     'Tag',
     'UserProfile',
     'Zone',
@@ -58,6 +59,7 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.sshkey import SSHKey
+from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user

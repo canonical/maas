@@ -45,6 +45,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
+    SSLKey,
     StaticIPAddress,
     Tag,
     Zone,
@@ -499,6 +500,29 @@ class Factory(maastesting.factory.Factory):
         for i in range(n_keys):
             key_string = get_data('data/test_rsa%d.pub' % i)
             key = SSHKey(user=user, key=key_string)
+            key.save()
+            keys.append(key)
+        return user, keys
+
+    def make_user_with_ssl_keys(self, n_keys=2, user=None, **kwargs):
+        """Create a user with n `SSLKey`.
+
+        :param n_keys: Number of keys to add to user.
+        :param user: User to add keys to. If user is None, then user is made
+            with make_user. Additional keyword arguments are passed to
+            `make_user()`.
+        """
+        if n_keys > MAX_PUBLIC_KEYS:
+            raise RuntimeError(
+                "Cannot create more than %d public keys.  If you need more: "
+                "add more keys in src/maasserver/tests/data/."
+                % MAX_PUBLIC_KEYS)
+        if user is None:
+            user = self.make_user(**kwargs)
+        keys = []
+        for i in range(n_keys):
+            key_string = get_data('data/test_x509_%d.pem' % i)
+            key = SSLKey(user=user, key=key_string)
             key.save()
             keys.append(key)
         return user, keys

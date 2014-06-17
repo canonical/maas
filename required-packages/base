@@ -35,6 +35,7 @@ python-oops-amqp
 python-oops-datedir-repo
 python-oops-twisted
 python-oops-wsgi
+python-openssl
 python-paramiko
 python-pexpect
 python-psycopg2
