@@ -30,7 +30,10 @@ from maasserver.fields import (
     MAC,
     MAC_ERROR_MSG,
     )
-from maasserver.models import Node, StaticIPAddress
+from maasserver.models import (
+    Node,
+    StaticIPAddress,
+    )
 from maasserver.testing import (
     reload_object,
     reload_objects,

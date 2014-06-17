@@ -39,9 +39,7 @@ from mock import (
     call,
     Mock,
     )
-from provisioningserver.omshell import (
-    generate_omapi_key,
-    )
+from provisioningserver.omshell import generate_omapi_key
 from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
