@@ -253,6 +253,7 @@ from metadataserver.models import (
     CommissioningScript,
     NodeCommissionResult,
     )
+import netaddr
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
@@ -1443,6 +1444,28 @@ def update_nodegroup_maas_url(nodegroup, request):
         nodegroup.save()
 
 
+def update_mac_cluster_interfaces(leases, cluster):
+    """Calculate and store which interface a MAC is attached to."""
+    interface_ranges = {}
+    for interface in cluster.nodegroupinterface_set.all():
+        ip_range = netaddr.IPRange(
+            interface.ip_range_low, interface.ip_range_high)
+        interface_ranges[interface] = ip_range
+    for ip, mac in leases.items():
+        try:
+            mac_address = MACAddress.objects.get(mac_address=mac)
+        except MACAddress.DoesNotExist:
+            # Silently ignore MAC addresses that we don't know about.
+            continue
+        for interface, ip_range in interface_ranges.items():
+            if netaddr.IPAddress(ip) in ip_range:
+                mac_address.cluster_interface = interface
+                mac_address.save()
+                # Cheap optimisation. No other interfaces will match, so
+                # break out of the loop.
+                break
+
+
 class NodeGroupsHandler(OperationsHandler):
     """Manage the collection of all the nodegroups in this MAAS."""
 
@@ -1587,6 +1610,7 @@ class NodeGroupHandler(OperationsHandler):
         check_nodegroup_access(request, nodegroup)
         leases = json.loads(leases)
         DHCPLease.objects.update_leases(nodegroup, leases)
+        update_mac_cluster_interfaces(leases, nodegroup)
         return HttpResponse("Leases updated.", status=httplib.OK)
 
     @admin_method

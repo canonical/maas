@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import random
 from textwrap import dedent
 
 from apiclient.maas_client import MAASClient
@@ -24,6 +25,8 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
+from maasserver import api as api_module
+from maasserver.api import update_mac_cluster_interfaces
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -32,6 +35,7 @@ from maasserver.models import (
     Config,
     DHCPLease,
     DownloadProgress,
+    MACAddress,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
@@ -59,6 +63,7 @@ from metadataserver.models import (
     NodeCommissionResult,
     )
 from mock import Mock
+import netaddr
 from provisioningserver import tasks
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.dhcp.leases import send_leases
@@ -69,6 +74,16 @@ from testtools.matchers import (
     Equals,
     HasLength,
     )
+
+
+def get_random_ip_from_interface_range(interface):
+    """Return a random IP from the pool available to an interface.
+
+    :return: An IP address as a string."""
+    ip_range = netaddr.IPRange(
+        interface.ip_range_low, interface.ip_range_high)
+    chosen_ip = random.choice(ip_range)
+    return unicode(chosen_ip)
 
 
 class TestNodeGroupsAPI(MultipleUsersScenarios,
@@ -203,6 +218,7 @@ class TestNodeGroupAPI(APITestCase):
             parsed_result['name'][0])
 
     def test_update_leases_processes_empty_leases_dict(self):
+        self.patch(api_module, 'update_mac_cluster_interfaces')
         nodegroup = factory.make_node_group()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
@@ -219,6 +235,7 @@ class TestNodeGroupAPI(APITestCase):
             [], DHCPLease.objects.filter(nodegroup=nodegroup))
 
     def test_update_leases_stores_leases(self):
+        self.patch(api_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         lease = factory.make_random_leases()
@@ -238,7 +255,35 @@ class TestNodeGroupAPI(APITestCase):
                 for dhcplease in DHCPLease.objects.filter(nodegroup=nodegroup)
             ])
 
+    def test_update_leases_updates_mac_interface_mappings(self):
+        self.patch(
+            api_module, 'update_mac_cluster_interfaces', FakeMethod())
+        self.patch(Omshell, 'create')
+        cluster = factory.make_node_group()
+        cluster_interface = factory.make_node_group_interface(
+            nodegroup=cluster)
+        mac_address = factory.make_mac_address()
+        leases = {
+            get_random_ip_from_interface_range(cluster_interface):
+                unicode(mac_address.mac_address)
+            }
+
+        client = make_worker_client(cluster)
+        response = client.post(
+            reverse('nodegroup_handler', args=[cluster.uuid]),
+            {
+                'op': 'update_leases',
+                'leases': json.dumps(leases),
+            })
+        self.assertEqual(
+            (httplib.OK, "Leases updated."),
+            (response.status_code, response.content))
+        self.assertEqual(
+            [(leases, cluster)],
+            api_module.update_mac_cluster_interfaces.extract_args())
+
     def test_update_leases_does_not_add_old_leases(self):
+        self.patch(api_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
@@ -753,3 +798,55 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
+
+
+class TestUpdateMacClusterInterfaces(MAASServerTestCase):
+    """Tests for `update_mac_cluster_interfaces`()."""
+
+    def test_updates_mac_cluster_interfaces(self):
+        cluster = factory.make_node_group()
+        interfaces = [
+            factory.make_node_group_interface(nodegroup=cluster)
+            for i in range(4)
+            ]
+        interfaces.append(cluster.nodegroupinterface_set.first())
+        mac_addresses = {
+            factory.make_mac_address(): random.choice(interfaces)
+            for i in range(4)
+            }
+        leases = {
+            get_random_ip_from_interface_range(interface):
+                mac_address.mac_address
+            for mac_address, interface in mac_addresses.items()
+            }
+        update_mac_cluster_interfaces(leases, cluster)
+        results = {
+            mac_address: mac_address.cluster_interface
+            for mac_address in MACAddress.objects.filter(
+                mac_address__in=leases.values())
+            }
+        self.assertEqual(mac_addresses, results)
+
+    def test_ignores_mac_not_attached_to_cluster(self):
+        cluster = factory.make_node_group()
+        mac_address = factory.make_mac_address()
+        leases = {
+            factory.getRandomIPAddress(): mac_address.mac_address
+            }
+        update_mac_cluster_interfaces(leases, cluster)
+        mac_address = MACAddress.objects.get(
+            id=mac_address.id)
+        self.assertIsNone(mac_address.cluster_interface)
+
+    def test_ignores_unknown_macs(self):
+        cluster = factory.make_node_group()
+        mac_address = factory.getRandomMACAddress()
+        leases = {
+            factory.getRandomIPAddress(): mac_address
+            }
+        # This is a test to show that update_mac_cluster_interfaces()
+        # doesn't raise an Http404 when it comes across something it
+        # doesn't know, hence the lack of meaningful assertions.
+        update_mac_cluster_interfaces(leases, cluster)
+        self.assertFalse(
+            MACAddress.objects.filter(mac_address=mac_address).exists())
