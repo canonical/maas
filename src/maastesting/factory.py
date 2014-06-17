@@ -90,11 +90,12 @@ class Factory:
 
     random_octets = iter(random_octet, None)
 
-    def getRandomString(self, size=10, spaces=False):
+    def getRandomString(self, size=10, spaces=False, prefix=""):
         if spaces:
-            return "".join(islice(self.random_letters_with_spaces, size))
+            return prefix + "".join(
+                islice(self.random_letters_with_spaces, size))
         else:
-            return "".join(islice(self.random_letters, size))
+            return prefix + "".join(islice(self.random_letters, size))
 
     def getRandomBytes(self, size=10):
         return os.urandom(size)

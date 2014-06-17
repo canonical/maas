@@ -77,7 +77,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     )
-from maasserver.exceptions import ClusterUnavailable
+from maasserver.exceptions import (
+    ClusterUnavailable,
+    NodeActionError,
+    )
 from maasserver.fields import (
     MACAddressFormField,
     NodeGroupFormField,
@@ -801,10 +804,10 @@ class NodeActionForm(forms.Form):
         self.actions = compile_node_actions(instance, self.user, self.request)
         self.action_buttons = self.actions.values()
 
-    def display_message(self, message):
+    def display_message(self, message, msg_level=messages.INFO):
         """Show `message` as feedback after performing an action."""
         if self.request is not None:
-            messages.add_message(self.request, messages.INFO, message)
+            messages.add_message(self.request, msg_level, message)
 
     def clean_action(self):
         action_name = self.cleaned_data['action']
@@ -828,8 +831,13 @@ class NodeActionForm(forms.Form):
         """
         action_name = self.data.get('action')
         action = self.actions.get(action_name)
-        message = action.execute(allow_redirect=allow_redirect)
-        self.display_message(message)
+        msg_level = messages.INFO
+        try:
+            message = action.execute(allow_redirect=allow_redirect)
+        except NodeActionError as e:
+            message = e.message
+            msg_level = messages.ERROR
+        self.display_message(message, msg_level)
         # Return updated node.
         return Node.objects.get(system_id=self.node.system_id)
 

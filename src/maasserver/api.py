@@ -175,6 +175,7 @@ from maasserver.exceptions import (
     MAASAPINotFound,
     NodesNotAvailable,
     NodeStateViolation,
+    StaticIPAddressExhaustion,
     Unauthorized,
     )
 from maasserver.fields import (
@@ -442,8 +443,15 @@ class NodeHandler(OperationsHandler):
                 form.save()
             else:
                 raise ValidationError(form.errors)
-        nodes = Node.objects.start_nodes(
-            [system_id], request.user, user_data=user_data)
+        try:
+            nodes = Node.objects.start_nodes(
+                [system_id], request.user, user_data=user_data)
+        except StaticIPAddressExhaustion:
+            # The API response should contain error text with the
+            # system_id in it, as that is the primary API key to a node.
+            raise StaticIPAddressExhaustion(
+                "%s: Unable to allocate static IP due to address"
+                " exhaustion." % system_id)
         if len(nodes) == 0:
             raise PermissionDenied(
                 "You are not allowed to start up this node.")

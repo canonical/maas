@@ -25,7 +25,6 @@ from django.core.exceptions import (
     )
 from django.http import HttpResponse
 from django.http.request import build_request_repr
-from django.test.client import RequestFactory
 from fixtures import FakeLogger
 from maasserver.exceptions import (
     ExternalComponentException,
@@ -48,31 +47,6 @@ from testtools.matchers import (
     Contains,
     Not,
     )
-
-
-class Messages:
-    """A class to record messages published by Django messaging
-    framework.
-    """
-
-    messages = []
-
-    def add(self, level, message, extras):
-        self.messages.append((level, message, extras))
-
-
-def fake_request(path, method='GET'):
-    """Create a fake request.
-
-    :param path: The path to make the request to.
-    :param method: The method to use for the reques
-        ('GET' or 'POST').
-    """
-    rf = RequestFactory()
-    request = rf.get(path)
-    request.method = method
-    request._messages = Messages()
-    return request
 
 
 class ExceptionMiddlewareTest(MAASServerTestCase):
@@ -98,12 +72,12 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         """
         base_path = self.make_base_path()
         middleware = self.make_middleware(base_path)
-        request = fake_request(base_path)
+        request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
     def test_ignores_paths_outside_path_regex(self):
         middleware = self.make_middleware(self.make_base_path())
-        request = fake_request(self.make_base_path())
+        request = factory.make_fake_request(self.make_base_path())
         exception = MAASAPINotFound("Huh?")
         self.assertIsNone(middleware.process_exception(request, exception))
 
@@ -163,7 +137,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
-        non_api_request = fake_request("/api/1.0/hello")
+        non_api_request = factory.make_fake_request("/api/1.0/hello")
         error_message = factory.getRandomString()
         exception = MAASAPINotFound(error_message)
         response = middleware.process_exception(non_api_request, exception)
@@ -173,7 +147,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_ignores_error_outside_API(self):
         middleware = APIErrorsMiddleware()
-        non_api_request = fake_request("/middleware/api/hello")
+        non_api_request = factory.make_fake_request("/middleware/api/hello")
         exception = MAASAPINotFound(factory.getRandomString())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
@@ -185,7 +159,7 @@ class ExceptionLoggerMiddlewareTest(MAASServerTestCase):
         logger = self.useFixture(FakeLogger('maasserver'))
         error_text = factory.getRandomString()
         ExceptionLoggerMiddleware().process_exception(
-            fake_request('/middleware/api/hello'),
+            factory.make_fake_request('/middleware/api/hello'),
             ValueError(error_text))
         self.assertThat(logger.output, Contains(error_text))
 
@@ -194,7 +168,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_request_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/1.0/nodes/")
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(
             logger.output,
@@ -202,7 +176,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_does_not_log_response_if_info_level(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.INFO))
-        request = fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/1.0/nodes/")
         response = HttpResponse(
             content="test content",
             status=httplib.OK,
@@ -213,14 +187,14 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_logs_request(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
-        request = fake_request("/api/1.0/nodes/")
+        request = factory.make_fake_request("/api/1.0/nodes/")
         request.content = "test content"
         DebuggingLoggerMiddleware().process_request(request)
         self.assertThat(logger.output, Contains(build_request_repr(request)))
 
     def test_debugging_logger_logs_response(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
-        request = fake_request("foo")
+        request = factory.make_fake_request("foo")
         response = HttpResponse(
             content="test content",
             status=httplib.OK,
@@ -231,7 +205,7 @@ class DebuggingLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_debugging_logger_logs_binary_response(self):
         logger = self.useFixture(FakeLogger('maasserver', logging.DEBUG))
-        request = fake_request("foo")
+        request = factory.make_fake_request("foo")
         response = HttpResponse(
             content=sample_binary_data,
             status=httplib.OK,
@@ -246,7 +220,7 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_ignores_GET_requests(self):
         self.client_log_in()
-        request = fake_request(factory.getRandomString(), 'GET')
+        request = factory.make_fake_request(factory.getRandomString(), 'GET')
         exception = MAASException()
         error_middleware = ErrorsMiddleware()
         response = error_middleware.process_exception(request, exception)
@@ -254,7 +228,7 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_ignores_non_ExternalComponentException(self):
         self.client_log_in()
-        request = fake_request(factory.getRandomString(), 'GET')
+        request = factory.make_fake_request(factory.getRandomString(), 'GET')
         exception = ValueError()
         error_middleware = ErrorsMiddleware()
         response = error_middleware.process_exception(request, exception)
@@ -263,7 +237,7 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
     def test_error_middleware_handles_ExternalComponentException(self):
         self.client_log_in()
         url = factory.getRandomString()
-        request = fake_request(url, 'POST')
+        request = factory.make_fake_request(url, 'POST')
         error_message = factory.getRandomString()
         exception = ExternalComponentException(error_message)
         error_middleware = ErrorsMiddleware()

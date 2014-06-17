@@ -409,21 +409,27 @@ class NodeManager(Manager):
                 try:
                     tasks = node.claim_static_ips()
                 except StaticIPAddressExhaustion:
-                    # TODO: send error back to user, or fall back to a
-                    # dynamic IP?
-                    logger.error(
+                    error_text = (
                         "Node %s: Unable to allocate static IP due to address"
                         " exhaustion." % node.system_id)
-                    continue
+                    logger.error(error_text)
+                    # XXX 2014-06-17 bigjools bug=1330762
+                    # This function is supposed to start all the nodes
+                    # it can, but gives no way to return errors about
+                    # the ones it can't.  So just fail the lot for now,
+                    # pending a redesign of the API.
+                    #
+                    # XXX 2014-06-17 bigjools bug=1330765
+                    # If any of this fails it needs to release the
+                    # static IPs back to the pool.  As part of the robustness
+                    # work coming up, it also needs to inform the user.
+                    raise
 
                 task = power_on.si(node_power_type, **power_params)
                 task.set(queue=node.work_queue)
                 tasks.append(task)
                 chained_tasks = celery.chain(tasks)
                 chained_tasks.apply_async()
-                # TODO: if any of this fails it needs to release the
-                # static IPs back to the pool.  As part of the robustness
-                # work coming up, it also needs to inform the user.
                 processed_nodes.append(node)
         return processed_nodes
 

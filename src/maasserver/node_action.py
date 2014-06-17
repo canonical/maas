@@ -39,7 +39,11 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
-from maasserver.exceptions import Redirect
+from maasserver.exceptions import (
+    NodeActionError,
+    Redirect,
+    StaticIPAddressExhaustion,
+    )
 from maasserver.models import (
     Node,
     SSHKey,
@@ -284,7 +288,13 @@ class StartNode(NodeAction):
 
         # Be sure to acquire before starting, or start_nodes will think
         # the node ineligible based on its un-acquired status.
-        Node.objects.start_nodes([self.node.system_id], self.user)
+        try:
+            Node.objects.start_nodes([self.node.system_id], self.user)
+        except StaticIPAddressExhaustion:
+            self.node.release()
+            raise NodeActionError(
+                "%s: Failed to start, static IP addresses are exhausted."
+                % self.node.hostname)
         return dedent("""\
             This node is now allocated to you.
             It has been asked to start up.

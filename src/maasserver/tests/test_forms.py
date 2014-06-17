@@ -21,6 +21,7 @@ import random
 from django import forms
 from django.conf import settings
 from django.contrib.auth.models import User
+from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import (
     InMemoryUploadedFile,
@@ -34,6 +35,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
@@ -902,6 +904,22 @@ class TestNodeActionForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertIn(
             "is not one of the available choices.", form._errors['action'][0])
+
+    def test_shows_error_message_for_NodeActionError(self):
+        error_text = factory.getRandomString(prefix="NodeActionError")
+        exc = NodeActionError(error_text)
+        self.patch(StartNode, "execute").side_effect = exc
+        user = factory.make_user()
+        node = factory.make_node(status=NODE_STATUS.READY, owner=user)
+        action = StartNode.name
+        # Required for messages to work:
+        request = factory.make_fake_request("/fake")
+        form = get_action_form(user, request)(
+            node, {NodeActionForm.input_name: action})
+        form.save()
+        [observed] = messages.get_messages(form.request)
+        expected = (messages.ERROR, error_text, '')
+        self.assertEqual(expected, observed)
 
 
 class TestUniqueEmailForms(MAASServerTestCase):

@@ -30,7 +30,7 @@ from maasserver.fields import (
     MAC,
     MAC_ERROR_MSG,
     )
-from maasserver.models import Node
+from maasserver.models import Node, StaticIPAddress
 from maasserver.testing import (
     reload_object,
     reload_objects,
@@ -330,6 +330,20 @@ class TestNodeAPI(APITestCase):
                 })
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
+
+    def test_POST_start_returns_error_when_static_ips_exhausted(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=self.logged_in_user)
+        ngi = node.get_primary_mac().cluster_interface
+
+        # Narrow the available IP range and pre-claim the only address.
+        ngi.static_ip_range_high = ngi.static_ip_range_low
+        ngi.save()
+        StaticIPAddress.objects.allocate_new(
+            ngi.static_ip_range_high, ngi.static_ip_range_low)
+
+        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+        self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
     def test_POST_release_releases_owned_node(self):
         owned_statuses = [

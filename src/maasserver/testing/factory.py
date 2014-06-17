@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "factory",
+    "Messages",
     ]
 
 from io import BytesIO
@@ -21,6 +22,7 @@ import random
 import time
 
 from django.contrib.auth.models import User
+from django.test.client import RequestFactory
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -74,7 +76,36 @@ MAX_PUBLIC_KEYS = 5
 ALL_NODE_STATES = map_enum(NODE_STATUS).values()
 
 
+class Messages:
+    """A class to record messages published by Django messaging
+    framework.
+    """
+
+    def __init__(self):
+        self.messages = []
+
+    def add(self, level, message, extras):
+        self.messages.append((level, message, extras))
+
+    def __iter__(self):
+        for message in self.messages:
+            yield message
+
+
 class Factory(maastesting.factory.Factory):
+
+    def make_fake_request(self, path, method="GET"):
+        """Create a fake request.
+
+        :param path: The path to which to make the request.
+        :param method: The method to use for the request
+            ('GET' or 'POST').
+        """
+        rf = RequestFactory()
+        request = rf.get(path)
+        request.method = method
+        request._messages = Messages()
+        return request
 
     def make_file_upload(self, name=None, content=None):
         """Create a file-like object for upload in http POST or PUT.

@@ -22,8 +22,14 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
-from maasserver.exceptions import Redirect
-from maasserver.models import Tag
+from maasserver.exceptions import (
+    NodeActionError,
+    Redirect,
+    )
+from maasserver.models import (
+    StaticIPAddress,
+    Tag,
+    )
 from maasserver.node_action import (
     AbortCommissioning,
     Commission,
@@ -257,6 +263,24 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual(
             'provisioningserver.tasks.power_on',
             self.celery.tasks[0]['task'].name)
+
+    def test_StartNode_returns_error_when_no_more_static_IPs(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            status=NODE_STATUS.READY, power_type='ether_wake')
+        ngi = node.get_primary_mac().cluster_interface
+
+        # Narrow the available IP range and pre-claim the only address.
+        ngi.static_ip_range_high = ngi.static_ip_range_low
+        ngi.save()
+        StaticIPAddress.objects.allocate_new(
+            ngi.static_ip_range_high, ngi.static_ip_range_low)
+
+        user = factory.make_user()
+        e = self.assertRaises(NodeActionError, StartNode(node, user).execute)
+        self.assertEqual(
+            "%s: Failed to start, static IP addresses are exhausted." %
+            node.hostname, e.message)
+        self.assertEqual(NODE_STATUS.READY, node.status)
 
 
 class TestStopNodeNodeAction(MAASServerTestCase):

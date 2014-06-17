@@ -117,10 +117,15 @@ class IteratorReusedError(Exception):
     """Raise when a :class:`UseOnceIterator` gets reused."""
 
 
-class StaticIPAddressExhaustion(MAASException):
+class StaticIPAddressExhaustion(MAASAPIException):
     """Raised when no more static IPs are available during allocation."""
+    api_error = httplib.SERVICE_UNAVAILABLE
 
 
 class StaticIPAddressTypeClash(MAASException):
     """Raised when trying to allocate an IP for a MAC where one of another
     type already exists."""
+
+
+class NodeActionError(MAASException):
+    """Raised when there is an error performing a NodeAction."""
