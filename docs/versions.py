@@ -19,6 +19,7 @@ __metaclass__ = type
 
 
 import os, json
+import sphinx
 
 # The name of the version JSON file being written by this extension.
 VERSION_FILE = '_static/versions.json'
@@ -29,6 +30,12 @@ VERSION_CONFIG_NAME = b'doc_versions'
 
 
 def write_versions_file(app, exception):
+    # The creation of the versions file is only needed when building
+    # the documentation and it assumes the directory 'docs/_static' exists:
+    # Create the versions file only when Sphinx is building the documentation.
+    if not isinstance(app.builder, sphinx.builders.html.StandaloneHTMLBuilder):
+        return
+
     doc_versions = app.config.doc_versions
     versions_file = os.path.join(app.outdir, VERSION_FILE)
     with open(versions_file, 'wb') as f:
