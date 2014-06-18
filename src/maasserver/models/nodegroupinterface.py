@@ -54,7 +54,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     # Static IP of the interface.
     ip = GenericIPAddressField(
         null=False, editable=True,
-        help_text="Static IP Address of the interface")
+        help_text="Static IP Address of the interface",
+        verbose_name="IP")
 
     # The `NodeGroup` this interface belongs to.
     nodegroup = ForeignKey(
@@ -69,25 +70,36 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         blank=True, editable=True, max_length=255, default='',
         help_text="Name of this interface (e.g. 'em1').")
     subnet_mask = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        help_text="e.g. 255.255.255.0")
     broadcast_ip = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        verbose_name="Broadcast IP",
+        help_text="e.g. 192.168.1.255")
     router_ip = GenericIPAddressField(
-        editable=True, unique=False, blank=True, null=True, default=None)
+        editable=True, unique=False, blank=True, null=True, default=None,
+        verbose_name="Router IP",
+        help_text="IP of this network's router given to DHCP clients")
     ip_range_low = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
-        help_text="Lowest IP number of the range for dynamic IPs.")
+        verbose_name="DHCP dynamic IP range low value",
+        help_text="Lowest IP number of the range for dynamic IPs, used for "
+                  "enlistment, commissioning and unknown devices.")
     ip_range_high = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
-        help_text="Highest IP number of the range for dynamic IPs.")
+        verbose_name="DHCP dynamic IP range high value",
+        help_text="Highest IP number of the range for dynamic IPs, used for "
+                  "enlistment, commissioning and unknown devices.")
     static_ip_range_low = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
-        help_text="Lowest IP number of the range for static IPs, must be same"
-                  " network as dynamic range.")
+        verbose_name="Static IP range low value",
+        help_text="Lowest IP number of the range for IPs given to allocated "
+                  "nodes, must be in same network as dynamic range.")
     static_ip_range_high = GenericIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
-        help_text="Highest IP number of the range for static IPs, must be same"
-                  " network as dynamic range.")
+        verbose_name="Static IP range high value",
+        help_text="Highest IP number of the range for IPs given to allocated "
+                  "nodes, must be in same network as dynamic range.")
 
     # Foreign DHCP server address, if any, that was detected on this
     # interface.
