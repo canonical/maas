@@ -264,8 +264,8 @@ class TestNodeGroupAPI(APITestCase):
             nodegroup=cluster)
         mac_address = factory.make_mac_address()
         leases = {
-            get_random_ip_from_interface_range(cluster_interface):
-                unicode(mac_address.mac_address)
+            get_random_ip_from_interface_range(cluster_interface): (
+                unicode(mac_address.mac_address))
             }
 
         client = make_worker_client(cluster)
@@ -815,8 +815,8 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
             for i in range(4)
             }
         leases = {
-            get_random_ip_from_interface_range(interface):
-                mac_address.mac_address
+            get_random_ip_from_interface_range(interface): (
+                mac_address.mac_address)
             for mac_address, interface in mac_addresses.items()
             }
         update_mac_cluster_interfaces(leases, cluster)
