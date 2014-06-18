@@ -14,14 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    nonces_cleanup,
+    )
 from maasserver.rpc import regionservice
+from maasserver.testing.eventloop import RegionEventLoopFixture
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import IsInstance
-from twisted.application.service import (
-    MultiService,
-    Service,
-    )
+from twisted.application.service import MultiService
 
 
 class TestRegionEventLoop(MAASTestCase):
@@ -34,8 +35,7 @@ class TestRegionEventLoop(MAASTestCase):
     def test_start_and_stop(self):
         # Replace the factories in RegionEventLoop with non-functional
         # dummies to avoid bringing up real services here.
-        self.patch(eventloop.loop, "factories", tuple(
-            (name, Service) for name, _ in eventloop.loop.factories))
+        self.useFixture(RegionEventLoopFixture())
         # Reset the services list.
         self.patch(eventloop.loop, "services", MultiService())
         # At the outset, the eventloop's services are dorment.
@@ -90,4 +90,13 @@ class TestFactories(MAASTestCase):
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_RegionAdvertisingService,
+            {factory for _, factory in eventloop.loop.factories})
+
+    def test_make_NonceCleanupService(self):
+        service = eventloop.make_NonceCleanupService()
+        self.assertThat(service, IsInstance(
+            nonces_cleanup.NonceCleanupService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_NonceCleanupService,
             {factory for _, factory in eventloop.loop.factories})

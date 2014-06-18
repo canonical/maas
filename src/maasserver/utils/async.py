@@ -14,12 +14,18 @@ str = None
 __metaclass__ = type
 __all__ = [
     "gather",
+    "transactional",
 ]
 
+from functools import wraps
 from itertools import count
 from Queue import Queue
 
 from crochet import wait_for_reactor
+from django.db import (
+    close_old_connections,
+    transaction,
+    )
 from maasserver.exceptions import IteratorReusedError
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
@@ -124,3 +130,19 @@ def gather(calls, timeout=10.0):
     # Return an iterator to the invoking thread that will stop at the
     # first sign of the `done` sentinel.
     return UseOnceIterator(queue.get, done)
+
+
+def transactional(func):
+    """Decorator that wraps calls to `func` in a Django-managed transaction.
+
+    It also ensures that connections are closed if necessary. This keeps
+    Django happy, especially in the test suite.
+    """
+    @wraps(func)
+    def call_within_transaction(*args, **kwargs):
+        try:
+            with transaction.atomic():
+                return func(*args, **kwargs)
+        finally:
+            close_old_connections()
+    return call_within_transaction

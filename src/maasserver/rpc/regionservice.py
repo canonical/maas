@@ -19,22 +19,18 @@ __all__ = [
 
 from collections import defaultdict
 from contextlib import closing
-from functools import wraps
 import random
 from textwrap import dedent
 import threading
 
 from crochet import reactor
-from django.db import (
-    close_old_connections,
-    connection,
-    transaction,
-    )
+from django.db import connection
 from maasserver import (
     eventloop,
     locks,
     )
 from maasserver.utils import synchronised
+from maasserver.utils.async import transactional
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -248,22 +244,6 @@ class RegionService(service.Service, object):
             for conns in self.connections.itervalues()
             for conn in conns
         ]
-
-
-def transactional(func):
-    """Decorator that wraps calls to `func` in a Django-managed transaction.
-
-    It also ensures that connections are closed if necessary. This keeps
-    Django happy, especially in the test suite.
-    """
-    @wraps(func)
-    def call_within_transaction(*args, **kwargs):
-        try:
-            with transaction.atomic():
-                return func(*args, **kwargs)
-        finally:
-            close_old_connections()
-    return call_within_transaction
 
 
 class RegionAdvertisingService(TimerService, object):

@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Nonces cleanup utilities."""
@@ -14,13 +14,18 @@ str = None
 __metaclass__ = type
 __all__ = [
     'cleanup_old_nonces',
+    'NonceCleanupService',
     ]
 
 
 import time
 
+from maasserver.utils.async import transactional
 from oauth.oauth import OAuthServer
 from piston.models import Nonce
+from provisioningserver.utils import synchronous
+from twisted.application.internet import TimerService
+from twisted.internet.threads import deferToThread
 
 
 timestamp_threshold = OAuthServer.timestamp_threshold
@@ -92,3 +97,17 @@ def find_checkpoint_nonce():
         return nonces.latest('id')
     except Nonce.DoesNotExist:
         return None
+
+
+class NonceCleanupService(TimerService, object):
+    """Service to periodically clean-up old nonces.
+
+    This will run immediately when it's started, then once again each
+    day, though the interval can be overridden by passing it to the
+    constructor.
+    """
+
+    def __init__(self, interval=(24 * 60 * 60)):
+        cleanup = synchronous(transactional(cleanup_old_nonces))
+        super(NonceCleanupService, self).__init__(
+            interval, deferToThread, cleanup)

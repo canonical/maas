@@ -32,6 +32,7 @@ from maasserver.models import (
     BootSource,
     NodeGroup,
     )
+from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
@@ -61,6 +62,10 @@ class TestStartUp(MAASServerTestCase):
     The actual work happens in `inner_start_up` and `test_start_up`; the tests
     you see here are for the locking wrapper only.
     """
+
+    def setUp(self):
+        super(TestStartUp, self).setUp()
+        self.useFixture(RegionEventLoopFixture())
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()

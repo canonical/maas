@@ -263,7 +263,7 @@ def synchronous(func):
     raise a :class:`AssertionError`, implying that this is a programming
     error. Calls from outside the reactor will proceed unaffected.
 
-    There is an asymettry with the `asynchronous` decorator. The reason
+    There is an asymmetry with the `asynchronous` decorator. The reason
     is that it is essential to be aware when `deferToThread()` is being
     used, so that in-reactor code knows to synchronise with it, to add a
     callback to the :class:`Deferred` that it returns, for example. The

@@ -98,6 +98,11 @@ def make_RegionAdvertisingService():
     return regionservice.RegionAdvertisingService()
 
 
+def make_NonceCleanupService():
+    from maasserver import nonces_cleanup
+    return nonces_cleanup.NonceCleanupService()
+
+
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
@@ -121,6 +126,7 @@ class RegionEventLoop:
     factories = (
         ("rpc", make_RegionService),
         ("rpc-advertise", make_RegionAdvertisingService),
+        ("nonce-cleanup", make_NonceCleanupService),
     )
 
     def __init__(self):

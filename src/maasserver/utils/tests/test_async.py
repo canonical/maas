@@ -18,10 +18,18 @@ from functools import partial
 from time import time
 
 import crochet
+from django.db import connection
 from maasserver.exceptions import IteratorReusedError
 from maasserver.utils import async
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    Mock,
+    sentinel,
+    )
 from testtools.matchers import (
     Contains,
     Equals,
@@ -115,3 +123,38 @@ class TestUseOnceIterator(MAASTestCase):
         # and reuse it.
         [i for i in iterator]
         self.assertRaises(IteratorReusedError, iterator.next)
+
+
+class TestTransactional(MAASTestCase):
+
+    def test_calls_function_within_transaction_then_closes_connections(self):
+        close_old_connections = self.patch(async, "close_old_connections")
+
+        # No transaction has been entered (what Django calls an atomic
+        # block), and old connections have not been closed.
+        self.assertFalse(connection.in_atomic_block)
+        self.assertThat(close_old_connections, MockNotCalled())
+
+        def check_inner(*args, **kwargs):
+            # In here, the transaction (`atomic`) has been started but
+            # is not over, and old connections have not yet been closed.
+            self.assertTrue(connection.in_atomic_block)
+            self.assertThat(close_old_connections, MockNotCalled())
+
+        function = Mock()
+        function.__name__ = self.getUniqueString()
+        function.side_effect = check_inner
+
+        # Call `function` via the `transactional` decorator.
+        decorated_function = async.transactional(function)
+        decorated_function(sentinel.arg, kwarg=sentinel.kwarg)
+
+        # `function` was called -- and therefore `check_inner` too --
+        # and the arguments passed correctly.
+        self.assertThat(function, MockCalledOnceWith(
+            sentinel.arg, kwarg=sentinel.kwarg))
+
+        # After the decorated function has returned the transaction has
+        # been exited, and old connections have been closed.
+        self.assertFalse(connection.in_atomic_block)
+        self.assertThat(close_old_connections, MockCalledOnceWith())

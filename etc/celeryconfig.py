@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Celery settings for the region controller.
@@ -41,19 +41,9 @@ except ImportError:
 else:
     import_settings(maas_local_celeryconfig)
 
-CLEANUP_OLD_NONCES_SCHEDULE = timedelta(days=1)
 IMPORT_BOOT_IMAGES_SCHEDULE = timedelta(days=7)
 
 CELERYBEAT_SCHEDULE = {
-    'cleanup-old-nonces': {
-        'task': 'maasserver.tasks.cleanup_old_nonces',
-        'schedule': CLEANUP_OLD_NONCES_SCHEDULE,
-        'options': {
-            'queue': WORKER_QUEUE_REGION,
-            'expires': int(CLEANUP_OLD_NONCES_SCHEDULE.total_seconds()),
-        },
-    },
-
     # Periodically (re-)import boot images.  This is a job for the region
     # controller, although the region controller delegates it to the clusters.
     'import-boot-images': {

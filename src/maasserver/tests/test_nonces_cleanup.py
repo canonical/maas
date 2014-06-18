@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the nonces cleanup module."""
@@ -17,6 +17,7 @@ __all__ = []
 
 import time
 
+from maasserver import nonces_cleanup
 from maasserver.nonces_cleanup import (
     cleanup_old_nonces,
     create_checkpoint_nonce,
@@ -24,15 +25,25 @@ from maasserver.nonces_cleanup import (
     find_checkpoint_nonce,
     get_time_string,
     key_prefix,
+    NonceCleanupService,
     time as module_time,
     timestamp_threshold,
     )
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.factory import factory
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    MockNotCalled,
+    )
+from mock import call
 from piston.models import Nonce
 from testtools.matchers import (
     ContainsAll,
     StartsWith,
     )
+from twisted.internet.defer import maybeDeferred
+from twisted.internet.task import Clock
 
 
 class TestCleanupOldNonces(MAASServerTestCase):
@@ -119,3 +130,45 @@ class TestUtilities(MAASServerTestCase):
     def test_get_time_string_ends_with_suffix(self):
         now = time.time()
         self.assertThat(get_time_string(now), StartsWith(key_prefix))
+
+
+class TestNonceCleanupService(MAASServerTestCase):
+
+    def test_init_with_default_interval(self):
+        # The service itself calls `cleanup_old_nonces` in a thread, via
+        # a couple of decorators. This indirection makes it clearer to
+        # mock `cleanup_old_nonces` here and track calls to it.
+        cleanup_old_nonces = self.patch(nonces_cleanup, "cleanup_old_nonces")
+        cleanup_old_nonces.__name__ = factory.getRandomString().encode("ascii")
+        # Making `deferToThread` use the current thread helps testing.
+        self.patch(nonces_cleanup, "deferToThread", maybeDeferred)
+
+        service = NonceCleanupService()
+        # Use a deterministic clock instead of the reactor for testing.
+        service.clock = Clock()
+
+        # The interval is stored as `step` by TimerService,
+        # NonceCleanupService's parent class.
+        interval = 24 * 60 * 60  # seconds.
+        self.assertEqual(service.step, interval)
+
+        # `cleanup_old_nonces` is not called before the service is
+        # started.
+        self.assertThat(cleanup_old_nonces, MockNotCalled())
+        # `cleanup_old_nonces` is called the moment the service is
+        # started.
+        service.startService()
+        self.assertThat(cleanup_old_nonces, MockCalledOnceWith())
+        # Advancing the clock by `interval - 1` means that
+        # `cleanup_old_nonces` has still only been called once.
+        service.clock.advance(interval - 1)
+        self.assertThat(cleanup_old_nonces, MockCalledOnceWith())
+        # Advancing the clock one more second causes another call to
+        # `cleanup_old_nonces`.
+        service.clock.advance(1)
+        self.assertThat(cleanup_old_nonces, MockCallsMatch(call(), call()))
+
+    def test_interval_can_be_set(self):
+        interval = self.getUniqueInteger()
+        service = NonceCleanupService(interval)
+        self.assertEqual(interval, service.step)

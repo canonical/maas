@@ -19,6 +19,7 @@ import json
 from crochet import run_in_reactor
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
+from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.utils import get_all_interface_addresses
 from testtools.matchers import (
@@ -48,6 +49,8 @@ class RPCViewTest(MAASServerTestCase):
         self.assertEqual({"eventloops": {}}, info)
 
     def test_rpc_info_when_rpc_running(self):
+        self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
+
         eventloop.start().wait(5)
         self.addCleanup(lambda: eventloop.stop().wait(5))
 
