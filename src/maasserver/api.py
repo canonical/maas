@@ -1580,6 +1580,8 @@ class NodeGroupHandler(OperationsHandler):
         Returns a ``{system_id: {detail_type: xml, ...}, ...}`` map,
         where ``detail_type`` is something like "lldp" or "lshw".
 
+        :param system_ids: System ids of nodes for which to get system details.
+
         Note that this is returned as BSON and not JSON. This is for
         efficiency, but mainly because JSON can't do binary content
         without applying additional encoding like base-64.
