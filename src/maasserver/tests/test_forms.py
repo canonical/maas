@@ -1117,9 +1117,9 @@ def make_interface_settings(network=None, management=None):
     if len(managed_ip_range) > 2:
         dynamic_range = IPRange(
             IPAddress(managed_ip_range.first),
-            IPAddress(managed_ip_range[len(managed_ip_range)//2]))
+            IPAddress(managed_ip_range[len(managed_ip_range) // 2]))
         static_range = IPRange(
-            IPAddress(managed_ip_range[(len(managed_ip_range)//2)+1]),
+            IPAddress(managed_ip_range[(len(managed_ip_range) // 2) + 1]),
             IPAddress(managed_ip_range.last))
         static_low = unicode(IPAddress(static_range.first))
         static_high = unicode(IPAddress(static_range.last))

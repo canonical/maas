@@ -222,7 +222,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
         if (self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
-            (self.static_ip_range_low and self.static_ip_range_high)):
+           (self.static_ip_range_low and self.static_ip_range_high)):
             static_set = IPSet(
                 IPRange(
                     self.static_ip_range_low,
