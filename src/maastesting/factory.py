@@ -37,6 +37,7 @@ import urllib2
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
+import mock
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -300,6 +301,14 @@ class Factory:
         return urllib2.addinfourl(
             fp=io.BytesIO(content), headers=headers,
             url=None, code=status_code)
+
+    def make_streams(self, stdin=None, stdout=None, stderr=None):
+        """Make a fake return value for a SSHClient.exec_command."""
+        # stdout.read() is called so stdout can't be None.
+        if stdout is None:
+            stdout = mock.Mock()
+
+        return (stdin, stdout, stderr)
 
 
 # Create factory singleton.

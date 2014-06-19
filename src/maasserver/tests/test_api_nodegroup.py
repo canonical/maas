@@ -818,7 +818,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
             get_random_ip_from_interface_range(interface): (
                 mac_address.mac_address)
             for mac_address, interface in mac_addresses.items()
-            }
+        }
         update_mac_cluster_interfaces(leases, cluster)
         results = {
             mac_address: mac_address.cluster_interface

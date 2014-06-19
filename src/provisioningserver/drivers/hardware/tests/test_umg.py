@@ -38,15 +38,6 @@ def make_umg_api():
     return UMG_CLI_API(host, username, password)
 
 
-def make_streams(stdin=None, stdout=None, stderr=None):
-    """Make a fake return value for a SSHClient.exec_command."""
-    # stdout.read() is called so stdout can't be None.
-    if stdout is None:
-        stdout = Mock()
-
-    return (stdin, stdout, stderr)
-
-
 class TestRunCliCommand(MAASTestCase):
     """Tests for ``UMG_CLI_API.run_cli_command``.
     """
@@ -54,7 +45,7 @@ class TestRunCliCommand(MAASTestCase):
     def test_uses_full_cli_command(self):
         api = make_umg_api()
         ssh_mock = self.patch(api, '_ssh')
-        ssh_mock.exec_command = Mock(return_value=make_streams())
+        ssh_mock.exec_command = Mock(return_value=factory.make_streams())
         command = factory.make_name('command')
         api._run_cli_command(command)
         full_command = 'cli -s %s' % command
@@ -66,7 +57,7 @@ class TestRunCliCommand(MAASTestCase):
         ssh_mock = self.patch(api, '_ssh')
         expected = factory.make_name('output')
         stdout = StringIO(expected)
-        streams = make_streams(stdout=stdout)
+        streams = factory.make_streams(stdout=stdout)
         ssh_mock.exec_command = Mock(return_value=streams)
         output = api._run_cli_command(factory.make_name('command'))
         self.assertEqual(expected, output)
@@ -74,7 +65,7 @@ class TestRunCliCommand(MAASTestCase):
     def test_connects_and_closes_ssh_client(self):
         api = make_umg_api()
         ssh_mock = self.patch(api, '_ssh')
-        ssh_mock.exec_command = Mock(return_value=make_streams())
+        ssh_mock.exec_command = Mock(return_value=factory.make_streams())
         api._run_cli_command(factory.make_name('command'))
         self.assertThat(
             ssh_mock.connect,
