@@ -14,15 +14,19 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from crochet import wait_for_reactor
+from django.db import connections
 from maasserver import (
     eventloop,
     nonces_cleanup,
     )
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
+from maasserver.utils.async import transactional
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import IsInstance
 from twisted.application.service import MultiService
+from twisted.python.threadable import isInIOThread
 
 
 class TestRegionEventLoop(MAASTestCase):
@@ -100,3 +104,31 @@ class TestFactories(MAASTestCase):
         self.assertIn(
             eventloop.make_NonceCleanupService,
             {factory for _, factory in eventloop.loop.factories})
+
+
+class TestDisablingDatabaseConnections(MAASTestCase):
+
+    @wait_for_reactor
+    def test_connections_are_all_stubs_in_the_event_loop(self):
+        self.assertTrue(isInIOThread())
+        for alias in connections:
+            connection = connections[alias]
+            # isinstance() fails because it references __bases__, so
+            # compare types here.
+            self.assertEqual(
+                eventloop.DisabledDatabaseConnection,
+                type(connection))
+
+    @transactional
+    def test_connections_are_all_usable_outside_the_event_loop(self):
+        self.assertFalse(isInIOThread())
+        for alias in connections:
+            connection = connections[alias]
+            self.assertTrue(connection.is_usable())
+
+    def test_DisabledDatabaseConnection(self):
+        connection = eventloop.DisabledDatabaseConnection()
+        self.assertRaises(RuntimeError, getattr, connection, "connect")
+        self.assertRaises(RuntimeError, getattr, connection, "__call__")
+        self.assertRaises(RuntimeError, setattr, connection, "foo", "bar")
+        self.assertRaises(RuntimeError, delattr, connection, "baz")

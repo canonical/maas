@@ -55,6 +55,7 @@ from os import getpid
 from socket import gethostname
 
 import crochet
+from django.db import connections
 from django.utils import autoreload
 from twisted.application.service import MultiService
 from twisted.internet.error import ReactorNotRunning
@@ -84,6 +85,46 @@ def stop_event_loop_when_reloader_is_invoked():
         stop_event_loop_then_restart_with_reloader)
 
 stop_event_loop_when_reloader_is_invoked()
+
+
+class DisabledDatabaseConnection:
+    """Instances of this class raise exceptions when used.
+
+    Referencing an attribute elicits a :py:class:`RuntimeError`.
+
+    Specifically, this is useful to help prevent Django's
+    py:class:`~django.db.utils.ConnectionHandler` from handing out
+    usable database connections to code running in the event-loop's
+    thread (a.k.a. the reactor thread).
+    """
+
+    def __getattr__(self, name):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+    def __setattr__(self, name, value):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+    def __delattr__(self, name):
+        raise RuntimeError(
+            "Database connections in the event-loop are disabled.")
+
+
+def disable_all_database_connections():
+    """Replace all connections in this thread with unusable stubs.
+
+    Specifically, instances of :py:class:`~DisabledDatabaseConnection`.
+    This should help prevent accidental use of the database from the
+    reactor thread.
+    """
+    for alias in connections:
+        connection = connections[alias]
+        connections[alias] = DisabledDatabaseConnection()
+        connection.close()
+
+crochet.reactor.addSystemEventTrigger(
+    "before", "startup", disable_all_database_connections)
 
 
 def make_RegionService():

@@ -523,14 +523,17 @@ class TestRegionAdvertisingService(MAASTestCase):
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
 
-        def check_started(ignore):
-            self.assertTrue(service.running)
+        def check_query_eventloops():
             with closing(connection):
                 with closing(connection.cursor()) as cursor:
                     cursor.execute("SELECT * FROM eventloops")
-            return service.stopService()
 
-        service.starting.addCallback(check_started)
+        service.starting.addCallback(
+            lambda ignore: self.assertTrue(service.running))
+        service.starting.addCallback(
+            lambda ignore: deferToThread(check_query_eventloops))
+        service.starting.addCallback(
+            lambda ignore: service.stopService())
 
         def check_stopped(ignore, service=service):
             self.assertFalse(service.running)
