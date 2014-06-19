@@ -35,7 +35,11 @@ from maasserver.enum import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.network import make_network
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPRange,
+    IPSet,
+    )
 from netaddr.core import AddrFormatError
 
 # The minimum number of leading bits of the routing prefix for a
@@ -197,6 +201,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             ("router_ip", self.router_ip),
             ("ip_range_low", self.ip_range_low),
             ("ip_range_high", self.ip_range_high),
+            ("static_ip_range_low", self.static_ip_range_low),
+            ("static_ip_range_high", self.static_ip_range_high),
             )
         network_errors = defaultdict(list)
         for field, address in network_settings:
@@ -213,9 +219,30 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             # form; validation breaks if we pass an IPAddress.
             self.broadcast_ip = unicode(network.broadcast)
 
+    def clean_ip_ranges(self):
+        """Ensure that the static and dynamic ranges don't overlap."""
+        if (self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
+            (self.static_ip_range_low and self.static_ip_range_high)):
+            static_set = IPSet(
+                IPRange(
+                    self.static_ip_range_low,
+                    self.static_ip_range_high))
+            dynamic_set = IPSet(
+                IPRange(self.ip_range_low, self.ip_range_high))
+            if not static_set.isdisjoint(dynamic_set):
+                message = "Static and dynamic IP ranges may not overlap."
+                errors = {
+                    'ip_range_low': [message],
+                    'ip_range_high': [message],
+                    'static_ip_range_low': [message],
+                    'static_ip_range_high': [message],
+                    }
+                raise ValidationError(errors)
+
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
         self.clean_network_valid()
         self.clean_network_not_too_big()
         self.clean_ips_in_network()
         self.clean_network_config_if_managed()
+        self.clean_ip_ranges()

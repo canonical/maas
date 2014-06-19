@@ -88,6 +88,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'router_ip',
             'ip_range_low',
             'ip_range_high',
+            'static_ip_range_low',
+            'static_ip_range_high',
             ]
         for field in checked_fields:
             nodegroup = factory.make_node_group(network=network)
@@ -159,6 +161,21 @@ class TestNodeGroupInterface(MAASServerTestCase):
                 "'unmanaged')")
             self.assertEqual({field: [message]}, exception.message_dict)
 
+    def test_clean_network_config_if_managed_accepts_empty_static_range(self):
+        network = IPNetwork('192.168.0.3/24')
+        checked_fields = [
+            'static_ip_range_low',
+            'static_ip_range_high',
+            ]
+        for field in checked_fields:
+            nodegroup = factory.make_node_group(
+                network=network,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            [interface] = nodegroup.get_managed_interfaces()
+            setattr(interface, field, '')
+            # This doesn't raise a validation error.
+            interface.full_clean()
+
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
         network = factory.getRandomNetwork()
         nodegroup = factory.make_node_group(
@@ -188,7 +205,27 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface = NodeGroupInterface(
             nodegroup=nodegroup, ip='10.1.1.1', router_ip='10.1.1.254',
             subnet_mask='255.255.255.0', ip_range_low='10.1.1.100',
-            ip_range_high='10.1.1.200', interface='eth99',
+            ip_range_high='10.1.1.200',
+            static_ip_range_low='10.1.1.201',
+            static_ip_range_high='10.1.1.253', interface='eth99',
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         interface.save()
         self.assertEqual(interface, reload_object(interface))
+
+    def test_clean_ip_ranges_checks_for_overlapping_ranges(self):
+        network = IPNetwork('10.1.1.0/24')
+        interface = make_interface(network)
+        interface.ip_range_low = '10.1.1.10'
+        interface.ip_range_high = '10.1.1.20'
+        interface.static_ip_range_low = '10.1.1.15'
+        interface.static_ip_range_high = '10.1.1.25'
+        exception = self.assertRaises(
+            ValidationError, interface.full_clean)
+        message = "Static and dynamic IP ranges may not overlap."
+        errors = {
+            'ip_range_low': [message],
+            'ip_range_high': [message],
+            'static_ip_range_low': [message],
+            'static_ip_range_high': [message],
+            }
+        self.assertEqual(errors, exception.message_dict)

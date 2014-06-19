@@ -114,7 +114,7 @@ from maasserver.utils import map_enum
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPRange, IPAddress
 from provisioningserver import tasks
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools import TestCase
@@ -1109,18 +1109,30 @@ def make_interface_settings(network=None, management=None):
     if management is None:
         management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
     # Pick upper and lower boundaries of IP range, with upper > lower.
-    ip_range_low, ip_range_high = factory.make_ip_range(network)
-    static_ip_range_low, static_ip_range_high = factory.make_ip_range(network)
+    managed_ip_range = IPRange(*factory.make_ip_range(network))
+    if len(managed_ip_range) > 2:
+        dynamic_range = IPRange(
+            IPAddress(managed_ip_range.first),
+            IPAddress(managed_ip_range[len(managed_ip_range)//2]))
+        static_range = IPRange(
+            IPAddress(managed_ip_range[(len(managed_ip_range)//2)+1]),
+            IPAddress(managed_ip_range.last))
+        static_low = unicode(IPAddress(static_range.first))
+        static_high = unicode(IPAddress(static_range.last))
+    else:
+        dynamic_range = managed_ip_range
+        static_low = None
+        static_high = None
     return {
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
         'subnet_mask': unicode(network.netmask),
         'broadcast_ip': unicode(network.broadcast),
         'router_ip': factory.getRandomIPInNetwork(network),
-        'ip_range_low': unicode(ip_range_low),
-        'ip_range_high': unicode(ip_range_high),
-        'static_ip_range_low': unicode(static_ip_range_low),
-        'static_ip_range_high': unicode(static_ip_range_high),
+        'ip_range_low': unicode(IPAddress(dynamic_range.first)),
+        'ip_range_high': unicode(IPAddress(dynamic_range.last)),
+        'static_ip_range_low': static_low,
+        'static_ip_range_high': static_high,
         'management': management,
     }
 

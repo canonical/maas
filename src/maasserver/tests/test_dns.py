@@ -352,7 +352,9 @@ class TestDNSConfigModifications(MAASServerTestCase):
         interface.broadcast_ip = '192.168.44.255'
         interface.netmask = '255.255.255.0'
         interface.ip_range_low = '192.168.44.0'
-        interface.ip_range_high = '192.168.44.255'
+        interface.ip_range_high = '192.168.44.128'
+        interface.static_ip_range_low = '192.168.44.129'
+        interface.static_ip_range_high = '192.168.44.255'
         interface.save()
         ip = factory.getRandomIPInNetwork(IPNetwork('192.168.44.1/24'))
         # The ip from the old network does not resolve anymore.

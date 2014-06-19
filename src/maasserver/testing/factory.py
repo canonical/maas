@@ -63,7 +63,10 @@ from metadataserver.models import (
     CommissioningScript,
     NodeCommissionResult,
     )
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPRange,
+    )
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
@@ -259,20 +262,32 @@ class Factory(maastesting.factory.Factory):
                              static_ip_range_high=None, **kwargs):
         if network is None:
             network = factory.getRandomNetwork()
+        # Split the network into dynamic and static ranges.
+        if len(network) > 2:
+            dynamic_range = IPRange(network.first, network[network.size//2])
+            static_range = IPRange(network[(network.size//2)+1], network.last)
+        else:
+            dynamic_range = network
+            static_range = None
         if subnet_mask is None:
             subnet_mask = unicode(network.netmask)
         if broadcast_ip is None:
             broadcast_ip = unicode(network.broadcast)
         if static_ip_range_low is None or static_ip_range_high is None:
-            static_low, static_high = self.make_ip_range()
-            if static_ip_range_low is None:
-                static_ip_range_low = unicode(static_low)
-            if static_ip_range_high is None:
-                static_ip_range_high = unicode(static_high)
+            if static_range is not None:
+                static_low = static_range.first
+                static_high = static_range.last
+                if static_ip_range_low is None:
+                    static_ip_range_low = unicode(IPAddress(static_low))
+                if static_ip_range_high is None:
+                    static_ip_range_high = unicode(IPAddress(static_high))
+            else:
+                static_ip_range_low = None
+                static_ip_range_high = None
         if ip_range_low is None:
-            ip_range_low = unicode(IPAddress(network.first))
+            ip_range_low = unicode(IPAddress(dynamic_range.first))
         if ip_range_high is None:
-            ip_range_high = unicode(IPAddress(network.last))
+            ip_range_high = unicode(IPAddress(dynamic_range.last))
         if router_ip is None:
             router_ip = factory.getRandomIPInNetwork(network)
         if ip is None:
@@ -408,11 +423,8 @@ class Factory(maastesting.factory.Factory):
         """
         nodegroup = self.make_node_group()
         node = self.make_node(mac=True, nodegroup=nodegroup, **kwargs)
-        low_ip, high_ip = factory.make_ip_range()
         ngi = self.make_node_group_interface(
-            nodegroup, static_ip_range_low=low_ip.ipv4().format(),
-            static_ip_range_high=high_ip.ipv4().format(),
-            management=management)
+            nodegroup, management=management)
         mac = node.get_primary_mac()
         mac.cluster_interface = ngi
         mac.save()

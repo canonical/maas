@@ -282,11 +282,10 @@ class TestDHCP(MAASServerTestCase):
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
 
-        low, high = factory.make_ip_range(
-            interface.network,
-            but_not=(interface.ip_range_low, interface.ip_range_high))
-        interface.ip_range_low = unicode(low)
-        interface.ip_range_high = unicode(high)
+        interface.ip_range_low = unicode(
+            IPAddress(interface.ip_range_low) + 1)
+        interface.ip_range_high = unicode(
+            IPAddress(interface.ip_range_high) - 1)
         interface.save()
 
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)

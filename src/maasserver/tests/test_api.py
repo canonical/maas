@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from functools import partial
 import httplib
 from itertools import izip
 import json
@@ -64,6 +63,7 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
     )
+from netaddr import IPAddress
 
 
 class TestAuthentication(MAASServerTestCase):
@@ -626,11 +626,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         interface = factory.make_node_group_interface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.client = make_worker_client(nodegroup)
-        get_ip_in_network = partial(
-            factory.getRandomIPInNetwork, interface.network)
-        new_ip_range_high = next(
-            ip for ip in iter(get_ip_in_network, None)
-            if ip != interface.ip_range_high)
+        new_ip_range_high = IPAddress(interface.ip_range_high) - 1
         response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',
@@ -682,11 +678,8 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         self.become_admin()
         nodegroup = factory.make_node_group()
         [interface] = nodegroup.get_managed_interfaces()
-        get_ip_in_network = partial(
-            factory.getRandomIPInNetwork, interface.network)
-        new_ip_range_high = next(
-            ip for ip in iter(get_ip_in_network, None)
-            if ip != interface.ip_range_high)
+        new_ip_range_high = unicode(
+            IPAddress(interface.ip_range_high) - 1)
         response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',

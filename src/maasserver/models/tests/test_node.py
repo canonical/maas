@@ -1567,10 +1567,8 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         # Add some MACs attached to managed interfaces.
         number_of_macs = 2
         for _ in range(0, number_of_macs):
-            low_ip, high_ip = factory.make_ip_range()
             ngi = factory.make_node_group_interface(
-                nodegroup, static_ip_range_low=low_ip.ipv4().format(),
-                static_ip_range_high=high_ip.ipv4().format(),
+                nodegroup,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
             factory.make_mac_address(node=node, cluster_interface=ngi)
 
