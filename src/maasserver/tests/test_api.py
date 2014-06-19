@@ -57,13 +57,13 @@ from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
+from netaddr import IPAddress
 from testtools.matchers import (
     Contains,
     Equals,
     MatchesListwise,
     MatchesStructure,
     )
-from netaddr import IPAddress
 
 
 class TestAuthentication(MAASServerTestCase):

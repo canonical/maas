@@ -61,6 +61,8 @@ from maasserver.views.nodes import (
 from maasserver.views.prefs import (
     SSHKeyCreateView,
     SSHKeyDeleteView,
+    SSLKeyCreateView,
+    SSLKeyDeleteView,
     userprefsview,
     )
 from maasserver.views.settings import (
@@ -117,6 +119,12 @@ urlpatterns += patterns(
     url(
         r'^account/prefs/sshkey/delete/(?P<keyid>\d*)/$',
         SSHKeyDeleteView.as_view(), name='prefs-delete-sshkey'),
+    url(
+        r'^account/prefs/sslkey/add/$', SSLKeyCreateView.as_view(),
+        name='prefs-add-sslkey'),
+    url(
+        r'^account/prefs/sslkey/delete/(?P<keyid>\d*)/$',
+        SSLKeyDeleteView.as_view(), name='prefs-delete-sslkey'),
     )
 # Logout view.
 urlpatterns += patterns(

@@ -50,6 +50,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     SSHKey,
+    SSLKey,
     )
 from maasserver.models.tag import Tag
 from maasserver.populate_tags import populate_tags_for_single_node
@@ -286,7 +287,7 @@ class VersionIndexHandler(MetadataViewHandler):
 class MetaDataHandler(VersionIndexHandler):
     """Meta-data listing for a given version."""
 
-    fields = ('instance-id', 'local-hostname', 'public-keys')
+    fields = ('instance-id', 'local-hostname', 'public-keys', 'x509')
 
     def get_attribute_producer(self, item):
         """Return a callable to deliver a given metadata item.
@@ -307,6 +308,7 @@ class MetaDataHandler(VersionIndexHandler):
             'local-hostname': self.local_hostname,
             'instance-id': self.instance_id,
             'public-keys': self.public_keys,
+            'x509': self.ssl_certs,
         }
 
         return producers[field]
@@ -341,6 +343,11 @@ class MetaDataHandler(VersionIndexHandler):
         """ Produce public-keys attribute."""
         return make_list_response(
             SSHKey.objects.get_keys_for_user(user=node.owner))
+
+    def ssl_certs(self, node, version, item):
+        """ Produce x509 certs attribute. """
+        return make_list_response(
+            SSLKey.objects.get_keys_for_user(user=node.owner))
 
 
 class UserDataHandler(MetadataViewHandler):

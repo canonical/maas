@@ -37,6 +37,7 @@ __all__ = [
     "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
     "SSHKeyForm",
+    "SSLKeyForm",
     "TagForm",
     "ThirdPartyDriversForm",
     "UbuntuForm",
@@ -103,6 +104,7 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     SSHKey,
+    SSLKey,
     Tag,
     Zone,
     )
@@ -596,17 +598,11 @@ class MACAddressForm(ModelForm):
         return mac
 
 
-class SSHKeyForm(ModelForm):
-    key = forms.CharField(
-        label="Public key",
-        widget=forms.Textarea(attrs={'rows': '5', 'cols': '30'}),
-        required=True)
-
-    class Meta:
-        model = SSHKey
+class KeyForm(ModelForm):
+    """Base class for `SSHKeyForm` and `SSLKeyForm`."""
 
     def __init__(self, user, *args, **kwargs):
-        super(SSHKeyForm, self).__init__(*args, **kwargs)
+        super(KeyForm, self).__init__(*args, **kwargs)
         self.user = user
 
     def validate_unique(self):
@@ -633,6 +629,26 @@ class SSHKeyForm(ModelForm):
             # 'add key' form.
             error = e.message_dict.pop('__all__')
             self._errors.setdefault('key', self.error_class()).extend(error)
+
+
+class SSHKeyForm(KeyForm):
+    key = forms.CharField(
+        label="Public key",
+        widget=forms.Textarea(attrs={'rows': '5', 'cols': '30'}),
+        required=True)
+
+    class Meta:
+        model = SSHKey
+
+
+class SSLKeyForm(KeyForm):
+    key = forms.CharField(
+        label="SSL key",
+        widget=forms.Textarea(attrs={'rows': '15', 'cols': '30'}),
+        required=True)
+
+    class Meta:
+        model = SSLKey
 
 
 class MultipleMACAddressField(forms.MultiValueField):

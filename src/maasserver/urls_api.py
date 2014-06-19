@@ -47,6 +47,8 @@ from maasserver.api import (
     pxeconfig,
     SSHKeyHandler,
     SSHKeysHandler,
+    SSLKeyHandler,
+    SSLKeysHandler,
     TagHandler,
     TagsHandler,
     UserHandler,
@@ -91,6 +93,8 @@ commissioning_results_handler = RestrictedResource(
     CommissioningResultsHandler, authentication=api_auth)
 sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
 sshkeys_handler = RestrictedResource(SSHKeysHandler, authentication=api_auth)
+sslkey_handler = RestrictedResource(SSLKeyHandler, authentication=api_auth)
+sslkeys_handler = RestrictedResource(SSLKeysHandler, authentication=api_auth)
 user_handler = RestrictedResource(UserHandler, authentication=api_auth)
 users_handler = RestrictedResource(UsersHandler, authentication=api_auth)
 zone_handler = RestrictedResource(ZoneHandler, authentication=api_auth)
@@ -159,6 +163,10 @@ urlpatterns += patterns(
     url(r'^files/$', files_handler, name='files_handler'),
     url(r'^files/(?P<filename>.+)/$', file_handler, name='file_handler'),
     url(r'^account/$', account_handler, name='account_handler'),
+    url(
+        r'^account/prefs/sslkeys/(?P<keyid>[^/]+)/$', sslkey_handler,
+        name='sslkey_handler'),
+    url(r'^account/prefs/sslkeys/$', sslkeys_handler, name='sslkeys_handler'),
     url(
         r'^account/prefs/sshkeys/(?P<keyid>[^/]+)/$', sshkey_handler,
         name='sshkey_handler'),

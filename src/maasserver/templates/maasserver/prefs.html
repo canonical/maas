@@ -60,6 +60,26 @@
          class="button right space-top">+ Add SSH key</a>
     </div>
     <div class="clear"></div>
+    <div id="ssl-keys">
+      <h3>SSL keys</h3>
+      <ul class="list">
+        {% for key in user.sslkey_set.all %}
+          <li>
+          <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
+              <img title="Delete SSL key"
+                   src="{{ STATIC_URL }}img/delete.png" />
+            </a>
+            {{ key.display_html }}
+          </li>
+        {% empty %}
+          No SSL key configured.
+        {% endfor %}
+      </ul>
+      <a href="{% url 'prefs-add-sslkey' %}"
+         id="add_ssl_key"
+         class="button right space-top">+ Add SSL key</a>
+    </div>
+    <div class="clear"></div>
     <div id="profile" class="block size7 first">
       <h2>User details</h2>
       <form action="." method="post">{% csrf_token %}

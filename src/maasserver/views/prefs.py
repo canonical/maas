@@ -31,8 +31,12 @@ from django.views.generic import CreateView
 from maasserver.forms import (
     ProfileForm,
     SSHKeyForm,
+    SSLKeyForm,
     )
-from maasserver.models import SSHKey
+from maasserver.models import (
+    SSHKey,
+    SSLKey,
+    )
 from maasserver.views import (
     HelpfulDeleteView,
     process_form,
@@ -54,6 +58,41 @@ class SSHKeyCreateView(CreateView):
         return super(SSHKeyCreateView, self).form_valid(form)
 
     def get_success_url(self):
+        return reverse('prefs')
+
+
+class SSLKeyCreateView(CreateView):
+
+    form_class = SSLKeyForm
+    template_name = 'maasserver/prefs_add_sslkey.html'
+
+    def get_form_kwargs(self):
+        kwargs = super(SSLKeyCreateView, self).get_form_kwargs()
+        kwargs['user'] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        messages.info(self.request, "SSL key added.")
+        return super(SSLKeyCreateView, self).form_valid(form)
+
+    def get_success_url(self):
+        return reverse('prefs')
+
+
+class SSLKeyDeleteView(HelpfulDeleteView):
+
+    template_name = 'maasserver/prefs_confirm_delete_sslkey.html'
+    context_object_name = 'sslkey'
+    model = SSLKey
+
+    def get_object(self):
+        keyid = self.kwargs.get('keyid', None)
+        key = get_object_or_404(SSLKey, id=keyid)
+        if key.user != self.request.user:
+            raise PermissionDenied("Can't delete this key.  It's not yours.")
+        return key
+
+    def get_next_url(self):
         return reverse('prefs')
 
 
