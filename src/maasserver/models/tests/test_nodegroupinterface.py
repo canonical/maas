@@ -28,7 +28,10 @@ from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from provisioningserver.utils.network import make_network
 
 
@@ -219,6 +222,48 @@ class TestNodeGroupInterface(MAASServerTestCase):
         interface.ip_range_high = '10.1.1.20'
         interface.static_ip_range_low = '10.1.1.15'
         interface.static_ip_range_high = '10.1.1.25'
+        exception = self.assertRaises(
+            ValidationError, interface.full_clean)
+        message = "Static and dynamic IP ranges may not overlap."
+        errors = {
+            'ip_range_low': [message],
+            'ip_range_high': [message],
+            'static_ip_range_low': [message],
+            'static_ip_range_high': [message],
+            }
+        self.assertEqual(errors, exception.message_dict)
+
+    def test_clean_ip_ranges_works_with_ipv6_ranges(self):
+        network = IPNetwork(
+            "%s/124" % unicode(factory.getRandomIPv6Address()))
+        interface = make_interface(network)
+        interface.ip_range_low = unicode(IPAddress(network.first))
+        interface.ip_range_high = unicode(IPAddress(network[8]))
+        interface.static_ip_range_low = unicode(
+            IPAddress(network[6]))
+        interface.static_ip_range_high = unicode(
+            IPAddress(network.last))
+        exception = self.assertRaises(
+            ValidationError, interface.full_clean)
+        message = "Static and dynamic IP ranges may not overlap."
+        errors = {
+            'ip_range_low': [message],
+            'ip_range_high': [message],
+            'static_ip_range_low': [message],
+            'static_ip_range_high': [message],
+            }
+        self.assertEqual(errors, exception.message_dict)
+
+    def clean_ip_ranges_works_with_mixed_ranges(self):
+        # No-one sane would ever declare this network, most likely, but
+        # we should test for it because the world has insane people in
+        # it.
+        network = IPNetwork('::ffff:192.168.0.0/64')
+        interface = make_interface(network)
+        interface.ip_range_low = '::ffff:192.168.0.1'
+        interface.ip_range_high = '::ffff:ffff:ffff:ffff:ffff'
+        interface.static_ip_range_low = '192.168.0.100'
+        interface.static_ip_range_high = '192.168.0.255'
         exception = self.assertRaises(
             ValidationError, interface.full_clean)
         message = "Static and dynamic IP ranges may not overlap."

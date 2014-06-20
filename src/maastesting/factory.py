@@ -121,6 +121,16 @@ class Factory:
         octets = islice(self.random_octets, 4)
         return '%d.%d.%d.%d' % tuple(octets)
 
+    def getRandomIPv6Address(self):
+        # We return from the fc00::/7 space because that's a private
+        # space and shouldn't cause problems of addressing the outside
+        # world.
+        network = IPNetwork('fc00::/7')
+        # We can't use random.choice() because there are too many
+        # elements in network.
+        random_address_index = random.randint(0, network.size)
+        return IPAddress(network[random_address_index])
+
     def getRandomUUID(self):
         return unicode(uuid1())
 
