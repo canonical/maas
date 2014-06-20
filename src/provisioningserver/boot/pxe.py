@@ -32,8 +32,8 @@ BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
 
 # Possible locations in which to find the files. Search these in this
 # order for each file.  (This exists because locations differ across
-# Ubuntu releases)
-BOOTLOADER_DIRS = ['/usr/lib/syslinux', '/usr/lib/syslinux/bios']
+# Ubuntu releases.)
+BOOTLOADER_DIRS = ['/usr/lib/syslinux', '/usr/lib/syslinux/modules/bios']
 
 
 class ARP_HTYPE:
