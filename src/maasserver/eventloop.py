@@ -117,6 +117,19 @@ def disable_all_database_connections():
     Specifically, instances of :py:class:`~DisabledDatabaseConnection`.
     This should help prevent accidental use of the database from the
     reactor thread.
+
+    Why?
+
+    Database access means blocking IO, at least with the connections
+    that Django hands out. While blocking IO isn't forbidden in the
+    reactor thread, it ought to be avoided, because the reactor can't do
+    anything else while it's happening, like handling other IO, or
+    running delayed calls.
+
+    Django's transaction and connection management code also assumes
+    threads: it associates connections and transactions with the current
+    thread, using threading.local. Using the database from the reactor
+    thread is a recipe for intermingled transactions.
     """
     for alias in connections:
         connection = connections[alias]
