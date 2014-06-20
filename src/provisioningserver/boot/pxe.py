@@ -27,10 +27,13 @@ from provisioningserver.boot import (
     )
 from provisioningserver.boot.install_bootloader import install_bootloader
 
-
+# Bootloader file names to install.
 BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
 
-BOOTLOADER_DIR = '/usr/lib/syslinux'
+# Possible locations in which to find the files. Search these in this
+# order for each file.  (This exists because locations differ across
+# Ubuntu releases)
+BOOTLOADER_DIRS = ['/usr/lib/syslinux', '/usr/lib/syslinux/bios']
 
 
 class ARP_HTYPE:
@@ -107,11 +110,25 @@ class PXEBootMethod(BootMethod):
         namespace = self.compose_template_namespace(kernel_params)
         return BytesReader(template.substitute(namespace).encode("utf-8"))
 
+    def locate_bootloader(self, bootloader):
+        """Search BOOTLOADER_DIRS for bootloader.
+
+        :return: The full file path where the bootloader was found, or None.
+        """
+        for dir in BOOTLOADER_DIRS:
+            filename = os.path.join(dir, bootloader)
+            if os.path.exists(filename):
+                return filename
+        return None
+
     def install_bootloader(self, destination):
         """Installs the required files for PXE booting into the
         tftproot.
         """
         for bootloader in BOOTLOADERS:
-            bootloader_src = os.path.join(BOOTLOADER_DIR, bootloader)
+            # locate_bootloader might return None but happy to let that
+            # traceback here is it should never happen unless there's a
+            # serious problem with packaging.
+            bootloader_src = self.locate_bootloader(bootloader)
             bootloader_dst = os.path.join(destination, bootloader)
             install_bootloader(bootloader_src, bootloader_dst)

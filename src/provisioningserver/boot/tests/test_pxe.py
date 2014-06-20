@@ -15,14 +15,21 @@ __metaclass__ = type
 __all__ = []
 
 from collections import OrderedDict
+import os
 import re
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
+import mock
 from provisioningserver import kernel_opts
-from provisioningserver.boot import BytesReader
+from provisioningserver.boot import (
+    BytesReader,
+    pxe as pxe_module,
+    )
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
+    BOOTLOADERS,
     PXEBootMethod,
     re_config_file,
     )
@@ -67,6 +74,18 @@ class TestPXEBootMethod(MAASTestCase):
         self.useFixture(set_tftp_root(tftproot))
         return tftproot
 
+    def make_dummy_bootloader_sources(self, destination, loader_names):
+        """install_bootloader requires real files to exist, this method
+        creates them in the requested location.
+
+        :return: list of created filenames
+        """
+        created = []
+        for loader in loader_names:
+            name = factory.make_file(destination, loader)
+            created.append(name)
+        return created
+
     def test_compose_config_path_follows_maas_pxe_directory_layout(self):
         name = factory.make_name('config')
         self.assertEqual(
@@ -102,6 +121,44 @@ class TestPXEBootMethod(MAASTestCase):
     def test_arch_octet(self):
         method = PXEBootMethod()
         self.assertEqual('00:00', method.arch_octet)
+
+    def test_locate_bootloader(self):
+        # Put all the BOOTLOADERS except one in dir1, and the last in
+        # dir2.
+        dir1 = self.make_dir()
+        dir2 = self.make_dir()
+        dirs = [dir1, dir2]
+        self.patch(pxe_module, "BOOTLOADER_DIRS", dirs)
+        self.make_dummy_bootloader_sources(dir1, BOOTLOADERS[:-1])
+        [displaced_loader] = self.make_dummy_bootloader_sources(
+            dir2, BOOTLOADERS[-1:])
+        method = PXEBootMethod()
+        observed = method.locate_bootloader(BOOTLOADERS[-1])
+
+        self.assertEqual(displaced_loader, observed)
+
+    def test_locate_bootloader_returns_None_if_not_found(self):
+        method = PXEBootMethod()
+        self.assertIsNone(method.locate_bootloader("foo"))
+
+    def test_install_bootloader_installs_to_destination(self):
+        tftproot = self.make_tftp_root()
+        source_dir = self.make_dir()
+        self.patch(pxe_module, "BOOTLOADER_DIRS", [source_dir])
+        self.make_dummy_bootloader_sources(source_dir, BOOTLOADERS)
+        install_bootloader_call = self.patch(pxe_module, "install_bootloader")
+        method = PXEBootMethod()
+        method.install_bootloader(tftproot)
+
+        expected = [
+            mock.call(
+                os.path.join(source_dir, bootloader),
+                os.path.join(tftproot, bootloader)
+            )
+            for bootloader in BOOTLOADERS]
+        self.assertThat(
+            install_bootloader_call,
+            MockCallsMatch(*expected))
 
 
 def parse_pxe_config(text):
