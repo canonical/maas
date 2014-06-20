@@ -121,9 +121,12 @@ class OperatingSystemRegistry(Registry):
 
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.drivers.osystem.centos import CentOS
+from provisioningserver.drivers.osystem.windows import WindowsOS
+
 builtin_osystems = [
     UbuntuOS(),
     CentOS(),
+    WindowsOS(),
     ]
 for osystem in builtin_osystems:
     OperatingSystemRegistry.register_item(osystem.name, osystem)

@@ -24,6 +24,7 @@ python-django-south
 python-djorm-ext-pgarray
 python-docutils
 python-formencode
+python-hivex
 python-httplib2
 python-jsonschema
 python-lockfile

@@ -19,7 +19,10 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.boot import BytesReader
+from provisioningserver.boot import (
+    BytesReader,
+    powernv as powernv_module,
+    )
 from provisioningserver.boot.powernv import (
     ARP_HTYPE,
     format_bootif,
@@ -134,7 +137,7 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
     def test_match_path_pxe_config_without_mac(self):
         method = PowerNVBootMethod()
         fake_mac = factory.getRandomMACAddress()
-        self.patch(method, 'get_remote_mac').return_value = fake_mac
+        self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
         config_path = 'ppc64el/pxelinux.cfg/default'
         params = method.match_path(None, config_path)
         expected = {
@@ -146,7 +149,7 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
     def test_match_path_pxe_prefix_request(self):
         method = PowerNVBootMethod()
         fake_mac = factory.getRandomMACAddress()
-        self.patch(method, 'get_remote_mac').return_value = fake_mac
+        self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
         file_path = 'ppc64el/file'
         params = method.match_path(None, file_path)
         expected = {

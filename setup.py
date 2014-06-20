@@ -103,7 +103,8 @@ setup(
              'contrib/preseeds_v2/preseed_master']),
         ('/usr/sbin', ['scripts/maas-import-pxe-files']),
         ('/usr/bin',
-            ['scripts/uec2roottar']),
+            ['scripts/uec2roottar',
+             'scripts/maas-generate-winrm-cert']),
     ],
 
     install_requires=[

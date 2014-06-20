@@ -58,8 +58,8 @@ def compose_config_path(mac=None, arch=None, subarch=None):
     return "grub/grub.cfg"
 
 
-class TestRenderUEFIConfig(MAASTestCase):
-    """Tests for `provisioningserver.boot.uefi.UEFIBootMethod`."""
+class TestUEFIBootMethodRender(MAASTestCase):
+    """Tests for `provisioningserver.boot.uefi.UEFIBootMethod.render`."""
 
     def test_get_reader(self):
         # Given the right configuration options, the UEFI configuration is

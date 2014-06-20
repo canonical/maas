@@ -205,8 +205,8 @@ class TestParsePXEConfig(MAASTestCase):
         self.assertEqual({}, config)
 
 
-class TestPXEBootMethodRenderConfig(MAASTestCase):
-    """Tests for `provisioningserver.boot.pxe.PXEBootMethod.render_config`."""
+class TestPXEBootMethodRender(MAASTestCase):
+    """Tests for `provisioningserver.boot.pxe.PXEBootMethod.render`."""
 
     def test_get_reader_install(self):
         # Given the right configuration options, the PXE configuration is

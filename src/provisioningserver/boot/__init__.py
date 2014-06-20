@@ -28,10 +28,14 @@ from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import (
+    find_mac_via_arp,
+    locate_config,
+    )
 from provisioningserver.utils.registry import Registry
 import tempita
 from tftp.backend import IReader
+from twisted.python.context import get
 from zope.interface import implementer
 
 
@@ -92,6 +96,16 @@ def gen_template_filenames(purpose, arch, subarch):
         yield "config.%s.template" % ".".join(elements)
         elements.pop()
     yield "config.template"
+
+
+def get_remote_mac():
+    """Gets the requestors MAC address from arp cache.
+
+    This is used, when the dhcp lease file is not up-to-date soon enough
+    to extract the MAC address from the IP address assigned by dhcp.
+    """
+    remote_host, remote_port = get("remote", (None, None))
+    return find_mac_via_arp(remote_host)
 
 
 class BootMethod:
@@ -228,6 +242,7 @@ from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.uefi import UEFIBootMethod
 from provisioningserver.boot.powerkvm import PowerKVMBootMethod
 from provisioningserver.boot.powernv import PowerNVBootMethod
+from provisioningserver.boot.windows import WindowsPXEBootMethod
 
 
 builtin_boot_methods = [
@@ -235,6 +250,7 @@ builtin_boot_methods = [
     UEFIBootMethod(),
     PowerKVMBootMethod(),
     PowerNVBootMethod(),
+    WindowsPXEBootMethod(),
 ]
 for method in builtin_boot_methods:
     BootMethodRegistry.register_item(method.name, method)

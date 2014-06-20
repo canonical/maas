@@ -19,6 +19,7 @@ import os
 
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import boot
@@ -26,8 +27,12 @@ from provisioningserver.boot import (
     BootMethod,
     BytesReader,
     gen_template_filenames,
+    get_remote_mac,
     )
 import tempita
+from testtools.deferredruntest import AsynchronousDeferredRunTest
+from twisted.internet.defer import inlineCallbacks
+from twisted.python import context
 
 
 class FakeBootMethod(BootMethod):
@@ -49,6 +54,24 @@ class FakeBootMethod(BootMethod):
 
 class TestBootMethod(MAASTestCase):
     """Test for `BootMethod` in `provisioningserver.boot`."""
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_get_remote_mac(self):
+        remote_host = factory.getRandomIPAddress()
+        call_context = {
+            "local": (
+                factory.getRandomIPAddress(),
+                factory.getRandomPort()),
+            "remote": (
+                remote_host,
+                factory.getRandomPort()),
+            }
+
+        mock_find = self.patch(boot, 'find_mac_via_arp')
+        yield context.call(call_context, get_remote_mac)
+        self.assertThat(mock_find, MockCalledOnceWith(remote_host))
 
     def test_gen_template_filenames(self):
         purpose = factory.make_name("purpose")

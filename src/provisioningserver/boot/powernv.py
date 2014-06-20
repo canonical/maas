@@ -22,15 +22,14 @@ from provisioningserver.boot import (
     BootMethod,
     BytesReader,
     get_parameters,
+    get_remote_mac,
     )
 from provisioningserver.boot.pxe import (
     ARP_HTYPE,
     re_mac_address,
     )
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.utils import find_mac_via_arp
 from tftp.backend import FilesystemReader
-from twisted.python.context import get
 
 # The pxelinux.cfg path is prefixed with the architecture for the
 # PowerNV nodes. This prefix is set by the path-prefix dhcpd option.
@@ -74,16 +73,6 @@ class PowerNVBootMethod(BootMethod):
     arch_octet = "00:0E"
     path_prefix = "ppc64el/"
 
-    def get_remote_mac(self):
-        """Gets the requestors MAC address from arp cache.
-
-        This is used, when the pxelinux.cfg is requested without the mac
-        address appended. This is needed to inject the BOOTIF into the
-        pxelinux.cfg that is returned to the node.
-        """
-        remote_host, remote_port = get("remote", (None, None))
-        return find_mac_via_arp(remote_host)
-
     def get_params(self, backend, path):
         """Gets the matching parameters from the requested path."""
         match = re_config_file.match(path)
@@ -106,7 +95,7 @@ class PowerNVBootMethod(BootMethod):
             return None
         params['arch'] = "ppc64el"
         if 'mac' not in params:
-            mac = self.get_remote_mac()
+            mac = get_remote_mac()
             if mac is not None:
                 params['mac'] = mac
         return params

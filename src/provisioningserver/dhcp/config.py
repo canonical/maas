@@ -60,7 +60,7 @@ def compose_conditional_bootloader():
     output = ""
     behaviour = chain(["if"], repeat("elsif"))
     for name, method in BootMethodRegistry:
-        if name != "pxe":
+        if name != "pxe" and method.arch_octet is not None:
             output += tempita.sub(
                 CONDITIONAL_BOOTLOADER,
                 behaviour=next(behaviour),
