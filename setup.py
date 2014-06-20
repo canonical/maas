@@ -100,7 +100,15 @@ setup(
              'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/curtin',
              'contrib/preseeds_v2/curtin_userdata',
-             'contrib/preseeds_v2/preseed_master']),
+             'contrib/preseeds_v2/preseed_master',
+             'contrib/preseeds_v2/'
+             'preseed_master_windows_amd64_generic_win2012',
+             'contrib/preseeds_v2/'
+             'preseed_master_windows_amd64_generic_win2012hv',
+             'contrib/preseeds_v2/'
+             'preseed_master_windows_amd64_generic_win2012hvr2',
+             'contrib/preseeds_v2/'
+             'preseed_master_windows_amd64_generic_win2012r2']),
         ('/usr/sbin', ['scripts/maas-import-pxe-files']),
         ('/usr/bin',
             ['scripts/uec2roottar',
