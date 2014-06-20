@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Bytes",
     "StructureAsJSON",
 ]
 
@@ -20,6 +21,23 @@ import json
 import zlib
 
 from twisted.protocols import amp
+
+
+class Bytes(amp.Argument):
+    """Encode a structure on the wire as bytes.
+
+    In truth, this does nothing more than assert that the inputs are
+    always bytes.
+    """
+
+    def toString(self, inObject):
+        if not isinstance(inObject, bytes):
+            raise TypeError("Not a byte string: %r" % (inObject,))
+        return inObject
+
+    def fromString(self, inString):
+        # inString is always a byte string, as defined by amp.Argument.
+        return inString
 
 
 class StructureAsJSON(amp.Argument):

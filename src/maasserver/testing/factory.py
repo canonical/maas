@@ -828,10 +828,13 @@ class Factory(maastesting.factory.Factory):
         # Only set _one_ of keyring_filename and keyring_data.
         if keyring_filename is None and keyring_data is None:
             keyring_filename = self.make_name("keyring")
-            keyring_data = b''
         boot_source = BootSource(
-            cluster=cluster, url=url, keyring_filename=keyring_filename,
-            keyring_data=keyring_data)
+            cluster=cluster, url=url,
+            keyring_filename=(
+                "" if keyring_filename is None else keyring_filename),
+            keyring_data=(
+                b"" if keyring_data is None else keyring_data),
+        )
         boot_source.save()
         return boot_source
 

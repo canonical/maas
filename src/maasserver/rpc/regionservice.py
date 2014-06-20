@@ -29,6 +29,7 @@ from maasserver import (
     eventloop,
     locks,
     )
+from maasserver.rpc import bootsources
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
 from provisioningserver.rpc import (
@@ -104,6 +105,17 @@ class Region(amp.AMP):
             "tls_localCertificate": tls_localCertificate,
             "tls_verifyAuthorities": tls_verifyAuthorities,
         }
+
+    @region.GetBootSources.responder
+    def get_boot_sources(self, uuid):
+        """get_boot_sources()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetBootSources`.
+        """
+        d = deferToThread(bootsources.get_boot_sources, uuid)
+        d.addCallback(lambda sources: {b"sources": sources})
+        return d
 
 
 @implementer(IConnection)

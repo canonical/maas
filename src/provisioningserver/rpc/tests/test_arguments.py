@@ -14,12 +14,29 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import arguments
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     IsInstance,
     )
+
+
+class TestBytes(MAASTestCase):
+
+    def test_round_trip(self):
+        argument = arguments.Bytes()
+        example = factory.getRandomBytes()
+        encoded = argument.toString(example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(example))
+
+    def test_error_when_input_is_not_a_byte_string(self):
+        with ExpectedException(TypeError, "^Not a byte string: <.*"):
+            arguments.Bytes().toString(object())
 
 
 class TestStructureAsJSON(MAASTestCase):

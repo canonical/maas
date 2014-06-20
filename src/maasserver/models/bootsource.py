@@ -83,6 +83,8 @@ class BootSource(CleanSave, TimestampedModel):
                 keyring_data = keyring_file.read()
         return {
             "url": self.url,
+            # TODO: Don't encode once this no longer needs to be
+            # transmitted to a Celery task.
             "keyring_data": b64encode(keyring_data),
             "selections": [
                 selection.to_dict()

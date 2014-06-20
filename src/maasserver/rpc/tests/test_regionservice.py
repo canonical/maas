@@ -37,8 +37,9 @@ from maasserver.rpc.regionservice import (
     RegionService,
     )
 from maasserver.rpc.testing.doubles import IdentifyingRegionServer
+from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.factory import factory
+from maasserver.utils.async import transactional
 from maastesting.matchers import (
     MockCalledOnceWith,
     Provides,
@@ -51,6 +52,7 @@ from provisioningserver.rpc import (
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
+    GetBootSources,
     Identify,
     ReportBootImages,
     )
@@ -195,6 +197,51 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
             self.assertEqual({}, response)
 
         return d.addCallback(check)
+
+
+class TestRegionProtocol_GetBootSources(MAASTestCase):
+
+    def test_get_boot_sources_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetBootSources.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    def test_get_boot_sources_can_be_called(self):
+        uuid = factory.make_name("uuid")
+
+        d = call_responder(Region(), GetBootSources, {b"uuid": uuid})
+
+        def check(response):
+            self.assertEqual({b"sources": []}, response)
+
+        return d.addCallback(check)
+
+    @transactional
+    def make_boot_source_selection(self, keyring):
+        nodegroup = factory.make_node_group()
+        boot_source = factory.make_boot_source(
+            nodegroup, keyring_data=keyring)
+        factory.make_boot_source_selection(boot_source)
+        return nodegroup.uuid, boot_source.to_dict()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_boot_sources_with_real_cluster(self):
+        keyring = factory.getRandomBytes()
+
+        uuid, boot_source = yield deferToThread(
+            self.make_boot_source_selection, keyring)
+
+        # To the cluster there's no distinction between the keyring file
+        # and keyring data, so it's passed as keyring.
+        boot_source["keyring"] = keyring
+        del boot_source["keyring_data"]
+
+        response = yield call_responder(
+            Region(), GetBootSources, {b"uuid": uuid})
+
+        self.assertEqual({b"sources": [boot_source]}, response)
 
 
 class TestRegionServer(MAASServerTestCase):
