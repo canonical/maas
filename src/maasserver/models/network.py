@@ -35,9 +35,9 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
-from maasserver.utils.network import make_network
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
+from provisioningserver.utils.network import make_network
 
 # Network name validator.  Must consist of alphanumerical characters and/or
 # dashes.

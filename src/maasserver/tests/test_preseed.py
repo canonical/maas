@@ -57,8 +57,8 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from maasserver.utils.network import make_network
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
+from provisioningserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
     Contains,

@@ -28,11 +28,11 @@ from maasserver.models.network import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.network import make_network
 from netaddr import (
     IPAddress,
     IPNetwork,
     )
+from provisioningserver.utils.network import make_network
 
 
 class TestNameSpecifier(MAASServerTestCase):

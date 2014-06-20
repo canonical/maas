@@ -34,13 +34,13 @@ from maasserver.enum import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
-from maasserver.utils.network import make_network
 from netaddr import (
     IPAddress,
     IPRange,
     IPSet,
     )
 from netaddr.core import AddrFormatError
+from provisioningserver.utils.network import make_network
 
 # The minimum number of leading bits of the routing prefix for a
 # network.  A smaller number will be rejected as it creates a huge

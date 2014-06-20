@@ -116,7 +116,6 @@ from maasserver.node_action import (
     )
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.network import make_network
 from maasserver.utils.osystems import (
     get_distro_series_inital,
     get_release_requires_key,
@@ -128,6 +127,7 @@ from maasserver.utils.osystems import (
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.utils.network import make_network
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')

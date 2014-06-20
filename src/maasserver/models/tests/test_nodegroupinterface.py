@@ -28,8 +28,8 @@ from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.network import make_network
 from netaddr import IPNetwork
+from provisioningserver.utils.network import make_network
 
 
 def make_interface(network=None):

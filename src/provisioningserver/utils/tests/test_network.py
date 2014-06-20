@@ -14,11 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.utils import network as network_module
-from maasserver.utils.network import make_network
 from maastesting.testcase import MAASTestCase
 import mock
 from netaddr import IPNetwork
+from provisioningserver.utils import network as network_module
+from provisioningserver.utils.network import make_network
 
 
 class TestMakeNetwork(MAASTestCase):
