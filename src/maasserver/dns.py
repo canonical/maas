@@ -43,10 +43,7 @@ from maasserver.sequence import (
     Sequence,
     )
 from maasserver.server_address import get_maas_facing_server_address
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    )
+from netaddr import IPAddress
 from provisioningserver import tasks
 from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
@@ -91,7 +88,7 @@ WARNING_MESSAGE = (
 
 def warn_loopback(ip):
     """Warn if the given IP address is in the loopback network."""
-    if IPAddress(ip) in IPNetwork('127.0.0.1/8'):
+    if IPAddress(ip).is_loopback():
         logger.warn(WARNING_MESSAGE % ip)
 
 

@@ -38,7 +38,10 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from mock import (
     ANY,
     call,
@@ -131,6 +134,35 @@ class TestDNSUtilities(MAASServerTestCase):
         self.assertEqual(
             (ip, [(hostname, )]),
             (dns.get_dns_server_address(nodegroup), resolver.extract_args()))
+
+    def test_warn_loopback_warns_about_IPv4_loopback(self):
+        logger = self.patch(dns, 'logger')
+        loopback = '127.0.0.1'
+        dns.warn_loopback(loopback)
+        self.assertThat(
+            logger.warn, MockCalledOnceWith(dns.WARNING_MESSAGE % loopback))
+
+    def test_warn_loopback_warns_about_any_IPv4_loopback(self):
+        logger = self.patch(dns, 'logger')
+        loopback = '127.254.100.99'
+        dns.warn_loopback(loopback)
+        self.assertThat(logger.warn, MockCalledOnceWith(ANY))
+
+    def test_warn_loopback_warns_about_IPv6_loopback(self):
+        logger = self.patch(dns, 'logger')
+        loopback = '::1'
+        dns.warn_loopback(loopback)
+        self.assertThat(logger.warn, MockCalledOnceWith(ANY))
+
+    def test_warn_loopback_does_not_warn_about_sensible_IPv4(self):
+        logger = self.patch(dns, 'logger')
+        dns.warn_loopback('10.1.2.3')
+        self.assertThat(logger.warn, MockNotCalled())
+
+    def test_warn_loopback_does_not_warn_about_sensible_IPv6(self):
+        logger = self.patch(dns, 'logger')
+        dns.warn_loopback('1::9')
+        self.assertThat(logger.warn, MockNotCalled())
 
 
 class TestLazyDict(TestCase):
