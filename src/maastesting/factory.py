@@ -121,7 +121,7 @@ class Factory:
         octets = islice(self.random_octets, 4)
         return '%d.%d.%d.%d' % tuple(octets)
 
-    def getRandomIPv6Address(self):
+    def get_random_ipv6_address(self):
         # We return from the fc00::/7 space because that's a private
         # space and shouldn't cause problems of addressing the outside
         # world.
@@ -134,7 +134,8 @@ class Factory:
     def getRandomUUID(self):
         return unicode(uuid1())
 
-    def getRandomNetwork(self, slash=None, but_not=None, disjoint_from=None):
+    def getRandomNetwork(self, slash=None, but_not=None, disjoint_from=None,
+                         random_address_factory=None):
         """Generate a random IP network.
 
         :param slash: Netmask or bit width of the network, e.g. 24 or
@@ -145,6 +146,9 @@ class Factory:
             these, but it won't be identical.
         :param disjoint_from: Optional iterable of `IPNetwork` objects whose
             IP ranges the new network must not overlap.
+        :param random_address_factory: A callable that returns a random IP
+            address. If not provided, will default to
+            Factory.getRandomIPAddress().
         :return: A network spanning at least 8 IP addresses (at most 29 bits).
         :rtype: :class:`IPNetwork`
         """
@@ -155,14 +159,38 @@ class Factory:
             disjoint_from = []
         if slash is None:
             slash = random.randint(16, 29)
+        if random_address_factory is None:
+            random_address_factory = self.getRandomIPAddress
         # Look randomly for a network that matches our criteria.
         for _ in range(100):
-            network = IPNetwork('%s/%s' % (self.getRandomIPAddress(), slash))
+            network = IPNetwork('%s/%s' % (random_address_factory(), slash))
             forbidden = (network in but_not)
             clashes = network_clashes(network, disjoint_from)
             if not forbidden and not clashes:
                 return network
         raise TooManyRandomRetries("Could not find available network")
+
+    def get_random_ipv6_network(self, slash=None, but_not=None,
+                                disjoint_from=None):
+        """Generate a random IPv6 network.
+
+        :param slash: Netmask or bit width of the network. If not
+            specified, will default to a bit width of between 112 (65536
+            addresses) and 125 (8 addresses);
+        :param but_not: Optional iterable of `IPNetwork` objects whose values
+            should not be returned.  Use this when you need a different network
+            from any returned previously.  The new network may overlap any of
+            these, but it won't be identical.
+        :param disjoint_from: Optional iterable of `IPNetwork` objects whose
+            IP ranges the new network must not overlap.
+        :return: A network spanning at least 8 IP addresses.
+        :rtype: :class:`IPNetwork`
+        """
+        if slash is None:
+            slash = random.randint(112, 125)
+        return self.getRandomNetwork(
+            slash=slash, but_not=but_not, disjoint_from=disjoint_from,
+            random_address_factory=self.get_random_ipv6_address)
 
     def getRandomIPInNetwork(self, network, but_not=None):
         if but_not is None:
@@ -195,6 +223,17 @@ class Factory:
             if ip_range[0] < ip_range[1] and ip_range != but_not:
                 return ip_range
         raise TooManyRandomRetries("Could not find available IP range")
+
+    def make_ipv6_range(self, network=None, but_not=None):
+        """Return a pair of IPv6 addresses.
+
+        :param network: Return IP addresses within this network.
+        :param but_not: A pair of addresses that should not be returned.
+        :return: A pair of `IPAddress`.
+        """
+        if network is None:
+            network = self.getRandomIPv6Network()
+        return self.make_ip_range(network=network, but_not=but_not)
 
     def getRandomMACAddress(self, delimiter=":"):
         assert isinstance(delimiter, unicode)

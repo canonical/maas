@@ -28,10 +28,7 @@ from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    )
+from netaddr import IPNetwork
 from provisioningserver.utils.network import make_network
 
 
@@ -234,15 +231,13 @@ class TestNodeGroupInterface(MAASServerTestCase):
         self.assertEqual(errors, exception.message_dict)
 
     def test_clean_ip_ranges_works_with_ipv6_ranges(self):
-        network = IPNetwork(
-            "%s/124" % unicode(factory.getRandomIPv6Address()))
+        network = factory.get_random_ipv6_network()
         interface = make_interface(network)
-        interface.ip_range_low = unicode(IPAddress(network.first))
-        interface.ip_range_high = unicode(IPAddress(network[8]))
-        interface.static_ip_range_low = unicode(
-            IPAddress(network[6]))
-        interface.static_ip_range_high = unicode(
-            IPAddress(network.last))
+        dynamic_low, dynamic_high = factory.make_ipv6_range(network)
+        interface.ip_range_low = unicode(dynamic_low)
+        interface.ip_range_high = unicode(dynamic_high)
+        interface.static_ip_range_low = unicode(dynamic_low + 1)
+        interface.static_ip_range_high = unicode(dynamic_high - 1)
         exception = self.assertRaises(
             ValidationError, interface.full_clean)
         message = "Static and dynamic IP ranges may not overlap."
