@@ -24,8 +24,10 @@ __all__ = [
     ]
 
 
+from django.contrib.auth.models import User
 from django.db.models import (
     GenericIPAddressField,
+    ForeignKey,
     IntegerField,
     Manager,
     )
@@ -109,6 +111,9 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     alloc_type = IntegerField(
         editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
+
+    user = ForeignKey(
+        User, default=None, blank=True, null=True, editable=False)
 
     objects = StaticIPAddressManager()
 

@@ -166,3 +166,6 @@ class IPADDRESS_TYPE:
 
     # Additional IP requested by a user for a node.
     EXTRA = 3
+
+    # Reserved by a user, no DHCP map required in MAAS.
+    USER_RESERVED = 4
