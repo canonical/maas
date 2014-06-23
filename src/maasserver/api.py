@@ -1522,7 +1522,13 @@ def update_nodegroup_maas_url(nodegroup, request):
 def update_mac_cluster_interfaces(leases, cluster):
     """Calculate and store which interface a MAC is attached to."""
     interface_ranges = {}
-    for interface in cluster.nodegroupinterface_set.all():
+    # Only consider configured interfaces.
+    interfaces = (
+        cluster.nodegroupinterface_set
+        .exclude(ip_range_low__isnull=True)
+        .exclude(ip_range_high__isnull=True)
+    )
+    for interface in interfaces:
         ip_range = netaddr.IPRange(
             interface.ip_range_low, interface.ip_range_high)
         interface_ranges[interface] = ip_range

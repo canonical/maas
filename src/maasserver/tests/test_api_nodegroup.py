@@ -30,6 +30,7 @@ from maasserver.api import update_mac_cluster_interfaces
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
+    NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
     Config,
@@ -850,3 +851,20 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         update_mac_cluster_interfaces(leases, cluster)
         self.assertFalse(
             MACAddress.objects.filter(mac_address=mac_address).exists())
+
+    def test_ignores_unconfigured_interfaces(self):
+        cluster = factory.make_node_group()
+        factory.make_node_group_interface(
+            nodegroup=cluster, subnet_mask='', broadcast_ip='',
+            static_ip_range_low='', static_ip_range_high='',
+            ip_range_low='', ip_range_high='', router_ip='',
+            ip=factory.getRandomIPAddress(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        mac_address = factory.getRandomMACAddress()
+        leases = {
+            factory.getRandomIPAddress(): mac_address
+            }
+        self.assertIsNone(update_mac_cluster_interfaces(leases, cluster))
+        # The real test is that update_mac_cluster_interfaces() doesn't
+        # stacktrace because of the unconfigured interface (see bug
+        # 1332596).
