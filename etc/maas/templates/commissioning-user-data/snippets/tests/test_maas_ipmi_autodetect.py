@@ -421,8 +421,11 @@ class TestMakeIPMIUserSettings(MAASTestCase):
     def test_settings_ordered_correctly(self):
         """Ensure user settings are listed in the right order."""
         settings = make_ipmi_user_settings('user', 'pass')
-        expected = ['Username', 'Password', 'Enable_User']
-        self.assertEqual(expected, settings.keys()[:3])
+        expected = [
+            'Username', 'Password', 'Enable_User',
+            'Lan_Privilege_Limit', 'Lan_Enable_IPMI_Msgs'
+        ]
+        self.assertEqual(expected, settings.keys())
 
     def test_uses_username_and_password(self):
         """Ensure username and password supplied are used."""

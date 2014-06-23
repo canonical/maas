@@ -195,17 +195,19 @@ def apply_ipmi_user_settings(user_settings):
 
 def make_ipmi_user_settings(username, password):
     """Factory for IPMI user settings."""
-    # Some BMCs care about the order these settings are applied in,
-    # particulary what's done prior to the user being enabled. This
-    # behavior was seen on Dell Poweredge R240 systems, but may affect
-    # others too. Don't change the order of these without lots of
-    # testing.
+    # Some BMCs care about the order these settings are applied in.
+    #
+    # - Dell Poweredge R420 Systems require the username and password to
+    # be set prior to the user being enabled.
+    #
+    # - Supermicro systems require the LAN Privilege Limit to be set
+    # prior to enabling LAN IPMI msgs for the user.
     user_settings = OrderedDict((
         ('Username', username),
         ('Password', password),
         ('Enable_User', 'Yes'),
-        ('Lan_Enable_IPMI_Msgs', 'Yes'),
         ('Lan_Privilege_Limit', 'Administrator'),
+        ('Lan_Enable_IPMI_Msgs', 'Yes'),
     ))
     return user_settings
 
