@@ -28,7 +28,7 @@ from provisioningserver.boot import (
 from provisioningserver.boot.install_bootloader import install_bootloader
 
 # Bootloader file names to install.
-BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
+BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32', 'poweroff.com']
 
 # Possible locations in which to find the files. Search these in this
 # order for each file.  (This exists because locations differ across
