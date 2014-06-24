@@ -85,11 +85,22 @@ def find_mac_via_arp(ip):
 
     for line in sorted(output.splitlines()):
         columns = line.split()
-        if len(columns) < 5:
+        if len(columns) < 4:
             raise Exception(
                 "Output line from 'ip neigh' does not look like a neighbour "
                 "entry: '%s'" % line)
-        if IPAddress(columns[0]) == ip:
+        # Normal "ip neigh" output lines look like:
+        #   <IP> dev <interface> lladdr <MAC> [router] <status>
+        #
+        # Where <IP> is an IPv4 or IPv6 address, <interface> is a network
+        # interface name such as eth0, <MAC> is a MAC address, and status
+        # can be REACHABLE, STALE, etc.
+        #
+        # However sometimes you'll also see lines like:
+        #   <IP> dev <interface>  FAILED
+        #
+        # Note the missing lladdr entry.
+        if IPAddress(columns[0]) == ip and columns[3] == 'lladdr':
             # Found matching IP address.  Return MAC.
             return columns[4]
     return None

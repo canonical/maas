@@ -142,6 +142,11 @@ class TestFindMACViaARP(MAASTestCase):
         mac_address_observed = find_mac_via_arp('fd10::a76:d7fe:fe93:7cb')
         self.assertEqual('3c:41:92:6b:2e:00', mac_address_observed)
 
+    def test__ignores_failed_neighbours(self):
+        ip = factory.getRandomIPAddress()
+        self.patch_call("%s dev eth0  FAILED\n" % ip)
+        self.assertIsNone(find_mac_via_arp(ip))
+
     def test__is_not_fooled_by_prefixing(self):
         self.patch_call(self.make_output_line('10.1.1.10'))
         self.assertIsNone(find_mac_via_arp('10.1.1.1'))
