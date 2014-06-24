@@ -19,11 +19,18 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from netaddr import IPNetwork
+import netifaces
+from netifaces import (
+    AF_LINK,
+    AF_INET,
+    AF_INET6,
+    )
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
     find_ip_via_arp,
     find_mac_via_arp,
+    get_all_interface_addresses,
     make_network,
     )
 
@@ -171,3 +178,75 @@ class TestFindMACViaARP(MAASTestCase):
 
         self.assertIn(one_result, macs)
         self.assertEqual(one_result, other_result)
+
+
+class TestGetAllInterfaceAddresses(MAASTestCase):
+    """Tests for `get_all_interface_addresses`."""
+
+    def patch_interfaces(self, interfaces):
+        """Patch `netifaces` to show the given `interfaces`.
+
+        :param interfaces: A dict mapping interface names to `netifaces`
+            interface entries: dicts with keys like `AF_INET` etc.
+        """
+        # These two netifaces functions map conveniently onto dict methods.
+        self.patch(netifaces, 'interfaces', interfaces.keys)
+        self.patch(netifaces, 'ifaddresses', interfaces.get)
+
+    def test__returns_IPv4_address(self):
+        ip = factory.getRandomIPAddress()
+        interface = factory.make_name('eth', sep='')
+        self.patch_interfaces({interface: {AF_INET: [{'addr': unicode(ip)}]}})
+        self.assertEqual([ip], list(get_all_interface_addresses()))
+
+    def test__ignores_non_address_information(self):
+        network = factory.getRandomNetwork()
+        ip = factory.getRandomIPInNetwork(network)
+        interface = factory.make_name('eth', sep='')
+        self.patch_interfaces({
+            interface: {
+                AF_INET: [{
+                    'addr': unicode(ip),
+                    'broadcast': unicode(network.broadcast),
+                    'netmask': unicode(network.netmask),
+                    'peer': unicode(
+                        factory.getRandomIPInNetwork(network, but_not=[ip])),
+                    }],
+                },
+            })
+        self.assertEqual([ip], list(get_all_interface_addresses()))
+
+    def test__ignores_link_address(self):
+        interface = factory.make_name('eth', sep='')
+        self.patch_interfaces({
+            interface: {
+                AF_LINK: [{
+                    'addr': unicode(factory.getRandomMACAddress()),
+                    'peer': unicode(factory.getRandomMACAddress()),
+                    }],
+                },
+            })
+        self.assertEqual([], list(get_all_interface_addresses()))
+
+    def test__ignores_IPv6_address(self):
+        ip = factory.get_random_ipv6_address()
+        interface = factory.make_name('eth', sep='')
+        self.patch_interfaces({interface: {AF_INET6: [{'addr': unicode(ip)}]}})
+        self.assertEqual([], list(get_all_interface_addresses()))
+
+    def test__ignores_interface_without_address(self):
+        network = factory.getRandomNetwork()
+        interface = factory.make_name('eth', sep='')
+        self.patch_interfaces({
+            interface: {
+                AF_INET: [{
+                    'broadcast': unicode(network.broadcast),
+                    'netmask': unicode(network.netmask),
+                    }],
+                },
+            })
+        self.assertEqual([], list(get_all_interface_addresses()))
+
+    def test__includes_loopback(self):
+        self.patch_interfaces({'lo': {AF_INET: [{'addr': '127.0.0.1'}]}})
+        self.assertEqual(['127.0.0.1'], list(get_all_interface_addresses()))

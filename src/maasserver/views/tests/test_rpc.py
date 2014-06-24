@@ -21,7 +21,7 @@ from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.utils import get_all_interface_addresses
+from provisioningserver.utils.network import get_all_interface_addresses
 from testtools.matchers import (
     Equals,
     GreaterThan,

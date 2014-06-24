@@ -23,6 +23,7 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     )
+import netifaces
 from provisioningserver.utils import call_and_check
 
 
@@ -104,3 +105,13 @@ def find_mac_via_arp(ip):
             # Found matching IP address.  Return MAC.
             return columns[4]
     return None
+
+
+def get_all_interface_addresses():
+    """For each network interface, yield its IPv4 address."""
+    for interface in netifaces.interfaces():
+        addresses = netifaces.ifaddresses(interface)
+        if netifaces.AF_INET in addresses:
+            for inet_address in addresses[netifaces.AF_INET]:
+                if "addr" in inet_address:
+                    yield inet_address["addr"]

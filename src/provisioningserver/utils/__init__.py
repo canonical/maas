@@ -65,7 +65,6 @@ import bson
 from crochet import run_in_reactor
 from lockfile import FileLock
 from lxml import etree
-import netifaces
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
@@ -721,16 +720,6 @@ class AtomicWriteScript:
         atomic_write(
             content, args.filename, overwrite=not args.no_overwrite,
             mode=mode)
-
-
-def get_all_interface_addresses():
-    """For each network interface, yield its IPv4 address."""
-    for interface in netifaces.interfaces():
-        addresses = netifaces.ifaddresses(interface)
-        if netifaces.AF_INET in addresses:
-            for inet_address in addresses[netifaces.AF_INET]:
-                if "addr" in inet_address:
-                    yield inet_address["addr"]
 
 
 def ensure_dir(path):

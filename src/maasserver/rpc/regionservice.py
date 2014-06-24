@@ -41,9 +41,9 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils import (
     asynchronous,
-    get_all_interface_addresses,
     synchronous,
     )
+from provisioningserver.utils.network import get_all_interface_addresses
 from twisted.application import service
 from twisted.application.internet import TimerService
 from twisted.internet import (
