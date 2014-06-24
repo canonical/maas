@@ -113,4 +113,4 @@ class WindowsOS(OperatingSystem):
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for Windows."""
-        return "root-dd", "dd"
+        return "root-dd", "dd-tgz"

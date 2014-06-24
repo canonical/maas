@@ -221,4 +221,4 @@ class TestWindowsOS(MAASTestCase):
         image, image_type = osystem.get_xinstall_parameters(
             None, None, None, None)
         self.assertEqual('root-dd', image)
-        self.assertEqual('dd', image_type)
+        self.assertEqual('dd-tgz', image_type)
