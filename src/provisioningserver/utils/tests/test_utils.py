@@ -1365,25 +1365,64 @@ class TestFindMACViaARP(MAASTestCase):
         fake.return_value = output
         return fake
 
-    def test__resolves_IP_address_to_MAC(self):
-        sample = """\
-        Address HWtype  HWaddress Flags Mask            Iface
-        192.168.100.20 (incomplete)                              virbr1
-        192.168.0.104 (incomplete)                              eth0
-        192.168.0.5 (incomplete)                              eth0
-        192.168.0.2 (incomplete)                              eth0
-        192.168.0.100 (incomplete)                              eth0
-        192.168.122.20 ether   52:54:00:02:86:4b   C                     virbr0
-        192.168.0.4 (incomplete)                              eth0
-        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
-        """
+    def make_output_line(self, ip=None, mac=None, dev=None):
+        """Compose an `ip neigh` output line for given `ip` and `mac`."""
+        if ip is None:
+            ip = factory.getRandomIPAddress()
+        if mac is None:
+            mac = factory.getRandomMACAddress()
+        if dev is None:
+            dev = factory.make_name('eth', sep='')
+        return "%(ip)s dev %(dev)s lladdr %(mac)s\n" % {
+            'ip': ip,
+            'dev': dev,
+            'mac': mac,
+            }
 
-        call_and_check = self.patch_call(sample)
-        mac_address_observed = find_mac_via_arp("192.168.122.20")
+    def test__calls_ip_neigh(self):
+        call_and_check = self.patch_call('')
+        find_mac_via_arp(factory.getRandomIPAddress())
         self.assertThat(
             call_and_check,
-            MockCalledOnceWith(['arp', '-n']))
-        self.assertEqual("52:54:00:02:86:4b", mac_address_observed)
+            MockCalledOnceWith(['ip', 'neigh'], env={'LC_ALL': 'C'}))
+
+    def test__works_with_real_call(self):
+        find_mac_via_arp(factory.getRandomIPAddress())
+        # No error.
+        pass
+
+    def test__fails_on_nonsensical_output(self):
+        self.patch_call("Weird output...")
+        self.assertRaises(
+            Exception, find_mac_via_arp, factory.getRandomIPAddress())
+
+    def test__returns_None_if_not_found(self):
+        self.patch_call(self.make_output_line())
+        self.assertIsNone(find_mac_via_arp(factory.getRandomIPAddress()))
+
+    def test__resolves_IPv4_address_to_MAC(self):
+        sample = "10.55.60.9 dev eth0 lladdr 3c:41:92:68:2e:00 REACHABLE\n"
+        self.patch_call(sample)
+        mac_address_observed = find_mac_via_arp('10.55.60.9')
+        self.assertEqual('3c:41:92:68:2e:00', mac_address_observed)
+
+    def test__resolves_IPv6_address_to_MAC(self):
+        sample = (
+            "fd10::a76:d7fe:fe93:7cb dev eth0 lladdr 3c:41:92:6b:2e:00 "
+            "REACHABLE\n")
+        self.patch_call(sample)
+        mac_address_observed = find_mac_via_arp('fd10::a76:d7fe:fe93:7cb')
+        self.assertEqual('3c:41:92:6b:2e:00', mac_address_observed)
+
+    def test__is_not_fooled_by_prefixing(self):
+        self.patch_call(self.make_output_line('10.1.1.10'))
+        self.assertIsNone(find_mac_via_arp('10.1.1.1'))
+        self.assertIsNone(find_mac_via_arp('10.1.1.100'))
+
+    def test__is_not_fooled_by_different_notations(self):
+        mac = factory.getRandomMACAddress()
+        self.patch_call(self.make_output_line('9::0:05', mac=mac))
+        self.assertEqual(mac, find_mac_via_arp('09:0::5'))
 
     def test__returns_consistent_output(self):
         ip = factory.getRandomIPAddress()
@@ -1391,10 +1430,10 @@ class TestFindMACViaARP(MAASTestCase):
             '52:54:00:02:86:4b',
             '90:f6:52:f6:17:92',
             ]
-        lines = ['%s ether %s C eth0' % (ip, mac) for mac in macs]
-        self.patch_call('\n'.join(lines))
+        lines = [self.make_output_line(ip, mac) for mac in macs]
+        self.patch_call(''.join(lines))
         one_result = find_mac_via_arp(ip)
-        self.patch_call('\n'.join(reversed(lines)))
+        self.patch_call(''.join(reversed(lines)))
         other_result = find_mac_via_arp(ip)
 
         self.assertIn(one_result, macs)

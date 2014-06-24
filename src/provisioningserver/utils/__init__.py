@@ -65,6 +65,7 @@ import bson
 from crochet import run_in_reactor
 from lockfile import FileLock
 from lxml import etree
+from netaddr import IPAddress
 import netifaces
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
@@ -882,11 +883,19 @@ def find_mac_via_arp(ip):
 
     :param ip: The ip address, e.g. '192.168.1.1'.
     """
+    # Normalise ip.  IPv6 has a wealth of alternate notations, so we can't
+    # just look for the string; we have to parse.
+    ip = IPAddress(ip)
+    # Use "C" locale; we're parsing output so we don't want any translations.
+    output = call_and_check(['ip', 'neigh'], env={'LC_ALL': 'C'})
 
-    output = call_and_check(['arp', '-n']).split('\n')
-
-    for line in sorted(output):
+    for line in sorted(output.splitlines()):
         columns = line.split()
-        if len(columns) == 5 and columns[0] == ip:
-            return columns[2]
+        if len(columns) < 5:
+            raise Exception(
+                "Output line from 'ip neigh' does not look like a neighbour "
+                "entry: '%s'" % line)
+        if IPAddress(columns[0]) == ip:
+            # Found matching IP address.  Return MAC.
+            return columns[4]
     return None
