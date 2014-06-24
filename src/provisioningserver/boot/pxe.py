@@ -26,14 +26,25 @@ from provisioningserver.boot import (
     get_parameters,
     )
 from provisioningserver.boot.install_bootloader import install_bootloader
+from provisioningserver.utils import atomic_symlink
 
 # Bootloader file names to install.
 BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32', 'poweroff.com']
 
-# Possible locations in which to find the files. Search these in this
-# order for each file.  (This exists because locations differ across
-# Ubuntu releases.)
+# Possible locations in which to find the bootloader files. Search these
+# in this order for each file.  (This exists because locations differ
+# across Ubuntu releases.)
 BOOTLOADER_DIRS = ['/usr/lib/syslinux', '/usr/lib/syslinux/modules/bios']
+
+# List of possible directories where to find additioning bootloader files.
+# The first existing directory will be symlinked to /syslinux/ inside
+# the TFTP root directory.
+SYSLINUX_DIRS = [
+    # Location for syslinux version 6 (the version in Utopic).
+    '/usr/lib/syslinux/modules/bios',
+    # Location for syslinux version 4 (the version in Trusty).
+    '/usr/lib/syslinux'
+]
 
 
 class ARP_HTYPE:
@@ -121,10 +132,15 @@ class PXEBootMethod(BootMethod):
                 return filename
         return None
 
+    def locate_syslinux_dir(self):
+        """Search for an existing directory among SYSLINUX_DIRS."""
+        for bootloader_dir in SYSLINUX_DIRS:
+            if os.path.exists(bootloader_dir):
+                return bootloader_dir
+        return None
+
     def install_bootloader(self, destination):
-        """Installs the required files for PXE booting into the
-        tftproot.
-        """
+        """Installs the required files and symlinks into the tftproot."""
         for bootloader in BOOTLOADERS:
             # locate_bootloader might return None but happy to let that
             # traceback here is it should never happen unless there's a
@@ -132,3 +148,10 @@ class PXEBootMethod(BootMethod):
             bootloader_src = self.locate_bootloader(bootloader)
             bootloader_dst = os.path.join(destination, bootloader)
             install_bootloader(bootloader_src, bootloader_dst)
+
+        # Create /syslinux/ symlink.  PXE linux tries this subdirectory
+        # when trying to fetch files for PXE-booting.
+        bootloader_dir = self.locate_syslinux_dir()
+        if bootloader_dir is not None:
+            atomic_symlink(
+                bootloader_dir, os.path.join(destination, 'syslinux'))

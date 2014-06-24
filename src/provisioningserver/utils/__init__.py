@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "ActionScript",
     "atomic_write",
+    "atomic_symlink",
     "call_and_check",
     "create_node",
     "deferred",
@@ -355,6 +356,25 @@ def atomic_write(content, filename, overwrite=True, mode=0600):
                     os.rename(temp_file, filename)
             finally:
                 lock.release()
+    finally:
+        if os.path.isfile(temp_file):
+            os.remove(temp_file)
+
+
+def atomic_symlink(source, name):
+    """Create a symbolic link pointing to `source` named `name`.
+
+    This method is meant to be a drop-in replacement of os.symlink.
+
+    The symlink creation will be atomic.  If a file/symlink named
+    `name` already exists, it will be overwritten.
+    """
+    temp_file = '%s.new' % name
+    try:
+        if os.path.exists(temp_file):
+            os.remove(temp_file)
+        os.symlink(source, temp_file)
+        os.rename(temp_file, name)
     finally:
         if os.path.isfile(temp_file):
             os.remove(temp_file)

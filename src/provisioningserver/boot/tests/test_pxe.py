@@ -43,6 +43,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesRegex,
     Not,
+    SamePath,
     StartsWith,
     )
 
@@ -142,6 +143,8 @@ class TestPXEBootMethod(MAASTestCase):
         self.assertIsNone(method.locate_bootloader("foo"))
 
     def test_install_bootloader_installs_to_destination(self):
+        # Disable the symlink creation.
+        self.patch(pxe_module, "SYSLINUX_DIRS", [])
         tftproot = self.make_tftp_root()
         source_dir = self.make_dir()
         self.patch(pxe_module, "BOOTLOADER_DIRS", [source_dir])
@@ -159,6 +162,26 @@ class TestPXEBootMethod(MAASTestCase):
         self.assertThat(
             install_bootloader_call,
             MockCallsMatch(*expected))
+
+    def test_locate_syslinux_dir_returns_dir(self):
+        dir1 = self.make_dir()
+        dir2 = self.make_dir()
+        dirs = [dir1, dir2]
+        self.patch(pxe_module, "SYSLINUX_DIRS", dirs)
+        method = PXEBootMethod()
+        found_dir = method.locate_syslinux_dir()
+        self.assertEqual(dir1, found_dir)
+
+    def test_install_bootloader_creates_symlink(self):
+        # Disable the copying of the bootloaders.
+        self.patch(pxe_module, "BOOTLOADERS", [])
+        target_dir = self.make_dir()
+        self.patch(pxe_module, "SYSLINUX_DIRS", [target_dir])
+        tftproot = self.make_tftp_root()
+        method = PXEBootMethod()
+        method.install_bootloader(tftproot)
+        syslinux_dir = os.path.join(tftproot, 'syslinux')
+        self.assertThat(syslinux_dir, SamePath(target_dir))
 
 
 def parse_pxe_config(text):

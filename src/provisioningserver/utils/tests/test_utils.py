@@ -73,6 +73,7 @@ from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import (
     ActionScript,
     asynchronous,
+    atomic_symlink,
     atomic_write,
     AtomicWriteScript,
     call_and_check,
@@ -113,6 +114,7 @@ from testtools.matchers import (
     MatchesStructure,
     Not,
     Raises,
+    SamePath,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
@@ -353,6 +355,45 @@ class TestWriteAtomic(MAASTestCase):
         self.assertEqual(
             mock_mkstemp.side_effect.filename,
             error.filename)
+
+
+class TestAtomicSymlink(MAASTestCase):
+    """Test `atomic_symlink`."""
+
+    def test_atomic_symlink_creates_symlink(self):
+        filename = self.make_file(contents=factory.getRandomString())
+        target_dir = self.make_dir()
+        link_name = factory.make_name('link')
+        target = os.path.join(target_dir, link_name)
+        atomic_symlink(filename, target)
+        self.assertTrue(
+            os.path.islink(target), "atomic_symlink didn't create a symlink")
+        self.assertThat(target, SamePath(filename))
+
+    def test_atomic_symlink_overwrites_dest_file(self):
+        filename = self.make_file(contents=factory.getRandomString())
+        target_dir = self.make_dir()
+        link_name = factory.make_name('link')
+        # Create a file that will be overwritten.
+        factory.make_file(location=target_dir, name=link_name)
+        target = os.path.join(target_dir, link_name)
+        atomic_symlink(filename, target)
+        self.assertTrue(
+            os.path.islink(target), "atomic_symlink didn't create a symlink")
+        self.assertThat(target, SamePath(filename))
+
+    def test_atomic_symlink_does_not_leak_temp_file_if_failure(self):
+        # In the face of failure, no temp file is leaked.
+        self.patch(os, 'rename', Mock(side_effect=OSError()))
+        filename = self.make_file()
+        target_dir = self.make_dir()
+        link_name = factory.make_name('link')
+        target = os.path.join(target_dir, link_name)
+        with ExpectedException(OSError):
+            atomic_symlink(filename, target)
+        self.assertEqual(
+            [],
+            os.listdir(target_dir))
 
 
 class TestIncrementalWrite(MAASTestCase):
