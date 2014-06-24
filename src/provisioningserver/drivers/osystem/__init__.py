@@ -114,6 +114,17 @@ class OperatingSystem:
         """
         raise NotImplementedError()
 
+    def get_xinstall_parameters(self, arch, subarch, release, label):
+        """Returns the xinstall image name and type for the operating system.
+
+        :param arch: Architecture of boot image.
+        :param subarch: Sub-architecture of boot image.
+        :param release: Release of boot image.
+        :param label: Label of boot image.
+        :returns: tuple with name of root image and image type
+        """
+        return "root-tgz", "tgz"
+
 
 class OperatingSystemRegistry(Registry):
     """Registry for operating system classes."""

@@ -51,10 +51,7 @@ from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
-from provisioningserver.drivers.osystem import (
-    BOOT_IMAGE_PURPOSE,
-    OperatingSystemRegistry,
-    )
+from provisioningserver.drivers.osystem import OperatingSystemRegistry
 import tempita
 
 
@@ -108,7 +105,7 @@ def get_curtin_installer_url(node):
         node.nodegroup, osystem, arch, subarch, series, purpose)
     if image is None:
         raise MAASAPIException(
-            "Error generating the URL of curtin's root-tgz file.  "
+            "Error generating the URL of curtin's image file.  "
             "No image could be found for the given selection: "
             "os=%s, arch=%s, subarch=%s, series=%s, purpose=%s." % (
                 osystem,
@@ -117,16 +114,34 @@ def get_curtin_installer_url(node):
                 series,
                 purpose
             ))
+
+    # XXX blake_r(1319143): This should not take place in maasserver. This will
+    # be replaced with an RPC call or a field in the BootImage model.
+    os_obj = OperatingSystemRegistry.get_item(osystem)
+    if os_obj is None:
+        raise MAASAPIException(
+            "Error generating the URL of curtin's image file.  "
+            "Booting operating system doesn't exist in the operating system "
+            "registry: os=%s" % osystem)
+    image_name, image_type = os_obj.get_xinstall_parameters(
+        arch, subarch, series, image.label)
+    if image_type == 'tgz':
+        url_prepend = ''
+    else:
+        url_prepend = '%s:' % image_type
     dyn_uri = '/'.join([
         osystem,
         arch,
         subarch,
         series,
         image.label,
-        'root-tgz'
+        image_name,
         ])
-    return (
-        "http://" + cluster_host + "/MAAS/static/images/" + dyn_uri)
+    return '%shttp://%s/MAAS/static/images/%s' % (
+        url_prepend,
+        cluster_host,
+        dyn_uri,
+        )
 
 
 def get_curtin_config(node):
@@ -163,28 +178,33 @@ def get_curtin_context(node):
 def get_preseed_type_for(node):
     """Returns the preseed type for the node.
 
-    This is determined using tags and what the booting
-    operating system supports. If the node is to boot using
-    fast-path installer, but the operating system does not
-    support that mode then the default installer will be used.
-    If the node is to boot using the default installer but
-    the operating system only boots using the fast-path installer
-    then it will boot using the fast-path installer.
+    This is determined using tags and what the booting operating system
+    supports. If the node is to boot using fast-path installer, but there is
+    no boot image that supports this method then the default installer will
+    be used. If the node is to boot using the default installer but there is
+    no boot image that supports that method then it will boot using the
+    fast-path installer.
     """
     if node.status == NODE_STATUS.COMMISSIONING:
         return PRESEED_TYPE.COMMISSIONING
     os_name = node.get_osystem()
-    release = node.get_distro_series()
+    series = node.get_distro_series()
     arch, subarch = node.split_arch()
-    osystem = OperatingSystemRegistry[os_name]
-    purposes = osystem.get_boot_image_purposes(
-        arch, subarch, release, None)
+
     if node.should_use_fastpath_installer():
-        if BOOT_IMAGE_PURPOSE.XINSTALL in purposes:
-            return PRESEED_TYPE.CURTIN
+        purpose = 'xinstall'
     else:
-        if BOOT_IMAGE_PURPOSE.INSTALL not in purposes:
+        purpose = 'install'
+
+    image = BootImage.objects.get_latest_image(
+        node.nodegroup, os_name, arch, subarch, series, purpose)
+    if image is None:
+        if purpose == 'xinstall':
+            return PRESEED_TYPE.DEFAULT
+        else:
             return PRESEED_TYPE.CURTIN
+    if purpose == 'xinstall':
+        return PRESEED_TYPE.CURTIN
     return PRESEED_TYPE.DEFAULT
 
 

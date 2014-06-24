@@ -286,8 +286,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,
         # which uses a "commissioning" image.
-        self.assertEqual("commissioning", api.get_boot_purpose(
-            None, None, None, None, None, None))
+        self.assertEqual("commissioning", api.get_boot_purpose(None))
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -306,17 +305,12 @@ class TestPXEConfigAPI(MAASServerTestCase):
             ]
         node = factory.make_node()
         for purpose, parameters in options:
+            factory.make_boot_images_for_node_with_purposes(node, [purpose])
             if purpose == "xinstall":
                 node.use_fastpath_installer()
             for name, value in parameters.items():
                 setattr(node, name, value)
-            osystem = node.get_osystem()
-            series = node.get_distro_series()
-            arch, subarch = node.architecture.split('/')
-            self.assertEqual(
-                purpose,
-                api.get_boot_purpose(
-                    node, osystem, arch, subarch, series, None))
+            self.assertEqual(purpose, api.get_boot_purpose(node))
 
     def test_get_boot_purpose_osystem_no_xinstall_support(self):
         osystem = make_usable_osystem(
@@ -326,13 +320,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, netboot=True,
             osystem=osystem.name, distro_series=release)
         node.use_fastpath_installer()
-        node_os = node.get_osystem()
-        node_series = node.get_distro_series()
-        arch, subarch = node.architecture.split('/')
-        self.assertEqual(
-            'install',
-            api.get_boot_purpose(
-                node, node_os, arch, subarch, node_series, None))
+        self.assertEqual('install', api.get_boot_purpose(node))
 
     def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")

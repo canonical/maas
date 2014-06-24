@@ -609,6 +609,19 @@ class Factory(maastesting.factory.Factory):
             supported_subarches=supported_subarches,
             )
 
+    def make_boot_images_for_node_with_purposes(self, node, purposes):
+        osystem = node.get_osystem()
+        series = node.get_distro_series()
+        arch, subarch = node.split_arch()
+        images = []
+        for purpose in purposes:
+            images.append(
+                self.make_boot_image(
+                    osystem=osystem, architecture=arch,
+                    subarchitecture=subarch, release=series, purpose=purpose,
+                    nodegroup=node.nodegroup))
+        return images
+
     def make_commissioning_script(self, name=None, content=None):
         if name is None:
             name = self.make_name('script')

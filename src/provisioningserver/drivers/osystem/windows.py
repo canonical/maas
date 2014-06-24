@@ -16,8 +16,10 @@ __all__ = [
     "WindowsOS",
     ]
 
+import os
 import re
 
+from provisioningserver.config import Config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -44,7 +46,19 @@ class WindowsOS(OperatingSystem):
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
         """Gets the purpose of each boot image. Windows only allows install."""
-        return [BOOT_IMAGE_PURPOSE.INSTALL]
+        # Windows can support both xinstall and install, but the correct files
+        # need to be available before it is enabled. This way if only xinstall
+        # is available the node will boot correctly, even if fast-path
+        # installer is not selected.
+        purposes = []
+        resources = Config.load_from_cache()['tftp']['resource_root']
+        path = os.path.join(
+            resources, 'windows', arch, subarch, release, label)
+        if os.path.exists(os.path.join(path, 'root-dd')):
+            purposes.append(BOOT_IMAGE_PURPOSE.XINSTALL)
+        if os.path.exists(os.path.join(path, 'pxeboot.0')):
+            purposes.append(BOOT_IMAGE_PURPOSE.INSTALL)
+        return purposes
 
     def get_supported_releases(self):
         """Gets list of supported releases for Windows."""
@@ -72,10 +86,13 @@ class WindowsOS(OperatingSystem):
         r = re.compile('^([A-Za-z0-9]{5}-){4}[A-Za-z0-9]{5}$')
         return r.match(key)
 
-    def compose_preseed(self, node, token, metadata_url):
+    def compose_preseed(self, preseed_type, node, token, metadata_url):
         """Since this method exists in the WindowsOS class, it will be called
         to provide preseed to all booting Windows nodes.
         """
+        # Don't override the curtin preseed.
+        if preseed_type == 'curtin':
+            raise NotImplementedError()
 
         # Sets the hostname in the preseed. Using just the hostname
         # not the FQDN.
@@ -93,3 +110,7 @@ class WindowsOS(OperatingSystem):
             'hostname': hostname,
             }
         return credentials
+
+    def get_xinstall_parameters(self, arch, subarch, release, label):
+        """Returns the xinstall image name and type for Windows."""
+        return "root-dd", "dd"

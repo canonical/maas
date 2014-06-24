@@ -14,13 +14,14 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from itertools import product
+import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from mock import MagicMock
 from provisioningserver.drivers.osystem.windows import (
     BOOT_IMAGE_PURPOSE,
+    Config,
     REQUIRE_LICENSE_KEY,
     WINDOWS_CHOICES,
     WINDOWS_DEFAULT,
@@ -30,20 +31,54 @@ from provisioningserver.drivers.osystem.windows import (
 
 class TestWindowsOS(MAASTestCase):
 
-    def test_get_boot_image_purposes(self):
+    def make_resource_path(self, files=[]):
+        tmpdir = self.make_dir()
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        release = factory.make_name('release')
+        label = factory.make_name('label')
+        dirpath = os.path.join(
+            tmpdir, 'windows', arch, subarch, release, label)
+        os.makedirs(dirpath)
+        for fname in files:
+            factory.make_file(dirpath, fname)
+        self.patch(Config, 'load_from_cache').return_value = {
+            'tftp': {
+                'resource_root': tmpdir,
+                },
+            }
+        return arch, subarch, release, label
+
+    def test_get_boot_image_purposes_neither(self):
         osystem = WindowsOS()
-        archs = [factory.make_name('arch') for _ in range(2)]
-        subarchs = [factory.make_name('subarch') for _ in range(2)]
-        releases = [factory.make_name('release') for _ in range(2)]
-        labels = [factory.make_name('label') for _ in range(2)]
-        for arch, subarch, release, label in product(
-                archs, subarchs, releases, labels):
-            expected = osystem.get_boot_image_purposes(
-                arch, subarchs, release, label)
-            self.assertIsInstance(expected, list)
-            self.assertEqual(expected, [
-                BOOT_IMAGE_PURPOSE.INSTALL,
-                ])
+        arch, subarch, release, label = self.make_resource_path()
+        self.assertItemsEqual(
+            [],
+            osystem.get_boot_image_purposes(arch, subarch, release, label))
+
+    def test_get_boot_image_purposes_both(self):
+        osystem = WindowsOS()
+        arch, subarch, release, label = self.make_resource_path(
+            files=['root-dd', 'pxeboot.0'])
+        self.assertItemsEqual(
+            [BOOT_IMAGE_PURPOSE.XINSTALL, BOOT_IMAGE_PURPOSE.INSTALL],
+            osystem.get_boot_image_purposes(arch, subarch, release, label))
+
+    def test_get_boot_image_purposes_xinstall_only(self):
+        osystem = WindowsOS()
+        arch, subarch, release, label = self.make_resource_path(
+            files=['root-dd'])
+        self.assertItemsEqual(
+            [BOOT_IMAGE_PURPOSE.XINSTALL],
+            osystem.get_boot_image_purposes(arch, subarch, release, label))
+
+    def test_get_boot_image_purposes_install_only(self):
+        osystem = WindowsOS()
+        arch, subarch, release, label = self.make_resource_path(
+            files=['pxeboot.0'])
+        self.assertItemsEqual(
+            [BOOT_IMAGE_PURPOSE.INSTALL],
+            osystem.get_boot_image_purposes(arch, subarch, release, label))
 
     def test_get_supported_releases(self):
         osystem = WindowsOS()
@@ -110,6 +145,15 @@ class TestWindowsOS(MAASTestCase):
         token.secret = token_secret
         return token
 
+    def test_compose_pressed_not_implemented_for_curtin(self):
+        osystem = WindowsOS()
+        node = self.make_node()
+        token = self.make_token()
+        url = factory.make_name('url')
+        self.assertRaises(
+            NotImplementedError,
+            osystem.compose_preseed, 'curtin', node, token, url)
+
     def test_compose_preseed_has_required_keys(self):
         osystem = WindowsOS()
         node = self.make_node()
@@ -123,7 +167,7 @@ class TestWindowsOS(MAASTestCase):
             'maas_oauth_token_secret',
             'hostname',
             ]
-        preseed = osystem.compose_preseed(node, token, url)
+        preseed = osystem.compose_preseed('default', node, token, url)
         self.assertItemsEqual(required_keys, preseed.keys())
 
     def test_compose_preseed_uses_only_hostname(self):
@@ -134,7 +178,7 @@ class TestWindowsOS(MAASTestCase):
         node = self.make_node(hostname=hostname)
         token = self.make_token()
         url = factory.make_name('url')
-        preseed = osystem.compose_preseed(node, token, url)
+        preseed = osystem.compose_preseed('default', node, token, url)
         self.assertEqual(machine, preseed['hostname'])
 
     def test_compose_preseed_truncates_hostname(self):
@@ -145,7 +189,7 @@ class TestWindowsOS(MAASTestCase):
         node = self.make_node(hostname=hostname)
         token = self.make_token()
         url = factory.make_name('url')
-        preseed = osystem.compose_preseed(node, token, url)
+        preseed = osystem.compose_preseed('default', node, token, url)
         self.assertEqual(15, len(preseed['hostname']))
 
     def test_compose_preseed_includes_oauth(self):
@@ -158,7 +202,7 @@ class TestWindowsOS(MAASTestCase):
             consumer_key=consumer_key, token_key=token_key,
             token_secret=token_secret)
         url = factory.make_name('url')
-        preseed = osystem.compose_preseed(node, token, url)
+        preseed = osystem.compose_preseed('default', node, token, url)
         self.assertEqual('', preseed['maas_oauth_consumer_secret'])
         self.assertEqual(consumer_key, preseed['maas_oauth_consumer_key'])
         self.assertEqual(token_key, preseed['maas_oauth_token_key'])
@@ -169,5 +213,12 @@ class TestWindowsOS(MAASTestCase):
         node = self.make_node()
         token = self.make_token()
         url = factory.make_name('url')
-        preseed = osystem.compose_preseed(node, token, url)
+        preseed = osystem.compose_preseed('default', node, token, url)
         self.assertEqual(url, preseed['maas_metadata_url'])
+
+    def test_get_xinstall_parameters(self):
+        osystem = WindowsOS()
+        image, image_type = osystem.get_xinstall_parameters(
+            None, None, None, None)
+        self.assertEqual('root-dd', image)
+        self.assertEqual('dd', image_type)

@@ -2519,7 +2519,7 @@ def api_doc(request):
         context_instance=RequestContext(request))
 
 
-def get_boot_purpose(node, osystem, arch, subarch, series, label):
+def get_boot_purpose(node):
     """Return a suitable "purpose" for this boot, e.g. "install"."""
     # XXX: allenap bug=1031406 2012-07-31: The boot purpose is still in
     # flux. It may be that there will just be an "ephemeral" environment and
@@ -2647,12 +2647,9 @@ def pxeconfig(request):
 
         subarch = get_optional_param(request.GET, 'subarch', 'generic')
 
-    # Get the purpose, without a selected label
-    purpose = get_boot_purpose(
-        node, osystem, arch, subarch, series, label=None)
-
     # If we are booting with "xinstall", then we should always return the
     # commissioning operating system and distro_series.
+    purpose = get_boot_purpose(node)
     if purpose == "xinstall":
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
@@ -2679,9 +2676,6 @@ def pxeconfig(request):
         # get_latest_image() returned an image with a different subarch.
         subarch = latest_image.subarchitecture
     label = get_optional_param(request.GET, 'label', latest_label)
-
-    # Get the supported purpose with the boot label
-    purpose = get_boot_purpose(node, osystem, arch, subarch, series, label)
 
     if node is not None:
         # We don't care if the kernel opts is from the global setting or a tag,
