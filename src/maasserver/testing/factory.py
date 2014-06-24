@@ -422,7 +422,10 @@ class Factory(maastesting.factory.Factory):
 
         :param **kwargs: Additional parameters to pass to make_node.
         """
-        nodegroup = self.make_node_group()
+        if "nodegroup" in kwargs:
+            nodegroup = kwargs.pop("nodegroup")
+        else:
+            nodegroup = self.make_node_group()
         node = self.make_node(mac=True, nodegroup=nodegroup, **kwargs)
         ngi = self.make_node_group_interface(
             nodegroup, management=management)

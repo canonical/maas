@@ -606,10 +606,15 @@ class Node(CleanSave, TimestampedModel):
         is raised.
         """
         try:
-            return self._create_tasks_for_static_ips()
+            tasks = self._create_tasks_for_static_ips()
         except StaticIPAddressExhaustion:
             StaticIPAddress.objects.deallocate_by_node(self)
             raise
+
+        # Update the DNS zone with the new static IP info as necessary.
+        from maasserver.dns import change_dns_zones
+        change_dns_zones([self.nodegroup])
+        return tasks
 
     def _create_hostmap_task(self, mac, sip):
         # This is creating a list of celery 'Signatures' which will be
@@ -1076,6 +1081,8 @@ class Node(CleanSave, TimestampedModel):
         Node.objects.stop_nodes([self.system_id], self.owner)
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
         self.delete_static_host_maps(deallocated_ips)
+        from maasserver.dns import change_dns_zones
+        change_dns_zones([self.nodegroup])
         self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None

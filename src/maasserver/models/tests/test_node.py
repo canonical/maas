@@ -19,6 +19,7 @@ import random
 
 import celery
 from django.core.exceptions import ValidationError
+from maasserver import dns as dns_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -746,6 +747,17 @@ class NodeTest(MAASServerTestCase):
             power_type='ether_wake')
         node.release()
         self.assertThat(deallocate, MockCalledOnceWith(node))
+
+    def test_release_updates_dns(self):
+        change_dns_zones = self.patch(dns_module, 'change_dns_zones')
+        nodegroup = factory.make_node_group(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            status=NODEGROUP_STATUS.ACCEPTED)
+        node = factory.make_node(
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            owner=factory.make_user(), power_type='ether_wake')
+        node.release()
+        self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in Declared state, accept_enlistment()
@@ -1632,3 +1644,11 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         node.claim_static_ips()
 
         self.assertThat(deallocate_call, MockNotCalled())
+
+    def test_claim_static_ips_updates_dns(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node.nodegroup.status = NODEGROUP_STATUS.ACCEPTED
+        change_dns_zones = self.patch(dns_module, 'change_dns_zones')
+        node.claim_static_ips()
+        self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))

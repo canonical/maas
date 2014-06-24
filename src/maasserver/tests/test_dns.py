@@ -227,21 +227,19 @@ class TestDNSConfigModifications(MAASServerTestCase):
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
-    def create_nodegroup_with_lease(self, lease_number=1, nodegroup=None):
+    def create_nodegroup_with_static_ip(self, lease_number=1, nodegroup=None):
         if nodegroup is None:
             nodegroup = self.create_managed_nodegroup()
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_node(
             nodegroup=nodegroup)
-        mac = factory.make_mac_address(node=node)
-        ips = IPRange(interface.ip_range_low, interface.ip_range_high)
-        lease_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
-        lease = factory.make_dhcp_lease(
-            nodegroup=nodegroup, mac=mac.mac_address, ip=lease_ip)
-        # Simulate that this lease was created by
-        # DHCPLease.objects.update_leases: update its DNS config.
+        mac = factory.make_mac_address(node=node, cluster_interface=interface)
+        ips = IPRange(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+        static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
+        staticaddress = factory.make_staticipaddress(ip=static_ip, mac=mac)
         dns.change_dns_zones([nodegroup])
-        return nodegroup, node, lease
+        return nodegroup, node, staticaddress
 
     def dig_resolve(self, fqdn):
         """Resolve `fqdn` using dig.  Returns a list of results."""
@@ -281,20 +279,20 @@ class TestDNSConfigModifications(MAASServerTestCase):
                 fqdn, ','.join(reverse_lookup_result)))
 
     def test_add_zone_loads_dns_zone(self):
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns.add_zone(nodegroup)
-        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
     def test_change_dns_zone_changes_dns_zone(self):
-        nodegroup, _, _ = self.create_nodegroup_with_lease()
+        nodegroup, _, _ = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
-        nodegroup, new_node, new_lease = (
-            self.create_nodegroup_with_lease(
+        nodegroup, new_node, new_static = (
+            self.create_nodegroup_with_static_ip(
                 nodegroup=nodegroup, lease_number=2))
         dns.change_dns_zones(nodegroup)
-        self.assertDNSMatches(new_node.hostname, nodegroup.name, new_lease.ip)
+        self.assertDNSMatches(new_node.hostname, nodegroup.name, new_static.ip)
 
     def test_is_dns_enabled_return_false_if_DNS_CONNECT_False(self):
         self.patch(settings, 'DNS_CONNECT', False)
@@ -312,10 +310,10 @@ class TestDNSConfigModifications(MAASServerTestCase):
         self.assertTrue(dns.is_dns_in_use())
 
     def test_write_full_dns_loads_full_dns_config(self):
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
-        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
     def test_write_full_dns_passes_reload_retry_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -349,7 +347,7 @@ class TestDNSConfigModifications(MAASServerTestCase):
     def test_dns_config_has_NS_record(self):
         ip = factory.getRandomIPAddress()
         self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
         dns.write_full_dns_config()
         # Get the NS record for the zone 'nodegroup.name'.
@@ -421,12 +419,12 @@ class TestDNSConfigModifications(MAASServerTestCase):
 
     def test_add_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
-        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         # Prevent omshell task dispatch.
         self.patch(node_module, "remove_dhcp_host_map")
         node.delete()
@@ -435,14 +433,14 @@ class TestDNSConfigModifications(MAASServerTestCase):
 
     def test_change_node_hostname_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         node.hostname = factory.make_name('hostname')
         node.save()
-        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
+        self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
     def test_change_node_other_field_does_not_update_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
-        nodegroup, node, lease = self.create_nodegroup_with_lease()
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
         recorder = FakeMethod()
         self.patch(DNSZoneConfigBase, 'write_config', recorder)
         node.error = factory.getRandomString()

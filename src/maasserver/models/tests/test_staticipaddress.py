@@ -94,6 +94,61 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             [ip.alloc_type for ip in StaticIPAddress.objects.all()])
 
 
+class StaticIPAddressManagerMappingTest(MAASServerTestCase):
+    """Tests for get_hostname_ip_mapping()."""
+
+    def test_get_hostname_ip_mapping_returns_mapping(self):
+        nodegroup = factory.make_node_group()
+        expected_mapping = {}
+        for i in range(3):
+            node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+                nodegroup=nodegroup)
+            staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+            expected_mapping[node.hostname] = staticip.ip
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
+        self.assertEqual(expected_mapping, mapping)
+
+    def test_get_hostname_ip_mapping_strips_out_domain(self):
+        nodegroup = factory.make_node_group()
+        hostname = factory.make_name('hostname')
+        domain = factory.make_name('domain')
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup, hostname="%s.%s" % (hostname, domain))
+        staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
+        self.assertEqual({hostname: staticip.ip}, mapping)
+
+    def test_get_hostname_ip_mapping_picks_mac_with_static_address(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            hostname=factory.make_name('host'))
+        second_mac = factory.make_mac_address(node=node)
+        staticip = factory.make_staticipaddress(mac=second_mac)
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: staticip.ip}, mapping)
+
+    def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
+        nodegroup = factory.make_node_group()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup)
+        factory.make_staticipaddress(mac=node.get_primary_mac())
+        another_nodegroup = factory.make_node_group()
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            another_nodegroup)
+        self.assertEqual({}, mapping)
+
+    def test_get_hostname_ip_mapping_picks_oldest_mac_with_static_ip(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            hostname=factory.make_name('host'))
+        newer_mac = factory.make_mac_address(node=node)
+        factory.make_staticipaddress(mac=newer_mac)
+        ip_for_older_mac = factory.make_staticipaddress(
+            mac=node.get_primary_mac())
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: ip_for_older_mac.ip}, mapping)
+
+
 class StaticIPAddressTest(MAASServerTestCase):
 
     def test_repr_with_valid_type(self):

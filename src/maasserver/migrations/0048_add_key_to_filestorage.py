@@ -2,7 +2,7 @@
 import datetime
 
 from django.db import models
-from maasserver.models import filestorage
+from maasserver.models.filestorage import generate_filestorage_key
 from south.db import db
 from south.v2 import SchemaMigration
 
@@ -17,7 +17,7 @@ class Migration(SchemaMigration):
 
         # Populate FileStorage.key with random keys.
         for file_storage in orm.FileStorage.objects.all():
-            file_storage.key = filestorage.generate_filestorage_key()
+            file_storage.key = generate_filestorage_key()
             file_storage.save()
 
 

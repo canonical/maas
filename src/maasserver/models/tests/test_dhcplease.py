@@ -159,13 +159,6 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             },
             map_leases(nodegroup))
 
-    def test_update_leases_updates_dns_zone(self):
-        self.patch(dns, 'change_dns_zones')
-        nodegroup = factory.make_node_group()
-        DHCPLease.objects.update_leases(
-            nodegroup, factory.make_random_leases())
-        dns.change_dns_zones.assert_called_once_with([nodegroup])
-
     def test_update_leases_does_not_update_dns_zone_if_nothing_added(self):
         self.patch(dns, 'change_dns_zones')
         nodegroup = factory.make_node_group()

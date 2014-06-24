@@ -103,13 +103,8 @@ class DHCPLeaseManager(Manager):
             deleted.
         :return: Iterable of IP addresses that were newly leased.
         """
-        # Avoid circular imports.
-        from maasserver import dns
-
         self._delete_obsolete_leases(nodegroup, leases)
         new_leases = self._add_missing_leases(nodegroup, leases)
-        if len(new_leases) > 0:
-            dns.change_dns_zones([nodegroup])
         return new_leases
 
     def get_hostname_ip_mapping(self, nodegroup):

@@ -25,9 +25,10 @@ __all__ = [
 
 
 from django.contrib.auth.models import User
+from django.db import connection
 from django.db.models import (
-    GenericIPAddressField,
     ForeignKey,
+    GenericIPAddressField,
     IntegerField,
     Manager,
     )
@@ -36,6 +37,7 @@ from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils import strip_domain
 from netaddr import (
     IPAddress,
     IPRange,
@@ -93,6 +95,35 @@ class StaticIPAddressManager(Manager):
         deallocated_ips = [record.ip.format() for record in qs]
         qs.delete()
         return deallocated_ips
+
+    def get_hostname_ip_mapping(self, nodegroup):
+        """Return a mapping {hostnames -> ips} for current `StaticIPAddress`es
+        for the nodes in `nodegroup`.
+
+        Any domain will be stripped from the hostnames.
+        """
+        cursor = connection.cursor()
+
+        # DISTINCT ON returns the first matching row for any given
+        # hostname, using the query's ordering.  Here, we're trying to
+        # return the IP for the oldest MAC address.
+        cursor.execute("""
+            SELECT DISTINCT ON (node.hostname)
+                node.hostname, staticip.ip
+            FROM maasserver_macaddress AS mac
+            JOIN maasserver_node AS node ON
+                node.id = mac.node_id
+            JOIN maasserver_macstaticipaddresslink AS link ON
+                link.mac_address_id = mac.id
+            JOIN maasserver_staticipaddress AS staticip ON
+                staticip.id = link.ip_address_id
+            WHERE node.nodegroup_id = %s
+            ORDER BY node.hostname, mac.id
+            """, (nodegroup.id,))
+        return dict(
+            (strip_domain(hostname), ip)
+            for hostname, ip in cursor.fetchall()
+            )
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):

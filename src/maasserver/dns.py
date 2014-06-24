@@ -32,12 +32,9 @@ from django.conf import settings
 from maasserver import logger
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASException
-from maasserver.models import (
-    Config,
-    DHCPLease,
-    NodeGroup,
-    NodeGroupInterface,
-    )
+from maasserver.models.config import Config
+from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.sequence import (
     INT_MAX,
     Sequence,
@@ -182,7 +179,8 @@ class ZoneGenerator:
     @staticmethod
     def _get_mappings():
         """Return a lazily evaluated nodegroup:mapping dict."""
-        return lazydict(DHCPLease.objects.get_hostname_ip_mapping)
+        from maasserver.models.staticipaddress import StaticIPAddress
+        return lazydict(StaticIPAddress.objects.get_hostname_ip_mapping)
 
     @staticmethod
     def _get_networks():
