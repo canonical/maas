@@ -28,10 +28,8 @@ from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.utils import (
-    find_mac_via_arp,
-    locate_config,
-    )
+from provisioningserver.utils import locate_config
+from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
 import tempita
 from tftp.backend import IReader

@@ -67,10 +67,10 @@ from provisioningserver.power.poweraction import (
 from provisioningserver.utils import (
     call_and_check,
     ExternalProcessError,
-    find_ip_via_arp,
     sudo_write_file,
     )
 from provisioningserver.utils.env import environment_variables
+from provisioningserver.utils.network import find_ip_via_arp
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
