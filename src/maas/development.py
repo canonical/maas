@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django DEVELOPMENT settings for maas project."""
@@ -24,6 +24,7 @@ from maas import (
     )
 from metadataserver.address import guess_server_address
 import provisioningserver.config
+from provisioningserver.utils import compose_URL_on_IP
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 # We expect the following settings to be overridden. They are mentioned here
@@ -34,7 +35,7 @@ INSTALLED_APPS = None
 import_settings(settings)
 
 # In development, django can be accessed directly on port 5240.
-DEFAULT_MAAS_URL = "http://%s:5240/" % guess_server_address()
+DEFAULT_MAAS_URL = compose_URL_on_IP("http://:5240/", guess_server_address())
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.

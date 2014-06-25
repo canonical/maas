@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -202,7 +202,7 @@ def get_seamicro15k_api(version, ip, username, password):
     :returns: api for version, None if version not supported
     """
     if version == 'v0.9':
-        api = SeaMicroAPIV09('http://%s/v0.9/' % ip)
+        api = SeaMicroAPIV09(utils.compose_URL_on_IP('http:///v0.9/', ip))
         try:
             api.login(username, password)
         except urllib2.URLError:
@@ -210,7 +210,7 @@ def get_seamicro15k_api(version, ip, username, password):
             return None
         return api
     elif version == 'v2.0':
-        url = 'http://%s/v2.0' % ip
+        url = utils.compose_URL_on_IP('http:///v2.0', ip)
         try:
             api = seamicro_client.Client(
                 auth_url=url, username=username, password=password)
@@ -288,7 +288,7 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
 def power_control_seamicro15k_v09(ip, username, password, server_id,
                                   power_change, retry_count=5, retry_wait=1):
     server_id = '%s/0' % server_id
-    api = SeaMicroAPIV09('http://%s/v0.9/' % ip)
+    api = SeaMicroAPIV09(utils.compose_URL_on_IP('http:///v0.9/', ip))
 
     while retry_count > 0:
         api.login(username, password)

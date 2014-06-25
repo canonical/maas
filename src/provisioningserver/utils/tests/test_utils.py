@@ -72,6 +72,7 @@ from provisioningserver.utils import (
     AtomicWriteScript,
     call_and_check,
     classify,
+    compose_URL_on_IP,
     create_node,
     ensure_dir,
     escape_py_literal,
@@ -1446,3 +1447,46 @@ class TestCreateNode(PservTestCase):
         get.return_value = response
         create_node(macs, arch, power_type, power_parameters)
         self.assertThat(post, MockNotCalled())
+
+
+class TestComposeURLOnIP(MAASTestCase):
+
+    def make_path(self):
+        """Return an arbitrary URL path part."""
+        return '%s/%s' % (factory.make_name('root'), factory.make_name('sub'))
+
+    def test__inserts_IPv4(self):
+        ip = factory.getRandomIPAddress()
+        path = self.make_path()
+        self.assertEqual(
+            'http://%s/%s' % (ip, path),
+            compose_URL_on_IP('http:///%s' % path, ip))
+
+    def test__inserts_IPv6_with_brackets(self):
+        ip = factory.get_random_ipv6_address()
+        path = self.make_path()
+        self.assertEqual(
+            'http://[%s]/%s' % (ip, path),
+            compose_URL_on_IP('http:///%s' % path, ip))
+
+    def test__preserves_query(self):
+        ip = factory.getRandomIPAddress()
+        key = factory.make_name('key')
+        value = factory.make_name('value')
+        self.assertEqual(
+            'https://%s?%s=%s' % (ip, key, value),
+            compose_URL_on_IP('https://?%s=%s' % (key, value), ip))
+
+    def test__preserves_port_with_IPv4(self):
+        ip = factory.getRandomIPAddress()
+        port = factory.getRandomPort()
+        self.assertEqual(
+            'https://%s:%s/' % (ip, port),
+            compose_URL_on_IP('https://:%s/' % port, ip))
+
+    def test__preserves_port_with_IPv6(self):
+        ip = factory.get_random_ipv6_address()
+        port = factory.getRandomPort()
+        self.assertEqual(
+            'https://[%s]:%s/' % (ip, port),
+            compose_URL_on_IP('https://:%s/' % port, ip))

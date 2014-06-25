@@ -52,6 +52,7 @@ from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.utils import compose_URL_on_IP
 import tempita
 
 
@@ -137,11 +138,9 @@ def get_curtin_installer_url(node):
         image.label,
         image_name,
         ])
-    return '%shttp://%s/MAAS/static/images/%s' % (
-        url_prepend,
-        cluster_host,
-        dyn_uri,
-        )
+    url = compose_URL_on_IP(
+        'http:///MAAS/static/images/%s' % dyn_uri, cluster_host)
+    return url_prepend + url
 
 
 def get_curtin_config(node):

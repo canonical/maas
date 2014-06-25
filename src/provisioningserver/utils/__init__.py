@@ -17,6 +17,7 @@ __all__ = [
     "atomic_write",
     "atomic_symlink",
     "call_and_check",
+    "compose_URL_on_IP",
     "create_node",
     "deferred",
     "ensure_dir",
@@ -55,6 +56,10 @@ from subprocess import (
 import sys
 import tempfile
 from time import time
+from urlparse import (
+    urlparse,
+    urlunparse,
+    )
 
 from apiclient.maas_client import (
     MAASClient,
@@ -65,6 +70,7 @@ import bson
 from crochet import run_in_reactor
 from lockfile import FileLock
 from lxml import etree
+from netaddr import IPAddress
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
@@ -856,3 +862,27 @@ def classify(func, subjects):
         bucket = matched if func(subject) else other
         bucket.append(ident)
     return matched, other
+
+
+def compose_URL_on_IP(base_url, host):
+    """Produce a URL referring to a host by IP address.
+
+    This is straightforward if the IP address is an IPv4 address; but if it's
+    an IPv6 address, the URL must contain the IP address in square brackets as
+    per RFC 3986.
+
+    :param base_url: URL without the host part, e.g. `http:///path'.
+    :param host: IP address to insert in the host part of the URL.
+    :return: A URL string with the host part taken from `host`, and all others
+        from `base_url`.
+    """
+    if IPAddress(host).version == 6:
+        netloc_host = '[%s]' % host
+    else:
+        netloc_host = host
+    parsed_url = urlparse(base_url)
+    if parsed_url.port is None:
+        netloc = netloc_host
+    else:
+        netloc = '%s:%d' % (netloc_host, parsed_url.port)
+    return urlunparse(parsed_url._replace(netloc=netloc))
