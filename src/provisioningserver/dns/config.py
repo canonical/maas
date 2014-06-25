@@ -31,10 +31,12 @@ from itertools import (
     imap,
     islice,
     )
+import math
 import os.path
 import re
 
 from celery.app import app_or_default
+from netaddr import IPAddress
 from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
@@ -411,9 +413,25 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
     @classmethod
     def compose_zone_name(cls, network):
         """Return the name of the reverse zone."""
-        broadcast, netmask = network.broadcast, network.netmask
-        octets = broadcast.words[:netmask.words.count(255)]
-        return '%s.in-addr.arpa' % '.'.join(imap(unicode, reversed(octets)))
+        # Generate the name of the reverse zone file:
+        # Use netaddr's reverse_dns() to get the reverse IP name
+        # of the first IP address in the network and then drop the first
+        # octets of that name (i.e. drop the octets that will be specified in
+        # the zone file).
+        first = IPAddress(network.first)
+        if first.version == 6:
+            # IPv6.
+            # Use float division and ceil to cope with network sizes that
+            # are not divisible by 4.
+            rest_limit = int(math.ceil((128 - network.prefixlen) / 4.))
+        else:
+            # IPv4.
+            # Use float division and ceil to cope with splits not done on
+            # octets boundaries.
+            rest_limit = int(math.ceil((32 - network.prefixlen) / 8.))
+        reverse_name = first.reverse_dns.split('.', rest_limit)[-1]
+        # Strip off trailing '.'.
+        return reverse_name[:-1]
 
     @classmethod
     def shortened_reversed_ip(cls, ip, num_bytes):

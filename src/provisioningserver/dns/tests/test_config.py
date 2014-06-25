@@ -547,25 +547,36 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             os.path.join(conf.DNS_CONFIG_DIR, reverse_file_name),
             dns_zone_config.target_path)
 
-    def test_reverse_data_slash_24(self):
-        # DNSReverseZoneConfig calculates the reverse data correctly for
-        # a /24 network.
-        domain = factory.make_name('zone')
-        network = IPNetwork('192.168.0.1/24')
-        dns_zone_config = DNSReverseZoneConfig(domain, network=network)
-        self.assertEqual(
-            '0.168.192.in-addr.arpa',
-            dns_zone_config.zone_name)
+    def test_reverse_zone_file(self):
+        # DNSReverseZoneConfig calculates the reverse zone file name
+        # correctly for IPv4 and IPv6 networks.
+        expected = [
+            # IPv4 networks.
+            (IPNetwork('192.168.0.1/22'), '168.192.in-addr.arpa'),
+            (IPNetwork('192.168.0.1/24'), '0.168.192.in-addr.arpa'),
+            # IPv6 networks.
+            (IPNetwork('3ffe:801::/32'), '1.0.8.0.e.f.f.3.ip6.arpa'),
+            (IPNetwork('2001:db8:0::/48'), '0.0.0.0.8.b.d.0.1.0.0.2.ip6.arpa'),
+            (
+                IPNetwork('2001:ba8:1f1:400::/56'),
+                '4.0.1.f.1.0.8.a.b.0.1.0.0.2.ip6.arpa'
+            ),
+            (
+                IPNetwork('2610:8:6800:1::/64'),
+                '1.0.0.0.0.0.8.6.8.0.0.0.0.1.6.2.ip6.arpa',
+            ),
+            (
+                IPNetwork('2001:ba8:1f1:400::/103'),
+                '0.0.0.0.0.0.0.0.0.0.0.4.0.1.f.1.0.8.a.b.0.1.0.0.2.ip6.arpa',
+            ),
 
-    def test_reverse_data_slash_22(self):
-        # DNSReverseZoneConfig calculates the reverse data correctly for
-        # a /22 network.
-        domain = factory.getRandomString()
-        network = IPNetwork('192.168.0.1/22')
-        dns_zone_config = DNSReverseZoneConfig(domain, network=network)
-        self.assertEqual(
-            '168.192.in-addr.arpa',
-            dns_zone_config.zone_name)
+        ]
+        results = []
+        for network, _ in expected:
+            domain = factory.make_name('zone')
+            dns_zone_config = DNSReverseZoneConfig(domain, network=network)
+            results.append((network, dns_zone_config.zone_name))
+        self.assertEqual(expected, results)
 
     def test_get_static_mapping_returns_iterator(self):
         self.assertThat(
