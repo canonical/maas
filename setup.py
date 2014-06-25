@@ -100,6 +100,8 @@ setup(
              'contrib/preseeds_v2/enlist_userdata',
              'contrib/preseeds_v2/curtin',
              'contrib/preseeds_v2/curtin_userdata',
+             'contrib/preseeds_v2/curtin_userdata_centos',
+             'contrib/preseeds_v2/curtin_userdata_suse',
              'contrib/preseeds_v2/curtin_userdata_windows',
              'contrib/preseeds_v2/preseed_master',
              'contrib/preseeds_v2/'
