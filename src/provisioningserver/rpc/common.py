@@ -23,7 +23,10 @@ from twisted.protocols import amp
 
 
 class Identify(amp.Command):
-    """Request the identity of the remote side, e.g. its UUID."""
+    """Request the identity of the remote side, e.g. its UUID.
+
+    :since: 1.5
+    """
 
     response = [(b"ident", amp.Unicode())]
 

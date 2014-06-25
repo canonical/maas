@@ -28,7 +28,10 @@ from twisted.protocols import amp
 
 
 class ListBootImages(amp.Command):
-    """List the boot images available on this cluster controller."""
+    """List the boot images available on this cluster controller.
+
+    :since: 1.5
+    """
 
     arguments = []
     response = [
@@ -44,7 +47,10 @@ class ListBootImages(amp.Command):
 
 
 class DescribePowerTypes(amp.Command):
-    """Get a JSON Schema describing this cluster's power types."""
+    """Get a JSON Schema describing this cluster's power types.
+
+    :since: 1.5
+    """
 
     arguments = []
     response = [
@@ -54,6 +60,11 @@ class DescribePowerTypes(amp.Command):
 
 
 class ListSupportedArchitectures(amp.Command):
+    """Report the cluster's supported architectures.
+
+    :since: 1.5
+    """
+
     arguments = []
     response = [
         (b"architectures", amp.AmpList([

@@ -26,7 +26,10 @@ from twisted.protocols import amp
 
 
 class ReportBootImages(amp.Command):
-    """Report boot images available on the invoking cluster controller."""
+    """Report boot images available on the invoking cluster controller.
+
+    :since: 1.5
+    """
 
     arguments = [
         # The cluster UUID.
@@ -42,7 +45,10 @@ class ReportBootImages(amp.Command):
 
 
 class GetBootSources(amp.Command):
-    """Report boot sources and selections for the given cluster."""
+    """Report boot sources and selections for the given cluster.
+
+    :since: 1.6
+    """
 
     arguments = [
         # The cluster UUID.
