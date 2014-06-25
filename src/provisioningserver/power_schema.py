@@ -255,4 +255,14 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "API password"),
         ],
     },
+    {
+        'name': 'mscm',
+        'description': "Moonshot HP iLO Chassis Manager",
+        'fields': [
+            make_json_field('power_address', "IP for MSCM CLI API"),
+            make_json_field('power_user', "MSCM CLI API user"),
+            make_json_field('power_pass', "MSCM CLI API password"),
+            make_json_field('node_id', "Node ID"),
+        ],
+    },
 ]

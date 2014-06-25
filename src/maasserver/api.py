@@ -1911,6 +1911,30 @@ class NodeGroupHandler(OperationsHandler):
 
         return HttpResponse(status=httplib.OK)
 
+    @admin_method
+    @operation(idempotent=False)
+    def probe_and_enlist_mscm(self, request, uuid):
+        """Add the nodes from a Moonshot HP iLO Chassis Manager (MSCM).
+
+        :param host: IP Address for the MSCM.
+        :type host: unicode
+        :param username: The username for the MSCM.
+        :type username: unicode
+        :param password: The password for the MSCM.
+        :type password: unicode
+
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+
+        host = get_mandatory_param(request.data, 'host')
+        username = get_mandatory_param(request.data, 'username')
+        password = get_mandatory_param(request.data, 'password')
+
+        nodegroup.enlist_nodes_from_mscm(host, username, password)
+
+        return HttpResponse(status=httplib.OK)
+
+
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
     'ip', 'management', 'interface', 'subnet_mask',
     'broadcast_ip', 'ip_range_low', 'ip_range_high',

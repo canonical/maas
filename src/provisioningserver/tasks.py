@@ -53,6 +53,7 @@ from provisioningserver.dns.config import (
     set_up_options_conf,
     setup_rndc,
     )
+from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
@@ -523,5 +524,12 @@ def add_virsh(poweraddr, password=None):
 @task
 @log_exception_text
 def enlist_nodes_from_ucsm(url, username, password):
-    """ See `maasserver.api.NodeGroupsHandler.enlist_nodes_from_ucsm`. """
+    """ See `maasserver.api.NodeGroupHandler.enlist_nodes_from_ucsm`. """
     probe_and_enlist_ucsm(url, username, password)
+
+
+@task
+@log_exception_text
+def enlist_nodes_from_mscm(host, username, password):
+    """ See `maasserver.api.NodeGroupHandler.enlist_nodes_from_mscm`. """
+    probe_and_enlist_mscm(host, username, password)

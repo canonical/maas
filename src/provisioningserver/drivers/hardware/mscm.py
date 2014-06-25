@@ -16,7 +16,10 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'power_control_mscm',
+    'probe_and_enlist_mscm',
+]
 
 import re
 
@@ -24,9 +27,22 @@ from paramiko import (
     AutoAddPolicy,
     SSHClient,
     )
+import provisioningserver.utils as utils
 
 
-class MSCM_CLI_API:
+cartridge_mapping = {
+    'ProLiant Moonshot Cartridge': 'amd64/generic',
+    'ProLiant m300 Server Cartridge': 'amd64/generic',
+    'ProLiant m350 Server Cartridge': 'amd64/generic',
+    'ProLiant m400 Server Cartridge': 'arm64/xgene',
+    'ProLiant m500 Server Cartridge': 'amd64/generic',
+    'ProLiant m710 Server Cartridge': 'amd64/generic',
+    'ProLiant m800 Server Cartridge': 'armhf/keystone',
+    'Default': 'arm64/generic',
+}
+
+
+class MSCM_CLI_API(object):
     """An API for interacting with the Moonshot iLO CM CLI."""
 
     def __init__(self, host, username, password):
@@ -69,7 +85,7 @@ class MSCM_CLI_API:
     def get_node_macaddr(self, node):
         """Get node MAC address(es).
 
-        Example of stdout from running "show node macaddr <xnode_id>":
+        Example of stdout from running "show node macaddr <node_id>":
 
         'show node macaddr c1n1\r\r\nSlot ID    NIC 1 (Switch A)
         NIC 2 (Switch B)  NIC 3 (Switch A)  NIC 4 (Switch B)\r\n
@@ -83,6 +99,36 @@ class MSCM_CLI_API:
         macs = self._run_cli_command("show node macaddr %s" % node)
         return re.findall(r':'.join(['[0-9a-f]{2}'] * 6), macs)
 
+    def get_node_arch(self, node):
+        """Get node architecture.
+
+        Example of stdout from running "show node info <node_id>":
+
+        'show node info c1n1\r\r\n\r\nCartridge #1 \r\n  Type: Compute\r\n
+        Manufacturer: HP\r\n  Product Name: ProLiant m500 Server Cartridge\r\n'
+
+        Parsing this retrieves 'ProLiant m500 Server Cartridge'
+        """
+        node_detail = self._run_cli_command("show node info %s" % node)
+        cartridge = node_detail.split('Product Name: ')[1].splitlines()[0]
+        if cartridge in cartridge_mapping:
+            return cartridge_mapping[cartridge]
+        else:
+            return cartridge_mapping['Default']
+
+    def get_node_power_status(self, node):
+        """Get power state of node (on/off).
+
+        Example of stdout from running "show node power <node_id>":
+
+        'show node power c1n1\r\r\n\r\nCartridge #1\r\n  Node #1\r\n
+        Power State: On\r\n'
+
+        Parsing this retrieves 'On'
+        """
+        power_state = self._run_cli_command("show node power %s" % node)
+        return power_state.split('Power State: ')[1].splitlines()[0]
+
     def power_node_on(self, node):
         """Power node on."""
         return self._run_cli_command("set node power on %s" % node)
@@ -91,15 +137,51 @@ class MSCM_CLI_API:
         """Power node off."""
         return self._run_cli_command("set node power off %s" % node)
 
-    def configure_node_boot_pxe(self, node):
-        """Configure PXE boot for node."""
-        return self._run_cli_command("set node boot pxe %s" % node)
+    def configure_node_boot_hdd(self, node):
+        """Configure HDD boot for node."""
+        return self._run_cli_command("set node boot hdd %s" % node)
 
     def configure_node_bootonce_pxe(self, node):
         """Configure PXE boot for node once."""
         return self._run_cli_command("set node bootonce pxe %s" % node)
 
-    def get_node_arch(self, node):
-        """Get node architecture."""
-        node_detail = self._run_cli_command("show node detail %s" % node)
-        return node_detail.split('CPU: ')[1].splitlines()[0]
+
+def power_control_mscm(host, username, password, node_id, power_change):
+    """Handle calls from the power template for nodes with a power type
+    of 'mscm'.
+    """
+    mscm = MSCM_CLI_API(host, username, password)
+    power_status = mscm.get_node_power_status(node_id)
+
+    if power_change == 'off':
+        mscm.power_node_off(node_id)
+        return
+
+    if power_change != 'on':
+        raise AssertionError('Unexpected maas power mode.')
+
+    if power_status == 'On':
+        mscm.power_node_off(node_id)
+
+    mscm.configure_node_bootonce_pxe(node_id)
+    mscm.power_node_on(node_id)
+
+
+def probe_and_enlist_mscm(host, username, password):
+    """ Extracts all of nodes from mscm, sets all of them to boot via HDD by,
+    default, sets them to bootonce via PXE, and then enlists them into MAAS.
+    """
+    mscm = MSCM_CLI_API(host, username, password)
+    nodes = mscm.discover_nodes()
+    for node_id in nodes:
+        # Set default boot to HDD
+        mscm.configure_node_boot_hdd(node_id)
+        params = {
+            'power_address': host,
+            'power_user': username,
+            'power_pass': password,
+            'node_id': node_id,
+        }
+        arch = mscm.get_node_arch(node_id)
+        macs = mscm.get_node_macs(node_id)
+        utils.create_node(macs, arch, 'mscm', params)
