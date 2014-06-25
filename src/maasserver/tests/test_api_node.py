@@ -336,7 +336,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=self.logged_in_user)
+            owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
         ngi = node.get_primary_mac().cluster_interface
 
         # Narrow the available IP range and pre-claim the only address.

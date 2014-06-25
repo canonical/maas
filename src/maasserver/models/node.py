@@ -406,8 +406,10 @@ class NodeManager(Manager):
             else:
                 do_start = True
             if do_start:
+                tasks = []
                 try:
-                    tasks = node.claim_static_ips()
+                    if node.status == NODE_STATUS.ALLOCATED:
+                        tasks.extend(node.claim_static_ips())
                 except StaticIPAddressExhaustion:
                     error_text = (
                         "Node %s: Unable to allocate static IP due to address"

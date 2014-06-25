@@ -46,7 +46,10 @@ from maasserver.models.node import (
     NODE_TRANSITIONS,
     validate_hostname,
     )
-from maasserver.models.staticipaddress import StaticIPAddressManager
+from maasserver.models.staticipaddress import (
+    StaticIPAddress,
+    StaticIPAddressManager,
+    )
 from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
@@ -1379,10 +1382,29 @@ class NodeManagerTest(MAASServerTestCase):
                 self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
-    def test_start_nodes_issues_dhcp_host_task(self):
+    def test_start_nodes_does_not_claim_static_ip_unless_allocated(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, power_type='ether_wake')
+        output = Node.objects.start_nodes([node.system_id], user)
+        # Check that the single node was started, and that only a
+        # power_on task was issued.
+        self.assertItemsEqual([node], output)
+        self.assertEqual(
+            [
+                'provisioningserver.tasks.power_on',
+            ],
+            [
+                task['task'].name for task in self.celery.tasks
+            ])
+
+        # No static IPs should have been allocated.
+        self.assertItemsEqual([], StaticIPAddress.objects.all())
+
+    def test_start_nodes_issues_dhcp_host_task(self):
+        user = factory.make_user()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, power_type='ether_wake', status=NODE_STATUS.ALLOCATED)
         omshell_create = self.patch(Omshell, 'create')
         output = Node.objects.start_nodes([node.system_id], user)
 
@@ -1410,7 +1432,7 @@ class NodeManagerTest(MAASServerTestCase):
     def test_start_nodes_clears_existing_dynamic_maps(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, power_type='ether_wake')
+            owner=user, power_type='ether_wake', status=NODE_STATUS.ALLOCATED)
         factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=node.get_primary_mac().mac_address)
         self.patch(Omshell, 'create')
