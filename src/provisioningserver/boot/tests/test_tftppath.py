@@ -53,7 +53,8 @@ from testtools.matchers import (
 from testtools.testcase import ExpectedException
 
 
-def make_image(params, purpose, metadata=None):
+def make_image(params, purpose, metadata=None, xinstall_path=None,
+               xinstall_type=None):
     """Describe an image as a dict similar to what `list_boot_images` returns.
 
     The `params` are as returned from `make_boot_image_storage_params`.
@@ -62,6 +63,13 @@ def make_image(params, purpose, metadata=None):
     image['purpose'] = purpose
     if metadata is not None:
         image.update(metadata)
+    if purpose == 'xinstall':
+        if xinstall_path is None:
+            xinstall_path = 'root-tgz'
+        if xinstall_type is None:
+            xinstall_type = 'tgz'
+        image['xinstall_path'] = xinstall_path
+        image['xinstall_type'] = xinstall_type
     return image
 
 
@@ -332,10 +340,12 @@ class TestTFTPPath(MAASTestCase):
         path = (osystem, arch, subarch, release, label)
         return path, osystem, arch, subarch, release, label
 
-    def _patch_osystem_registry(self, values):
+    def _patch_osystem_registry(self, values, xinstall_params=None):
         get_item = self.patch(OperatingSystemRegistry, "get_item")
         item_mock = Mock()
         item_mock.get_boot_image_purposes.return_value = values
+        if xinstall_params is not None:
+            item_mock.get_xinstall_parameters.return_value = xinstall_params
         get_item.return_value = item_mock
 
     def test_extract_image_params_with_no_metadata(self):
@@ -345,8 +355,12 @@ class TestTFTPPath(MAASTestCase):
         # values.
         purpose1 = factory.make_name("purpose")
         purpose2 = factory.make_name("purpose")
-        purposes = [purpose1, purpose2]
-        self._patch_osystem_registry(purposes)
+        xi_purpose = "xinstall"
+        xi_path = factory.make_name("xi_path")
+        xi_type = factory.make_name("xi_type")
+        purposes = [purpose1, purpose2, xi_purpose]
+        self._patch_osystem_registry(
+            purposes, xinstall_params=(xi_path, xi_type))
 
         params = extract_image_params(path, "")
 
@@ -368,6 +382,16 @@ class TestTFTPPath(MAASTestCase):
                     "label": label,
                     "purpose": purpose2,
                 },
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": xi_purpose,
+                    "xinstall_path": xi_path,
+                    "xinstall_type": xi_type,
+                },
             ],
             params)
 
@@ -378,8 +402,12 @@ class TestTFTPPath(MAASTestCase):
         # values.
         purpose1 = factory.make_name("purpose")
         purpose2 = factory.make_name("purpose")
-        purposes = [purpose1, purpose2]
-        self._patch_osystem_registry(purposes)
+        xi_purpose = "xinstall"
+        xi_path = factory.make_name("xi_path")
+        xi_type = factory.make_name("xi_type")
+        purposes = [purpose1, purpose2, xi_purpose]
+        self._patch_osystem_registry(
+            purposes, xinstall_params=(xi_path, xi_type))
 
         # Create some maas.meta content.
         image = ImageSpec(
@@ -409,6 +437,17 @@ class TestTFTPPath(MAASTestCase):
                     "release": release,
                     "label": label,
                     "purpose": purpose2,
+                    "supported_subarches": image_resource["subarches"],
+                },
+                {
+                    "osystem": osystem,
+                    "architecture": arch,
+                    "subarchitecture": subarch,
+                    "release": release,
+                    "label": label,
+                    "purpose": xi_purpose,
+                    "xinstall_path": xi_path,
+                    "xinstall_type": xi_type,
                     "supported_subarches": image_resource["subarches"],
                 },
             ],

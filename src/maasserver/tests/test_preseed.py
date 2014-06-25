@@ -54,10 +54,8 @@ from maasserver.preseed import (
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
@@ -603,6 +601,7 @@ class TestGetCurtinUserData(MAASServerTestCase):
             osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
+            xinstall_path='root-tgz', xinstall_type='tgz',
             nodegroup=node.nodegroup)
         node.use_fastpath_installer()
         user_data = get_curtin_userdata(node)
@@ -688,10 +687,11 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_installer_url_returns_url(self):
-        osystem = make_usable_osystem(
-            self, purposes=[BOOT_IMAGE_PURPOSE.XINSTALL])
+        osystem = factory.getRandomOS()
         series = factory.getRandomRelease(osystem)
         architecture = make_usable_architecture(self)
+        xinstall_path = factory.make_name('xi_path')
+        xinstall_type = factory.make_name('xi_type')
         node = factory.make_node(
             osystem=osystem.name, architecture=architecture,
             distro_series=series)
@@ -699,15 +699,16 @@ class TestCurtinUtilities(MAASServerTestCase):
         boot_image = factory.make_boot_image(
             osystem=osystem.name, architecture=arch,
             subarchitecture=subarch, release=series,
-            purpose='xinstall', nodegroup=node.nodegroup)
+            purpose='xinstall', xinstall_path=xinstall_path,
+            xinstall_type=xinstall_type, nodegroup=node.nodegroup)
 
         installer_url = get_curtin_installer_url(node)
 
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
-            'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/root-tgz' % (
-                interface.ip, osystem.name, arch, subarch,
-                series, boot_image.label),
+            '%s:http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
+                xinstall_type, interface.ip, osystem.name, arch, subarch,
+                series, boot_image.label, xinstall_path),
             installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
@@ -722,7 +723,8 @@ class TestCurtinUtilities(MAASServerTestCase):
             osystem=osystem.name,
             architecture=factory.make_name('arch'),
             subarchitecture=factory.make_name('subarch'), release=series,
-            purpose='xinstall', nodegroup=node.nodegroup)
+            purpose='xinstall', xinstall_path='root-tgz', xinstall_type='tgz',
+            nodegroup=node.nodegroup)
 
         error = self.assertRaises(
             MAASAPIException, get_curtin_installer_url, node)
@@ -737,41 +739,12 @@ class TestCurtinUtilities(MAASServerTestCase):
             ))
         self.assertIn(msg, "%s" % error)
 
-    def test_get_curtin_installer_url_appends_image_type(self):
-        osystem = make_usable_osystem(
-            self, purposes=[BOOT_IMAGE_PURPOSE.XINSTALL])
-        xi_path = factory.make_name('xi_path')
-        xi_type = factory.make_name('xi_type')
-        xi_mock = self.patch(osystem, 'get_xinstall_parameters')
-        xi_mock.return_value = (xi_path, xi_type)
-        series = factory.getRandomRelease(osystem)
-        architecture = make_usable_architecture(self)
-        node = factory.make_node(
-            osystem=osystem.name, architecture=architecture,
-            distro_series=series)
-        arch, subarch = architecture.split('/')
-        boot_image = factory.make_boot_image(
-            osystem=osystem.name, architecture=arch,
-            subarchitecture=subarch, release=series,
-            purpose='xinstall', nodegroup=node.nodegroup)
-
-        installer_url = get_curtin_installer_url(node)
-
-        [interface] = node.nodegroup.get_managed_interfaces()
-        self.assertEqual(
-            '%s:http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
-                xi_type, interface.ip, osystem.name, arch, subarch,
-                series, boot_image.label, xi_path),
-            installer_url)
-
     def test_get_curtin_installer_url_doesnt_append_on_tgz(self):
-        osystem = make_usable_osystem(
-            self, purposes=[BOOT_IMAGE_PURPOSE.XINSTALL])
-        xi_path = factory.make_name('xi_path')
-        xi_mock = self.patch(osystem, 'get_xinstall_parameters')
-        xi_mock.return_value = (xi_path, 'tgz')
+        osystem = factory.getRandomOS()
         series = factory.getRandomRelease(osystem)
         architecture = make_usable_architecture(self)
+        xinstall_path = factory.make_name('xi_path')
+        xinstall_type = 'tgz'
         node = factory.make_node(
             osystem=osystem.name, architecture=architecture,
             distro_series=series)
@@ -779,7 +752,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         boot_image = factory.make_boot_image(
             osystem=osystem.name, architecture=arch,
             subarchitecture=subarch, release=series,
-            purpose='xinstall', nodegroup=node.nodegroup)
+            purpose='xinstall', xinstall_path=xinstall_path,
+            xinstall_type=xinstall_type, nodegroup=node.nodegroup)
 
         installer_url = get_curtin_installer_url(node)
 
@@ -787,7 +761,7 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertEqual(
             'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
                 interface.ip, osystem.name, arch, subarch,
-                series, boot_image.label, xi_path),
+                series, boot_image.label, xinstall_path),
             installer_url)
 
     def test_get_preseed_type_for_commissioning(self):

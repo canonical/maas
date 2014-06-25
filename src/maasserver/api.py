@@ -2783,6 +2783,8 @@ def summarise_boot_image_object(image_object):
         image_object.label,
         image_object.purpose,
         image_object.supported_subarches,
+        image_object.xinstall_path,
+        image_object.xinstall_type,
         )
 
 
@@ -2803,6 +2805,8 @@ def summarise_boot_image_dict(image_dict):
         image_dict.get('label', 'release'),
         image_dict['purpose'],
         image_dict.get('supported_subarches', ''),
+        image_dict.get('xinstall_path', None),
+        image_dict.get('xinstall_type', None)
         )
 
 
@@ -2841,11 +2845,12 @@ def store_boot_images(nodegroup, reported_images, stored_images):
     """
     new_images = reported_images - stored_images
     for (osystem, arch, subarch, release, label, purpose,
-            supported_subarches) in new_images:
+            supported_subarches, xinstall_path, xinstall_type) in new_images:
         BootImage.objects.register_image(
             nodegroup=nodegroup, osystem=osystem, architecture=arch,
             subarchitecture=subarch, release=release, purpose=purpose,
-            label=label, supported_subarches=supported_subarches)
+            label=label, supported_subarches=supported_subarches,
+            xinstall_path=xinstall_path, xinstall_type=xinstall_type)
 
 
 def prune_boot_images(nodegroup, reported_images, stored_images):
@@ -2865,11 +2870,11 @@ def prune_boot_images(nodegroup, reported_images, stored_images):
     # even when it differs.
     reported = set(
         (osystem, arch, subarch, release, label, purpose)
-        for (osystem, arch, subarch, release, label, purpose, _)
+        for (osystem, arch, subarch, release, label, purpose, _, _, _)
         in reported_images)
     stored = set(
         (osystem, arch, subarch, release, label, purpose)
-        for (osystem, arch, subarch, release, label, purpose, _)
+        for (osystem, arch, subarch, release, label, purpose, _, _, _)
         in stored_images)
 
     removed_images = stored - reported

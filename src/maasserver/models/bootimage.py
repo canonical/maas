@@ -16,13 +16,14 @@ __all__ = [
     'BootImage',
     ]
 
-
+from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
     Manager,
     )
 from maasserver import DefaultMeta
+from maasserver.models.cleansave import CleanSave
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_first
@@ -43,14 +44,20 @@ class BootImageManager(Manager):
             purpose=purpose, label=label)
 
     def register_image(self, nodegroup, osystem, architecture, subarchitecture,
-                       release, purpose, label, supported_subarches):
+                       release, purpose, label, supported_subarches,
+                       xinstall_path=None, xinstall_type=None):
         """Register an image if it wasn't already registered."""
         image, created = self.get_or_create(
             nodegroup=nodegroup, osystem=osystem, architecture=architecture,
             subarchitecture=subarchitecture, release=release,
             purpose=purpose, label=label,
-            defaults={'supported_subarches': supported_subarches})
+            defaults={
+                'supported_subarches': supported_subarches,
+                'xinstall_path': xinstall_path,
+                'xinstall_type': xinstall_type,
+                })
         if not created:
+            save = False
             updates_subarches = (
                 supported_subarches != '' and
                 image.supported_subarches != supported_subarches)
@@ -58,6 +65,13 @@ class BootImageManager(Manager):
                 # Update the non-key field data if it changed and the
                 # new value contains data (ie. not blank).
                 image.supported_subarches = supported_subarches
+                save = True
+            if image.xinstall_path != xinstall_path or \
+                    image.xinstall_type != xinstall_type:
+                image.xinstall_path = xinstall_path
+                image.xinstall_type = xinstall_type
+                save = True
+            if save:
                 image.save()
         return image
 
@@ -152,7 +166,7 @@ class BootImageManager(Manager):
         return set(releases)
 
 
-class BootImage(TimestampedModel):
+class BootImage(CleanSave, TimestampedModel):
     """Available boot image (i.e. kernel and initrd).
 
     Each `BootImage` represents a type of boot for which a boot image is
@@ -203,6 +217,38 @@ class BootImage(TimestampedModel):
     # "Label" as in simplestreams parlance. (e.g. "release", "beta-1")
     label = CharField(
         max_length=255, blank=False, editable=False, default="release")
+
+    # Curtin image path (e.g. "root-tgz"). Only used when purpose is set
+    # to "xinstall".
+    xinstall_path = CharField(
+        max_length=255, null=True, blank=True, editable=False, default='')
+
+    # Curtin image type (e.g. "tgz" or "dd"). Only used when purpose is set
+    # to "xinstall".
+    xinstall_type = CharField(
+        max_length=30, null=True, blank=True, editable=False, default='')
+
+    def clean_xinstall(self):
+        """Validates that xinstall_path and xinstall_type are valid when
+        xinstall purpose is set."""
+        if self.purpose != 'xinstall':
+            return
+        invalid_xinstall_path = (
+            self.xinstall_path is None or
+            self.xinstall_path == '')
+        invalid_xinstall_type = (
+            self.xinstall_type is None or
+            self.xinstall_type == '')
+        if invalid_xinstall_path:
+            raise ValidationError(
+                "Invalid xinstall_path for an xinstall boot image.")
+        if invalid_xinstall_type:
+            raise ValidationError(
+                "Invalid xinstall_type for an xinstall boot image.")
+
+    def clean(self, *args, **kwargs):
+        super(BootImage, self).clean(*args, **kwargs)
+        self.clean_xinstall()
 
     def __repr__(self):
         return "<BootImage %s-%s/%s-%s-%s-%s>" % (

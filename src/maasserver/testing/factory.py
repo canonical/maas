@@ -577,7 +577,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_boot_image(self, osystem=None, architecture=None,
                         subarchitecture=None, release=None, purpose=None,
-                        nodegroup=None, label=None, supported_subarches=None):
+                        nodegroup=None, label=None, supported_subarches=None,
+                        xinstall_path=None, xinstall_type=None):
         if osystem is None:
             osystem = self.make_name('os')
         if architecture is None:
@@ -607,6 +608,8 @@ class Factory(maastesting.factory.Factory):
             purpose=purpose,
             label=label,
             supported_subarches=supported_subarches,
+            xinstall_path=xinstall_path,
+            xinstall_type=xinstall_type,
             )
 
     def make_boot_images_for_node_with_purposes(self, node, purposes):
@@ -615,11 +618,18 @@ class Factory(maastesting.factory.Factory):
         arch, subarch = node.split_arch()
         images = []
         for purpose in purposes:
+            if purpose == 'xinstall':
+                xinstall_path = self.make_name('xi_path')
+                xinstall_type = self.make_name('xi_type')
+            else:
+                xinstall_path = None
+                xinstall_type = None
             images.append(
                 self.make_boot_image(
                     osystem=osystem, architecture=arch,
                     subarchitecture=subarch, release=series, purpose=purpose,
-                    nodegroup=node.nodegroup))
+                    nodegroup=node.nodegroup, xinstall_path=xinstall_path,
+                    xinstall_type=xinstall_type))
         return images
 
     def make_commissioning_script(self, name=None, content=None):

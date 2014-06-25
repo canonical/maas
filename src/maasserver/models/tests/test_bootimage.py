@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.core.exceptions import ValidationError
 from maasserver.models import (
     BootImage,
     Config,
@@ -70,6 +71,38 @@ class TestBootImageManager(MAASServerTestCase):
         image = reload_object(image)
         self.assertEqual(
             original_supported_subarches, image.supported_subarches)
+
+    def test_register_image_sets_xinstall_path_and_type(self):
+        nodegroup = factory.make_node_group()
+        params = make_boot_image_params()
+        params['purpose'] = 'xinstall'
+        params['xinstall_path'] = factory.make_name('xi_path')
+        params['xinstall_type'] = factory.make_name('xi_type')
+        image = BootImage.objects.register_image(nodegroup, **params)
+        self.assertEqual(params['xinstall_path'], image.xinstall_path)
+        self.assertEqual(params['xinstall_type'], image.xinstall_type)
+
+    def test_register_image_update_xinstall_path_and_type(self):
+        nodegroup = factory.make_node_group()
+        params = make_boot_image_params()
+        params['purpose'] = 'xinstall'
+        params['xinstall_path'] = factory.make_name('xi_path')
+        params['xinstall_type'] = factory.make_name('xi_type')
+        image = factory.make_boot_image(nodegroup=nodegroup, **params)
+        params['xinstall_path'] = factory.make_name('xi_path')
+        params['xinstall_type'] = factory.make_name('xi_type')
+        BootImage.objects.register_image(nodegroup, **params)
+        image = reload_object(image)
+        self.assertEqual(params['xinstall_path'], image.xinstall_path)
+        self.assertEqual(params['xinstall_type'], image.xinstall_type)
+
+    def test_register_image_missing_xinstall_path_and_type(self):
+        nodegroup = factory.make_node_group()
+        params = make_boot_image_params()
+        params['purpose'] = 'xinstall'
+        self.assertRaises(
+            ValidationError,
+            BootImage.objects.register_image, nodegroup, **params)
 
     def test_default_arch_image_returns_None_if_no_images_match(self):
         osystem = Config.objects.get_config('commissioning_osystem')

@@ -51,7 +51,6 @@ from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils import compose_URL_on_IP
 import tempita
 
@@ -115,28 +114,17 @@ def get_curtin_installer_url(node):
                 series,
                 purpose
             ))
-
-    # XXX blake_r(1319143): This should not take place in maasserver. This will
-    # be replaced with an RPC call or a field in the BootImage model.
-    os_obj = OperatingSystemRegistry.get_item(osystem)
-    if os_obj is None:
-        raise MAASAPIException(
-            "Error generating the URL of curtin's image file.  "
-            "Booting operating system doesn't exist in the operating system "
-            "registry: os=%s" % osystem)
-    image_name, image_type = os_obj.get_xinstall_parameters(
-        arch, subarch, series, image.label)
-    if image_type == 'tgz':
+    if image.xinstall_type == 'tgz':
         url_prepend = ''
     else:
-        url_prepend = '%s:' % image_type
+        url_prepend = '%s:' % image.xinstall_type
     dyn_uri = '/'.join([
         osystem,
         arch,
         subarch,
         series,
         image.label,
-        image_name,
+        image.xinstall_path,
         ])
     url = compose_URL_on_IP(
         'http:///MAAS/static/images/%s' % dyn_uri, cluster_host)

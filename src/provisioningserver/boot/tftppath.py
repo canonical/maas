@@ -24,7 +24,10 @@ from itertools import chain
 from logging import getLogger
 import os.path
 
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+    )
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
@@ -163,12 +166,17 @@ def extract_image_params(path, maas_meta):
         arch, subarch, release, label)
 
     # Expand the path into a list of dicts, one for each boot purpose.
-    params = [
-        dict(
+    params = []
+    for purpose in purposes:
+        image = dict(
             osystem=osystem, architecture=arch, subarchitecture=subarch,
             release=release, label=label, purpose=purpose)
-        for purpose in purposes
-        ]
+        if purpose == BOOT_IMAGE_PURPOSE.XINSTALL:
+            xinstall_path, xinstall_type = osystem_obj.get_xinstall_parameters(
+                arch, subarch, release, label)
+            image['xinstall_path'] = xinstall_path
+            image['xinstall_type'] = xinstall_type
+        params.append(image)
 
     # Merge in the meta-data.
     for image_dict in params:

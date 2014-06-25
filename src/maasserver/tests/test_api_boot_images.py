@@ -141,11 +141,15 @@ class TestBootImagesReportImagesAPI(APITestCase):
                 image.label,
                 image.purpose,
                 image.supported_subarches,
+                image.xinstall_path,
+                image.xinstall_type,
             ),
             summarise_boot_image_object(image))
 
     def test_summarise_boot_image_dict_returns_tuple(self):
         image = make_boot_image_params()
+        image['xinstall_path'] = factory.make_name('xi_path')
+        image['xinstall_type'] = factory.make_name('xi_type')
         self.assertEqual(
             (
                 image['osystem'],
@@ -155,6 +159,8 @@ class TestBootImagesReportImagesAPI(APITestCase):
                 image['label'],
                 image['purpose'],
                 image['supported_subarches'],
+                image['xinstall_path'],
+                image['xinstall_type'],
             ),
             summarise_boot_image_dict(image))
 
@@ -164,18 +170,24 @@ class TestBootImagesReportImagesAPI(APITestCase):
         del image['label']
         del image['supported_subarches']
         (_, _, subarchitecture, _, label, _,
-            supported_subarches) = summarise_boot_image_dict(image)
+            supported_subarches, xinstall_path,
+            xinstall_type) = summarise_boot_image_dict(image)
         self.assertEqual(('generic', 'release'), (subarchitecture, label))
+        self.assertEqual((xinstall_path, xinstall_type), (None, None))
 
     def test_summarise_boot_image_functions_are_compatible(self):
         image_dict = make_boot_image_params()
+        image_dict['xinstall_path'] = factory.make_name('xi_path')
+        image_dict['xinstall_type'] = factory.make_name('xi_type')
         image_obj = factory.make_boot_image(
             osystem=image_dict['osystem'],
             architecture=image_dict['architecture'],
             subarchitecture=image_dict['subarchitecture'],
             release=image_dict['release'], label=image_dict['label'],
             purpose=image_dict['purpose'],
-            supported_subarches=[image_dict['supported_subarches']])
+            supported_subarches=[image_dict['supported_subarches']],
+            xinstall_path=image_dict['xinstall_path'],
+            xinstall_type=image_dict['xinstall_type'])
         self.assertEqual(
             summarise_boot_image_dict(image_dict),
             summarise_boot_image_object(image_obj))

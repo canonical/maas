@@ -397,6 +397,7 @@ class TestCurtinMetadataUserData(DjangoTestCase):
             osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
+            xinstall_path='root-tgz', xinstall_type='tgz',
             nodegroup=node.nodegroup)
         client = make_node_client(node)
         response = client.get(
