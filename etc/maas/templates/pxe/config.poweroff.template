@@ -1,4 +1,0 @@
-DEFAULT poweroff
-
-LABEL poweroff
-  KERNEL poweroff.com
