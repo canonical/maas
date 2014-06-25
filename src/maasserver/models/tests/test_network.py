@@ -252,6 +252,10 @@ class TestNetwork(MAASServerTestCase):
         net = factory.getRandomNetwork()
         self.assertEqual(net, factory.make_network(network=net).get_network())
 
+    def test_accepts_ipv6_network(self):
+        net = factory.get_random_ipv6_network()
+        self.assertEqual(net, factory.make_network(network=net).get_network())
+
     def test_get_connected_nodes_returns_QuerySet(self):
         network = factory.make_network()
         self.assertIsInstance(network.get_connected_nodes(), QuerySet)
@@ -301,11 +305,44 @@ class TestNetwork(MAASServerTestCase):
             ValidationError, factory.make_network,
             network=make_network(ip, '0.0.0.0'))
 
+    def test_netmask_validation_does_not_allow_too_small_ipv6_netmask(self):
+        ip = factory.get_random_ipv6_address()
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=make_network(
+                ip, 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'))
+
+    def test_netmask_validation_does_not_allow_too_large_ipv6_netmask(self):
+        ip = factory.get_random_ipv6_address()
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=make_network(
+                ip, '0000:0000:0000:0000:0000:0000:0000:0000'))
+
+    def test_netmask_validation_does_not_allow_short_allow_all_ipv6_netmask(self):
+        ip = factory.get_random_ipv6_address()
+        self.assertRaises(
+            ValidationError, factory.make_network,
+            network=make_network(ip, '::'))
+
     def test_netmask_validation_does_not_allow_mixed_zeroes_and_ones(self):
         # The factory won't let us create a Network with a nonsensical netmask,
         # so to test this by updating an existing Network object.
         network = factory.make_network()
         network.netmask = '255.254.255.0'
+        self.assertRaises(ValidationError, network.save)
+
+    def test_netmask_validation_accepts_ipv6_netmask(self):
+        net = factory.get_random_ipv6_network()
+        network = factory.make_network(network=net)
+        network.netmask = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:0000"
+        # This shouldn't error.
+        network.save()
+
+    def test_netmask_validation_errors_on_mixed_v4_and_v6_values(self):
+        network = factory.make_network()
+        network.ip = unicode(factory.get_random_ipv6_address())
+        network.netmask = '255.255.255.0'
         self.assertRaises(ValidationError, network.save)
 
     def test_unicode_returns_cidr_if_tag_is_zero(self):

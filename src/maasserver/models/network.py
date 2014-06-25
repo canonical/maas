@@ -289,18 +289,36 @@ class Network(CleanSave, Model):
 
     def clean_netmask(self):
         """Validator for `vlan_tag`."""
-        # To see whether the netmask is well-formed, combine it with an
-        # arbitrary valid IP address and see if IPNetwork's constructor
-        # complains.
+        # Work out whether we're using IPv6 or v4. If we're using mixed
+        # v6/v4 values, bail out.
+        ip_address = IPAddress(self.ip)
+        netmask_as_ip = IPAddress(self.netmask)
+        if ip_address.version == 6 and netmask_as_ip.version == 6:
+            check_ip = 'fc00:1:1::'
+        elif ip_address.version == 4 and netmask_as_ip.version == 4:
+            check_ip = '10.0.1.1'
+        else:
+            message = (
+                "You can't mix IPv4 and IPv6 anywhere in the same network "
+                "definition.")
+            raise ValidationError({'netmask': [message]})
+
         try:
-            make_network('10.1.1.1', self.netmask)
+            # To see whether the netmask is well-formed, combine it with
+            # an arbitrary valid IP address and see if IPNetwork's
+            # constructor complains.
+            make_network(check_ip, self.netmask)
         except AddrFormatError as e:
             raise ValidationError({'netmask': [e.message]})
 
-        if self.netmask == '0.0.0.0':
+        # We check netmask_as_ip.value here because there are two ways
+        # to specify an "allow-all" netmask in IPv6, and it makes the if
+        # statement unwieldy.
+        if netmask_as_ip.value == 0:
             raise ValidationError(
                 {'netmask': ["This netmask would span the entire Internet."]})
-        if self.netmask == '255.255.255.255':
+        if (self.netmask == '255.255.255.255'
+            or self.netmask == 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'):
             raise ValidationError(
                 {'netmask': ["This netmask leaves no room for IP addresses."]})
 
