@@ -56,7 +56,7 @@ class TestIPSpecifier(MAASServerTestCase):
 
     def test_accepts_IPv6_address(self):
         ip = factory.get_random_ipv6_address()
-        self.assertEqual(ip, IPSpecifier('ip:' + unicode(ip)).ip)
+        self.assertEqual(IPAddress(ip), IPSpecifier('ip:' + unicode(ip)).ip)
 
     def test_rejects_empty_ip_address(self):
         self.assertRaises(ValidationError, IPSpecifier, 'ip:')

@@ -129,7 +129,7 @@ class Factory:
         # We can't use random.choice() because there are too many
         # elements in network.
         random_address_index = random.randint(0, network.size - 1)
-        return IPAddress(network[random_address_index])
+        return unicode(IPAddress(network[random_address_index]))
 
     def getRandomUUID(self):
         return unicode(uuid1())
