@@ -21,6 +21,7 @@ __all__ = [
     'DHCPLease',
     'DownloadProgress',
     'FileStorage',
+    'LicenseKey',
     'logger',
     'MACAddress',
     'Network',
@@ -52,6 +53,7 @@ from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
 from maasserver.models.filestorage import FileStorage
+from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.network import Network
@@ -72,9 +74,9 @@ from piston.doc import HandlerDocumentation
 # export in __all__.
 ignore_unused(
     BootImage, ComponentError, Config, DHCPLease, DownloadProgress,
-    FileStorage, StaticIPAddress, MACAddress, MACStaticIPAddressLink,
-    Network, NodeGroup, SSHKey, Tag, UserProfile, NodeGroupInterface,
-    Zone, logger)
+    FileStorage, LicenseKey, StaticIPAddress, MACAddress,
+    MACStaticIPAddressLink, Network, NodeGroup, SSHKey, Tag, UserProfile,
+    NodeGroupInterface, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.

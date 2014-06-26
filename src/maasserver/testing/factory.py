@@ -38,6 +38,7 @@ from maasserver.models import (
     DHCPLease,
     DownloadProgress,
     FileStorage,
+    LicenseKey,
     MACAddress,
     MACStaticIPAddressLink,
     Network,
@@ -889,6 +890,19 @@ class Factory(maastesting.factory.Factory):
             subarches=subarches, labels=labels)
         boot_source_selection.save()
         return boot_source_selection
+
+    def make_license_key(self, osystem=None, distro_series=None,
+                         license_key=None):
+        if osystem is None:
+            osystem = factory.make_name('osystem')
+        if distro_series is None:
+            distro_series = factory.make_name('distro_series')
+        if license_key is None:
+            license_key = factory.make_name('key')
+        return LicenseKey.objects.create(
+            osystem=osystem,
+            distro_series=distro_series,
+            license_key=license_key)
 
 
 # Create factory singleton.
