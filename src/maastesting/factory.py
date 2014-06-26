@@ -34,6 +34,7 @@ import string
 import subprocess
 import time
 import urllib2
+import urlparse
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
@@ -309,6 +310,31 @@ class Factory:
         The returned hostname is lowercase because python's urlparse
         implicitely lowercases the hostnames."""
         return self.make_name(prefix=prefix, *args, **kwargs).lower()
+
+    # Always select from a scheme that allows parameters in the URL so
+    # that we can round-trip a URL with params successfully (otherwise
+    # the params don't get parsed out of the path).
+    _make_parsed_url_schemes = tuple(
+        scheme for scheme in urlparse.uses_params
+        if scheme != "")
+
+    def make_parsed_url(self):
+        """Generate a random parsed URL object.
+
+        :return: Instance of :py:class:`urlparse.ParseResult`.
+        """
+        return urlparse.ParseResult(
+            # Select a scheme that allows parameters; see above.
+            random.choice(self._make_parsed_url_schemes),
+            self.make_name("netloc").lower(),
+            # A leading forward-slash will be added in geturl() if we
+            # don't, so ensure it's here now so tests can compare URLs
+            # without worrying about it.
+            self.make_name("/path"),
+            self.make_name("params"),
+            self.make_name("query"),
+            self.make_name("fragment"),
+        )
 
     def make_names(self, *prefixes):
         """Generate random names.

@@ -15,11 +15,14 @@ __metaclass__ = type
 __all__ = [
     "Bytes",
     "StructureAsJSON",
+    "ParsedURL",
 ]
 
 import json
+import urlparse
 import zlib
 
+from apiclient.utils import ascii_url
 from twisted.protocols import amp
 
 
@@ -38,6 +41,35 @@ class Bytes(amp.Argument):
     def fromString(self, inString):
         # inString is always a byte string, as defined by amp.Argument.
         return inString
+
+
+class ParsedURL(amp.Argument):
+    """Encode a URL on the wire.
+
+    The URL should be an instance of :py:class:`~urlparse.ParseResult`
+    or :py:class:`~urlparse.SplitResult` for encoding. When decoding,
+    :py:class:`~urlparse.ParseResult` is always returned.
+    """
+
+    def toString(self, inObject):
+        """Encode a URL-like object into an ASCII URL.
+
+        :raise TypeError: If `inObject` is not a URL-like object
+            (meaning it doesn't have a `geturl` method).
+        """
+        try:
+            geturl = inObject.geturl
+        except AttributeError:
+            raise TypeError("Not a URL-like object: %r" % (inObject,))
+        else:
+            return ascii_url(geturl())
+
+    def fromString(self, inString):
+        """Decode an ASCII URL into a URL-like object.
+
+        :return: :py:class:`~urlparse.ParseResult`
+        """
+        return urlparse.urlparse(inString)
 
 
 class StructureAsJSON(amp.Argument):

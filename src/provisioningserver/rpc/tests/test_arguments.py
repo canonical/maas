@@ -53,3 +53,29 @@ class TestStructureAsJSON(MAASTestCase):
         self.assertThat(encoded, IsInstance(bytes))
         decoded = argument.fromString(encoded)
         self.assertThat(decoded, Equals(self.example))
+
+
+class TestParsedURL(MAASTestCase):
+
+    def test_round_trip(self):
+        argument = arguments.ParsedURL()
+        example = factory.make_parsed_url()
+        encoded = argument.toString(example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded.geturl(), Equals(example.geturl()))
+
+    def test_error_when_input_is_not_a_url_object(self):
+        with ExpectedException(TypeError, "^Not a URL-like object: <.*"):
+            arguments.ParsedURL().toString(object())
+
+    def test_netloc_containing_non_ascii_characters_is_encoded_to_idna(self):
+        argument = arguments.ParsedURL()
+        example = factory.make_parsed_url()._replace(
+            netloc=u'\u24b8\u211d\U0001d538\u24b5\U0001d502')
+        encoded = argument.toString(example)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        # The non-ASCII netloc was encoded using IDNA.
+        expected = example._replace(netloc="cra(z)y")
+        self.assertThat(decoded.geturl(), Equals(expected.geturl()))
