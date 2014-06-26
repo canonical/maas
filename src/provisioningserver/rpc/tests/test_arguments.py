@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
+
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.rpc import arguments
@@ -37,6 +39,33 @@ class TestBytes(MAASTestCase):
     def test_error_when_input_is_not_a_byte_string(self):
         with ExpectedException(TypeError, "^Not a byte string: <.*"):
             arguments.Bytes().toString(object())
+
+
+class TestChoice(MAASTestCase):
+
+    def test_round_trip(self):
+        choices = {
+            factory.make_name("name"): factory.getRandomBytes()
+            for _ in xrange(10)
+        }
+        argument = arguments.Choice(choices)
+        choice = random.choice(list(choices))
+        encoded = argument.toString(choice)
+        self.assertThat(encoded, IsInstance(bytes))
+        decoded = argument.fromString(encoded)
+        self.assertThat(decoded, Equals(choice))
+
+    def test_error_when_input_is_not_in_choices(self):
+        with ExpectedException(KeyError, "^<object .*"):
+            arguments.Choice({}).toString(object())
+
+    def test_error_when_choices_is_not_mapping(self):
+        with ExpectedException(TypeError, "^Not a mapping: \[\]"):
+            arguments.Choice([])
+
+    def test_error_when_choices_values_are_not_byte_strings(self):
+        with ExpectedException(TypeError, "^Not byte strings: 12345, u'foo'"):
+            arguments.Choice({object(): 12345, object(): u'foo'})
 
 
 class TestStructureAsJSON(MAASTestCase):

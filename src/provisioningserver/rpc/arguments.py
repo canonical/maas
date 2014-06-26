@@ -14,10 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = [
     "Bytes",
+    "Choice",
     "StructureAsJSON",
     "ParsedURL",
 ]
 
+import collections
 import json
 import urlparse
 import zlib
@@ -41,6 +43,37 @@ class Bytes(amp.Argument):
     def fromString(self, inString):
         # inString is always a byte string, as defined by amp.Argument.
         return inString
+
+
+class Choice(amp.Argument):
+    """Encode a choice to a predefined bytestring on the wire."""
+
+    def __init__(self, choices, optional=False):
+        """Default constructor.
+
+        :param choices: A :py:class:`~collections.Mapping` of possible
+            choices. The keys can be any Python object suitable for use
+            as a mapping key, but the values must be byte strings. On
+            the wire the Python objects will be represented by those
+            byte strings, and mapped back at the receiving end.
+        """
+        super(Choice, self).__init__(optional=optional)
+        if not isinstance(choices, collections.Mapping):
+            raise TypeError("Not a mapping: %r" % (choices,))
+        not_byte_strings = sorted(
+            value for value in choices.itervalues()
+            if not isinstance(value, bytes))
+        if len(not_byte_strings) != 0:
+            raise TypeError("Not byte strings: %s" % ", ".join(
+                repr(value) for value in not_byte_strings))
+        self._encode = {name: value for name, value in choices.iteritems()}
+        self._decode = {value: name for name, value in choices.iteritems()}
+
+    def toString(self, inObject):
+        return self._encode[inObject]
+
+    def fromString(self, inString):
+        return self._decode[inString]
 
 
 class ParsedURL(amp.Argument):
