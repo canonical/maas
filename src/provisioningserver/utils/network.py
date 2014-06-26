@@ -115,3 +115,11 @@ def get_all_interface_addresses():
             for inet_address in addresses[netifaces.AF_INET]:
                 if "addr" in inet_address:
                     yield inet_address["addr"]
+        if netifaces.AF_INET6 in addresses:
+            for inet6_address in addresses[netifaces.AF_INET6]:
+                if "addr" in inet6_address:
+                    # There's a bug in netifaces which results in the
+                    # interface name being appended to the IPv6 address.
+                    # Goodness knows why. Anyway, we deal with that
+                    # here.
+                    yield inet6_address["addr"].replace('%' + interface, '')
