@@ -29,7 +29,10 @@ from maasserver import (
     eventloop,
     locks,
     )
-from maasserver.rpc import bootsources
+from maasserver.rpc import (
+    bootsources,
+    configuration,
+    )
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
 from provisioningserver.rpc import (
@@ -115,6 +118,16 @@ class Region(amp.AMP):
         """
         d = deferToThread(bootsources.get_boot_sources, uuid)
         d.addCallback(lambda sources: {b"sources": sources})
+        return d
+
+    @region.GetProxies.responder
+    def get_proxies(self):
+        """get_proxies()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetProxies`.
+        """
+        d = deferToThread(configuration.get_proxies)
         return d
 
 

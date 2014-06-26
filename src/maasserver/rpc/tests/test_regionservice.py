@@ -29,6 +29,7 @@ from maasserver import (
     eventloop,
     locks,
     )
+from maasserver.models.config import Config
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     Region,
@@ -53,6 +54,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     GetBootSources,
+    GetProxies,
     Identify,
     ReportBootImages,
     )
@@ -242,6 +244,41 @@ class TestRegionProtocol_GetBootSources(MAASTestCase):
             Region(), GetBootSources, {b"uuid": uuid})
 
         self.assertEqual({b"sources": [boot_source]}, response)
+
+
+class TestRegionProtocol_GetProxies(MAASTestCase):
+
+    def test_get_proxies_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetProxies.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def set_http_proxy(self, url):
+        Config.objects.set_config("http_proxy", url)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_proxies_with_http_proxy_not_set(self):
+        yield deferToThread(self.set_http_proxy, None)
+
+        response = yield call_responder(Region(), GetProxies, {})
+
+        self.assertEqual(
+            {b"http": None, "https": None},
+            response)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_proxies_with_http_proxy_set(self):
+        url = factory.make_parsed_url()
+        yield deferToThread(self.set_http_proxy, url.geturl())
+
+        response = yield call_responder(Region(), GetProxies, {})
+
+        self.assertEqual(
+            {b"http": url, b"https": url},
+            response)
 
 
 class TestRegionServer(MAASServerTestCase):
