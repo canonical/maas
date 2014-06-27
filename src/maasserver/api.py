@@ -166,6 +166,7 @@ from maasserver.components import (
     )
 from maasserver.enum import (
     COMPONENT,
+    IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -522,6 +523,41 @@ class NodeHandler(OperationsHandler):
             bson.BSON.encode(probe_details_report),
             # Not sure what media type to use here.
             content_type='application/bson')
+
+    @admin_method
+    @operation(idempotent=False)
+    def claim_sticky_ip_address(self, request, system_id):
+        """Assign a "sticky" IP address to a Node's MAC.
+
+        This method is reserved for admin users.
+
+        :param mac_address: Optional MAC address on the node on which to
+            assign the sticky IP address.  If not passed, defaults to the
+            primary MAC for the node.
+
+        A sticky IP is one which stays with the node until the IP is
+        disassociated with the node, or the node is deleted.  It allows
+        an admin to give a node a stable IP, since normally an automatic
+        IP is allocated to a node only during the time a user has
+        acquired and started a node.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        if node.status == NODE_STATUS.ALLOCATED:
+            raise NodeStateViolation(
+                "Sticky IP cannot be assigned to a node that is allocated")
+
+        raw_mac = request.POST.get('mac_address', None)
+        if raw_mac is None:
+            mac_address = node.get_primary_mac()
+        else:
+            try:
+                mac_address = MACAddress.objects.get(
+                    mac_address=raw_mac, node=node)
+            except MACAddress.DoesNotExist:
+                raise MAASAPIBadRequest(
+                    "mac_address %s not found on the node" % raw_mac)
+        mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        return node
 
 
 def create_node(request):

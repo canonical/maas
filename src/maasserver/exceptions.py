@@ -122,9 +122,10 @@ class StaticIPAddressExhaustion(MAASAPIException):
     api_error = httplib.SERVICE_UNAVAILABLE
 
 
-class StaticIPAddressTypeClash(MAASException):
+class StaticIPAddressTypeClash(MAASAPIException):
     """Raised when trying to allocate an IP for a MAC where one of another
     type already exists."""
+    api_error = httplib.CONFLICT
 
 
 class NodeActionError(MAASException):

@@ -260,6 +260,8 @@ class TestDescribingAPI(MAASServerTestCase):
             "POST release op=release restful=False",
             "POST commission op=commission restful=False",
             "PUT update op=None restful=True",
+            "POST claim_sticky_ip_address op=claim_sticky_ip_address "
+            "restful=False",
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action

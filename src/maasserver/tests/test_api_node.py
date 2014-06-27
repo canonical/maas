@@ -23,6 +23,7 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
     )
@@ -925,6 +926,107 @@ class TestNodeAPI(APITestCase):
         response = self.client.delete(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestStickyIP(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=claim_sticky_ip_address"""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_claim_sticky_ip_address_disallows_non_admin(self):
+        node = factory.make_node()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_claim_sticky_ip_address_disallows_when_allocated(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code, response.content)
+        self.assertEqual(
+            "Sticky IP cannot be assigned to a node that is allocated",
+            response.content)
+
+    def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        existing_ip = node.get_primary_mac().claim_static_ip(
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        [returned_ip] = parsed_node["ip_addresses"]
+        self.assertEqual(
+            (existing_ip.ip, IPADDRESS_TYPE.STICKY),
+            (returned_ip, existing_ip.alloc_type)
+            )
+
+    def test_claim_sticky_ip_address_rtns_error_if_clashing_type_exists(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        random_alloc_type = factory.getRandomEnum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.STICKY])
+        node.get_primary_mac().claim_static_ip(alloc_type=random_alloc_type)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(
+            httplib.CONFLICT, response.status_code,
+            response.content)
+
+    def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        [returned_ip] = parsed_node["ip_addresses"]
+        [given_ip] = StaticIPAddress.objects.all()
+        self.assertEqual(
+            (given_ip.ip, IPADDRESS_TYPE.STICKY),
+            (returned_ip, given_ip.alloc_type)
+            )
+
+    def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        ngi = factory.make_node_group_interface(nodegroup=node.nodegroup)
+        second_mac = factory.make_mac_address(node=node, cluster_interface=ngi)
+
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'claim_sticky_ip_address',
+                'mac_address': second_mac.mac_address.get_raw(),
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        [observed_static_ip] = StaticIPAddress.objects.all()
+        [observed_mac] = observed_static_ip.macaddress_set.all()
+        self.assertEqual(second_mac, observed_mac)
+
+    def test_claim_sticky_ip_address_catches_bad_mac_address_parameter(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        random_mac = factory.getRandomMACAddress()
+
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'claim_sticky_ip_address',
+                'mac_address': random_mac,
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertEqual(
+            "mac_address %s not found on the node" % random_mac,
+            response.content)
 
 
 class TestGetDetails(APITestCase):
