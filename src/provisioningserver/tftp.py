@@ -19,12 +19,17 @@ __all__ = [
 
 import httplib
 import json
+from socket import (
+    AF_INET,
+    AF_INET6,
+    )
 from urllib import urlencode
 from urlparse import (
     parse_qsl,
     urlparse,
     )
 
+from netaddr import IPAddress
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.drivers import ArchitectureRegistry
@@ -36,6 +41,12 @@ from tftp.errors import FileNotFound
 from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
+from twisted.internet import udp
+from twisted.internet.abstract import isIPv6Address
+from twisted.internet.address import (
+    IPv4Address,
+    IPv6Address,
+    )
 from twisted.python.context import get
 from twisted.web.client import getPage
 import twisted.web.error
@@ -184,6 +195,39 @@ class TFTPBackend(FilesystemSynchronousBackend):
         return d
 
 
+class Port(udp.Port):
+    """A :py:class:`udp.Port` that groks IPv6."""
+
+    # This must be set by call sites.
+    addressFamily = None
+
+    def getHost(self):
+        """See :py:meth:`twisted.internet.udp.Port.getHost`."""
+        host, port = self.socket.getsockname()[:2]
+        addr_type = IPv6Address if isIPv6Address(host) else IPv4Address
+        return addr_type('UDP', host, port)
+
+
+class UDPServer(internet.UDPServer):
+    """A :py:class:`~internet.UDPServer` that groks IPv6.
+
+    This creates the port directly instead of using the reactor's
+    ``listenUDP`` method so that we can do a switcharoo to our own
+    IPv6-enabled port implementation.
+    """
+
+    def _getPort(self):
+        """See :py:meth:`twisted.application.internet.UDPServer._getPort`."""
+        return self._listenUDP(*self.args, **self.kwargs)
+
+    def _listenUDP(self, port, protocol, interface='', maxPacketSize=8192):
+        """See :py:meth:`twisted.internet.reactor.listenUDP`."""
+        p = Port(port, protocol, interface, maxPacketSize)
+        p.addressFamily = AF_INET6 if isIPv6Address(interface) else AF_INET
+        p.startListening()
+        return p
+
+
 class TFTPService(MultiService, object):
     """An umbrella service representing a set of running TFTP servers.
 
@@ -246,10 +290,11 @@ class TFTPService(MultiService, object):
         addrs_desired = set(get_all_interface_addresses())
 
         for address in addrs_desired - addrs_established:
-            tftp_service = internet.UDPServer(
-                self.port, TFTP(self.backend), interface=address)
-            tftp_service.setName(address)
-            tftp_service.setServiceParent(self)
+            if not IPAddress(address).is_link_local():
+                tftp_service = UDPServer(
+                    self.port, TFTP(self.backend), interface=address)
+                tftp_service.setName(address)
+                tftp_service.setServiceParent(self)
 
         for address in addrs_established - addrs_desired:
             tftp_service = self.getServiceNamed(address)

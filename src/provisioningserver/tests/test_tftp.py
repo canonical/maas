@@ -17,6 +17,10 @@ __all__ = []
 from functools import partial
 import json
 from os import path
+from socket import (
+    AF_INET,
+    AF_INET6,
+    )
 from urllib import urlencode
 from urlparse import (
     parse_qsl,
@@ -27,14 +31,22 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
+from mock import sentinel
+from netaddr import IPNetwork
+from netaddr.ip import (
+    IPV4_LINK_LOCAL,
+    IPV6_LINK_LOCAL,
+    )
 from provisioningserver import tftp as tftp_module
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from provisioningserver.tftp import (
+    Port,
     TFTPBackend,
     TFTPService,
+    UDPServer,
     )
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
@@ -50,10 +62,15 @@ from tftp.protocol import TFTP
 from twisted.application import internet
 from twisted.application.service import MultiService
 from twisted.internet import reactor
+from twisted.internet.address import (
+    IPv4Address,
+    IPv6Address,
+    )
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
     )
+from twisted.internet.protocol import Protocol
 from twisted.python import context
 from zope.interface.verify import verifyObject
 
@@ -244,7 +261,7 @@ class TestTFTPService(MAASTestCase):
         # A TFTP service is configured and added to the top-level service.
         interfaces = [
             factory.getRandomIPAddress(),
-            factory.getRandomIPAddress(),
+            factory.get_random_ipv6_address(),
             ]
         self.patch(
             tftp_module, "get_all_interface_addresses",
@@ -330,3 +347,82 @@ class TestTFTPService(MAASTestCase):
         self.assertEqual(interfaces, {
             server.name for server in tftp_service.getServers()
         })
+
+    def test_tftp_service_does_not_bind_to_link_local_addresses(self):
+        # Initial set of interfaces to bind to.
+        ipv4_test_net_3 = IPNetwork("203.0.113.0/24")  # RFC 5737
+        normal_addresses = {
+            factory.getRandomIPInNetwork(ipv4_test_net_3),
+            factory.get_random_ipv6_address(),
+        }
+        link_local_addresses = {
+            factory.getRandomIPInNetwork(IPV4_LINK_LOCAL),
+            factory.getRandomIPInNetwork(IPV6_LINK_LOCAL),
+        }
+        self.patch(
+            tftp_module, "get_all_interface_addresses",
+            lambda: normal_addresses | link_local_addresses)
+
+        tftp_service = TFTPService(
+            resource_root=self.make_dir(), generator="http://mighty/wind",
+            port=factory.getRandomPort())
+        tftp_service.updateServers()
+
+        # Only the "normal" addresses have been used.
+        self.assertEqual(normal_addresses, {
+            server.name for server in tftp_service.getServers()
+        })
+
+
+class DummyProtocol(Protocol):
+    def doStop(self):
+        pass
+
+
+class TestPort(MAASTestCase):
+    """Tests for :py:class:`Port`."""
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_getHost_works_with_IPv4_address(self):
+        port = Port(0, DummyProtocol(), "127.0.0.1")
+        port.addressFamily = AF_INET
+        port.startListening()
+        self.addCleanup(port.stopListening)
+        self.assertEqual(
+            IPv4Address('UDP', '127.0.0.1', port._realPortNumber),
+            port.getHost())
+
+    def test_getHost_works_with_IPv6_address(self):
+        port = Port(0, DummyProtocol(), "::1")
+        port.addressFamily = AF_INET6
+        port.startListening()
+        self.addCleanup(port.stopListening)
+        self.assertEqual(
+            IPv6Address('UDP', '::1', port._realPortNumber),
+            port.getHost())
+
+
+class TestUDPServer(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test__getPort_calls__listenUDP_with_args_from_constructor(self):
+        server = UDPServer(sentinel.foo, bar=sentinel.bar)
+        _listenUDP = self.patch(server, "_listenUDP")
+        _listenUDP.return_value = sentinel.port
+        self.assertEqual(sentinel.port, server._getPort())
+        self.assertThat(_listenUDP, MockCalledOnceWith(
+            sentinel.foo, bar=sentinel.bar))
+
+    def test__listenUDP_with_IPv4_address(self):
+        server = UDPServer(0, DummyProtocol(), "127.0.0.1")
+        port = server._getPort()
+        self.addCleanup(port.stopListening)
+        self.assertEqual(AF_INET, port.addressFamily)
+
+    def test__listenUDP_with_IPv6_address(self):
+        server = UDPServer(0, DummyProtocol(), "::1")
+        port = server._getPort()
+        self.addCleanup(port.stopListening)
+        self.assertEqual(AF_INET6, port.addressFamily)
