@@ -453,6 +453,7 @@ def get_node_preseed_context(node, osystem='', release=''):
         'preseed_data': compose_preseed(get_preseed_type_for(node), node),
         'node_disable_pxe_url': node_disable_pxe_url,
         'node_disable_pxe_data': node_disable_pxe_data,
+        'license_key': node.get_effective_license_key(),
     }
 
 

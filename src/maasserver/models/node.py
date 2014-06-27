@@ -68,6 +68,7 @@ from maasserver.fields import (
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.models.licensekey import LicenseKey
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressExhaustion,
@@ -1045,6 +1046,32 @@ class Node(CleanSave, TimestampedModel):
             return osystem.get_default_release()
         else:
             return self.distro_series
+
+    def get_effective_license_key(self):
+        """Return effective license key.
+
+        This returns the license key that should be used during the
+        installation of the operating system for this node. This method first
+        checks to see if the node has a specific license key set, if not then
+        the license key registry is checked, if neither exists for this node or
+        the booting operating system and release combination then an empty
+        string is returned. An empty string can mean two things, one the
+        operating system does not require a license key, or the installation
+        media already has the license key builtin.
+        """
+        use_global_license_key = (
+            self.license_key is None or
+            self.license_key == '')
+        if use_global_license_key:
+            osystem = self.get_osystem()
+            distro_series = self.get_distro_series()
+            try:
+                return LicenseKey.objects.get_license_key(
+                    osystem, distro_series)
+            except LicenseKey.DoesNotExist:
+                return ''
+        else:
+            return self.license_key
 
     def get_effective_power_parameters(self):
         """Return effective power parameters, including any defaults."""

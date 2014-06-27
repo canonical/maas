@@ -37,6 +37,7 @@ from maasserver.exceptions import (
 from maasserver.fields import MAC
 from maasserver.models import (
     Config,
+    LicenseKey,
     MACAddress,
     Node,
     node as node_module,
@@ -295,6 +296,24 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(distro_series='')
         series = Config.objects.get_config('default_distro_series')
         self.assertEqual(series, node.get_distro_series())
+
+    def test_get_effective_license_key_returns_node_value(self):
+        license_key = factory.make_name('license_key')
+        node = factory.make_node(license_key=license_key)
+        self.assertEqual(license_key, node.get_effective_license_key())
+
+    def test_get_effective_license_key_returns_blank(self):
+        node = factory.make_node()
+        self.assertEqual('', node.get_effective_license_key())
+
+    def test_get_effective_license_key_returns_global(self):
+        license_key = factory.make_name('license_key')
+        osystem = factory.make_name('os')
+        series = factory.make_name('series')
+        LicenseKey.objects.create(
+            osystem=osystem, distro_series=series, license_key=license_key)
+        node = factory.make_node(osystem=osystem, distro_series=series)
+        self.assertEqual(license_key, node.get_effective_license_key())
 
     def test_delete_node_deletes_related_mac(self):
         node = factory.make_node()

@@ -499,7 +499,7 @@ class TestNodePreseedContext(MAASServerTestCase):
         self.assertItemsEqual(
             ['driver', 'driver_package', 'node',
              'node_disable_pxe_data', 'node_disable_pxe_url',
-             'preseed_data', 'third_party_drivers',
+             'preseed_data', 'third_party_drivers', 'license_key',
              ],
             context)
 
