@@ -159,7 +159,12 @@ class Factory:
         if disjoint_from is None:
             disjoint_from = []
         if slash is None:
-            slash = random.randint(16, 29)
+            # XXX 2014-06-27 bigjools bug=1334963
+            # This is deliberately restricted in size because
+            # Nodegroupinterface.clean_ip_ranges() performs badly with
+            # large networks at this time. Revert the "24" back to "16"
+            # when fixed.
+            slash = random.randint(24, 29)
         if random_address_factory is None:
             random_address_factory = self.getRandomIPAddress
         # Look randomly for a network that matches our criteria.

@@ -221,6 +221,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
+        # XXX 2014-06-27 bigjools bug=1334963
+        # The performance of this code over large networks is terrible.
+        # The test suite has been hobbled (grep for the bug number)
+        # until this is fixed.  Basically, IPSet is itself very
+        # inefficient so we need a different way of checking ranges.
         if (self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
            (self.static_ip_range_low and self.static_ip_range_high)):
             static_set = IPSet(
