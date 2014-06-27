@@ -221,20 +221,28 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
-        # XXX 2014-06-27 bigjools bug=1334963
-        # The performance of this code over large networks is terrible.
-        # The test suite has been hobbled (grep for the bug number)
-        # until this is fixed.  Basically, IPSet is itself very
-        # inefficient so we need a different way of checking ranges.
         if (self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
            (self.static_ip_range_low and self.static_ip_range_high)):
-            static_set = IPSet(
-                IPRange(
-                    self.static_ip_range_low,
-                    self.static_ip_range_high))
-            dynamic_set = IPSet(
-                IPRange(self.ip_range_low, self.ip_range_high))
-            if not static_set.isdisjoint(dynamic_set):
+            ip_range_low = IPAddress(self.ip_range_low)
+            ip_range_high = IPAddress(self.ip_range_high)
+            static_ip_range_low = IPAddress(self.static_ip_range_low)
+            static_ip_range_high = IPAddress(self.static_ip_range_high)
+
+            static_range = IPRange(
+                static_ip_range_low,
+                static_ip_range_high)
+            dynamic_range = IPRange(
+                ip_range_low, ip_range_high)
+
+            # This is a bit unattractive, but we can't use IPSet for
+            # large networks - it's far too slow. What we actually care
+            # about is whether the lows and highs of the static range
+            # fall within the dynamic range and vice-versa, which
+            # IPRange gives us.
+            if (static_ip_range_low in dynamic_range or
+                static_ip_range_high in dynamic_range or
+                ip_range_low in static_range or
+                ip_range_high in static_range):
                 message = "Static and dynamic IP ranges may not overlap."
                 errors = {
                     'ip_range_low': [message],

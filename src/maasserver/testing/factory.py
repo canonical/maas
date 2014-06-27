@@ -264,7 +264,7 @@ class Factory(maastesting.factory.Factory):
         if network is None:
             network = factory.getRandomNetwork()
         # Split the network into dynamic and static ranges.
-        if len(network) > 2:
+        if network.size > 2:
             dynamic_range = IPRange(network.first, network[network.size // 2])
             static_range = IPRange(network[(network.size // 2) + 1],
                                    network.last)
