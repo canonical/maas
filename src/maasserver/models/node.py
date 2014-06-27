@@ -57,7 +57,10 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.exceptions import NodeStateViolation
+from maasserver.exceptions import (
+    NodeStateViolation,
+    StaticIPAddressTypeClash,
+    )
 from maasserver.fields import (
     JSONObjectField,
     MAC,
@@ -640,7 +643,11 @@ class Node(CleanSave, TimestampedModel):
         # Get a new AUTO static IP for each MAC on a managed interface.
         macs = self.mac_addresses_on_managed_interfaces()
         for mac in macs:
-            sip = mac.claim_static_ip()
+            try:
+                sip = mac.claim_static_ip()
+            except StaticIPAddressTypeClash:
+                # There's already a non-AUTO IP, so nothing to do.
+                continue
             # "sip" may be None if the static range is not yet
             # defined, which will be the case when migrating from older
             # versions of the code.  If it is None we just ignore this
@@ -867,6 +874,11 @@ class Node(CleanSave, TimestampedModel):
         # here to cope with legacy code that used to create these, the
         # current code does not.
         self._delete_dynamic_host_maps()
+
+        # Delete all remaining static IPs.
+        static_ips = StaticIPAddress.objects.delete_by_node(self)
+        self.delete_static_host_maps(static_ips)
+
         # Delete the related mac addresses.
         # The DHCPLease objects corresponding to these MACs will be deleted
         # as well. See maasserver/models/dhcplease:delete_lease().

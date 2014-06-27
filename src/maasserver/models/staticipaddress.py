@@ -87,14 +87,28 @@ class StaticIPAddressManager(Manager):
         ipaddress.save()
         return ipaddress
 
+    def _deallocate(self, filter):
+        """Helper func to deallocate the records in the supplied queryset
+        filter and return a list of IPs deleted."""
+        deallocated_ips = [record.ip.format() for record in filter]
+        filter.delete()
+        return deallocated_ips
+
     def deallocate_by_node(self, node):
         """Given a node, deallocate all of its AUTO StaticIPAddresses."""
         qs = self.filter(
             alloc_type=IPADDRESS_TYPE.AUTO).filter(
             macaddress__node=node)
-        deallocated_ips = [record.ip.format() for record in qs]
-        qs.delete()
-        return deallocated_ips
+        return self._deallocate(qs)
+
+    def delete_by_node(self, node):
+        """Given a node, delete ALL of its StaticIPAddresses.
+
+        Unlike `deallocate_by_node`, which only removes AUTO IPs,
+        this will delete every single IP associated with the node.
+        """
+        qs = self.filter(macaddress__node=node)
+        return self._deallocate(qs)
 
     def get_hostname_ip_mapping(self, nodegroup):
         """Return a mapping {hostnames -> ips} for current `StaticIPAddress`es

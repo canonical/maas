@@ -93,6 +93,51 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             types_without_auto,
             [ip.alloc_type for ip in StaticIPAddress.objects.all()])
 
+    def test_delete_by_node_removes_addresses(self):
+        node = factory.make_node()
+        [mac1, mac2] = [
+            factory.make_mac_address(node=node) for _ in range(2)]
+        factory.make_staticipaddress(mac=mac1)
+        factory.make_staticipaddress(mac=mac2)
+        StaticIPAddress.objects.delete_by_node(node)
+        # Check the DB is cleared.
+        self.assertEqual([], list(StaticIPAddress.objects.all()))
+        # Check the link table is cleared.
+        self.assertEqual([], list(node.static_ip_addresses()))
+
+    def test_delete_by_node_returns_deallocated_ips(self):
+        node = factory.make_node()
+        [mac1, mac2] = [
+            factory.make_mac_address(node=node) for _ in range(2)]
+        ip1 = factory.make_staticipaddress(mac=mac1)
+        ip2 = factory.make_staticipaddress(mac=mac2)
+        observed = StaticIPAddress.objects.delete_by_node(node)
+        self.assertItemsEqual(
+            [ip1.ip.format(), ip2.ip.format()],
+            observed
+            )
+
+    def test_delete_by_node_ignores_other_nodes(self):
+        node1 = factory.make_node()
+        mac1 = factory.make_mac_address(node=node1)
+        factory.make_staticipaddress(mac=mac1)
+        other_node = factory.make_node()
+        other_mac = factory.make_mac_address(node=other_node)
+        other_ip = factory.make_staticipaddress(mac=other_mac)
+
+        StaticIPAddress.objects.delete_by_node(node1)
+        self.assertItemsEqual([other_ip.ip], other_node.static_ip_addresses())
+
+    def test_delete_by_node_deletes_all_types(self):
+        node = factory.make_node()
+        mac = factory.make_mac_address(node=node)
+        alloc_types = map_enum(IPADDRESS_TYPE).values()
+        for alloc_type in alloc_types:
+            factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
+
+        StaticIPAddress.objects.delete_by_node(node)
+        self.assertItemsEqual([], StaticIPAddress.objects.all())
+
 
 class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     """Tests for get_hostname_ip_mapping()."""

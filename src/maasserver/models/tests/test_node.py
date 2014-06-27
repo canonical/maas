@@ -22,6 +22,7 @@ from django.core.exceptions import ValidationError
 from maasserver import dns as dns_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -306,6 +307,27 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.ALLOCATED)
         self.assertRaises(NodeStateViolation, node.delete)
 
+    def test_delete_node_also_deletes_related_static_IPs(self):
+        # Prevent actual omshell commands from being called in tasks.
+        self.patch(Omshell, 'remove')
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        primary_mac = node.get_primary_mac()
+        random_alloc_type = factory.getRandomEnum(IPADDRESS_TYPE)
+        primary_mac.claim_static_ip(alloc_type=random_alloc_type)
+        node.delete()
+        self.assertItemsEqual([], StaticIPAddress.objects.all())
+
+    def test_delete_node_also_runs_task_to_delete_static_dhcp_maps(self):
+        # Prevent actual omshell commands from being called in tasks.
+        self.patch(Omshell, 'remove')
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        primary_mac = node.get_primary_mac()
+        primary_mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        node.delete()
+        self.assertEqual(
+            ['provisioningserver.tasks.remove_dhcp_host_map'],
+            [task['task'].name for task in self.celery.tasks])
+
     def test_delete_node_also_deletes_dhcp_host_map(self):
         lease = factory.make_dhcp_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
@@ -332,22 +354,6 @@ class NodeTest(MAASServerTestCase):
         node.delete()
         args, kwargs = option_call.call_args
         self.assertEqual(work_queue, kwargs['queue'])
-
-    def test_delete_dynamic_host_maps_leaves_static_addresses_alone(self):
-        # DHCPLeases can be associated with host maps written due to
-        # staticipaddress entries. When deleting a node, we must not
-        # delete those static entries because a) some are permanent, b)
-        # they should all get deleted when nodes are released anyway.
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        mac = node.get_primary_mac()
-        sip = mac.claim_static_ip()
-        factory.make_dhcp_lease(
-            ip=sip.ip.format(), nodegroup=node.nodegroup,
-            mac=mac.mac_address.get_raw())
-        # Prevent actual omshell commands from being called in the task.
-        self.patch(Omshell, 'remove')
-        node.delete()
-        self.assertItemsEqual([], self.celery.tasks)
 
     def test_delete_node_removes_multiple_host_maps(self):
         lease1 = factory.make_dhcp_lease()
@@ -1674,3 +1680,23 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         change_dns_zones = self.patch(dns_module, 'change_dns_zones')
         node.claim_static_ips()
         self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
+
+    def test_claim_static_ips_creates_no_tasks_if_existing_IP(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        primary_mac = node.get_primary_mac()
+        primary_mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        ngi = factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        second_mac = factory.make_mac_address(node=node, cluster_interface=ngi)
+        observed_tasks = node.claim_static_ips()
+
+        # We expect only a single task for the one MAC which did not
+        # already have any IP.
+        expected = ['provisioningserver.tasks.add_new_dhcp_host_map']
+        self.assertEqual(
+            expected,
+            [task.task for task in observed_tasks]
+            )
+        task_mapping_arg = observed_tasks[0].kwargs["mappings"]
+        [observed_mac] = task_mapping_arg.values()
+        self.assertEqual(second_mac.mac_address.get_raw(), observed_mac)
