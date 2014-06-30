@@ -327,12 +327,26 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         """
         self._dns_ip = kwargs.pop('dns_ip', None)
         self._mapping = kwargs.pop('mapping', {})
+        self._network = None
         super(DNSForwardZoneConfig, self).__init__(
             domain, zone_name=domain, **kwargs)
 
     @classmethod
-    def get_A_mapping(cls, mapping, domain, dns_ip):
+    def get_mapping(cls, mapping, domain, dns_ip):
         """Return a generator mapping hostnames to IP addresses.
+
+        This includes the record for the name server's IP.
+        :param mapping: A dict mapping host names to IP addresses.
+        :param domain: Zone's domain name.
+        :param dns_ip: IP address for the zone's authoritative DNS server.
+        :return: A generator of tuples: (host name, IP addresses).
+        """
+        return chain([('%s.' % domain, dns_ip)], mapping.items())
+
+    @classmethod
+    def get_A_mapping(cls, mapping, domain, dns_ip):
+        """Return a generator mapping hostnames to IP addresses for all
+        the IPv4 addresses in `mapping`.
 
         The returned mapping is meant to be used to generate A records in
         the forward zone file.
@@ -343,7 +357,24 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :param dns_ip: IP address for the zone's authoritative DNS server.
         :return: A generator of tuples: (host name, IP addresses).
         """
-        return chain([('%s.' % domain, dns_ip)], mapping.items())
+        mapping = cls.get_mapping(mapping, domain, dns_ip)
+        return (item for item in mapping if IPAddress(item[1]).version == 4)
+
+    @classmethod
+    def get_AAAA_mapping(cls, mapping, domain, dns_ip):
+        """Return a generator mapping hostnames to IP addresses for all
+        the IPv6 addresses in `mapping`.
+
+        The returned mapping is meant to be used to generate AAAA records
+        in the forward zone file.
+
+        :param mapping: A dict mapping host names to IP addresses.
+        :param domain: Zone's domain name.
+        :param dns_ip: IP address for the zone's authoritative DNS server.
+        :return: A generator of tuples: (host name, IP addresses).
+        """
+        mapping = cls.get_mapping(mapping, domain, dns_ip)
+        return (item for item in mapping if IPAddress(item[1]).version == 6)
 
     def write_config(self):
         """Write the zone file."""
@@ -352,6 +383,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
             {
                 'mappings': {
                     'A': self.get_A_mapping(
+                        self._mapping, self.domain, self._dns_ip),
+                    'AAAA': self.get_AAAA_mapping(
                         self._mapping, self.domain, self._dns_ip),
                 },
             })

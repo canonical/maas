@@ -67,7 +67,7 @@ from testtools import TestCase
 from testtools.matchers import (
     IsInstance,
     MatchesAll,
-    MatchesListwise,
+    MatchesSetwise,
     MatchesStructure,
     )
 
@@ -588,9 +588,9 @@ class TestZoneGenerator(MAASServerTestCase):
             name="henry", network=IPNetwork("10/32"))
         zones = dns.ZoneGenerator(nodegroup).as_list()
         self.assertThat(
-            zones, MatchesListwise(
-                (forward_zone("henry"),
-                 reverse_zone("henry", "10/32"))))
+            zones, MatchesSetwise(
+                forward_zone("henry"),
+                reverse_zone("henry", "10/32")))
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         nodegroup = self.make_node_group()
@@ -606,7 +606,7 @@ class TestZoneGenerator(MAASServerTestCase):
             ]
         self.assertThat(
             dns.ZoneGenerator([nodegroup]).as_list(),
-            MatchesListwise(expected_zones))
+            MatchesSetwise(*expected_zones))
 
     def test_with_many_nodegroups_yields_many_zones(self):
         # This demonstrates ZoneGenerator in all-singing all-dancing mode.
@@ -635,4 +635,4 @@ class TestZoneGenerator(MAASServerTestCase):
             )
         self.assertThat(
             dns.ZoneGenerator(nodegroups).as_list(),
-            MatchesListwise(expected_zones))
+            MatchesSetwise(*expected_zones))

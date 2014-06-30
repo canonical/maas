@@ -391,33 +391,69 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
             dns_zone_config.target_path)
 
-    def test_get_a_mapping(self):
+    def test_get_a_mapping_returns_ipv4_mapping(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.getRandomIPInNetwork(network)
-        mapping = {'hostname': '192.12.0.2', 'hostname2': '192.12.0.3'}
-        expected = [('%s.' % name, dns_ip)] + mapping.items()
+        ipv4_mapping = {
+            factory.make_name('host'): factory.getRandomIPAddress(),
+            factory.make_name('host'): factory.getRandomIPAddress(),
+        }
+        mapping = {
+            factory.make_name('host'): factory.get_random_ipv6_address(),
+            factory.make_name('host'): factory.get_random_ipv6_address(),
+        }
+        mapping.update(ipv4_mapping)
+        expected = [('%s.' % name, dns_ip)] + ipv4_mapping.items()
         self.assertItemsEqual(
             expected,
             DNSForwardZoneConfig.get_A_mapping(mapping, name, dns_ip))
 
+    def test_get_aaaa_mapping_returns_ipv6_mapping(self):
+        name = factory.getRandomString()
+        network = IPNetwork('192.12.0.1/30')
+        dns_ip = factory.getRandomIPInNetwork(network)
+        ipv6_mapping = {
+            factory.make_name('host'): factory.get_random_ipv6_address(),
+            factory.make_name('host'): factory.get_random_ipv6_address(),
+        }
+        mapping = {
+            factory.make_name('host'): factory.getRandomIPAddress(),
+            factory.make_name('host'): factory.getRandomIPAddress(),
+        }
+        mapping.update(ipv6_mapping)
+        self.assertItemsEqual(
+            ipv6_mapping.items(),
+            DNSForwardZoneConfig.get_AAAA_mapping(mapping, name, dns_ip))
+
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
         domain = factory.getRandomString()
-        hostname = factory.getRandomString()
         network = factory.getRandomNetwork()
-        ip = factory.getRandomIPInNetwork(network)
+        dns_ip = factory.getRandomIPInNetwork(network)
+        ipv4_hostname = factory.make_name('host')
+        ipv4_ip = factory.getRandomIPInNetwork(network)
+        ipv6_hostname = factory.make_name('host')
+        ipv6_ip = factory.get_random_ipv6_address()
+        mapping = {
+            ipv4_hostname: ipv4_ip,
+            ipv6_hostname: ipv6_ip,
+        }
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping={hostname: ip})
+            mapping=mapping, dns_ip=dns_ip)
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % domain),
             FileContains(
                 matcher=ContainsAll(
                     [
-                        '%s IN A %s' % (hostname, ip),
-                    ])))
+                        '%s IN A %s' % (ipv4_hostname, ipv4_ip),
+                        '%s IN AAAA %s' % (ipv6_hostname, ipv6_ip),
+                    ]
+                )
+            )
+        )
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
