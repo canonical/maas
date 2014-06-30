@@ -37,7 +37,6 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
     IPRange,
-    IPSet,
     )
 from netaddr.core import AddrFormatError
 from provisioningserver.utils.network import make_network
@@ -239,10 +238,13 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             # about is whether the lows and highs of the static range
             # fall within the dynamic range and vice-versa, which
             # IPRange gives us.
-            if (static_ip_range_low in dynamic_range or
+            networks_overlap = (
+                static_ip_range_low in dynamic_range or
                 static_ip_range_high in dynamic_range or
                 ip_range_low in static_range or
-                ip_range_high in static_range):
+                ip_range_high in static_range
+            )
+            if networks_overlap:
                 message = "Static and dynamic IP ranges may not overlap."
                 errors = {
                     'ip_range_low': [message],

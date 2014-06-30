@@ -319,7 +319,7 @@ class TestNetwork(MAASServerTestCase):
             network=make_network(
                 ip, '0000:0000:0000:0000:0000:0000:0000:0000'))
 
-    def test_netmask_validation_does_not_allow_short_allow_all_ipv6_netmask(self):
+    def test_netmask_valid_doesnt_allow_short_allow_all_ipv6_netmask(self):
         ip = factory.get_random_ipv6_address()
         self.assertRaises(
             ValidationError, factory.make_network,

@@ -317,8 +317,10 @@ class Network(CleanSave, Model):
         if netmask_as_ip.value == 0:
             raise ValidationError(
                 {'netmask': ["This netmask would span the entire Internet."]})
-        if (self.netmask == '255.255.255.255'
-            or self.netmask == 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'):
+        full_netmask = (
+            self.netmask == '255.255.255.255'
+            or self.netmask == 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff')
+        if full_netmask:
             raise ValidationError(
                 {'netmask': ["This netmask leaves no room for IP addresses."]})
 

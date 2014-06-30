@@ -221,7 +221,7 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
         interface = factory.make_name('eth', sep='')
         self.patch_interfaces({
             interface: {
-               self.inet_class: [{
+                self.inet_class: [{
                     'addr': unicode(ip),
                     'broadcast': unicode(network.broadcast),
                     'netmask': unicode(network.netmask),
