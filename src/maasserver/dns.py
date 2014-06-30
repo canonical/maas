@@ -189,15 +189,13 @@ class ZoneGenerator:
             interface.network for interface in ng.get_managed_interfaces()])
 
     @staticmethod
-    def _gen_forward_zones(nodegroups, serial, mappings, networks):
+    def _gen_forward_zones(nodegroups, serial, mappings):
         """Generator of forward zones, collated by domain name."""
         get_domain = lambda nodegroup: nodegroup.name
         dns_ip = get_dns_server_address()
         forward_nodegroups = sorted(nodegroups, key=get_domain)
         for domain, nodegroups in groupby(forward_nodegroups, get_domain):
             nodegroups = list(nodegroups)
-            domain_networks = chain.from_iterable(
-                networks[nodegroup] for nodegroup in nodegroups)
             # A forward zone encompassing all nodes in the same domain.
             yield DNSForwardZoneConfig(
                 domain, serial=serial, dns_ip=dns_ip,
@@ -205,18 +203,28 @@ class ZoneGenerator:
                     hostname: ip
                     for nodegroup in nodegroups
                     for hostname, ip in mappings[nodegroup].items()
-                    },
-                networks=set(domain_networks))
+                }
+            )
 
     @staticmethod
-    def _gen_reverse_zones(nodegroups, serial, networks):
+    def _gen_reverse_zones(nodegroups, serial, mappings, networks):
         """Generator of reverse zones, sorted by network."""
         get_domain = lambda nodegroup: nodegroup.name
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
             for network in networks[nodegroup]:
+                # Compute the ip:hostname mapping for this network.
+                # Reverse the hostname:ip mapping and filter out
+                # the IP addresses that are not in `network`.
+                mapping = {
+                    ip: hostname
+                    for hostname, ip in mappings[nodegroup].items()
+                    if IPAddress(ip) in network
+                }
                 yield DNSReverseZoneConfig(
-                    get_domain(nodegroup), serial=serial, network=network)
+                    get_domain(nodegroup), serial=serial, mapping=mapping,
+                    network=network
+                )
 
     def __iter__(self):
         forward_nodegroups = self._get_forward_nodegroups(
@@ -227,9 +235,9 @@ class ZoneGenerator:
         serial = self.serial or next_zone_serial()
         return chain(
             self._gen_forward_zones(
-                forward_nodegroups, serial, mappings, networks),
+                forward_nodegroups, serial, mappings),
             self._gen_reverse_zones(
-                reverse_nodegroups, serial, networks),
+                reverse_nodegroups, serial, mappings, networks),
             )
 
     def as_list(self):

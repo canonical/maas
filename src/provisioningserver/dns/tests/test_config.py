@@ -14,10 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from collections import (
-    Iterable,
-    Sequence,
-    )
 import errno
 import os.path
 import random
@@ -54,14 +50,12 @@ from provisioningserver.dns.config import (
     setup_rndc,
     uncomment_named_conf,
     )
-from provisioningserver.dns.utils import generated_hostname
 from testtools.matchers import (
     Contains,
     ContainsAll,
     EndsWith,
     FileContains,
     FileExists,
-    IsInstance,
     MatchesAll,
     MatchesStructure,
     Not,
@@ -335,8 +329,7 @@ class TestDNSConfig(MAASTestCase):
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
         forward_zone = DNSForwardZoneConfig(
-            domain, mapping={factory.getRandomString(): ip},
-            networks=[network])
+            domain, mapping={factory.getRandomString(): ip})
         reverse_zone = DNSReverseZoneConfig(domain, network=network)
         dnsconfig = DNSConfig((forward_zone, reverse_zone))
         dnsconfig.write_config()
@@ -381,14 +374,13 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ip = factory.getRandomIPInNetwork(network)
         mapping = {hostname: ip}
         dns_zone_config = DNSForwardZoneConfig(
-            domain, serial=serial, mapping=mapping, networks=[network])
+            domain, serial=serial, mapping=mapping)
         self.assertThat(
             dns_zone_config,
             MatchesStructure.byEquality(
                 domain=domain,
                 serial=serial,
                 _mapping=mapping,
-                _networks=[network],
                 )
             )
 
@@ -399,61 +391,15 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             os.path.join(conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
             dns_zone_config.target_path)
 
-    def test_forward_zone_get_cname_mapping_returns_iterator(self):
-        self.assertThat(
-            DNSForwardZoneConfig.get_cname_mapping(
-                {factory.make_name('host'): factory.getRandomIPAddress()}),
-            MatchesAll(
-                IsInstance(Iterable), Not(IsInstance(Sequence))))
-
-    def test_forward_zone_get_cname_mapping_skips_identity(self):
-        # We don't write cname records to map host names to themselves.
-        # Without this, a node would get an invalid cname record upon
-        # enlistment.
-        network = IPNetwork('10.250.99.0/24')
-        ip = factory.getRandomIPInNetwork(network)
-        generated_name = generated_hostname(ip)
-        self.assertNotIn(
-            generated_name,
-            dict(DNSForwardZoneConfig.get_cname_mapping({generated_name: ip})))
-
-    def test_get_static_mapping(self):
+    def test_get_a_mapping(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.getRandomIPInNetwork(network)
+        mapping = {'hostname': '192.12.0.2', 'hostname2': '192.12.0.3'}
+        expected = [('%s.' % name, dns_ip)] + mapping.items()
         self.assertItemsEqual(
-            [
-                ('%s.' % name, dns_ip),
-                (generated_hostname('192.12.0.0'), '192.12.0.0'),
-                (generated_hostname('192.12.0.1'), '192.12.0.1'),
-                (generated_hostname('192.12.0.2'), '192.12.0.2'),
-                (generated_hostname('192.12.0.3'), '192.12.0.3'),
-            ],
-            DNSForwardZoneConfig.get_static_mapping(name, [network], dns_ip))
-
-    def test_forward_zone_get_static_mapping_returns_iterator(self):
-        name = factory.getRandomString()
-        network = IPNetwork('192.12.0.1/30')
-        dns_ip = factory.getRandomIPInNetwork(network)
-        self.assertThat(
-            DNSForwardZoneConfig.get_static_mapping(name, [network], dns_ip),
-            MatchesAll(
-                IsInstance(Iterable), Not(IsInstance(Sequence))))
-
-    def test_get_static_mapping_multiple_networks(self):
-        name = factory.getRandomString()
-        networks = IPNetwork('11.11.11.11/31'), IPNetwork('22.22.22.22/31')
-        dns_ip = factory.getRandomIPInNetwork(networks[0])
-        self.assertItemsEqual(
-            [
-                ('%s.' % name, dns_ip),
-                (generated_hostname('11.11.11.10'), '11.11.11.10'),
-                (generated_hostname('11.11.11.11'), '11.11.11.11'),
-                (generated_hostname('22.22.22.22'), '22.22.22.22'),
-                (generated_hostname('22.22.22.23'), '22.22.22.23'),
-            ],
-            DNSForwardZoneConfig.get_static_mapping(name, networks, dns_ip),
-            )
+            expected,
+            DNSForwardZoneConfig.get_A_mapping(mapping, name, dns_ip))
 
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
@@ -463,24 +409,22 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ip = factory.getRandomIPInNetwork(network)
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping={hostname: ip}, networks=[network])
+            mapping={hostname: ip})
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % domain),
             FileContains(
                 matcher=ContainsAll(
                     [
-                        '%s IN CNAME %s' % (hostname, generated_hostname(ip)),
-                        '%s IN A %s' % (generated_hostname(ip), ip),
+                        '%s IN A %s' % (hostname, ip),
                     ])))
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
-        network = factory.getRandomNetwork()
         dns_ip = factory.getRandomIPAddress()
         dns_zone_config = DNSForwardZoneConfig(
             factory.getRandomString(), serial=random.randint(1, 100),
-            dns_ip=dns_ip, networks=[network])
+            dns_ip=dns_ip)
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % dns_zone_config.domain),
@@ -493,10 +437,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
 
     def test_config_file_is_world_readable(self):
         patch_dns_config_path(self)
-        network = factory.getRandomNetwork()
         dns_zone_config = DNSForwardZoneConfig(
             factory.getRandomString(), serial=random.randint(1, 100),
-            dns_ip=factory.getRandomIPAddress(), networks=[network])
+            dns_ip=factory.getRandomIPAddress())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)
         self.assertTrue(filepath.getPermissions().other.read)
@@ -519,24 +462,6 @@ class TestDNSReverseZoneConfig(MAASTestCase):
                 _network=network,
                 )
             )
-
-    def test_shortened_reversed_ip_2(self):
-        self.assertEqual(
-            '3.0',
-            DNSReverseZoneConfig.shortened_reversed_ip(
-                IPAddress('192.156.0.3'), 2))
-
-    def test_shortened_reversed_ip_0(self):
-        self.assertEqual(
-            '',
-            DNSReverseZoneConfig.shortened_reversed_ip(
-                IPAddress('192.156.0.3'), 0))
-
-    def test_shortened_reversed_ip_4(self):
-        self.assertEqual(
-            '3.0.156.192',
-            DNSReverseZoneConfig.shortened_reversed_ip(
-                IPAddress('192.156.0.3'), 4))
 
     def test_computes_dns_config_file_paths(self):
         domain = factory.make_name('zone')
@@ -578,25 +503,20 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             results.append((network, dns_zone_config.zone_name))
         self.assertEqual(expected, results)
 
-    def test_get_static_mapping_returns_iterator(self):
-        self.assertThat(
-            DNSReverseZoneConfig.get_static_mapping(
-                factory.make_name('zone'),
-                network=IPNetwork('192.12.0.1/30')),
-            MatchesAll(
-                IsInstance(Iterable), Not(IsInstance(Sequence))))
-
-    def test_get_static_mapping(self):
+    def test_get_ptr_mapping(self):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
+        mapping = {
+            factory.getRandomIPInNetwork(network): factory.getRandomString(),
+            factory.getRandomIPInNetwork(network): factory.getRandomString(),
+        }
+        expected = [
+            (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
+            for ip, hostname in mapping.items()
+        ]
         self.assertItemsEqual(
-            [
-                ('0', '%s.' % generated_hostname('192.12.0.0', name)),
-                ('1', '%s.' % generated_hostname('192.12.0.1', name)),
-                ('2', '%s.' % generated_hostname('192.12.0.2', name)),
-                ('3', '%s.' % generated_hostname('192.12.0.3', name)),
-            ],
-            DNSReverseZoneConfig.get_static_mapping(name, network))
+            expected,
+            DNSReverseZoneConfig.get_PTR_mapping(mapping, name))
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
@@ -620,7 +540,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         dns_zone_config.write_config()
         reverse_file_name = 'zone.168.192.in-addr.arpa'
         expected = Contains(
-            '10.0 IN PTR %s' % generated_hostname('192.168.0.10'))
+            'IN  NS  %s' % domain)
         self.assertThat(
             os.path.join(target_dir, reverse_file_name),
             FileContains(matcher=expected))

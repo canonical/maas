@@ -26,18 +26,13 @@ from abc import ABCMeta
 from contextlib import contextmanager
 from datetime import datetime
 import errno
-from itertools import (
-    chain,
-    imap,
-    islice,
-    )
+from itertools import chain
 import math
 import os.path
 import re
 
 from celery.app import app_or_default
 from netaddr import IPAddress
-from provisioningserver.dns.utils import generated_hostname
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
@@ -325,55 +320,30 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         :param domain: The domain name of the forward zone.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
-        :param networks: The networks that the mapping exists within.
-        :type networks: Sequence of :class:`netaddr.IPNetwork`
         :param dns_ip: The IP address of the DNS server authoritative for this
             zone.
         :param mapping: A hostname:ip-address mapping for all known hosts in
-            the zone.  These are configured hostnames, not the ones generated
-            based on IP addresses.  They will be mapped as CNAME records.
+            the zone.  They will be mapped as A records.
         """
-        self._networks = kwargs.pop('networks', [])
         self._dns_ip = kwargs.pop('dns_ip', None)
         self._mapping = kwargs.pop('mapping', {})
         super(DNSForwardZoneConfig, self).__init__(
             domain, zone_name=domain, **kwargs)
 
     @classmethod
-    def get_cname_mapping(cls, mapping):
-        """Return a generator mapping hostnames to generated hostnames.
+    def get_A_mapping(cls, mapping, domain, dns_ip):
+        """Return a generator mapping hostnames to IP addresses.
 
-        The mapping only contains hosts for which the two host names differ.
+        The returned mapping is meant to be used to generate A records in
+        the forward zone file.
 
+        This includes the A record for the name server's IP.
         :param mapping: A dict mapping host names to IP addresses.
-        :return: A generator of tuples: (host name, generated host name).
-        """
-        # We filter out cases where the two host names are identical: it
-        # would be wrong to define a CNAME that maps to itself.
-        for hostname, ip in mapping.items():
-            generated_name = generated_hostname(ip)
-            if generated_name != hostname:
-                yield (hostname, generated_name)
-
-    @classmethod
-    def get_static_mapping(cls, domain, networks, dns_ip):
-        """Return a generator mapping a network's generated fqdns to ips.
-
-        The generated mapping is the mapping between the generated hostnames
-        and the IP addresses for all the possible IP addresses in zone.
-        The return type is a sequence of tuples, not a dictionary, so that we
-        don't have to generate the whole thing at once.
-
         :param domain: Zone's domain name.
-        :param networks: Sequence of :class:`netaddr.IPNetwork` describing
-            the networks whose IP-based generated host names should be mapped
-            to the corresponding IP addresses.
         :param dns_ip: IP address for the zone's authoritative DNS server.
+        :return: A generator of tuples: (host name, IP addresses).
         """
-        ips = imap(unicode, chain.from_iterable(networks))
-        static_mapping = ((generated_hostname(ip), ip) for ip in ips)
-        # Add A record for the name server's IP.
-        return chain([('%s.' % domain, dns_ip)], static_mapping)
+        return chain([('%s.' % domain, dns_ip)], mapping.items())
 
     def write_config(self):
         """Write the zone file."""
@@ -381,9 +351,8 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
             self.target_path, self.make_parameters(),
             {
                 'mappings': {
-                    'CNAME': self.get_cname_mapping(self._mapping),
-                    'A': self.get_static_mapping(
-                        self.domain, self._networks, self._dns_ip),
+                    'A': self.get_A_mapping(
+                        self._mapping, self.domain, self._dns_ip),
                 },
             })
 
@@ -402,9 +371,12 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         :param domain: The domain name of the forward zone.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
+        :param mapping: A ip-address:hostname mapping for all known hosts in
+            the reverse zone.  They will be mapped as PTR records.
         :param network: The network that the mapping exists within.
         :type network: :class:`netaddr.IPNetwork`
         """
+        self._mapping = kwargs.pop('mapping', {})
         self._network = kwargs.pop("network", None)
         zone_name = self.compose_zone_name(self._network)
         super(DNSReverseZoneConfig, self).__init__(
@@ -434,58 +406,27 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         return reverse_name[:-1]
 
     @classmethod
-    def shortened_reversed_ip(cls, ip, num_bytes):
-        """Return reversed version of least-significant bytes of IP address.
+    def get_PTR_mapping(cls, mapping, domain):
+        """Return reverse mapping: reverse IPs to hostnames.
 
-        This is used when generating reverse zone files.
+        The reverse generated mapping is the mapping between the reverse
+        IP addresses and the hostnames for all the IP addresses in the given
+        `mapping`.
 
-        >>> DNSReverseZoneConfig.shortened_reversed_ip('192.168.251.12', 1)
-        '12'
-        >>> DNSReverseZoneConfig.shortened_reversed_ip('10.99.0.3', 3)
-        '3.0.99'
+        The returned mapping is meant to be used to generate PTR records in
+        the reverse zone file.
 
-        :param ip: IP address.  Only its least-significant bytes will be used.
-            The bytes that only identify the network itself are ignored.
-        :type ip: :class:`netaddr.IPAddress`
-        :param num_bytes: Number of bytes from `ip` that should be included in
-            the result.
-        :return: A string similar to an IP address, consisting of only the
-            last `num_bytes` octets separated by dots, in reverse order:
-            starting with the least-significant octet and continuing towards
-            the most-significant.
-        :rtype: unicode
-        """
-        # XXX JeroenVermeulen 2014-01-23: Does 0 bytes really make sense?
-        assert 0 <= num_bytes <= 4, (
-            "num_bytes is %d (should be between 0 and 4 inclusive)."
-            % num_bytes)
-        significant_octets = islice(reversed(ip.words), num_bytes)
-        return '.'.join(imap(unicode, significant_octets))
-
-    @classmethod
-    def get_static_mapping(cls, domain, network):
-        """Return reverse mapping: shortened IPs to generated fqdns.
-
-        The reverse generated mapping is the mapping between the IP addresses
-        and the generated hostnames for all the possible IP addresses in zone.
-
+        :param mapping: A ip-address:hostname mapping for all known hosts in
+            the reverse zone.
         :param domain: Zone's domain name.
-        :param network: Network whose IP addresses should be mapped to their
-            corresponding generated hostnames.
-        :type network: :class:`netaddr.IPNetwork`
         """
-        # Count how many octets are needed to address hosts within the network.
-        # If an octet in the netmask equals 255, that means that the
-        # corresponding octet will be equal between all hosts in the network.
-        # We don't need it in our shortened reversed addresses.
-        num_bytes = 4 - network.netmask.words.count(255)
         return (
             (
-                cls.shortened_reversed_ip(ip, num_bytes),
-                '%s.%s.' % (generated_hostname(ip), domain),
+                IPAddress(ip).reverse_dns,
+                '%s.%s.' % (hostname, domain),
             )
-            for ip in network
-            )
+            for ip, hostname in mapping.items()
+        )
 
     def write_config(self):
         """Write the zone file."""
@@ -493,6 +434,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
             self.target_path, self.make_parameters(),
             {
                 'mappings': {
-                    'PTR': self.get_static_mapping(self.domain, self._network),
+                    'PTR': self.get_PTR_mapping(self._mapping, self.domain),
                 },
-            })
+            }
+        )
