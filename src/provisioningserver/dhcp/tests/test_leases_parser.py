@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the DHCP leases parser."""
@@ -20,6 +20,7 @@ from textwrap import dedent
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from netaddr import IPAddress
 from provisioningserver.dhcp import (
     leases_parser,
     leases_parser_fast,
@@ -70,56 +71,100 @@ class TestLeasesParsers(MAASTestCase):
         ("fast", dict(parse=leases_parser_fast.parse_leases)),
     )
 
+    sample_lease_entry = dedent("""\
+        lease %(ip)s {
+            starts 5 2010/01/01 00:00:01;
+            ends never;
+            tstp 6 2010/01/02 05:00:00;
+            tsfp 6 2010/01/02 05:00:00;
+            atsfp 6 2010/01/02 05:00:00;
+            cltt 1 2010/01/02 05:00:00;
+            binding state free;
+            next binding state free;
+            rewind binding state free;
+            hardware ethernet %(mac)s;
+            uid "\001\000\234\002\242\2020";
+            set vendorclass = "PXEClient:Arch:00000:UNDI:002001";
+            client-hostname foo;
+            abandoned;
+            option agent.circuit-id thing;
+            option agent.remote-id thing;
+            ddns-text foo;
+            ddns-fwd-name foo;
+            ddns-client-fqdn foo;
+            ddns-rev-name foo;
+            vendor-class-identifier foo;
+            bootp;
+            reserved;
+        }
+        """)
+
+    sample_host_entry = dedent("""\
+       host %(ip)s {
+           dynamic;
+           hardware ethernet %(mac)s;
+           fixed-address%(six)s %(ip)s;
+       }
+        """)
+
+    def make_host_entry(self, ip, mac=None):
+        """Create a host entry with the given IP and MAC addresses.
+
+        The host entry will be in IPv4 or IPv6 depending on `ip`.
+        """
+        if mac is None:
+            mac = factory.getRandomMACAddress()
+        params = {
+            'ip': unicode(ip),
+            'mac': mac,
+            }
+        # The "six" parameter is suffixed to the fixed-address keyword:
+        # empty string for IPv4, or "6" for IPv6.
+        if IPAddress(ip).version == 6:
+            params['six'] = '6'
+        else:
+            params['six'] = ''
+        return self.sample_host_entry % params
+
+    def make_lease_entry(self, ip, mac):
+        """Create a lease entry mapping an IP address to a MAC address."""
+        params = {
+            'ip': unicode(ip),
+            'mac': mac,
+            }
+        return self.sample_lease_entry % params
+
     def test_parse_leases_copes_with_empty_file(self):
         self.assertEqual({}, self.parse(""))
 
-    def test_parse_leases_parses_lease(self):
-        params = {
-            'ip': factory.getRandomIPAddress(),
-            'mac': factory.getRandomMACAddress(),
-        }
-        leases = self.parse(dedent("""\
-            lease %(ip)s {
-                starts 5 2010/01/01 00:00:01;
-                ends never;
-                tstp 6 2010/01/02 05:00:00;
-                tsfp 6 2010/01/02 05:00:00;
-                atsfp 6 2010/01/02 05:00:00;
-                cltt 1 2010/01/02 05:00:00;
-                binding state free;
-                next binding state free;
-                rewind binding state free;
-                hardware ethernet %(mac)s;
-                uid "\001\000\234\002\242\2020";
-                set vendorclass = "PXEClient:Arch:00000:UNDI:002001";
-                client-hostname foo;
-                abandoned;
-                option agent.circuit-id thing;
-                option agent.remote-id thing;
-                ddns-text foo;
-                ddns-fwd-name foo;
-                ddns-client-fqdn foo;
-                ddns-rev-name foo;
-                vendor-class-identifier foo;
-                bootp;
-                reserved;
-            }
-            """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+    def test_parse_leases_parses_IPv4_lease(self):
+        ip = factory.getRandomIPAddress()
+        mac = factory.getRandomMACAddress()
+        leases = self.parse(self.make_lease_entry(ip, mac))
+        self.assertEqual({ip: mac}, leases)
 
-    def test_parse_leases_parses_host(self):
-        params = {
-            'ip': factory.getRandomIPAddress(),
-            'mac': factory.getRandomMACAddress(),
-        }
-        leases = self.parse(dedent("""\
-            host %(ip)s {
-                dynamic;
-                hardware ethernet %(mac)s;
-                fixed-address %(ip)s;
-            }
-            """ % params))
-        self.assertEqual({params['ip']: params['mac']}, leases)
+    def test_parse_leases_parses_IPv6_lease(self):
+        ip = unicode(factory.get_random_ipv6_address())
+        mac = factory.getRandomMACAddress()
+        leases = self.parse(self.make_lease_entry(ip, mac))
+        self.assertEqual({ip: mac}, leases)
+
+    def test_parse_leases_parses_IPv4_host(self):
+        ip = factory.getRandomIPAddress()
+        mac = factory.getRandomMACAddress()
+        leases = self.parse(self.make_lease_entry(ip, mac))
+        self.assertEqual({ip: mac}, leases)
+
+    def test_parse_leases_parses_IPv6_host(self):
+        ip = factory.get_random_ipv6_address()
+        mac = factory.getRandomMACAddress()
+        leases = self.parse(self.make_lease_entry(ip, mac))
+        self.assertEqual({unicode(ip): mac}, leases)
+
+    def test_parse_leases_parses_full_sized_IPv6_address(self):
+        ip = 'fc00:0001:0000:0000:0000:0000:0000:0000'
+        leases = self.parse(self.make_host_entry(ip))
+        self.assertEqual([ip], leases.keys())
 
     def test_parse_leases_copes_with_misleading_values(self):
         params = {

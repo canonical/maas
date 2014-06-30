@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Parser for ISC dhcpd leases file.
@@ -37,7 +37,7 @@ from pyparsing import (
     )
 
 
-ip = Regex("[0-9]{1,3}(\.[0-9]{1,3}){3}")
+ip = Regex("[:0-9a-fA-F][:.0-9a-fA-F]{2,38}")
 mac = Regex("[0-9a-fA-F]{2}(:[0-9a-fA-F]{2}){5}")
 hardware_type = Regex('[A-Za-z0-9_-]+')
 args = Regex('[^"{;]+') | QuotedString('"')
@@ -77,6 +77,7 @@ other_statement_names = [
     'ddns-rev-name',
     'ddns-text',
     'fixed-address',
+    'fixed-address6',
     'next',
     'option',
     'reserved',
