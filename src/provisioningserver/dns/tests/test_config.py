@@ -14,6 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from collections import (
+    Iterable,
+    Sequence,
+    )
 import errno
 import os.path
 import random
@@ -48,6 +52,7 @@ from provisioningserver.dns.config import (
     report_missing_config_dir,
     set_up_options_conf,
     setup_rndc,
+    SRVRecord,
     uncomment_named_conf,
     )
 from testtools.matchers import (
@@ -56,6 +61,7 @@ from testtools.matchers import (
     EndsWith,
     FileContains,
     FileExists,
+    IsInstance,
     MatchesAll,
     MatchesStructure,
     Not,
@@ -366,6 +372,30 @@ class TestDNSConfig(MAASTestCase):
 class TestDNSForwardZoneConfig(MAASTestCase):
     """Tests for DNSForwardZoneConfig."""
 
+    def make_srv_record(self, service=None, port=None, target=None,
+                        priority=None, weight=None):
+        if service is None:
+            service = '.'.join(factory.make_name('_') for _ in range(2))
+        if port is None:
+            port = factory.getRandomPort()
+        if target is None:
+            target = factory.make_hostname()
+        if priority is None:
+            priority = factory.getRandomPort()
+        if weight is None:
+            weight = factory.getRandomPort()
+        return SRVRecord(
+            service=service, port=port, target=target,
+            priority=priority, weight=weight)
+
+    def get_srv_item_output(self, srv_record):
+        return '%s %s %s %s.' % (
+            srv_record.priority,
+            srv_record.weight,
+            srv_record.port,
+            srv_record.target,
+            )
+
     def test_fields(self):
         domain = factory.getRandomString()
         serial = random.randint(1, 200)
@@ -426,6 +456,38 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv6_mapping.items(),
             DNSForwardZoneConfig.get_AAAA_mapping(mapping, name, dns_ip))
 
+    def test_get_srv_mapping_returns_iterator(self):
+        srv = self.make_srv_record()
+        self.assertThat(
+            DNSForwardZoneConfig.get_srv_mapping([srv]),
+            MatchesAll(
+                IsInstance(Iterable), Not(IsInstance(Sequence))))
+
+    def test_get_srv_mapping_returns_correct_format(self):
+        srv = self.make_srv_record()
+        self.assertItemsEqual([
+            (srv.service, self.get_srv_item_output(srv)),
+            ],
+            DNSForwardZoneConfig.get_srv_mapping([srv]))
+
+    def test_get_srv_mapping_handles_ip_address_target(self):
+        target = factory.getRandomIPAddress()
+        srv = self.make_srv_record(target=target)
+        item = self.get_srv_item_output(srv)
+        item = item.rstrip('.')
+        self.assertItemsEqual([
+            (srv.service, item),
+            ],
+            DNSForwardZoneConfig.get_srv_mapping([srv]))
+
+    def test_get_srv_mapping_returns_multiple(self):
+        srvs = [self.make_srv_record() for _ in range(3)]
+        entries = []
+        for srv in srvs:
+            entries.append((srv.service, self.get_srv_item_output(srv)))
+        self.assertItemsEqual(
+            entries, DNSForwardZoneConfig.get_srv_mapping(srvs))
+
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
         domain = factory.getRandomString()
@@ -439,15 +501,18 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv4_hostname: ipv4_ip,
             ipv6_hostname: ipv6_ip,
         }
+        srv = self.make_srv_record()
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping=mapping, dns_ip=dns_ip)
+            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv])
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % domain),
             FileContains(
                 matcher=ContainsAll(
                     [
+                        '%s IN SRV %s' % (
+                            srv.service, self.get_srv_item_output(srv)),
                         '%s IN A %s' % (ipv4_hostname, ipv4_ip),
                         '%s IN AAAA %s' % (ipv6_hostname, ipv6_ip),
                     ]

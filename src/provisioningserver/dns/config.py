@@ -23,6 +23,7 @@ __all__ = [
 
 
 from abc import ABCMeta
+from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime
 import errno
@@ -33,6 +34,7 @@ import re
 
 from celery.app import app_or_default
 from netaddr import IPAddress
+from netaddr.core import AddrFormatError
 from provisioningserver.utils import (
     atomic_write,
     call_and_check,
@@ -57,6 +59,15 @@ class DNSConfigDirectoryMissing(Exception):
 
 class DNSConfigFail(Exception):
     """Raised if there's a problem with a DNS config."""
+
+
+SRVRecord = namedtuple('SRVRecord', [
+    'service',
+    'priority',
+    'weight',
+    'port',
+    'target'
+    ])
 
 
 # Default 'controls' stanza to be included in the Bind configuration, to
@@ -224,6 +235,15 @@ def report_missing_config_dir():
             raise
 
 
+def get_fqdn_or_ip_address(target):
+    """Returns the ip address is target is a valid ip address, otherwise
+    returns the target with appended '.' if missing."""
+    try:
+        return IPAddress(target).format()
+    except AddrFormatError:
+        return target.rstrip('.') + '.'
+
+
 class DNSConfig:
     """A DNS configuration file.
 
@@ -324,10 +344,12 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
             zone.
         :param mapping: A hostname:ip-address mapping for all known hosts in
             the zone.  They will be mapped as A records.
+        :param srv_mapping: Set of SRVRecord mappings.
         """
         self._dns_ip = kwargs.pop('dns_ip', None)
         self._mapping = kwargs.pop('mapping', {})
         self._network = None
+        self._srv_mapping = kwargs.pop('srv_mapping', [])
         super(DNSForwardZoneConfig, self).__init__(
             domain, zone_name=domain, **kwargs)
 
@@ -376,12 +398,31 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         mapping = cls.get_mapping(mapping, domain, dns_ip)
         return (item for item in mapping if IPAddress(item[1]).version == 6)
 
+    @classmethod
+    def get_srv_mapping(cls, mappings):
+        """Return a generator mapping srv entries to hostnames.
+
+        :param mappings: Set of SRVRecord.
+        :return: A generator of tuples:
+            (service, 'priority weight port target').
+        """
+        for record in mappings:
+            target = get_fqdn_or_ip_address(record.target)
+            item = '%s %s %s %s' % (
+                record.priority,
+                record.weight,
+                record.port,
+                target)
+            yield (record.service, item)
+
     def write_config(self):
         """Write the zone file."""
         self.write_zone_file(
             self.target_path, self.make_parameters(),
             {
                 'mappings': {
+                    'SRV': self.get_srv_mapping(
+                        self._srv_mapping),
                     'A': self.get_A_mapping(
                         self._mapping, self.domain, self._dns_ip),
                     'AAAA': self.get_AAAA_mapping(

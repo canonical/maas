@@ -57,6 +57,7 @@ from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     DNSZoneConfigBase,
+    SRVRecord,
     )
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
@@ -604,6 +605,18 @@ class TestZoneGenerator(MAASServerTestCase):
                 for nodegroup in nodegroups
             },
             networks_dict)
+
+    def test_get_srv_mappings_returns_empty_list_when_no_windows_kms(self):
+        Config.objects.set_config("windows_kms_host", None)
+        self.assertItemsEqual([], dns.ZoneGenerator._get_srv_mappings())
+
+    def test_get_srv_mappings_returns_kms_srv_record(self):
+        hostname = factory.make_name('hostname')
+        Config.objects.set_config("windows_kms_host", hostname)
+        srv = SRVRecord(
+            service='_vlmcs._tcp', port=1688, target=hostname,
+            priority=0, weight=0)
+        self.assertItemsEqual([srv], dns.ZoneGenerator._get_srv_mappings())
 
     def test_with_no_nodegroups_yields_nothing(self):
         self.assertEqual([], dns.ZoneGenerator(()).as_list())

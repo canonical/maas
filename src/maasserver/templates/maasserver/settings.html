@@ -137,6 +137,21 @@
       <div class="clear"></div>
     </div>
     <div class="divider"></div>
+    <div id="windows" class="block size7 first">
+      <h2>Windows</h2>
+      <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
+        <ul>
+        {% for field in windows_form %}
+          {% include "maasserver/form_field.html" %}
+        {% endfor %}
+        </ul>
+        <input type="hidden" name="windows_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+      </form>
+      <div class="clear"></div>
+    </div>
+    <div class="divider"></div>
     <div id="global_kernel_opts" class="block size7 first">
       <h2>Global Kernel Parameters</h2>
       <form action="{% url "settings" %}" method="post">

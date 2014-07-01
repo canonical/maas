@@ -216,6 +216,18 @@ CONFIG_ITEMS = {
                 "Enable the installation of proprietary drivers (i.e. HPVSA)")
         }
     },
+    'windows_kms_host': {
+        'default': None,
+        'form': forms.CharField,
+        'form_kwargs': {
+            'required': False,
+            'label': "Windows KMS activation host",
+            'help_text': (
+                "FQDN or IP address of the host that provides the KMS Windows "
+                "activation service. (Only needed for Windows deployments "
+                "using KMS activation.)")
+        }
+    },
 }
 
 

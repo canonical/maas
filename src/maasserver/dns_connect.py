@@ -92,9 +92,11 @@ def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
 connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
-def upstream_dns_changed(sender, instance, created, **kwargs):
+def dns_setting_changed(sender, instance, created, **kwargs):
     from maasserver.dns import write_full_dns_config
     write_full_dns_config()
 
 
-Config.objects.config_changed_connect("upstream_dns", upstream_dns_changed)
+Config.objects.config_changed_connect("upstream_dns", dns_setting_changed)
+Config.objects.config_changed_connect(
+    "windows_kms_host", dns_setting_changed)

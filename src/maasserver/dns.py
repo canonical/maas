@@ -45,6 +45,7 @@ from provisioningserver import tasks
 from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
+    SRVRecord,
     )
 
 # A DNS zone's serial is a 32-bit integer.  Also, we start with the
@@ -189,7 +190,21 @@ class ZoneGenerator:
             interface.network for interface in ng.get_managed_interfaces()])
 
     @staticmethod
-    def _gen_forward_zones(nodegroups, serial, mappings):
+    def _get_srv_mappings():
+        """Return list of srv records.
+
+        Each srv record is a dictionary with the following required keys
+        srv, port, target. Optional keys are priority and weight.
+        """
+        windows_kms_host = Config.objects.get_config("windows_kms_host")
+        if windows_kms_host is None or windows_kms_host == '':
+            return
+        yield SRVRecord(
+            service='_vlmcs._tcp', port=1688, target=windows_kms_host,
+            priority=0, weight=0)
+
+    @staticmethod
+    def _gen_forward_zones(nodegroups, serial, mappings, srv_mappings):
         """Generator of forward zones, collated by domain name."""
         get_domain = lambda nodegroup: nodegroup.name
         dns_ip = get_dns_server_address()
@@ -203,7 +218,8 @@ class ZoneGenerator:
                     hostname: ip
                     for nodegroup in nodegroups
                     for hostname, ip in mappings[nodegroup].items()
-                }
+                    },
+                srv_mapping=set(srv_mappings)
             )
 
     @staticmethod
@@ -225,10 +241,11 @@ class ZoneGenerator:
         reverse_nodegroups = self._get_reverse_nodegroups(self.nodegroups)
         mappings = self._get_mappings()
         networks = self._get_networks()
+        srv_mappings = self._get_srv_mappings()
         serial = self.serial or next_zone_serial()
         return chain(
             self._gen_forward_zones(
-                forward_nodegroups, serial, mappings),
+                forward_nodegroups, serial, mappings, srv_mappings),
             self._gen_reverse_zones(
                 reverse_nodegroups, serial, mappings, networks),
             )

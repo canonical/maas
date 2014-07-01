@@ -48,6 +48,7 @@ from maasserver.forms import (
     NewUserCreationForm,
     ThirdPartyDriversForm,
     UbuntuForm,
+    WindowsForm,
     )
 from maasserver.models import UserProfile
 from maasserver.views import process_form
@@ -192,6 +193,13 @@ def settings(request):
     if response is not None:
         return response
 
+    # Process the Windows form.
+    windows_form, response = process_form(
+        request, WindowsForm, reverse('settings'), 'windows',
+        "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the Global Kernel Opts form.
     kernelopts_form, response = process_form(
         request, GlobalKernelOptsForm, reverse('settings'), 'kernelopts',
@@ -212,6 +220,7 @@ def settings(request):
             'commissioning_form': commissioning_form,
             'deploy_form': deploy_form,
             'ubuntu_form': ubuntu_form,
+            'windows_form': windows_form,
             'kernelopts_form': kernelopts_form,
         },
         context_instance=RequestContext(request))

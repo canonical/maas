@@ -1047,6 +1047,11 @@ class UbuntuForm(ConfigForm):
     ports_archive = get_config_field('ports_archive')
 
 
+class WindowsForm(ConfigForm):
+    """Settings page, Windows section."""
+    windows_kms_host = get_config_field('windows_kms_host')
+
+
 class GlobalKernelOptsForm(ConfigForm):
     """Settings page, Global Kernel Parameters section."""
     kernel_opts = get_config_field('kernel_opts')
