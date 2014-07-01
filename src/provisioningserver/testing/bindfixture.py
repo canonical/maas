@@ -88,6 +88,7 @@ class BINDServerResources(fixtures.Fixture):
       options {
         directory "{{homedir}}";
         listen-on port {{port}} {127.0.0.1;};
+        listen-on-v6 port {{port}} {::1;};
         pid-file "{{homedir}}/named.pid";
         session-keyfile "{{homedir}}/session.key";
         {{if include_in_options}}

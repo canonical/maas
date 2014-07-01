@@ -36,7 +36,6 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -62,7 +61,6 @@ from provisioningserver.dns.config import (
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from rabbitfixture.server import allocate_ports
-from testresources import FixtureResource
 from testtools import TestCase
 from testtools.matchers import (
     IsInstance,
@@ -196,14 +194,18 @@ class TestLazyDict(TestCase):
         self.assertEqual({key1: key1, key2: key2}, value_dict)
 
 
-class TestDNSConfigModifications(MAASServerTestCase):
+class TestDNSServer(MAASServerTestCase):
+    """A base class to perform real-world DNS-related tests.
 
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
+    The class starts a BINDServer for every test and provides a set of
+    helper methods to perform DNS queries.
+
+    Because of the overhead added by starting and stopping the DNS
+    server, new tests in this class and its descendants are expensive.
+    """
 
     def setUp(self):
-        super(TestDNSConfigModifications, self).setUp()
+        super(TestDNSServer, self).setUp()
         self.bind = self.useFixture(BINDServer())
         self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
@@ -221,9 +223,11 @@ class TestDNSConfigModifications(MAASServerTestCase):
         # Reload BIND.
         self.bind.runner.rndc('reload')
 
-    def create_managed_nodegroup(self):
+    def create_managed_nodegroup(self, network=None):
+        if network is None:
+            network = IPNetwork('192.168.0.1/24')
         return factory.make_node_group(
-            network=IPNetwork('192.168.0.1/24'),
+            network=network,
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
 
@@ -241,32 +245,41 @@ class TestDNSConfigModifications(MAASServerTestCase):
         dns.change_dns_zones([nodegroup])
         return nodegroup, node, staticaddress
 
-    def dig_resolve(self, fqdn):
+    def dig_resolve(self, fqdn, version=4):
         """Resolve `fqdn` using dig.  Returns a list of results."""
+        # Using version=6 has two effects:
+        # - it changes the type of query from 'A' to 'AAAA';
+        # - it forces dig to only use IPv6 query transport.
+        record_type = 'AAAA' if version == 6 else 'A'
+        commands = [fqdn, '+short', '-%i' % version, record_type]
         return dig_call(
             port=self.bind.config.port,
-            commands=[fqdn, '+short']).split('\n')
+            commands=commands).split('\n')
 
-    def dig_reverse_resolve(self, ip):
+    def dig_reverse_resolve(self, ip, version=4):
         """Reverse resolve `ip` using dig.  Returns a list of results."""
         return dig_call(
             port=self.bind.config.port,
-            commands=['-x', ip, '+short']).split('\n')
+            commands=['-x', ip, '+short', '-%i' % version]).split('\n')
 
-    def assertDNSMatches(self, hostname, domain, ip):
+    def assertDNSMatches(self, hostname, domain, ip, version=4):
         # A forward lookup on the hostname returns the IP address.
         fqdn = "%s.%s" % (hostname, domain)
-        forward_lookup_result = self.dig_resolve(fqdn)
+        forward_lookup_result = self.dig_resolve(fqdn, version=version)
         self.assertEqual(
             [ip], forward_lookup_result,
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
-        reverse_lookup_result = self.dig_reverse_resolve(ip)
+        reverse_lookup_result = self.dig_reverse_resolve(
+            ip, version=version)
         self.assertEqual(
             ["%s." % fqdn], reverse_lookup_result,
             "Failed to reverse resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(reverse_lookup_result)))
+
+
+class TestDNSConfigModifications(TestDNSServer):
 
     def test_add_zone_loads_dns_zone(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
@@ -432,6 +445,18 @@ class TestDNSConfigModifications(MAASServerTestCase):
         node.error = factory.getRandomString()
         node.save()
         self.assertEqual(0, recorder.call_count)
+
+
+class TestIPv6DNS(TestDNSServer):
+
+    def test_bind_configuration_includes_ipv6_zone(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        network = IPNetwork('fe80::/64')
+        nodegroup = self.create_managed_nodegroup(network=network)
+        nodegroup, node, static = self.create_nodegroup_with_static_ip(
+            nodegroup=nodegroup)
+        self.assertDNSMatches(
+            node.hostname, nodegroup.name, static.ip, version=6)
 
 
 def forward_zone(domain):
