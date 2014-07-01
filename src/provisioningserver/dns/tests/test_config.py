@@ -543,16 +543,37 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         name = factory.getRandomString()
         network = IPNetwork('192.12.0.1/30')
         mapping = {
-            factory.getRandomIPInNetwork(network): factory.getRandomString(),
-            factory.getRandomIPInNetwork(network): factory.getRandomString(),
+            factory.getRandomString(): factory.getRandomIPInNetwork(network),
+            factory.getRandomString(): factory.getRandomIPInNetwork(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
-            for ip, hostname in mapping.items()
+            for hostname, ip in mapping.items()
         ]
         self.assertItemsEqual(
             expected,
-            DNSReverseZoneConfig.get_PTR_mapping(mapping, name))
+            DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
+
+    def test_get_ptr_mapping_drops_IPs_not_in_network(self):
+        name = factory.getRandomString()
+        network = IPNetwork('192.12.0.1/30')
+        in_network_mapping = {
+            factory.getRandomString(): factory.getRandomIPInNetwork(network),
+            factory.getRandomString(): factory.getRandomIPInNetwork(network),
+        }
+        expected = [
+            (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
+            for hostname, ip in in_network_mapping.items()
+        ]
+        mapping = in_network_mapping
+        extra_mapping = {
+            factory.getRandomString(): '192.50.0.2',
+            factory.getRandomString(): '192.70.0.2',
+        }
+        mapping.update(extra_mapping)
+        self.assertItemsEqual(
+            expected,
+            DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)

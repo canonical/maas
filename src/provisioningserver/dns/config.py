@@ -404,8 +404,9 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         :param domain: The domain name of the forward zone.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
-        :param mapping: A ip-address:hostname mapping for all known hosts in
-            the reverse zone.  They will be mapped as PTR records.
+        :param mapping: A hostname:ip mapping for all known hosts in
+            the reverse zone.  They will be mapped as PTR records.  IP
+            addresses not in `network` will be dropped.
         :param network: The network that the mapping exists within.
         :type network: :class:`netaddr.IPNetwork`
         """
@@ -439,7 +440,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         return reverse_name[:-1]
 
     @classmethod
-    def get_PTR_mapping(cls, mapping, domain):
+    def get_PTR_mapping(cls, mapping, domain, network):
         """Return reverse mapping: reverse IPs to hostnames.
 
         The reverse generated mapping is the mapping between the reverse
@@ -449,16 +450,20 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         The returned mapping is meant to be used to generate PTR records in
         the reverse zone file.
 
-        :param mapping: A ip-address:hostname mapping for all known hosts in
+        :param mapping: A hostname:ip-address mapping for all known hosts in
             the reverse zone.
         :param domain: Zone's domain name.
+        :param network: Zone's network.
+        :type network: :class:`netaddr.IPNetwork`
         """
         return (
             (
                 IPAddress(ip).reverse_dns,
                 '%s.%s.' % (hostname, domain),
             )
-            for ip, hostname in mapping.items()
+            for hostname, ip in mapping.items()
+            # Filter out the IP addresses that are not in `network`.
+            if IPAddress(ip) in network
         )
 
     def write_config(self):
@@ -467,7 +472,8 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
             self.target_path, self.make_parameters(),
             {
                 'mappings': {
-                    'PTR': self.get_PTR_mapping(self._mapping, self.domain),
+                    'PTR': self.get_PTR_mapping(
+                        self._mapping, self.domain, self._network),
                 },
             }
         )

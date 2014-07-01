@@ -213,14 +213,7 @@ class ZoneGenerator:
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
             for network in networks[nodegroup]:
-                # Compute the ip:hostname mapping for this network.
-                # Reverse the hostname:ip mapping and filter out
-                # the IP addresses that are not in `network`.
-                mapping = {
-                    ip: hostname
-                    for hostname, ip in mappings[nodegroup].items()
-                    if IPAddress(ip) in network
-                }
+                mapping = mappings[nodegroup]
                 yield DNSReverseZoneConfig(
                     get_domain(nodegroup), serial=serial, mapping=mapping,
                     network=network
