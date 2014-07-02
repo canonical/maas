@@ -34,6 +34,8 @@ from maasserver.api import (
     FileHandler,
     FilesHandler,
     IPAddressesHandler,
+    LicenseKeyHandler,
+    LicenseKeysHandler,
     MaasHandler,
     NetworkHandler,
     NetworksHandler,
@@ -118,6 +120,10 @@ boot_source_selection_handler = AdminRestrictedResource(
     BootSourceSelectionHandler, authentication=api_auth)
 boot_source_selections_handler = AdminRestrictedResource(
     BootSourceSelectionsHandler, authentication=api_auth)
+license_key_handler = AdminRestrictedResource(
+    LicenseKeyHandler, authentication=api_auth)
+license_keys_handler = AdminRestrictedResource(
+    LicenseKeysHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -197,6 +203,11 @@ urlpatterns += patterns(
     url(
         r'^commissioning-scripts/(?P<name>[^/]+)$',
         commissioning_script_handler, name='commissioning_script_handler'),
+    url(
+        r'^license-keys/$', license_keys_handler, name='license_keys_handler'),
+    url(
+        r'^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)$',
+        license_key_handler, name='license_key_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/$',
         boot_sources_handler, name='boot_sources_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<id>[^/]+)/$',
