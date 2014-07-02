@@ -225,6 +225,7 @@ from maasserver.models import (
     NodeGroupInterface,
     SSHKey,
     SSLKey,
+    StaticIPAddress,
     Tag,
     Zone,
     )
@@ -3658,3 +3659,78 @@ class NetworksHandler(OperationsHandler):
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('networks_handler', [])
+
+
+class IPAddressesHandler(OperationsHandler):
+    """Manage IP addresses allocated by MAAS."""
+    api_doc_section_name = "IP Addresses"
+
+    model = StaticIPAddress
+    fields = ('alloc_type', 'created', 'ip')
+    create = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, *args, **kwargs):
+        return ('ipaddresses_handler', [])
+
+    def claim_ip(self, user, interface):
+        """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
+        `interface`.
+
+        :raises StaticIPAddressExhaustion: If no IPs available.
+        """
+        return StaticIPAddress.objects.allocate_new(
+            range_low=interface.static_ip_range_low,
+            range_high=interface.static_ip_range_high,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+
+    @operation(idempotent=False)
+    def reserve(self, request):
+        """Reserve an IP address for use outside of MAAS.
+
+        Returns an IP adddress for which MAAS will not allow any of its
+        known devices and Nodes to use; it is free for use by the requesting
+        user until released by the user.
+
+        :param network: CIDR representation of the network on which the IP
+            reservation is required. e.g. 10.1.2.0/24
+        :type network: unicode
+        """
+        network = get_mandatory_param(request.POST, "network")
+        # Validate the passed network.
+        try:
+            valid_network = netaddr.IPNetwork(network)
+        except netaddr.core.AddrFormatError:
+            raise MAASAPIBadRequest("Invalid network parameter %s" % network)
+
+        # Match the network to a nodegroupinterface.
+        interfaces = (
+            NodeGroupInterface.objects.filter(
+                nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
+            .exclude(static_ip_range_low__isnull=True)
+            .exclude(static_ip_range_high__isnull=True)
+        )
+        for interface in interfaces:
+            if valid_network == interface.network:
+                # Winner winner chicken dinner.
+                return self.claim_ip(request.user, interface)
+        raise MAASAPIBadRequest("No network found matching %s" % network)
+
+    @operation(idempotent=False)
+    def release(self, request):
+        """Release an IP address that was previously reserved by the user.
+
+        :param ip: The IP address to release.
+        :type ip: unicode
+        """
+        ip = get_mandatory_param(request.POST, "ip")
+        staticaddress = get_object_or_404(
+            StaticIPAddress, ip=ip, user=request.user)
+        staticaddress.deallocate()
+
+    def read(self, request):
+        """List IPAddresses.
+
+        Get a listing of all IPAddresses allocated to the requesting user.
+        """
+        return StaticIPAddress.objects.filter(user=request.user).order_by('id')

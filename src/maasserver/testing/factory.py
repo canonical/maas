@@ -436,7 +436,7 @@ class Factory(maastesting.factory.Factory):
         return node
 
     def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
-                             mac=None):
+                             mac=None, user=None):
         """Create and return a StaticIPAddress model object.
 
         If a non-None `mac` is passed, connect this IP address to the
@@ -444,7 +444,7 @@ class Factory(maastesting.factory.Factory):
         """
         if ip is None:
             ip = self.getRandomIPAddress()
-        ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type)
+        ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type, user=user)
         ipaddress.save()
         if mac is not None:
             MACStaticIPAddressLink(

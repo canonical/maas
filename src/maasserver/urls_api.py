@@ -33,6 +33,7 @@ from maasserver.api import (
     describe,
     FileHandler,
     FilesHandler,
+    IPAddressesHandler,
     MaasHandler,
     NetworkHandler,
     NetworksHandler,
@@ -67,6 +68,8 @@ from maasserver.api_support import (
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
+ipaddresses_handler = RestrictedResource(
+    IPAddressesHandler, authentication=api_auth)
 network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
@@ -180,6 +183,7 @@ urlpatterns += patterns(
     url(r'^users/(?P<username>[^/]+)/$', user_handler, name='user_handler'),
     url(r'^zones/(?P<name>[^/]+)/$', zone_handler, name='zone_handler'),
     url(r'^zones/$', zones_handler, name='zones_handler'),
+    url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
 )
 
 
