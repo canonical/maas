@@ -392,6 +392,8 @@ class TestCurtinMetadataUserData(DjangoTestCase):
 
     def test_curtin_user_data_view_returns_curtin_data(self):
         node = factory.make_node()
+        factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
             osystem=node.get_osystem(),
@@ -834,7 +836,9 @@ class TestAnonymousAPI(DjangoTestCase):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
-        factory.make_node_group(maas_url=ng_url, network=network)
+        factory.make_node_group(
+            maas_url=ng_url, network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         anon_enlist_preseed_url = reverse(
             'metadata-enlist-preseed', args=['latest'])
         response = self.client.get(
@@ -924,7 +928,9 @@ class TestEnlistViews(DjangoTestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
-        factory.make_node_group(maas_url=nodegroup_url, network=network)
+        factory.make_node_group(
+            maas_url=nodegroup_url, network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         url = reverse('enlist-metadata-user-data', args=['latest'])
         response = self.client.get(url, REMOTE_ADDR=ip)
         self.assertThat(

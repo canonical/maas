@@ -209,6 +209,14 @@ class TestHostnameValidator(MAASTestCase):
         self.assertRejects('\u03be')
 
 
+def make_active_lease(nodegroup=None):
+    """Create a `DHCPLease` on a managed `NodeGroupInterface`."""
+    lease = factory.make_dhcp_lease(nodegroup=nodegroup)
+    factory.make_node_group_interface(
+        lease.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+    return lease
+
+
 class NodeTest(MAASServerTestCase):
 
     def test_system_id(self):
@@ -348,7 +356,7 @@ class NodeTest(MAASServerTestCase):
             [task['task'].name for task in self.celery.tasks])
 
     def test_delete_node_also_deletes_dhcp_host_map(self):
-        lease = factory.make_dhcp_lease()
+        lease = make_active_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
         # Prevent actual omshell commands from being called in the task.
@@ -363,7 +371,7 @@ class NodeTest(MAASServerTestCase):
                 }))
 
     def test_delete_dynamic_host_maps_sends_to_correct_queue(self):
-        lease = factory.make_dhcp_lease()
+        lease = make_active_lease()
         node = factory.make_node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
         # Prevent actual omshell commands from being called in the task.
@@ -375,8 +383,8 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(work_queue, kwargs['queue'])
 
     def test_delete_node_removes_multiple_host_maps(self):
-        lease1 = factory.make_dhcp_lease()
-        lease2 = factory.make_dhcp_lease(nodegroup=lease1.nodegroup)
+        lease1 = make_active_lease()
+        lease2 = make_active_lease(nodegroup=lease1.nodegroup)
         node = factory.make_node(nodegroup=lease1.nodegroup)
         node.add_mac_address(lease1.mac)
         node.add_mac_address(lease2.mac)

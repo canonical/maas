@@ -92,7 +92,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'static_ip_range_high',
             ]
         for field in checked_fields:
-            nodegroup = factory.make_node_group(network=network)
+            nodegroup = factory.make_node_group(
+                network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
             [interface] = nodegroup.get_managed_interfaces()
             setattr(interface, field, ip_outside_network)
             message = "%s not in the %s network" % (
@@ -105,7 +106,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_clean_network(self):
         nodegroup = factory.make_node_group(
-            network=IPNetwork('192.168.0.3/24'))
+            network=IPNetwork('192.168.0.3/24'),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         # Set a bogus subnet mask.
         interface.subnet_mask = '0.9.0.4'
@@ -118,7 +120,9 @@ class TestNodeGroupInterface(MAASServerTestCase):
     def test_clean_network_rejects_huge_network(self):
         big_network = make_network('1.2.3.4', MINIMUM_NETMASK_BITS - 1)
         exception = self.assertRaises(
-            ValidationError, factory.make_node_group, network=big_network)
+            ValidationError,
+            factory.make_node_group,
+            network=big_network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         message = (
             "Cannot create an address space bigger than a /%d network.  "
             "This network is a /%d network." % (

@@ -663,7 +663,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_read_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         response = self.client.get(
             reverse(
                 'nodegroupinterface_handler',
@@ -677,7 +677,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_update_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         new_ip_range_high = unicode(
             IPAddress(interface.ip_range_high) - 1)
         response = self.client_put(
@@ -692,7 +692,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_delete_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',
@@ -705,7 +705,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_report_foreign_dhcp_sets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         ip = factory.getRandomIPAddress()
         response = self.client.post(
             reverse(
@@ -721,7 +721,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_report_foreign_dhcp_unsets_value(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         interface.foreign_dhcp_ip = factory.getRandomIPAddress()
         interface.save()
         response = self.client.post(

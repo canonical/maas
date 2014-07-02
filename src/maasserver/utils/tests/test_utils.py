@@ -234,7 +234,7 @@ class TestFindNodegroup(MAASServerTestCase):
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         self.assertEqual(
             nodegroup,
             find_nodegroup(get_request(interface.ip)))

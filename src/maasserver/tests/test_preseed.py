@@ -361,7 +361,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def test_returns_only_interface(self):
         node = factory.make_node()
-        [interface] = list(node.nodegroup.nodegroupinterface_set.all())
+        interface = factory.make_node_group_interface(node.nodegroup)
 
         address = pick_cluster_controller_address(node)
 
@@ -596,6 +596,8 @@ class TestGetCurtinUserData(MAASServerTestCase):
 
     def test_get_curtin_userdata(self):
         node = factory.make_node()
+        factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
             osystem=node.get_osystem(),
@@ -695,6 +697,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         node = factory.make_node(
             osystem=osystem.name, architecture=architecture,
             distro_series=series)
+        factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = factory.make_boot_image(
             osystem=osystem.name, architecture=arch,
@@ -748,6 +752,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         node = factory.make_node(
             osystem=osystem.name, architecture=architecture,
             distro_series=series)
+        factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = factory.make_boot_image(
             osystem=osystem.name, architecture=arch,

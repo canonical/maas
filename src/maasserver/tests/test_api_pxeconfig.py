@@ -24,7 +24,10 @@ from maasserver import (
     server_address,
     )
 from maasserver.api import find_nodegroup_for_pxeconfig_request
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.models import (
     Config,
     MACAddress,
@@ -213,7 +216,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
         self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
-        factory.make_node_group(maas_url=ng_url, network=network)
+        factory.make_node_group(
+            maas_url=ng_url, network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
 
         # Simulate that the request originates from ip by setting
@@ -232,7 +237,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ip = factory.getRandomIPInNetwork(network)
         mock = self.patch(
             server_address, 'gethostbyname', Mock(return_value=ip))
-        factory.make_node_group(maas_url=ng_url, network=network)
+        factory.make_node_group(
+            maas_url=ng_url, network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
 
         # Simulate that the request originates from ip by setting

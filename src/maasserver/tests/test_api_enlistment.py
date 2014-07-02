@@ -403,7 +403,9 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
         network = IPNetwork('192.168.0.3/24')
         origin_ip = factory.getRandomIPInNetwork(network)
         NodeGroup.objects.ensure_master()
-        nodegroup = factory.make_node_group(network=network)
+        nodegroup = factory.make_node_group(
+            network=network,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         response = self.client.post(
             reverse('nodes_handler'),
             data={

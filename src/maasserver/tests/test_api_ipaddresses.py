@@ -31,8 +31,8 @@ from maasserver.testing.factory import factory
 class TestNetworksAPI(APITestCase):
 
     def make_interface(self, status=NODEGROUP_STATUS.ACCEPTED, **kwargs):
-        ng = factory.make_node_group(status=status, **kwargs)
-        return ng.get_managed_interfaces()[0]
+        cluster = factory.make_node_group(status=status, **kwargs)
+        return factory.make_node_group_interface(cluster)
 
     def post_reservation_request(self, net):
         params = {

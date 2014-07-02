@@ -32,7 +32,6 @@ from maasserver.enum import (
     )
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourceselection import BootSourceSelection
-from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
 from piston.models import (
@@ -57,45 +56,18 @@ class NodeGroupManager(Manager):
     the model class it manages.
     """
 
-    def new(self, name, uuid, ip, subnet_mask=None,
-            broadcast_ip=None, router_ip=None, ip_range_low=None,
-            ip_range_high=None, dhcp_key='', interface='',
-            status=NODEGROUP_STATUS.DEFAULT,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT,
-            cluster_name=None, maas_url='',
-            static_ip_range_low=None, static_ip_range_high=None):
+    def new(self, name, uuid, subnet_mask=None, dhcp_key='',
+            status=NODEGROUP_STATUS.DEFAULT, cluster_name=None, maas_url=''):
         """Create a :class:`NodeGroup` with the given parameters.
 
-        This method will:
-        - create the related NodeGroupInterface if `interface` is provided
-        - generate API credentials for the nodegroup's worker to use.
+        Also generates API credentials for the nodegroup's worker to use.
         """
-        dhcp_values = [
-            interface,
-            subnet_mask,
-            router_ip,
-            ip_range_low,
-            ip_range_high,
-            ]
-        assert all(dhcp_values) or not any(dhcp_values), (
-            "Provide all DHCP settings, or none at all. "
-            "Only the broadcast address is optional.")
-
         if cluster_name is None:
             cluster_name = NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid}
         nodegroup = NodeGroup(
             name=name, uuid=uuid, cluster_name=cluster_name, dhcp_key=dhcp_key,
             status=status, maas_url=maas_url)
         nodegroup.save()
-        if interface != '':
-            nginterface = NodeGroupInterface(
-                nodegroup=nodegroup, ip=ip, subnet_mask=subnet_mask,
-                broadcast_ip=broadcast_ip, router_ip=router_ip,
-                interface=interface, ip_range_low=ip_range_low,
-                ip_range_high=ip_range_high, management=management,
-                static_ip_range_low=static_ip_range_low,
-                static_ip_range_high=static_ip_range_high)
-            nginterface.save()
         return nodegroup
 
     def ensure_master(self):

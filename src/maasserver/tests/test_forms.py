@@ -1174,7 +1174,7 @@ class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
 
     def test_forms_saves_foreign_dhcp_ip(self):
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         foreign_dhcp_ip = factory.getRandomIPAddress()
         form = NodeGroupInterfaceForeignDHCPForm(
             data={'foreign_dhcp_ip': foreign_dhcp_ip},
@@ -1186,7 +1186,7 @@ class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
 
     def test_forms_validates_foreign_dhcp_ip(self):
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(nodegroup)
         form = NodeGroupInterfaceForeignDHCPForm(
             data={'foreign_dhcp_ip': 'invalid-ip'}, instance=interface)
         self.assertFalse(form.is_valid())
@@ -1194,7 +1194,8 @@ class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
     def test_report_foreign_dhcp_does_not_trigger_update_signal(self):
         self.patch(settings, "DHCP_CONNECT", False)
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
 
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(tasks, 'write_dhcp_config')

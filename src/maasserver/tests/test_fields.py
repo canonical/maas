@@ -24,6 +24,7 @@ from django.db import (
     DatabaseError,
     )
 from django.db.models import BinaryField
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.fields import (
     EditableBinaryField,
     MAC,
@@ -58,7 +59,8 @@ class TestNodeGroupFormField(MAASServerTestCase):
 
     def test_label_from_instance_shows_name_and_address(self):
         nodegroup = factory.make_node_group()
-        [interface] = nodegroup.get_managed_interfaces()
+        interface = factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
             '%s: %s' % (nodegroup.name, interface.ip),
             NodeGroupFormField().label_from_instance(nodegroup))

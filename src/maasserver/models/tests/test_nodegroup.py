@@ -32,7 +32,6 @@ from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
-from maasserver.utils.orm import get_one
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from mock import (
@@ -45,54 +44,17 @@ from testtools.matchers import (
     EndsWith,
     GreaterThan,
     HasLength,
-    MatchesStructure,
     )
-
-
-def make_dhcp_settings():
-    """Return an arbitrary dict of DHCP settings."""
-    network = factory.getRandomNetwork()
-    return network, {
-        'interface': factory.make_name('interface'),
-        'subnet_mask': unicode(network.netmask),
-        'broadcast_ip': unicode(network.broadcast),
-        'router_ip': factory.getRandomIPInNetwork(network),
-        'ip_range_low': factory.getRandomIPInNetwork(network),
-        'ip_range_high': factory.getRandomIPInNetwork(network),
-        'static_ip_range_low': factory.getRandomIPInNetwork(network),
-        'static_ip_range_high': factory.getRandomIPInNetwork(network),
-        }
 
 
 class TestNodeGroupManager(MAASServerTestCase):
 
-    def test_new_does_not_create_nodegroup_with_no_interface(self):
-        name = factory.make_name('nodegroup')
-        uuid = factory.getRandomUUID()
-        ip = factory.getRandomIPAddress()
-        nodegroup = NodeGroup.objects.new(name, uuid, ip)
-        interface = get_one(nodegroup.nodegroupinterface_set.all())
-        self.assertEqual(None, interface)
-
-    def test_new_requires_all_dhcp_settings_or_none(self):
+    def test_new_creates_nodegroup(self):
         name = factory.make_name('nodegroup')
         uuid = factory.make_name('uuid')
-        ip = factory.getRandomIPAddress()
-        self.assertRaises(
-            AssertionError,
-            NodeGroup.objects.new, name, uuid, ip, subnet_mask='255.0.0.0')
-
-    def test_new_creates_nodegroup_with_given_dhcp_settings(self):
-        name = factory.make_name('nodegroup')
-        uuid = factory.make_name('uuid')
-        dhcp_network, dhcp_settings = make_dhcp_settings()
-        ip = factory.getRandomIPInNetwork(dhcp_network)
-        nodegroup = NodeGroup.objects.new(name, uuid, ip, **dhcp_settings)
+        nodegroup = NodeGroup.objects.new(name, uuid)
         nodegroup = reload_object(nodegroup)
-        interface = get_one(nodegroup.nodegroupinterface_set.all())
         self.assertEqual(name, nodegroup.name)
-        self.assertThat(
-            interface, MatchesStructure.byEquality(**dhcp_settings))
 
     def test_new_assigns_token_and_key_for_worker_user(self):
         nodegroup = NodeGroup.objects.new(

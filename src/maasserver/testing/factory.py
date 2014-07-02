@@ -265,9 +265,9 @@ class Factory(maastesting.factory.Factory):
             network = factory.getRandomNetwork()
         # Split the network into dynamic and static ranges.
         if network.size > 2:
-            dynamic_range = IPRange(network.first, network[network.size // 2])
-            static_range = IPRange(network[(network.size // 2) + 1],
-                                   network.last)
+            middle = network.size // 2
+            dynamic_range = IPRange(network.first, network[middle])
+            static_range = IPRange(network[middle + 1], network.last)
         else:
             dynamic_range = network
             static_range = None
@@ -311,39 +311,46 @@ class Factory(maastesting.factory.Factory):
             interface=interface)
 
     def make_node_group(self, name=None, uuid=None, cluster_name=None,
-                        ip=None, router_ip=None, network=None,
+                        dhcp_key=None, ip=None, router_ip=None, network=None,
                         subnet_mask=None, broadcast_ip=None, ip_range_low=None,
                         ip_range_high=None, interface=None, management=None,
                         status=None, maas_url='', static_ip_range_low=None,
                         static_ip_range_high=None, **kwargs):
         """Create a :class:`NodeGroup`.
 
+        If `management` is set (to a `NODEGROUPINTERFACE_MANAGEMENT` value),
+        a :class:`NodeGroupInterface` will be created as well.
+
         If network (an instance of IPNetwork) is provided, use it to populate
         subnet_mask, broadcast_ip, ip_range_low, ip_range_high, router_ip and
-        worker_ip. This is a convenience to setup a coherent network all in
-        one go.
+        worker_ip.  This is a convenience for setting up a coherent network
+        all in one go.
         """
         if status is None:
             status = factory.getRandomEnum(NODEGROUP_STATUS)
-        if management is None:
-            management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         if name is None:
             name = self.make_name('nodegroup')
         if uuid is None:
             uuid = factory.getRandomUUID()
         if cluster_name is None:
             cluster_name = factory.make_name('cluster')
-        interface_settings = self.get_interface_fields(
-            ip=ip, router_ip=router_ip, network=network,
-            subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
-            ip_range_low=ip_range_low, ip_range_high=ip_range_high,
-            interface=interface, management=management,
-            static_ip_range_low=static_ip_range_low,
-            static_ip_range_high=static_ip_range_high)
-        interface_settings.update(kwargs)
-        return NodeGroup.objects.new(
+        if dhcp_key is None:
+            # TODO: Randomise this properly.
+            dhcp_key = ''
+        cluster = NodeGroup.objects.new(
             name=name, uuid=uuid, cluster_name=cluster_name, status=status,
-            maas_url=maas_url, **interface_settings)
+            dhcp_key=dhcp_key, maas_url=maas_url)
+        if management is not None:
+            interface_settings = dict(
+                ip=ip, router_ip=router_ip, network=network,
+                subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
+                ip_range_low=ip_range_low, ip_range_high=ip_range_high,
+                interface=interface, management=management,
+                static_ip_range_low=static_ip_range_low,
+                static_ip_range_high=static_ip_range_high)
+            interface_settings.update(kwargs)
+            self.make_node_group_interface(cluster, **interface_settings)
+        return cluster
 
     def make_unrenamable_nodegroup_with_node(self):
         """Create a `NodeGroup` that can't be renamed, and `Node`.
@@ -352,14 +359,15 @@ class Factory(maastesting.factory.Factory):
         DHCP and DNS management enabled, and have a node that is in allocated
         state.
 
+        The cluster will also have a managed interface.
+
         :return: tuple: (`NodeGroup`, `Node`).
         """
         name = self.make_name('original-name')
         nodegroup = self.make_node_group(
             name=name, status=NODEGROUP_STATUS.ACCEPTED)
-        [interface] = nodegroup.get_managed_interfaces()
-        interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS
-        interface.save()
+        factory.make_node_group_interface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node = self.make_node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
