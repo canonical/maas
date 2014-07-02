@@ -68,7 +68,7 @@ class StaticIPAddressManager(Manager):
         """
         if alloc_type == IPADDRESS_TYPE.USER_RESERVED and user is None:
             raise AssertionError(
-                "Must provide user for USER_RESERVED alloc_type")
+                "Must provide user for USER_RESERVED alloc_type.")
         if user is not None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
             raise AssertionError(
                 "Must not provide user for USER_RESERVED alloc_type.")

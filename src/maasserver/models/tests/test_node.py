@@ -339,7 +339,8 @@ class NodeTest(MAASServerTestCase):
         self.patch(Omshell, 'remove')
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
-        random_alloc_type = factory.getRandomEnum(IPADDRESS_TYPE)
+        random_alloc_type = factory.getRandomEnum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         primary_mac.claim_static_ip(alloc_type=random_alloc_type)
         node.delete()
         self.assertItemsEqual([], StaticIPAddress.objects.all())

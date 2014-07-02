@@ -972,7 +972,8 @@ class TestStickyIP(APITestCase):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         random_alloc_type = factory.getRandomEnum(
-            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.STICKY])
+            IPADDRESS_TYPE,
+            but_not=[IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED])
         node.get_primary_mac().claim_static_ip(alloc_type=random_alloc_type)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})

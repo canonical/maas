@@ -97,6 +97,7 @@ class MACAddress(CleanSave, TimestampedModel):
         the host boots it is too late.
 
         :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
+            This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
         :return: A :class:`StaticIPAddress` object. Returns None if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the

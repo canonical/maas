@@ -61,8 +61,8 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             user=user, alloc_type=alloc_type)
 
     def test_allocate_new_with_reserved_type_requires_a_user(self):
-        low, high = factory.make_ip_range()                 
-        self.assertRaises(                                  
+        low, high = factory.make_ip_range()
+        self.assertRaises(
             AssertionError, StaticIPAddress.objects.allocate_new, low, high,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED)
 
