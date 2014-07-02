@@ -98,6 +98,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
     DownloadProgress,
+    LicenseKey,
     MACAddress,
     Network,
     Node,
@@ -119,6 +120,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     get_distro_series_inital,
     get_release_requires_key,
+    list_all_releases_requiring_keys,
     list_all_usable_osystems,
     list_all_usable_releases,
     list_osystem_choices,
@@ -1826,3 +1828,110 @@ class BootSourceSelectionForm(ModelForm):
         if kwargs.get('commit', True):
             boot_source_selection.save(*args, **kwargs)
         return boot_source_selection
+
+
+class LicenseKeyForm(ModelForm):
+    """Form for global license keys."""
+
+    class Meta:
+        model = LicenseKey
+        fields = (
+            'osystem',
+            'distro_series',
+            'license_key',
+            )
+
+    def __init__(self, *args, **kwargs):
+        super(LicenseKeyForm, self).__init__(*args, **kwargs)
+        self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
+
+    def set_up_osystem_and_distro_series_fields(self, instance):
+        """Create the `osystem` and `distro_series` fields.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        usable operating systems and distro_series.
+        """
+        osystems = list_all_usable_osystems(have_images=False)
+        releases = list_all_releases_requiring_keys(osystems)
+
+        # Remove the operating systems that do not have any releases that
+        # require license keys. Don't want them to show up in the UI or be
+        # used in the API.
+        osystems = [
+            osystem
+            for osystem in osystems
+            if osystem.name in releases
+            ]
+
+        os_choices = list_osystem_choices(osystems, include_default=False)
+        distro_choices = list_release_choices(
+            releases, include_default=False, include_latest=False,
+            with_key_required=False)
+        invalid_osystem_message = compose_invalid_choice_text(
+            'osystem', os_choices)
+        invalid_distro_series_message = compose_invalid_choice_text(
+            'distro_series', distro_choices)
+        self.fields['osystem'] = forms.ChoiceField(
+            label="OS", choices=os_choices, required=True,
+            error_messages={'invalid_choice': invalid_osystem_message})
+        self.fields['distro_series'] = forms.ChoiceField(
+            label="Release", choices=distro_choices, required=True,
+            error_messages={'invalid_choice': invalid_distro_series_message})
+        if instance is not None:
+            initial_value = get_distro_series_inital(
+                instance, with_key_required=False)
+            if instance is not None:
+                self.initial['distro_series'] = initial_value
+
+    def full_clean(self):
+        # When this form is used from the API, the distro_series field will
+        # not be formatted correctly. This is to make it easy on the user, and
+        # not have to call the api with distro_series=os/series. This occurs
+        # in full_clean, so the value is correct before validation occurs on
+        # the distro_series field.
+        if 'distro_series' in self.data and 'osystem' in self.data:
+            if '/' not in self.data['distro_series']:
+                self.data['distro_series'] = '%s/%s' % (
+                    self.data['osystem'],
+                    self.data['distro_series'],
+                    )
+        super(LicenseKeyForm, self).full_clean()
+
+    def clean(self):
+        """Validate distro_series and osystem match, and license_key is valid
+        for selected operating system and series."""
+        # Get the clean_data, check that all of the fields we need are
+        # present. If not then the form will error, so no reason to continue.
+        cleaned_data = super(LicenseKeyForm, self).clean()
+        required_fields = ['license_key', 'osystem', 'distro_series']
+        for field in required_fields:
+            if field not in cleaned_data:
+                return cleaned_data
+        cleaned_data['distro_series'] = self.clean_osystem_distro_series_field(
+            cleaned_data)
+        self.validate_license_key(cleaned_data)
+        return cleaned_data
+
+    def clean_osystem_distro_series_field(self, cleaned_data):
+        """Validate that os/distro_series matches osystem, and update the
+        distro_series field, to remove the leading os/."""
+        cleaned_osystem = cleaned_data['osystem']
+        cleaned_series = cleaned_data['distro_series']
+        series_os, release = cleaned_series.split('/', 1)
+        if series_os != cleaned_osystem:
+            raise ValidationError(
+                "%s in distro_series does not match with "
+                "operating system %s" % (release, cleaned_osystem))
+        return release
+
+    def validate_license_key(self, cleaned_data):
+        """Validates that the license key is valid."""
+        cleaned_key = cleaned_data['license_key']
+        cleaned_osystem = cleaned_data['osystem']
+        cleaned_series = cleaned_data['distro_series']
+        os_obj = OperatingSystemRegistry.get_item(cleaned_osystem)
+        if os_obj is None:
+            raise ValidationError(
+                "Failed to retrieve %s from os registry." % cleaned_osystem)
+        elif not os_obj.validate_license_key(cleaned_series, cleaned_key):
+            raise ValidationError("Invalid license key.")

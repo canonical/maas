@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.db import IntegrityError
 from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -46,3 +47,11 @@ class TestLicenseKeyManager(MAASServerTestCase):
         self.assertFalse(
             LicenseKey.objects.has_license_key(
                 osystem, series))
+
+    def test_errors_on_not_unique(self):
+        key = factory.make_license_key()
+        new_key = factory.make_name('key')
+        self.assertRaises(
+            IntegrityError,
+            LicenseKey.objects.create, osystem=key.osystem,
+            distro_series=key.distro_series, license_key=new_key)

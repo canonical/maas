@@ -74,10 +74,21 @@ class LicenseKey(TimestampedModel):
     distro_series = CharField(max_length=255, blank=False)
 
     # License key for the osystem/distro_series combo.
-    license_key = CharField(max_length=255, blank=False)
+    license_key = CharField(
+        max_length=255, blank=False, verbose_name="License Key", help_text=(
+            "License key for operating system"))
 
     def __repr__(self):
         return "<LicenseKey %s/%s>" % (
             self.osystem,
             self.distro_series,
             )
+
+    def unique_error_message(self, model_class, unique_check):
+        if unique_check == ('osystem', 'distro_series'):
+            return '%s %s' % (
+                "License key with this operating system and distro series",
+                "already exists.",
+                )
+        return super(
+            LicenseKey, self).unique_error_message(model_class, unique_check)
