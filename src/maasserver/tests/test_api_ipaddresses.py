@@ -77,6 +77,7 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(expected, returned_address)
         self.assertEqual(
             IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
+        self.assertEqual(self.logged_in_user, staticipaddress.user)
 
     def test_POST_reserve_errors_for_no_matching_interface(self):
         interface = self.make_interface()

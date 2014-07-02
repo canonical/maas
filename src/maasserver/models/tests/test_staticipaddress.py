@@ -44,6 +44,28 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             StaticIPAddressExhaustion,
             StaticIPAddress.objects.allocate_new, low, high)
 
+    def test_allocate_new_sets_user(self):
+        low, high = factory.make_ip_range()
+        user = factory.make_user()
+        ipaddress = StaticIPAddress.objects.allocate_new(
+            low, high, alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user)
+        self.assertEqual(user, ipaddress.user)
+
+    def test_allocate_new_with_user_disallows_wrong_alloc_types(self):
+        low, high = factory.make_ip_range()
+        user = factory.make_user()
+        alloc_type = factory.getRandomEnum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+        self.assertRaises(
+            AssertionError, StaticIPAddress.objects.allocate_new, low, high,
+            user=user, alloc_type=alloc_type)
+
+    def test_allocate_new_with_reserved_type_requires_a_user(self):
+        low, high = factory.make_ip_range()                 
+        self.assertRaises(                                  
+            AssertionError, StaticIPAddress.objects.allocate_new, low, high,
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_node()
         [mac1, mac2] = [

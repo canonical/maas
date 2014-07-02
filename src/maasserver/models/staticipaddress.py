@@ -48,11 +48,17 @@ class StaticIPAddressManager(Manager):
     """A utility to manage collections of IPAddresses."""
 
     def allocate_new(self, range_low, range_high,
-                     alloc_type=IPADDRESS_TYPE.AUTO):
+                     alloc_type=IPADDRESS_TYPE.AUTO, user=None):
         """Return a new StaticIPAddress.
 
         :param range_low: The lowest address to allocate in a range
         :param range_high: The highest address to allocate in a range
+        :param alloc_type: What sort of IP address to allocate in the
+            range of choice in IPADDRESS_TYPE.
+        :param user: If providing a user, the alloc_type must be
+            IPADDRESS_TYPE.USER_RESERVED. Conversely, if the alloc_type is
+            IPADDRESS_TYPE.USER_RESERVED the user must also be provided.
+            AssertionError is raised if these conditions are not met.
 
         The range parameters can be strings or netaddr.IPAddress.
 
@@ -60,6 +66,12 @@ class StaticIPAddressManager(Manager):
             serialisation to catch conflicts.  The caller should catch
             ValidationError exceptions and retry in this case.
         """
+        if alloc_type == IPADDRESS_TYPE.USER_RESERVED and user is None:
+            raise AssertionError(
+                "Must provide user for USER_RESERVED alloc_type")
+        if user is not None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+            raise AssertionError(
+                "Must not provide user for USER_RESERVED alloc_type.")
         # Convert args to strings if they are not already.
         if isinstance(range_low, IPAddress):
             range_low = range_low.ipv4().format()
@@ -83,7 +95,8 @@ class StaticIPAddressManager(Manager):
         except KeyError:
             raise StaticIPAddressExhaustion()
 
-        ipaddress = StaticIPAddress(ip=ip.format(), alloc_type=alloc_type)
+        ipaddress = StaticIPAddress(
+            ip=ip.format(), alloc_type=alloc_type, user=user)
         ipaddress.save()
         return ipaddress
 

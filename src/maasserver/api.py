@@ -3682,7 +3682,8 @@ class IPAddressesHandler(OperationsHandler):
         return StaticIPAddress.objects.allocate_new(
             range_low=interface.static_ip_range_low,
             range_high=interface.static_ip_range_high,
-            alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            user=user)
 
     @operation(idempotent=False)
     def reserve(self, request):
