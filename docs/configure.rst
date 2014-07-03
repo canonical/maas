@@ -13,6 +13,10 @@ handle DHCP address assignments for the network.  In these instances, the
 existing DHCP server for the network will need its configuration altered to
 allow MAAS to enlist and control nodes automatically.
 
+.. note::
+  If you don't let MAAS manage DHCP, then MAAS will not be able to allocate
+  its :ref:`static IP addresses <static-ip-address>` to Nodes.
+
 At the very least the "filename" option should be set to "pxelinux.0".
 
 How to configure this depends on what software you use as a DHCP server.  If

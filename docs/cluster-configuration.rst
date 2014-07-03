@@ -95,11 +95,6 @@ the network:
    the DNS server included with the region controller so that it can be used
    to look up hosts on this network by name.
 
-.. note::
- You cannot have DNS management without DHCP management because MAAS relies on
- its own DHCP server's leases file to work out the IP address of nodes in the
- cluster.
-
 If you set the interface to be managed, you now need to provide all of the
 usual DHCP details in the input fields below.  Once done, click "Save
 interface". The cluster controller will now be able to boot nodes on this
@@ -109,6 +104,33 @@ There is also an option to leave the network unmanaged.  Use this for
 networks where you don't want to manage any nodes.  Or, if you do want to
 manage nodes but don't want the cluster controller to serve DHCP, you may be
 able to get by without it.  This is explained in :ref:`manual-dhcp`.
+
+.. _static-ip-address:
+
+Static vs Dynamic IP Addresses
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+On the cluster interface edit page, there are fields to enter both a dynamic
+and a static range of IP addresses.  It is mandatory to enter the dynamic range
+if you are managing DHCP on this interface, but the static range is optional.
+
+Dynamic addresses are given to both unknown devices booting on this network,
+and Nodes that are commissioning.  Dynamic addresses are allocated by the
+DHCP server and may change at any time.
+
+Static addresses are given to Nodes when they are allocated to a user and
+started up, and returned to the pool only when the Node is de-allocated.
+Static addresses are allocated by MAAS, and are guaranteed not to change while
+allocated.  If you are managing DNS on this network, only static IP addresses
+are given DNS entries with the Node's name.
+
+If you do not configure the static range, then nodes will only get dynamic
+IP addresses and will never get a DNS entry.
+
+IP addresses in the static range are also available for reservation by users
+using the :doc:`api`.  This prevents MAAS from allocating the reserved
+IP to any Nodes or other devices, which allows users to assign it freely
+to their own hosts/devices on the same network, such as LXC containers.
 
 
 Multiple networks
