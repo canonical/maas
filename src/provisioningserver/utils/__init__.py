@@ -84,14 +84,15 @@ def node_exists(macs, url, client):
         "application/json": lambda data: json.loads(data),
         "application/bson": lambda data: bson.BSON(data).decode(),
     }
-    response = client.get(url,
-                          op='list',
-                          mac_address=macs)
-    content = response.read()
-    content_type = response.headers.gettype()
-    decode = decoders[content_type]
-    content = decode(content)
-    return len(content) > 0
+    for index in xrange(len(macs)):
+        response = client.get(url,
+                              op='list',
+                              mac_address=macs[index])
+        content = response.read()
+        content_type = response.headers.gettype()
+        decode = decoders[content_type]
+        content = decode(content)
+        return len(content) > 0
 
 
 def create_node(macs, arch, power_type, power_parameters):

@@ -34,7 +34,7 @@ cartridge_mapping = {
     'ProLiant Moonshot Cartridge': 'amd64/generic',
     'ProLiant m300 Server Cartridge': 'amd64/generic',
     'ProLiant m350 Server Cartridge': 'amd64/generic',
-    'ProLiant m400 Server Cartridge': 'arm64/xgene',
+    'ProLiant m400 Server Cartridge': 'arm64/xgene-uboot',
     'ProLiant m500 Server Cartridge': 'amd64/generic',
     'ProLiant m710 Server Cartridge': 'amd64/generic',
     'ProLiant m800 Server Cartridge': 'armhf/keystone',
@@ -82,7 +82,7 @@ class MSCM_CLI_API(object):
         node_list = self._run_cli_command("show node list")
         return re.findall(r'c\d+n\d', node_list)
 
-    def get_node_macaddr(self, node):
+    def get_node_macaddr(self, node_id):
         """Get node MAC address(es).
 
         Example of stdout from running "show node macaddr <node_id>":
@@ -96,10 +96,10 @@ class MSCM_CLI_API(object):
         The regex '[\:]'.join(['[0-9A-F]{1,2}'] * 6) is finding
         the MAC Addresses for the given node_id.
         """
-        macs = self._run_cli_command("show node macaddr %s" % node)
+        macs = self._run_cli_command("show node macaddr %s" % node_id)
         return re.findall(r':'.join(['[0-9a-f]{2}'] * 6), macs)
 
-    def get_node_arch(self, node):
+    def get_node_arch(self, node_id):
         """Get node architecture.
 
         Example of stdout from running "show node info <node_id>":
@@ -109,14 +109,14 @@ class MSCM_CLI_API(object):
 
         Parsing this retrieves 'ProLiant m500 Server Cartridge'
         """
-        node_detail = self._run_cli_command("show node info %s" % node)
+        node_detail = self._run_cli_command("show node info %s" % node_id)
         cartridge = node_detail.split('Product Name: ')[1].splitlines()[0]
         if cartridge in cartridge_mapping:
             return cartridge_mapping[cartridge]
         else:
             return cartridge_mapping['Default']
 
-    def get_node_power_status(self, node):
+    def get_node_power_status(self, node_id):
         """Get power state of node (on/off).
 
         Example of stdout from running "show node power <node_id>":
@@ -126,24 +126,24 @@ class MSCM_CLI_API(object):
 
         Parsing this retrieves 'On'
         """
-        power_state = self._run_cli_command("show node power %s" % node)
+        power_state = self._run_cli_command("show node power %s" % node_id)
         return power_state.split('Power State: ')[1].splitlines()[0]
 
-    def power_node_on(self, node):
+    def power_node_on(self, node_id):
         """Power node on."""
-        return self._run_cli_command("set node power on %s" % node)
+        return self._run_cli_command("set node power on %s" % node_id)
 
-    def power_node_off(self, node):
+    def power_node_off(self, node_id):
         """Power node off."""
-        return self._run_cli_command("set node power off %s" % node)
+        return self._run_cli_command("set node power off force %s" % node_id)
 
-    def configure_node_boot_hdd(self, node):
+    def configure_node_boot_m2(self, node_id):
         """Configure HDD boot for node."""
-        return self._run_cli_command("set node boot hdd %s" % node)
+        return self._run_cli_command("set node boot M.2 %s" % node_id)
 
-    def configure_node_bootonce_pxe(self, node):
+    def configure_node_bootonce_pxe(self, node_id):
         """Configure PXE boot for node once."""
-        return self._run_cli_command("set node bootonce pxe %s" % node)
+        return self._run_cli_command("set node bootonce pxe %s" % node_id)
 
 
 def power_control_mscm(host, username, password, node_id, power_change):
@@ -175,7 +175,7 @@ def probe_and_enlist_mscm(host, username, password):
     nodes = mscm.discover_nodes()
     for node_id in nodes:
         # Set default boot to HDD
-        mscm.configure_node_boot_hdd(node_id)
+        mscm.configure_node_boot_m2(node_id)
         params = {
             'power_address': host,
             'power_user': username,
@@ -183,5 +183,5 @@ def probe_and_enlist_mscm(host, username, password):
             'node_id': node_id,
         }
         arch = mscm.get_node_arch(node_id)
-        macs = mscm.get_node_macs(node_id)
+        macs = mscm.get_node_macaddr(node_id)
         utils.create_node(macs, arch, 'mscm', params)

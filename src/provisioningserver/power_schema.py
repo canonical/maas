@@ -262,7 +262,10 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_address', "IP for MSCM CLI API"),
             make_json_field('power_user', "MSCM CLI API user"),
             make_json_field('power_pass', "MSCM CLI API password"),
-            make_json_field('node_id', "Node ID"),
+            make_json_field(
+                'node_id',
+                "Node ID - Must adhere to cXnY format "
+                "(X=cartridge number, Y=node number)."),
         ],
     },
 ]

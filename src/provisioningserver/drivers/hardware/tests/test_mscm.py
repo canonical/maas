@@ -235,18 +235,18 @@ class TestProbeAndEnlistMSCM(MAASTestCase):
         password = factory.make_name('password')
         node_id = make_node_id()
         macs = make_show_node_macaddr(4)
-        arch = 'arm64/xgene'
+        arch = 'arm64/xgene-uboot'
         discover_nodes_mock = self.patch(MSCM_CLI_API, 'discover_nodes')
         discover_nodes_mock.return_value = [node_id]
-        boot_hdd_mock = self.patch(MSCM_CLI_API, 'configure_node_boot_hdd')
+        boot_m2_mock = self.patch(MSCM_CLI_API, 'configure_node_boot_m2')
         node_arch_mock = self.patch(MSCM_CLI_API, 'get_node_arch')
         node_arch_mock.return_value = arch
-        node_macs_mock = self.patch(MSCM_CLI_API, 'get_node_macs')
+        node_macs_mock = self.patch(MSCM_CLI_API, 'get_node_macaddr')
         node_macs_mock.return_value = macs
         create_node_mock = self.patch(utils, 'create_node')
         probe_and_enlist_mscm(host, username, password)
         self.assertThat(discover_nodes_mock, MockCalledOnceWith())
-        self.assertThat(boot_hdd_mock, MockCalledOnceWith(node_id))
+        self.assertThat(boot_m2_mock, MockCalledOnceWith(node_id))
         self.assertThat(node_arch_mock, MockCalledOnceWith(node_id))
         self.assertThat(node_macs_mock, MockCalledOnceWith(node_id))
         params = {
