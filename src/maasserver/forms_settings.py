@@ -173,7 +173,7 @@ CONFIG_ITEMS = {
             'required': False,
             'help_text': (
                 "NTP server address passed to nodes via a DHCP response. "
-                "e.g. for ntp.ubuntu.com: '91.189.94.4'")
+                "e.g. ntp.ubuntu.com")
         }
     },
     'default_osystem': {

@@ -53,7 +53,7 @@ def get_default_config():
         'default_distro_series': DEFAULT_OS.get_default_release(),
         'http_proxy': None,
         'upstream_dns': None,
-        'ntp_server': '91.189.94.4',  # ntp.ubuntu.com
+        'ntp_server': 'ntp.ubuntu.com',
         # RPC configuration.
         'rpc_region_certificate': None,
         # Third Party
