@@ -1128,8 +1128,8 @@ def make_interface_settings(network=None, management=None):
         static_high = unicode(IPAddress(static_range.last))
     else:
         dynamic_range = managed_ip_range
-        static_low = None
-        static_high = None
+        static_low = ''
+        static_high = ''
     return {
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),

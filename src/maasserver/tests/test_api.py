@@ -536,7 +536,12 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             query_data)
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        expected_result = interface_settings
+        # Replace empty strings with None as empty strings are converted into
+        # None for fields with null=True.
+        expected_result = {
+            key: (value if value != '' else None)
+            for key, value in interface_settings.items()
+        }
         new_interface = NodeGroupInterface.objects.get(
             nodegroup=nodegroup, interface=interface_settings['interface'])
         self.assertThat(
