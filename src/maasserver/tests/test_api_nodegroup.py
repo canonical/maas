@@ -832,13 +832,9 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
 
     def test_updates_mac_cluster_interfaces(self):
         cluster = factory.make_node_group()
-        interfaces = [
-            factory.make_node_group_interface(nodegroup=cluster)
-            for i in range(4)
-            ]
-        interfaces.append(cluster.nodegroupinterface_set.first())
         mac_addresses = {
-            factory.make_mac_address(): random.choice(interfaces)
+            factory.make_mac_address(): factory.make_node_group_interface(
+                nodegroup=cluster)
             for i in range(4)
             }
         leases = {
