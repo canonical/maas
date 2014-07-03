@@ -243,9 +243,15 @@ class TestRegisterAPI(MAASServerTestCase):
         self.assertEqual(
             (name, NODEGROUP_STATUS.PENDING),
             (nodegroup.name, nodegroup.status))
+        # Replace empty strings with None as empty strings are converted into
+        # None for fields with null=True.
+        expected_result = {
+            key: (value if value != '' else None)
+            for key, value in interface.items()
+        }
         self.assertThat(
             nodegroup.nodegroupinterface_set.all()[0],
-            MatchesStructure.byEquality(**interface))
+            MatchesStructure.byEquality(**expected_result))
         # The response code is 'ACCEPTED': the nodegroup now needs to be
         # validated by an admin.
         self.assertEqual(httplib.ACCEPTED, response.status_code)
@@ -292,10 +298,16 @@ class TestRegisterAPI(MAASServerTestCase):
 
         master = NodeGroup.objects.ensure_master()
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
+        # Replace empty strings with None as empty strings are converted into
+        # None for fields with null=True.
+        expected_result = {
+            key: (value if value != '' else None)
+            for key, value in interface.items()
+        }
         self.assertThat(
             master.nodegroupinterface_set.get(
                 interface=interface['interface']),
-            MatchesStructure.byEquality(**interface))
+            MatchesStructure.byEquality(**expected_result))
 
     def test_register_nodegroup_uses_default_zone_name(self):
         uuid = factory.getRandomUUID()
