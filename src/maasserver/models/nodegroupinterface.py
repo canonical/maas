@@ -225,70 +225,76 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_ip_range_bounds(self):
         """Ensure that the static and dynamic ranges have sane bounds."""
-        if (self.is_managed and (self.static_ip_range_low and
+        if not (self.is_managed and (self.static_ip_range_low and
             self.static_ip_range_high)):
-            errors = {}
-            ip_range_low = IPAddress(self.ip_range_low)
-            ip_range_high = IPAddress(self.ip_range_high)
-            static_ip_range_low = IPAddress(self.static_ip_range_low)
-            static_ip_range_high = IPAddress(self.static_ip_range_high)
+            # Exit early with nothing to do.
+            return
 
-            message_base = (
-                "Lower bound %s is higher than upper bound %s")
-            try:
-                IPRange(static_ip_range_low, static_ip_range_high)
-            except AddrFormatError:
-                message = (
-                    message_base % (
-                        self.static_ip_range_low, self.static_ip_range_high))
-                errors['static_ip_range_low'] = [message]
-                errors['static_ip_range_high'] = [message]
-            try:
-                IPRange(ip_range_low, ip_range_high)
-            except AddrFormatError:
-                message = (
-                    message_base % (self.ip_range_low, self.ip_range_high))
-                errors['ip_range_low'] = [message]
-                errors['ip_range_high'] = [message]
+        errors = {}
+        ip_range_low = IPAddress(self.ip_range_low)
+        ip_range_high = IPAddress(self.ip_range_high)
+        static_ip_range_low = IPAddress(self.static_ip_range_low)
+        static_ip_range_high = IPAddress(self.static_ip_range_high)
 
-            if errors:
-                raise ValidationError(errors)
+        message_base = (
+            "Lower bound %s is higher than upper bound %s")
+        try:
+            IPRange(static_ip_range_low, static_ip_range_high)
+        except AddrFormatError:
+            message = (
+                message_base % (
+                    self.static_ip_range_low, self.static_ip_range_high))
+            errors['static_ip_range_low'] = [message]
+            errors['static_ip_range_high'] = [message]
+        try:
+            IPRange(ip_range_low, ip_range_high)
+        except AddrFormatError:
+            message = (
+                message_base % (self.ip_range_low, self.ip_range_high))
+            errors['ip_range_low'] = [message]
+            errors['ip_range_high'] = [message]
+
+        if errors:
+            raise ValidationError(errors)
 
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
-        if (self.is_managed and (self.static_ip_range_low and
+        if not (self.is_managed and (self.static_ip_range_low and
             self.static_ip_range_high)):
-            errors = {}
-            ip_range_low = IPAddress(self.ip_range_low)
-            ip_range_high = IPAddress(self.ip_range_high)
-            static_ip_range_low = IPAddress(self.static_ip_range_low)
-            static_ip_range_high = IPAddress(self.static_ip_range_high)
+            # Nothing to do; bail out.
+            return
 
-            static_range = IPRange(
-                static_ip_range_low, static_ip_range_high)
-            dynamic_range = IPRange(
-                ip_range_low, ip_range_high)
+        errors = {}
+        ip_range_low = IPAddress(self.ip_range_low)
+        ip_range_high = IPAddress(self.ip_range_high)
+        static_ip_range_low = IPAddress(self.static_ip_range_low)
+        static_ip_range_high = IPAddress(self.static_ip_range_high)
 
-            # This is a bit unattractive, but we can't use IPSet for
-            # large networks - it's far too slow. What we actually care
-            # about is whether the lows and highs of the static range
-            # fall within the dynamic range and vice-versa, which
-            # IPRange gives us.
-            networks_overlap = (
-                static_ip_range_low in dynamic_range or
-                static_ip_range_high in dynamic_range or
-                ip_range_low in static_range or
-                ip_range_high in static_range
-            )
-            if networks_overlap:
-                message = "Static and dynamic IP ranges may not overlap."
-                errors = {
-                    'ip_range_low': [message],
-                    'ip_range_high': [message],
-                    'static_ip_range_low': [message],
-                    'static_ip_range_high': [message],
-                    }
-                raise ValidationError(errors)
+        static_range = IPRange(
+            static_ip_range_low, static_ip_range_high)
+        dynamic_range = IPRange(
+            ip_range_low, ip_range_high)
+
+        # This is a bit unattractive, but we can't use IPSet for
+        # large networks - it's far too slow. What we actually care
+        # about is whether the lows and highs of the static range
+        # fall within the dynamic range and vice-versa, which
+        # IPRange gives us.
+        networks_overlap = (
+            static_ip_range_low in dynamic_range or
+            static_ip_range_high in dynamic_range or
+            ip_range_low in static_range or
+            ip_range_high in static_range
+        )
+        if networks_overlap:
+            message = "Static and dynamic IP ranges may not overlap."
+            errors = {
+                'ip_range_low': [message],
+                'ip_range_high': [message],
+                'static_ip_range_low': [message],
+                'static_ip_range_high': [message],
+                }
+            raise ValidationError(errors)
 
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
