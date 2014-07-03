@@ -127,6 +127,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         else:
             return None
 
+    @property
+    def is_managed(self):
+        """Return true if this interface is managed by MAAS."""
+        return self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+
     def display_management(self):
         """Return management status text as displayed to the user."""
         return NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[self.management]
@@ -152,7 +157,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_network_not_too_big(self):
         # If management is not 'UNMANAGED', refuse huge networks.
-        if self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+        if self.is_managed:
             network = self.network
             if network is not None:
                 if network.prefixlen < MINIMUM_NETMASK_BITS:
@@ -165,7 +170,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_network_config_if_managed(self):
         # If management is not 'UNMANAGED', all the network information
         # should be provided.
-        if self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+        if self.is_managed:
             mandatory_fields = [
                 'interface',
                 'subnet_mask',
@@ -218,18 +223,49 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             # form; validation breaks if we pass an IPAddress.
             self.broadcast_ip = unicode(network.broadcast)
 
+    def clean_ip_range_bounds(self):
+        """Ensure that the static and dynamic ranges have sane bounds."""
+        if (self.is_managed and (self.static_ip_range_low and
+            self.static_ip_range_high)):
+            errors = {}
+            ip_range_low = IPAddress(self.ip_range_low)
+            ip_range_high = IPAddress(self.ip_range_high)
+            static_ip_range_low = IPAddress(self.static_ip_range_low)
+            static_ip_range_high = IPAddress(self.static_ip_range_high)
+
+            message_base = (
+                "Lower bound %s is higher than upper bound %s")
+            try:
+                IPRange(static_ip_range_low, static_ip_range_high)
+            except AddrFormatError:
+                message = (
+                    message_base % (
+                        self.static_ip_range_low, self.static_ip_range_high))
+                errors['static_ip_range_low'] = [message]
+                errors['static_ip_range_high'] = [message]
+            try:
+                IPRange(ip_range_low, ip_range_high)
+            except AddrFormatError:
+                message = (
+                    message_base % (self.ip_range_low, self.ip_range_high))
+                errors['ip_range_low'] = [message]
+                errors['ip_range_high'] = [message]
+
+            if errors:
+                raise ValidationError(errors)
+
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
-        if (self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED and
-           (self.static_ip_range_low and self.static_ip_range_high)):
+        if (self.is_managed and (self.static_ip_range_low and
+            self.static_ip_range_high)):
+            errors = {}
             ip_range_low = IPAddress(self.ip_range_low)
             ip_range_high = IPAddress(self.ip_range_high)
             static_ip_range_low = IPAddress(self.static_ip_range_low)
             static_ip_range_high = IPAddress(self.static_ip_range_high)
 
             static_range = IPRange(
-                static_ip_range_low,
-                static_ip_range_high)
+                static_ip_range_low, static_ip_range_high)
             dynamic_range = IPRange(
                 ip_range_low, ip_range_high)
 
@@ -260,4 +296,5 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_network_not_too_big()
         self.clean_ips_in_network()
         self.clean_network_config_if_managed()
+        self.clean_ip_range_bounds()
         self.clean_ip_ranges()

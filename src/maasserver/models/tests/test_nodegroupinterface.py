@@ -273,3 +273,29 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'static_ip_range_high': [message],
             }
         self.assertEqual(errors, exception.message_dict)
+
+    def test_clean_ip_range_bounds_checks_for_reversed_range_bounds(self):
+        network = IPNetwork("10.1.0.0/16")
+        interface = make_interface(network)
+        interface.ip_range_low = '10.1.0.2'
+        interface.ip_range_high = '10.1.0.1'
+        interface.static_ip_range_low = '10.1.0.10'
+        interface.static_ip_range_high = '10.1.0.9'
+        exception = self.assertRaises(
+            ValidationError, interface.full_clean)
+        message = "Lower bound %s is higher than upper bound %s"
+        errors = {
+            'ip_range_low': [
+                message % (interface.ip_range_low, interface.ip_range_high)],
+            'ip_range_high': [
+                message % (interface.ip_range_low, interface.ip_range_high)],
+            'static_ip_range_low': [
+                message % (
+                    interface.static_ip_range_low,
+                    interface.static_ip_range_high)],
+            'static_ip_range_high': [
+                message % (
+                    interface.static_ip_range_low,
+                    interface.static_ip_range_high)],
+            }
+        self.assertEqual(errors, exception.message_dict)
