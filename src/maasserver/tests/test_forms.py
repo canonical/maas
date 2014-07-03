@@ -1385,9 +1385,15 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
         nodegroup = NodeGroup.objects.get(uuid=uuid)
+        # Replace empty strings with None as empty strings are converted into
+        # None for fields with null=True.
+        expected_result = {
+            key: (value if value != '' else None)
+            for key, value in interface.items()
+        }
         self.assertThat(
             nodegroup.nodegroupinterface_set.all()[0],
-            MatchesStructure.byEquality(**interface))
+            MatchesStructure.byEquality(**expected_result))
 
     def test_checks_against_conflicting_managed_networks(self):
         big_network = IPNetwork('10.0.0.0/255.255.0.0')
