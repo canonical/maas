@@ -16,6 +16,7 @@ __all__ = []
 
 
 from itertools import islice
+import random
 import socket
 
 from celery.task import task
@@ -26,6 +27,7 @@ from maasserver import (
     server_address,
     )
 from maasserver.enum import (
+    NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
@@ -193,6 +195,47 @@ class TestLazyDict(TestCase):
 
         self.assertEqual((key1, key2), (value1, value2))
         self.assertEqual({key1: key1, key2: key2}, value_dict)
+
+
+class TestGetHostnameIPMapping(MAASServerTestCase):
+    """Test for `get_hostname_ip_mapping`."""
+
+    def test_get_hostname_ip_mapping_combines_mappings(self):
+        nodegroup = factory.make_node_group()
+        # Create dynamic mapping for an allocated node.
+        node1 = factory.make_node(
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+        mac = factory.make_mac_address(node=node1)
+        lease = factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=mac.mac_address)
+        # Create static mapping for an allocated node.
+        node2 = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup)
+        staticip = factory.make_staticipaddress(mac=node2.get_primary_mac())
+
+        expected_mapping = {
+            node1.hostname: lease.ip,
+            node2.hostname: staticip.ip,
+        }
+        self.assertEqual(
+            expected_mapping, dns.get_hostname_ip_mapping(nodegroup))
+
+    def test_get_hostname_ip_mapping_gives_precedence_to_static_mappings(self):
+        nodegroup = factory.make_node_group()
+        # Create dynamic mapping for an allocated node.
+        node = factory.make_node(
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+        mac = factory.make_mac_address(node=node)
+        factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=mac.mac_address)
+        # Create static mapping for the *same* node.
+        staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+
+        expected_mapping = {
+            node.hostname: staticip.ip,
+        }
+        self.assertEqual(
+            expected_mapping, dns.get_hostname_ip_mapping(nodegroup))
 
 
 class TestDNSServer(MAASServerTestCase):
@@ -446,6 +489,29 @@ class TestDNSConfigModifications(TestDNSServer):
         node.error = factory.getRandomString()
         node.save()
         self.assertEqual(0, recorder.call_count)
+
+
+class TestDNSBackwardCompat(TestDNSServer):
+    """Allocated nodes with IP addresses in the dynamic range get a DNS
+    record.
+    """
+
+    def test_bind_configuration_includes_dynamic_ips_of_allocated_nodes(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        network = IPNetwork('192.168.7.1/24')
+        nodegroup = self.create_managed_nodegroup(network=network)
+        [interface] = nodegroup.get_managed_interfaces()
+        node = factory.make_node(
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+        mac = factory.make_mac_address(node=node, cluster_interface=interface)
+        # Get an IP in the dynamic range.
+        ip_range = IPRange(
+            interface.ip_range_low, interface.ip_range_high)
+        ip = "%s" % random.choice(ip_range)
+        lease = factory.make_dhcp_lease(
+            nodegroup=nodegroup, mac=mac.mac_address, ip=ip)
+        dns.change_dns_zones([nodegroup])
+        self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
 
 class TestIPv6DNS(TestDNSServer):
