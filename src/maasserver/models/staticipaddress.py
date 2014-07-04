@@ -160,7 +160,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         verbose_name_plural = "Static IP Addresses"
 
     ip = GenericIPAddressField(
-        unique=True, null=False, editable=False, blank=False)
+        unique=True, null=False, editable=False, blank=False,
+        verbose_name='IP')
 
     # The MACStaticIPAddressLink table is used to link StaticIPAddress to
     # MACAddress.  See MACAddress.ip_addresses, and the reverse relation
