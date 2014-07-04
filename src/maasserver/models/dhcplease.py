@@ -27,6 +27,7 @@ from django.db.models import (
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
+from maasserver.enum import NODE_STATUS
 from maasserver.fields import MACAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.macaddress import MACAddress
@@ -109,7 +110,7 @@ class DHCPLeaseManager(Manager):
 
     def get_hostname_ip_mapping(self, nodegroup):
         """Return a mapping {hostnames -> ips} for the currently leased
-        IP addresses for the nodes in `nodegroup`.
+        IP addresses for the allocated nodes in `nodegroup`.
 
         For each node, this will consider only the oldest `MACAddress` that
         has a `DHCPLease`.
@@ -135,8 +136,9 @@ class DHCPLeaseManager(Manager):
             JOIN maasserver_node AS node ON node.id = mac.node_id
             JOIN maasserver_dhcplease AS lease ON lease.mac = mac.mac_address
             WHERE lease.nodegroup_id = %s
+            AND node.status = %s
             ORDER BY node.hostname, mac.id
-            """, (nodegroup.id, ))
+            """, (nodegroup.id, NODE_STATUS.ALLOCATED))
         return dict(
             (strip_domain(hostname), ip)
             for hostname, ip in cursor.fetchall()
