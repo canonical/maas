@@ -591,11 +591,64 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
+class TestRenderPreseedWindows(MAASServerTestCase):
+    """Tests for `render_preseed`.
+
+    These tests check that the templates render (i.e. that no variable is
+    missing).
+    """
+
+    # Create a scenario for each possible windows release.
+    scenarios = [
+        (release, {'release': release})
+        for release in ['win2012', 'win2012hv', 'win2012hvr2', 'win2012r2']
+    ]
+
+    def test_render_preseed(self):
+        node = factory.make_node(
+            osystem='windows', architecture='amd64/generic',
+            distro_series=self.release)
+        factory.make_boot_image(
+            osystem='windows', architecture='amd64', subarchitecture='generic',
+            release=self.release, purpose='install', nodegroup=node.nodegroup)
+        preseed = render_preseed(
+            node, '', osystem='windows', release=self.release)
+        # The test really is that the preseed is rendered without an
+        # error.
+        self.assertIsInstance(preseed, bytes)
+
+
 class TestGetCurtinUserData(MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata(self):
         node = factory.make_node()
+        factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        arch, subarch = node.architecture.split('/')
+        factory.make_boot_image(
+            osystem=node.get_osystem(),
+            architecture=arch, subarchitecture=subarch,
+            release=node.get_distro_series(), purpose='xinstall',
+            xinstall_path='root-tgz', xinstall_type='tgz',
+            nodegroup=node.nodegroup)
+        node.use_fastpath_installer()
+        user_data = get_curtin_userdata(node)
+        # Just check that the user data looks good.
+        self.assertIn("PREFIX='curtin'", user_data)
+
+
+class TestGetCurtinUserDataOS(MAASServerTestCase):
+    """Tests for `get_curtin_userdata` using os specific scenarios."""
+
+    # Create a scenario for each possible os specific preseed.
+    scenarios = [
+        (name, {'os_name': name})
+        for name in ['centos', 'suse', 'windows']
+    ]
+
+    def test_get_curtin_userdata(self):
+        node = factory.make_node(osystem=self.os_name)
         factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
