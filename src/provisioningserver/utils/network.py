@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'clean_up_netifaces_address',
     'find_ip_via_arp',
     'find_mac_via_arp',
     'get_all_addresses_for_interface',
@@ -109,6 +110,16 @@ def find_mac_via_arp(ip):
     return None
 
 
+def clean_up_netifaces_address(address, interface):
+    """Strip extraneous matter from `netifaces` IPv6 address.
+
+    An apparent bug in `netifaces` suffixes the network interface name to
+    each IPv6 address it sees.  Where that happens, this function fixes it
+    and returns a proper IP address string.
+    """
+    return address.replace('%' + interface, '')
+
+
 def get_all_addresses_for_interface(interface):
     """Yield all IPv4 and IPv6 addresses for an interface as `IPAddress`es.
 
@@ -129,7 +140,8 @@ def get_all_addresses_for_interface(interface):
                 # interface name being appended to the IPv6 address.
                 # Goodness knows why. Anyway, we deal with that
                 # here.
-                yield inet6_address["addr"].replace('%' + interface, '')
+                yield clean_up_netifaces_address(
+                    inet6_address["addr"], interface)
 
 
 def get_all_interface_addresses():

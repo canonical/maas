@@ -28,6 +28,7 @@ from netifaces import (
 import provisioningserver.utils
 from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
+    clean_up_netifaces_address,
     find_ip_via_arp,
     find_mac_via_arp,
     get_all_addresses_for_interface,
@@ -323,3 +324,24 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
                 }
             })
         self.assertEqual([v4_ip, v6_ip], list(get_all_interface_addresses()))
+
+
+class TestCleanUpNetifacesAddress(MAASTestCase):
+    """Tests for `clean_up_netifaces_address`."""
+
+    def test__leaves_IPv4_intact(self):
+        ip = unicode(factory.getRandomIPAddress())
+        interface = factory.make_name('eth')
+        self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
+
+    def test__leaves_clean_IPv6_intact(self):
+        ip = unicode(factory.get_random_ipv6_address())
+        interface = factory.make_name('eth')
+        self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
+
+    def test__removes_interface_suffix(self):
+        ip = unicode(factory.get_random_ipv6_address())
+        interface = factory.make_name('eth')
+        self.assertEqual(
+            ip,
+            clean_up_netifaces_address('%s%%%s' % (ip, interface), interface))

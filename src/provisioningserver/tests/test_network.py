@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `network` module."""
@@ -16,20 +16,31 @@ __all__ = []
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from netaddr import IPNetwork
-from netifaces import AF_INET
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
+from netifaces import (
+    AF_INET,
+    AF_INET6,
+    )
 from provisioningserver import network
+from testtools.matchers import HasLength
 
 
 def make_inet_address(subnet=None):
-    """Fake an AF_INET address."""
+    """Fake an `AF_INET` or `AF_INET6` address."""
     if subnet is None:
         subnet = factory.getRandomNetwork()
-    return {
-        'broadcast': subnet.broadcast,
-        'netmask': subnet.netmask,
+    subnet = IPNetwork(subnet)
+    addr = {
+        'netmask': unicode(subnet.netmask),
         'addr': factory.getRandomIPInNetwork(subnet),
     }
+    if subnet.version == 4:
+        # IPv4 addresses also have a broadcast field.
+        addr['broadcast'] = subnet.broadcast
+    return addr
 
 
 def make_loopback():
@@ -41,7 +52,12 @@ def make_interface(inet_address=None):
     """Minimally fake up an interface definition as returned by netifaces."""
     if inet_address is None:
         inet_address = make_inet_address()
-    return {AF_INET: [inet_address]}
+    addr = inet_address.get('addr')
+    if addr is None or IPAddress(addr).version == 4:
+        address_family = AF_INET
+    else:
+        address_family = AF_INET6
+    return {address_family: [inet_address]}
 
 
 class TestNetworks(MAASTestCase):
@@ -56,15 +72,25 @@ class TestNetworks(MAASTestCase):
         self.patch(
             network, 'ifaddresses', lambda interface: interfaces[interface])
 
+    def reveal_IPv6(self, reveal=True):
+        """Enable or disable IPv6 discovery."""
+        self.patch(network, 'REVEAL_IPv6', reveal)
+
     def test_discover_networks_ignores_interface_without_IP_address(self):
         self.patch_netifaces({factory.make_name('eth'): {}})
         self.assertEqual([], network.discover_networks())
 
-    def test_discover_networks_ignores_loopback(self):
+    def test_discover_networks_ignores_IPv4_loopback(self):
         self.patch_netifaces({'lo': make_interface(make_loopback())})
         self.assertEqual([], network.discover_networks())
 
-    def test_discover_networks_represents_interface(self):
+    def test_discover_networks_ignores_IPv6_loopback(self):
+        self.reveal_IPv6(True)
+        self.patch_netifaces(
+            {'lo': make_interface(make_inet_address('::1/128'))})
+        self.assertEqual([], network.discover_networks())
+
+    def test_discover_networks_discovers_IPv4_network(self):
         eth = factory.make_name('eth')
         interface = make_interface()
         self.patch_netifaces({eth: interface})
@@ -74,6 +100,26 @@ class TestNetworks(MAASTestCase):
             'subnet_mask': interface[AF_INET][0]['netmask'],
             }],
             network.discover_networks())
+
+    def test_discover_networks_discovers_IPv6_network_if_revealed(self):
+        self.reveal_IPv6(True)
+        eth = factory.make_name('eth')
+        addr = make_inet_address(factory.get_random_ipv6_network())
+        interface = make_interface(addr)
+        self.patch_netifaces({eth: interface})
+        self.assertEqual([{
+            'interface': eth,
+            'ip': addr['addr'],
+            'subnet_mask': addr['netmask'],
+            }],
+            network.discover_networks())
+
+    def test_discover_networks_ignores_IPv6_network_if_not_revealed(self):
+        self.reveal_IPv6(False)
+        addr = make_inet_address(factory.get_random_ipv6_network())
+        interface = make_interface(addr)
+        self.patch_netifaces({factory.make_name('eth'): interface})
+        self.assertEqual([], network.discover_networks())
 
     def test_discover_networks_returns_suitable_interfaces(self):
         eth = factory.make_name('eth')
@@ -87,6 +133,91 @@ class TestNetworks(MAASTestCase):
                 interface['interface']
                 for interface in network.discover_networks()])
 
+    def test_discover_networks_coalesces_networks_on_interface(self):
+        self.reveal_IPv6(True)
+        eth = factory.make_name('eth')
+        net = factory.get_random_ipv6_network()
+        self.patch_netifaces({
+            eth: {
+                AF_INET6: [
+                    make_inet_address(net),
+                    make_inet_address(net),
+                    ],
+                },
+            })
+        interfaces = network.discover_networks()
+        self.assertThat(interfaces, HasLength(1))
+        [interface] = interfaces
+        self.assertEqual(eth, interface['interface'])
+        self.assertIn(IPAddress(interface['ip']), net)
+
+    def test_discover_networks_discovers_multiple_networks_per_interface(self):
+        self.reveal_IPv6(True)
+        eth = factory.make_name('eth')
+        net1 = factory.get_random_ipv6_network()
+        net2 = factory.get_random_ipv6_network(disjoint_from=[net1])
+        addr1 = factory.getRandomIPInNetwork(net1)
+        addr2 = factory.getRandomIPInNetwork(net2)
+        self.patch_netifaces({
+            eth: {
+                AF_INET6: [
+                    make_inet_address(addr1),
+                    make_inet_address(addr2),
+                    ],
+                },
+            })
+        interfaces = network.discover_networks()
+        self.assertThat(interfaces, HasLength(2))
+        self.assertEqual(
+            [eth, eth],
+            [interface['interface'] for interface in interfaces])
+        self.assertItemsEqual(
+            [addr1, addr2],
+            [interface['ip'] for interface in interfaces])
+
+    def test_discover_networks_discovers_IPv4_and_IPv6_on_same_interface(self):
+        self.reveal_IPv6(True)
+        eth = factory.make_name('eth')
+        ipv4_net = factory.getRandomNetwork()
+        ipv6_net = factory.get_random_ipv6_network()
+        ipv4_addr = factory.getRandomIPInNetwork(ipv4_net)
+        ipv6_addr = factory.getRandomIPInNetwork(ipv6_net)
+        self.patch_netifaces({
+            eth: {
+                AF_INET: [make_inet_address(ipv4_addr)],
+                AF_INET6: [make_inet_address(ipv6_addr)],
+                },
+            })
+        interfaces = network.discover_networks()
+        self.assertThat(interfaces, HasLength(2))
+        self.assertEqual(
+            [eth, eth],
+            [interface['interface'] for interface in interfaces])
+        self.assertItemsEqual(
+            [ipv4_addr, ipv6_addr],
+            [interface['ip'] for interface in interfaces])
+
     def test_discover_networks_runs_in_real_life(self):
+        self.reveal_IPv6(True)
         interfaces = network.discover_networks()
         self.assertIsInstance(interfaces, list)
+
+    def test_filter_unique_networks_returns_networks(self):
+        net = network.AttachedNetwork('eth0', '10.1.1.1', '255.255.255.0')
+        self.assertEqual([net], network.filter_unique_networks([net]))
+
+    def test_filter_unique_networks_drops_redundant_networks(self):
+        entry1 = network.AttachedNetwork('eth0', '10.1.1.1', '255.255.255.0')
+        entry2 = network.AttachedNetwork('eth0', '10.1.1.2', '255.255.255.0')
+        networks = network.filter_unique_networks([entry1, entry2])
+        self.assertThat(networks, HasLength(1))
+        self.assertIn(networks[0], [entry1, entry2])
+
+    def test_filter_unique_networks_orders_consistently(self):
+        networks = [
+            network.AttachedNetwork('eth1', '10.1.1.1', '255.255.255.0'),
+            network.AttachedNetwork('eth2', '10.2.2.2', '255.255.255.0'),
+            ]
+        self.assertEqual(
+            network.filter_unique_networks(networks),
+            network.filter_unique_networks(reversed(networks)))
