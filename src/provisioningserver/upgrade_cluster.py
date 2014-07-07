@@ -33,13 +33,18 @@ __all__ = [
     ]
 
 from logging import getLogger
+import os
 from os import makedirs
-import os.path
+import shutil
 from subprocess import check_call
 from textwrap import dedent
 
 from provisioningserver import config
 from provisioningserver.auth import MAAS_USER_GPGHOME
+from provisioningserver.boot.tftppath import (
+    drill_down,
+    list_subdirs,
+    )
 
 
 logger = getLogger(__name__)
@@ -134,6 +139,61 @@ def retire_bootresources_yaml():
         old_config.write(old_contents)
 
 
+def filter_out_directories_with_extra_levels(paths):
+    """Remove paths that contain directories with more levels. We don't want
+    to move other operating systems under the ubuntu directory."""
+    for arch, subarch, release, label in paths:
+        path = os.path.join(
+            config.BOOT_RESOURCES_STORAGE, arch, subarch, release, label)
+        if len(list_subdirs(path)) == 0:
+            yield (arch, subarch, release, label)
+
+
+def migrate_architectures_into_ubuntu_directory():
+    """Upgrade hook: move architecture folders under the ubuntu folder.
+
+    With the support of multiple operating systems the structure of the
+    boot resources directory added another level to the hierarchy. Previously
+    the hierarchy was arch/subarch/release/label, it has now been modified to
+    os/arch/subarch/release/label.
+
+    Before multiple operating systems only Ubuntu was supported. Check if
+    folders have structure arch/subarch/release/label and move them into
+    ubuntu folder. Making the final path ubuntu/arch/subarch/release/label.
+    """
+    if not os.path.isdir(config.BOOT_RESOURCES_STORAGE):
+        return
+    # If ubuntu folder already exists, then no reason to continue
+    if 'ubuntu' in list_subdirs(config.BOOT_RESOURCES_STORAGE):
+        return
+
+    # Starting point for iteration: paths that contain only the
+    # top-level subdirectory of tftproot, i.e. the architecture name.
+    potential_arches = list_subdirs(config.BOOT_RESOURCES_STORAGE)
+    paths = [[subdir] for subdir in potential_arches]
+
+    # Extend paths deeper into the filesystem, through the levels that
+    # represent sub-architecture, release, and label.
+    # Any directory that doesn't extend this deep isn't a boot image.
+    for level in ['subarch', 'release', 'label']:
+        paths = drill_down(config.BOOT_RESOURCES_STORAGE, paths)
+    paths = filter_out_directories_with_extra_levels(paths)
+
+    # Extract the only top directories (arch) from the paths, as we only need
+    # its name to move into the new 'ubuntu' folder.
+    arches = {arch for arch, _, _, _ in paths}
+
+    # Create the ubuntu directory and move the archiecture folders under that
+    # directory.
+    if len(arches) > 0:
+        ubuntu_dir = os.path.join(config.BOOT_RESOURCES_STORAGE, 'ubuntu')
+        os.mkdir(ubuntu_dir)
+        for arch in arches:
+            shutil.move(
+                os.path.join(config.BOOT_RESOURCES_STORAGE, arch),
+                ubuntu_dir)
+
+
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no
 # arguments.  They are called in order.
 #
@@ -143,6 +203,7 @@ UPGRADE_HOOKS = [
     make_maas_own_boot_resources,
     create_gnupg_home,
     retire_bootresources_yaml,
+    migrate_architectures_into_ubuntu_directory,
     ]
 
 

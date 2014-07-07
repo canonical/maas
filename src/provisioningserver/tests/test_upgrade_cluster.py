@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
+from itertools import product
 from os import listdir
 import os.path
 
@@ -30,6 +31,7 @@ from provisioningserver import (
     config,
     upgrade_cluster,
     )
+from provisioningserver.boot.tftppath import list_subdirs
 from provisioningserver.utils import read_text_file
 from testtools.matchers import (
     DirExists,
@@ -184,3 +186,98 @@ class TestRetireBootResourcesYAML(MAASTestCase):
             FileContains(
                 upgrade_cluster.BOOTRESOURCES_WARNING.encode('ascii') +
                 content))
+
+
+class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
+    """Tests for the `migrate_architectures_into_ubuntu_directory` upgrade."""
+
+    def configure_storage(self, storage_dir):
+        """Create a storage config."""
+        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
+
+    def test__exits_early_if_boot_resources_dir_does_not_exist(self):
+        # Patch list_subdirs, if it gets called then the method did not
+        # exit early.
+        self.patch(upgrade_cluster, 'list_subdirs')
+        storage_dir = os.path.join(self.make_dir(), factory.make_name('none'))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
+
+    def test__exits_early_if_ubuntu_dir_exist(self):
+        # Patch drill_down, if it gets called then the method did not
+        # exit early.
+        self.patch(upgrade_cluster, 'drill_down')
+        storage_dir = self.make_dir()
+        os.mkdir(os.path.join(storage_dir, 'ubuntu'))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(upgrade_cluster.drill_down, MockNotCalled())
+
+    def test__doesnt_create_ubuntu_dir_when_no_valid_directories(self):
+        storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertFalse(os.path.exists(os.path.join(storage_dir, 'ubuntu')))
+
+    def test__moves_paths_with_correct_levels_into_ubuntu_dir(self):
+        storage_dir = self.make_dir()
+        arches = [factory.make_name('arch') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        releases = [factory.make_name('release') for _ in range(3)]
+        labels = [factory.make_name('label') for _ in range(3)]
+        for arch, subarch, release, label in product(
+                arches, subarches, releases, labels):
+            os.makedirs(
+                os.path.join(storage_dir, arch, subarch, release, label))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertItemsEqual(
+            arches, list_subdirs(os.path.join(storage_dir, 'ubuntu')))
+
+    def test__doesnt_move_paths_with_fewer_levels_into_ubuntu_dir(self):
+        storage_dir = self.make_dir()
+        arches = [factory.make_name('arch') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        releases = [factory.make_name('release') for _ in range(3)]
+        # Labels directory is missing, causing none of the folders to move
+        for arch, subarch, release in product(
+                arches, subarches, releases):
+            os.makedirs(
+                os.path.join(storage_dir, arch, subarch, release))
+        move_arch = factory.make_name('arch')
+        os.makedirs(
+            os.path.join(
+                storage_dir, move_arch,
+                factory.make_name('subarch'),
+                factory.make_name('release'),
+                factory.make_name('label')))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertItemsEqual(
+            [move_arch], list_subdirs(os.path.join(storage_dir, 'ubuntu')))
+
+    def test__doesnt_move_paths_with_more_levels_into_ubuntu_dir(self):
+        storage_dir = self.make_dir()
+        # Extra directory level, this is what it looks like after upgrade.
+        osystems = [factory.make_name('arch') for _ in range(3)]
+        arches = [factory.make_name('arch') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        releases = [factory.make_name('release') for _ in range(3)]
+        labels = [factory.make_name('label') for _ in range(3)]
+        for osystem, arch, subarch, release, label in product(
+                osystems, arches, subarches, releases, labels):
+            os.makedirs(
+                os.path.join(
+                    storage_dir, osystem, arch, subarch, release, label))
+        move_arch = factory.make_name('arch')
+        os.makedirs(
+            os.path.join(
+                storage_dir, move_arch,
+                factory.make_name('subarch'),
+                factory.make_name('release'),
+                factory.make_name('label')))
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertItemsEqual(
+            [move_arch], list_subdirs(os.path.join(storage_dir, 'ubuntu')))
