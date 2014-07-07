@@ -85,10 +85,12 @@ class StaticIPAddressManager(Manager):
         # We're using a raw query to bypass a bug in Django that inserts
         # a HOST() cast on the IP, causing the wrong comparison on the
         # IP field.
-        # https://code.djangoproject.com/ticket/11442 
-        existing = StaticIPAddress.objects.raw("""
+        # https://code.djangoproject.com/ticket/11442
+        existing = StaticIPAddress.objects.raw(
+            """
             SELECT * FROM maasserver_staticipaddress
-            WHERE IP >= %s AND IP <= %s""",
+            WHERE IP >= %s AND IP <= %s
+            """,
             [range_low, range_high])
 
         # Calculate the set of available IPs.  This will be inefficient
