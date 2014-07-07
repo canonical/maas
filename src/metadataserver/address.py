@@ -16,14 +16,13 @@ __all__ = [
     'guess_server_address',
     ]
 
-from fcntl import ioctl
 from os import environ
 import re
 import socket
-import struct
 from subprocess import check_output
 
 from metadataserver import logger
+from provisioningserver.utils.network import get_all_addresses_for_interface
 
 # fcntl operation as defined in <ioctls.h>.  This is GNU/Linux-specific!
 SIOCGIFADDR = 0x8915
@@ -76,19 +75,27 @@ def find_default_interface(ip_route_output):
 
 
 def get_ip_address(interface):
-    """Get the IP address for a given network interface."""
-    # Apparently the netifaces module would do this for us.
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    interface_name = struct.pack(b'256s', interface[:15])
+    """Get the first IP address for a given network interface.
+
+    :return: An `IPAddress` instance for the first IP address on the
+        interface. If the interface has both IPv4 and IPv6 addresses,
+        the v4 address will be preferred. Otherwise the returned address
+        will be the first result of a sort on the set of addresses on
+        the interface.
+    """
     try:
-        info = ioctl(s.fileno(), SIOCGIFADDR, interface_name)
-    except IOError as e:
+        # get_all_addresses_for_interface yields IPAddress instances.
+        # When sorted, IPAddress guarantees that IPv4 addresses will
+        # sort before IPv6, so we just return the first address that
+        # we've found.
+        all_addresses = sorted(get_all_addresses_for_interface(interface))
+        return all_addresses[0]
+    except Exception as e:
         logger.warn(
-            "Could not determine address for apparent default interface %s "
-            "(%s)"
+            "Could not determine address for apparent default interface "
+            "%s (%s)"
             % (interface, e))
         return None
-    return socket.inet_ntoa(info[20:24])
 
 
 def guess_server_address():

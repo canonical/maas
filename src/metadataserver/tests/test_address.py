@@ -14,8 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 from socket import gethostname
 
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from metadataserver import address
 from testtools.matchers import MatchesRegex
@@ -74,6 +76,37 @@ class TestAddress(MAASTestCase):
 
     def test_get_ip_address_finds_IP_address_of_interface(self):
         self.assertEqual('127.0.0.1', address.get_ip_address(b'lo'))
+
+    def test_get_ip_address_prefers_v4_addresses_to_v6(self):
+        addresses = [factory.get_random_ipv6_address() for i in range(3)]
+        # We add a deliberately low v6 address to show that the v4
+        # address is always preferred.
+        ipv6_address = "::1"
+        ipv4_address = factory.getRandomIPAddress()
+        addresses.append(ipv6_address)
+        addresses.append(ipv4_address)
+        self.patch(
+            address, 'get_all_addresses_for_interface').return_value = (
+            addresses)
+        self.assertEqual(ipv4_address, address.get_ip_address(b'lo'))
+
+    def test_get_ip_address_returns_v6_address_if_no_v4_available(self):
+        ipv6_address = factory.get_random_ipv6_address()
+        self.patch(
+            address, 'get_all_addresses_for_interface').return_value = (
+            [ipv6_address])
+        self.assertEqual(ipv6_address, address.get_ip_address(b'lo'))
+
+    def test_get_ip_address_returns_consistent_result_from_address_set(self):
+        addresses = [factory.get_random_ipv6_address() for i in range(5)]
+        expected_address = sorted(addresses)[0]
+        for _ in range(5):
+            random.shuffle(addresses)
+            self.patch(
+                address, 'get_all_addresses_for_interface').return_value = (
+                addresses)
+            self.assertEqual(
+                expected_address, address.get_ip_address(b'lo'))
 
     def test_get_ip_address_returns_None_on_failure(self):
         self.assertIsNone(address.get_ip_address(b'ethturboveyronsuper9'))

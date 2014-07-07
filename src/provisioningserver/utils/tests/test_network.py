@@ -30,6 +30,7 @@ from provisioningserver.utils import network as network_module
 from provisioningserver.utils.network import (
     find_ip_via_arp,
     find_mac_via_arp,
+    get_all_addresses_for_interface,
     get_all_interface_addresses,
     make_network,
     )
@@ -180,8 +181,20 @@ class TestFindMACViaARP(MAASTestCase):
         self.assertEqual(one_result, other_result)
 
 
-class TestGetAllInterfaceAddresses(MAASTestCase):
-    """Tests for `get_all_interface_addresses`."""
+def patch_interfaces(testcase, interfaces):
+    """Patch `netifaces` to show the given `interfaces`.
+
+    :param testcase: The testcase that's doing the patching.
+    :param interfaces: A dict mapping interface names to `netifaces`
+        interface entries: dicts with keys like `AF_INET` etc.
+    """
+    # These two netifaces functions map conveniently onto dict methods.
+    testcase.patch(netifaces, 'interfaces', interfaces.keys)
+    testcase.patch(netifaces, 'ifaddresses', interfaces.get)
+
+
+class TestGetAllAddressesForInterface(MAASTestCase):
+    """Tests for `get_all_addresses_for_interface`."""
 
     scenarios = [
         ('ipv4', {
@@ -198,28 +211,19 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
             }),
         ]
 
-    def patch_interfaces(self, interfaces):
-        """Patch `netifaces` to show the given `interfaces`.
-
-        :param interfaces: A dict mapping interface names to `netifaces`
-            interface entries: dicts with keys like `AF_INET` etc.
-        """
-        # These two netifaces functions map conveniently onto dict methods.
-        self.patch(netifaces, 'interfaces', interfaces.keys)
-        self.patch(netifaces, 'ifaddresses', interfaces.get)
-
     def test__returns_address_for_inet_class(self):
         ip = self.ip_address_factory()
         interface = factory.make_name('eth', sep='')
-        self.patch_interfaces(
-            {interface: {self.inet_class: [{'addr': unicode(ip)}]}})
-        self.assertEqual([ip], list(get_all_interface_addresses()))
+        patch_interfaces(
+            self, {interface: {self.inet_class: [{'addr': unicode(ip)}]}})
+        self.assertEqual(
+            [ip], list(get_all_addresses_for_interface(interface)))
 
     def test__ignores_non_address_information(self):
         network = self.network_factory()
         ip = factory.getRandomIPInNetwork(network)
         interface = factory.make_name('eth', sep='')
-        self.patch_interfaces({
+        patch_interfaces(self, {
             interface: {
                 self.inet_class: [{
                     'addr': unicode(ip),
@@ -230,11 +234,12 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
                     }],
                 },
             })
-        self.assertEqual([ip], list(get_all_interface_addresses()))
+        self.assertEqual(
+            [ip], list(get_all_addresses_for_interface(interface)))
 
     def test__ignores_link_address(self):
         interface = factory.make_name('eth', sep='')
-        self.patch_interfaces({
+        patch_interfaces(self, {
             interface: {
                 AF_LINK: [{
                     'addr': unicode(factory.getRandomMACAddress()),
@@ -242,12 +247,12 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
                     }],
                 },
             })
-        self.assertEqual([], list(get_all_interface_addresses()))
+        self.assertEqual([], list(get_all_addresses_for_interface(interface)))
 
     def test__ignores_interface_without_address(self):
         network = self.network_factory()
         interface = factory.make_name('eth', sep='')
-        self.patch_interfaces({
+        patch_interfaces(self, {
             interface: {
                 self.inet_class: [{
                     'broadcast': unicode(network.broadcast),
@@ -255,13 +260,41 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
                     }],
                 },
             })
-        self.assertEqual([], list(get_all_interface_addresses()))
+        self.assertEqual([], list(get_all_addresses_for_interface(interface)))
+
+
+class TestGetAllInterfaceAddresses(MAASTestCase):
+    """Tests for get_all_interface_addresses()."""
 
     def test__includes_loopback(self):
-        self.patch_interfaces(
-            {'lo': {self.inet_class: [{'addr': self.loopback_address}]}})
+        v4_loopback_address = '127.0.0.1'
+        v6_loopback_address = '::1'
+        patch_interfaces(self, {
+            'lo': {
+                AF_INET: [
+                    {'addr': v4_loopback_address}],
+                AF_INET6: [
+                    {'addr': v6_loopback_address}],
+                }})
         self.assertEqual(
-            [self.loopback_address], list(get_all_interface_addresses()))
+            [v4_loopback_address, v6_loopback_address],
+            list(get_all_interface_addresses()))
+
+    def test_returns_all_addresses_for_all_interfaces(self):
+        v4_ips = [factory.getRandomIPAddress() for i in range(2)]
+        v6_ips = [factory.get_random_ipv6_address() for i in range(2)]
+        ips = zip(v4_ips, v6_ips)
+        interfaces = {
+            factory.make_name('eth', sep=''): {
+                AF_INET: [{'addr': unicode(ipv4)}],
+                AF_INET6: [{'addr': unicode(ipv6)}],
+                }
+            for ipv4, ipv6 in ips
+            }
+        patch_interfaces(self, interfaces)
+        self.assertItemsEqual(
+            v4_ips + v6_ips,
+            get_all_interface_addresses())
 
 
 class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
@@ -281,7 +314,7 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
         v4_ip = factory.getRandomIPAddress()
         v6_ip = factory.get_random_ipv6_address()
         interface = factory.make_name('eth', sep='')
-        self.patch_interfaces({
+        patch_interfaces(self, {
             interface: {
                 AF_INET: [
                     {'addr': unicode(v4_ip)}],

@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = [
     'find_ip_via_arp',
     'find_mac_via_arp',
+    'get_all_addresses_for_interface',
+    'get_all_interface_addresses',
     'make_network',
     ]
 
@@ -107,19 +109,31 @@ def find_mac_via_arp(ip):
     return None
 
 
+def get_all_addresses_for_interface(interface):
+    """Yield all IPv4 and IPv6 addresses for an interface as `IPAddress`es.
+
+    IPv4 addresses will be yielded first, followed by v6 addresses.
+
+    :param interface: The name of the interface whose addresses we
+        should retrieve.
+    """
+    addresses = netifaces.ifaddresses(interface)
+    if netifaces.AF_INET in addresses:
+        for inet_address in addresses[netifaces.AF_INET]:
+            if "addr" in inet_address:
+                yield inet_address["addr"]
+    if netifaces.AF_INET6 in addresses:
+        for inet6_address in addresses[netifaces.AF_INET6]:
+            if "addr" in inet6_address:
+                # There's a bug in netifaces which results in the
+                # interface name being appended to the IPv6 address.
+                # Goodness knows why. Anyway, we deal with that
+                # here.
+                yield inet6_address["addr"].replace('%' + interface, '')
+
+
 def get_all_interface_addresses():
-    """For each network interface, yield its IPv4 address."""
+    """For each network interface, yield its addresses."""
     for interface in netifaces.interfaces():
-        addresses = netifaces.ifaddresses(interface)
-        if netifaces.AF_INET in addresses:
-            for inet_address in addresses[netifaces.AF_INET]:
-                if "addr" in inet_address:
-                    yield inet_address["addr"]
-        if netifaces.AF_INET6 in addresses:
-            for inet6_address in addresses[netifaces.AF_INET6]:
-                if "addr" in inet6_address:
-                    # There's a bug in netifaces which results in the
-                    # interface name being appended to the IPv6 address.
-                    # Goodness knows why. Anyway, we deal with that
-                    # here.
-                    yield inet6_address["addr"].replace('%' + interface, '')
+        for address in get_all_addresses_for_interface(interface):
+            yield address
