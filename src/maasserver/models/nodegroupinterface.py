@@ -223,10 +223,19 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             # form; validation breaks if we pass an IPAddress.
             self.broadcast_ip = unicode(network.broadcast)
 
+    def manages_static_range(self):
+        """Is this a managed interface with a static IP range configured?"""
+        # Deliberately vague implicit conversion to bool: a blank IP address
+        # can show up internally as either None or an empty string.
+        return (
+            self.is_managed and
+            self.static_ip_range_low and
+            self.static_ip_range_high
+            )
+
     def clean_ip_range_bounds(self):
         """Ensure that the static and dynamic ranges have sane bounds."""
-        if not (self.is_managed and (self.static_ip_range_low and
-            self.static_ip_range_high)):
+        if not self.manages_static_range():
             # Exit early with nothing to do.
             return
 
@@ -259,8 +268,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def clean_ip_ranges(self):
         """Ensure that the static and dynamic ranges don't overlap."""
-        if not (self.is_managed and (self.static_ip_range_low and
-            self.static_ip_range_high)):
+        if not self.manages_static_range():
             # Nothing to do; bail out.
             return
 

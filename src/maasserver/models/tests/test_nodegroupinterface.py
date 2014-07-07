@@ -305,3 +305,39 @@ class TestNodeGroupInterface(MAASServerTestCase):
                     interface.static_ip_range_high)],
             }
         self.assertEqual(errors, exception.message_dict)
+
+    def test_manages_static_range_returns_False_if_not_managed(self):
+        cluster = factory.make_node_group()
+        network = IPNetwork("10.9.9.0/24")
+        interface = factory.make_node_group_interface(
+            cluster, network=network,
+            ip_range_low='10.9.9.10', ip_range_high='10.9.9.50',
+            static_ip_range_low='10.9.9.100',
+            static_ip_range_high='10.9.9.200',
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertFalse(interface.manages_static_range())
+
+    def test_manages_static_range_returns_False_if_no_static_range(self):
+        network = IPNetwork("10.9.9.0/24")
+        interface = make_interface(network)
+        interface.static_ip_range_low = None
+        interface.static_ip_range_high = None
+        self.assertFalse(interface.manages_static_range())
+
+    def test_manages_static_range_returns_False_if_partial_static_range(self):
+        network = IPNetwork("10.9.9.0/24")
+        interface = make_interface(network)
+        interface.static_ip_range_low = '10.99.99.100'
+        interface.static_ip_range_high = None
+        self.assertFalse(interface.manages_static_range())
+
+    def test_manages_static_range_returns_True_if_manages_static_range(self):
+        cluster = factory.make_node_group()
+        network = IPNetwork("10.9.9.0/24")
+        interface = factory.make_node_group_interface(
+            cluster, network=network,
+            ip_range_low='10.9.9.10', ip_range_high='10.9.9.50',
+            static_ip_range_low='10.9.9.100',
+            static_ip_range_high='10.9.9.200',
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.assertTrue(interface.manages_static_range())
