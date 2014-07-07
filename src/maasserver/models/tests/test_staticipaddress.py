@@ -66,6 +66,16 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             AssertionError, StaticIPAddress.objects.allocate_new, low, high,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED)
 
+    def test_allocate_new_compares_by_IP_not_alphabetically(self):
+        # Django has a bug that casts IP addresses with HOST(), which
+        # results in alphabetical comparisons of strings instead of IP
+        # addresses.  See https://bugs.launchpad.net/maas/+bug/1338452
+        low = "10.0.0.98"
+        high = "10.0.0.100"
+        factory.make_staticipaddress("10.0.0.99")
+        ipaddress = StaticIPAddress.objects.allocate_new(low, high)
+        self.assertEqual(ipaddress.ip, "10.0.0.98")
+
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_node()
         [mac1, mac2] = [
