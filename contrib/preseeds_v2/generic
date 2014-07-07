@@ -2,7 +2,7 @@
 
 {{def proxy}}
 d-i     mirror/country string manual
-{{if node.architecture in {'i386/generic', 'amd64/generic'} }}
+{{if node.split_arch()[0] in {'i386', 'amd64'} }}
 d-i     mirror/http/hostname string {{main_archive_hostname}}
 d-i     mirror/http/directory string {{main_archive_directory}}
 {{else}}
