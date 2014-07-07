@@ -18,6 +18,13 @@ class Migration(SchemaMigration):
                       self.gf('django.db.models.fields.CharField')(default=u'', max_length=30, null=True, blank=True),
                       keep_default=False)
 
+        # Set default for xinstall purposes
+        for image in orm['maasserver.BootImage'].objects.all():
+            if image.purpose == 'xinstall':
+                image.xinstall_path = 'root-tgz'
+                image.xinstall_type = 'tgz'
+                image.save()
+
 
     def backwards(self, orm):
         # Deleting field 'BootImage.xinstall_path'
