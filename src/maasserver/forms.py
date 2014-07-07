@@ -118,7 +118,7 @@ from maasserver.node_action import (
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
-    get_distro_series_inital,
+    get_distro_series_initial,
     get_release_requires_key,
     list_all_releases_requiring_keys,
     list_all_usable_osystems,
@@ -316,7 +316,7 @@ class NodeForm(ModelForm):
             required=False, initial='',
             error_messages={'invalid_choice': invalid_distro_series_message})
         if instance is not None:
-            initial_value = get_distro_series_inital(instance)
+            initial_value = get_distro_series_initial(instance)
             if instance is not None:
                 self.initial['distro_series'] = initial_value
 
@@ -1878,7 +1878,7 @@ class LicenseKeyForm(ModelForm):
             label="Release", choices=distro_choices, required=True,
             error_messages={'invalid_choice': invalid_distro_series_message})
         if instance is not None:
-            initial_value = get_distro_series_inital(
+            initial_value = get_distro_series_initial(
                 instance, with_key_required=False)
             if instance is not None:
                 self.initial['distro_series'] = initial_value

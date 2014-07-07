@@ -16,7 +16,6 @@ __all__ = []
 
 from cStringIO import StringIO
 import json
-import random
 
 from django import forms
 from django.conf import settings
@@ -52,14 +51,11 @@ from maasserver.forms import (
     get_action_form,
     get_node_create_form,
     get_node_edit_form,
-    get_release_requires_key,
     initialize_node_group,
     InstanceListField,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     LicenseKeyForm,
     list_all_usable_architectures,
-    list_all_usable_osystems,
-    list_all_usable_releases,
     MACAddressForm,
     MAX_MESSAGES,
     merge_error_messages,
@@ -224,102 +220,6 @@ class TestHelpers(MAASServerTestCase):
     def test_pick_default_architecture_falls_back_to_first_option(self):
         arches = [factory.make_name('arch') for _ in range(5)]
         self.assertEqual(arches[0], pick_default_architecture(arches))
-
-    def test_list_all_usable_osystems_combines_nodegroups(self):
-        osystem_names = [factory.make_name('os') for _ in range(3)]
-        expected = []
-        for name in osystem_names:
-            self.make_usable_boot_images(osystem=name)
-            expected.append(make_usable_osystem(self, name))
-        self.assertItemsEqual(expected, list_all_usable_osystems())
-
-    def test_list_all_usable_osystems_sorts_output(self):
-        osystem_names = [factory.make_name('os') for _ in range(3)]
-        expected = []
-        for name in osystem_names:
-            self.make_usable_boot_images(osystem=name)
-            expected.append(make_usable_osystem(self, name))
-        expected = sorted(expected, key=lambda osystem: osystem.title)
-        self.assertEqual(expected, list_all_usable_osystems())
-
-    def test_list_all_usable_osystems_returns_no_duplicates(self):
-        os_name = factory.make_name('os')
-        self.make_usable_boot_images(osystem=os_name)
-        self.make_usable_boot_images(osystem=os_name)
-        osystem = make_usable_osystem(self, os_name)
-        self.assertEqual(
-            [osystem], list_all_usable_osystems())
-
-    def test_list_all_usable_osystems_omits_oses_without_boot_images(self):
-        usable_os_name = factory.make_name('os')
-        unusable_os_name = factory.make_name('os')
-        self.make_usable_boot_images(osystem=usable_os_name)
-        usable_os = make_usable_osystem(self, usable_os_name)
-        unusable_os = make_usable_osystem(self, unusable_os_name)
-
-        usable_os_list = list_all_usable_osystems()
-        self.assertIn(usable_os, usable_os_list)
-        self.assertNotIn(unusable_os, usable_os_list)
-
-    def test_list_all_usable_osystems_omits_oses_not_supported(self):
-        usable_os_name = factory.make_name('os')
-        unusable_os_name = factory.make_name('os')
-        self.make_usable_boot_images(osystem=usable_os_name)
-        self.make_usable_boot_images(osystem=unusable_os_name)
-        usable_os = make_usable_osystem(self, usable_os_name)
-
-        usable_os_list = list_all_usable_osystems()
-        self.assertIn(usable_os, usable_os_list)
-        self.assertNotIn(unusable_os_name, [os.name for os in usable_os_list])
-
-    def test_list_all_usable_releases_combines_nodegroups(self):
-        expected = {}
-        osystems = []
-        os_names = [factory.make_name('os') for _ in range(3)]
-        for name in os_names:
-            releases = [factory.make_name('release') for _ in range(3)]
-            for release in releases:
-                self.make_usable_boot_images(osystem=name, release=release)
-            osystems.append(
-                make_usable_osystem(self, name, releases=releases))
-            expected[name] = releases
-        self.assertItemsEqual(expected, list_all_usable_releases(osystems))
-
-    def test_list_all_usable_releases_sorts_output(self):
-        expected = {}
-        osystems = []
-        os_names = [factory.make_name('os') for _ in range(3)]
-        for name in os_names:
-            releases = [factory.make_name('release') for _ in range(3)]
-            for release in releases:
-                self.make_usable_boot_images(osystem=name, release=release)
-            osystems.append(
-                make_usable_osystem(self, name, releases=releases))
-            expected[name] = sorted(releases)
-        self.assertEqual(expected, list_all_usable_releases(osystems))
-
-    def test_list_all_usable_releases_returns_no_duplicates(self):
-        os_name = factory.make_name('os')
-        release = factory.make_name('release')
-        self.make_usable_boot_images(osystem=os_name, release=release)
-        self.make_usable_boot_images(osystem=os_name, release=release)
-        osystem = make_usable_osystem(self, os_name, releases=[release])
-        expected = {}
-        expected[os_name] = [release]
-        self.assertEqual(expected, list_all_usable_releases([osystem]))
-
-    def test_get_release_requires_key(self):
-        releases = [
-            (factory.make_name('release'), random.choice(['', '*']))
-            for _ in range(3)
-            ]
-        names = [name for name, _ in releases]
-        output = [key for _, key in releases]
-        osystem = make_usable_osystem(self, releases=[names])
-        self.patch(osystem, 'requires_license_key').side_effect = output
-        for release, expected in releases:
-            self.assertEqual(
-                expected, get_release_requires_key(osystem, release))
 
     def test_remove_None_values_removes_None_values_in_dict(self):
         random_input = factory.getRandomString()

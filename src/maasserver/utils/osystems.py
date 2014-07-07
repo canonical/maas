@@ -12,7 +12,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'get_distro_series_inital',
+    'get_distro_series_initial',
     'get_release_requires_key',
     'list_all_releases_requiring_keys',
     'list_all_usable_osystems',
@@ -158,7 +158,7 @@ def list_release_choices(releases, include_default=True, include_latest=True,
     return choices
 
 
-def get_distro_series_inital(instance, with_key_required=True):
+def get_distro_series_initial(instance, with_key_required=True):
     """Returns the distro_series initial value for the instance.
 
     :param with_key_required: When true includes the release_requires_key in
