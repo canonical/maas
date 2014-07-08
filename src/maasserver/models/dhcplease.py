@@ -20,7 +20,6 @@ __all__ = [
 from django.db import connection
 from django.db.models import (
     ForeignKey,
-    IPAddressField,
     Manager,
     Model,
     )
@@ -28,7 +27,10 @@ from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import NODE_STATUS
-from maasserver.fields import MACAddressField
+from maasserver.fields import (
+    MAASIPAddressField,
+    MACAddressField,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.macaddress import MACAddress
 from maasserver.utils import strip_domain
@@ -159,7 +161,7 @@ class DHCPLease(CleanSave, Model):
     objects = DHCPLeaseManager()
 
     nodegroup = ForeignKey('maasserver.NodeGroup', null=False, editable=False)
-    ip = IPAddressField(null=False, editable=False, unique=True)
+    ip = MAASIPAddressField(null=False, editable=False, unique=True)
     mac = MACAddressField(null=False, editable=False, unique=False)
 
     def __unicode__(self):

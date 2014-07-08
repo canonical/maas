@@ -28,13 +28,13 @@ from django.contrib.auth.models import User
 from django.db import connection
 from django.db.models import (
     ForeignKey,
-    GenericIPAddressField,
     IntegerField,
     Manager,
     )
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import StaticIPAddressExhaustion
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import strip_domain
@@ -82,16 +82,7 @@ class StaticIPAddressManager(Manager):
         # When we do ipv6, this needs changing.
         range_list = [ip.ipv4().format() for ip in static_range]
 
-        # We're using a raw query to bypass a bug in Django that inserts
-        # a HOST() cast on the IP, causing the wrong comparison on the
-        # IP field.
-        # https://code.djangoproject.com/ticket/11442
-        existing = StaticIPAddress.objects.raw(
-            """
-            SELECT * FROM maasserver_staticipaddress
-            WHERE IP >= %s AND IP <= %s
-            """,
-            [range_low, range_high])
+        existing = self.filter(ip__gte=range_low, ip__lte=range_high)
 
         # Calculate the set of available IPs.  This will be inefficient
         # with large sets, but it will do for now.
@@ -169,7 +160,7 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         verbose_name = "Static IP Address"
         verbose_name_plural = "Static IP Addresses"
 
-    ip = GenericIPAddressField(
+    ip = MAASIPAddressField(
         unique=True, null=False, editable=False, blank=False,
         verbose_name='IP')
 

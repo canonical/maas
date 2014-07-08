@@ -42,6 +42,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     JSONFieldModel,
+    MAASIPAddressFieldModel,
     XMLFieldModel,
     )
 from maastesting.djangotestcase import TestModelMixin
@@ -388,3 +389,15 @@ class TestEditableBinaryField(MAASServerTestCase):
 
     def test_is_editable(self):
         self.assertTrue(EditableBinaryField().editable)
+
+
+class TestMAASIPAddressField(TestModelMixin, MAASServerTestCase):
+
+    app = 'maasserver.tests'
+
+    def test_uses_ip_comparison(self):
+        ip_object = MAASIPAddressFieldModel.objects.create(
+            ip_address='192.0.2.99')
+        results = MAASIPAddressFieldModel.objects.filter(
+            ip_address__lte='192.0.2.100')
+        self.assertItemsEqual([ip_object], results)

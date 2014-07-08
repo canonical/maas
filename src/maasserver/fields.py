@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "EditableBinaryField",
+    "MAASIPAddressField",
     "MAC",
     "MACAddressField",
     "MACAddressFormField",
@@ -33,6 +34,7 @@ from django.core.validators import RegexValidator
 from django.db.models import (
     BinaryField,
     Field,
+    GenericIPAddressField,
     SubfieldBase,
     )
 from django.forms import (
@@ -90,6 +92,7 @@ add_introspection_rules(
         "^maasserver\.fields\.JSONObjectField",
         "^maasserver\.fields\.XMLField",
         "^maasserver\.fields\.EditableBinaryField",
+        "^maasserver\.fields\.MAASIPAddressField",
     ])
 
 
@@ -385,3 +388,27 @@ class EditableBinaryField(BinaryField):
     def __init__(self, *args, **kwargs):
         super(EditableBinaryField, self).__init__(*args, **kwargs)
         self.editable = True
+
+
+class MAASIPAddressField(GenericIPAddressField):
+    """A version of GenericIPAddressField with a custom get_internal_type().
+
+    This class exists to work around a bug in Django that inserts a HOST() cast
+    on the IP, causing the wrong comparison on the IP field.  See
+    https://code.djangoproject.com/ticket/11442 for details.
+    """
+
+    def get_internal_type(self):
+        """Returns a value different from 'GenericIPAddressField' and
+        'IPAddressField' to force Django not to use a HOST() case when
+        performing operation on this field.
+        """
+        return "IPField"
+
+    def db_type(self, connection):
+        """Returns the database column data type for IPAddressField.
+
+        Override the default implementation which uses get_internal_type()
+        and force a 'inet' type field.
+        """
+        return 'inet'

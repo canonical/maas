@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'MAASIPAddressFieldModel',
     'JSONFieldModel',
     'FieldChangeTestModel',
     ]
@@ -24,6 +25,7 @@ from django.db.models import (
     )
 from maasserver.fields import (
     JSONObjectField,
+    MAASIPAddressField,
     XMLField,
     )
 from maasserver.models.managers import BulkManager
@@ -67,3 +69,7 @@ class BulkManagerTestModel(Model):
     parent = ForeignKey('BulkManagerParentTestModel', editable=False)
 
     objects = BulkManager()
+
+
+class MAASIPAddressFieldModel(Model):
+    ip_address = MAASIPAddressField()

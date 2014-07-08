@@ -23,7 +23,6 @@ from django.core.exceptions import ValidationError
 from django.db.models import (
     CharField,
     ForeignKey,
-    GenericIPAddressField,
     IntegerField,
     )
 from maasserver import DefaultMeta
@@ -32,6 +31,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
     )
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
@@ -55,7 +55,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         unique_together = ('nodegroup', 'interface')
 
     # Static IP of the interface.
-    ip = GenericIPAddressField(
+    ip = MAASIPAddressField(
         null=False, editable=True,
         help_text="Static IP Address of the interface",
         verbose_name="IP")
@@ -72,33 +72,33 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     interface = CharField(
         blank=True, editable=True, max_length=255, default='',
         help_text="Name of this interface (e.g. 'em1').")
-    subnet_mask = GenericIPAddressField(
+    subnet_mask = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         help_text="e.g. 255.255.255.0")
-    broadcast_ip = GenericIPAddressField(
+    broadcast_ip = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Broadcast IP",
         help_text="e.g. 192.168.1.255")
-    router_ip = GenericIPAddressField(
+    router_ip = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Router IP",
         help_text="IP of this network's router given to DHCP clients")
-    ip_range_low = GenericIPAddressField(
+    ip_range_low = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="DHCP dynamic IP range low value",
         help_text="Lowest IP number of the range for dynamic IPs, used for "
                   "enlistment, commissioning and unknown devices.")
-    ip_range_high = GenericIPAddressField(
+    ip_range_high = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="DHCP dynamic IP range high value",
         help_text="Highest IP number of the range for dynamic IPs, used for "
                   "enlistment, commissioning and unknown devices.")
-    static_ip_range_low = GenericIPAddressField(
+    static_ip_range_low = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Static IP range low value",
         help_text="Lowest IP number of the range for IPs given to allocated "
                   "nodes, must be in same network as dynamic range.")
-    static_ip_range_high = GenericIPAddressField(
+    static_ip_range_high = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Static IP range high value",
         help_text="Highest IP number of the range for IPs given to allocated "
@@ -106,7 +106,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     # Foreign DHCP server address, if any, that was detected on this
     # interface.
-    foreign_dhcp_ip = GenericIPAddressField(
+    foreign_dhcp_ip = MAASIPAddressField(
         null=True, default=None, editable=True, blank=True, unique=False)
 
     @property
@@ -120,7 +120,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         ip = self.ip
         netmask = self.subnet_mask
         # Nullness check for GenericIPAddress fields is deliberately kept
-        # vague: GenericIPAddressField seems to represent nulls as empty
+        # vague: MAASIPAddressField seems to represent nulls as empty
         # strings.
         if netmask:
             return make_network(ip, netmask).cidr

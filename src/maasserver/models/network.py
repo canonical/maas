@@ -27,13 +27,13 @@ from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
 from django.db.models import (
     CharField,
-    GenericIPAddressField,
     Manager,
     Model,
     PositiveSmallIntegerField,
     TextField,
     )
 from maasserver import DefaultMeta
+from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
@@ -220,11 +220,11 @@ class Network(CleanSave, Model):
         validators=[NETWORK_NAME_VALIDATOR],
         help_text="Identifying name for this network.")
 
-    ip = GenericIPAddressField(
+    ip = MAASIPAddressField(
         blank=False, editable=True, unique=True, null=False,
         help_text="Network address (e.g. 192.168.1.0).")
 
-    netmask = GenericIPAddressField(
+    netmask = MAASIPAddressField(
         blank=False, editable=True, null=False,
         help_text="Network mask (e.g. 255.255.255.0).")
 
