@@ -60,6 +60,7 @@ from django.contrib.auth.models import (
     User,
     )
 from django.core.exceptions import ValidationError
+from django.db import connection
 from django.forms import (
     Form,
     MultipleChoiceField,
@@ -1059,6 +1060,72 @@ class GlobalKernelOptsForm(ConfigForm):
     kernel_opts = get_config_field('kernel_opts')
 
 
+ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE = (
+    "New static IP range does not include already-allocated IP "
+    "addresses.")
+
+
+ERROR_MESSAGE_STATIC_RANGE_IN_USE = (
+    "Cannot remove static IP range when there are allocated IP addresses "
+    "in that range.")
+
+
+def validate_new_static_ip_ranges(instance, static_ip_range_low,
+                                  static_ip_range_high):
+    """Check that new static IP ranges don't exclude allocated addresses.
+
+    If there are IP addresses allocated within a `NodeGroupInterface`'s
+    existing static IP range which would fall outside of the new range,
+    raise a ValidationError.
+    """
+    # Return early if the instance is not already managed, it currently
+    # has no static IP range, or the static IP range hasn't changed.
+    if not instance.is_managed:
+        return
+    # Deliberately vague check to allow for empty strings.
+    if (not instance.static_ip_range_low or
+       not instance.static_ip_range_high):
+        return
+    if (static_ip_range_low == instance.static_ip_range_low and
+       static_ip_range_high == instance.static_ip_range_high):
+        return
+
+    cursor = connection.cursor()
+
+    # Deliberately vague check to allow for empty strings.
+    if static_ip_range_low or static_ip_range_high:
+        # Find any allocated addresses within the old static range which do
+        # not fall within the *new* static range. This means that we allow
+        # for range expansion and contraction *unless* that means dropping
+        # IP addresses that are already allocated.
+        cursor.execute("""
+            SELECT TRUE FROM maasserver_staticipaddress
+                WHERE  ip >= %s AND ip <= %s
+                    AND (ip <= %s OR ip >= %s)
+            """, (
+            instance.static_ip_range_low,
+            instance.static_ip_range_high,
+            static_ip_range_low,
+            static_ip_range_high))
+        results = cursor.fetchall()
+        if any(results):
+            raise forms.ValidationError(
+                ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE)
+    else:
+        # Check that there's no IP addresses allocated in the old range;
+        # if there are, we can't remove the range yet.
+        cursor.execute("""
+            SELECT TRUE FROM maasserver_staticipaddress
+                WHERE ip >= %s AND ip <= %s
+            """, (
+            instance.static_ip_range_low,
+            instance.static_ip_range_high))
+        results = cursor.fetchall()
+        if any(results):
+            raise forms.ValidationError(
+                ERROR_MESSAGE_STATIC_RANGE_IN_USE)
+
+
 class NodeGroupInterfaceForm(ModelForm):
 
     management = forms.TypedChoiceField(
@@ -1085,6 +1152,18 @@ class NodeGroupInterfaceForm(ModelForm):
             'static_ip_range_low',
             'static_ip_range_high',
             )
+
+    def clean(self):
+        cleaned_data = super(NodeGroupInterfaceForm, self).clean()
+        static_ip_range_low = cleaned_data.get('static_ip_range_low')
+        static_ip_range_high = cleaned_data.get('static_ip_range_high')
+        try:
+            validate_new_static_ip_ranges(
+                self.instance, static_ip_range_low, static_ip_range_high)
+        except forms.ValidationError as exception:
+            set_form_error(self, 'static_ip_range_low', exception.message)
+            set_form_error(self, 'static_ip_range_high', exception.message)
+        return cleaned_data
 
 
 class NodeGroupInterfaceForeignDHCPForm(ModelForm):

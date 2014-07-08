@@ -69,11 +69,14 @@ from maasserver.forms import (
     NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
     NodeWithMACAddressesForm,
+    ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     pick_default_architecture,
     ProfileForm,
     remove_None_values,
     SetZoneBulkAction,
+    ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     UnconstrainedMultipleChoiceField,
+    validate_new_static_ip_ranges,
     validate_nonoverlapping_networks,
     ValidatorMultipleChoiceField,
     ZoneForm,
@@ -89,6 +92,7 @@ from maasserver.models import (
     Zone,
     )
 from maasserver.models.config import DEFAULT_CONFIG
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import (
     Commission,
     Delete,
@@ -1071,6 +1075,114 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
         self.assertThat(field_values, AllMatch(Equals('')))
+
+    def test_validates_new_static_ip_ranges(self):
+        network = IPNetwork("10.1.0.0/24")
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network)
+        [interface] = nodegroup.get_managed_interfaces()
+        StaticIPAddress.objects.allocate_new(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+        form = NodeGroupInterfaceForm(
+            data={'static_ip_range_low': '', 'static_ip_range_high': ''},
+            instance=interface)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            [ERROR_MESSAGE_STATIC_RANGE_IN_USE],
+            form._errors['static_ip_range_low'])
+        self.assertEqual(
+            [ERROR_MESSAGE_STATIC_RANGE_IN_USE],
+            form._errors['static_ip_range_high'])
+
+
+class TestValidateNewStaticIPRanges(MAASServerTestCase):
+    """Tests for `validate_new_static_ip_ranges`()."""
+
+    def make_interface(self):
+        network = IPNetwork("10.1.0.0/24")
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network)
+        [interface] = nodegroup.get_managed_interfaces()
+        interface.ip_range_low = '10.1.0.1'
+        interface.ip_range_high = '10.1.0.10'
+        interface.static_ip_range_low = '10.1.0.50'
+        interface.static_ip_range_high = '10.1.0.60'
+        interface.save()
+        return interface
+
+    def test_raises_error_when_allocated_ips_fall_outside_new_range(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        error = self.assertRaises(
+            ValidationError,
+            validate_new_static_ip_ranges,
+            instance=interface,
+            static_ip_range_low='10.1.0.50',
+            static_ip_range_high='10.1.0.55')
+        self.assertEqual(
+            ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
+            error.message)
+
+    def test_removing_static_range_raises_error_if_ips_allocated(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        error = self.assertRaises(
+            ValidationError,
+            validate_new_static_ip_ranges,
+            instance=interface,
+            static_ip_range_low='',
+            static_ip_range_high='')
+        self.assertEqual(
+            ERROR_MESSAGE_STATIC_RANGE_IN_USE,
+            error.message)
+
+    def test_allows_range_expansion(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        validate_new_static_ip_ranges(
+            interface, static_ip_range_low='10.1.0.40',
+            static_ip_range_high='10.1.0.100')
+        # Success is getting here without error.
+        pass
+
+    def test_ignores_unmanaged_interfaces(self):
+        interface = self.make_interface()
+        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        interface.save()
+        StaticIPAddress.objects.allocate_new(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+        validate_new_static_ip_ranges(
+            interface, static_ip_range_low='10.1.0.57',
+            static_ip_range_high='10.1.0.58')
+        # Success is getting here without error.
+        pass
+
+    def test_ignores_interfaces_with_no_static_range(self):
+        interface = self.make_interface()
+        interface.static_ip_range_low = None
+        interface.static_ip_range_high = None
+        interface.save()
+        StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
+        validate_new_static_ip_ranges(
+            interface, static_ip_range_low='10.1.0.57',
+            static_ip_range_high='10.1.0.58')
+        # Success is getting here without error.
+        pass
+
+    def test_ignores_unchanged_static_range(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+        validate_new_static_ip_ranges(
+            interface,
+            static_ip_range_low=interface.static_ip_range_low,
+            static_ip_range_high=interface.static_ip_range_high)
+        # Success is getting here without error.
+        pass
 
 
 class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
