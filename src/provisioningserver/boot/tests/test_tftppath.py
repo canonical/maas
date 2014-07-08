@@ -331,6 +331,25 @@ class TestTFTPPath(MAASTestCase):
         expected = dict(supported_subarches=resource["subarches"])
         self.assertEqual(expected, extracted_data)
 
+    def test_extract_metadata_handles_missing_subarch(self):
+        resource = dict(
+            other_item=factory.make_name("other"),
+            )
+        image = make_image_spec()
+        mapping = set_resource(image_spec=image, resource=resource)
+        metadata = mapping.dump_json()
+
+        # Lack of consistency across maas in naming arch vs architecture
+        # and subarch vs subarchitecture means I can't just do a simple
+        # dict parameter expansion here.
+        params = {
+            "architecture": image.arch,
+            "subarchitecture": image.subarch,
+            "release": image.release,
+            "label": image.label,
+            }
+        self.assertEqual({}, extract_metadata(metadata, params))
+
     def _make_path(self):
         osystem = factory.make_name("os")
         arch = factory.make_name("arch")

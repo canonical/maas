@@ -144,7 +144,8 @@ def filter_out_directories_with_extra_levels(paths):
     to move other operating systems under the ubuntu directory."""
     for arch, subarch, release, label in paths:
         path = os.path.join(
-            config.BOOT_RESOURCES_STORAGE, arch, subarch, release, label)
+            config.BOOT_RESOURCES_STORAGE, 'current',
+            arch, subarch, release, label)
         if len(list_subdirs(path)) == 0:
             yield (arch, subarch, release, label)
 
@@ -161,22 +162,23 @@ def migrate_architectures_into_ubuntu_directory():
     folders have structure arch/subarch/release/label and move them into
     ubuntu folder. Making the final path ubuntu/arch/subarch/release/label.
     """
-    if not os.path.isdir(config.BOOT_RESOURCES_STORAGE):
+    current_dir = os.path.join(config.BOOT_RESOURCES_STORAGE, "current")
+    if not os.path.isdir(current_dir):
         return
     # If ubuntu folder already exists, then no reason to continue
-    if 'ubuntu' in list_subdirs(config.BOOT_RESOURCES_STORAGE):
+    if 'ubuntu' in list_subdirs(current_dir):
         return
 
     # Starting point for iteration: paths that contain only the
     # top-level subdirectory of tftproot, i.e. the architecture name.
-    potential_arches = list_subdirs(config.BOOT_RESOURCES_STORAGE)
+    potential_arches = list_subdirs(current_dir)
     paths = [[subdir] for subdir in potential_arches]
 
     # Extend paths deeper into the filesystem, through the levels that
     # represent sub-architecture, release, and label.
     # Any directory that doesn't extend this deep isn't a boot image.
     for level in ['subarch', 'release', 'label']:
-        paths = drill_down(config.BOOT_RESOURCES_STORAGE, paths)
+        paths = drill_down(current_dir, paths)
     paths = filter_out_directories_with_extra_levels(paths)
 
     # Extract the only top directories (arch) from the paths, as we only need
@@ -186,12 +188,10 @@ def migrate_architectures_into_ubuntu_directory():
     # Create the ubuntu directory and move the archiecture folders under that
     # directory.
     if len(arches) > 0:
-        ubuntu_dir = os.path.join(config.BOOT_RESOURCES_STORAGE, 'ubuntu')
+        ubuntu_dir = os.path.join(current_dir, 'ubuntu')
         os.mkdir(ubuntu_dir)
         for arch in arches:
-            shutil.move(
-                os.path.join(config.BOOT_RESOURCES_STORAGE, arch),
-                ubuntu_dir)
+            shutil.move(os.path.join(current_dir, arch), ubuntu_dir)
 
 
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no

@@ -137,11 +137,14 @@ def extract_metadata(metadata, params):
         label=params["label"],
         )
     try:
-        resource = mapping.mapping[image]
+        # On upgrade from 1.5 to 1.6, the subarches does not exist in the
+        # maas.meta file . Without this catch boot images will fail to
+        # report until the boot images are imported again.
+        subarches = mapping.mapping[image]['subarches']
     except KeyError:
         return {}
 
-    return dict(supported_subarches=resource["subarches"])
+    return dict(supported_subarches=subarches)
 
 
 def extract_image_params(path, maas_meta):

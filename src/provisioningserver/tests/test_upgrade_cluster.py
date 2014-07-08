@@ -191,16 +191,37 @@ class TestRetireBootResourcesYAML(MAASTestCase):
 class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
     """Tests for the `migrate_architectures_into_ubuntu_directory` upgrade."""
 
-    def configure_storage(self, storage_dir):
+    def configure_storage(self, storage_dir, make_current_dir=True):
         """Create a storage config."""
+        if make_current_dir:
+            current_dir = os.path.join(storage_dir, "current")
+            os.mkdir(current_dir)
         self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
+
+    def test__list_subdirs_under_current_directory(self):
+        self.patch(upgrade_cluster, 'list_subdirs').return_value = ['ubuntu']
+        storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(
+            upgrade_cluster.list_subdirs,
+            MockCalledOnceWith(os.path.join(storage_dir, "current")))
 
     def test__exits_early_if_boot_resources_dir_does_not_exist(self):
         # Patch list_subdirs, if it gets called then the method did not
         # exit early.
         self.patch(upgrade_cluster, 'list_subdirs')
         storage_dir = os.path.join(self.make_dir(), factory.make_name('none'))
-        self.configure_storage(storage_dir)
+        self.configure_storage(storage_dir, make_current_dir=False)
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
+
+    def test__exits_early_if_current_dir_does_not_exist(self):
+        # Patch list_subdirs, if it gets called then the method did not
+        # exit early.
+        self.patch(upgrade_cluster, 'list_subdirs')
+        storage_dir = self.make_dir()
+        self.configure_storage(storage_dir, make_current_dir=False)
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertThat(upgrade_cluster.list_subdirs, MockNotCalled())
 
@@ -209,8 +230,8 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         # exit early.
         self.patch(upgrade_cluster, 'drill_down')
         storage_dir = self.make_dir()
-        os.mkdir(os.path.join(storage_dir, 'ubuntu'))
         self.configure_storage(storage_dir)
+        os.mkdir(os.path.join(storage_dir, 'current', 'ubuntu'))
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertThat(upgrade_cluster.drill_down, MockNotCalled())
 
@@ -218,10 +239,12 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         storage_dir = self.make_dir()
         self.configure_storage(storage_dir)
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
-        self.assertFalse(os.path.exists(os.path.join(storage_dir, 'ubuntu')))
+        self.assertFalse(
+            os.path.exists(os.path.join(storage_dir, 'current', 'ubuntu')))
 
     def test__moves_paths_with_correct_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
         arches = [factory.make_name('arch') for _ in range(3)]
         subarches = [factory.make_name('subarch') for _ in range(3)]
         releases = [factory.make_name('release') for _ in range(3)]
@@ -229,14 +252,16 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         for arch, subarch, release, label in product(
                 arches, subarches, releases, labels):
             os.makedirs(
-                os.path.join(storage_dir, arch, subarch, release, label))
-        self.configure_storage(storage_dir)
+                os.path.join(
+                    storage_dir, 'current', arch, subarch, release, label))
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
-            arches, list_subdirs(os.path.join(storage_dir, 'ubuntu')))
+            arches,
+            list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
 
     def test__doesnt_move_paths_with_fewer_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
         arches = [factory.make_name('arch') for _ in range(3)]
         subarches = [factory.make_name('subarch') for _ in range(3)]
         releases = [factory.make_name('release') for _ in range(3)]
@@ -244,21 +269,24 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
         for arch, subarch, release in product(
                 arches, subarches, releases):
             os.makedirs(
-                os.path.join(storage_dir, arch, subarch, release))
+                os.path.join(storage_dir, 'current', arch, subarch, release))
         move_arch = factory.make_name('arch')
         os.makedirs(
             os.path.join(
-                storage_dir, move_arch,
+                storage_dir,
+                'current',
+                move_arch,
                 factory.make_name('subarch'),
                 factory.make_name('release'),
                 factory.make_name('label')))
-        self.configure_storage(storage_dir)
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
-            [move_arch], list_subdirs(os.path.join(storage_dir, 'ubuntu')))
+            [move_arch],
+            list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
 
     def test__doesnt_move_paths_with_more_levels_into_ubuntu_dir(self):
         storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
         # Extra directory level, this is what it looks like after upgrade.
         osystems = [factory.make_name('arch') for _ in range(3)]
         arches = [factory.make_name('arch') for _ in range(3)]
@@ -269,15 +297,19 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 osystems, arches, subarches, releases, labels):
             os.makedirs(
                 os.path.join(
-                    storage_dir, osystem, arch, subarch, release, label))
+                    storage_dir, 'current', osystem, arch, subarch,
+                    release, label))
         move_arch = factory.make_name('arch')
         os.makedirs(
             os.path.join(
-                storage_dir, move_arch,
+                storage_dir,
+                'current',
+                move_arch,
                 factory.make_name('subarch'),
                 factory.make_name('release'),
                 factory.make_name('label')))
-        self.configure_storage(storage_dir)
+
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
-            [move_arch], list_subdirs(os.path.join(storage_dir, 'ubuntu')))
+            [move_arch],
+            list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
