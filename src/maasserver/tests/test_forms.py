@@ -1143,11 +1143,27 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
     def test_allows_range_expansion(self):
         interface = self.make_interface()
         StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
-        validate_new_static_ip_ranges(
+        is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.40',
             static_ip_range_high='10.1.0.100')
-        # Success is getting here without error.
-        pass
+        self.assertTrue(is_valid)
+
+    def test_allows_allocated_ip_as_upper_bound(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new('10.1.0.55', '10.1.0.55')
+        is_valid = validate_new_static_ip_ranges(
+            interface,
+            static_ip_range_low=interface.static_ip_range_low,
+            static_ip_range_high='10.1.0.55')
+        self.assertTrue(is_valid)
+
+    def test_allows_allocated_ip_as_lower_bound(self):
+        interface = self.make_interface()
+        StaticIPAddress.objects.allocate_new('10.1.0.55', '10.1.0.55')
+        is_valid = validate_new_static_ip_ranges(
+            interface, static_ip_range_low='10.1.0.55',
+            static_ip_range_high=interface.static_ip_range_high)
+        self.assertTrue(is_valid)
 
     def test_ignores_unmanaged_interfaces(self):
         interface = self.make_interface()
@@ -1155,11 +1171,10 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         interface.save()
         StaticIPAddress.objects.allocate_new(
             interface.static_ip_range_low, interface.static_ip_range_high)
-        validate_new_static_ip_ranges(
+        is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
-        # Success is getting here without error.
-        pass
+        self.assertTrue(is_valid)
 
     def test_ignores_interfaces_with_no_static_range(self):
         interface = self.make_interface()
@@ -1167,22 +1182,20 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
         interface.static_ip_range_high = None
         interface.save()
         StaticIPAddress.objects.allocate_new('10.1.0.56', '10.1.0.60')
-        validate_new_static_ip_ranges(
+        is_valid = validate_new_static_ip_ranges(
             interface, static_ip_range_low='10.1.0.57',
             static_ip_range_high='10.1.0.58')
-        # Success is getting here without error.
-        pass
+        self.assertTrue(is_valid)
 
     def test_ignores_unchanged_static_range(self):
         interface = self.make_interface()
         StaticIPAddress.objects.allocate_new(
             interface.static_ip_range_low, interface.static_ip_range_high)
-        validate_new_static_ip_ranges(
+        is_valid = validate_new_static_ip_ranges(
             interface,
             static_ip_range_low=interface.static_ip_range_low,
             static_ip_range_high=interface.static_ip_range_high)
-        # Success is getting here without error.
-        pass
+        self.assertTrue(is_valid)
 
 
 class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):

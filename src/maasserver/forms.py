@@ -1081,14 +1081,14 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     # Return early if the instance is not already managed, it currently
     # has no static IP range, or the static IP range hasn't changed.
     if not instance.is_managed:
-        return
+        return True
     # Deliberately vague check to allow for empty strings.
     if (not instance.static_ip_range_low or
        not instance.static_ip_range_high):
-        return
+        return True
     if (static_ip_range_low == instance.static_ip_range_low and
        static_ip_range_high == instance.static_ip_range_high):
-        return
+        return True
 
     cursor = connection.cursor()
 
@@ -1101,7 +1101,7 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
         cursor.execute("""
             SELECT TRUE FROM maasserver_staticipaddress
                 WHERE  ip >= %s AND ip <= %s
-                    AND (ip <= %s OR ip >= %s)
+                    AND (ip < %s OR ip > %s)
             """, (
             instance.static_ip_range_low,
             instance.static_ip_range_high,
@@ -1124,6 +1124,7 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
         if any(results):
             raise forms.ValidationError(
                 ERROR_MESSAGE_STATIC_RANGE_IN_USE)
+    return True
 
 
 class NodeGroupInterfaceForm(ModelForm):
