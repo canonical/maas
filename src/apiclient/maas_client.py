@@ -18,6 +18,7 @@ __all__ = [
     'MAASOAuth',
     ]
 
+import collections
 import gzip
 from io import BytesIO
 import urllib2
@@ -163,6 +164,21 @@ class MAASClient:
         # done manually here.
         return self.url.rstrip("/") + "/" + path.lstrip("/")
 
+    def _flatten(self, kwargs):
+        """Flatten dictionary values if they are not an instance of
+        (bytes, unicode) and they are an interable.
+        """
+        for name, value in kwargs.viewitems():
+            if isinstance(value, (bytes, unicode)):
+                    yield name, value
+            elif isinstance(value, collections.Iterable):
+                for iterable_item in value:
+                    yield name, iterable_item
+            else:
+                raise ValueError(
+                    "MAASClient.get did not receive keyword parameters that "
+                    "are either (bytes, unicode) or an iterable as expected.")
+
     def _formulate_get(self, path, params=None):
         """Return URL and headers for a GET request.
 
@@ -175,7 +191,7 @@ class MAASClient:
         """
         url = self._make_url(path)
         if params is not None and len(params) > 0:
-            url += "?" + urlencode(params.items())
+            url += "?" + urlencode(self._flatten(params))
         headers = {}
         self.auth.sign_request(url, headers)
         return url, headers

@@ -214,6 +214,31 @@ class TestMAASClient(MAASTestCase):
         expectation = {key: [value] for key, value in params.items()}
         self.assertEqual(expectation, parse_qs(urlparse(url).query))
 
+    def test_formulate_get_adds_list_parameters_to_url(self):
+        params = {
+            factory.getRandomString(): [
+                factory.getRandomString() for _ in range(2)],
+            factory.getRandomString(): [
+                factory.getRandomString() for _ in range(2)]
+        }
+        k = params.keys()
+        v = [value for values in params.values() for value in values]
+        url, headers = make_client()._formulate_get(make_path(), params)
+        url_args = url.split('?')[1]
+        self.assertEqual(
+            "%s=%s&%s=%s&%s=%s&%s=%s" %
+            (k[0], v[0], k[0], v[1], k[1], v[2], k[1], v[3]),
+            url_args)
+
+    def test_flatten_flattens_out_list(self):
+        number = randint(0, 10)
+        key = factory.getRandomString()
+        param_list = [factory.getRandomString() for counter in range(number)]
+        params = {key: param_list}
+        flattend_list = list(make_client()._flatten(params))
+        expectation = [(key, value) for value in param_list]
+        self.assertEqual(expectation, flattend_list)
+
     def test_formulate_get_signs_request(self):
         url, headers = make_client()._formulate_get(make_path())
         self.assertIn('Authorization', headers)
