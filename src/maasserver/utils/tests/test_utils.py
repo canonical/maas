@@ -41,6 +41,7 @@ from maasserver.utils import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
+from netaddr import IPAddress
 
 
 class TestEnum(MAASTestCase):
@@ -215,33 +216,41 @@ class TestGetLocalClusterUUID(MAASTestCase):
         self.assertEqual(uuid, get_local_cluster_UUID())
 
 
-def get_request(origin_ip):
-    return RequestFactory().post('/', REMOTE_ADDR=origin_ip)
+def make_request(origin_ip):
+    """Return a fake HTTP request with the given remote address."""
+    return RequestFactory().post('/', REMOTE_ADDR=unicode(origin_ip))
 
 
 class TestFindNodegroup(MAASServerTestCase):
 
     scenarios = [
-        ('ipv4', {
-            'network_factory': factory.getRandomNetwork,
-            'ip_address_factory': factory.getRandomIPAddress,
-            }),
-        ('ipv6', {
-            'network_factory': factory.get_random_ipv6_network,
-            'ip_address_factory': factory.get_random_ipv6_address,
-            }),
+        ('ipv4', {'network_factory': factory.getRandomNetwork}),
+        ('ipv6', {'network_factory': factory.get_random_ipv6_network}),
         ]
+
+    def make_cluster_interface(self, network, management=None):
+        """Create a cluster interface.
+
+        The interface is managed by default.
+        """
+        if management is None:
+            management = factory.getRandomEnum(
+                NODEGROUPINTERFACE_MANAGEMENT,
+                but_not=[NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED])
+        cluster = factory.make_node_group()
+        return factory.make_node_group_interface(
+            cluster, network=network, management=management)
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()
         interface = factory.make_node_group_interface(nodegroup)
         self.assertEqual(
             nodegroup,
-            find_nodegroup(get_request(interface.ip)))
+            find_nodegroup(make_request(interface.ip)))
 
     def test_find_nodegroup_returns_None_if_not_found(self):
-        self.assertIsNone(
-            find_nodegroup(get_request(self.ip_address_factory())))
+        requesting_ip = factory.getRandomIPInNetwork(self.network_factory())
+        self.assertIsNone(find_nodegroup(make_request(requesting_ip)))
 
     #
     # Finding a node's nodegroup (aka cluster controller) in a nutshell:
@@ -254,67 +263,95 @@ class TestFindNodegroup(MAASServerTestCase):
 
     def test_1_managed_interface(self):
         network = self.network_factory()
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            network=network)
+        interface = self.make_cluster_interface(network)
         self.assertEqual(
-            nodegroup, find_nodegroup(
-                get_request(factory.getRandomIPInNetwork(network))))
+            interface.nodegroup,
+            find_nodegroup(
+                make_request(factory.getRandomIPInNetwork(network))))
 
     def test_1_managed_interface_and_1_unmanaged(self):
         # The managed nodegroup is chosen in preference to the unmanaged
         # nodegroup.
         network = self.network_factory()
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            network=network)
-        factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            network=network)
+        interface = self.make_cluster_interface(network)
+        self.make_cluster_interface(
+            network, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         self.assertEqual(
-            nodegroup, find_nodegroup(
-                get_request(factory.getRandomIPInNetwork(network))))
+            interface.nodegroup,
+            find_nodegroup(
+                make_request(factory.getRandomIPInNetwork(network))))
 
     def test_more_than_1_managed_interface(self):
         network = self.network_factory()
-        random_ip = factory.getRandomIPInNetwork(network)
-        factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            network=network)
-        factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
-            network=network)
+        requesting_ip = factory.getRandomIPInNetwork(network)
+        self.make_cluster_interface(network=network)
+        self.make_cluster_interface(network=network)
         exception = self.assertRaises(
             NodeGroupMisconfiguration,
-            find_nodegroup, get_request(random_ip))
+            find_nodegroup, make_request(requesting_ip))
         self.assertEqual(
             (httplib.CONFLICT,
              "Multiple clusters on the same network; only "
              "one cluster may manage the network of which "
-             "%s is a member." % random_ip),
+             "%s is a member." % requesting_ip),
             (exception.api_error,
              "%s" % exception))
 
     def test_1_unmanaged_interface(self):
         network = self.network_factory()
-        nodegroup = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            network=network)
+        interface = self.make_cluster_interface(network)
         self.assertEqual(
-            nodegroup, find_nodegroup(
-                get_request(factory.getRandomIPInNetwork(network))))
+            interface.nodegroup,
+            find_nodegroup(
+                make_request(factory.getRandomIPInNetwork(network))))
 
     def test_more_than_1_unmanaged_interface(self):
         network = self.network_factory()
-        nodegroup1 = factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            network=network)
-        factory.make_node_group(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
-            network=network)
+        interfaces = [
+            self.make_cluster_interface(
+                network, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+            for _ in range(2)
+            ]
         self.assertEqual(
-            nodegroup1, find_nodegroup(
-                get_request(factory.getRandomIPInNetwork(network))))
+            interfaces[0].nodegroup,
+            find_nodegroup(
+                make_request(factory.getRandomIPInNetwork(network))))
+
+    def test_handles_mixed_IPv4_and_IPv6(self):
+        matching_network = self.network_factory()
+        requesting_ip = factory.getRandomIPInNetwork(matching_network)
+        self.make_cluster_interface(factory.getRandomNetwork())
+        self.make_cluster_interface(factory.get_random_ipv6_network())
+        matching_interface = self.make_cluster_interface(matching_network)
+        self.assertEqual(
+            matching_interface.nodegroup,
+            find_nodegroup(make_request(requesting_ip)))
+
+    def test_includes_lower_bound(self):
+        network = self.network_factory()
+        interface = self.make_cluster_interface(network)
+        self.assertEqual(
+            interface.nodegroup,
+            find_nodegroup(make_request(IPAddress(network.first))))
+
+    def test_includes_upper_bound(self):
+        network = self.network_factory()
+        interface = self.make_cluster_interface(network)
+        self.assertEqual(
+            interface.nodegroup,
+            find_nodegroup(make_request(IPAddress(network.last))))
+
+    def test_excludes_lower_bound_predecessor(self):
+        network = self.network_factory()
+        self.make_cluster_interface(network)
+        self.assertIsNone(
+            find_nodegroup(make_request(IPAddress(network.first - 1))))
+
+    def test_excludes_upper_bound_successor(self):
+        network = self.network_factory()
+        self.make_cluster_interface(network)
+        self.assertIsNone(
+            find_nodegroup(make_request(IPAddress(network.last + 1))))
 
 
 class TestSynchronised(MAASTestCase):

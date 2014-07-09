@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities."""
@@ -152,47 +152,44 @@ def find_nodegroup(request):
     ip_address = request.META['REMOTE_ADDR']
     if ip_address is None:
         return None
-    else:
-        # Fetch nodegroups with interfaces in the requester's network,
-        # preferring those with managed networks first. The `NodeGroup`
-        # objects returned are annotated with the `management` field of the
-        # matching `NodeGroupInterface`. See https://docs.djangoproject.com
-        # /en/dev/topics/db/sql/#adding-annotations for this curious feature
-        # of Django's ORM.
-        query = NodeGroup.objects.raw("""
-            SELECT
-              ng.*,
-              ngi.management
-            FROM
-              maasserver_nodegroup AS ng,
-              maasserver_nodegroupinterface AS ngi
-            WHERE
-              ng.id = ngi.nodegroup_id
-             AND
-              (inet %s & ngi.subnet_mask) = (ngi.ip & ngi.subnet_mask)
-            ORDER BY
-              ngi.management DESC,
-              ng.id ASC
-            """, [ip_address])
-        nodegroups = list(query)
-        if len(nodegroups) == 0:
-            return None
-        elif len(nodegroups) == 1:
-            return nodegroups[0]
-        else:
-            # There are multiple matching nodegroups. Only zero or one may
-            # have a managed interface, otherwise it is a misconfiguration.
-            unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-            nodegroups_with_managed_interfaces = {
-                nodegroup.id for nodegroup in nodegroups
-                if nodegroup.management != unmanaged
-                }
-            if len(nodegroups_with_managed_interfaces) > 1:
-                raise NodeGroupMisconfiguration(
-                    "Multiple clusters on the same network; only "
-                    "one cluster may manage the network of which "
-                    "%s is a member." % ip_address)
-            return nodegroups[0]
+
+    # Fetch nodegroups with interfaces in the requester's network,
+    # preferring those with managed networks first. The `NodeGroup`
+    # objects returned are annotated with the `management` field of the
+    # matching `NodeGroupInterface`. See https://docs.djangoproject.com
+    # /en/dev/topics/db/sql/#adding-annotations for this curious feature
+    # of Django's ORM.
+    query = NodeGroup.objects.raw("""
+        SELECT
+            ng.*,
+            ngi.management
+        FROM maasserver_nodegroup AS ng
+        JOIN maasserver_nodegroupinterface AS ngi ON ng.id = ngi.nodegroup_id
+        WHERE
+            inet %s BETWEEN
+                (ngi.ip & ngi.subnet_mask) AND
+                (ngi.ip | ~ngi.subnet_mask)
+        ORDER BY ngi.management DESC, ng.id ASC
+        """, [ip_address])
+    nodegroups = list(query)
+    if len(nodegroups) == 0:
+        return None
+    if len(nodegroups) == 1:
+        return nodegroups[0]
+
+    # There are multiple matching nodegroups. Only zero or one may
+    # have a managed interface, otherwise it is a misconfiguration.
+    unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+    nodegroups_with_managed_interfaces = {
+        nodegroup.id for nodegroup in nodegroups
+        if nodegroup.management != unmanaged
+        }
+    if len(nodegroups_with_managed_interfaces) > 1:
+        raise NodeGroupMisconfiguration(
+            "Multiple clusters on the same network; only "
+            "one cluster may manage the network of which "
+            "%s is a member." % ip_address)
+    return nodegroups[0]
 
 
 def synchronised(lock):
