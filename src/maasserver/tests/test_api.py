@@ -502,8 +502,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             [
-                dict_subset(
-                    interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS)
+                dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS)
                 for interface in nodegroup.nodegroupinterface_set.all()
             ],
             json.loads(response.content))
@@ -543,7 +542,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             for key, value in interface_settings.items()
         }
         new_interface = NodeGroupInterface.objects.get(
-            nodegroup=nodegroup, interface=interface_settings['interface'])
+            nodegroup=nodegroup, name=interface_settings['name'])
         self.assertThat(
             new_interface,
             MatchesStructure.byEquality(**expected_result))
@@ -598,7 +597,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = self.client.get(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
@@ -610,7 +609,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = client.get(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_update_does_not_work_for_normal_user(self):
@@ -621,7 +620,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
+                args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': factory.getRandomIPAddress()})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
@@ -635,7 +634,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
+                args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': new_ip_range_high})
         self.assertEqual(httplib.OK, response.status_code)
 
@@ -647,7 +646,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 
@@ -659,7 +658,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
 
@@ -672,11 +671,10 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         response = self.client.get(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            dict_subset(
-                interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS),
+            dict_subset(interface, DISPLAYED_NODEGROUPINTERFACE_FIELDS),
             json.loads(response.content))
 
     def test_update_interface(self):
@@ -688,7 +686,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         response = self.client_put(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
+                args=[nodegroup.uuid, interface.name]),
             {'ip_range_high': new_ip_range_high})
         self.assertEqual(
             (httplib.OK, new_ip_range_high),
@@ -701,11 +699,11 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]))
+                args=[nodegroup.uuid, interface.name]))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertFalse(
             NodeGroupInterface.objects.filter(
-                interface=interface.interface, nodegroup=nodegroup).exists())
+                name=interface.name, nodegroup=nodegroup).exists())
 
     def test_report_foreign_dhcp_sets_value(self):
         self.become_admin()
@@ -715,7 +713,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         response = self.client.post(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
+                args=[nodegroup.uuid, interface.name]),
             {
                 'op': 'report_foreign_dhcp',
                 'foreign_dhcp_ip': ip,
@@ -732,7 +730,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         response = self.client.post(
             reverse(
                 'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.interface]),
+                args=[nodegroup.uuid, interface.name]),
             {
                 'op': 'report_foreign_dhcp',
                 'foreign_dhcp_ip': '',

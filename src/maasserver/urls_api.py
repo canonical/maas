@@ -159,7 +159,7 @@ urlpatterns += patterns(
     url(r'^nodegroups/$', nodegroups_handler, name='nodegroups_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/$',
         nodegroupinterfaces_handler, name='nodegroupinterfaces_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<interface>[^/]+)/$',
+    url(r'^nodegroups/(?P<uuid>[^/]+)/interfaces/(?P<name>[^/]+)/$',
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/$',
         boot_images_handler, name='boot_images_handler'),

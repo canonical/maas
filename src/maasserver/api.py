@@ -1975,7 +1975,7 @@ class NodeGroupHandler(OperationsHandler):
 
 
 DISPLAYED_NODEGROUPINTERFACE_FIELDS = (
-    'ip', 'management', 'interface', 'subnet_mask',
+    'name', 'ip', 'management', 'interface', 'subnet_mask',
     'broadcast_ip', 'ip_range_low', 'ip_range_high',
     'static_ip_range_low', 'static_ip_range_high',
     )
@@ -2004,9 +2004,12 @@ class NodeGroupInterfacesHandler(OperationsHandler):
     def new(self, request, uuid):
         """Create a new NodeGroupInterface for this NodeGroup.
 
+        :param name: Name for the interface.  Must be unique within this
+            cluster.  Only letters, digits, and dashes are allowed.
         :param ip: Static IP of the interface.
         :type ip: unicode (IP Address)
-        :param interface: Name of the interface.
+        :param interface: Name of the network interface that connects the
+            cluster controller to this network.
         :type interface: unicode
         :param management: The service(s) MAAS should manage on this interface.
         :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
@@ -2057,7 +2060,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
     create = delete = None
     fields = DISPLAYED_NODEGROUPINTERFACE_FIELDS
 
-    def get_interface(self, request, uuid, interface):
+    def get_interface(self, request, uuid, name):
         """Return the :class:`NodeGroupInterface` indicated by the request.
 
         Will check for not-found errors, as well as the user's permission to
@@ -2067,19 +2070,20 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         if not request.user.is_superuser:
             check_nodegroup_access(request, nodegroup)
         nodegroupinterface = get_object_or_404(
-            NodeGroupInterface, nodegroup=nodegroup, interface=interface)
+            NodeGroupInterface, nodegroup=nodegroup, name=name)
         return nodegroupinterface
 
-    def read(self, request, uuid, interface):
+    def read(self, request, uuid, name):
         """List of NodeGroupInterfaces of a NodeGroup."""
-        return self.get_interface(request, uuid, interface)
+        return self.get_interface(request, uuid, name)
 
-    def update(self, request, uuid, interface):
+    def update(self, request, uuid, name):
         """Update a specific NodeGroupInterface.
 
+        :param name: Identifying name for the cluster interface.
         :param ip: Static IP of the interface.
         :type ip: unicode (IP Address)
-        :param interface: Name of the interface.
+        :param interface: Network interface.
         :type interface: unicode
         :param management: The service(s) MAAS should manage on this interface.
         :type management: Vocabulary `NODEGROUPINTERFACE_MANAGEMENT`
@@ -2100,7 +2104,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
             clients.
         :type static_ip_range_high: unicode (IP Address)
         """
-        nodegroupinterface = self.get_interface(request, uuid, interface)
+        nodegroupinterface = self.get_interface(request, uuid, name)
         form = NodeGroupInterfaceForm(
             request.data, instance=nodegroupinterface)
         if form.is_valid():
@@ -2108,14 +2112,14 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         else:
             raise ValidationError(form.errors)
 
-    def delete(self, request, uuid, interface):
+    def delete(self, request, uuid, name):
         """Delete a specific NodeGroupInterface."""
-        nodegroupinterface = self.get_interface(request, uuid, interface)
+        nodegroupinterface = self.get_interface(request, uuid, name)
         nodegroupinterface.delete()
         return rc.DELETED
 
     @operation(idempotent=False)
-    def report_foreign_dhcp(self, request, uuid, interface):
+    def report_foreign_dhcp(self, request, uuid, name):
         """Report the result of a probe for foreign DHCP servers.
 
         Cluster controllers probe for DHCP servers not managed by MAAS, and
@@ -2125,7 +2129,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
             during the last probe.  Leave blank if none were found.
         """
         foreign_dhcp_ip = get_mandatory_param(request.data, 'foreign_dhcp_ip')
-        nodegroupinterface = self.get_interface(request, uuid, interface)
+        nodegroupinterface = self.get_interface(request, uuid, name)
 
         form = NodeGroupInterfaceForeignDHCPForm(
             {'foreign_dhcp_ip': foreign_dhcp_ip}, instance=nodegroupinterface)
@@ -2143,7 +2147,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         if interface is None:
             interface_name = 'interface'
         else:
-            interface_name = interface.interface
+            interface_name = interface.name
         return ('nodegroupinterface_handler', [uuid, interface_name])
 
 
