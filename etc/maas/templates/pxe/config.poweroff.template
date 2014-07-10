@@ -1,0 +1,4 @@
+DEFAULT poweroff
+
+LABEL poweroff
+  {{poweroff}}

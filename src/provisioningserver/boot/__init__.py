@@ -26,6 +26,7 @@ from errno import ENOENT
 from io import BytesIO
 from os import path
 
+from provisioningserver import config
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
 from provisioningserver.utils import locate_config
@@ -104,6 +105,18 @@ def get_remote_mac():
     """
     remote_host, remote_port = get("remote", (None, None))
     return find_mac_via_arp(remote_host)
+
+
+def compose_poweroff_command():
+    """Composes the poweroff command depending on the version of
+    syslinux that is avaliable in the tftproot."""
+    com32_path = path.join(
+        config.BOOT_RESOURCES_STORAGE, "current", "syslinux", "poweroff.c32")
+    if path.exists(com32_path):
+        # syslinux 6 uses a com32 module for poweroff
+        return "COM32 /syslinux/poweroff.c32"
+    # syslinux 4 uses the older type
+    return "KERNEL /syslinux/poweroff.com"
 
 
 class BootMethod:
@@ -228,6 +241,10 @@ class BootMethod:
             "kernel_params": kernel_params,
             "kernel_path": kernel_path,
             }
+
+        if kernel_params.purpose == 'poweroff':
+            namespace['poweroff'] = compose_poweroff_command()
+
         return namespace
 
 
