@@ -52,7 +52,8 @@ versions_path = '_static/versions.js'
 # The first item should be the development version.
 from collections import OrderedDict
 doc_versions = OrderedDict([
-    ('1.6', 'Development trunk'),
+    ('1.7', 'Development trunk'),
+    ('1.6', 'MAAS 1.6'),
     ('1.5', 'MAAS 1.5'),
     ('1.4', 'MAAS 1.4'),
     ('1.3', 'MAAS 1.3'),
