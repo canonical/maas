@@ -2476,9 +2476,11 @@ class UserHandler(OperationsHandler):
 
 # MAAS capabilities. See docs/capabilities.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = 'networks-management'
+CAP_STATIC_IPADDRESSES = 'static-ipaddresses'
 
 API_CAPABILITIES_LIST = [
     CAP_NETWORKS_MANAGEMENT,
+    CAP_STATIC_IPADDRESSES,
 ]
 
 
