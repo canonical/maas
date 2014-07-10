@@ -130,3 +130,11 @@ class StaticIPAddressTypeClash(MAASAPIException):
 
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
+
+
+class NoAddressFoundForHost(MAASException):
+    """Raised when no maas-facing address is found for a host."""
+
+
+class UnresolvableHost(MAASException):
+    """Raised when a hostname can't be resolved to an IP address."""

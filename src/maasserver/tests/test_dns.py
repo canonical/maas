@@ -100,12 +100,14 @@ class TestDNSUtilities(MAASServerTestCase):
 
     def test_get_dns_server_address_resolves_hostname(self):
         ip = factory.getRandomIPAddress()
-        resolver = FakeMethod(result=ip)
-        self.patch(server_address, 'gethostbyname', resolver)
+        addr_info_result = [(
+            server_address.AF_INET, None, None, None, (ip, None))]
+        resolver = FakeMethod(result=addr_info_result)
+        self.patch(server_address, 'getaddrinfo', resolver)
         hostname = factory.make_hostname()
         self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=hostname)
         self.assertEqual(
-            (ip, [(hostname, )]),
+                (ip, [(hostname, server_address.PORT)]),
             (dns.get_dns_server_address(), resolver.extract_args()))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
@@ -127,13 +129,15 @@ class TestDNSUtilities(MAASServerTestCase):
 
     def test_get_dns_server_address_uses_nodegroup_maas_url(self):
         ip = factory.getRandomIPAddress()
-        resolver = FakeMethod(result=ip)
-        self.patch(server_address, 'gethostbyname', resolver)
+        addr_info_result = [(
+            server_address.AF_INET, None, None, None, (ip, None))]
+        resolver = FakeMethod(result=addr_info_result)
+        self.patch(server_address, 'getaddrinfo', resolver)
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
         nodegroup = factory.make_node_group(maas_url=maas_url)
         self.assertEqual(
-            (ip, [(hostname, )]),
+                (ip, [(hostname, server_address.PORT)]),
             (dns.get_dns_server_address(nodegroup), resolver.extract_args()))
 
     def test_warn_loopback_warns_about_IPv4_loopback(self):

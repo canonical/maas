@@ -215,7 +215,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
-        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
+        addr_info_result = [(
+            server_address.AF_INET, None, None, None, (ip, None))]
+        self.patch(
+            server_address, 'getaddrinfo',
+            Mock(return_value=addr_info_result))
         factory.make_node_group(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -235,8 +239,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
+        addr_info_result = [(
+            server_address.AF_INET, None, None, None, (ip, None))]
         mock = self.patch(
-            server_address, 'gethostbyname', Mock(return_value=ip))
+            server_address, 'getaddrinfo',
+            Mock(return_value=addr_info_result))
         factory.make_node_group(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -275,7 +282,10 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.getRandomIPInNetwork(network)
-        self.patch(server_address, 'gethostbyname', Mock(return_value=ip))
+        addr_info_result = [(
+            server_address.AF_INET, None, None, None, (ip, None))]
+        self.patch(server_address, 'getaddrinfo').return_value = (
+            addr_info_result)
         nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
