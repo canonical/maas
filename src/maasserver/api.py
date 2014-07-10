@@ -2005,7 +2005,7 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         """Create a new NodeGroupInterface for this NodeGroup.
 
         :param name: Name for the interface.  Must be unique within this
-            cluster.  Only letters, digits, and dashes are allowed.
+            cluster.  Only letters, digits, dashes, and colons are allowed.
         :param ip: Static IP of the interface.
         :type ip: unicode (IP Address)
         :param interface: Name of the network interface that connects the

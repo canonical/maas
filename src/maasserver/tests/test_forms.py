@@ -1108,7 +1108,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__escapes_interface_name(self):
         int_settings = make_interface_settings()
-        int_settings['interface'] = 'eth1:1'
+        int_settings['interface'] = 'eth1+1'
         del int_settings['name']
         form = NodeGroupInterfaceForm(
             data=int_settings, instance=self.make_ngi_instance())

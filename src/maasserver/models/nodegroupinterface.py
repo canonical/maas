@@ -84,8 +84,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     # on the network interface name.
     name = CharField(
         blank=True, null=False, editable=True, max_length=255, default='',
-        validators=[VerboseRegexValidator('^[\w-]+$')],
-        help_text="Identifying name for this cluster interface.")
+        validators=[VerboseRegexValidator('^[\w:-]+$')],
+        help_text=(
+            "Identifying name for this cluster interface.  "
+            "Must be unique within the cluster, and consist only of letters, "
+            "digits, dashes, and colons."))
 
     management = IntegerField(
         choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, editable=True,

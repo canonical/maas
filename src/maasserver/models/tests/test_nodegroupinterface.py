@@ -83,6 +83,30 @@ class TestNodeGroupInterface(MAASServerTestCase):
             NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[interface.management],
             interface.display_management())
 
+    def test_name_accepts_network_interface_name(self):
+        cluster = factory.make_node_group()
+        self.assertEqual(
+            'eth0',
+            factory.make_node_group_interface(cluster, name='eth0').name)
+
+    def test_name_accepts_network_interface_name_with_alias(self):
+        cluster = factory.make_node_group()
+        self.assertEqual(
+            'eth0:1',
+            factory.make_node_group_interface(cluster, name='eth0:1').name)
+
+    def test_name_accepts_dashes(self):
+        cluster = factory.make_node_group()
+        self.assertEqual(
+            'eth0-1',
+            factory.make_node_group_interface(cluster, name='eth0-1').name)
+
+    def test_name_rejects_other_unusual_characters(self):
+        cluster = factory.make_node_group()
+        self.assertRaises(
+            ValidationError,
+            factory.make_node_group_interface, cluster, name='eth 0')
+
     def test_clean_ips_in_network_validates_IP(self):
         network = IPNetwork('192.168.0.3/24')
         ip_outside_network = '192.168.2.1'

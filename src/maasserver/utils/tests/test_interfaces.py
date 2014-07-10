@@ -23,11 +23,11 @@ class TestMakeNameFromInterface(MAASTestCase):
     """Tests for `make_name_from_interface`."""
 
     def test__passes_name_unchanged(self):
-        name = factory.make_name('itf')
+        name = factory.make_name('itf9:2')
         self.assertEqual(name, make_name_from_interface(name))
 
     def test__escapes_weird_characters(self):
-        self.assertEqual('eth0--1', make_name_from_interface('eth0:1'))
+        self.assertEqual('x--y', make_name_from_interface('x?y'))
         self.assertEqual('x--y', make_name_from_interface('x y'))
 
     def test__makes_up_name_if_no_interface_given(self):
