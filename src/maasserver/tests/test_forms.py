@@ -1035,6 +1035,7 @@ def make_interface_settings(network=None, management=None):
         static_low = ''
         static_high = ''
     return {
+        'name': factory.make_name('ngi'),
         'ip': factory.getRandomIPInNetwork(network),
         'interface': factory.make_name('interface'),
         'subnet_mask': unicode(network.netmask),
@@ -1056,25 +1057,90 @@ nullable_fields = [
 
 class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
-    def test_NodeGroupInterfaceForm_validates_parameters(self):
-        form = NodeGroupInterfaceForm(data={'ip': factory.getRandomString()})
+    def make_ngi_instance(self, nodegroup=None):
+        """Create a `NodeGroupInterface` with nothing set but `nodegroup`.
+
+        This is used by tests to instantiate the cluster interface form for
+        a given cluster.  We create an initial cluster interface object just
+        to tell it which cluster that is.
+        """
+        if nodegroup is None:
+            nodegroup = factory.make_node_group()
+        return NodeGroupInterface(nodegroup=nodegroup)
+
+    def test__validates_parameters(self):
+        form = NodeGroupInterfaceForm(
+            data={'ip': factory.getRandomString()},
+            instance=self.make_ngi_instance())
         self.assertFalse(form.is_valid())
         self.assertEquals(
             {'ip': ['Enter a valid IPv4 or IPv6 address.']}, form._errors)
 
-    def test_NodeGroupInterfaceForm_can_save_fields_being_None(self):
+    def test__can_save_fields_being_None(self):
         int_settings = make_interface_settings()
         int_settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         for field_name in nullable_fields:
             del int_settings[field_name]
-        nodegroup = factory.make_node_group()
         form = NodeGroupInterfaceForm(
-            data=int_settings,
-            instance=NodeGroupInterface(nodegroup=nodegroup))
+            data=int_settings, instance=self.make_ngi_instance())
         interface = form.save()
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
         self.assertThat(field_values, AllMatch(Equals('')))
+
+    def test__uses_name_if_given(self):
+        name = factory.make_name('explicit-name')
+        int_settings = make_interface_settings()
+        int_settings['name'] = name
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        interface = form.save()
+        self.assertEqual(name, interface.name)
+
+    def test__lets_name_default_to_network_interface_name(self):
+        int_settings = make_interface_settings()
+        int_settings['interface'] = factory.make_name('ether')
+        del int_settings['name']
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        interface = form.save()
+        self.assertEqual(int_settings['interface'], interface.name)
+
+    def test__escapes_interface_name(self):
+        int_settings = make_interface_settings()
+        int_settings['interface'] = 'eth1:1'
+        del int_settings['name']
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        interface = form.save()
+        self.assertEqual('eth1--1', interface.name)
+
+    def test__defaults_to_unique_name_if_no_name_or_interface_given(self):
+        int_settings = make_interface_settings(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        del int_settings['name']
+        del int_settings['interface']
+        form1 = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        interface1 = form1.save()
+        form2 = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        interface2 = form2.save()
+        self.assertNotIn(interface1.name, [None, ''])
+        self.assertNotIn(interface2.name, [None, ''])
+        self.assertNotEqual(interface1.name, interface2.name)
+
+    def test__disambiguates_default_name(self):
+        cluster = factory.make_node_group()
+        existing_interface = factory.make_node_group_interface(cluster)
+        int_settings = make_interface_settings()
+        del int_settings['name']
+        int_settings['interface'] = existing_interface.name
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance(cluster))
+        interface = form.save()
+        self.assertThat(interface.name, StartsWith(int_settings['interface']))
+        self.assertNotEqual(int_settings['interface'], interface.name)
 
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")

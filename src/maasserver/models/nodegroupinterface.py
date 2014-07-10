@@ -31,7 +31,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
     )
-from maasserver.fields import MAASIPAddressField
+from maasserver.fields import (
+    MAASIPAddressField,
+    VerboseRegexValidator,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
@@ -50,9 +53,20 @@ MINIMUM_NETMASK_BITS = 16
 
 
 class NodeGroupInterface(CleanSave, TimestampedModel):
+    """Cluster interface.
+
+    Represents a network to which a given cluster controller is connected.
+    These interfaces are discovered automatically, but an admin can also
+    add/edit/remove them.
+
+    This class duplicates some of :class:`Network`, and adds settings for
+    managing DHCP.  Some day we hope to delegate the duplicated fields, and
+    have auto-discovery populate the :class:`Network` model along the way.
+    """
 
     class Meta(DefaultMeta):
-        unique_together = ('nodegroup', 'interface')
+        # The API identifies a NodeGroupInterface by cluster and name.
+        unique_together = ('nodegroup', 'name')
 
     # Static IP of the interface.
     ip = MAASIPAddressField(
@@ -64,6 +78,15 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     nodegroup = ForeignKey(
         'maasserver.NodeGroup', editable=True, null=False, blank=False)
 
+    # Name for this interface.  It must be unique within the cluster.
+    # The code ensures that this is never an empty string, but we do allow
+    # an empty string on the form.  The field defaults to a unique name based
+    # on the network interface name.
+    name = CharField(
+        blank=True, null=False, editable=True, max_length=255, default='',
+        validators=[VerboseRegexValidator('^[\w-]+$')],
+        help_text="Identifying name for this cluster interface.")
+
     management = IntegerField(
         choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, editable=True,
         default=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT)
@@ -71,7 +94,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     # DHCP server settings.
     interface = CharField(
         blank=True, editable=True, max_length=255, default='',
-        help_text="Name of this interface (e.g. 'em1').")
+        help_text="Network interface (e.g. 'eth1').")
     subnet_mask = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         help_text="e.g. 255.255.255.0")
@@ -138,7 +161,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
 
     def __repr__(self):
         return "<NodeGroupInterface %s,%s>" % (
-            self.nodegroup.uuid, self.interface)
+            self.nodegroup.uuid, self.name)
 
     def clean_network_valid(self):
         """Validate the network.

@@ -255,12 +255,14 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    def get_interface_fields(self, ip=None, router_ip=None, network=None,
-                             subnet_mask=None, broadcast_ip=None,
+    def get_interface_fields(self, name=None, ip=None, router_ip=None,
+                             network=None, subnet_mask=None, broadcast_ip=None,
                              ip_range_low=None, ip_range_high=None,
                              interface=None, management=None,
                              static_ip_range_low=None,
                              static_ip_range_high=None, **kwargs):
+        if name is None:
+            name = factory.make_name('ngi')
         if network is None:
             network = factory.getRandomNetwork()
         # Split the network into dynamic and static ranges.
@@ -297,8 +299,9 @@ class Factory(maastesting.factory.Factory):
         if management is None:
             management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
         if interface is None:
-            interface = self.make_name('interface')
+            interface = self.make_name('netinterface')
         return dict(
+            name=name,
             subnet_mask=subnet_mask,
             broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low,
@@ -372,7 +375,7 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
 
-    def make_node_group_interface(self, nodegroup, ip=None,
+    def make_node_group_interface(self, nodegroup, name=None, ip=None,
                                   router_ip=None, network=None,
                                   subnet_mask=None, broadcast_ip=None,
                                   ip_range_low=None, ip_range_high=None,
@@ -380,7 +383,7 @@ class Factory(maastesting.factory.Factory):
                                   static_ip_range_low=None,
                                   static_ip_range_high=None, **kwargs):
         interface_settings = self.get_interface_fields(
-            ip=ip, router_ip=router_ip, network=network,
+            name=name, ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
             ip_range_low=ip_range_low, ip_range_high=ip_range_high,
             interface=interface, management=management,

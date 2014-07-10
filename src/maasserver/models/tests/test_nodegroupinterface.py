@@ -210,7 +210,8 @@ class TestNodeGroupInterface(MAASServerTestCase):
         nodegroup = factory.make_node_group()
         # Can't use the factory for this one; it may hide the problem.
         interface = NodeGroupInterface(
-            nodegroup=nodegroup, ip='10.1.1.1', router_ip='10.1.1.254',
+            nodegroup=nodegroup, name=factory.make_name('ngi'),
+            ip='10.1.1.1', router_ip='10.1.1.254',
             subnet_mask='255.255.255.0', ip_range_low='10.1.1.100',
             ip_range_high='10.1.1.200',
             static_ip_range_low='10.1.1.201',

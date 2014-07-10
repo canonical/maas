@@ -47,6 +47,7 @@ __all__ = [
 import collections
 import json
 import pipes
+from random import randint
 import re
 
 from django import forms
@@ -118,6 +119,7 @@ from maasserver.node_action import (
     )
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
+from maasserver.utils.interfaces import make_name_from_interface
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -1142,6 +1144,7 @@ class NodeGroupInterfaceForm(ModelForm):
     class Meta:
         model = NodeGroupInterface
         fields = (
+            'name',
             'interface',
             'management',
             'ip',
@@ -1154,8 +1157,40 @@ class NodeGroupInterfaceForm(ModelForm):
             'static_ip_range_high',
             )
 
+    def compute_name(self):
+        """Return the value the `name` field should have.
+
+        A cluster interface's name defaults to the name of its network
+        interface, unless that name is already taken, in which case it gets
+        a disambiguating suffix.
+        """
+        name = self.cleaned_data.get('name')
+        # Deliberately vague test: an unset name can be None or empty.
+        if name:
+            # Name is set.  Done.
+            return name
+        if self.instance.name:
+            # No name given, but instance already had one.  Keep it.
+            return self.instance.name
+
+        # No name yet.  Pick a default.  Use the interface name for
+        # compatibility with clients that expect the pre-1.6 behaviour, where
+        # the 'name' and 'interface' fields were the same thing.
+        interface = self.cleaned_data.get('interface')
+        name = make_name_from_interface(interface)
+        cluster = self.instance.nodegroup
+        if cluster is not None and interface:
+            siblings = cluster.nodegroupinterface_set
+            if siblings.filter(name=name).exists():
+                # This name is already in use.  Add a randomised suffix
+                # to make it unique.
+                return '%s-%d' % (name, randint(10000, 99999))
+
+        return name
+
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()
+        cleaned_data['name'] = self.compute_name()
         static_ip_range_low = cleaned_data.get('static_ip_range_low')
         static_ip_range_high = cleaned_data.get('static_ip_range_high')
         try:
