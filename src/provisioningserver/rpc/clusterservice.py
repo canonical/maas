@@ -39,7 +39,10 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.rpc.osystems import gen_operating_systems
+from provisioningserver.rpc.osystems import (
+    gen_operating_systems,
+    validate_license_key,
+    )
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
@@ -117,6 +120,15 @@ class Cluster(amp.AMP, object):
         :py:class:`~provisioningserver.rpc.cluster.ListOperatingSystems`.
         """
         return {"osystems": gen_operating_systems()}
+
+    @cluster.ValidateLicenseKey.responder
+    def validate_license_key(self, osystem, release, key):
+        """validate_license_key()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ValidateLicenseKey`.
+        """
+        return {"is_valid": validate_license_key(osystem, release, key)}
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):

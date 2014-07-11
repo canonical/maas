@@ -14,8 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = [
     "NoConnectionsAvailable",
+    "NoSuchOperatingSystem",
 ]
 
 
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""
+
+
+class NoSuchOperatingSystem(Exception):
+    """The specified OS was not found."""

@@ -63,6 +63,7 @@ from provisioningserver.rpc.testing.doubles import (
     StubOS,
     )
 from provisioningserver.testing.config import set_tftp_root
+from testtools import ExpectedException
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     Equals,
@@ -716,3 +717,47 @@ class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
             expected_osystem["releases"] = list(expected_osystem["releases"])
         expected = {"osystems": expected_osystems}
         self.assertEqual(expected, osystems)
+
+
+class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.ValidateLicenseKey.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_calls_validate_license_key(self):
+        validate_license_key = self.patch(
+            clusterservice, "validate_license_key")
+        validate_license_key.return_value = factory.getRandomBoolean()
+        arguments = {
+            "osystem": factory.make_name("osystem"),
+            "release": factory.make_name("release"),
+            "key": factory.make_name("key"),
+        }
+        observed = yield call_responder(
+            Cluster(), cluster.ValidateLicenseKey, arguments)
+        expected = {"is_valid": validate_license_key.return_value}
+        self.assertEqual(expected, observed)
+        # The arguments are passed to the responder positionally.
+        self.assertThat(validate_license_key, MockCalledOnceWith(
+            arguments["osystem"], arguments["release"], arguments["key"]))
+
+    @inlineCallbacks
+    def test_exception_when_os_does_not_exist(self):
+        # A remote NoSuchOperatingSystem exception is re-raised locally.
+        validate_license_key = self.patch(
+            clusterservice, "validate_license_key")
+        validate_license_key.side_effect = exceptions.NoSuchOperatingSystem()
+        arguments = {
+            "osystem": factory.make_name("osystem"),
+            "release": factory.make_name("release"),
+            "key": factory.make_name("key"),
+        }
+        with ExpectedException(exceptions.NoSuchOperatingSystem):
+            yield call_responder(
+                Cluster(), cluster.ValidateLicenseKey, arguments)

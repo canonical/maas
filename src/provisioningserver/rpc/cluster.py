@@ -23,6 +23,7 @@ __all__ = [
     "ListSupportedArchitectures",
 ]
 
+from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import StructureAsJSON
 from provisioningserver.rpc.common import Identify
 from twisted.protocols import amp
@@ -98,3 +99,23 @@ class ListOperatingSystems(amp.Command):
         ])),
     ]
     errors = []
+
+
+class ValidateLicenseKey(amp.Command):
+    """Validate an OS license key.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"osystem", amp.Unicode()),
+        (b"release", amp.Unicode()),
+        (b"key", amp.Unicode()),
+    ]
+    response = [
+        (b"is_valid", amp.Boolean()),
+    ]
+    errors = {
+        exceptions.NoSuchOperatingSystem: (
+            b"NoSuchOperatingSystem"),
+    }

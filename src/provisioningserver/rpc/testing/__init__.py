@@ -29,7 +29,9 @@ from testtools.matchers import (
     MatchesDict,
     )
 from twisted.internet import ssl
+from twisted.protocols import amp
 from twisted.python import log
+from twisted.python.failure import Failure
 
 
 def call_responder(protocol, command, arguments):
@@ -41,6 +43,16 @@ def call_responder(protocol, command, arguments):
     arguments = command.makeArguments(arguments, protocol)
     d = responder(arguments)
     d.addCallback(command.parseResponse, protocol)
+
+    def eb_massage_error(error):
+        # Convert remote errors back into local errors using the
+        # command's error map if possible.
+        error.trap(amp.RemoteAmpError)
+        error_type = command.reverseErrors.get(
+            error.value.errorCode, amp.UnknownRemoteError)
+        return Failure(error_type(error.value.description))
+    d.addErrback(eb_massage_error)
+
     return d
 
 

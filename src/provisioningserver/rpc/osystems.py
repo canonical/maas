@@ -14,9 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = [
     "gen_operating_systems",
+    "validate_license_key",
 ]
 
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.rpc import exceptions
 
 
 def gen_operating_system_releases(osystem):
@@ -55,3 +57,16 @@ def gen_operating_systems():
             "default_release": default_release,
             "default_commissioning_release": default_commissioning_release,
         }
+
+
+def validate_license_key(osystem, release, key):
+    """Validate a license key.
+
+    :raises NoSuchOperatingSystem: If ``osystem`` is not found.
+    """
+    try:
+        osystem = OperatingSystemRegistry[osystem]
+    except KeyError:
+        raise exceptions.NoSuchOperatingSystem(osystem)
+    else:
+        return osystem.validate_license_key(release, key)
