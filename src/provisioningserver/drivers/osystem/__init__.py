@@ -65,12 +65,26 @@ class OperatingSystem:
         """
 
     @abstractmethod
+    def get_release_title(self, release):
+        """Returns the title for the given release.
+
+        :type release: unicode
+        :returns: unicode
+        """
+
     def format_release_choices(self, releases):
         """Formats the release choices that are presented to the user.
 
         :param releases: list of installed boot image releases
         :returns: Return Django "choices" list
         """
+        choices = []
+        releases = sorted(releases, reverse=True)
+        for release in releases:
+            title = self.get_release_title(release)
+            if title is not None:
+                choices.append((release, title))
+        return choices
 
     @abstractmethod
     def get_boot_image_purposes(self, arch, subarch, release, label):

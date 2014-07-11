@@ -78,12 +78,6 @@ class UbuntuOS(OperatingSystem):
         """
         return COMMISIONING_DISTRO_SERIES_DEFAULT
 
-    def format_release_choices(self, releases):
-        """Formats the release choices that are presented to the user."""
-        choices = []
-        releases = sorted(releases, reverse=True)
-        for release in releases:
-            title = DISTRO_SERIES_CHOICES.get(release)
-            if title is not None:
-                choices.append((release, title))
-        return choices
+    def get_release_title(self, release):
+        """Return the title for the given release."""
+        return DISTRO_SERIES_CHOICES.get(release)

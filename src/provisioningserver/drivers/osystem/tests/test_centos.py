@@ -54,6 +54,13 @@ class TestCentOS(MAASTestCase):
         expected = osystem.get_default_release()
         self.assertEqual(expected, DISTRO_SERIES_DEFAULT)
 
+    def test_get_release_title(self):
+        osystem = CentOS()
+        self.assertEqual(
+            {release: osystem.get_release_title(release)
+             for release in osystem.get_supported_releases()},
+            DISTRO_SERIES_CHOICES)
+
     def test_format_release_choices(self):
         osystem = CentOS()
         releases = osystem.get_supported_releases()

@@ -300,7 +300,7 @@ class TestReleases(MAASServerTestCase):
             }
         expected = [
             ('%s/%s' % (os_name, release), release)
-            for release in releases
+            for release in sorted(releases, reverse=True)
             ]
         self.assertEqual(
             expected,
@@ -319,7 +319,7 @@ class TestReleases(MAASServerTestCase):
         expected = [('%s/*' % os_name, 'Latest %s Release' % os_name)]
         expected.extend(
             ('%s/%s*' % (os_name, release), release)
-            for release in releases
+            for release in sorted(releases, reverse=True)
             )
         self.assertEqual(
             expected,

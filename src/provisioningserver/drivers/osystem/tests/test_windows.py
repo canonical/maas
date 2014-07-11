@@ -91,6 +91,13 @@ class TestWindowsOS(MAASTestCase):
         expected = osystem.get_default_release()
         self.assertEqual(expected, WINDOWS_DEFAULT)
 
+    def test_get_release_title(self):
+        osystem = WindowsOS()
+        self.assertEqual(
+            {release: osystem.get_release_title(release)
+             for release in osystem.get_supported_releases()},
+            WINDOWS_CHOICES)
+
     def test_format_release_choices(self):
         osystem = WindowsOS()
         releases = osystem.get_supported_releases()

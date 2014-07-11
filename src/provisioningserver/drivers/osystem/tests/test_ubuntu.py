@@ -69,6 +69,13 @@ class TestUbuntuOS(MAASTestCase):
         expected = osystem.get_default_commissioning_release()
         self.assertEqual(expected, COMMISIONING_DISTRO_SERIES_DEFAULT)
 
+    def test_get_release_title(self):
+        osystem = UbuntuOS()
+        self.assertEqual(
+            {release: osystem.get_release_title(release)
+             for release in osystem.get_supported_releases()},
+            DISTRO_SERIES_CHOICES)
+
     def test_format_release_choices(self):
         osystem = UbuntuOS()
         releases = osystem.get_supported_releases()

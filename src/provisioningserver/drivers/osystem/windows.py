@@ -69,15 +69,9 @@ class WindowsOS(OperatingSystem):
         explicit."""
         return WINDOWS_DEFAULT
 
-    def format_release_choices(self, releases):
-        """Formats the release choices that are presented to the user."""
-        choices = []
-        releases = sorted(releases, reverse=True)
-        for release in releases:
-            title = WINDOWS_CHOICES.get(release)
-            if title is not None:
-                choices.append((release, title))
-        return choices
+    def get_release_title(self, release):
+        """Return the title for the given release."""
+        return WINDOWS_CHOICES.get(release)
 
     def requires_license_key(self, release):
         return release in REQUIRE_LICENSE_KEY

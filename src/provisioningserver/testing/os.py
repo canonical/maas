@@ -46,9 +46,5 @@ class FakeOS(OperatingSystem):
     def get_default_release(self):
         return self.fake_list[0]
 
-    def format_release_choices(self, releases):
-        return [
-            (release, release)
-            for release in releases
-            if release in self.fake_list
-            ]
+    def get_release_title(self, release):
+        return release
