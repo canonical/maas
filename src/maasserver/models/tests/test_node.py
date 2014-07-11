@@ -1133,16 +1133,16 @@ class NodeTest(MAASServerTestCase):
         node.mark_broken()
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
-    def test_mark_ready_changes_status(self):
+    def test_mark_fixed_changes_status(self):
         node = factory.make_node(status=NODE_STATUS.BROKEN)
-        node.mark_ready()
+        node.mark_fixed()
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
-    def test_mark_ready_fails_if_node_isnt_broken(self):
+    def test_mark_fixed_fails_if_node_isnt_broken(self):
         status = factory.getRandomChoice(
             NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
         node = factory.make_node(status=status)
-        self.assertRaises(NodeStateViolation, node.mark_ready)
+        self.assertRaises(NodeStateViolation, node.mark_fixed)
 
 
 class NodeRoutersTest(MAASServerTestCase):

@@ -20,6 +20,7 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import (
@@ -35,12 +36,15 @@ from maasserver.node_action import (
     Commission,
     compile_node_actions,
     Delete,
+    MarkBroken,
+    MarkFixed,
     NodeAction,
     StartNode,
     StopNode,
     UseCurtin,
     UseDI,
     )
+from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.power.poweraction import PowerAction
@@ -380,3 +384,43 @@ class TestUseDINodeAction(MAASServerTestCase):
             this node to install with the Debian installer.
             """,
             UseDI(node, user).inhibit())
+
+
+class TestMarkBrokenAction(MAASServerTestCase):
+
+    def test_changes_status(self):
+        user = factory.make_user()
+        node = factory.make_node(owner=user, status=NODE_STATUS.COMMISSIONING)
+        action = MarkBroken(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_requires_edit_permission(self):
+        user = factory.make_user()
+        node = factory.make_node()
+        self.assertFalse(MarkBroken(node, user).is_permitted())
+
+
+class TestMarkFixedAction(MAASServerTestCase):
+
+    def test_changes_status(self):
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        user = factory.make_admin()
+        action = MarkFixed(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_requires_admin_permission(self):
+        user = factory.make_user()
+        node = factory.make_node()
+        self.assertFalse(MarkFixed(node, user).is_permitted())
+
+    def test_not_enabled_if_not_broken(self):
+        status = factory.getRandomChoice(
+            NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
+        node = factory.make_node(status=status)
+        actions = compile_node_actions(
+            node, factory.make_admin(), classes=[MarkFixed])
+        self.assertItemsEqual([], actions)

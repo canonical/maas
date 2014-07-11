@@ -177,7 +177,8 @@ class Commission(NodeAction):
     display = "Commission node"
     display_bulk = "Commission selected nodes"
     actionable_statuses = (
-        NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY)
+        NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY,
+        NODE_STATUS.BROKEN)
     permission = NODE_PERMISSION.ADMIN
 
     def execute(self, allow_redirect=True):
@@ -318,10 +319,41 @@ class StopNode(NodeAction):
             """)
 
 
+class MarkBroken(NodeAction):
+    """Mark a node as 'broken'."""
+    name = "mark-broken"
+    display = "Mark node as broken"
+    display_bulk = "Mark selected nodes as broken"
+    actionable_statuses = (
+        NODE_STATUS.DECLARED, NODE_STATUS.COMMISSIONING, NODE_STATUS.ALLOCATED)
+    permission = NODE_PERMISSION.EDIT
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.mark_broken()
+        return "Node marked broken."
+
+
+class MarkFixed(NodeAction):
+    """Mark a broken node as fixed and set its state to 'READY'."""
+    name = "mark-fixed"
+    display = "Mark node as fixed"
+    display_bulk = "Mark selected nodes as fixed"
+    actionable_statuses = (NODE_STATUS.BROKEN, )
+    permission = NODE_PERMISSION.ADMIN
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.mark_fixed()
+        return "Node marked fixed."
+
+
 ACTION_CLASSES = (
     AbortCommissioning,
     Delete,
     Commission,
+    MarkBroken,
+    MarkFixed,
     StartNode,
     StopNode,
     UseCurtin,

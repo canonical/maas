@@ -96,6 +96,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import (
     Commission,
     Delete,
+    MarkBroken,
     StartNode,
     StopNode,
     UseCurtin,
@@ -775,7 +776,7 @@ class TestNodeActionForm(MAASServerTestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.name, Delete.name, UseCurtin.name],
+            [Commission.name, Delete.name, UseCurtin.name, MarkBroken.name],
             form.actions)
 
     def test_get_action_form_for_user(self):

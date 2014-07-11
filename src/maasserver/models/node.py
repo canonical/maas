@@ -1217,8 +1217,8 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.BROKEN
         self.save()
 
-    def mark_ready(self):
-        """Mark a broken node as 'READY'."""
+    def mark_fixed(self):
+        """Mark a broken node as fixed and change its state to 'READY'."""
         if self.status != NODE_STATUS.BROKEN:
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
