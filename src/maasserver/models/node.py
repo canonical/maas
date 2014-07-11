@@ -116,6 +116,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.MISSING,
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.COMMISSIONING: [
         NODE_STATUS.FAILED_TESTS,
@@ -123,11 +124,13 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
         NODE_STATUS.DECLARED,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.FAILED_TESTS: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.MISSING,
         NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.READY: [
         NODE_STATUS.COMMISSIONING,
@@ -135,28 +138,37 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RESERVED,
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.RESERVED: [
         NODE_STATUS.READY,
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.ALLOCATED: [
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.MISSING: [
         NODE_STATUS.DECLARED,
         NODE_STATUS.READY,
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.RETIRED: [
         NODE_STATUS.DECLARED,
         NODE_STATUS.READY,
         NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.BROKEN: [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.READY,
         ],
     }
 
@@ -1199,3 +1211,16 @@ class Node(CleanSave, TimestampedModel):
         """Return architecture and subarchitecture, as a tuple."""
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
+
+    def mark_broken(self):
+        """Mark this node as 'BROKEN'."""
+        self.status = NODE_STATUS.BROKEN
+        self.save()
+
+    def mark_ready(self):
+        """Mark a broken node as 'READY'."""
+        if self.status != NODE_STATUS.BROKEN:
+            raise NodeStateViolation(
+                "Can't mark a non-broken node as 'Ready'.")
+        self.status = NODE_STATUS.READY
+        self.save()

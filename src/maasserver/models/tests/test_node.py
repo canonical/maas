@@ -1128,6 +1128,22 @@ class NodeTest(MAASServerTestCase):
         observed = node.mac_addresses_on_managed_interfaces()
         self.assertItemsEqual([], observed)
 
+    def test_mark_broken_changes_status(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node.mark_broken()
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_mark_ready_changes_status(self):
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        node.mark_ready()
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_mark_ready_fails_if_node_isnt_broken(self):
+        status = factory.getRandomChoice(
+            NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
+        node = factory.make_node(status=status)
+        self.assertRaises(NodeStateViolation, node.mark_ready)
+
 
 class NodeRoutersTest(MAASServerTestCase):
 

@@ -65,6 +65,9 @@ class NODE_STATUS:
     #: The node has been removed from service manually until an admin
     #: overrides the retirement.
     RETIRED = 7
+    #: The node is broken: a step in the node lifecyle failed.
+    #: More details can be found in the node's event log.
+    BROKEN = 8
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -78,6 +81,7 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.RESERVED, "Reserved"),
     (NODE_STATUS.ALLOCATED, "Allocated"),
     (NODE_STATUS.RETIRED, "Retired"),
+    (NODE_STATUS.BROKEN, "Broken"),
 )
 
 
