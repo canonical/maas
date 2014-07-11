@@ -97,6 +97,26 @@ class OperatingSystem:
         :returns: list of supported purposes
         """
 
+    def get_supported_commissioning_releases(self):
+        """Gets the supported commissioning releases.
+
+        Typically this will only return something for Ubuntu, because
+        that is the only operating system on which we commission.
+
+        :return: list of releases.
+        """
+        return []
+
+    def get_default_commissioning_release(self):
+        """Gets the default commissioning release.
+
+        Typically this will only return something for Ubuntu, because
+        that is the only operating system on which we commission.
+
+        :return: a release name, or ``None``.
+        """
+        return None
+
     def requires_license_key(self, release):
         """Returns whether the given release requires a licese key.
 

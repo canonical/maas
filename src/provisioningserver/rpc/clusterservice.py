@@ -39,6 +39,7 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.osystems import gen_operating_systems
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
@@ -107,6 +108,15 @@ class Cluster(amp.AMP, object):
                 for _, arch in ArchitectureRegistry
                 ],
             }
+
+    @cluster.ListOperatingSystems.responder
+    def list_operating_systems(self):
+        """list_operating_systems()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ListOperatingSystems`.
+        """
+        return {"osystems": gen_operating_systems()}
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):

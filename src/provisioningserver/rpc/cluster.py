@@ -19,6 +19,7 @@ __all__ = [
     "DescribePowerTypes",
     "Identify",
     "ListBootImages",
+    "ListOperatingSystems",
     "ListSupportedArchitectures",
 ]
 
@@ -71,5 +72,29 @@ class ListSupportedArchitectures(amp.Command):
             (b"name", amp.Unicode()),
             (b"description", amp.Unicode()),
             ])),
+    ]
+    errors = []
+
+
+class ListOperatingSystems(amp.Command):
+    """Report the cluster's supported operating systems.
+
+    :since: 1.7
+    """
+
+    arguments = []
+    response = [
+        (b"osystems", amp.AmpList([
+            (b"name", amp.Unicode()),
+            (b"title", amp.Unicode()),
+            (b"releases", amp.AmpList([
+                (b"name", amp.Unicode()),
+                (b"title", amp.Unicode()),
+                (b"requires_license_key", amp.Boolean()),
+                (b"can_commission", amp.Boolean()),
+            ])),
+            (b"default_release", amp.Unicode(optional=True)),
+            (b"default_commissioning_release", amp.Unicode(optional=True)),
+        ])),
     ]
     errors = []

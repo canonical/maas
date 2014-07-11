@@ -17,6 +17,7 @@ __all__ = []
 from itertools import product
 import json
 import os.path
+from random import randint
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
@@ -41,6 +42,7 @@ from provisioningserver.rpc import (
     clusterservice,
     common,
     exceptions,
+    osystems as osystems_rpc_module,
     region,
     )
 from provisioningserver.rpc.clusterservice import (
@@ -50,12 +52,16 @@ from provisioningserver.rpc.clusterservice import (
     ClusterService,
     )
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
     TwistedLoggerFixture,
     )
-from provisioningserver.rpc.testing.doubles import DummyConnection
+from provisioningserver.rpc.testing.doubles import (
+    DummyConnection,
+    StubOS,
+    )
 from provisioningserver.testing.config import set_tftp_root
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
@@ -674,3 +680,39 @@ class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
                 'description': 'i386',
             },
             architectures['architectures'])
+
+
+class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.ListOperatingSystems.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_returns_oses(self):
+        # Patch in some operating systems with some randomised data. See
+        # StubOS for details of the rules that are used to populate the
+        # non-random elements.
+        operating_systems = [
+            StubOS(factory.make_name("os"), releases=[
+                (factory.make_name("name"), factory.make_name("title"))
+                for _ in range(randint(2, 5))
+            ])
+            for _ in range(randint(2, 5))
+        ]
+        self.patch(
+            osystems_rpc_module, "OperatingSystemRegistry",
+            [(os.name, os) for os in operating_systems])
+        osystems = yield call_responder(
+            Cluster(), cluster.ListOperatingSystems, {})
+        # The fully-populated output from gen_operating_systems() sent
+        # back over the wire.
+        expected_osystems = list(gen_operating_systems())
+        for expected_osystem in expected_osystems:
+            expected_osystem["releases"] = list(expected_osystem["releases"])
+        expected = {"osystems": expected_osystems}
+        self.assertEqual(expected, osystems)
