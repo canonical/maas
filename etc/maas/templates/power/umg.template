@@ -1,14 +1,14 @@
 # -*- mode: shell-script -*-
 #
-# Control a system via Moonshot HP iLO Chassis Manager (MSCM).
+# Control a system via Universal Management Gateway.
 
 python - << END
-from provisioningserver.drivers.hardware.mscm import power_control_mscm
-power_control_mscm(
+from provisioningserver.drivers.hardware.umg import power_control_umg
+power_control_umg(
     {{escape_py_literal(power_address) | safe}},
     {{escape_py_literal(power_user) | safe}},
     {{escape_py_literal(power_pass) | safe}},
-    {{escape_py_literal(node_id) | safe}},
+    {{escape_py_literal(system_alias) | safe}},
     {{escape_py_literal(power_change) | safe}},
 )
 END

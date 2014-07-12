@@ -2,7 +2,6 @@
 #
 # Control a system via Cisco UCS Manager XML API.
 
-{{py: from provisioningserver.utils import escape_py_literal}}
 python - << END
 from provisioningserver.drivers.hardware.ucsm import power_control_ucsm
 power_control_ucsm(

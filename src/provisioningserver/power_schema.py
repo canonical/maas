@@ -268,4 +268,14 @@ JSON_POWER_TYPE_PARAMETERS = [
                 "(X=cartridge number, Y=node number)."),
         ],
     },
+    {
+        'name': 'umg',
+        'description': "Universal Management Gateway",
+        'fields': [
+            make_json_field('system_alias', "System Alias"),
+            make_json_field('power_address', "UMG hostname or IP address"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
 ]

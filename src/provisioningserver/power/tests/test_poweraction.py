@@ -231,3 +231,11 @@ class TestPowerAction(MAASTestCase):
             power_user='bar', power_pass='baz',
             node_id='c1n1', power_change='on')
         self.assertIn('power_control_mscm', script)
+
+    def test_umg_renders_template(self):
+        action = PowerAction('umg')
+        script = action.render_template(
+            action.get_template(), power_address='foo',
+            power_user='bar', power_pass='baz',
+            system_alias='1F-C9-DF_MMC-1-2-31', power_change='on')
+        self.assertIn('power_control_umg', script)

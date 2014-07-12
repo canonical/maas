@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from random import (
+    choice,
     randint,
     shuffle,
     )
@@ -24,7 +25,10 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import Mock
+import provisioningserver
 from provisioningserver.drivers.hardware.umg import (
+    get_power_command,
+    power_control_umg,
     ShowOutput,
     UMG_CLI_API,
     )
@@ -196,7 +200,7 @@ class TestShowTarget(MAASTestCase):
 
 
 class TestPowerControlTarget(MAASTestCase):
-    """"Tests for ``UMG_CLI_API.power_control_target``."""
+    """Tests for ``UMG_CLI_API.power_control_target``."""
 
     def test_uses_correct_command(self):
         api = make_umg_api()
@@ -207,3 +211,48 @@ class TestPowerControlTarget(MAASTestCase):
         expected = 'set targets/SP/%s/powerControl powerCtrlType=%s' % (
             target, power_control)
         self.assertThat(run_cli_command, MockCalledOnceWith(expected))
+
+
+class TestPowerControlUMG(MAASTestCase):
+    """Tests for ``power_control_umg``"""
+
+    def test_perfoms_power_control(self):
+        api_mock = Mock()
+        self.patch(
+            provisioningserver.drivers.hardware.umg,
+            'UMG_CLI_API').return_value = api_mock
+        host = factory.make_name('host')
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        system_alias = factory.make_name('system_alias')
+        maas_power_mode = choice(['on', 'off'])
+
+        power_control_umg(
+            host, username, password, system_alias, maas_power_mode)
+        self.assertThat(
+            api_mock.power_control_target,
+            MockCalledOnceWith(system_alias, maas_power_mode))
+
+
+class TestValidGetPowerCommand(MAASTestCase):
+    scenarios = [
+        ('Power On', dict(
+            power_mode='on', current_state='off', command='on')),
+        ('Power Cycle', dict(
+            power_mode='on', current_state='on', command='cycle')),
+        ('Power Off', dict(
+            power_mode='off', current_state='on', command='off')),
+    ]
+
+    def test_get_power_command(self):
+        command = get_power_command(self.power_mode, self.current_state)
+        self.assertEqual(self.command, command)
+
+
+class TestInvalidGetPowerCommand(MAASTestCase):
+
+    def test_get_power_command_raises_assertion_error_on_bad_power_mode(self):
+        bad_power_mode = factory.make_name('unlikely')
+        error = self.assertRaises(AssertionError, get_power_command,
+                                  bad_power_mode, None)
+        self.assertIn(bad_power_mode, error.args[0])

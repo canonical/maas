@@ -24,6 +24,7 @@ import subprocess
 
 from celery.app import app_or_default
 from provisioningserver.utils import (
+    escape_py_literal,
     locate_config,
     ShellTemplate,
     )
@@ -97,6 +98,7 @@ class PowerAction:
         """Extra context used when rending the power templates."""
         return {
             'config_dir': self.config_basedir,
+            'escape_py_literal': escape_py_literal,
         }
 
     def render_template(self, template, **kwargs):

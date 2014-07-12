@@ -21,7 +21,9 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'power_control_umg',
+]
 
 from collections import namedtuple
 import re
@@ -147,3 +149,41 @@ class UMG_CLI_API:
         command = 'set targets/SP/%s/powerControl powerCtrlType=%s' % (
             target, control)
         self._run_cli_command(command)
+
+    def get_power_status(self, target):
+        """Get the power status for a target.
+
+        This is the 'powerStatus' field in a target's 'show' output.
+        """
+        output = self.show_target(target)
+        return output.settings['powerStatus']
+
+
+def get_power_command(maas_power_mode, current_state):
+    """Translate a MAAS on/off state into a UMG power command.
+
+    If the node is on already and receives a request to power on,
+    power cycle the node.
+    """
+
+    if maas_power_mode == 'off':
+        return 'off'
+
+    if maas_power_mode == 'on':
+        if current_state == 'on':
+            return 'cycle'
+        return 'on'
+
+    message = 'Unexpected maas power mode: %s' % (maas_power_mode)
+    raise AssertionError(message)
+
+
+def power_control_umg(host, username, password, system_alias, maas_power_mode):
+    """Handle calls from the power template for nodes with a power type
+    of 'umg'.
+    """
+
+    api = UMG_CLI_API(host, username, password)
+    power_status = api.get_power_status(system_alias)
+    power_control = get_power_command(maas_power_mode, power_status)
+    api.power_control_target(system_alias, power_control)
