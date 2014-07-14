@@ -21,18 +21,17 @@ __all__ = [
 from socket import (
     AF_INET,
     AF_INET6,
-    getaddrinfo,
     gaierror,
+    getaddrinfo,
     )
 from urlparse import urlparse
 
 from django.conf import settings
-from netaddr import IPAddress
 from maasserver.exceptions import (
     NoAddressFoundForHost,
     UnresolvableHost,
     )
-
+from netaddr import IPAddress
 
 # Arbitrary non-privileged port
 PORT = 33360

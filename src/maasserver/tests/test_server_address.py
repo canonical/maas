@@ -16,15 +16,15 @@ __all__ = []
 
 from django.conf import settings
 from maasserver import server_address
+from maasserver.exceptions import (
+    NoAddressFoundForHost,
+    UnresolvableHost,
+    )
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from netaddr import IPNetwork
-from maasserver.exceptions import (
-    UnresolvableHost,
-    NoAddressFoundForHost,
-    )
 
 
 class TestServerAddress(MAASServerTestCase):

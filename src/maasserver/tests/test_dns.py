@@ -107,7 +107,7 @@ class TestDNSUtilities(MAASServerTestCase):
         hostname = factory.make_hostname()
         self.patch_DEFAULT_MAAS_URL_with_random_values(hostname=hostname)
         self.assertEqual(
-                (ip, [(hostname, server_address.PORT)]),
+            (ip, [(hostname, server_address.PORT)]),
             (dns.get_dns_server_address(), resolver.extract_args()))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
@@ -137,7 +137,7 @@ class TestDNSUtilities(MAASServerTestCase):
         maas_url = 'http://%s' % hostname
         nodegroup = factory.make_node_group(maas_url=maas_url)
         self.assertEqual(
-                (ip, [(hostname, server_address.PORT)]),
+            (ip, [(hostname, server_address.PORT)]),
             (dns.get_dns_server_address(nodegroup), resolver.extract_args()))
 
     def test_warn_loopback_warns_about_IPv4_loopback(self):
