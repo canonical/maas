@@ -117,11 +117,7 @@ from maasserver.utils import map_enum
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
-from netaddr import (
-    IPAddress,
-    IPNetwork,
-    IPRange,
-    )
+from netaddr import IPNetwork
 from provisioningserver import tasks
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
@@ -1014,42 +1010,6 @@ class TestMACAddressForm(MAASServerTestCase):
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
 
 
-def make_interface_settings(network=None, management=None):
-    """Create a dict of arbitrary interface configuration parameters."""
-    if network is None:
-        network = factory.getRandomNetwork()
-    if management is None:
-        management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
-    # Pick upper and lower boundaries of IP range, with upper > lower.
-    managed_ip_range = IPRange(*factory.make_ip_range(network))
-    if len(managed_ip_range) > 2:
-        dynamic_range = IPRange(
-            IPAddress(managed_ip_range.first),
-            IPAddress(managed_ip_range[len(managed_ip_range) // 2]))
-        static_range = IPRange(
-            IPAddress(managed_ip_range[(len(managed_ip_range) // 2) + 1]),
-            IPAddress(managed_ip_range.last))
-        static_low = unicode(IPAddress(static_range.first))
-        static_high = unicode(IPAddress(static_range.last))
-    else:
-        dynamic_range = managed_ip_range
-        static_low = ''
-        static_high = ''
-    return {
-        'name': factory.make_name('ngi'),
-        'ip': factory.getRandomIPInNetwork(network),
-        'interface': factory.make_name('interface'),
-        'subnet_mask': unicode(network.netmask),
-        'broadcast_ip': unicode(network.broadcast),
-        'router_ip': factory.getRandomIPInNetwork(network),
-        'ip_range_low': unicode(IPAddress(dynamic_range.first)),
-        'ip_range_high': unicode(IPAddress(dynamic_range.last)),
-        'static_ip_range_low': static_low,
-        'static_ip_range_high': static_high,
-        'management': management,
-    }
-
-
 nullable_fields = [
     'subnet_mask', 'broadcast_ip', 'router_ip', 'ip_range_low',
     'ip_range_high', 'static_ip_range_low', 'static_ip_range_high',
@@ -1078,7 +1038,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             {'ip': ['Enter a valid IPv4 or IPv6 address.']}, form._errors)
 
     def test__can_save_fields_being_None(self):
-        int_settings = make_interface_settings()
+        int_settings = factory.get_interface_fields()
         int_settings['management'] = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
         for field_name in nullable_fields:
             del int_settings[field_name]
@@ -1091,7 +1051,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__uses_name_if_given(self):
         name = factory.make_name('explicit-name')
-        int_settings = make_interface_settings()
+        int_settings = factory.get_interface_fields()
         int_settings['name'] = name
         form = NodeGroupInterfaceForm(
             data=int_settings, instance=self.make_ngi_instance())
@@ -1099,7 +1059,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(name, interface.name)
 
     def test__lets_name_default_to_network_interface_name(self):
-        int_settings = make_interface_settings()
+        int_settings = factory.get_interface_fields()
         int_settings['interface'] = factory.make_name('ether')
         del int_settings['name']
         form = NodeGroupInterfaceForm(
@@ -1108,7 +1068,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(int_settings['interface'], interface.name)
 
     def test__escapes_interface_name(self):
-        int_settings = make_interface_settings()
+        int_settings = factory.get_interface_fields()
         int_settings['interface'] = 'eth1+1'
         del int_settings['name']
         form = NodeGroupInterfaceForm(
@@ -1117,7 +1077,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual('eth1--1', interface.name)
 
     def test__defaults_to_unique_name_if_no_name_or_interface_given(self):
-        int_settings = make_interface_settings(
+        int_settings = factory.get_interface_fields(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         del int_settings['name']
         del int_settings['interface']
@@ -1134,7 +1094,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test__disambiguates_default_name(self):
         cluster = factory.make_node_group()
         existing_interface = factory.make_node_group_interface(cluster)
-        int_settings = make_interface_settings()
+        int_settings = factory.get_interface_fields()
         del int_settings['name']
         int_settings['interface'] = existing_interface.name
         form = NodeGroupInterfaceForm(
@@ -1456,7 +1416,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
     def test_rejects_invalid_interface(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        interface = make_interface_settings()
+        interface = factory.get_interface_fields()
         # Make the interface invalid.
         interface['ip_range_high'] = 'invalid IP address'
         interfaces = json.dumps([interface])
@@ -1470,7 +1430,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
     def test_creates_interface_from_params(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        interface = make_interface_settings()
+        interface = factory.get_interface_fields()
         interfaces = json.dumps([interface])
         form = NodeGroupDefineForm(
             data={'name': name, 'uuid': uuid, 'interfaces': interfaces})
@@ -1496,9 +1456,9 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 'name': factory.make_name('cluster'),
                 'uuid': factory.getRandomUUID(),
                 'interfaces': json.dumps([
-                    make_interface_settings(
+                    factory.get_interface_fields(
                         network=big_network, management=managed),
-                    make_interface_settings(
+                    factory.get_interface_fields(
                         network=nested_network, management=managed),
                     ]),
             })
@@ -1518,9 +1478,9 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 'name': factory.make_name('cluster'),
                 'uuid': factory.getRandomUUID(),
                 'interfaces': json.dumps([
-                    make_interface_settings(
+                    factory.get_interface_fields(
                         network=big_network, management=managed),
-                    make_interface_settings(
+                    factory.get_interface_fields(
                         network=nested_network, management=unmanaged),
                     ]),
             })
@@ -1533,7 +1493,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
         interfaces = [
-            make_interface_settings(management=management)
+            factory.get_interface_fields(management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             ]
         form = NodeGroupDefineForm(
@@ -1571,7 +1531,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
     def test_creates_unmanaged_interfaces(self):
         name = factory.make_name('name')
         uuid = factory.getRandomUUID()
-        interface = make_interface_settings()
+        interface = factory.get_interface_fields()
         del interface['management']
         interfaces = json.dumps([interface])
         form = NodeGroupDefineForm(

@@ -261,6 +261,17 @@ class Factory(maastesting.factory.Factory):
                              interface=None, management=None,
                              static_ip_range_low=None,
                              static_ip_range_high=None, **kwargs):
+        """Return a dict of parameters for a cluster interface.
+
+        These are the values that go into a `NodeGroupInterface` model object
+        or form, except the `NodeGroup`.  All IP address fields are unicode
+        strings.
+
+        The `network` parameter is not included in the result, but if you
+        pass an `IPNetwork` as its value, this will be the network that the
+        cluster interface will be attached to.  Its IP address, netmask, and
+        address ranges will be taken from `network`.
+        """
         if name is None:
             name = factory.make_name('ngi')
         if network is None:

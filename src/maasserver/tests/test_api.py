@@ -51,7 +51,6 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.tests.test_forms import make_interface_settings
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import TransactionTestCase
@@ -529,7 +528,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
-        interface_settings = make_interface_settings()
+        interface_settings = factory.get_interface_fields()
         query_data = dict(interface_settings, op="new")
         response = self.client.post(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),

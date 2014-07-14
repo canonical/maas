@@ -33,7 +33,6 @@ from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 from maasserver.models import NodeGroup
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.tests.test_forms import make_interface_settings
 from maastesting.matchers import MockCalledOnceWith
 from mock import (
     ANY,
@@ -228,7 +227,7 @@ class TestRegisterAPI(MAASServerTestCase):
         create_configured_master()
         name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
-        interface = make_interface_settings()
+        interface = factory.get_interface_fields()
         response = self.client.post(
             reverse('nodegroups_handler'),
             {
@@ -284,7 +283,7 @@ class TestRegisterAPI(MAASServerTestCase):
         name = factory.make_name('cluster')
         uuid = factory.getRandomUUID()
         create_local_cluster_config(self, uuid)
-        interface = make_interface_settings()
+        interface = factory.get_interface_fields()
 
         response = self.client.post(
             reverse('nodegroups_handler'),
