@@ -13,8 +13,10 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Node",
     "OperatingSystem",
     "OperatingSystemRegistry",
+    "Token",
     ]
 
 from abc import (
@@ -22,6 +24,7 @@ from abc import (
     abstractmethod,
     abstractproperty,
     )
+from collections import namedtuple
 
 from provisioningserver.utils.registry import Registry
 
@@ -34,6 +37,16 @@ class BOOT_IMAGE_PURPOSE:
     INSTALL = 'install'
     #: Usable for fast-path install
     XINSTALL = 'xinstall'
+
+
+# A cluster-side representation of a Node, relevant to the osystem code,
+# with only minimal fields.
+Node = namedtuple("Node", ("system_id", "hostname"))
+
+
+# A cluster-side representation of a Token, relevant to the osystem code,
+# with only minimal fields.
+Token = namedtuple("Token", ("consumer_key", "token_key", "token_secret"))
 
 
 class OperatingSystem:
@@ -139,10 +152,12 @@ class OperatingSystem:
         """Composes the preseed for the given node.
 
         :param preseed_type: Preseed type to compose.
-        :param node: Node preseed needs generating.
-        :param token: OAuth token for url.
-        :param metadata_url: Metdata url for node.
-        :returns: Preseed for node.
+        :param node: Node preseed needs generating for.
+        :type node: :py:class:`Node`
+        :param token: OAuth token for URL.
+        :type token: :py:class:`Token`
+        :param metadata_url: Metdata URL for node.
+        :returns: Preseed data for node.
         :raise:
             NotImplementedError: doesn't implement a custom preseed
         """

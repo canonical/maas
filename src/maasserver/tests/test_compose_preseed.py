@@ -126,10 +126,13 @@ class TestComposePreseed(MAASServerTestCase):
         mock_compose = self.patch(osystem, 'compose_preseed')
         node = factory.make_node(
             osystem=osystem.name, status=NODE_STATUS.READY)
-
         token = NodeKey.objects.get_token_for_node(node)
         url = absolute_reverse('curtin-metadata')
         compose_preseed(PRESEED_TYPE.CURTIN, node)
         self.assertThat(
             mock_compose,
-            MockCalledOnceWith(PRESEED_TYPE.CURTIN, node, token, url))
+            MockCalledOnceWith(
+                PRESEED_TYPE.CURTIN,
+                (node.system_id, node.hostname),
+                (token.consumer.key, token.key, token.secret),
+                url))

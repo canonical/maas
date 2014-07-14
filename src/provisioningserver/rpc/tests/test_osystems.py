@@ -128,3 +128,43 @@ class TestValidateLicenseKey(MAASTestCase):
         self.assertThat(
             os_specific_validate_license_key,
             MockCalledOnceWith(self.release, sentinel.key))
+
+
+class TestGetPreseedDataErrors(MAASTestCase):
+
+    def test_throws_exception_when_os_does_not_exist(self):
+        self.assertRaises(
+            exceptions.NoSuchOperatingSystem,
+            osystems.get_preseed_data, factory.make_name("no-such-os"),
+            sentinel.preseed_type, sentinel.node_system_id,
+            sentinel.node_hostname, sentinel.consumer_key,
+            sentinel.token_key, sentinel.token_secret,
+            sentinel.metadata_url)
+
+
+class TestGetPreseedData(MAASTestCase):
+
+    # Check for every OS.
+    scenarios = [
+        (osystem.name, {"osystem": osystem})
+        for _, osystem in OperatingSystemRegistry
+    ]
+
+    def test_get_preseed_data_calls_compose_preseed(self):
+        # get_preseed_data() calls compose_preseed() on the
+        # OperatingSystem instances.
+        os_specific_compose_preseed = self.patch(
+            self.osystem, "compose_preseed")
+        osystems.get_preseed_data(
+            self.osystem.name, sentinel.preseed_type,
+            sentinel.node_system_id, sentinel.node_hostname,
+            sentinel.consumer_key, sentinel.token_key,
+            sentinel.token_secret, sentinel.metadata_url)
+        self.assertThat(
+            os_specific_compose_preseed,
+            MockCalledOnceWith(
+                sentinel.preseed_type,
+                (sentinel.node_system_id, sentinel.node_hostname),
+                (sentinel.consumer_key, sentinel.token_key,
+                 sentinel.token_secret),
+                sentinel.metadata_url))

@@ -18,7 +18,10 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import MagicMock
+from provisioningserver.drivers.osystem import (
+    Node,
+    Token,
+    )
 from provisioningserver.drivers.osystem.windows import (
     BOOT_IMAGE_PURPOSE,
     Config,
@@ -135,9 +138,10 @@ class TestWindowsOS(MAASTestCase):
             machine = factory.make_name('hostname')
             dns = factory.make_name('dns')
             hostname = '%s.%s' % (machine, dns)
-        node = MagicMock()
-        node.hostname = hostname
-        return node
+        return Node(
+            system_id=factory.make_name("system_id"),
+            hostname=hostname,
+        )
 
     def make_token(self, consumer_key=None, token_key=None, token_secret=None):
         if consumer_key is None:
@@ -146,11 +150,11 @@ class TestWindowsOS(MAASTestCase):
             token_key = factory.make_name('token_key')
         if token_secret is None:
             token_secret = factory.make_name('secret_key')
-        token = MagicMock()
-        token.consumer.key = consumer_key
-        token.key = token_key
-        token.secret = token_secret
-        return token
+        return Token(
+            consumer_key=consumer_key,
+            token_key=token_key,
+            token_secret=token_secret,
+        )
 
     def test_compose_pressed_not_implemented_for_curtin(self):
         osystem = WindowsOS()

@@ -24,7 +24,10 @@ __all__ = [
 ]
 
 from provisioningserver.rpc import exceptions
-from provisioningserver.rpc.arguments import StructureAsJSON
+from provisioningserver.rpc.arguments import (
+    ParsedURL,
+    StructureAsJSON,
+    )
 from provisioningserver.rpc.common import Identify
 from twisted.protocols import amp
 
@@ -118,4 +121,31 @@ class ValidateLicenseKey(amp.Command):
     errors = {
         exceptions.NoSuchOperatingSystem: (
             b"NoSuchOperatingSystem"),
+    }
+
+
+class GetPreseedData(amp.Command):
+    """Get OS-specific preseed data.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"osystem", amp.Unicode()),
+        (b"preseed_type", amp.Unicode()),
+        (b"node_system_id", amp.Unicode()),
+        (b"node_hostname", amp.Unicode()),
+        (b"consumer_key", amp.Unicode()),
+        (b"token_key", amp.Unicode()),
+        (b"token_secret", amp.Unicode()),
+        (b"metadata_url", ParsedURL()),
+    ]
+    response = [
+        (b"data", StructureAsJSON()),
+    ]
+    errors = {
+        exceptions.NoSuchOperatingSystem: (
+            b"NoSuchOperatingSystem"),
+        NotImplementedError: (
+            b"NotImplementedError"),
     }

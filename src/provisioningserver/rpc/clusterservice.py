@@ -41,6 +41,7 @@ from provisioningserver.rpc import (
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
+    get_preseed_data,
     validate_license_key,
     )
 from twisted.application.internet import (
@@ -129,6 +130,21 @@ class Cluster(amp.AMP, object):
         :py:class:`~provisioningserver.rpc.cluster.ValidateLicenseKey`.
         """
         return {"is_valid": validate_license_key(osystem, release, key)}
+
+    @cluster.GetPreseedData.responder
+    def get_preseed_data(
+            self, osystem, preseed_type, node_system_id, node_hostname,
+            consumer_key, token_key, token_secret, metadata_url):
+        """get_preseed_data()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.GetPreseedData`.
+        """
+        return {
+            "data": get_preseed_data(
+                osystem, preseed_type, node_system_id, node_hostname,
+                consumer_key, token_key, token_secret, metadata_url),
+        }
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):

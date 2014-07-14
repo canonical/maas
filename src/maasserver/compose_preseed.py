@@ -20,7 +20,11 @@ from urllib import urlencode
 
 from maasserver.enum import PRESEED_TYPE
 from maasserver.utils import absolute_reverse
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import (
+    Node as OSystemNode,
+    OperatingSystemRegistry,
+    Token as OSystemToken,
+    )
 import yaml
 
 
@@ -108,9 +112,14 @@ def compose_preseed(preseed_type, node):
         if preseed_type == PRESEED_TYPE.CURTIN:
             metadata_url = absolute_reverse(
                 'curtin-metadata', base_url=base_url)
+        node_for_osystem = OSystemNode(
+            node.system_id, node.hostname)
+        token_for_osystem = OSystemToken(
+            token.consumer.key, token.key, token.secret)
         try:
             return osystem.compose_preseed(
-                preseed_type, node, token, metadata_url)
+                preseed_type, node_for_osystem, token_for_osystem,
+                metadata_url)
         except NotImplementedError:
             pass
 

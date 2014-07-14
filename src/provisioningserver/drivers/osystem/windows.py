@@ -98,9 +98,9 @@ class WindowsOS(OperatingSystem):
         credentials = {
             'maas_metadata_url': metadata_url,
             'maas_oauth_consumer_secret': '',
-            'maas_oauth_consumer_key': token.consumer.key,
-            'maas_oauth_token_key': token.key,
-            'maas_oauth_token_secret': token.secret,
+            'maas_oauth_consumer_key': token.consumer_key,
+            'maas_oauth_token_key': token.token_key,
+            'maas_oauth_token_secret': token.token_secret,
             'hostname': hostname,
             }
         return credentials

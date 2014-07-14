@@ -18,6 +18,7 @@ from itertools import product
 import json
 import os.path
 from random import randint
+from urlparse import urlparse
 
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
@@ -36,6 +37,10 @@ from mock import (
     )
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
+from provisioningserver.drivers.osystem import (
+    OperatingSystem,
+    OperatingSystemRegistry,
+    )
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     cluster,
@@ -761,3 +766,68 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
         with ExpectedException(exceptions.NoSuchOperatingSystem):
             yield call_responder(
                 Cluster(), cluster.ValidateLicenseKey, arguments)
+
+
+class TestClusterProtocol_GetPreseedData(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def make_arguments(self):
+        return {
+            "osystem": factory.make_name("osystem"),
+            "preseed_type": factory.make_name("preseed_type"),
+            "node_system_id": factory.make_name("system_id"),
+            "node_hostname": factory.make_name("hostname"),
+            "consumer_key": factory.make_name("consumer_key"),
+            "token_key": factory.make_name("token_key"),
+            "token_secret": factory.make_name("token_secret"),
+            "metadata_url": urlparse(
+                "https://%s/path/to/metadata" % factory.make_hostname()),
+        }
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.GetPreseedData.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_calls_get_preseed_data(self):
+        get_preseed_data = self.patch(clusterservice, "get_preseed_data")
+        get_preseed_data.return_value = factory.make_name("data")
+        arguments = self.make_arguments()
+        observed = yield call_responder(
+            Cluster(), cluster.GetPreseedData, arguments)
+        expected = {"data": get_preseed_data.return_value}
+        self.assertEqual(expected, observed)
+        # The arguments are passed to the responder positionally.
+        self.assertThat(get_preseed_data, MockCalledOnceWith(
+            arguments["osystem"], arguments["preseed_type"],
+            arguments["node_system_id"], arguments["node_hostname"],
+            arguments["consumer_key"], arguments["token_key"],
+            arguments["token_secret"], arguments["metadata_url"]))
+
+    @inlineCallbacks
+    def test_exception_when_os_does_not_exist(self):
+        # A remote NoSuchOperatingSystem exception is re-raised locally.
+        get_preseed_data = self.patch(
+            clusterservice, "get_preseed_data")
+        get_preseed_data.side_effect = exceptions.NoSuchOperatingSystem()
+        arguments = self.make_arguments()
+        with ExpectedException(exceptions.NoSuchOperatingSystem):
+            yield call_responder(
+                Cluster(), cluster.GetPreseedData, arguments)
+
+    @inlineCallbacks
+    def test_exception_when_preseed_not_implemented(self):
+        # A remote NotImplementedError exception is re-raised locally.
+        # Choose an operating system which has not overridden the
+        # default compose_preseed.
+        osystem_name = next(
+            osystem_name for osystem_name, osystem in OperatingSystemRegistry
+            if osystem.compose_preseed == OperatingSystem.compose_preseed)
+        arguments = self.make_arguments()
+        arguments["osystem"] = osystem_name
+        with ExpectedException(exceptions.NoSuchOperatingSystem):
+            yield call_responder(
+                Cluster(), cluster.GetPreseedData, arguments)
