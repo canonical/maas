@@ -1077,3 +1077,47 @@ class TestGetDetails(APITestCase):
         url = reverse('node_handler', args=['does-not-exist'])
         response = self.client.get(url, {'op': 'details'})
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
+
+
+class TestMarkBroken(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=mark_broken"""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_mark_broken_changes_status(self):
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_mark_broken_requires_ownership(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_broken'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestMarkFixed(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=mark_fixed"""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_mark_fixed_changes_status(self):
+        self.become_admin()
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_mark_fixed_requires_admin(self):
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'mark_fixed'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)

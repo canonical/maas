@@ -262,6 +262,8 @@ class TestDescribingAPI(MAASServerTestCase):
             "PUT update op=None restful=True",
             "POST claim_sticky_ip_address op=claim_sticky_ip_address "
             "restful=False",
+            'POST mark_fixed op=mark_fixed restful=False',
+            'POST mark_broken op=mark_broken restful=False',
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action

@@ -562,6 +562,22 @@ class NodeHandler(OperationsHandler):
         mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
         return node
 
+    @operation(idempotent=False)
+    def mark_broken(self, request, system_id):
+        """Mark a node as 'broken'."""
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
+        node.mark_broken()
+        return node
+
+    @operation(idempotent=False)
+    def mark_fixed(self, request, system_id):
+        """Mark a broken node as fixed and set its status as 'ready'."""
+        node = Node.objects.get_node_or_404(
+            user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
+        node.mark_fixed()
+        return node
+
 
 def create_node(request):
     """Service an http request to create a node.
