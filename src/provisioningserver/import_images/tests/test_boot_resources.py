@@ -424,6 +424,8 @@ class TestImportImages(MAASTestCase):
         self.patch(boot_resources, 'install_boot_loaders')
         self.patch(boot_resources, 'update_current_symlink')
         self.patch(boot_resources, 'write_snapshot_metadata')
+        self.patch(boot_resources, 'write_targets_conf')
+        self.patch(boot_resources, 'update_targets_conf')
 
         fake_write_all_keyrings = self.patch(
             boot_resources, 'write_all_keyrings')

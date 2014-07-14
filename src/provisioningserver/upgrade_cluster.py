@@ -45,7 +45,10 @@ from provisioningserver.boot.tftppath import (
     drill_down,
     list_subdirs,
     )
-
+from provisioningserver.import_images.boot_resources import (
+    write_targets_conf,
+    update_targets_conf,
+    )
 
 logger = getLogger(__name__)
 
@@ -184,14 +187,20 @@ def migrate_architectures_into_ubuntu_directory():
     # Extract the only top directories (arch) from the paths, as we only need
     # its name to move into the new 'ubuntu' folder.
     arches = {arch for arch, _, _, _ in paths}
+    if len(arches) == 0:
+        return
 
     # Create the ubuntu directory and move the archiecture folders under that
     # directory.
-    if len(arches) > 0:
-        ubuntu_dir = os.path.join(current_dir, 'ubuntu')
-        os.mkdir(ubuntu_dir)
-        for arch in arches:
-            shutil.move(os.path.join(current_dir, arch), ubuntu_dir)
+    ubuntu_dir = os.path.join(current_dir, 'ubuntu')
+    os.mkdir(ubuntu_dir)
+    for arch in arches:
+        shutil.move(os.path.join(current_dir, arch), ubuntu_dir)
+
+    # Re-write the maas.tgt to point to the new location for the ubuntu boot
+    # resources.
+    write_targets_conf(current_dir)
+    update_targets_conf(current_dir)
 
 
 # Upgrade hooks, from oldest to newest.  The hooks are callables, taking no

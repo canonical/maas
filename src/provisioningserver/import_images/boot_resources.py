@@ -159,12 +159,28 @@ def update_current_symlink(storage, latest_snapshot):
     os.symlink(latest_snapshot, symlink_path)
 
 
-def write_snapshot_metadata(snapshot, meta_file_content, targets_conf,
-                            targets_conf_content):
-    """Write "meta" file and tgt config for `snapshot`."""
+def write_snapshot_metadata(snapshot, meta_file_content):
+    """Write "maas.meta" file."""
     meta_file = os.path.join(snapshot, 'maas.meta')
     atomic_write(meta_file_content, meta_file, mode=0644)
+
+
+def write_targets_conf(snapshot):
+    """Write "maas.tgt" file."""
+    targets_conf = os.path.join(snapshot, 'maas.tgt')
+    targets_conf_content = compose_targets_conf(snapshot)
     atomic_write(targets_conf_content, targets_conf, mode=0644)
+
+
+def update_targets_conf(snapshot):
+    """Runs tgt-admin to update the new targets from "maas.tgt"."""
+    targets_conf = os.path.join(snapshot, 'maas.tgt')
+    call_and_check([
+        'sudo',
+        '/usr/sbin/tgt-admin',
+        '--conf', targets_conf,
+        '--update', 'ALL',
+        ])
 
 
 def read_sources(sources_yaml):
@@ -228,25 +244,18 @@ def import_images(sources):
 
     snapshot_path = download_all_boot_resources(
         sources, storage, product_mapping)
-    targets_conf = os.path.join(snapshot_path, 'maas.tgt')
 
-    targets_conf_content = compose_targets_conf(snapshot_path)
-
-    logger.info("Writing metadata and updating iSCSI targets.")
-    write_snapshot_metadata(
-        snapshot_path, meta_file_content, targets_conf, targets_conf_content)
-    call_and_check([
-        'sudo',
-        '/usr/sbin/tgt-admin',
-        '--conf', targets_conf,
-        '--update', 'ALL',
-        ])
+    logger.info("Writing metadata and iSCSI targets.")
+    write_snapshot_metadata(snapshot_path, meta_file_content)
+    write_targets_conf(snapshot_path)
 
     logger.info("Installing boot images snapshot %s.", snapshot_path)
     install_boot_loaders(snapshot_path)
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
+    logger.info("Updating iSCSI targets.")
+    update_targets_conf(snapshot_path)
     logger.info("Import done.")
 
 
