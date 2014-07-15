@@ -2164,7 +2164,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         else:
             uuid = nodegroup.uuid
         if interface is None:
-            interface_name = 'interface'
+            interface_name = 'name'
         else:
             interface_name = interface.name
         return ('nodegroupinterface_handler', [uuid, interface_name])
