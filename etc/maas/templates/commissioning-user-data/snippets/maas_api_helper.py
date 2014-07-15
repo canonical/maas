@@ -12,6 +12,7 @@ from email.utils import parsedate
 import sys
 import time
 import urllib2
+import uuid
 
 import oauth.oauth as oauth
 import yaml
@@ -60,7 +61,7 @@ def oauth_headers(url, consumer_key, token_key, token_secret, consumer_secret,
 
     params = {
         'oauth_version': "1.0",
-        'oauth_nonce': oauth.generate_nonce(),
+        'oauth_nonce': uuid.uuid4().get_hex(),
         'oauth_timestamp': timestamp,
         'oauth_token': token.key,
         'oauth_consumer_key': consumer.key,
