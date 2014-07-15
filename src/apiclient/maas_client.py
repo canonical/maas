@@ -21,6 +21,7 @@ __all__ = [
 import gzip
 from io import BytesIO
 import urllib2
+import uuid
 
 from apiclient.encode_json import encode_json_data
 from apiclient.multipart import encode_multipart_data
@@ -45,7 +46,8 @@ class MAASOAuth:
             with the signature.
         """
         oauth_request = oauth.OAuthRequest.from_consumer_and_token(
-            self.consumer_token, token=self.resource_token, http_url=url)
+            self.consumer_token, token=self.resource_token, http_url=url,
+            parameters={'oauth_nonce': uuid.uuid4().get_hex()})
         oauth_request.sign_request(
             oauth.OAuthSignatureMethod_PLAINTEXT(), self.consumer_token,
             self.resource_token)
