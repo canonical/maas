@@ -19,8 +19,8 @@ __all__ = [
 
 from maasserver.models import Node
 from maasserver.utils.async import transactional
-from provisioningserver.utils import synchronous
 from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.utils import synchronous
 
 
 @synchronous
