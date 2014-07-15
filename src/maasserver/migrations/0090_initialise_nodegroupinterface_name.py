@@ -1,3 +1,4 @@
+from maasserver.utils.interfaces import make_name_from_interface
 from south.db import db
 from south.v2 import SchemaMigration
 
@@ -5,15 +6,30 @@ from south.v2 import SchemaMigration
 class Migration(SchemaMigration):
 
     def forwards(self, orm):
-        # Adding field 'NodeGroupInterface.name'
-        db.add_column(u'maasserver_nodegroupinterface', 'name',
-                      self.gf('django.db.models.fields.CharField')(default=u'', max_length=255, blank=True),
-                      keep_default=False)
+        # Initialise new field 'NodeGroupInterface.name'.  This becomes the
+        # identifying name (within a cluster) of a cluster interface, instead
+        # of the network interface name.  A network interface may be on
+        # multiple IPv6 networks, each has to be its own cluster interface.
+        #
+        # For pre-existing NodeGroupInterface entries, the name defaults to
+        # a watered-down version of the network interface name.
+        for ngi in orm[u'maasserver.nodegroupinterface'].objects.all():
+            ngi.name = make_name_from_interface(ngi.interface)
+            ngi.save()
+
+        # Removing unique constraint on 'NodeGroupInterface', fields ['interface', 'nodegroup']
+        db.delete_unique(u'maasserver_nodegroupinterface', ['interface', 'nodegroup_id'])
+
+        # Adding unique constraint on 'NodeGroupInterface', fields ['nodegroup', 'name']
+        db.create_unique(u'maasserver_nodegroupinterface', ['nodegroup_id', 'name'])
 
 
     def backwards(self, orm):
-        # Deleting field 'NodeGroupInterface.name'
-        db.delete_column(u'maasserver_nodegroupinterface', 'name')
+        # Removing unique constraint on 'NodeGroupInterface', fields ['nodegroup', 'name']
+        db.delete_unique(u'maasserver_nodegroupinterface', ['nodegroup_id', 'name'])
+
+        # Adding unique constraint on 'NodeGroupInterface', fields ['interface', 'nodegroup']
+        db.create_unique(u'maasserver_nodegroupinterface', ['interface', 'nodegroup_id'])
 
 
     models = {
@@ -127,7 +143,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'02ff744a-0b71-11e4-9e5b-bcaec594d3f6'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'182fe3d6-0b71-11e4-a58d-bcaec594d3f6'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.licensekey': {
@@ -189,7 +205,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-02fd7c30-0b71-11e4-9e5b-bcaec594d3f6'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-182db44e-0b71-11e4-a58d-bcaec594d3f6'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -210,7 +226,7 @@ class Migration(SchemaMigration):
             'uuid': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '36'})
         },
         u'maasserver.nodegroupinterface': {
-            'Meta': {'unique_together': "((u'nodegroup', u'interface'),)", 'object_name': 'NodeGroupInterface'},
+            'Meta': {'unique_together': "((u'nodegroup', u'name'),)", 'object_name': 'NodeGroupInterface'},
             'broadcast_ip': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             'foreign_dhcp_ip': ('maasserver.fields.MAASIPAddressField', [], {'default': 'None', 'max_length': '39', 'null': 'True', 'blank': 'True'}),
@@ -295,7 +311,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1405354073L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1405354108L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
