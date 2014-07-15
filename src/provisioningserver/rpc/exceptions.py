@@ -14,12 +14,23 @@ str = None
 __metaclass__ = type
 __all__ = [
     "NoConnectionsAvailable",
+    "NoSuchNode",
     "NoSuchOperatingSystem",
 ]
 
 
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""
+
+
+class NoSuchNode(Exception):
+    """The specified node was not found."""
+
+    @classmethod
+    def from_system_id(cls, system_id):
+        return cls(
+            "Node with system_id=%s could not be found." % system_id
+        )
 
 
 class NoSuchOperatingSystem(Exception):

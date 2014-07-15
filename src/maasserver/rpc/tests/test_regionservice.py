@@ -29,7 +29,9 @@ from maasserver import (
     eventloop,
     locks,
     )
+from maasserver.enum import NODE_STATUS
 from maasserver.models.config import Config
+from maasserver.models.node import Node
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     Region,
@@ -51,11 +53,13 @@ from provisioningserver.rpc import (
     common,
     exceptions,
     )
+from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetProxies,
     Identify,
+    MarkNodeBroken,
     ReportBootImages,
     )
 from provisioningserver.rpc.testing import (
@@ -87,6 +91,7 @@ from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from twisted.python.failure import Failure
 from zope.interface.verify import verifyObject
 
 
@@ -279,6 +284,50 @@ class TestRegionProtocol_GetProxies(MAASTestCase):
         self.assertEqual(
             {b"http": url, b"https": url},
             response)
+
+
+class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
+
+    def test_mark_broken_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(MarkNodeBroken.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def create_broken_node(self):
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        return node.system_id
+
+    @transactional
+    def get_node_status(self, system_id):
+        node = Node.objects.get(system_id=system_id)
+        return node.status
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_mark_node_broken_changes_status(self):
+        system_id = yield deferToThread(self.create_broken_node)
+
+        response = yield call_responder(
+            Region(), MarkNodeBroken, {b'system_id': system_id})
+
+        self.assertIsNone(None, response)
+        new_status = yield deferToThread(self.get_node_status, system_id)
+        self.assertEqual(NODE_STATUS.BROKEN, new_status)
+
+    @wait_for_reactor
+    def test_mark_node_broken_errors_if_node_cannot_be_found(self):
+        system_id = factory.make_name('unknown-system-id')
+        d = call_responder(
+            Region(), MarkNodeBroken, {b'system_id': system_id})
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchNode)
+            # The error message contains a reference to system_id.
+            self.assertIn(system_id, error.value.message)
+
+        return d.addErrback(check)
 
 
 class TestRegionServer(MAASServerTestCase):

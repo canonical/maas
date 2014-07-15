@@ -32,6 +32,7 @@ from maasserver import (
 from maasserver.rpc import (
     bootsources,
     configuration,
+    nodes,
     )
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
@@ -128,6 +129,17 @@ class Region(amp.AMP):
         :py:class:`~provisioningserver.rpc.region.GetProxies`.
         """
         d = deferToThread(configuration.get_proxies)
+        return d
+
+    @region.MarkNodeBroken.responder
+    def mark_node_broken(self, system_id):
+        """mark_node_broken()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.MarkNodeBroken`.
+        """
+        d = deferToThread(nodes.mark_node_broken, system_id)
+        d.addCallback(lambda args: {})
         return d
 
 

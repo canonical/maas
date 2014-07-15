@@ -17,6 +17,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "Identify",
+    "MarkNodeBroken",
     "ReportBootImages",
 ]
 
@@ -25,6 +26,7 @@ from provisioningserver.rpc.arguments import (
     ParsedURL,
     )
 from provisioningserver.rpc.common import Identify
+from provisioningserver.rpc.exceptions import NoSuchNode
 from twisted.protocols import amp
 
 
@@ -82,3 +84,17 @@ class GetProxies(amp.Command):
         (b"https", ParsedURL(optional=True)),
     ]
     errors = []
+
+
+class MarkNodeBroken(amp.Command):
+    """Mark a node as 'broken'.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        # The node's system_id.
+        (b"system_id", amp.Unicode()),
+    ]
+    response = []
+    errors = {NoSuchNode: "no-such-node"}
