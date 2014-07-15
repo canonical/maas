@@ -344,7 +344,7 @@ class NodeManager(Manager):
         available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
         return available_nodes.filter(status=NODE_STATUS.READY)
 
-    def stop_nodes(self, ids, by_user):
+    def stop_nodes(self, ids, by_user, stop_mode='hard'):
         """Request on given user's behalf that the given nodes be shut down.
 
         Shutdown is only requested for nodes that the user has ownership
@@ -354,6 +354,8 @@ class NodeManager(Manager):
         :type ids: Sequence
         :param by_user: Requesting user.
         :type by_user: User_
+        :param stop_mode: Power off mode - usually 'soft' or 'hard'.
+        :type stop_mode: unicode
         :return: Those Nodes for which shutdown was actually requested.
         :rtype: list
         """
@@ -370,6 +372,7 @@ class NodeManager(Manager):
                     "Node %s has an unknown power type. Not creating "
                     "power down event." % node.system_id)
                 continue
+            power_params['power_off_mode'] = stop_mode
             # WAKE_ON_LAN does not support poweroff.
             if node_power_type != 'ether_wake':
                 power_off.apply_async(

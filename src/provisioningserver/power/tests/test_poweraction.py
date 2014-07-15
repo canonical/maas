@@ -193,7 +193,8 @@ class TestPowerAction(MAASTestCase):
             action.get_template(), power_change='on',
             power_address='mystystem', power_user='me', power_pass='me',
             ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
-            ipmi_config='file.conf', power_driver='LAN', ip_address='')
+            ipmi_config='file.conf', power_driver='LAN', ip_address='',
+            power_off_mode='hard')
         self.assertIn(conf_dir, script)
 
     def test_moonshot_checks_state(self):

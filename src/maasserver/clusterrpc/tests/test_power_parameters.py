@@ -65,6 +65,9 @@ class TestPowerActionRendering(MAASServerTestCase):
         # ip_address is determined by querying the ARP cache,
         # hence in this test the value does not matter.
         params.update(ip_address=factory.getRandomIPAddress())
+        # power_off_mode is provided via the API, and isn't a
+        # built in parameter.
+        params.update(power_off_mode=factory.make_name('power_off_mode'))
         action = PowerAction(self.power_type)
         script = action.render_template(action.get_template(), **params)
         # The real check is that the rendering went fine.

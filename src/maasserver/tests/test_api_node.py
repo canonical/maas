@@ -46,6 +46,7 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import map_enum
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import (
     commissioningscript,
     NodeKey,
@@ -210,6 +211,18 @@ class TestNodeAPI(APITestCase):
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
+
+    def test_POST_stop_stops_nodes(self):
+        node = factory.make_node(owner=self.logged_in_user)
+        stop_nodes = self.patch(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+        stop_mode = factory.make_name('stop_mode')
+        self.client.post(
+            self.get_node_uri(node), {'op': 'stop', 'stop_mode': stop_mode})
+        self.assertThat(
+            stop_nodes,
+            MockCalledOnceWith(
+                [node.system_id], self.logged_in_user, stop_mode=stop_mode))
 
     def test_POST_start_checks_permission(self):
         node = factory.make_node()

@@ -409,8 +409,20 @@ class NodeHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def stop(self, request, system_id):
-        """Shut down a node."""
-        nodes = Node.objects.stop_nodes([system_id], request.user)
+        """Shut down a node.
+
+        :param stop_mode: An optional power off mode. If 'soft',
+            perform a soft power down if the node's power type supports
+            it, otherwise perform a hard power off. For all values other
+            than 'soft', and by default, perform a hard power off. A
+            soft power off generally asks the OS to shutdown the system
+            gracefully before powering off, while a hard power off
+            occurs immediately without any warning to the OS.
+        :type stop_mode: unicode
+        """
+        stop_mode = request.POST.get('stop_mode', 'hard')
+        nodes = Node.objects.stop_nodes(
+            [system_id], request.user, stop_mode=stop_mode)
         if len(nodes) == 0:
             raise PermissionDenied(
                 "You are not allowed to shut down this node.")

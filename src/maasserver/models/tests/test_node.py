@@ -1402,6 +1402,16 @@ class NodeManagerTest(MAASServerTestCase):
         args, kwargs = task.apply_async.call_args
         self.assertEqual(node.work_queue, kwargs['queue'])
 
+    def test_stop_nodes_task_uses_stop_mode(self):
+        self.patch(PowerAction, 'run_shell').return_value = ('', '')
+        user = factory.make_user()
+        node, mac = self.make_node_with_mac(user, power_type='virsh')
+        stop_mode = factory.make_name('stop_mode')
+        Node.objects.stop_nodes([node.system_id], user, stop_mode=stop_mode)
+        self.assertEqual(
+            stop_mode,
+            self.celery.tasks[0]['kwargs']['power_off_mode'])
+
     def test_stop_nodes_ignores_uneditable_nodes(self):
         nodes = [
             self.make_node_with_mac(
