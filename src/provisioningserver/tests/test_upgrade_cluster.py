@@ -254,6 +254,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
             os.makedirs(
                 os.path.join(
                     storage_dir, 'current', arch, subarch, release, label))
+        self.patch(upgrade_cluster, 'update_targets_conf')
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
             arches,
@@ -279,6 +280,7 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 factory.make_name('subarch'),
                 factory.make_name('release'),
                 factory.make_name('label')))
+        self.patch(upgrade_cluster, 'update_targets_conf')
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
             [move_arch],
@@ -308,8 +310,39 @@ class TestMigrateArchitecturesIntoUbuntuDirectory(MAASTestCase):
                 factory.make_name('subarch'),
                 factory.make_name('release'),
                 factory.make_name('label')))
-
+        self.patch(upgrade_cluster, 'update_targets_conf')
         upgrade_cluster.migrate_architectures_into_ubuntu_directory()
         self.assertItemsEqual(
             [move_arch],
             list_subdirs(os.path.join(storage_dir, 'current', 'ubuntu')))
+
+    def setup_working_migration_scenario(self):
+        storage_dir = self.make_dir()
+        self.configure_storage(storage_dir)
+        arches = [factory.make_name('arch') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        releases = [factory.make_name('release') for _ in range(3)]
+        labels = [factory.make_name('label') for _ in range(3)]
+        for arch, subarch, release, label in product(
+                arches, subarches, releases, labels):
+            os.makedirs(
+                os.path.join(
+                    storage_dir, 'current', arch, subarch, release, label))
+        return storage_dir
+
+    def test__calls_write_targets_conf_with_current_dir(self):
+        storage_dir = self.setup_working_migration_scenario()
+        mock_write = self.patch(upgrade_cluster, 'write_targets_conf')
+        self.patch(upgrade_cluster, 'update_targets_conf')
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(
+            mock_write,
+            MockCalledOnceWith(os.path.join(storage_dir, 'current')))
+
+    def test__calls_update_targets_conf_with_current_dir(self):
+        storage_dir = self.setup_working_migration_scenario()
+        mock_update = self.patch(upgrade_cluster, 'update_targets_conf')
+        upgrade_cluster.migrate_architectures_into_ubuntu_directory()
+        self.assertThat(
+            mock_update,
+            MockCalledOnceWith(os.path.join(storage_dir, 'current')))
