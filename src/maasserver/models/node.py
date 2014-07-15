@@ -1213,7 +1213,12 @@ class Node(CleanSave, TimestampedModel):
         return (arch, subarch)
 
     def mark_broken(self):
-        """Mark this node as 'BROKEN'."""
+        """Mark this node as 'BROKEN'.
+
+        If the node is allocated, release it first.
+        """
+        if self.status == NODE_STATUS.ALLOCATED:
+            self.release()
         self.status = NODE_STATUS.BROKEN
         self.save()
 

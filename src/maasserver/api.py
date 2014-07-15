@@ -564,7 +564,10 @@ class NodeHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def mark_broken(self, request, system_id):
-        """Mark a node as 'broken'."""
+        """Mark a node as 'broken'.
+
+        If the node is allocated, release it first.
+        """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         node.mark_broken()

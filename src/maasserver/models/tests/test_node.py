@@ -1133,6 +1133,14 @@ class NodeTest(MAASServerTestCase):
         node.mark_broken()
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
+    def test_mark_broken_releases_allocated_node(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        node.mark_broken()
+        node = reload_object(node)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, None), (node.status, node.owner))
+
     def test_mark_fixed_changes_status(self):
         node = factory.make_node(status=NODE_STATUS.BROKEN)
         node.mark_fixed()
