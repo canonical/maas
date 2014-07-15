@@ -24,6 +24,7 @@ from itertools import chain
 from logging import getLogger
 import os.path
 
+from provisioningserver import config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystemRegistry,
@@ -192,6 +193,26 @@ def extract_image_params(path, maas_meta):
 def maas_meta_file_path(tftproot):
     """Return a string containing the full path to maas.meta."""
     return os.path.join(tftproot, 'maas.meta')
+
+
+def maas_meta_last_modified(tftproot=None):
+    """Return time of last modification of maas.meta.
+
+    The time is the same as returned from getmtime() (seconds since epoch),
+    or None if the file doesn't exist.
+
+    :param tftproot: Optional tftp root dir, defaults to
+        provisioningserver.config.BOOT_RESOURCES_STORAGE
+    """
+    if tftproot is None:
+        tftproot = config.BOOT_RESOURCES_STORAGE
+    meta_file = maas_meta_file_path(tftproot)
+    try:
+        return os.path.getmtime(meta_file)
+    except OSError as e:
+        if e.errno == errno.ENOENT:
+            return None
+        raise
 
 
 def list_boot_images(tftproot):

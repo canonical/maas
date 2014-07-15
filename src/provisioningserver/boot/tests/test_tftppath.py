@@ -18,8 +18,10 @@ import errno
 import os.path
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import Mock
+from provisioningserver import config
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tftppath import (
     compose_image_path,
@@ -31,6 +33,7 @@ from provisioningserver.boot.tftppath import (
     list_boot_images,
     list_subdirs,
     locate_tftp_path,
+    maas_meta_last_modified,
     )
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.import_images.boot_image_mapping import (
@@ -127,6 +130,32 @@ class TestTFTPPath(MAASTestCase):
         maas_meta = mapping.dump_json()
         with open(os.path.join(tftproot, "maas.meta"), "wb") as f:
             f.write(maas_meta)
+
+    def test_maas_meta_last_modified_returns_modification_time(self):
+        path = factory.make_file(self.tftproot, name="maas.meta")
+        expected = os.path.getmtime(path)
+        observed = maas_meta_last_modified(self.tftproot)
+        self.assertEqual(expected, observed)
+
+    def test_maas_meta_last_modified_returns_None_if_no_file(self):
+        observed = maas_meta_last_modified(
+            os.path.join(self.tftproot, "maas.meta"))
+        self.assertIsNone(observed)
+
+    def test_maas_meta_last_modified_defaults_tftproot(self):
+        path = factory.make_file(self.tftproot, name="maas.meta")
+        maas_meta_file_path = self.patch(tftppath, 'maas_meta_file_path')
+        maas_meta_file_path.return_value = path
+        maas_meta_last_modified()
+        self.assertThat(
+            maas_meta_file_path,
+            MockCalledOnceWith(config.BOOT_RESOURCES_STORAGE))
+
+    def test_maas_meta_last_modified_reraises_non_ENOENT(self):
+        oserror = OSError()
+        oserror.errno = errno.E2BIG
+        self.patch(os.path, 'getmtime').side_effect = oserror
+        self.assertRaises(OSError, maas_meta_last_modified)
 
     def test_compose_image_path_follows_storage_directory_layout(self):
         osystem = factory.make_name('osystem')

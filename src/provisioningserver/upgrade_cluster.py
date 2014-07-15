@@ -46,9 +46,10 @@ from provisioningserver.boot.tftppath import (
     list_subdirs,
     )
 from provisioningserver.import_images.boot_resources import (
-    write_targets_conf,
     update_targets_conf,
+    write_targets_conf,
     )
+
 
 logger = getLogger(__name__)
 
