@@ -120,6 +120,7 @@ from maasserver.node_action import (
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.interfaces import make_name_from_interface
+from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -1178,7 +1179,13 @@ class NodeGroupInterfaceForm(ModelForm):
         # the 'name' and 'interface' fields were the same thing.
         interface = self.cleaned_data.get('interface')
         name = make_name_from_interface(interface)
-        cluster = self.instance.nodegroup
+        # Get the cluster to which this interface is attached.  There may not
+        # be one, since it may be a placeholder instance that is still being
+        # initialised by the same request that is also creating the interface.
+        # In that case, self.instance.nodegroup will not be None, but rather
+        # an ORM stub which crashes when accessed.
+        cluster = get_one(
+            NodeGroup.objects.filter(id=self.instance.nodegroup_id))
         if cluster is not None and interface:
             siblings = cluster.nodegroupinterface_set
             if siblings.filter(name=name).exists():

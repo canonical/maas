@@ -1447,6 +1447,23 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             nodegroup.nodegroupinterface_set.all()[0],
             MatchesStructure.byEquality(**expected_result))
 
+    def test_accepts_unnamed_cluster_interface(self):
+        uuid = factory.getRandomUUID()
+        interface = factory.get_interface_fields()
+        del interface['name']
+        interfaces = json.dumps([interface])
+        form = NodeGroupDefineForm(
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': uuid,
+                'interfaces': interfaces,
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        cluster = form.save()
+        [cluster_interface] = cluster.nodegroupinterface_set.all()
+        self.assertEqual(interface['interface'], cluster_interface.name)
+        self.assertEqual(interface['interface'], cluster_interface.interface)
+
     def test_checks_against_conflicting_managed_networks(self):
         big_network = IPNetwork('10.0.0.0/255.255.0.0')
         nested_network = IPNetwork('10.0.100.0/255.255.255.0')
