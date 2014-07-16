@@ -155,7 +155,7 @@ class ClusterEdit(UpdateView):
     def get_context_data(self, **kwargs):
         context = super(ClusterEdit, self).get_context_data(**kwargs)
         context['interfaces'] = (
-            self.object.nodegroupinterface_set.all().order_by('interface'))
+            self.object.nodegroupinterface_set.all().order_by('name'))
         return context
 
     def get_success_url(self):
@@ -195,9 +195,9 @@ class ClusterInterfaceDelete(DeleteView):
 
     def get_object(self):
         uuid = self.kwargs.get('uuid', None)
-        interface = self.kwargs.get('interface', None)
+        name = self.kwargs.get('name', None)
         return get_object_or_404(
-            NodeGroupInterface, nodegroup__uuid=uuid, interface=interface)
+            NodeGroupInterface, nodegroup__uuid=uuid, name=name)
 
     def get_next_url(self):
         uuid = self.kwargs.get('uuid', None)
@@ -225,9 +225,9 @@ class ClusterInterfaceEdit(UpdateView):
 
     def get_object(self):
         uuid = self.kwargs.get('uuid', None)
-        interface = self.kwargs.get('interface', None)
+        name = self.kwargs.get('name', None)
         return get_object_or_404(
-            NodeGroupInterface, nodegroup__uuid=uuid, interface=interface)
+            NodeGroupInterface, nodegroup__uuid=uuid, name=name)
 
 
 class ClusterInterfaceCreate(CreateView):

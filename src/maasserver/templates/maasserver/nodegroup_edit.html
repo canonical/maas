@@ -24,6 +24,7 @@
       <table class="list">
         <thead>
           <tr>
+            <th>Name</th>
             <th>Interface</th>
             <th>Network</th>
             <th>Status</th>
@@ -34,7 +35,8 @@
         <tbody>
       {% for interface in interfaces %}
         <tr class="interface {% cycle 'even' 'odd' %}"
-            id="{{ interface.interface }}">
+            id="{{ interface.name }}">
+          <td>{{ interface.name }}</td>
           <td>{{ interface.interface }}</td>
           <td>{{ interface.network|default_if_none:"Not configured" }}</td>
           <td>{{ interface.display_management }}</td>
@@ -44,15 +46,15 @@
             {% endif %}
           </td>
           <td>
-            <a href="{% url 'cluster-interface-edit' uuid=cluster.uuid interface=interface.interface %}"
+            <a href="{% url 'cluster-interface-edit' uuid=cluster.uuid name=interface.name %}"
                class="icon"
-               title="Edit interface {{ interface.interface }}">
+               title="Edit interface {{ interface.name }}">
               <img src="{{ STATIC_URL }}img/edit.png"
                    alt="edit"
                    class="space-right-small" />
             </a>
-            <a title="Delete interface {{ interface.interface }}"
-               href="{% url 'cluster-interface-delete' cluster.uuid interface.interface %}">
+            <a title="Delete interface {{ interface.name }}"
+               href="{% url 'cluster-interface-delete' cluster.uuid interface.name %}">
                <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
             </a>
           </td>

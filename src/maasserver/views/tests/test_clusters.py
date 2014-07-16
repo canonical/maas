@@ -43,10 +43,7 @@ from mock import (
     )
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from testtools.matchers import (
-    AllMatch,
-    Contains,
     ContainsAll,
-    Equals,
     HasLength,
     MatchesStructure,
     )
@@ -273,12 +270,12 @@ class ClusterEditTest(MAASServerTestCase):
         interface_edit_links = [
             reverse(
                 'cluster-interface-edit',
-                args=[nodegroup.uuid, interface.interface])
+                args=[nodegroup.uuid, interface.name])
             for interface in interfaces]
         interface_delete_links = [
             reverse(
                 'cluster-interface-delete',
-                args=[nodegroup.uuid, interface.interface])
+                args=[nodegroup.uuid, interface.name])
             for interface in interfaces]
         self.assertThat(
             links,
@@ -353,7 +350,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         delete_link = reverse(
             'cluster-interface-delete',
-            args=[nodegroup.uuid, interface.interface])
+            args=[nodegroup.uuid, interface.name])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
             (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
@@ -366,10 +363,10 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
-            nodegroup=nodegroup, interface="eth0:0")
+            nodegroup=nodegroup, name="eth0:0")
         delete_link = reverse(
             'cluster-interface-delete',
-            args=[nodegroup.uuid, interface.interface])
+            args=[nodegroup.uuid, interface.name])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
         self.assertIsInstance(delete_link, (bytes, unicode))
@@ -385,7 +382,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
             nodegroup=nodegroup)
         edit_link = reverse(
             'cluster-interface-edit',
-            args=[nodegroup.uuid, interface.interface])
+            args=[nodegroup.uuid, interface.name])
         data = factory.get_interface_fields()
         response = self.client.post(edit_link, data)
         self.assertEqual(
@@ -400,10 +397,10 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_node_group_interface(
-            nodegroup=nodegroup, interface="eth0:0")
+            nodegroup=nodegroup, name="eth0:0")
         edit_link = reverse(
             'cluster-interface-edit',
-            args=[nodegroup.uuid, interface.interface])
+            args=[nodegroup.uuid, interface.name])
         # The real test is that reverse() does not blow up when the
         # interface's name contains an alias.
         self.assertIsInstance(edit_link, (bytes, unicode))
@@ -423,37 +420,7 @@ class ClusterInterfaceCreateTest(MAASServerTestCase):
             (httplib.FOUND, reverse('cluster-edit', args=[nodegroup.uuid])),
             (response.status_code, extract_redirect(response)))
         interface = NodeGroupInterface.objects.get(
-            nodegroup__uuid=nodegroup.uuid, interface=data['interface'])
+            nodegroup__uuid=nodegroup.uuid, name=data['name'])
         self.assertThat(
             reload_object(interface),
             MatchesStructure.byEquality(**data))
-
-
-# XXX: rvb 2012-10-08 bug=1063881: apache transforms '//' into '/' in
-# the urls it passes around and this happens when an interface has an empty
-# name.
-class ClusterInterfaceDoubleSlashBugTest(MAASServerTestCase):
-
-    def test_edit_delete_empty_cluster_interface_when_slash_removed(self):
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(
-            nodegroup=nodegroup, interface='',
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        edit_link = reverse(
-            'cluster-interface-edit',
-            args=[nodegroup.uuid, interface.interface])
-        delete_link = reverse(
-            'cluster-interface-delete',
-            args=[nodegroup.uuid, interface.interface])
-        links = [edit_link, delete_link]
-        # Just make sure that the urls contains '//'.  If this is not
-        # true anymore, because we've refactored the urls, this test can
-        # problably be removed.
-        self.assertThat(links, AllMatch(Contains('//')))
-        # Simulate what apache (when used as a frontend) does to the
-        # urls.
-        new_links = [link.replace('//', '/') for link in links]
-        response_statuses = [
-            self.client.get(link).status_code for link in new_links]
-        self.assertThat(response_statuses, AllMatch(Equals(httplib.OK)))

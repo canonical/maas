@@ -192,11 +192,11 @@ urlpatterns += patterns(
         r'^clusters/(?P<uuid>[\w\-]+)/interfaces/add/$',
         ClusterInterfaceCreate.as_view(), name='cluster-interface-create'),
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[^/]*)/'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>[^/]*)/'
         'edit/$',
         ClusterInterfaceEdit.as_view(), name='cluster-interface-edit'),
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>[^/]*)/'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>[^/]*)/'
         'delete/$',
         ClusterInterfaceDelete.as_view(), name='cluster-interface-delete'),
     # XXX: rvb 2012-10-08 bug=1063881:
@@ -204,10 +204,10 @@ urlpatterns += patterns(
     # can have an empty name, thus leading to urls containing the
     # pattern '//' that is then reduced by apache into '/'.
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>)'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>)'
         'edit/$', ClusterInterfaceEdit.as_view()),
     adminurl(
-        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<interface>)'
+        r'^clusters/(?P<uuid>[\w\-]+)/interfaces/(?P<name>)'
         'delete/$', ClusterInterfaceDelete.as_view()),
     # /XXX
     adminurl(r'^settings/$', settings, name='settings'),
