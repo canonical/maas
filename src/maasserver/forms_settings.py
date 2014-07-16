@@ -167,7 +167,7 @@ CONFIG_ITEMS = {
     },
     'ntp_server': {
         'default': None,
-        'form': forms.GenericIPAddressField,
+        'form': forms.CharField,
         'form_kwargs': {
             'label': "Address of NTP server for nodes",
             'required': False,
