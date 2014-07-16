@@ -40,7 +40,7 @@ This is for two reasons:
    are being specially routed between the nodes' subnet and MAAS's DHCP server.
 2. The cluster controller must be able to find nodes' IP addresses based on
    their MAC addresses, by inspecting its ARP cache.  This implies that the
-   nodes and the clsuter controler must on the same physical subnet.
+   nodes and the cluster controller must be on the same physical subnet.
 
 
 Cluster acceptance
@@ -77,13 +77,18 @@ Cluster interface management
 
 MAAS automatically recognises the network interfaces on each cluster
 controller.  Some (though not necessarily all) of these will be connected to
-networks where you want to manage nodes.  We recommend letting your cluster
-controller act as a DHCP server for these networks, by configuring those
-interfaces in the MAAS user interface.
+networks where you want to manage nodes.  A connection between a cluster
+controller and a network is called a `cluster interface`.  Each cluster
+interface is built on exactly one network interface, though it's possible for
+two cluster interfaces to use the same network interface card.
+
+We recommend letting your cluster controller act as a DHCP server for the
+networks it manages, by configuring the corresponding cluster interfaces in
+the MAAS user interface.
 
 As an example, we will configure the cluster controller to manage a network
-on interface ``eth0``.  Click on the edit icon for ``eth0``, which takes us
-to this page:
+on interface ``eth0``.  Click on the edit icon for the cluster interface on
+network interface ``eth0``, which takes us to this page:
 
 .. image:: media/cluster-interface-edit.png
 
@@ -137,6 +142,5 @@ Multiple networks
 -----------------
 
 A single cluster controller can manage more than one network, each from a
-different network interface on the cluster-controller server.  This may help
-you scale your cluster to larger numbers of nodes, or it may be a requirement
-of your network architecture.
+different cluster interface.  This may help you scale your cluster to larger
+numbers of nodes, or it may be a requirement of your network architecture.
