@@ -4,6 +4,8 @@
 #
 
 # Parameters.
+# If power_change is 'query', echo the current state of the
+# machine: 'on' or 'off'.
 power_change={{power_change}}
 power_address={{power_address}}
 power_user={{power_user}}
@@ -39,22 +41,9 @@ formulate_power_command() {
     case $1 in
     'on') echo '--cycle --on-if-off' ;;
     'off') echo '--off' ;;
+    'query') echo '--stat' ;;
     *)
         echo "Got unknown power state from ipmipower: '$1'" >&2
-        exit 1
-    esac
-}
-
-# Determines the current state on which the machine finds itself.
-# The argument passed comes from IPMI's stat command in the form:
-# <ipmi-ip-address>: <on/off>
-# This function evaluates whether it was <on/off>.
-formulate_power_state() {
-    case $2 in
-    'on') echo 'on' ;;
-    'off') echo 'off' ;;
-    *)
-        echo "Got unknown power state from ipmipower: '$2'" >&2
         exit 1
     esac
 }
@@ -70,10 +59,20 @@ issue_ipmi_command() {
 
     echo workaround |\
     ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
-    echo workaround |\
-    ${ipmipower} ${power_options} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@"
+    result=$(echo workaround |\
+    ${ipmipower} ${power_options} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
+    case "$result" in
+        *:* )
+                # Result looks like the usual IPMI output:
+                # <ipmi-ip-address>: <on/off>, just return the <on|off>
+                # part.
+                echo ${result} | cut -d ':' -f 2
+                ;;
+        * )
+                echo ${result};;
+    esac
 }
-
+ 
 # This script deliberately does not check the current power state
 # before issuing the requested power command. See bug 1171418 for an
 # explanation.

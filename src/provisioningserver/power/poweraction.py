@@ -112,6 +112,8 @@ class PowerAction:
         """Execute raw shell script (as rendered from a template).
 
         :param commands: String containing shell script.
+        :returns: Standard output and standard error returned by the execution
+            of the shell script.
         :raises: :class:`PowerActionFail`
         """
         # This might need retrying but it could be better to leave that
@@ -121,15 +123,17 @@ class PowerAction:
                 commands, shell=True, stderr=subprocess.STDOUT, close_fds=True)
         except subprocess.CalledProcessError as e:
             raise PowerActionFail(self, e)
-        # This output is only examined in tests, execute just ignores it
-        return output
+        return output.strip()
 
     def execute(self, **kwargs):
         """Execute the template.
+
+        :returns: Standard output and standard error returned by the execution
+            of the template.
 
         Any supplied parameters will be passed to the template as substitution
         values.
         """
         template = self.get_template()
         rendered = self.render_template(template, **kwargs)
-        self.run_shell(rendered)
+        return self.run_shell(rendered)

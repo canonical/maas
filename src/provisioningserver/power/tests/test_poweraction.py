@@ -126,7 +126,7 @@ class TestPowerAction(MAASTestCase):
     def run_action(self, path, **kwargs):
         pa = PowerAction('ether_wake')
         pa.path = path
-        pa.execute(**kwargs)
+        return pa.execute(**kwargs)
 
     def test_execute(self):
         # execute() should run the template through a shell.
@@ -137,6 +137,13 @@ class TestPowerAction(MAASTestCase):
 
         self.run_action(path, mac="test", outfile=output_file)
         self.assertThat(output_file, FileContains("working test\n"))
+
+    def test_execute_return_execution_result(self):
+        template = "echo ' test \n'"
+        path = self._create_template_file(template)
+        output = self.run_action(path)
+        # run_action() returns the 'stripped' output.
+        self.assertEqual('test', output)
 
     def test_execute_raises_PowerActionFail_when_script_fails(self):
         path = self._create_template_file("this_is_not_valid_shell")
