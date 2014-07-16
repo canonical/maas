@@ -1112,6 +1112,7 @@ class Node(CleanSave, TimestampedModel):
         power_params.setdefault('power_id', self.system_id)
         power_params.setdefault('power_driver', '')
         power_params.setdefault('power_pass', '')
+        power_params.setdefault('power_off_mode', '')
 
         # The "mac" parameter defaults to the node's primary MAC
         # address, but only if not already set.
