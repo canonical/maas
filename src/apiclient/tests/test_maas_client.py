@@ -141,7 +141,7 @@ class TestMAASDispatcher(MAASTestCase):
 def make_url():
     """Create an arbitrary URL."""
     return 'http://example.com:%d/%s/' % (
-        factory.getRandomPort(),
+        factory.pick_port(),
         factory.getRandomString(),
         )
 

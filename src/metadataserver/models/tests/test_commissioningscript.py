@@ -362,7 +362,7 @@ class TestInjectResult(MAASServerTestCase):
     def test_inject_result_stores_data(self):
         node = factory.make_node()
         name = factory.make_name("result")
-        output = factory.getRandomBytes()
+        output = factory.make_bytes()
         exit_status = next(factory.random_octets)
 
         inject_result(node, name, output, exit_status)
@@ -376,7 +376,7 @@ class TestInjectResult(MAASServerTestCase):
     def test_inject_result_calls_hook(self):
         node = factory.make_node()
         name = factory.make_name("result")
-        output = factory.getRandomBytes()
+        output = factory.make_bytes()
         exit_status = next(factory.random_octets)
         hook = Mock()
         self.patch(

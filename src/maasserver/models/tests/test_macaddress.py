@@ -115,9 +115,9 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
     def test_claim_static_ip_raises_if_clashing_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
-        iptype = factory.getRandomEnum(
+        iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        iptype2 = factory.getRandomEnum(IPADDRESS_TYPE, but_not=[iptype])
+        iptype2 = factory.pick_enum(IPADDRESS_TYPE, but_not=[iptype])
         mac.claim_static_ip(alloc_type=iptype)
         self.assertRaises(
             StaticIPAddressTypeClash,
@@ -126,7 +126,7 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
     def test_claim_static_ip_returns_existing_if_claiming_same_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
-        iptype = factory.getRandomEnum(
+        iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         ip = mac.claim_static_ip(alloc_type=iptype)
         self.assertEqual(

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom field types."""
@@ -43,7 +43,7 @@ class TestBin(MAASServerTestCase):
         # Bin() returns a base-64 encoded string so that it can be
         # transmitted in JSON.
         self.assertEqual(b"", Bin(b"").__emittable__())
-        example_bytes = factory.getRandomBytes()
+        example_bytes = factory.make_bytes()
         self.assertEqual(
             b64encode(example_bytes),
             Bin(example_bytes).__emittable__())

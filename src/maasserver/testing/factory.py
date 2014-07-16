@@ -136,7 +136,7 @@ class Factory(maastesting.factory.Factory):
         upload.name = name
         return upload
 
-    def getRandomEnum(self, enum, but_not=None):
+    def pick_enum(self, enum, but_not=None):
         """Pick a random item from an enumeration class.
 
         :param enum: An enumeration class such as `NODE_STATUS`.
@@ -150,7 +150,7 @@ class Factory(maastesting.factory.Factory):
             value for value in list(map_enum(enum).values())
             if value not in but_not])
 
-    def getRandomChoice(self, choices, but_not=None):
+    def pick_choice(self, choices, but_not=None):
         """Pick a random item from `choices`.
 
         :param choices: A sequence of choices in Django form choices format:
@@ -167,7 +167,7 @@ class Factory(maastesting.factory.Factory):
         return random.choice(
             [choice for choice in choices if choice[0] not in but_not])[0]
 
-    def getRandomPowerType(self, but_not=None):
+    def pick_power_type(self, but_not=None):
         """Pick a random power type and return it.
 
         :param but_not: Exclude these values from result
@@ -182,17 +182,17 @@ class Factory(maastesting.factory.Factory):
             [choice for choice in list(get_power_types().keys())
                 if choice not in but_not])
 
-    def getRandomOS(self):
+    def pick_OS(self):
         """Pick a random operating system from the registry."""
         osystems = [obj for _, obj in OperatingSystemRegistry]
         return random.choice(osystems)
 
-    def getRandomRelease(self, osystem):
+    def pick_release(self, osystem):
         """Pick a random release from operating system."""
         releases = osystem.get_supported_releases()
         return random.choice(releases)
 
-    def getRandomCommissioningRelease(self, osystem):
+    def pick_commissioning_release(self, osystem):
         """Pick a random commissioning release from operating system."""
         releases = osystem.get_supported_commissioning_releases()
         return random.choice(releases)
@@ -308,7 +308,7 @@ class Factory(maastesting.factory.Factory):
         if ip is None:
             ip = factory.getRandomIPInNetwork(network)
         if management is None:
-            management = factory.getRandomEnum(NODEGROUPINTERFACE_MANAGEMENT)
+            management = factory.pick_enum(NODEGROUPINTERFACE_MANAGEMENT)
         if interface is None:
             interface = self.make_name('netinterface')
         return dict(
@@ -341,11 +341,11 @@ class Factory(maastesting.factory.Factory):
         all in one go.
         """
         if status is None:
-            status = factory.getRandomEnum(NODEGROUP_STATUS)
+            status = factory.pick_enum(NODEGROUP_STATUS)
         if name is None:
             name = self.make_name('nodegroup')
         if uuid is None:
-            uuid = factory.getRandomUUID()
+            uuid = factory.make_UUID()
         if cluster_name is None:
             cluster_name = factory.make_name('cluster')
         if dhcp_key is None:
@@ -413,7 +413,7 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = "ncrname-" + self.getRandomString(92)
         if data is None:
-            data = b"ncrdata-" + self.getRandomBytes()
+            data = b"ncrdata-" + self.make_bytes()
         if script_result is None:
             script_result = random.randint(0, 10)
         ncr = NodeCommissionResult(
@@ -490,7 +490,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_user(self, username=None, password='test', email=None):
         if username is None:
-            username = self.getRandomUsername()
+            username = self.make_username()
         if email is None:
             email = self.make_email()
         return User.objects.create_user(
@@ -568,7 +568,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_admin(self, username=None, password='test', email=None):
         if username is None:
-            username = self.getRandomUsername()
+            username = self.make_username()
         if email is None:
             email = self.make_email()
         return User.objects.create_superuser(
@@ -679,12 +679,12 @@ class Factory(maastesting.factory.Factory):
         if filename is None:
             filename = self.make_name('download')
         if size is NO_VALUE:
-            if self.getRandomBoolean():
+            if self.pick_bool():
                 size = random.randint(0, 1000000000)
             else:
                 size = None
         if bytes_downloaded is NO_VALUE:
-            if self.getRandomBoolean():
+            if self.pick_bool():
                 if size is None:
                     max_size = 1000000000
                 else:
@@ -693,7 +693,7 @@ class Factory(maastesting.factory.Factory):
             else:
                 bytes_downloaded = None
         if error is None:
-            if self.getRandomBoolean():
+            if self.pick_bool():
                 error = self.getRandomString()
             else:
                 error = ''
@@ -722,7 +722,7 @@ class Factory(maastesting.factory.Factory):
                                           bytes_downloaded=None):
         """Create a `DownloadProgress` that's not done yet."""
         if size is NO_VALUE:
-            if self.getRandomBoolean():
+            if self.pick_bool():
                 # File can't be empty, or the download can't be incomplete.
                 size = random.randint(1, 1000000000)
             else:
@@ -894,7 +894,7 @@ class Factory(maastesting.factory.Factory):
             boot_source = self.make_boot_source()
         if release is None:
             ubuntu_os = UbuntuOS()
-            release = self.getRandomRelease(ubuntu_os)
+            release = self.pick_release(ubuntu_os)
         if arches is None:
             arch_count = random.randint(1, 10)
             arches = [self.make_name("arch") for i in range(arch_count)]

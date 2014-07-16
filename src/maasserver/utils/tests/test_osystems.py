@@ -328,7 +328,7 @@ class TestReleases(MAASServerTestCase):
 
     def test_get_distro_series_initial(self):
         osystem = make_usable_osystem(self)
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         node = factory.make_node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s' % (osystem.name, series),
@@ -337,7 +337,7 @@ class TestReleases(MAASServerTestCase):
     def test_get_distro_series_initial_without_key_required(self):
         osystem = make_usable_osystem(self)
         self.patch(osystem, 'requires_license_key').return_value = True
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         node = factory.make_node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s' % (osystem.name, series),
@@ -346,7 +346,7 @@ class TestReleases(MAASServerTestCase):
     def test_get_distro_series_initial_with_key_required(self):
         osystem = make_usable_osystem(self)
         self.patch(osystem, 'requires_license_key').return_value = True
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         node = factory.make_node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s*' % (osystem.name, series),

@@ -303,7 +303,7 @@ class TestGetServers(MAASTestCase):
     """Tests for ``get_servers``."""
 
     def test_uses_uuid(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         api = make_api()
         mock = self.patch(api, 'config_resolve_class')
         get_servers(api, uuid)
@@ -312,7 +312,7 @@ class TestGetServers(MAASTestCase):
         self.assertEqual(attrib, filters[0].attrib)
 
     def test_returns_result(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         api = make_api()
         fake_result = make_fake_result('configResolveClass', 'found')
         self.patch(api, 'config_resolve_class').return_value = fake_result
@@ -320,7 +320,7 @@ class TestGetServers(MAASTestCase):
         self.assertEqual('found', result[0].tag)
 
     def test_class_id(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         api = make_api()
         mock = self.patch(api, 'config_resolve_class')
         get_servers(api, uuid)
@@ -385,7 +385,7 @@ class TestProbeServers(MAASTestCase):
         self.assertThat(mock, MockCalledOnceWith(api))
 
     def test_returns_results(self):
-        servers = [{'uuid': factory.getRandomUUID()}]
+        servers = [{'uuid': factory.make_UUID()}]
         mac = 'mac'
         api = make_api()
         self.patch(ucsm, 'get_servers').return_value = servers
@@ -470,7 +470,7 @@ class TestPowerControlUCSM(MAASTestCase):
     """Tests for ``power_control_ucsm``."""
 
     def test_power_control_ucsm(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         get_servers_mock = self.patch(ucsm, 'get_servers')

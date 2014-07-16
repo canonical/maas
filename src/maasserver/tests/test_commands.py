@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test custom commands, as found in src/maasserver/management/commands."""
@@ -80,7 +80,7 @@ class TestCommands(DjangoTestCase):
         stdout = BytesIO()
         username = factory.make_name('user')
         password = factory.getRandomString()
-        email = factory.getRandomEmail()
+        email = factory.make_email_address()
         self.patch(createadmin, 'prompt_for_password').return_value = password
 
         call_command(

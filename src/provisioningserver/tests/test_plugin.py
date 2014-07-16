@@ -132,7 +132,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "tftp": {
                 "generator": "http://candlemass/solitude",
                 "resource_root": self.tempdir,
-                "port": factory.getRandomPort(),
+                "port": factory.pick_port(),
                 },
             }
         options = Options()

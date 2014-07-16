@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for node actions."""
@@ -418,7 +418,7 @@ class TestMarkFixedAction(MAASServerTestCase):
         self.assertFalse(MarkFixed(node, user).is_permitted())
 
     def test_not_enabled_if_not_broken(self):
-        status = factory.getRandomChoice(
+        status = factory.pick_choice(
             NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
         node = factory.make_node(status=status)
         actions = compile_node_actions(

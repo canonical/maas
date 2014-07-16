@@ -104,7 +104,7 @@ class TestNetworks(MAASTestCase):
     def test_discover_networks_discovers_IPv6_network_if_revealed(self):
         self.reveal_IPv6(True)
         eth = factory.make_name('eth')
-        addr = make_inet_address(factory.get_random_ipv6_network())
+        addr = make_inet_address(factory.make_ipv6_network())
         interface = make_interface(addr)
         self.patch_netifaces({eth: interface})
         self.assertEqual([{
@@ -116,7 +116,7 @@ class TestNetworks(MAASTestCase):
 
     def test_discover_networks_ignores_IPv6_network_if_not_revealed(self):
         self.reveal_IPv6(False)
-        addr = make_inet_address(factory.get_random_ipv6_network())
+        addr = make_inet_address(factory.make_ipv6_network())
         interface = make_interface(addr)
         self.patch_netifaces({factory.make_name('eth'): interface})
         self.assertEqual([], network.discover_networks())
@@ -136,7 +136,7 @@ class TestNetworks(MAASTestCase):
     def test_discover_networks_coalesces_networks_on_interface(self):
         self.reveal_IPv6(True)
         eth = factory.make_name('eth')
-        net = factory.get_random_ipv6_network()
+        net = factory.make_ipv6_network()
         self.patch_netifaces({
             eth: {
                 AF_INET6: [
@@ -154,8 +154,8 @@ class TestNetworks(MAASTestCase):
     def test_discover_networks_discovers_multiple_networks_per_interface(self):
         self.reveal_IPv6(True)
         eth = factory.make_name('eth')
-        net1 = factory.get_random_ipv6_network()
-        net2 = factory.get_random_ipv6_network(disjoint_from=[net1])
+        net1 = factory.make_ipv6_network()
+        net2 = factory.make_ipv6_network(disjoint_from=[net1])
         addr1 = factory.getRandomIPInNetwork(net1)
         addr2 = factory.getRandomIPInNetwork(net2)
         self.patch_netifaces({
@@ -179,7 +179,7 @@ class TestNetworks(MAASTestCase):
         self.reveal_IPv6(True)
         eth = factory.make_name('eth')
         ipv4_net = factory.getRandomNetwork()
-        ipv6_net = factory.get_random_ipv6_network()
+        ipv6_net = factory.make_ipv6_network()
         ipv4_addr = factory.getRandomIPInNetwork(ipv4_net)
         ipv6_addr = factory.getRandomIPInNetwork(ipv6_net)
         self.patch_netifaces({

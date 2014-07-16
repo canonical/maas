@@ -78,7 +78,7 @@ class TestAddress(MAASTestCase):
         self.assertEqual('127.0.0.1', address.get_ip_address(b'lo'))
 
     def test_get_ip_address_prefers_v4_addresses_to_v6(self):
-        addresses = [factory.get_random_ipv6_address() for i in range(3)]
+        addresses = [factory.make_ipv6_address() for i in range(3)]
         # We add a deliberately low v6 address to show that the v4
         # address is always preferred.
         ipv6_address = "::1"
@@ -91,14 +91,14 @@ class TestAddress(MAASTestCase):
         self.assertEqual(ipv4_address, address.get_ip_address(b'lo'))
 
     def test_get_ip_address_returns_v6_address_if_no_v4_available(self):
-        ipv6_address = factory.get_random_ipv6_address()
+        ipv6_address = factory.make_ipv6_address()
         self.patch(
             address, 'get_all_addresses_for_interface').return_value = (
             [ipv6_address])
         self.assertEqual(ipv6_address, address.get_ip_address(b'lo'))
 
     def test_get_ip_address_returns_consistent_result_from_address_set(self):
-        addresses = [factory.get_random_ipv6_address() for i in range(5)]
+        addresses = [factory.make_ipv6_address() for i in range(5)]
         expected_address = sorted(addresses)[0]
         for _ in range(5):
             random.shuffle(addresses)

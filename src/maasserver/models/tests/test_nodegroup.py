@@ -127,11 +127,10 @@ class TestNodeGroupManager(MAASServerTestCase):
             factory.make_name("nonexistent-nodegroup"))
 
     def test__mass_change_status_changes_statuses(self):
-        old_status = factory.getRandomEnum(NODEGROUP_STATUS)
+        old_status = factory.pick_enum(NODEGROUP_STATUS)
         nodegroup1 = factory.make_node_group(status=old_status)
         nodegroup2 = factory.make_node_group(status=old_status)
-        new_status = factory.getRandomEnum(
-            NODEGROUP_STATUS, but_not=[old_status])
+        new_status = factory.pick_enum(NODEGROUP_STATUS, but_not=[old_status])
         changed = NodeGroup.objects._mass_change_status(old_status, new_status)
         self.assertEqual(
             (
@@ -146,7 +145,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             ))
 
     def test__mass_change_status_calls_post_save_signal(self):
-        old_status = factory.getRandomEnum(NODEGROUP_STATUS)
+        old_status = factory.pick_enum(NODEGROUP_STATUS)
         nodegroup = factory.make_node_group(status=old_status)
         recorder = Mock()
 
@@ -159,7 +158,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             django.dispatch.Signal.disconnect, post_save,
             receiver=post_save_NodeGroup, sender=NodeGroup)
         NodeGroup.objects._mass_change_status(
-            old_status, factory.getRandomEnum(NODEGROUP_STATUS))
+            old_status, factory.pick_enum(NODEGROUP_STATUS))
         self.assertEqual(
             [call(nodegroup)], recorder.call_args_list)
 
@@ -171,7 +170,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             (reload_object(nodegroup).status, changed))
 
     def test_reject_all_pending_does_not_change_others(self):
-        unaffected_status = factory.getRandomEnum(
+        unaffected_status = factory.pick_enum(
             NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
         nodegroup = factory.make_node_group(status=unaffected_status)
         changed_count = NodeGroup.objects.reject_all_pending()
@@ -187,7 +186,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             (reload_object(nodegroup).status, changed))
 
     def test_accept_all_pending_does_not_change_others(self):
-        unaffected_status = factory.getRandomEnum(
+        unaffected_status = factory.pick_enum(
             NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
         nodegroup = factory.make_node_group(status=unaffected_status)
         changed_count = NodeGroup.objects.accept_all_pending()
@@ -330,13 +329,13 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_accept_node_changes_status(self):
         nodegroup = factory.make_node_group(
-            status=factory.getRandomEnum(NODEGROUP_STATUS))
+            status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.accept()
         self.assertEqual(nodegroup.status, NODEGROUP_STATUS.ACCEPTED)
 
     def test_reject_node_changes_status(self):
         nodegroup = factory.make_node_group(
-            status=factory.getRandomEnum(NODEGROUP_STATUS))
+            status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.reject()
         self.assertEqual(nodegroup.status, NODEGROUP_STATUS.REJECTED)
 

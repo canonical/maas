@@ -244,7 +244,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
-        distro_series = factory.getRandomRelease(osystem)
+        distro_series = factory.pick_release(osystem)
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
@@ -388,8 +388,8 @@ class TestNodeAPI(APITestCase):
         self.assertTrue(reload_object(node).netboot)
 
     def test_POST_release_resets_osystem_and_distro_series(self):
-        osystem = factory.getRandomOS()
-        release = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        release = factory.pick_release(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release)
@@ -398,8 +398,8 @@ class TestNodeAPI(APITestCase):
         self.assertEqual('', reload_object(node).distro_series)
 
     def test_POST_release_resets_license_key(self):
-        osystem = factory.getRandomOS()
-        release = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        release = factory.pick_release(osystem)
         license_key = factory.getRandomString()
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
@@ -410,8 +410,8 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_resets_agent_name(self):
         agent_name = factory.make_name('agent-name')
-        osystem = factory.getRandomOS()
-        release = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        release = factory.pick_release(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release,
@@ -556,9 +556,8 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_admin_can_change_power_type(self):
         self.become_admin()
-        original_power_type = factory.getRandomPowerType()
-        new_power_type = factory.getRandomPowerType(
-            but_not=original_power_type)
+        original_power_type = factory.pick_power_type()
+        new_power_type = factory.pick_power_type(but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type=original_power_type,
@@ -572,9 +571,8 @@ class TestNodeAPI(APITestCase):
             new_power_type, reload_object(node).power_type)
 
     def test_PUT_non_admin_cannot_change_power_type(self):
-        original_power_type = factory.getRandomPowerType()
-        new_power_type = factory.getRandomPowerType(
-            but_not=original_power_type)
+        original_power_type = factory.pick_power_type()
+        new_power_type = factory.pick_power_type(but_not=original_power_type)
         node = factory.make_node(
             owner=self.logged_in_user, power_type=original_power_type)
         self.client_put(
@@ -654,7 +652,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         node = factory.make_node(
             owner=self.logged_in_user,
-            power_type=factory.getRandomPowerType(),
+            power_type=factory.pick_power_type(),
             architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
@@ -984,7 +982,7 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_rtns_error_if_clashing_type_exists(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        random_alloc_type = factory.getRandomEnum(
+        random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE,
             but_not=[IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED])
         node.get_primary_mac().claim_static_ip(alloc_type=random_alloc_type)

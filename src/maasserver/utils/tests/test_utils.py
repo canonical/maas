@@ -121,9 +121,9 @@ class GetDbStateTest(MAASServerTestCase):
     """Testing for the method `get_db_state`."""
 
     def test_get_db_state_returns_db_state(self):
-        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
+        status = factory.pick_choice(NODE_STATUS_CHOICES)
         node = factory.make_node(status=status)
-        another_status = factory.getRandomChoice(
+        another_status = factory.pick_choice(
             NODE_STATUS_CHOICES, but_not=[status])
         node.status = another_status
         self.assertEqual(status, get_db_state(node, 'status'))
@@ -210,7 +210,7 @@ class TestGetLocalClusterUUID(MAASTestCase):
         self.assertIsNone(get_local_cluster_UUID())
 
     def test_get_local_cluster_UUID_returns_cluster_UUID(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         file_name = self.make_file(contents='CLUSTER_UUID="%s"' % uuid)
         self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
         self.assertEqual(uuid, get_local_cluster_UUID())
@@ -225,7 +225,7 @@ class TestFindNodegroup(MAASServerTestCase):
 
     scenarios = [
         ('ipv4', {'network_factory': factory.getRandomNetwork}),
-        ('ipv6', {'network_factory': factory.get_random_ipv6_network}),
+        ('ipv6', {'network_factory': factory.make_ipv6_network}),
         ]
 
     def make_cluster_interface(self, network, management=None):
@@ -234,7 +234,7 @@ class TestFindNodegroup(MAASServerTestCase):
         The interface is managed by default.
         """
         if management is None:
-            management = factory.getRandomEnum(
+            management = factory.pick_enum(
                 NODEGROUPINTERFACE_MANAGEMENT,
                 but_not=[NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED])
         cluster = factory.make_node_group()
@@ -321,7 +321,7 @@ class TestFindNodegroup(MAASServerTestCase):
         matching_network = self.network_factory()
         requesting_ip = factory.getRandomIPInNetwork(matching_network)
         self.make_cluster_interface(factory.getRandomNetwork())
-        self.make_cluster_interface(factory.get_random_ipv6_network())
+        self.make_cluster_interface(factory.make_ipv6_network())
         matching_interface = self.make_cluster_interface(matching_network)
         self.assertEqual(
             matching_interface.nodegroup,

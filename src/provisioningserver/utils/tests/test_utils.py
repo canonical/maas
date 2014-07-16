@@ -1373,7 +1373,7 @@ class TestCreateNode(PservTestCase):
 
     def test_passes_on_no_duplicate_macs(self):
         url = '/api/1.0/nodes/'
-        uuid = 'node-' + factory.getRandomUUID()
+        uuid = 'node-' + factory.make_UUID()
         macs = [factory.getRandomMACAddress() for x in range(3)]
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
@@ -1410,7 +1410,7 @@ class TestCreateNode(PservTestCase):
 
     def test_errors_on_duplicate_macs(self):
         url = '/api/1.0/nodes/'
-        uuid = 'node-' + factory.getRandomUUID()
+        uuid = 'node-' + factory.make_UUID()
         macs = [factory.getRandomMACAddress() for x in range(3)]
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
@@ -1463,7 +1463,7 @@ class TestComposeURLOnIP(MAASTestCase):
             compose_URL_on_IP('http:///%s' % path, ip))
 
     def test__inserts_IPv6_with_brackets(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         path = self.make_path()
         self.assertEqual(
             'http://[%s]/%s' % (ip, path),
@@ -1479,14 +1479,14 @@ class TestComposeURLOnIP(MAASTestCase):
 
     def test__preserves_port_with_IPv4(self):
         ip = factory.getRandomIPAddress()
-        port = factory.getRandomPort()
+        port = factory.pick_port()
         self.assertEqual(
             'https://%s:%s/' % (ip, port),
             compose_URL_on_IP('https://:%s/' % port, ip))
 
     def test__preserves_port_with_IPv6(self):
-        ip = factory.get_random_ipv6_address()
-        port = factory.getRandomPort()
+        ip = factory.make_ipv6_address()
+        port = factory.pick_port()
         self.assertEqual(
             'https://[%s]:%s/' % (ip, port),
             compose_URL_on_IP('https://:%s/' % port, ip))

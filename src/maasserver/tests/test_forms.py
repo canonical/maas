@@ -656,7 +656,7 @@ class TestAdminNodeForm(MAASServerTestCase):
         node = factory.make_node()
         zone = factory.make_zone()
         hostname = factory.getRandomString()
-        power_type = factory.getRandomPowerType()
+        power_type = factory.pick_power_type()
         form = AdminNodeForm(
             data={
                 'hostname': hostname,
@@ -717,7 +717,7 @@ class TestAdminNodeForm(MAASServerTestCase):
     def test_AdminNodeForm_changes_node_with_skip_check(self):
         node = factory.make_node()
         hostname = factory.getRandomString()
-        power_type = factory.getRandomPowerType()
+        power_type = factory.pick_power_type()
         power_parameters_field = factory.getRandomString()
         arch = make_usable_architecture(self)
         form = AdminNodeForm(
@@ -1355,7 +1355,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_pending_nodegroup(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         form = NodeGroupDefineForm(data={'name': name, 'uuid': uuid})
         self.assertTrue(form.is_valid(), form._errors)
         nodegroup = form.save()
@@ -1370,7 +1370,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_nodegroup_with_status(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'name': name, 'uuid': uuid})
@@ -1391,7 +1391,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_rejects_invalid_json_interfaces(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         invalid_interfaces = factory.make_name('invalid_json_interfaces')
         form = NodeGroupDefineForm(
             data={
@@ -1403,7 +1403,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_rejects_invalid_list_interfaces(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         invalid_interfaces = json.dumps('invalid interface list')
         form = NodeGroupDefineForm(
             data={
@@ -1415,7 +1415,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_rejects_invalid_interface(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interface = factory.get_interface_fields()
         # Make the interface invalid.
         interface['ip_range_high'] = 'invalid IP address'
@@ -1429,7 +1429,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_interface_from_params(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interface = factory.get_interface_fields()
         interfaces = json.dumps([interface])
         form = NodeGroupDefineForm(
@@ -1448,7 +1448,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             MatchesStructure.byEquality(**expected_result))
 
     def test_accepts_unnamed_cluster_interface(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interface = factory.get_interface_fields()
         del interface['name']
         interfaces = json.dumps([interface])
@@ -1471,7 +1471,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         form = NodeGroupDefineForm(
             data={
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
                 'interfaces': json.dumps([
                     factory.get_interface_fields(
                         network=big_network, management=managed),
@@ -1493,7 +1493,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         form = NodeGroupDefineForm(
             data={
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
                 'interfaces': json.dumps([
                     factory.get_interface_fields(
                         network=big_network, management=managed),
@@ -1508,7 +1508,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_multiple_interfaces(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interfaces = [
             factory.get_interface_fields(management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
@@ -1527,7 +1527,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_populates_cluster_name_default(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'name': name, 'uuid': uuid})
@@ -1537,7 +1537,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_populates_cluster_name(self):
         cluster_name = factory.make_name('cluster_name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         form = NodeGroupDefineForm(
             status=NODEGROUP_STATUS.ACCEPTED,
             data={'cluster_name': cluster_name, 'uuid': uuid})
@@ -1547,7 +1547,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_creates_unmanaged_interfaces(self):
         name = factory.make_name('name')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interface = factory.get_interface_fields()
         del interface['management']
         interfaces = json.dumps([interface])
@@ -1567,7 +1567,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
         form = NodeGroupDefineForm(
             data={
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
             })
         self.assertTrue(form.is_valid(), form._errors)
         cluster = form.save()
@@ -1578,7 +1578,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
             instance=NodeGroup.objects.ensure_master(),
             data={
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
             })
         self.assertTrue(form.is_valid(), form._errors)
         cluster = form.save()
@@ -2271,7 +2271,7 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
     def test_edits_boot_source_selection_object(self):
         boot_source_selection = factory.make_boot_source_selection()
         ubuntu_os = UbuntuOS()
-        new_release = factory.getRandomRelease(ubuntu_os)
+        new_release = factory.pick_release(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -2289,7 +2289,7 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
     def test_creates_boot_source_selection_object(self):
         boot_source = factory.make_boot_source()
         ubuntu_os = UbuntuOS()
-        new_release = factory.getRandomRelease(ubuntu_os)
+        new_release = factory.pick_release(ubuntu_os)
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -2311,7 +2311,7 @@ class TestDeployForm(MAASServerTestCase):
         # hard-coded stuff.
         osystem = make_usable_osystem(self)
         os_name = osystem.name
-        release_name = factory.getRandomRelease(osystem)
+        release_name = factory.pick_release(osystem)
         release_name = "%s/%s" % (os_name, release_name)
         deploy_form = DeployForm()
         os_choices = deploy_form.fields['default_osystem'].choices
@@ -2324,7 +2324,7 @@ class TestDeployForm(MAASServerTestCase):
     def test_accepts_new_values(self):
         osystem = make_usable_osystem(self)
         os_name = osystem.name
-        release_name = factory.getRandomRelease(osystem)
+        release_name = factory.pick_release(osystem)
         params = {
             'default_osystem': os_name,
             'default_distro_series': "%s/%s" % (os_name, release_name),
@@ -2360,7 +2360,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
     def make_only_one_osystem_require_key(self, key_is_valid=True):
         """Patches a random operating system from the registry, to require a
         key. Patches the remaining operating systems to not require a key."""
-        osystem = factory.getRandomOS()
+        osystem = factory.pick_OS()
         self.patch(
             osystem, 'requires_license_key').return_value = True
         self.patch(
@@ -2374,7 +2374,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
 
     def test_creates_license_key(self):
         osystem = self.make_os_with_license_key()
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         key = factory.make_name('key')
         definition = {
             'osystem': osystem.name,
@@ -2391,7 +2391,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
 
     def test_updates_license_key(self):
         osystem = self.make_os_with_license_key()
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         license_key = factory.make_license_key(
             osystem=osystem.name, distro_series=series,
             license_key=factory.make_name('key'))
@@ -2404,7 +2404,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
 
     def test_validates_license_key(self):
         osystem = self.make_os_with_license_key(key_is_valid=False)
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         license_key = factory.make_license_key(
             osystem=osystem.name, distro_series=series,
             license_key=factory.make_name('key'))
@@ -2418,7 +2418,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
 
     def test_handles_missing_osystem_in_distro_series(self):
         osystem = self.make_os_with_license_key()
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         key = factory.make_name('key')
         definition = {
             'osystem': osystem.name,
@@ -2440,7 +2440,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
 
     def test_errors_on_not_unique(self):
         osystem = self.make_os_with_license_key()
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         key = factory.make_name('key')
         factory.make_license_key(
             osystem=osystem.name, distro_series=series, license_key=key)

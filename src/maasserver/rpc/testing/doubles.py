@@ -38,7 +38,7 @@ class IdentifyingRegionServer(RegionServer):
     def callRemote(self, commandType, *args, **kwargs):
         if commandType is cluster.Identify:
             if self.cluster_uuid is None:
-                self.cluster_uuid = factory.getRandomUUID()
+                self.cluster_uuid = factory.make_UUID()
             return succeed({b"ident": self.cluster_uuid})
         else:
             return super(IdentifyingRegionServer, self).callRemote(

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for tag updating."""
@@ -65,7 +65,7 @@ class TestProcessResponse(PservTestCase):
         self.assertEqual(data, tags.process_response(response))
 
     def test_process_OK_response_with_other_content(self):
-        data = factory.getRandomBytes()
+        data = factory.make_bytes()
         response = factory.make_response(
             httplib.OK, data, "application/octet-stream")
         self.assertEqual(data, tags.process_response(response))
@@ -237,7 +237,7 @@ class TestMergeDetailsCleanly(PservTestCase):
         xml = self.do_merge_details({
             "lshw": b"<gibber></ish>",
             "foom": b"<not>well</formed>",
-            "zoom": b"<>" + factory.getRandomBytes(),
+            "zoom": b"<>" + factory.make_bytes(),
             "oops": None,
         })
         expected = """\
@@ -340,7 +340,7 @@ class TestMergeDetails(TestMergeDetailsCleanly):
         xml = self.do_merge_details({
             "lshw": b"<gibber></ish>",
             "foom": b"<not>well</formed>",
-            "zoom": b"<>" + factory.getRandomBytes(),
+            "zoom": b"<>" + factory.make_bytes(),
             "oops": None,
         })
         expected = """\

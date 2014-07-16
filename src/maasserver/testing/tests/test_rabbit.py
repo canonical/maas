@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maastesting.rabbit`."""
@@ -26,8 +26,8 @@ class TestRabbitServerSettings(MAASTestCase):
     def test_patch(self):
         config = RabbitServerResources(
             hostname=factory.getRandomString(),
-            port=factory.getRandomPort(),
-            dist_port=factory.getRandomPort())
+            port=factory.pick_port(),
+            dist_port=factory.pick_port())
         self.useFixture(config)
         self.useFixture(RabbitServerSettings(config))
         self.assertEqual(

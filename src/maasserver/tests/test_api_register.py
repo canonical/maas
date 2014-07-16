@@ -73,7 +73,7 @@ class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
 def create_configured_master():
     """Set up a master, already configured."""
     master = NodeGroup.objects.ensure_master()
-    master.uuid = factory.getRandomUUID()
+    master.uuid = factory.make_UUID()
     master.save()
 
 
@@ -121,7 +121,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
 
     def test_creates_pending_nodegroup_by_default(self):
         create_configured_master()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         request = make_register_request(uuid)
 
         nodegroup = api.register_nodegroup(request, uuid)
@@ -132,7 +132,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
 
     def test_registers_as_master_if_master_not_configured(self):
         reset_master()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         request = make_register_request(uuid)
 
         nodegroup = api.register_nodegroup(request, uuid)
@@ -143,7 +143,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
 
     def test_updates_and_accepts_local_master_if_master_not_configured(self):
         reset_master()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
         request = make_register_request(uuid)
 
@@ -155,7 +155,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
 
     def test_keeps_local_cluster_controller_pending_if_master_configured(self):
         create_configured_master()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
         request = make_register_request(uuid)
 
@@ -178,7 +178,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
 
     def test_returns_credentials_if_accepted(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        existed = factory.getRandomBoolean()
+        existed = factory.pick_bool()
         self.assertEqual(
             api.get_celery_credentials(),
             api.compose_nodegroup_register_response(nodegroup, existed))
@@ -186,7 +186,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
     def test_credentials_contain_broker_url(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         broker_url = patch_broker_url(self)
-        existed = factory.getRandomBoolean()
+        existed = factory.pick_bool()
 
         response = api.compose_nodegroup_register_response(nodegroup, existed)
 
@@ -194,7 +194,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
 
     def test_returns_forbidden_if_rejected(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        already_existed = factory.getRandomBoolean()
+        already_existed = factory.pick_bool()
 
         with ExpectedException(PermissionDenied, "Rejected cluster."):
             api.compose_nodegroup_register_response(nodegroup, already_existed)
@@ -226,7 +226,7 @@ class TestRegisterAPI(MAASServerTestCase):
     def test_register_creates_nodegroup_and_interfaces(self):
         create_configured_master()
         name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         interface = factory.get_interface_fields()
         response = self.client.post(
             reverse('nodegroups_handler'),
@@ -258,7 +258,7 @@ class TestRegisterAPI(MAASServerTestCase):
     def test_register_auto_accepts_local_master(self):
         reset_master()
         name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
         patch_broker_url(self)
 
@@ -281,7 +281,7 @@ class TestRegisterAPI(MAASServerTestCase):
     def test_register_configures_master_if_unconfigured(self):
         reset_master()
         name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
         interface = factory.get_interface_fields()
 
@@ -309,7 +309,7 @@ class TestRegisterAPI(MAASServerTestCase):
             MatchesStructure.byEquality(**expected_result))
 
     def test_register_nodegroup_uses_default_zone_name(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
 
         response = self.client.post(
@@ -332,7 +332,7 @@ class TestRegisterAPI(MAASServerTestCase):
             {
                 'op': 'register',
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
                 'interfaces': 'invalid data',
             })
         self.assertEqual(
@@ -377,7 +377,7 @@ class TestRegisterAPI(MAASServerTestCase):
             {
                 'op': 'register',
                 'name': factory.make_name('cluster'),
-                'uuid': factory.getRandomUUID(),
+                'uuid': factory.make_UUID(),
             })
 
         self.assertIn('application/json', response['Content-Type'])
@@ -388,7 +388,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # (i.e. from the perspective of the cluster) is *not* recorded.
         create_configured_master()
         name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
@@ -439,7 +439,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # the future is *not* updated to the one on which the call was made.
         reset_master()
         name = factory.make_name('cluster')
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
         update_maas_url = self.patch(api, "update_nodegroup_maas_url")
         response = self.client.post(

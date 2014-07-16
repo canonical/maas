@@ -50,17 +50,16 @@ class FakeRandInt:
 
 class TestFactory(MAASServerTestCase):
 
-    def test_getRandomEnum_returns_enum_value(self):
+    def test_pick_enum_returns_enum_value(self):
         random_value = random.randint(0, 99999)
 
         class Enum:
             VALUE = random_value
             OTHER_VALUE = random_value + 3
 
-        self.assertIn(
-            factory.getRandomEnum(Enum), [Enum.VALUE, Enum.OTHER_VALUE])
+        self.assertIn(factory.pick_enum(Enum), [Enum.VALUE, Enum.OTHER_VALUE])
 
-    def test_getRandomEnum_can_exclude_choices(self):
+    def test_pick_enum_can_exclude_choices(self):
         random_value = random.randint(0, 99999)
 
         class Enum:
@@ -70,20 +69,20 @@ class TestFactory(MAASServerTestCase):
 
         self.assertEqual(
             Enum.FIRST_VALUE,
-            factory.getRandomEnum(
+            factory.pick_enum(
                 Enum, but_not=(Enum.SECOND_VALUE, Enum.THIRD_VALUE)))
 
-    def test_getRandomChoice_chooses_from_django_options(self):
+    def test_pick_choice_chooses_from_django_options(self):
         options = [(2, 'b'), (10, 'j')]
         self.assertIn(
-            factory.getRandomChoice(options),
+            factory.pick_choice(options),
             [option[0] for option in options])
 
-    def test_getRandomChoice_can_exclude_choices(self):
+    def test_pick_choice_can_exclude_choices(self):
         options = [(2, 'b'), (10, 'j')]
         but_not = [2]
         self.assertEqual(
-            10, factory.getRandomChoice(options, but_not=but_not))
+            10, factory.pick_choice(options, but_not=but_not))
 
     def test_make_node_creates_nodegroup_if_none_given(self):
         existing_nodegroup_ids = set(

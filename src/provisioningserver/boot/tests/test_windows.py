@@ -52,7 +52,7 @@ class TestBcd(MAASTestCase):
                                             Bcd.BOOT_MGR_DISPLAY_ORDER]
         mock_hivex.node_children.side_effect = [
             [factory.make_name('objects')], [factory.make_name('object')],
-            ['value0', factory.getRandomUUID()],
+            ['value0', factory.make_UUID()],
             [factory.make_name('element')]]
         mock_hivex.node_values.return_value = [factory.make_name('val')]
 
@@ -199,7 +199,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             }
         self.patch(windows_module, 'get_remote_mac').return_value = mock_mac
 
-        cluster_uuid = factory.getRandomUUID()
+        cluster_uuid = factory.make_UUID()
         self.patch(windows_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
 
@@ -210,10 +210,10 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         call_context = {
             "local": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             "remote": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             }
 
         data = yield context.call(

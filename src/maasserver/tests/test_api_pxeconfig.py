@@ -332,7 +332,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_get_boot_purpose_osystem_no_xinstall_support(self):
         osystem = make_usable_osystem(
             self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
-        release = factory.getRandomRelease(osystem)
+        release = factory.pick_release(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, netboot=True,
             osystem=osystem.name, distro_series=release)

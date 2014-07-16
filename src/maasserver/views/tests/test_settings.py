@@ -109,8 +109,8 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)
-        new_check_compatibility = factory.getRandomBoolean()
-        new_commissioning = factory.getRandomCommissioningRelease(DEFAULT_OS)
+        new_check_compatibility = factory.pick_bool()
+        new_commissioning = factory.pick_commissioning_release(DEFAULT_OS)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -134,7 +134,7 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_third_party_drivers_POST(self):
         self.client_log_in(as_admin=True)
-        new_enable_third_party_drivers = factory.getRandomBoolean()
+        new_enable_third_party_drivers = factory.pick_bool()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -157,7 +157,7 @@ class SettingsTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         osystem = make_usable_osystem(self)
         osystem_name = osystem.name
-        release_name = factory.getRandomRelease(osystem)
+        release_name = factory.pick_release(osystem)
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -275,8 +275,8 @@ class UserManagementTest(MAASServerTestCase):
         params = {
             'username': factory.getRandomString(),
             'last_name': factory.getRandomString(30),
-            'email': factory.getRandomEmail(),
-            'is_superuser': factory.getRandomBoolean(),
+            'email': factory.make_email_address(),
+            'is_superuser': factory.pick_bool(),
         }
         password = factory.getRandomString()
         params.update(make_password_params(password))

@@ -599,7 +599,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             call_signal(
                 client, status=status,
                 script_result=script_result,
-                files={filename: factory.getRandomBytes()})
+                files={filename: factory.make_bytes()})
         self.assertEqual(
             {status: filename for status in statuses},
             {

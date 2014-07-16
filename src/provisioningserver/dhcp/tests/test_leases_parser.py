@@ -144,7 +144,7 @@ class TestLeasesParsers(MAASTestCase):
         self.assertEqual({ip: mac}, leases)
 
     def test_parse_leases_parses_IPv6_lease(self):
-        ip = unicode(factory.get_random_ipv6_address())
+        ip = unicode(factory.make_ipv6_address())
         mac = factory.getRandomMACAddress()
         leases = self.parse(self.make_lease_entry(ip, mac))
         self.assertEqual({ip: mac}, leases)
@@ -156,7 +156,7 @@ class TestLeasesParsers(MAASTestCase):
         self.assertEqual({ip: mac}, leases)
 
     def test_parse_leases_parses_IPv6_host(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         mac = factory.getRandomMACAddress()
         leases = self.parse(self.make_lease_entry(ip, mac))
         self.assertEqual({unicode(ip): mac}, leases)

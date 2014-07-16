@@ -377,13 +377,13 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         if service is None:
             service = '.'.join(factory.make_name('_') for _ in range(2))
         if port is None:
-            port = factory.getRandomPort()
+            port = factory.pick_port()
         if target is None:
             target = factory.make_hostname()
         if priority is None:
-            priority = factory.getRandomPort()
+            priority = factory.pick_port()
         if weight is None:
-            weight = factory.getRandomPort()
+            weight = factory.pick_port()
         return SRVRecord(
             service=service, port=port, target=target,
             priority=priority, weight=weight)
@@ -430,8 +430,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             factory.make_name('host'): factory.getRandomIPAddress(),
         }
         mapping = {
-            factory.make_name('host'): factory.get_random_ipv6_address(),
-            factory.make_name('host'): factory.get_random_ipv6_address(),
+            factory.make_name('host'): factory.make_ipv6_address(),
+            factory.make_name('host'): factory.make_ipv6_address(),
         }
         mapping.update(ipv4_mapping)
         expected = [('%s.' % name, dns_ip)] + ipv4_mapping.items()
@@ -444,8 +444,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.getRandomIPInNetwork(network)
         ipv6_mapping = {
-            factory.make_name('host'): factory.get_random_ipv6_address(),
-            factory.make_name('host'): factory.get_random_ipv6_address(),
+            factory.make_name('host'): factory.make_ipv6_address(),
+            factory.make_name('host'): factory.make_ipv6_address(),
         }
         mapping = {
             factory.make_name('host'): factory.getRandomIPAddress(),
@@ -496,7 +496,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ipv4_hostname = factory.make_name('host')
         ipv4_ip = factory.getRandomIPInNetwork(network)
         ipv6_hostname = factory.make_name('host')
-        ipv6_ip = factory.get_random_ipv6_address()
+        ipv6_ip = factory.make_ipv6_address()
         mapping = {
             ipv4_hostname: ipv4_ip,
             ipv6_hostname: ipv6_ip,

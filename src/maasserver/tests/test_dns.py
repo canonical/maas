@@ -95,7 +95,7 @@ class TestDNSUtilities(MAASServerTestCase):
         if hostname is None:
             hostname = factory.getRandomString()
         url = 'http://%s:%d/%s' % (
-            hostname, factory.getRandomPort(), factory.getRandomString())
+            hostname, factory.pick_port(), factory.getRandomString())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
 
     def test_get_dns_server_address_resolves_hostname(self):

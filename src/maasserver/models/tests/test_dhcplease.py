@@ -188,7 +188,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         nodegroup = factory.make_node_group()
         # Create non-allocated nodes with leases.
         for i in range(10):
-            status = factory.getRandomChoice(
+            status = factory.pick_choice(
                 NODE_STATUS_CHOICES, but_not=[NODE_STATUS.ALLOCATED])
             node = factory.make_node(
                 nodegroup=nodegroup, status=status)

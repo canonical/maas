@@ -22,11 +22,11 @@ from maastesting.testcase import MAASTestCase
 class TestGetBootSources(MAASTestCase):
 
     def test_returns_empty_list_when_cluster_does_not_exist(self):
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         self.assertEqual([], get_boot_sources(uuid))
 
     def test_returns_boot_sources_and_selections(self):
-        keyring = factory.getRandomBytes()
+        keyring = factory.make_bytes()
         nodegroup = factory.make_node_group()
         source = factory.make_boot_source(nodegroup, keyring_data=keyring)
         factory.make_boot_source_selection(source)

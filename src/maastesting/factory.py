@@ -99,22 +99,27 @@ class Factory:
         else:
             return prefix + "".join(islice(self.random_letters, size))
 
-    def getRandomBytes(self, size=10):
+    def make_bytes(self, size=10):
+        """Return a `bytes` filled with random data."""
         return os.urandom(size)
 
-    def getRandomUsername(self, size=10):
+    def make_username(self, size=10):
+        """Create an arbitrary user name (but not the actual user)."""
         return "".join(islice(self.random_letters_for_usernames, size))
 
-    def getRandomEmail(self, login_size=10):
+    def make_email_address(self, login_size=10):
+        """Generate an arbitrary email address."""
         return "%s@example.com" % self.getRandomString(size=login_size)
 
-    def getRandomStatusCode(self):
+    def make_status_code(self):
+        """Return an arbitrary HTTP status code."""
         return next(self.random_http_responses)
 
-    def getRandomBoolean(self):
+    def pick_bool(self):
+        """Return an arbitrary Boolean value (`True` or `False`)."""
         return random.choice((True, False))
 
-    def getRandomPort(self, port_min=1024, port_max=65535):
+    def pick_port(self, port_min=1024, port_max=65535):
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
 
@@ -122,7 +127,7 @@ class Factory:
         octets = islice(self.random_octets, 4)
         return '%d.%d.%d.%d' % tuple(octets)
 
-    def get_random_ipv6_address(self):
+    def make_ipv6_address(self):
         # We return from the fc00::/7 space because that's a private
         # space and shouldn't cause problems of addressing the outside
         # world.
@@ -132,7 +137,7 @@ class Factory:
         random_address_index = random.randint(0, network.size - 1)
         return unicode(IPAddress(network[random_address_index]))
 
-    def getRandomUUID(self):
+    def make_UUID(self):
         return unicode(uuid1())
 
     def getRandomNetwork(self, slash=None, but_not=None, disjoint_from=None,
@@ -171,8 +176,7 @@ class Factory:
                 return network
         raise TooManyRandomRetries("Could not find available network")
 
-    def get_random_ipv6_network(self, slash=None, but_not=None,
-                                disjoint_from=None):
+    def make_ipv6_network(self, slash=None, but_not=None, disjoint_from=None):
         """Generate a random IPv6 network.
 
         :param slash: Netmask or bit width of the network. If not
@@ -191,7 +195,7 @@ class Factory:
             slash = random.randint(112, 125)
         return self.getRandomNetwork(
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
-            random_address_factory=self.get_random_ipv6_address)
+            random_address_factory=self.make_ipv6_address)
 
     def getRandomIPInNetwork(self, network, but_not=None):
         if but_not is None:
@@ -250,7 +254,7 @@ class Factory:
             leases[self.getRandomIPAddress()] = self.getRandomMACAddress()
         return leases
 
-    def getRandomDate(self, year=2011):
+    def make_date(self, year=2011):
         start = time.mktime(datetime.datetime(year, 1, 1).timetuple())
         end = time.mktime(datetime.datetime(year + 1, 1, 1).timetuple())
         stamp = random.randrange(start, end)

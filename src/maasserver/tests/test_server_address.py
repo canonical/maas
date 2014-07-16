@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the server_address module."""
@@ -37,7 +37,7 @@ class TestServerAddress(MAASServerTestCase):
         if hostname is None:
             hostname = self.make_hostname()
         if with_port:
-            location = "%s:%d" % (hostname, factory.getRandomPort())
+            location = "%s:%d" % (hostname, factory.pick_port())
         else:
             location = hostname
         url = 'http://%s/%s' % (location, factory.make_name("path"))
@@ -90,7 +90,7 @@ class TestServerAddress(MAASServerTestCase):
         self.assertEqual(ip, get_maas_facing_server_address())
 
     def test_get_maas_facing_server_address_returns_ng_maas_url_ipv6(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         # To put a literal IPv6 address in a URL we must wrap it in
         # brackets, per RFC2732.
         maas_url = 'http://[%s]' % ip
@@ -103,7 +103,7 @@ class TestServerAddress(MAASServerTestCase):
         # get_maas_facing_server_address() will return a v4 address
         # rather than a v6 one.
         v4_ip = factory.getRandomIPAddress()
-        v6_ip = factory.get_random_ipv6_address()
+        v6_ip = factory.make_ipv6_address()
         addr_info_result = [
             (server_address.AF_INET, None, None, None, (v4_ip, None)),
             (server_address.AF_INET6, None, None, None,

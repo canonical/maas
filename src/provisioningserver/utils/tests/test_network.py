@@ -206,8 +206,8 @@ class TestGetAllAddressesForInterface(MAASTestCase):
             }),
         ('ipv6', {
             'inet_class': AF_INET6,
-            'network_factory': factory.get_random_ipv6_network,
-            'ip_address_factory': factory.get_random_ipv6_address,
+            'network_factory': factory.make_ipv6_network,
+            'ip_address_factory': factory.make_ipv6_address,
             'loopback_address': '::1',
             }),
         ]
@@ -283,7 +283,7 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
 
     def test_returns_all_addresses_for_all_interfaces(self):
         v4_ips = [factory.getRandomIPAddress() for i in range(2)]
-        v6_ips = [factory.get_random_ipv6_address() for i in range(2)]
+        v6_ips = [factory.make_ipv6_address() for i in range(2)]
         ips = zip(v4_ips, v6_ips)
         interfaces = {
             factory.make_name('eth', sep=''): {
@@ -313,7 +313,7 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
 
     def test_returns_all_addresses_for_interface(self):
         v4_ip = factory.getRandomIPAddress()
-        v6_ip = factory.get_random_ipv6_address()
+        v6_ip = factory.make_ipv6_address()
         interface = factory.make_name('eth', sep='')
         patch_interfaces(self, {
             interface: {
@@ -335,12 +335,12 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
     def test__leaves_clean_IPv6_intact(self):
-        ip = unicode(factory.get_random_ipv6_address())
+        ip = unicode(factory.make_ipv6_address())
         interface = factory.make_name('eth')
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
     def test__removes_interface_suffix(self):
-        ip = unicode(factory.get_random_ipv6_address())
+        ip = unicode(factory.make_ipv6_address())
         interface = factory.make_name('eth')
         self.assertEqual(
             ip,

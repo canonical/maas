@@ -251,14 +251,14 @@ class TestReceiveOffers(MAASTestCase):
 
         After that, further calls to `recv` will raise a timeout.
         """
-        packets = [factory.getRandomBytes() for _ in range(num_packets)]
+        packets = [factory.make_bytes() for _ in range(num_packets)]
         receiver = FakePacketReceiver(packets)
         self.patch(sock, 'recv', receiver)
         return receiver
 
     def patch_offer_packet(self):
         """Patch a mock `DHCPOfferPacket`."""
-        transaction_id = factory.getRandomBytes(4)
+        transaction_id = factory.make_bytes(4)
         packet = mock.MagicMock()
         packet.transaction_ID = transaction_id
         packet.dhcp_server_ID = factory.getRandomIPAddress()
@@ -300,7 +300,7 @@ class TestReceiveOffers(MAASTestCase):
         sock = patch_socket(self)
         self.patch_recv(sock, 1)
         self.patch_offer_packet()
-        other_transaction_id = factory.getRandomBytes(4)
+        other_transaction_id = factory.make_bytes(4)
 
         self.assertEqual(set(), receive_offers(other_transaction_id))
 
@@ -313,7 +313,7 @@ class TestReceiveOffers(MAASTestCase):
 
         self.assertRaises(
             InducedError,
-            receive_offers, factory.getRandomBytes(4))
+            receive_offers, factory.make_bytes(4))
 
 
 class MockResponse:
@@ -338,7 +338,7 @@ class TestPeriodicTask(PservTestCase):
     def setUp(self):
         # Initialise the knowledge cache.
         super(TestPeriodicTask, self).setUp()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         maas_url = 'http://%s.example.com/%s/' % (
             factory.make_name('host'),
             factory.getRandomString(),

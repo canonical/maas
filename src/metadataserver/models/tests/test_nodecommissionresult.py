@@ -36,7 +36,7 @@ class TestNodeCommissionResult(DjangoTestCase):
     def test_can_store_data(self):
         node = factory.make_node()
         name = factory.getRandomString()
-        data = factory.getRandomBytes()
+        data = factory.make_bytes()
         factory.make_node_commission_result(node=node, name=name, data=data)
 
         ncr = NodeCommissionResult.objects.get(name=name)
@@ -110,7 +110,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
     def test_store_data(self):
         node = factory.make_node()
         name = factory.getRandomString(255)
-        data = factory.getRandomBytes(1024 * 1024)
+        data = factory.make_bytes(1024 * 1024)
         script_result = randint(0, 10)
         result = NodeCommissionResult.objects.store_data(
             node, name=name, script_result=script_result, data=Bin(data))
@@ -125,7 +125,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
         name = factory.getRandomString(255)
         script_result = randint(0, 10)
         factory.make_node_commission_result(node=node, name=name)
-        data = factory.getRandomBytes(1024 * 1024)
+        data = factory.make_bytes(1024 * 1024)
         NodeCommissionResult.objects.store_data(
             node, name=name, script_result=script_result, data=Bin(data))
 

@@ -55,7 +55,7 @@ class TestIPSpecifier(MAASServerTestCase):
         self.assertEqual(IPAddress(ip), IPSpecifier('ip:' + unicode(ip)).ip)
 
     def test_accepts_IPv6_address(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         self.assertEqual(IPAddress(ip), IPSpecifier('ip:' + unicode(ip)).ip)
 
     def test_rejects_empty_ip_address(self):
@@ -253,7 +253,7 @@ class TestNetwork(MAASServerTestCase):
         self.assertEqual(net, factory.make_network(network=net).get_network())
 
     def test_accepts_ipv6_network(self):
-        net = factory.get_random_ipv6_network()
+        net = factory.make_ipv6_network()
         self.assertEqual(net, factory.make_network(network=net).get_network())
 
     def test_get_connected_nodes_returns_QuerySet(self):
@@ -306,21 +306,21 @@ class TestNetwork(MAASServerTestCase):
             network=make_network(ip, '0.0.0.0'))
 
     def test_netmask_validation_does_not_allow_too_small_ipv6_netmask(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         self.assertRaises(
             ValidationError, factory.make_network,
             network=make_network(
                 ip, 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'))
 
     def test_netmask_validation_does_not_allow_too_large_ipv6_netmask(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         self.assertRaises(
             ValidationError, factory.make_network,
             network=make_network(
                 ip, '0000:0000:0000:0000:0000:0000:0000:0000'))
 
     def test_netmask_valid_doesnt_allow_short_allow_all_ipv6_netmask(self):
-        ip = factory.get_random_ipv6_address()
+        ip = factory.make_ipv6_address()
         self.assertRaises(
             ValidationError, factory.make_network,
             network=make_network(ip, '::'))
@@ -333,7 +333,7 @@ class TestNetwork(MAASServerTestCase):
         self.assertRaises(ValidationError, network.save)
 
     def test_netmask_validation_accepts_ipv6_netmask(self):
-        net = factory.get_random_ipv6_network()
+        net = factory.make_ipv6_network()
         network = factory.make_network(network=net)
         network.netmask = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:0000"
         # This shouldn't error.
@@ -341,7 +341,7 @@ class TestNetwork(MAASServerTestCase):
 
     def test_netmask_validation_errors_on_mixed_v4_and_v6_values(self):
         network = factory.make_network()
-        network.ip = unicode(factory.get_random_ipv6_address())
+        network.ip = unicode(factory.make_ipv6_address())
         network.netmask = '255.255.255.0'
         self.assertRaises(ValidationError, network.save)
 

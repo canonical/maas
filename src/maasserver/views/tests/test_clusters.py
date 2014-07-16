@@ -87,7 +87,7 @@ class ClusterListingTest(MAASServerTestCase):
     def test_make_title_entry_returns_link_for_other_status(self):
         # If the entry's status is different from the view's status,
         # the returned entry is a link.
-        other_status = factory.getRandomChoice(
+        other_status = factory.pick_choice(
             NODEGROUP_STATUS_CHOICES, but_not=[self.status])
         factory.make_node_group(status=other_status)
         link_name = ClusterListView.status_links[other_status]
@@ -102,7 +102,7 @@ class ClusterListingTest(MAASServerTestCase):
     def test_make_title_entry_returns_title_if_no_cluster(self):
         # If no cluster correspond to the entry's status, the returned
         # entry is not a link: it's a simple mention '0 <status> clusters'.
-        other_status = factory.getRandomChoice(
+        other_status = factory.pick_choice(
             NODEGROUP_STATUS_CHOICES, but_not=[self.status])
         link_name = ClusterListView.status_links[other_status]
         view = self.make_listing_view(self.status)
@@ -288,7 +288,7 @@ class ClusterEditTest(MAASServerTestCase):
         data = {
             'cluster_name': factory.make_name('cluster_name'),
             'name': factory.make_name('name'),
-            'status': factory.getRandomEnum(NODEGROUP_STATUS),
+            'status': factory.pick_enum(NODEGROUP_STATUS),
             }
         response = self.client.post(edit_link, data)
         self.assertEqual(httplib.FOUND, response.status_code, response.content)

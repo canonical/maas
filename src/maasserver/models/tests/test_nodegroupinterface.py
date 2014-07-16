@@ -263,7 +263,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         self.assertEqual(errors, exception.message_dict)
 
     def test_clean_ip_ranges_works_with_ipv6_ranges(self):
-        network = factory.get_random_ipv6_network()
+        network = factory.make_ipv6_network()
         interface = make_interface(network)
         interface.ip_range_low = unicode(
             IPAddress(network.first))

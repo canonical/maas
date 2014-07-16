@@ -147,7 +147,7 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_render_file(self):
         # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
         # returns a Deferred that will yield a BytesReader.
-        cluster_uuid = factory.getRandomUUID()
+        cluster_uuid = factory.make_UUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
         mac = factory.getRandomMACAddress("-")
@@ -158,10 +158,10 @@ class TestTFTPBackend(MAASTestCase):
         call_context = {
             "local": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             "remote": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             }
 
         @partial(self.patch, backend, "get_boot_method_reader")
@@ -226,7 +226,7 @@ class TestTFTPBackend(MAASTestCase):
         # get_config_reader() should substitute "arm" for "armhf" in the
         # arch field of the parameters (mapping from pxe to maas
         # namespace).
-        cluster_uuid = factory.getRandomUUID()
+        cluster_uuid = factory.make_UUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
         config_path = "pxelinux.cfg/default-arm"
@@ -236,10 +236,10 @@ class TestTFTPBackend(MAASTestCase):
         call_context = {
             "local": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             "remote": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             }
 
         @partial(self.patch, backend, "get_boot_method_reader")
@@ -261,14 +261,14 @@ class TestTFTPService(MAASTestCase):
         # A TFTP service is configured and added to the top-level service.
         interfaces = [
             factory.getRandomIPAddress(),
-            factory.get_random_ipv6_address(),
+            factory.make_ipv6_address(),
             ]
         self.patch(
             tftp_module, "get_all_interface_addresses",
             lambda: interfaces)
         example_root = self.make_dir()
         example_generator = "http://example.com/generator"
-        example_port = factory.getRandomPort()
+        example_port = factory.pick_port()
         tftp_service = TFTPService(
             resource_root=example_root, generator=example_generator,
             port=example_port)
@@ -323,7 +323,7 @@ class TestTFTPService(MAASTestCase):
 
         tftp_service = TFTPService(
             resource_root=self.make_dir(), generator="http://mighty/wind",
-            port=factory.getRandomPort())
+            port=factory.pick_port())
         tftp_service.updateServers()
 
         # The child services of tftp_services are named after the
@@ -353,7 +353,7 @@ class TestTFTPService(MAASTestCase):
         ipv4_test_net_3 = IPNetwork("203.0.113.0/24")  # RFC 5737
         normal_addresses = {
             factory.getRandomIPInNetwork(ipv4_test_net_3),
-            factory.get_random_ipv6_address(),
+            factory.make_ipv6_address(),
         }
         link_local_addresses = {
             factory.getRandomIPInNetwork(IPV4_LINK_LOCAL),
@@ -365,7 +365,7 @@ class TestTFTPService(MAASTestCase):
 
         tftp_service = TFTPService(
             resource_root=self.make_dir(), generator="http://mighty/wind",
-            port=factory.getRandomPort())
+            port=factory.pick_port())
         tftp_service.updateServers()
 
         # Only the "normal" addresses have been used.

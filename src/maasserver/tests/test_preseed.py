@@ -506,7 +506,7 @@ class TestNodePreseedContext(MAASServerTestCase):
     def test_context_contains_third_party_drivers(self):
         node = factory.make_node()
         release = factory.getRandomString()
-        enable_third_party_drivers = factory.getRandomBoolean()
+        enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
             'enable_third_party_drivers', enable_third_party_drivers)
         context = get_node_preseed_context(node, release)
@@ -742,8 +742,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_installer_url_returns_url(self):
-        osystem = factory.getRandomOS()
-        series = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        series = factory.pick_release(osystem)
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = factory.make_name('xi_type')
@@ -769,8 +769,8 @@ class TestCurtinUtilities(MAASServerTestCase):
             installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
-        osystem = factory.getRandomOS()
-        series = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        series = factory.pick_release(osystem)
         architecture = make_usable_architecture(self)
         node = factory.make_node(
             osystem=osystem.name,
@@ -797,8 +797,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         self.assertIn(msg, "%s" % error)
 
     def test_get_curtin_installer_url_doesnt_append_on_tgz(self):
-        osystem = factory.getRandomOS()
-        series = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        series = factory.pick_release(osystem)
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = 'tgz'
@@ -893,7 +893,7 @@ class TestPreseedProxy(MAASServerTestCase):
     def test_preseed_uses_default_proxy(self):
         server_host = factory.make_hostname()
         url = 'http://%s:%d/%s' % (
-            server_host, factory.getRandomPort(), factory.getRandomString())
+            server_host, factory.pick_port(), factory.getRandomString())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
         expected_proxy_statement = (
             "mirror/http/proxy string http://%s:8000" % server_host)
@@ -903,7 +903,7 @@ class TestPreseedProxy(MAASServerTestCase):
 
     def test_preseed_uses_configured_proxy(self):
         http_proxy = 'http://%s:%d/%s' % (
-            factory.getRandomString(), factory.getRandomPort(),
+            factory.getRandomString(), factory.pick_port(),
             factory.getRandomString())
         Config.objects.set_config('http_proxy', http_proxy)
         expected_proxy_statement = (

@@ -187,7 +187,7 @@ class TestNodeGroupAPI(APITestCase):
         self.become_admin()
         new_name = factory.make_name("new-name")
         new_cluster_name = factory.make_name("new-cluster-name")
-        new_status = factory.getRandomChoice(
+        new_status = factory.pick_choice(
             NODEGROUP_STATUS_CHOICES, but_not=[nodegroup.status])
         response = self.client_put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),

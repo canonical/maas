@@ -235,7 +235,7 @@ class TestRegionProtocol_GetBootSources(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_get_boot_sources_with_real_cluster(self):
-        keyring = factory.getRandomBytes()
+        keyring = factory.make_bytes()
 
         uuid, boot_source = yield deferToThread(
             self.make_boot_source_selection, keyring)
@@ -340,7 +340,7 @@ class TestRegionServer(MAASServerTestCase):
         service = RegionService()
         service.running = True  # Pretend it's running.
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
-        example_uuid = factory.getRandomUUID()
+        example_uuid = factory.make_UUID()
         callRemote = self.patch(protocol, "callRemote")
         callRemote.return_value = succeed({b"ident": example_uuid})
         protocol.connectionMade()
@@ -580,12 +580,12 @@ class TestRegionService(MAASTestCase):
         service.connections.clear()
         self.assertRaises(
             exceptions.NoConnectionsAvailable,
-            service.getClientFor, factory.getRandomUUID())
+            service.getClientFor, factory.make_UUID())
 
     @wait_for_reactor
     def test_getClientFor_errors_when_no_connections_for_cluster(self):
         service = RegionService()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         service.connections[uuid].clear()
         self.assertRaises(
             exceptions.NoConnectionsAvailable,
@@ -598,7 +598,7 @@ class TestRegionService(MAASTestCase):
         chosen = DummyConnection()
 
         service = RegionService()
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         conns_for_uuid = service.connections[uuid]
         conns_for_uuid.update({c1, c2})
 
@@ -620,11 +620,11 @@ class TestRegionService(MAASTestCase):
     @wait_for_reactor
     def test_getAllClients(self):
         service = RegionService()
-        uuid1 = factory.getRandomUUID()
+        uuid1 = factory.make_UUID()
         c1 = DummyConnection()
         c2 = DummyConnection()
         service.connections[uuid1].update({c1, c2})
-        uuid2 = factory.getRandomUUID()
+        uuid2 = factory.make_UUID()
         c3 = DummyConnection()
         c4 = DummyConnection()
         service.connections[uuid2].update({c3, c4})
@@ -805,8 +805,8 @@ class TestRegionAdvertisingService(MAASTestCase):
 
     def test_update(self):
         example_addresses = [
-            (factory.getRandomIPAddress(), factory.getRandomPort()),
-            (factory.getRandomIPAddress(), factory.getRandomPort()),
+            (factory.getRandomIPAddress(), factory.pick_port()),
+            (factory.getRandomIPAddress(), factory.pick_port()),
         ]
 
         service = RegionAdvertisingService()
@@ -857,8 +857,8 @@ class TestRegionAdvertisingService(MAASTestCase):
 
     def test_dump(self):
         example_addresses = [
-            (factory.getRandomIPAddress(), factory.getRandomPort()),
-            (factory.getRandomIPAddress(), factory.getRandomPort()),
+            (factory.getRandomIPAddress(), factory.pick_port()),
+            (factory.getRandomIPAddress(), factory.pick_port()),
         ]
 
         service = RegionAdvertisingService()
@@ -903,7 +903,7 @@ class TestRegionAdvertisingService(MAASTestCase):
     def test__get_addresses(self):
         service = RegionAdvertisingService()
 
-        example_port = factory.getRandomPort()
+        example_port = factory.pick_port()
         getServiceNamed = self.patch(eventloop.services, "getServiceNamed")
         getPort = getServiceNamed.return_value.getPort
         getPort.side_effect = asynchronous(lambda: example_port)

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `start_cluster_controller` command."""
@@ -111,7 +111,7 @@ class TestStartClusterController(PservTestCase):
         self.patch(os, 'setgid')
         self.patch(os, 'execvpe').side_effect = Executing()
         get_uuid = self.patch(start_cluster_controller, 'get_cluster_uuid')
-        get_uuid.return_value = factory.getRandomUUID()
+        get_uuid.return_value = factory.make_UUID()
 
     def make_connection_details(self):
         return {

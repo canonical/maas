@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the report_leases task."""
@@ -114,7 +114,7 @@ class TestUpdateLeases(PservTestCase):
 
     def set_nodegroup_uuid(self):
         """Set the recorded nodegroup uuid for the duration of this test."""
-        uuid = factory.getRandomUUID()
+        uuid = factory.make_UUID()
         cache.cache.set(NODEGROUP_UUID_CACHE_KEY, uuid)
         return uuid
 

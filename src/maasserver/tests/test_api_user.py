@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the user accounts API."""
@@ -33,7 +33,7 @@ class TestUsers(APITestCase):
     def test_POST_creates_user(self):
         self.become_admin()
         username = factory.make_name('user')
-        email = factory.getRandomEmail()
+        email = factory.make_email_address()
         password = factory.getRandomString()
 
         response = self.client.post(
@@ -55,7 +55,7 @@ class TestUsers(APITestCase):
     def test_POST_creates_admin(self):
         self.become_admin()
         username = factory.make_name('user')
-        email = factory.getRandomEmail()
+        email = factory.make_email_address()
         password = factory.getRandomString()
 
         response = self.client.post(
@@ -79,9 +79,9 @@ class TestUsers(APITestCase):
             reverse('users_handler'),
             {
                 'username': factory.make_name('user'),
-                'email': factory.getRandomEmail(),
+                'email': factory.make_email_address(),
                 'password': factory.getRandomString(),
-                'is_superuser': '1' if factory.getRandomBoolean() else '0',
+                'is_superuser': '1' if factory.pick_bool() else '0',
             })
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)

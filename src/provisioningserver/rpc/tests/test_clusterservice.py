@@ -111,7 +111,7 @@ class TestClusterProtocol_Identify(MAASTestCase):
         self.assertIsNot(responder, None)
 
     def test_identify_reports_cluster_uuid(self):
-        example_uuid = factory.getRandomUUID()
+        example_uuid = factory.make_UUID()
 
         get_cluster_uuid = self.patch(clusterservice, "get_cluster_uuid")
         get_cluster_uuid.return_value = example_uuid
@@ -738,7 +738,7 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
     def test_calls_validate_license_key(self):
         validate_license_key = self.patch(
             clusterservice, "validate_license_key")
-        validate_license_key.return_value = factory.getRandomBoolean()
+        validate_license_key.return_value = factory.pick_bool()
         arguments = {
             "osystem": factory.make_name("osystem"),
             "release": factory.make_name("release"),

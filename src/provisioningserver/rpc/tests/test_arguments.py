@@ -30,7 +30,7 @@ class TestBytes(MAASTestCase):
 
     def test_round_trip(self):
         argument = arguments.Bytes()
-        example = factory.getRandomBytes()
+        example = factory.make_bytes()
         encoded = argument.toString(example)
         self.assertThat(encoded, IsInstance(bytes))
         decoded = argument.fromString(encoded)
@@ -45,7 +45,7 @@ class TestChoice(MAASTestCase):
 
     def test_round_trip(self):
         choices = {
-            factory.make_name("name"): factory.getRandomBytes()
+            factory.make_name("name"): factory.make_bytes()
             for _ in xrange(10)
         }
         argument = arguments.Choice(choices)

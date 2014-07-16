@@ -349,7 +349,7 @@ class NodeViewsTest(MAASServerTestCase):
         # be created in the same transaction and thus have the same
         # 'created' value by default.
         for node in nodes:
-            created = factory.getRandomDate()
+            created = factory.make_date()
             # Update node.created without calling node.save().
             Node.objects.filter(id=node.id).update(created=created)
         nodes = reload_objects(Node, nodes)
@@ -1598,7 +1598,7 @@ class AdminNodeViewsTest(MAASServerTestCase):
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
             'hostname': factory.getRandomString(),
-            'power_type': factory.getRandomPowerType(),
+            'power_type': factory.pick_power_type(),
             'architecture': make_usable_architecture(self),
         }
         response = self.client.post(node_edit_link, params)

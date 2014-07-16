@@ -201,7 +201,7 @@ class TestLicenseKeysAPI(APITestCase):
     def test_POST_creates_license_key(self):
         self.become_admin()
         osystem = self.make_os_require_license_key()
-        series = factory.getRandomRelease(osystem)
+        series = factory.pick_release(osystem)
         params = {
             'osystem': osystem.name,
             'distro_series': series,

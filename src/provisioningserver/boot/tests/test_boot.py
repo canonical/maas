@@ -68,10 +68,10 @@ class TestBootMethod(MAASTestCase):
         call_context = {
             "local": (
                 factory.getRandomIPAddress(),
-                factory.getRandomPort()),
+                factory.pick_port()),
             "remote": (
                 remote_host,
-                factory.getRandomPort()),
+                factory.pick_port()),
             }
 
         mock_find = self.patch(boot, 'find_mac_via_arp')

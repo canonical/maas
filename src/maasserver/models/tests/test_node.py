@@ -339,7 +339,7 @@ class NodeTest(MAASServerTestCase):
         self.patch(Omshell, 'remove')
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
-        random_alloc_type = factory.getRandomEnum(
+        random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         primary_mac.claim_static_ip(alloc_type=random_alloc_type)
         node.delete()
@@ -762,8 +762,8 @@ class NodeTest(MAASServerTestCase):
     def test_release_clears_osystem_and_distro_series(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        osystem = factory.getRandomOS()
-        release = factory.getRandomRelease(osystem)
+        osystem = factory.pick_OS()
+        release = factory.pick_release(osystem)
         node.osystem = osystem.name
         node.distro_series = release
         node.release()
@@ -903,14 +903,14 @@ class NodeTest(MAASServerTestCase):
         NodeCommissionResult.objects.store_data(
             node, factory.getRandomString(),
             random.randint(0, 10),
-            Bin(factory.getRandomBytes()))
+            Bin(factory.make_bytes()))
         node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.nodecommissionresult_set.all())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
         node = factory.make_node()
         filename = factory.getRandomString()
-        data = factory.getRandomBytes()
+        data = factory.make_bytes()
         script_result = random.randint(0, 10)
         NodeCommissionResult.objects.store_data(
             node, filename, script_result, Bin(data))
@@ -963,7 +963,7 @@ class NodeTest(MAASServerTestCase):
             node.full_clean)
 
     def test_full_clean_passes_if_status_unchanged(self):
-        status = factory.getRandomChoice(NODE_STATUS_CHOICES)
+        status = factory.pick_choice(NODE_STATUS_CHOICES)
         node = factory.make_node(status=status)
         node.status = status
         node.full_clean()
@@ -1152,7 +1152,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_mark_fixed_fails_if_node_isnt_broken(self):
-        status = factory.getRandomChoice(
+        status = factory.pick_choice(
             NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
         node = factory.make_node(status=status)
         self.assertRaises(NodeStateViolation, node.mark_fixed)

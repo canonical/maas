@@ -115,7 +115,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
         # When power_type is valid, it is set. However, if power_parameters is
         # not specified, the node's power_parameters is left alone, and the
         # node is saved.
-        power_type = factory.getRandomPowerType()
+        power_type = factory.pick_power_type()
         self.request.POST = {"power_type": power_type}
         store_node_power_parameters(self.node, self.request)
         self.assertEqual(power_type, self.node.power_type)
@@ -125,7 +125,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
     def test_power_type_set_with_parameters(self):
         # When power_type is valid, and power_parameters is valid JSON, both
         # fields are set on the node, and the node is saved.
-        power_type = factory.getRandomPowerType()
+        power_type = factory.pick_power_type()
         power_parameters = {"foo": [1, 2, 3]}
         self.request.POST = {
             "power_type": power_type,
@@ -139,7 +139,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
     def test_power_type_set_with_invalid_parameters(self):
         # When power_type is valid, but power_parameters is invalid JSON, the
         # node is not saved, and an exception is raised.
-        power_type = factory.getRandomPowerType()
+        power_type = factory.pick_power_type()
         self.request.POST = {
             "power_type": power_type,
             "power_parameters": "Not JSON.",

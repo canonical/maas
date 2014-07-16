@@ -46,11 +46,11 @@ class TestFactory(MAASTestCase):
         random_strings = [factory.getRandomString(size) for size in sizes]
         self.assertEqual(sizes, [len(string) for string in random_strings])
 
-    def test_getRandomBoolean_returns_bool(self):
-        self.assertIsInstance(factory.getRandomBoolean(), bool)
+    def test_pick_bool_returns_bool(self):
+        self.assertIsInstance(factory.pick_bool(), bool)
 
-    def test_getRandomPort_returns_int(self):
-        self.assertIsInstance(factory.getRandomPort(), int)
+    def test_pick_port_returns_int(self):
+        self.assertIsInstance(factory.pick_port(), int)
 
     def test_getRandomIPAddress(self):
         ip_address = factory.getRandomIPAddress()
@@ -73,8 +73,8 @@ class TestFactory(MAASTestCase):
             networks.append(factory.getRandomNetwork(but_not=networks))
         self.assertEquals(len(networks), len(set(networks)))
 
-    def test_getRandomUUID(self):
-        uuid = factory.getRandomUUID()
+    def test_make_UUID(self):
+        uuid = factory.make_UUID()
         self.assertIsInstance(uuid, unicode)
         self.assertEqual(36, len(uuid))
 
@@ -163,8 +163,8 @@ class TestFactory(MAASTestCase):
             network, but_not=(first_low, first_high))
         self.assertNotEqual((first_low, first_high), (second_low, second_high))
 
-    def test_getRandomDate_returns_datetime(self):
-        self.assertIsInstance(factory.getRandomDate(), datetime)
+    def test_make_date_returns_datetime(self):
+        self.assertIsInstance(factory.make_date(), datetime)
 
     def test_getRandomMACAddress(self):
         mac_address = factory.getRandomMACAddress()

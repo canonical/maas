@@ -654,7 +654,7 @@ class TestPayloadPreparationWithFiles(MAASTestCase):
 
     def test_files_are_included(self):
         parameter = factory.make_name("param")
-        contents = factory.getRandomBytes()
+        contents = factory.make_bytes()
         filename = self.make_file(contents=contents)
         # Writing the parameter as "parameter@=filename" on the
         # command-line causes name_value_pair() to return a `name,
