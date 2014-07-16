@@ -318,8 +318,8 @@ class TestVerifyIpmiUserSettings(MAASTestCase):
 
     def test_fail_missing_key(self):
         """Ensure missing settings cause raise an IPMIError."""
-        key = 'Enable_User'
-        value = 'Yes'
+        key = 'Username'
+        value = factory.make_name('username')
         expected_settings = {key: value}
         self.patch(maas_ipmi_autodetect, 'bmc_user_get').return_value = None
         ipmi_error = self.assertRaises(IPMIError, verify_ipmi_user_settings,
@@ -361,10 +361,15 @@ class TestVerifyIpmiUserSettings(MAASTestCase):
             unexpected_match = r"for '%s'" % (setting)
             self.assertNotRegexpMatches(ipmi_error.message, unexpected_match)
 
-    def test_accept_missing_password(self):
-        """Ensure no exception is raised if Password is missing."""
-        expected_settings = {'Password': 'bar'}
-        verify_ipmi_user_settings('User2', expected_settings)
+    def test_accept_some_missing_keys(self):
+        """Ensure no exception is raised if these keys are missing.
+
+        Password and Enable_User are both missing on some systems so we
+        don't try to verify them.
+        """
+        expected_settings = {'Password': 'bar', 'Enable_User': 'yes'}
+        value = verify_ipmi_user_settings('User2', expected_settings)
+        self.assertIsNone(value)
 
 
 class TestApplyIpmiUserSettings(MAASTestCase):

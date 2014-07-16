@@ -164,8 +164,9 @@ def verify_ipmi_user_settings(user_number, user_settings):
     bad_values = {}
 
     for key, expected_value in user_settings.iteritems():
-        # Password isn't included in checkout.
-        if key != 'Password':
+        # Password isn't included in checkout. Plus,
+        # some older BMCs may not support Enable_User.
+        if key not in ['Enable_User', 'Password']:
             value = bmc_user_get(user_number, key)
             if value != expected_value:
                 bad_values[key] = value
