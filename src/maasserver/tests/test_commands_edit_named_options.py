@@ -76,7 +76,7 @@ class TestEditNamedOptionsCommand(MAASServerTestCase):
         self.assertFailsWithMessage(absent_file, "does not exist")
 
     def test_exits_when_file_has_no_options_block(self):
-        content = factory.getRandomString()
+        content = factory.make_string()
         self.assertContentFailsWithMessage(
             content, "Can't find options {} block")
 

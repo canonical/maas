@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Rabbit messaging tests."""
@@ -83,7 +83,7 @@ class TestRabbitMessaging(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_messaging_getExchange(self):
-        exchange_name = factory.getRandomString()
+        exchange_name = factory.make_string()
         messaging = RabbitMessaging(exchange_name)
         self.addCleanup(messaging._session.disconnect)
         exchange = messaging.getExchange()
@@ -93,7 +93,7 @@ class TestRabbitMessaging(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_messaging_getQueue(self):
-        exchange_name = factory.getRandomString()
+        exchange_name = factory.make_string()
         messaging = RabbitMessaging(exchange_name)
         self.addCleanup(messaging._session.disconnect)
         queue = messaging.getQueue()
@@ -105,18 +105,18 @@ class TestRabbitMessaging(MAASTestCase):
 class TestRabbitBase(MAASTestCase):
 
     def test_rabbitbase_contains_session(self):
-        exchange_name = factory.getRandomString()
+        exchange_name = factory.make_string()
         rabbitbase = RabbitBase(RabbitSession(), exchange_name)
         self.assertIsInstance(rabbitbase._session, RabbitSession)
 
     def test_base_has_exchange_name(self):
-        exchange_name = factory.getRandomString()
+        exchange_name = factory.make_string()
         rabbitbase = RabbitBase(RabbitSession(), exchange_name)
         self.assertEqual(exchange_name, rabbitbase.exchange_name)
 
     @uses_rabbit_fixture
     def test_base_channel(self):
-        rabbitbase = RabbitBase(RabbitSession(), factory.getRandomString())
+        rabbitbase = RabbitBase(RabbitSession(), factory.make_string())
         self.addCleanup(rabbitbase._session.disconnect)
         # Referencing the channel property causes an open channel to be
         # created.
@@ -128,7 +128,7 @@ class TestRabbitBase(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_base_channel_creates_exchange(self):
-        exchange_name = factory.getRandomString()
+        exchange_name = factory.make_string()
         rabbitbase = RabbitBase(RabbitSession(), exchange_name)
         self.addCleanup(rabbitbase._session.disconnect)
         rabbitbase.channel
@@ -152,8 +152,8 @@ class TestRabbitExchange(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_exchange_publish(self):
-        exchange_name = factory.getRandomString()
-        message_content = factory.getRandomString()
+        exchange_name = factory.make_string()
+        message_content = factory.make_string()
         exchange = RabbitExchange(RabbitSession(), exchange_name)
         self.addCleanup(exchange._session.disconnect)
 
@@ -171,8 +171,8 @@ class TestRabbitQueue(MAASTestCase):
 
     @uses_rabbit_fixture
     def test_rabbit_queue_binds_queue(self):
-        exchange_name = factory.getRandomString()
-        message_content = factory.getRandomString()
+        exchange_name = factory.make_string()
+        message_content = factory.make_string()
         queue = RabbitQueue(RabbitSession(), exchange_name)
         self.addCleanup(queue._session.disconnect)
 

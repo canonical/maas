@@ -450,7 +450,7 @@ class TestBootSources(MAASTestCase):
         return {
             'url': 'http://example.com/' + factory.make_name('path'),
             'keyring': factory.make_name('keyring'),
-            'keyring_data': factory.getRandomString(),
+            'keyring_data': factory.make_string(),
             'selections': [{
                 'release': factory.make_name('release'),
                 'labels': [factory.make_name('label')],

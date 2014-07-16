@@ -37,7 +37,7 @@ class TestPowerKVMBootMethod(MAASTestCase):
 
     def test_match_path_returns_None(self):
         method = PowerKVMBootMethod()
-        paths = [factory.getRandomString() for _ in range(3)]
+        paths = [factory.make_string() for _ in range(3)]
         for path in paths:
             self.assertEqual(None, method.match_path(None, path))
 
@@ -56,7 +56,7 @@ class TestPowerKVMBootMethod(MAASTestCase):
     def test_install_bootloader(self):
         method = PowerKVMBootMethod()
         filename = factory.make_name('dpkg')
-        data = factory.getRandomString()
+        data = factory.make_string()
         tmp = self.make_dir()
         dest = self.make_dir()
 

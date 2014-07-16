@@ -286,7 +286,7 @@ class TestSSHKeyHandlers(APITestCase):
         self.assertEqual(key_string, added_key.key)
 
     def test_adding_catches_key_validation_errors(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         response = self.client.post(
             reverse('sshkeys_handler'),
             data=dict(op='new', key=key_string))
@@ -355,7 +355,7 @@ class MAASAPITest(APITestCase):
     def test_get_config_returns_config(self):
         self.become_admin()
         name = 'maas_name'
-        value = factory.getRandomString()
+        value = factory.make_string()
         Config.objects.set_config(name, value)
         response = self.client.get(
             reverse('maas_handler'),
@@ -371,8 +371,8 @@ class MAASAPITest(APITestCase):
 
     def test_get_config_rejects_unknown_config_item(self):
         self.become_admin()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         Config.objects.set_config(name, value)
         response = self.client.get(
             reverse('maas_handler'),
@@ -394,7 +394,7 @@ class MAASAPITest(APITestCase):
             reverse('maas_handler'),
             {
                 'op': 'set_config',
-                'value': factory.getRandomString(),
+                'value': factory.make_string(),
             })
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
@@ -402,7 +402,7 @@ class MAASAPITest(APITestCase):
 
     def test_set_config_requires_string_name_param(self):
         self.become_admin()
-        value = factory.getRandomString()
+        value = factory.make_string()
         response = self.client.post(
             reverse('maas_handler'),
             {
@@ -421,7 +421,7 @@ class MAASAPITest(APITestCase):
             reverse('maas_handler'),
             {
                 'op': 'set_config',
-                'name': factory.getRandomString(),
+                'name': factory.make_string(),
             })
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
@@ -430,7 +430,7 @@ class MAASAPITest(APITestCase):
     def test_admin_set_config(self):
         self.become_admin()
         name = 'maas_name'
-        value = factory.getRandomString()
+        value = factory.make_string()
         response = self.client.post(
             reverse('maas_handler'),
             {
@@ -446,8 +446,8 @@ class MAASAPITest(APITestCase):
 
     def test_admin_set_config_rejects_unknown_config_item(self):
         self.become_admin()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         response = self.client.post(
             reverse('maas_handler'),
             {
@@ -467,7 +467,7 @@ class MAASAPITest(APITestCase):
 class APIErrorsTest(TransactionTestCase):
 
     def test_internal_error_generates_proper_api_response(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
 
         # Monkey patch api.create_node to have it raise a RuntimeError.
         def raise_exception(*args, **kwargs):

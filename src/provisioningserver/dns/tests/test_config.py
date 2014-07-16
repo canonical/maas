@@ -140,14 +140,14 @@ class TestRNDCUtilities(MAASTestCase):
         recorder = FakeMethod()
         fake_dir = patch_dns_config_path(self)
         self.patch(config, 'call_and_check', recorder)
-        command = factory.getRandomString()
+        command = factory.make_string()
         execute_rndc_command([command])
         rndc_conf_path = os.path.join(fake_dir, MAAS_RNDC_CONF_NAME)
         expected_command = ['rndc', '-c', rndc_conf_path, command]
         self.assertEqual((expected_command,), recorder.calls[0][0])
 
     def test_extract_suggested_named_conf_extracts_section(self):
-        named_part = factory.getRandomString()
+        named_part = factory.make_string()
         # Actual rndc-confgen output, mildly mangled for testing purposes.
         # Note the awkward line break.  The code works by matching that exact
         # line, so there's no leeway with the spacing.
@@ -163,7 +163,7 @@ class TestRNDCUtilities(MAASTestCase):
             'start_marker': (
                 'Use with the following in named.conf, '
                 'adjusting the allow list as needed:'),
-            'rndc_part': factory.getRandomString(),
+            'rndc_part': factory.make_string(),
             'named_part': named_part,
             }
         # What you get is just the suggested named.conf that's embedded in
@@ -182,7 +182,7 @@ class TestRNDCUtilities(MAASTestCase):
 
             %s
             # End of named.conf
-        """) % (factory.getRandomString(), factory.getRandomString())
+        """) % (factory.make_string(), factory.make_string())
         self.assertRaises(
             ValueError,
             extract_suggested_named_conf, rndc_config)
@@ -233,7 +233,7 @@ class TestRenderDNSTemplate(MAASTestCase):
 
     def test_interpolates_parameters(self):
         param_name = factory.make_name('param', sep='_')
-        param_value = factory.getRandomString()
+        param_value = factory.make_string()
         self.assertEqual(
             "X %s Y" % param_value,
             render_dns_template(
@@ -301,7 +301,7 @@ class TestDNSConfig(MAASTestCase):
 
     def test_write_config_errors_if_unexpected_exception(self):
         dnsconfig = DNSConfig()
-        exception = IOError(errno.EBUSY, factory.getRandomString())
+        exception = IOError(errno.EBUSY, factory.make_string())
         self.patch(config, 'atomic_write', Mock(side_effect=exception))
         self.assertRaises(IOError, dnsconfig.write_config)
 
@@ -309,7 +309,7 @@ class TestDNSConfig(MAASTestCase):
         # If DNSConfig is created with overwrite=False, it won't
         # overwrite an existing config file.
         target_dir = patch_dns_config_path(self)
-        random_content = factory.getRandomString()
+        random_content = factory.make_string()
         factory.make_file(
             location=target_dir, name=MAAS_NAMED_CONF_NAME,
             contents=random_content)
@@ -331,11 +331,11 @@ class TestDNSConfig(MAASTestCase):
 
     def test_write_config_writes_config(self):
         target_dir = patch_dns_config_path(self)
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
         forward_zone = DNSForwardZoneConfig(
-            domain, mapping={factory.getRandomString(): ip})
+            domain, mapping={factory.make_string(): ip})
         reverse_zone = DNSReverseZoneConfig(domain, network=network)
         dnsconfig = DNSConfig((forward_zone, reverse_zone))
         dnsconfig.write_config()
@@ -397,9 +397,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             )
 
     def test_fields(self):
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         serial = random.randint(1, 200)
-        hostname = factory.getRandomString()
+        hostname = factory.make_string()
         network = factory.getRandomNetwork()
         ip = factory.getRandomIPInNetwork(network)
         mapping = {hostname: ip}
@@ -422,7 +422,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             dns_zone_config.target_path)
 
     def test_get_a_mapping_returns_ipv4_mapping(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.getRandomIPInNetwork(network)
         ipv4_mapping = {
@@ -440,7 +440,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             DNSForwardZoneConfig.get_A_mapping(mapping, name, dns_ip))
 
     def test_get_aaaa_mapping_returns_ipv6_mapping(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.getRandomIPInNetwork(network)
         ipv6_mapping = {
@@ -490,7 +490,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
 
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         network = factory.getRandomNetwork()
         dns_ip = factory.getRandomIPInNetwork(network)
         ipv4_hostname = factory.make_name('host')
@@ -524,7 +524,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         dns_ip = factory.getRandomIPAddress()
         dns_zone_config = DNSForwardZoneConfig(
-            factory.getRandomString(), serial=random.randint(1, 100),
+            factory.make_string(), serial=random.randint(1, 100),
             dns_ip=dns_ip)
         dns_zone_config.write_config()
         self.assertThat(
@@ -539,7 +539,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
     def test_config_file_is_world_readable(self):
         patch_dns_config_path(self)
         dns_zone_config = DNSForwardZoneConfig(
-            factory.getRandomString(), serial=random.randint(1, 100),
+            factory.make_string(), serial=random.randint(1, 100),
             dns_ip=factory.getRandomIPAddress())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)
@@ -550,7 +550,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
     """Tests for DNSReverseZoneConfig."""
 
     def test_fields(self):
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         serial = random.randint(1, 200)
         network = factory.getRandomNetwork()
         dns_zone_config = DNSReverseZoneConfig(
@@ -605,11 +605,11 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         self.assertEqual(expected, results)
 
     def test_get_ptr_mapping(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         mapping = {
-            factory.getRandomString(): factory.getRandomIPInNetwork(network),
-            factory.getRandomString(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.getRandomIPInNetwork(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
@@ -620,11 +620,11 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
 
     def test_get_ptr_mapping_drops_IPs_not_in_network(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         in_network_mapping = {
-            factory.getRandomString(): factory.getRandomIPInNetwork(network),
-            factory.getRandomString(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.getRandomIPInNetwork(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
@@ -632,8 +632,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         ]
         mapping = in_network_mapping
         extra_mapping = {
-            factory.getRandomString(): '192.50.0.2',
-            factory.getRandomString(): '192.70.0.2',
+            factory.make_string(): '192.50.0.2',
+            factory.make_string(): '192.70.0.2',
         }
         mapping.update(extra_mapping)
         self.assertItemsEqual(
@@ -644,7 +644,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         network = factory.getRandomNetwork()
         dns_zone_config = DNSReverseZoneConfig(
-            factory.getRandomString(), serial=random.randint(1, 100),
+            factory.make_string(), serial=random.randint(1, 100),
             network=network)
         dns_zone_config.write_config()
         self.assertThat(
@@ -655,7 +655,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
 
     def test_writes_reverse_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         network = IPNetwork('192.168.0.1/22')
         dns_zone_config = DNSReverseZoneConfig(
             domain, serial=random.randint(1, 100), network=network)
@@ -670,7 +670,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
     def test_reverse_config_file_is_world_readable(self):
         patch_dns_config_path(self)
         dns_zone_config = DNSReverseZoneConfig(
-            factory.getRandomString(), serial=random.randint(1, 100),
+            factory.make_string(), serial=random.randint(1, 100),
             network=factory.getRandomNetwork())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)

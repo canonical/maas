@@ -44,7 +44,7 @@ class TestUserData(MAASServerTestCase):
         # I don't care about what effect it has, I just want to know
         # that it was passed as it can affect the contents of
         # `server_host` in the context.
-        fake_context = dict(http_proxy=factory.getRandomString())
+        fake_context = dict(http_proxy=factory.make_string())
         user_data.get_preseed_context = Mock(return_value=fake_context)
         nodegroup = sentinel.nodegroup
         generate_user_data(nodegroup)

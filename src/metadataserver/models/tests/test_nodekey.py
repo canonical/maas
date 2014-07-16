@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`NodeKey` model and manager."""
@@ -35,7 +35,7 @@ class TestNodeKeyManager(DjangoTestCase):
         self.assertEqual(node, NodeKey.objects.get_node_for_key(token.key))
 
     def test_get_node_for_key_raises_DoesNotExist_if_key_not_found(self):
-        non_key = factory.getRandomString()
+        non_key = factory.make_string()
         self.assertRaises(
             NodeKey.DoesNotExist, NodeKey.objects.get_node_for_key, non_key)
 

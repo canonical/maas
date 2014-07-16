@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver account views."""
@@ -40,14 +40,14 @@ class TestLogin(MAASServerTestCase):
         self.assertEqual(1, len(doc.cssselect('input#id_password')))
 
     def test_login_displays_createadmin_message_if_no_user(self):
-        path = factory.getRandomString()
+        path = factory.make_string()
         self.patch(settings, 'MAAS_CLI', path)
         response = self.client.get('/accounts/login/')
         self.assertTrue(response.context['no_users'])
         self.assertEqual(path, response.context['create_command'])
 
     def test_login_redirects_when_authenticated(self):
-        password = factory.getRandomString()
+        password = factory.make_string()
         user = factory.make_user(password=password)
         self.client.login(username=user.username, password=password)
         response = self.client.get('/accounts/login/')

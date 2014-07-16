@@ -284,8 +284,8 @@ class TestMetadataCommon(DjangoTestCase):
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        hostname = factory.getRandomString()
-        domain = factory.getRandomString()
+        hostname = factory.make_string()
+        domain = factory.make_string()
         node = factory.make_node(
             hostname='%s.%s' % (hostname, domain), nodegroup=nodegroup)
         client = make_node_client(node)
@@ -469,7 +469,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_rejects_unknown_status_code(self):
-        response = call_signal(status=factory.getRandomString())
+        response = call_signal(status=factory.make_string())
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
@@ -495,10 +495,10 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         response = call_signal(
             client, script_result=script_result,
-            files={filename: factory.getRandomString().encode('ascii')})
+            files={filename: factory.make_string().encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         result = NodeCommissionResult.objects.get(node=node)
         self.assertEqual(script_result, result.script_result)
@@ -508,7 +508,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(
             client, script_result=random.randint(0, 10),
-            files={factory.getRandomString(): ''.encode('ascii')})
+            files={factory.make_string(): ''.encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         result = NodeCommissionResult.objects.get(node=node)
         self.assertEqual('', result.data)
@@ -565,7 +565,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signaling_commissioning_failure_sets_node_error(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        error_text = factory.getRandomString()
+        error_text = factory.make_string()
         response = call_signal(client, status='FAILED', error=error_text)
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(error_text, reload_object(node).error)
@@ -581,7 +581,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_no_error_clears_existing_error(self):
         node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING, error=factory.getRandomString())
+            status=NODE_STATUS.COMMISSIONING, error=factory.make_string())
         client = make_node_client(node=node)
         response = call_signal(client)
         self.assertEqual(httplib.OK, response.status_code)
@@ -589,7 +589,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signalling_stores_files_for_any_status(self):
         statuses = ['WORKING', 'OK', 'FAILED']
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         nodes = {
             status: factory.make_node(status=NODE_STATUS.COMMISSIONING)
             for status in statuses}
@@ -609,7 +609,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signal_stores_file_contents(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
-        text = factory.getRandomString().encode('ascii')
+        text = factory.make_string().encode('ascii')
         script_result = random.randint(0, 10)
         response = call_signal(
             client, script_result=script_result, files={'file.txt': text})
@@ -632,8 +632,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_stores_multiple_files(self):
         contents = {
-            factory.getRandomString(): factory.getRandomString().encode(
-                'ascii')
+            factory.make_string(): factory.make_string().encode('ascii')
             for counter in range(3)}
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
@@ -653,7 +652,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         # one megabyte.  What happens above this limit is none of
         # anybody's business, but files up to this size should work.
         size_limit = 2 ** 20
-        contents = factory.getRandomString(size_limit, spaces=True)
+        contents = factory.make_string(size_limit, spaces=True)
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
@@ -714,9 +713,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
-            power_address=factory.getRandomString(),
-            power_user=factory.getRandomString(),
-            power_pass=factory.getRandomString())
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
         response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -728,9 +727,9 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
-            power_address=factory.getRandomString(),
-            power_user=factory.getRandomString(),
-            power_pass=factory.getRandomString())
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
         response = call_signal(
             client, power_type="ipmi", power_parameters=json.dumps(params))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -762,7 +761,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_retrieves_node_userdata_by_mac(self):
         mac = factory.make_mac_address()
-        user_data = factory.getRandomString().encode('ascii')
+        user_data = factory.make_string().encode('ascii')
         NodeUserData.objects.set_user_data(mac.node, user_data)
         url = reverse(
             'metadata-user-data-by-mac', args=['latest', mac.mac_address])
@@ -819,7 +818,7 @@ class TestAnonymousAPI(DjangoTestCase):
         anon_enlist_preseed_url = reverse(
             'metadata-enlist-preseed', args=['latest'])
         # Fake the preseed so we're just exercising the view.
-        fake_preseed = factory.getRandomString()
+        fake_preseed = factory.make_string()
         self.patch(api, "get_enlist_preseed", Mock(return_value=fake_preseed))
         response = self.client.get(
             anon_enlist_preseed_url, {'op': 'get_enlist_preseed'})
@@ -853,7 +852,7 @@ class TestAnonymousAPI(DjangoTestCase):
             'metadata-node-by-id',
             args=['latest', node.system_id])
         # Fake the preseed so we're just exercising the view.
-        fake_preseed = factory.getRandomString()
+        fake_preseed = factory.make_string()
         self.patch(api, "get_preseed", lambda node: fake_preseed)
         response = self.client.get(
             anon_node_url, {'op': 'get_preseed'})
@@ -913,7 +912,7 @@ class TestEnlistViews(DjangoTestCase):
     def test_get_userdata(self):
         # instance-id must be available
         ud_url = reverse('enlist-metadata-user-data', args=['latest'])
-        fake_preseed = factory.getRandomString()
+        fake_preseed = factory.make_string()
         self.patch(
             api, "get_enlist_userdata", Mock(return_value=fake_preseed))
         response = self.client.get(ud_url)

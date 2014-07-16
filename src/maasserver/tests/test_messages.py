@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver messages."""
@@ -53,7 +53,7 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
     def test_update_obj_publishes_message_if_created(self):
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
-        instance = factory.getRandomString()
+        instance = factory.make_string()
         messenger.update_obj(MessagesTestModel, instance, True)
         self.assertEqual(
             [[MESSENGER_EVENT.CREATED, instance]], producer.messages)
@@ -61,7 +61,7 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
     def test_update_obj_publishes_message_if_not_created(self):
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
-        instance = factory.getRandomString()
+        instance = factory.make_string()
         messenger.update_obj(MessagesTestModel, instance, False)
         self.assertEqual(
             [[MESSENGER_EVENT.UPDATED, instance]], producer.messages)
@@ -69,7 +69,7 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
     def test_delete_obj_publishes_message(self):
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
-        instance = factory.getRandomString()
+        instance = factory.make_string()
         messenger.delete_obj(MessagesTestModel, instance)
         self.assertEqual(
             [[MESSENGER_EVENT.DELETED, instance]], producer.messages)
@@ -77,7 +77,7 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
     def test_register_registers_update_signal(self):
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
-        obj = MessagesTestModel(name=factory.getRandomString())
+        obj = MessagesTestModel(name=factory.make_string())
         obj.save()
         messenger.register()
         obj.save()
@@ -88,13 +88,13 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
         messenger.register()
-        obj = MessagesTestModel(name=factory.getRandomString())
+        obj = MessagesTestModel(name=factory.make_string())
         obj.save()
         self.assertEqual(
             [[MESSENGER_EVENT.CREATED, obj]], producer.messages)
 
     def test_register_registers_delete_signal(self):
-        obj = MessagesTestModel(name=factory.getRandomString())
+        obj = MessagesTestModel(name=factory.make_string())
         obj.save()
         producer = FakeProducer()
         messenger = TestMessenger(MessagesTestModel, producer)
@@ -104,15 +104,15 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
             [[MESSENGER_EVENT.DELETED, obj]], producer.messages)
 
     def test_publish_message_publishes_message(self):
-        event = factory.getRandomString()
-        instance = {factory.getRandomString(): factory.getRandomString()}
+        event = factory.make_string()
+        instance = {factory.make_string(): factory.make_string()}
         messenger = TestMessenger(MessagesTestModel, FakeProducer())
         messenger.publish_message(messenger.create_msg(event, instance))
         self.assertEqual([[event, instance]], messenger.producer.messages)
 
     def test_publish_message_swallows_missing_rabbit(self):
-        event = factory.getRandomString()
-        instance = {factory.getRandomString(): factory.getRandomString()}
+        event = factory.make_string()
+        instance = {factory.make_string(): factory.make_string()}
 
         def fail_for_lack_of_rabbit(*args, **kwargs):
             raise NoRabbit("I'm pretending not to have a RabbitMQ.")
@@ -124,8 +124,8 @@ class MessengerBaseTest(TestModelMixin, MAASServerTestCase):
         self.assertEqual([], messenger.producer.messages)
 
     def test_publish_message_propagates_exceptions(self):
-        event = factory.getRandomString()
-        instance = {factory.getRandomString(): factory.getRandomString()}
+        event = factory.make_string()
+        instance = {factory.make_string(): factory.make_string()}
 
         def fail_despite_having_a_rabbit(*args, **kwargs):
             raise socket.error("I have a rabbit but I fail anyway.")
@@ -145,8 +145,8 @@ class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
 
     def test_event_key(self):
         producer = FakeProducer()
-        event_name = factory.getRandomString()
-        obj = MessagesTestModel(name=factory.getRandomString())
+        event_name = factory.make_string()
+        obj = MessagesTestModel(name=factory.make_string())
         messenger = MAASMessenger(MessagesTestModel, producer)
         self.assertEqual(
             '%s.%s' % ('MessagesTestModel', event_name),
@@ -155,8 +155,8 @@ class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
     def test_create_msg(self):
         producer = FakeProducer()
         messenger = MAASMessenger(Node, producer)
-        event_name = factory.getRandomString()
-        obj_name = factory.getRandomString()
+        event_name = factory.make_string()
+        obj_name = factory.make_string()
         obj = MessagesTestModel(name=obj_name)
         obj.save()
         msg = messenger.create_msg(event_name, obj)
@@ -170,6 +170,6 @@ class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
     def test_msg_containing_node_representation(self):
         node = factory.make_node()
         messenger = MAASMessenger(Node, FakeProducer())
-        msg = messenger.create_msg(factory.getRandomString(), node)
+        msg = messenger.create_msg(factory.make_string(), node)
         decoded_msg = json.loads(msg)
         self.assertItemsEqual(['instance', 'event_key'], list(decoded_msg))

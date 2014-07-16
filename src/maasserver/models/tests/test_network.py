@@ -180,7 +180,7 @@ class TestNetwork(MAASServerTestCase):
         name = factory.make_name('net')
         network = factory.getRandomNetwork()
         vlan_tag = factory.make_vlan_tag(allow_none=True)
-        description = factory.getRandomString()
+        description = factory.make_string()
 
         network = factory.make_network(
             name=name, network=network, vlan_tag=vlan_tag,

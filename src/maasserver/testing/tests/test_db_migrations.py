@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for helpers used to sanity-check South migrations."""
@@ -26,7 +26,7 @@ def make_migration_name(number=None, name=None):
     if number is None:
         number = randint(0, 9999)
     if name is None:
-        name = factory.getRandomString()
+        name = factory.make_string()
     return '{0:=04}_{1}'.format(number, name)
 
 

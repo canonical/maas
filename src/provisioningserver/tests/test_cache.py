@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests cache."""
@@ -30,12 +30,12 @@ class TestCache(PservTestCase):
         self.assertIsInstance(cache.cache.cache_backend, DictProxy)
 
     def test_cache_stores_value(self):
-        key = factory.getRandomString()
-        value = factory.getRandomString()
+        key = factory.make_string()
+        value = factory.make_string()
         cache.cache.set(key, value)
         self.assertEqual(value, cache.cache.get(key))
 
     def test_cache_clears_cache(self):
-        cache.cache.set(factory.getRandomString(), factory.getRandomString())
+        cache.cache.set(factory.make_string(), factory.make_string())
         cache.cache.clear()
         self.assertEqual(0, len(cache.cache.cache_backend))

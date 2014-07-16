@@ -174,7 +174,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_clean_path(self):
         method = WindowsPXEBootMethod()
-        parts = [factory.getRandomString() for _ in range(3)]
+        parts = [factory.make_string() for _ in range(3)]
         dirty_path = '\\'.join(parts)
         valid_path = dirty_path.lower().replace('\\', '/')
         clean_path = method.clean_path(dirty_path)
@@ -228,7 +228,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_match_path_pxelinux(self):
         method = WindowsPXEBootMethod()
-        method.remote_path = factory.getRandomString()
+        method.remote_path = factory.make_string()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
@@ -243,11 +243,11 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_match_path_pxelinux_only_on_install(self):
         method = WindowsPXEBootMethod()
-        method.remote_path = factory.getRandomString()
+        method.remote_path = factory.make_string()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
-            'purpose': factory.getRandomString(),
+            'purpose': factory.make_string(),
             'osystem': 'windows',
             'mac': mock_mac,
             }
@@ -257,11 +257,11 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_match_path_pxelinux_missing_hivex(self):
         method = WindowsPXEBootMethod()
-        method.remote_path = factory.getRandomString()
+        method.remote_path = factory.make_string()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
-            'purpose': factory.getRandomString(),
+            'purpose': factory.make_string(),
             'osystem': 'windows',
             'mac': mock_mac,
             }
@@ -272,12 +272,12 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_match_path_pxelinux_only_on_windows(self):
         method = WindowsPXEBootMethod()
-        method.remote_path = factory.getRandomString()
+        method.remote_path = factory.make_string()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
             'purpose': 'install',
-            'osystem': factory.getRandomString(),
+            'osystem': factory.make_string(),
             'mac': mock_mac,
             }
 
@@ -286,7 +286,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_match_path_pxelinux_get_node_info_None(self):
         method = WindowsPXEBootMethod()
-        method.remote_path = factory.getRandomString()
+        method.remote_path = factory.make_string()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = None
 
@@ -347,7 +347,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         local_host = factory.getRandomIPAddress()
         kernel_params = make_kernel_parameters()
 
-        fake_output = factory.getRandomString().encode('utf-8')
+        fake_output = factory.make_string().encode('utf-8')
         self.patch(os.path, 'isfile').return_value = True
         self.patch(shutil, 'copyfile')
         self.patch(windows_module, 'Bcd')
@@ -389,7 +389,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_output_static(self):
         method = WindowsPXEBootMethod()
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         temp_dir = self.make_dir()
         filename = factory.make_file(temp_dir, "resource", contents=contents)
         self.patch(method, 'get_resource_path').return_value = filename

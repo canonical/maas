@@ -273,7 +273,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'autodetect_nodegroup': '1',
                 'architecture': architecture,
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'mac_addresses': [mac],
             })
         parsed_result = json.loads(response.content)
@@ -354,7 +354,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
     def test_created_node_has_domain_from_cluster(self):
         hostname_without_domain = factory.make_name('hostname')
         hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.getRandomString())
+            hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
@@ -459,7 +459,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
@@ -491,7 +491,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'op': 'new',
                 'autodetect_nodegroup': '1',
                 'architecture': make_usable_architecture(self),
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
         parsed_result = json.loads(response.content)
@@ -552,7 +552,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def test_POST_simple_user_can_set_power_type_and_parameters(self):
         self.client_log_in()
-        new_power_address = factory.getRandomString()
+        new_power_address = factory.make_string()
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
@@ -579,7 +579,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -650,7 +650,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def test_POST_updates_power_parameters_rejects_unknown_param(self):
         self.client_log_in(as_admin=True)
-        hostname = factory.getRandomString()
+        hostname = factory.make_string()
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
@@ -658,7 +658,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'power_parameters_unknown_param': factory.getRandomString(),
+                'power_parameters_unknown_param': factory.make_string(),
                 'mac_addresses': [factory.getRandomMACAddress()],
                 })
 
@@ -674,7 +674,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         # The api allows to skip the validation step and set arbitrary
         # power parameters.
         self.client_log_in(as_admin=True)
-        param = factory.getRandomString()
+        param = factory.make_string()
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
@@ -702,7 +702,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
@@ -720,7 +720,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],

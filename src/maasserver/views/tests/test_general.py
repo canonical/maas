@@ -207,7 +207,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
     def test_delete_deletes_object(self):
         obj = FakeDeletableModel()
         # HttpResponseRedirect does not allow next_url to be None.
-        view = FakeDeleteView(obj, next_url=factory.getRandomString())
+        view = FakeDeleteView(obj, next_url=factory.make_string())
         view.delete()
         self.assertTrue(obj.deleted)
         self.assertEqual([view.compose_feedback_deleted(obj)], view.notices)
@@ -215,7 +215,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
     def test_delete_is_gentle_with_missing_objects(self):
         # Deleting a nonexistent object is basically treated as successful.
         # HttpResponseRedirect does not allow next_url to be None.
-        view = FakeDeleteView(next_url=factory.getRandomString())
+        view = FakeDeleteView(next_url=factory.make_string())
         response = view.delete()
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
@@ -227,7 +227,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
 
     def test_get_asks_for_confirmation_and_does_nothing_yet(self):
         obj = FakeDeletableModel()
-        next_url = factory.getRandomString()
+        next_url = factory.make_string()
         request = RequestFactory().get('/foo')
         view = FakeDeleteView(obj, request=request, next_url=next_url)
         response = view.get(request)
@@ -237,7 +237,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
         self.assertEqual([], view.notices)
 
     def test_get_skips_confirmation_for_missing_objects(self):
-        next_url = factory.getRandomString()
+        next_url = factory.make_string()
         request = RequestFactory().get('/foo')
         view = FakeDeleteView(next_url=next_url, request=request)
         response = view.get(request)
@@ -245,7 +245,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
         self.assertEqual([view.compose_feedback_nonexistent()], view.notices)
 
     def test_compose_feedback_nonexistent_names_class(self):
-        class_name = factory.getRandomString()
+        class_name = factory.make_string()
         self.patch(FakeDeletableModel.Meta, 'verbose_name', class_name)
         view = FakeDeleteView()
         self.assertEqual(
@@ -253,7 +253,7 @@ class HelpfulDeleteViewTest(MAASServerTestCase):
             view.compose_feedback_nonexistent())
 
     def test_compose_feedback_deleted_uses_name_object(self):
-        object_name = factory.getRandomString()
+        object_name = factory.make_string()
         view = FakeDeleteView(FakeDeletableModel())
         view.name_object = lambda _obj: object_name
         self.assertEqual(
@@ -388,7 +388,7 @@ class MAASExceptionHandledInView(MAASServerTestCase):
         # When a ExternalComponentException is raised in a POST request, a
         # message is published with the error message.
         self.client_log_in()
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
 
         # Patch NodeEdit to error on post.
         def post(self, request, *args, **kwargs):
@@ -414,8 +414,8 @@ class PermanentErrorDisplayTest(MAASServerTestCase):
             ]
         errors = []
         for fault in fault_codes:
-            # Create component with getRandomString to be sure
-            # to display all the errors.
+            # Create component with make_string to be sure to display all
+            # the errors.
             component = factory.make_name('component')
             error_message = factory.make_name('error')
             errors.append(Fault(fault, error_message))

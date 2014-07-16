@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the FileStorage model."""
@@ -36,11 +36,11 @@ class FileStorageTest(MAASServerTestCase):
         """
         # Note that this won't automatically insert any non-ASCII bytes.
         # Proper handling of real binary data is tested separately.
-        text = "%s %s" % (including_text, factory.getRandomString())
+        text = "%s %s" % (including_text, factory.make_string())
         return text.encode('ascii')
 
     def test_save_file_creates_storage(self):
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         content = self.make_data()
         user = factory.make_user()
         storage = FileStorage.objects.save_file(
@@ -50,7 +50,7 @@ class FileStorageTest(MAASServerTestCase):
             (storage.filename, storage.content, storage.owner))
 
     def test_storage_can_be_retrieved(self):
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         content = self.make_data()
         factory.make_file_storage(filename=filename, content=content)
         storage = FileStorage.objects.get(filename=filename)

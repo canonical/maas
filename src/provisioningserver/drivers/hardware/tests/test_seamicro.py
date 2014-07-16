@@ -95,10 +95,10 @@ class TestSeaMicroAPIV09(MAASTestCase):
     """Tests for SeaMicroAPIV09."""
 
     def test_build_url(self):
-        url = factory.getRandomString()
+        url = factory.make_string()
         api = SeaMicroAPIV09('http://%s/' % url)
-        location = factory.getRandomString()
-        params = [factory.getRandomString() for _ in range(3)]
+        location = factory.make_string()
+        params = [factory.make_string() for _ in range(3)]
         output = api.build_url(location, params)
         parsed = urlparse.urlparse(output)
         self.assertEqual(url, parsed.netloc)
@@ -106,7 +106,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
         self.assertEqual(params, parsed.query.split('&'))
 
     def test_invalid_reponse_code(self):
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
         response = FakeResponse(401, 'Unauthorized')
         self.assertRaises(
@@ -114,15 +114,15 @@ class TestSeaMicroAPIV09(MAASTestCase):
             url, response)
 
     def test_invalid_json_response(self):
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
-        response = FakeResponse(200, factory.getRandomString())
+        response = FakeResponse(200, factory.make_string())
         self.assertRaises(
             SeaMicroAPIV09Error, api.parse_response,
             url, response)
 
     def test_json_error_response(self):
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
         data = {
             'error': {
@@ -135,9 +135,9 @@ class TestSeaMicroAPIV09(MAASTestCase):
             url, response)
 
     def test_json_valid_response(self):
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
-        output = factory.getRandomString()
+        output = factory.make_string()
         data = {
             'error': {
                 'code': 200
@@ -156,9 +156,9 @@ class TestSeaMicroAPIV09(MAASTestCase):
             Mock(return_value=result))
 
     def test_login_and_logout(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         self.configure_get_result(token)
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
         api.login('username', 'password')
         self.assertEqual(token, api.token)
@@ -174,7 +174,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
                 }
             }
         self.configure_get_result(result)
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
         self.assertEqual(0, api.server_index('0/0'))
         self.assertEqual(1, api.server_index('1/0'))
@@ -191,7 +191,7 @@ class TestSeaMicroAPIV09(MAASTestCase):
         mock = self.patch(
             SeaMicroAPIV09,
             'put')
-        url = 'http://%s/' % factory.getRandomString()
+        url = 'http://%s/' % factory.make_string()
         api = SeaMicroAPIV09(url)
         api.token = token
         return mock, api
@@ -202,42 +202,42 @@ class TestSeaMicroAPIV09(MAASTestCase):
         self.assertThat(mock, MockCalledOnceWith(location, params=params))
 
     def test_put_server_power_on_using_pxe(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.power_on('0/0', do_pxe=True)
         self.assert_put_power_called(
             mock, 0, POWER_STATUS.ON, 'using-pxe=true', token)
 
     def test_put_server_power_on_not_using_pxe(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.power_on('0/0', do_pxe=False)
         self.assert_put_power_called(
             mock, 0, POWER_STATUS.ON, 'using-pxe=false', token)
 
     def test_put_server_power_reset_using_pxe(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.reset('0/0', do_pxe=True)
         self.assert_put_power_called(
             mock, 0, POWER_STATUS.RESET, 'using-pxe=true', token)
 
     def test_put_server_power_reset_not_using_pxe(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.reset('0/0', do_pxe=False)
         self.assert_put_power_called(
             mock, 0, POWER_STATUS.RESET, 'using-pxe=false', token)
 
     def test_put_server_power_off(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.power_off('0/0', force=False)
         self.assert_put_power_called(
             mock, 0, POWER_STATUS.OFF, 'force=false', token)
 
     def test_put_server_power_off_force(self):
-        token = factory.getRandomString()
+        token = factory.make_string()
         mock, api = self.configure_put_server_power(token)
         api.power_off('0/0', force=True)
         self.assert_put_power_called(
@@ -261,8 +261,8 @@ class TestSeaMicro(MAASTestCase):
 
     def configure_get_seamicro15k_api(self, return_value=None):
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         mock = self.patch(
             seamicro,
             'get_seamicro15k_api')
@@ -297,7 +297,7 @@ class TestSeaMicro(MAASTestCase):
             mock, MockCalledOnceWith('v2.0', ip, username, password))
 
     def configure_api_v09_login(self, token=None):
-        token = token or factory.getRandomString()
+        token = token or factory.make_string()
         mock = self.patch(
             SeaMicroAPIV09,
             'login')
@@ -307,8 +307,8 @@ class TestSeaMicro(MAASTestCase):
     def test_probe_seamicro15k_and_enlist_v09(self):
         self.configure_api_v09_login()
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         result = {
             0: {
                 'serverId': '0/0',
@@ -359,8 +359,8 @@ class TestSeaMicro(MAASTestCase):
     def test_power_control_seamicro15k_v09(self):
         self.configure_api_v09_login()
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         mock = self.patch(
             SeaMicroAPIV09,
             'power_server')
@@ -373,8 +373,8 @@ class TestSeaMicro(MAASTestCase):
     def test_power_control_seamicro15k_v09_retry_failure(self):
         self.configure_api_v09_login()
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         mock = self.patch(
             SeaMicroAPIV09,
             'power_server')
@@ -388,8 +388,8 @@ class TestSeaMicro(MAASTestCase):
     def test_power_control_seamicro15k_v09_exception_failure(self):
         self.configure_api_v09_login()
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         mock = self.patch(
             SeaMicroAPIV09,
             'power_server')
@@ -401,8 +401,8 @@ class TestSeaMicro(MAASTestCase):
 
     def test_probe_seamicro15k_and_enlist_v2(self):
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
 
         fake_server_0 = FakeServer('0/0')
         fake_server_0.add_fake_nic('0')
@@ -450,8 +450,8 @@ class TestSeaMicro(MAASTestCase):
 
     def test_power_control_seamicro15k_v2(self):
         ip = factory.getRandomIPAddress()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
 
         fake_server = FakeServer('0/0')
         fake_client = FakeSeaMicroClient()

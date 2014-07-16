@@ -79,7 +79,7 @@ class TestCommands(DjangoTestCase):
         stderr = BytesIO()
         stdout = BytesIO()
         username = factory.make_name('user')
-        password = factory.getRandomString()
+        password = factory.make_string()
         email = factory.make_email_address()
         self.patch(createadmin, 'prompt_for_password').return_value = password
 
@@ -93,8 +93,8 @@ class TestCommands(DjangoTestCase):
         self.assertTrue(user.check_password(password))
 
     def test_createadmin_requires_email(self):
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
         error_text = assertCommandErrors(
             self, 'createadmin',
             username=username, password=password)
@@ -105,9 +105,9 @@ class TestCommands(DjangoTestCase):
     def test_createadmin_creates_admin(self):
         stderr = BytesIO()
         stdout = BytesIO()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
-        email = '%s@example.com' % factory.getRandomString()
+        username = factory.make_string()
+        password = factory.make_string()
+        email = '%s@example.com' % factory.make_string()
         call_command(
             'createadmin', username=username, password=password,
             email=email, stderr=stderr, stdout=stdout)
@@ -120,29 +120,29 @@ class TestCommands(DjangoTestCase):
         self.assertEqual(email, user.email)
 
     def test_prompt_for_password_returns_selected_password(self):
-        password = factory.getRandomString()
+        password = factory.make_string()
         self.patch(createadmin, 'getpass').return_value = password
 
         self.assertEqual(password, createadmin.prompt_for_password())
 
     def test_prompt_for_password_checks_for_consistent_password(self):
-        self.patch(createadmin, 'getpass', lambda x: factory.getRandomString())
+        self.patch(createadmin, 'getpass', lambda x: factory.make_string())
 
         self.assertRaises(
             createadmin.InconsistentPassword,
             createadmin.prompt_for_password)
 
     def test_clearcache_clears_entire_cache(self):
-        key = factory.getRandomString()
-        cache.set(key, factory.getRandomString())
+        key = factory.make_string()
+        cache.set(key, factory.make_string())
         call_command('clearcache')
         self.assertIsNone(cache.get(key, None))
 
     def test_clearcache_clears_specific_key(self):
-        key = factory.getRandomString()
-        cache.set(key, factory.getRandomString())
-        another_key = factory.getRandomString()
-        cache.set(another_key, factory.getRandomString())
+        key = factory.make_string()
+        cache.set(key, factory.make_string())
+        another_key = factory.make_string()
+        cache.set(another_key, factory.make_string())
         call_command('clearcache', key=key)
         self.assertIsNone(cache.get(key, None))
         self.assertIsNotNone(cache.get(another_key, None))

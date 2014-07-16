@@ -94,7 +94,7 @@ class CommissioningScriptUploadTest(MAASServerTestCase):
 
     def test_can_create_commissioning_script(self):
         self.client_log_in(as_admin=True)
-        content = factory.getRandomString()
+        content = factory.make_string()
         name = factory.make_name('filename')
         create_link = reverse('commissioning-script-add')
         filepath = self.make_file(name=name, contents=content)

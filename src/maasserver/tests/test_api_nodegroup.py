@@ -340,7 +340,7 @@ class TestNodeGroupAPI(APITestCase):
             reverse('nodegroups_handler'),
             {
                 'op': 'accept',
-                'uuid': factory.getRandomString(),
+                'uuid': factory.make_string(),
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -367,7 +367,7 @@ class TestNodeGroupAPI(APITestCase):
             reverse('nodegroups_handler'),
             {
                 'op': 'reject',
-                'uuid': factory.getRandomString(),
+                'uuid': factory.make_string(),
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -406,7 +406,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_report_download_progress_accepts_new_download(self):
         nodegroup = factory.make_node_group()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         client = make_worker_client(nodegroup)
 
         response = client.post(
@@ -632,7 +632,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
     def test_nodegroup_import_boot_images_calls_importer(self):
         recorder = self.patch(nodegroup_module, 'import_boot_images')
         self.patch(nodegroup_module, 'report_boot_images')
-        proxy = factory.getRandomString()
+        proxy = factory.make_string()
         Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         admin = factory.make_admin()
@@ -781,7 +781,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_POST_report_download_progress_works_for_nodegroup_worker(self):
         nodegroup = factory.make_node_group()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         client = make_worker_client(nodegroup)
 
         response = client.post(
@@ -803,7 +803,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
                 'op': 'report_download_progress',
-                'filename': factory.getRandomString(),
+                'filename': factory.make_string(),
             })
 
         self.assertEqual(
@@ -811,7 +811,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_POST_report_download_progress_does_work_for_other_cluster(self):
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         client = make_worker_client(factory.make_node_group())
 
         response = client.post(

@@ -69,7 +69,7 @@ class TestNodeCommissionResultView(MAASServerTestCase):
     def test_displays_result(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result(
-            data=factory.getRandomString().encode('ascii'))
+            data=factory.make_string().encode('ascii'))
         doc = self.request_page(result)
 
         self.assertEqual(result.name, self.extract_field(doc, 'name'))

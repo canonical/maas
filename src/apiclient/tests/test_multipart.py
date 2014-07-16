@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test multipart MIME helpers."""
@@ -46,19 +46,18 @@ class TestMultiPart(MAASTestCase):
 
     def test_encode_multipart_data_produces_bytes(self):
         data = {
-            factory.getRandomString(): (
-                factory.getRandomString().encode('ascii')),
+            factory.make_string(): factory.make_string().encode('ascii'),
         }
         files = {
-            factory.getRandomString(): (
-                BytesIO(factory.getRandomString().encode('ascii'))),
+            factory.make_string(): (
+                BytesIO(factory.make_string().encode('ascii'))),
         }
         body, headers = encode_multipart_data(data, files)
         self.assertIsInstance(body, bytes)
 
     def test_encode_multipart_data_closes_with_closing_boundary_line(self):
-        data = {b'foo': factory.getRandomString().encode('ascii')}
-        files = {b'bar': BytesIO(factory.getRandomString().encode('ascii'))}
+        data = {b'foo': factory.make_string().encode('ascii')}
+        files = {b'bar': BytesIO(factory.make_string().encode('ascii'))}
         body, headers = encode_multipart_data(data, files)
         self.assertThat(body, EndsWith(b'--'))
 

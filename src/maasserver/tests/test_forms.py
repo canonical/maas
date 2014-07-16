@@ -223,12 +223,12 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual(arches[0], pick_default_architecture(arches))
 
     def test_remove_None_values_removes_None_values_in_dict(self):
-        random_input = factory.getRandomString()
+        random_input = factory.make_string()
         self.assertEqual(
             {random_input: random_input},
             remove_None_values({
                 random_input: random_input,
-                factory.getRandomString(): None
+                factory.make_string(): None,
                 }))
 
     def test_remove_None_values_leaves_empty_dict_untouched(self):
@@ -398,7 +398,7 @@ class TestValidOptionForm(ConfigForm):
 class ConfigFormTest(MAASServerTestCase):
 
     def test_form_valid_saves_into_db(self):
-        value = factory.getRandomString(10)
+        value = factory.make_string(10)
         form = TestValidOptionForm({'maas_name': value})
         result = form.save()
 
@@ -406,8 +406,8 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertEqual(value, Config.objects.get_config('maas_name'))
 
     def test_form_rejects_unknown_settings(self):
-        value = factory.getRandomString(10)
-        value2 = factory.getRandomString(10)
+        value = factory.make_string(10)
+        value2 = factory.make_string(10)
         form = TestOptionForm({'field1': value, 'field2': value2})
         valid = form.is_valid()
 
@@ -416,7 +416,7 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertIn('field2', form._errors)
 
     def test_form_invalid_does_not_save_into_db(self):
-        value_too_long = factory.getRandomString(20)
+        value_too_long = factory.make_string(20)
         form = TestOptionForm({'field1': value_too_long, 'field2': False})
         result = form.save()
 
@@ -426,7 +426,7 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertIsNone(Config.objects.get_config('field2'))
 
     def test_form_loads_initial_values(self):
-        value = factory.getRandomString()
+        value = factory.make_string()
         Config.objects.set_config('field1', value)
         form = TestOptionForm()
 
@@ -434,7 +434,7 @@ class ConfigFormTest(MAASServerTestCase):
         self.assertEqual(value, form.initial['field1'])
 
     def test_form_loads_initial_values_from_default_value(self):
-        value = factory.getRandomString()
+        value = factory.make_string()
         DEFAULT_CONFIG['field1'] = value
         form = TestOptionForm()
 
@@ -459,7 +459,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_changes_node(self):
         node = factory.make_node()
-        hostname = factory.getRandomString()
+        hostname = factory.make_string()
         patch_usable_architectures(self, [node.architecture])
 
         form = NodeForm(
@@ -609,7 +609,7 @@ class TestNodeForm(MAASServerTestCase):
             'architecture': make_usable_architecture(self),
             'osystem': osystem.name,
             'distro_series': '%s/%s*' % (osystem.name, release),
-            'license_key': factory.getRandomString(),
+            'license_key': factory.make_string(),
             })
         self.assertTrue(form.is_valid())
         mock_validate.assert_called_once()
@@ -655,7 +655,7 @@ class TestAdminNodeForm(MAASServerTestCase):
     def test_AdminNodeForm_changes_node(self):
         node = factory.make_node()
         zone = factory.make_zone()
-        hostname = factory.getRandomString()
+        hostname = factory.make_string()
         power_type = factory.pick_power_type()
         form = AdminNodeForm(
             data={
@@ -716,9 +716,9 @@ class TestAdminNodeForm(MAASServerTestCase):
 
     def test_AdminNodeForm_changes_node_with_skip_check(self):
         node = factory.make_node()
-        hostname = factory.getRandomString()
+        hostname = factory.make_string()
         power_type = factory.pick_power_type()
-        power_parameters_field = factory.getRandomString()
+        power_parameters_field = factory.make_string()
         arch = make_usable_architecture(self)
         form = AdminNodeForm(
             data={
@@ -806,7 +806,7 @@ class TestNodeActionForm(MAASServerTestCase):
     def test_rejects_unknown_action(self):
         user = factory.make_user()
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        action = factory.getRandomString()
+        action = factory.make_string()
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: action})
         self.assertFalse(form.is_valid())
@@ -814,7 +814,7 @@ class TestNodeActionForm(MAASServerTestCase):
             "is not one of the available choices.", form._errors['action'][0])
 
     def test_shows_error_message_for_NodeActionError(self):
-        error_text = factory.getRandomString(prefix="NodeActionError")
+        error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
         user = factory.make_user()
@@ -843,23 +843,23 @@ class TestUniqueEmailForms(MAASServerTestCase):
                 r'User with this E-{0,1}mail address already exists.'))
 
     def test_ProfileForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.getRandomString()
+        another_email = '%s@example.com' % factory.make_string()
         factory.make_user(email=another_email)
-        email = '%s@example.com' % factory.getRandomString()
+        email = '%s@example.com' % factory.make_string()
         user = factory.make_user(email=email)
         form = ProfileForm(instance=user, data={'email': another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_ProfileForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.getRandomString()
+        email = '%s@example.com' % factory.make_string()
         user = factory.make_user(email=email)
         form = ProfileForm(instance=user, data={'email': email})
         self.assertTrue(form.is_valid())
 
     def test_NewUserCreationForm_fails_validation_if_email_taken(self):
-        email = '%s@example.com' % factory.getRandomString()
-        username = factory.getRandomString()
-        password = factory.getRandomString()
+        email = '%s@example.com' % factory.make_string()
+        username = factory.make_string()
+        password = factory.make_string()
         factory.make_user(email=email)
         form = NewUserCreationForm(
             {
@@ -871,21 +871,21 @@ class TestUniqueEmailForms(MAASServerTestCase):
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_EditUserForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.getRandomString()
+        another_email = '%s@example.com' % factory.make_string()
         factory.make_user(email=another_email)
-        email = '%s@example.com' % factory.getRandomString()
+        email = '%s@example.com' % factory.make_string()
         user = factory.make_user(email=email)
         form = EditUserForm(instance=user, data={'email': another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_EditUserForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.getRandomString()
+        email = '%s@example.com' % factory.make_string()
         user = factory.make_user(email=email)
         form = EditUserForm(
             instance=user,
             data={
                 'email': email,
-                'username': factory.getRandomString(),
+                'username': factory.make_string(),
             })
         self.assertTrue(form.is_valid())
 
@@ -895,7 +895,7 @@ class TestNewUserCreationForm(MAASServerTestCase):
     def test_saves_to_db_by_default(self):
         password = factory.make_name('password')
         params = {
-            'email': '%s@example.com' % factory.getRandomString(),
+            'email': '%s@example.com' % factory.make_string(),
             'username': factory.make_name('user'),
             'password1': password,
             'password2': password,
@@ -921,7 +921,7 @@ class TestNewUserCreationForm(MAASServerTestCase):
     def test_does_not_save_to_db_if_commit_is_False(self):
         password = factory.make_name('password')
         params = {
-            'email': '%s@example.com' % factory.getRandomString(),
+            'email': '%s@example.com' % factory.make_string(),
             'username': factory.make_name('user'),
             'password1': password,
             'password2': password,
@@ -1031,7 +1031,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__validates_parameters(self):
         form = NodeGroupInterfaceForm(
-            data={'ip': factory.getRandomString()},
+            data={'ip': factory.make_string()},
             instance=self.make_ngi_instance())
         self.assertFalse(form.is_valid())
         self.assertEquals(
@@ -1687,7 +1687,7 @@ class TestCommissioningFormForm(MAASServerTestCase):
 class TestCommissioningScriptForm(MAASServerTestCase):
 
     def test_creates_commissioning_script(self):
-        content = factory.getRandomString().encode('ascii')
+        content = factory.make_string().encode('ascii')
         name = factory.make_name('filename')
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
@@ -1699,7 +1699,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
             MatchesStructure.byEquality(name=name, content=content))
 
     def test_raises_if_duplicated_name(self):
-        content = factory.getRandomString().encode('ascii')
+        content = factory.make_string().encode('ascii')
         name = factory.make_name('filename')
         factory.make_commissioning_script(name=name)
         uploaded_file = SimpleUploadedFile(content=content, name=name)
@@ -1710,7 +1710,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
 
     def test_rejects_whitespace_in_name(self):
         name = factory.make_name('with space')
-        content = factory.getRandomString().encode('ascii')
+        content = factory.make_string().encode('ascii')
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
@@ -1720,7 +1720,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
 
     def test_rejects_quotes_in_name(self):
         name = factory.make_name("l'horreur")
-        content = factory.getRandomString().encode('ascii')
+        content = factory.make_string().encode('ascii')
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertFalse(form.is_valid())
@@ -1776,7 +1776,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [existing_nodes, node3_system_id])
 
     def test_perform_action_catches_start_action_errors(self):
-        error_text = factory.getRandomString(prefix="NodeActionError")
+        error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
         user = factory.make_user()
@@ -1976,7 +1976,7 @@ class TestDownloadProgressForm(MAASServerTestCase):
         progress = factory.make_download_progress_incomplete(size=None)
         new_bytes_downloaded = progress.bytes_downloaded + 1
         size = progress.bytes_downloaded + 2
-        error = factory.getRandomString()
+        error = factory.make_string()
 
         form = DownloadProgressForm(
             data={
@@ -2010,7 +2010,7 @@ class TestDownloadProgressForm(MAASServerTestCase):
 
     def test_get_download_recognises_start_of_new_download(self):
         nodegroup = factory.make_node_group()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         progress = DownloadProgressForm.get_download(nodegroup, filename, None)
         self.assertIsNotNone(progress)
         self.assertEqual(nodegroup, progress.nodegroup)
@@ -2020,7 +2020,7 @@ class TestDownloadProgressForm(MAASServerTestCase):
     def test_get_download_returns_none_for_unknown_ongoing_download(self):
         self.assertIsNone(
             DownloadProgressForm.get_download(
-                factory.make_node_group(), factory.getRandomString(), 1))
+                factory.make_node_group(), factory.make_string(), 1))
 
 
 class TestZoneForm(MAASServerTestCase):
@@ -2028,7 +2028,7 @@ class TestZoneForm(MAASServerTestCase):
 
     def test_creates_zone(self):
         name = factory.make_name('zone')
-        description = factory.getRandomString()
+        description = factory.make_string()
         form = ZoneForm(data={'name': name, 'description': description})
         form.save()
         zone = Zone.objects.get(name=name)
@@ -2037,7 +2037,7 @@ class TestZoneForm(MAASServerTestCase):
 
     def test_updates_zone(self):
         zone = factory.make_zone()
-        new_description = factory.getRandomString()
+        new_description = factory.make_string()
         form = ZoneForm(data={'description': new_description}, instance=zone)
         form.save()
         zone = reload_object(zone)
@@ -2054,7 +2054,7 @@ class TestZoneForm(MAASServerTestCase):
 
     def test_update_default_zone_description_works(self):
         zone = Zone.objects.get_default_zone()
-        new_description = factory.getRandomString()
+        new_description = factory.make_string()
         form = ZoneForm(data={'description': new_description}, instance=zone)
         self.assertTrue(form.is_valid(), form._errors)
         form.save()
@@ -2080,7 +2080,7 @@ class TestNetworkForm(MAASServerTestCase):
         name = factory.make_name('network')
         definition = {
             'name': name,
-            'description': factory.getRandomString(),
+            'description': factory.make_string(),
             'ip': "%s" % network.cidr.ip,
             'netmask': "%s" % network.netmask,
             'vlan_tag': factory.make_vlan_tag(),
@@ -2092,7 +2092,7 @@ class TestNetworkForm(MAASServerTestCase):
 
     def test_updates_network(self):
         network = factory.make_network()
-        new_description = factory.getRandomString()
+        new_description = factory.make_string()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
         form.save()
@@ -2107,7 +2107,7 @@ class TestNetworkForm(MAASServerTestCase):
         # Create other MAC addresses.
         for _ in range(2):
             factory.make_mac_address(networks=[factory.make_network()])
-        new_description = factory.getRandomString()
+        new_description = factory.make_string()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
         self.assertItemsEqual(

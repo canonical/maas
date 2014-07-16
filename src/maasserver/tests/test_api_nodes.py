@@ -67,7 +67,7 @@ class NodeHostnameTest(MultipleUsersScenarios,
         # is replaced by the domain name defined on the cluster.
         hostname_without_domain = factory.make_name('hostname')
         hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.getRandomString())
+            hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
@@ -152,7 +152,7 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
             })
@@ -167,7 +167,7 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': make_usable_architecture(self),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })
@@ -272,7 +272,7 @@ class TestNodesAPI(APITestCase):
         # Trying to list a nonexistent node id returns a list containing
         # no nodes -- even if other (non-matching) nodes exist.
         existing_id = factory.make_node().system_id
-        nonexistent_id = existing_id + factory.getRandomString()
+        nonexistent_id = existing_id + factory.make_string()
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': [nonexistent_id],
@@ -294,7 +294,7 @@ class TestNodesAPI(APITestCase):
         # If some nodes match the requested ids and some don't, only the
         # matching ones are returned.
         existing_id = factory.make_node().system_id
-        nonexistent_id = existing_id + factory.getRandomString()
+        nonexistent_id = existing_id + factory.make_string()
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'id': [existing_id, nonexistent_id],
@@ -573,7 +573,7 @@ class TestNodesAPI(APITestCase):
         node = factory.make_node(status=NODE_STATUS.READY, owner=None)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            factory.getRandomString(): factory.getRandomString(),
+            factory.make_string(): factory.make_string(),
         })
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -601,7 +601,7 @@ class TestNodesAPI(APITestCase):
         factory.make_node(status=NODE_STATUS.READY, owner=None)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
-            'name': factory.getRandomString(),
+            'name': factory.make_string(),
         })
         self.assertEqual(httplib.CONFLICT, response.status_code)
 
@@ -959,7 +959,7 @@ class TestNodesAPI(APITestCase):
         self.become_admin()
         # Make sure there is a node, it just isn't the one being accepted
         factory.make_node()
-        node_id = factory.getRandomString()
+        node_id = factory.make_string()
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
@@ -1024,7 +1024,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_release_fails_if_nodes_do_not_exist(self):
          # Make sure there is a node, it just isn't among the ones to release
         factory.make_node()
-        node_ids = {factory.getRandomString() for i in xrange(5)}
+        node_ids = {factory.make_string() for i in xrange(5)}
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'release',
@@ -1127,7 +1127,7 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.getRandomString(),
+                'hostname': factory.make_string(),
                 'architecture': architecture,
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })

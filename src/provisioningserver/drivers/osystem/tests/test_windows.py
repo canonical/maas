@@ -121,14 +121,14 @@ class TestWindowsOS(MAASTestCase):
 
     def test_validate_license_key(self):
         osystem = WindowsOS()
-        parts = [factory.getRandomString(size=5) for _ in range(5)]
+        parts = [factory.make_string(size=5) for _ in range(5)]
         key = '-'.join(parts)
         self.assertTrue(
             osystem.validate_license_key(REQUIRE_LICENSE_KEY[0], key))
 
     def test_validate_license_key_invalid(self):
         osystem = WindowsOS()
-        keys = [factory.getRandomString() for _ in range(3)]
+        keys = [factory.make_string() for _ in range(3)]
         for key in keys:
             self.assertFalse(
                 osystem.validate_license_key(REQUIRE_LICENSE_KEY[0], key))

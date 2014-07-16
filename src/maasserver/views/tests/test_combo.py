@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test combo view."""
@@ -33,15 +33,15 @@ from maasserver.views.combo import (
 class TestUtilities(MAASServerTestCase):
 
     def test_get_abs_location_returns_absolute_location_if_not_None(self):
-        abs_location = '%s%s' % (os.path.sep, factory.getRandomString())
+        abs_location = '%s%s' % (os.path.sep, factory.make_string())
         self.assertEqual(
             abs_location, get_absolute_location(location=abs_location))
 
     def test_get_abs_location_returns_rel_loc_if_static_root_not_none(self):
-        static_root = factory.getRandomString()
+        static_root = factory.make_string()
         self.patch(settings, 'STATIC_ROOT', static_root)
         rel_location = os.path.join(
-            factory.getRandomString(), factory.getRandomString())
+            factory.make_string(), factory.make_string())
         expected_location = os.path.join(static_root, rel_location)
         self.assertEqual(
             expected_location, get_absolute_location(location=rel_location))
@@ -49,7 +49,7 @@ class TestUtilities(MAASServerTestCase):
     def test_get_abs_location_returns_rel_loc_if_static_root_is_none(self):
         self.patch(settings, 'STATIC_ROOT', None)
         rel_location = os.path.join(
-            factory.getRandomString(), factory.getRandomString())
+            factory.make_string(), factory.make_string())
         rel_location_base = os.path.join(
             os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
             'static')
@@ -59,15 +59,15 @@ class TestUtilities(MAASServerTestCase):
 
     def test_get_combo_view_returns_callable(self):
         rel_location = os.path.join(
-            factory.getRandomString(), factory.getRandomString())
+            factory.make_string(), factory.make_string())
         view = get_combo_view(rel_location)
         self.assertIsInstance(view, Callable)
 
     def test_get_combo_view_loads_from_disk(self):
-        test_file_contents = factory.getRandomString()
+        test_file_contents = factory.make_string()
         # Create a valid file with a proper extension (the combo loader only
         # serves JS or CSS files)
-        test_file_name = "%s.js" % factory.getRandomString()
+        test_file_name = "%s.js" % factory.make_string()
         test_file = self.make_file(
             name=test_file_name, contents=test_file_contents)
         directory = os.path.dirname(test_file)
@@ -88,10 +88,10 @@ class TestUtilities(MAASServerTestCase):
         # redirected.
         # Create a test file with an unknown extension.
         test_file_name = "%s.%s" % (
-            factory.getRandomString(), factory.getRandomString())
-        redirect_root = factory.getRandomString()
+            factory.make_string(), factory.make_string())
+        redirect_root = factory.make_string()
         view = get_combo_view(
-            factory.getRandomString(), default_redirect=redirect_root)
+            factory.make_string(), default_redirect=redirect_root)
         rf = RequestFactory()
         request = rf.get("/test/?%s" % test_file_name)
         response = view(request)

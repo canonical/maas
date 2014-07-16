@@ -341,7 +341,7 @@ class TestPeriodicTask(PservTestCase):
         uuid = factory.make_UUID()
         maas_url = 'http://%s.example.com/%s/' % (
             factory.make_name('host'),
-            factory.getRandomString(),
+            factory.make_string(),
             )
         api_credentials = make_api_credentials()
 

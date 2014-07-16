@@ -92,7 +92,7 @@ class Factory:
 
     random_octets = iter(random_octet, None)
 
-    def getRandomString(self, size=10, spaces=False, prefix=""):
+    def make_string(self, size=10, spaces=False, prefix=""):
         if spaces:
             return prefix + "".join(
                 islice(self.random_letters_with_spaces, size))
@@ -109,7 +109,7 @@ class Factory:
 
     def make_email_address(self, login_size=10):
         """Generate an arbitrary email address."""
-        return "%s@example.com" % self.getRandomString(size=login_size)
+        return "%s@example.com" % self.make_string(size=login_size)
 
     def make_status_code(self):
         """Return an arbitrary HTTP status code."""
@@ -283,9 +283,9 @@ class Factory:
         :return: Path to the file.
         """
         if name is None:
-            name = self.getRandomString()
+            name = self.make_string()
         if contents is None:
-            contents = self.getRandomString().encode('ascii')
+            contents = self.make_string().encode('ascii')
         path = os.path.join(location, name)
         with open(path, 'w') as f:
             f.write(contents)
@@ -296,7 +296,7 @@ class Factory:
 
         :param prefix: Optional prefix.  Pass one to help make test failures
             and tracebacks easier to read!  If you don't, you might as well
-            use `getRandomString`.
+            use `make_string`.
         :param sep: Separator that will go between the prefix and the random
             portion of the name.  Defaults to a dash.
         :param size: Length of the random portion of the name.  Don't get
@@ -306,7 +306,7 @@ class Factory:
         :return: A randomized unicode string.
         """
         return sep.join(
-            filter(None, [prefix, self.getRandomString(size=size)]))
+            filter(None, [prefix, self.make_string(size=size)]))
 
     def make_hostname(self, prefix='host', *args, **kwargs):
         """Generate a random hostname.

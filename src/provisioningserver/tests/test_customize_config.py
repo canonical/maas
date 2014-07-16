@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for customize_config."""
@@ -42,7 +42,7 @@ class TestCustomizeConfig(MAASTestCase):
         customize_config.run(parsed_args)
 
     def test_runs_as_script(self):
-        original_text = factory.getRandomString()
+        original_text = factory.make_string()
         original_file = self.make_file(original_text)
         script = os.path.join(bindir, "maas-provision")
         command = Popen(
@@ -69,10 +69,10 @@ class TestCustomizeConfig(MAASTestCase):
         self.assertEqual(expected, output.decode('utf-8'))
 
     def test_does_not_modify_original(self):
-        original_text = factory.getRandomString().encode('ascii')
+        original_text = factory.make_string().encode('ascii')
         original_file = self.make_file(contents=original_text)
 
-        self.run_command(original_file, factory.getRandomString())
+        self.run_command(original_file, factory.make_string())
 
         with open(original_file, 'rb') as reread_file:
             contents_after = reread_file.read()

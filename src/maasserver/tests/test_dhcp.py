@@ -102,7 +102,7 @@ class TestDHCP(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            dhcp_key=factory.getRandomString(),
+            dhcp_key=factory.make_string(),
             interface=factory.make_name('eth'),
             network=IPNetwork("192.168.102.0/22"))
         # Create a second DHCP-managed interface.
@@ -159,7 +159,7 @@ class TestDHCP(MAASServerTestCase):
             maas_url=maas_url,
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            dhcp_key=factory.getRandomString(),
+            dhcp_key=factory.make_string(),
             interface=factory.make_name('eth'),
             network=IPNetwork("192.168.102.0/22"))
         self.patch(settings, "DHCP_CONNECT", True)

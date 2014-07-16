@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test forms settings."""
@@ -30,7 +30,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 class TestGetConfigField(MAASServerTestCase):
 
     def test_get_config_field_validates_config_name(self):
-        config_name = factory.getRandomString()
+        config_name = factory.make_string()
         self.assertRaises(
             forms.ValidationError, get_config_field, config_name)
 
@@ -43,7 +43,7 @@ class TestGetConfigField(MAASServerTestCase):
 class TestGetConfigForm(MAASServerTestCase):
 
     def test_get_config_form_returns_initialized_form(self):
-        maas_name = factory.getRandomString()
+        maas_name = factory.make_string()
         Config.objects.set_config('maas_name', maas_name)
         form = get_config_form('maas_name')
         # The form contains only one field.

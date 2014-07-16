@@ -84,7 +84,7 @@ class TestBytesReader(MAASTestCase):
         verifyObject(IReader, reader)
 
     def test_read(self):
-        data = factory.getRandomString(size=10).encode("ascii")
+        data = factory.make_string(size=10).encode("ascii")
         reader = BytesReader(data)
         self.addCleanup(reader.finish)
         self.assertEqual(data[:7], reader.read(7))
@@ -133,7 +133,7 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
         # paths not matching re_config_file.
-        data = factory.getRandomString().encode("ascii")
+        data = factory.make_string().encode("ascii")
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = path.dirname(temp_file)
         backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")

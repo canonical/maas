@@ -89,7 +89,7 @@ class TestPowerAction(MAASTestCase):
         self.assertThat(pa.path, FileContains(template.content))
 
     def test_get_template_looks_for_template_in_template_basedir(self):
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         power_type = 'ether_wake'
         template_name = '%s.template' % power_type
         template = self.make_file(name=template_name, contents=contents)
@@ -110,7 +110,7 @@ class TestPowerAction(MAASTestCase):
         # If not enough arguments are supplied to fill in template
         # variables then a PowerActionFail is raised.
         pa = PowerAction('ether_wake')
-        template_name = factory.getRandomString()
+        template_name = factory.make_string()
         template = ShellTemplate("template: {{mac}}", name=template_name)
         self.assertThat(
             lambda: pa.render_template(template),

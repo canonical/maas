@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the SSHKey model."""
@@ -46,22 +46,22 @@ class SSHKeyValidatorTest(MAASServerTestCase):
         # No ValidationError.
 
     def test_does_not_validate_random_data(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_wrongly_padded_data(self):
         key_string = 'ssh-dss %s %s@%s' % (
-            factory.getRandomString(), factory.getRandomString(),
-            factory.getRandomString())
+            factory.make_string(), factory.make_string(),
+            factory.make_string())
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
 
     def test_does_not_validate_non_ascii_key(self):
         non_ascii_key = 'AAB3NzaC' + u'\u2502' + 'mN6Lo2I9w=='
         key_string = 'ssh-rsa %s %s@%s' % (
-            non_ascii_key, factory.getRandomString(),
-            factory.getRandomString())
+            non_ascii_key, factory.make_string(),
+            factory.make_string())
         self.assertRaises(
             ValidationError, validate_ssh_public_key, key_string)
 
@@ -93,9 +93,9 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         will be of the desired length both before and after stripping.
         """
         return ''.join([
-            factory.getRandomString(1),
-            factory.getRandomString(max([length - 2, 0]), spaces=True),
-            factory.getRandomString(1),
+            factory.make_string(1),
+            factory.make_string(max([length - 2, 0]), spaces=True),
+            factory.make_string(1),
             ])[:length]
 
     def make_key(self, type_len=7, key_len=360, comment_len=None):
@@ -110,8 +110,8 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         :return: A string representing the combined key-file contents.
         """
         fields = [
-            factory.getRandomString(type_len),
-            factory.getRandomString(key_len),
+            factory.make_string(type_len),
+            factory.make_string(key_len),
             ]
         if comment_len is not None:
             fields.append(self.make_comment(comment_len))
@@ -122,7 +122,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         # separated by spaces, it's returned unchanged if its size is <=
         # size.
         size = random.randint(101, 200)
-        key = factory.getRandomString(size - 100)
+        key = factory.make_string(size - 100)
         display = get_html_display_for_key(key, size)
         self.assertTrue(len(display) < size)
         self.assertEqual(key, display)
@@ -132,7 +132,7 @@ class GetHTMLDisplayForKeyTest(MAASServerTestCase):
         # separated by spaces, it's returned cropped if its size is >
         # size.
         size = random.randint(20, 100)  # size cannot be < len(HELLIPSIS).
-        key = factory.getRandomString(size + 1)
+        key = factory.make_string(size + 1)
         display = get_html_display_for_key(key, size)
         self.assertEqual(size, len(display))
         self.assertEqual(
@@ -232,7 +232,7 @@ class SSHKeyTest(MAASServerTestCase):
         # No ValidationError.
 
     def test_sshkey_validation_fails_if_key_is_invalid(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         user = factory.make_user()
         key = SSHKey(key=key_string, user=user)
         self.assertRaises(

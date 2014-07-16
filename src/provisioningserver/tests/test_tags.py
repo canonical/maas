@@ -76,7 +76,7 @@ class TestProcessResponse(PservTestCase):
             b"",
             "application/json"
         )
-        response.url = factory.getRandomString()
+        response.url = factory.make_string()
         error = self.assertRaises(
             urllib2.HTTPError, tags.process_response, response)
         self.assertThat(

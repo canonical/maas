@@ -164,7 +164,7 @@ class TestSSLKeyHandlers(APITestCase):
         self.assertEqual(key_string, added_key.key)
 
     def test_adding_catches_key_validation_errors(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         response = self.client.post(
             reverse('sslkeys_handler'),
             data=dict(op='new', key=key_string))

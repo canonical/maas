@@ -75,7 +75,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_compile_node_actions_returns_available_actions(self):
 
         class MyAction(FakeNodeAction):
-            name = factory.getRandomString()
+            name = factory.make_string()
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(), classes=[MyAction])
@@ -104,7 +104,7 @@ class TestNodeAction(MAASServerTestCase):
     def test_compile_node_actions_includes_inhibited_actions(self):
 
         class MyAction(FakeNodeAction):
-            fake_inhibition = factory.getRandomString()
+            fake_inhibition = factory.make_string()
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(), classes=[MyAction])
@@ -113,10 +113,10 @@ class TestNodeAction(MAASServerTestCase):
     def test_compile_node_actions_maps_names(self):
 
         class Action1(FakeNodeAction):
-            name = factory.getRandomString()
+            name = factory.make_string()
 
         class Action2(FakeNodeAction):
-            name = factory.getRandomString()
+            name = factory.make_string()
 
         actions = compile_node_actions(
             factory.make_node(), factory.make_admin(),
@@ -125,7 +125,7 @@ class TestNodeAction(MAASServerTestCase):
             self.assertEqual(name, action.name)
 
     def test_compile_node_actions_maintains_order(self):
-        names = [factory.getRandomString() for counter in range(4)]
+        names = [factory.make_string() for counter in range(4)]
         classes = [
             type(b"Action%d" % counter, (FakeNodeAction,), {'name': name})
             for counter, name in enumerate(names)]
@@ -154,7 +154,7 @@ class TestNodeAction(MAASServerTestCase):
         self.assertFalse(MyAction(node, factory.make_user()).is_permitted())
 
     def test_inhibition_wraps_inhibit(self):
-        inhibition = factory.getRandomString()
+        inhibition = factory.make_string()
         action = FakeNodeAction(factory.make_node(), factory.make_user())
         action.fake_inhibition = inhibition
         self.assertEqual(inhibition, action.inhibition)
@@ -163,11 +163,11 @@ class TestNodeAction(MAASServerTestCase):
         # The inhibition property will call inhibit() only once.  We can
         # prove this by changing the string inhibit() returns; it won't
         # affect the value of the property.
-        inhibition = factory.getRandomString()
+        inhibition = factory.make_string()
         action = FakeNodeAction(factory.make_node(), factory.make_user())
         action.fake_inhibition = inhibition
         self.assertEqual(inhibition, action.inhibition)
-        action.fake_inhibition = factory.getRandomString()
+        action.fake_inhibition = factory.make_string()
         self.assertEqual(inhibition, action.inhibition)
 
     def test_inhibition_caches_None(self):
@@ -177,7 +177,7 @@ class TestNodeAction(MAASServerTestCase):
         action = FakeNodeAction(factory.make_node(), factory.make_user())
         action.fake_inhibition = None
         self.assertIsNone(action.inhibition)
-        action.fake_inhibition = factory.getRandomString()
+        action.fake_inhibition = factory.make_string()
         self.assertIsNone(action.inhibition)
 
 
@@ -293,9 +293,9 @@ class TestStopNodeNodeAction(MAASServerTestCase):
         self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         user = factory.make_user()
         params = dict(
-            power_address=factory.getRandomString(),
-            power_user=factory.getRandomString(),
-            power_pass=factory.getRandomString())
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
         node = factory.make_node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ipmi',

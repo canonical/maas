@@ -239,7 +239,7 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
     """
 
     def test_get_reader_path_prefix(self):
-        data = factory.getRandomString().encode("ascii")
+        data = factory.make_string().encode("ascii")
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = os.path.dirname(temp_file)
         backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
@@ -256,7 +256,7 @@ class TestPowerNVBootMethodPathPrefix(MAASTestCase):
         self.assertEqual(b"", reader.read(1))
 
     def test_get_reader_path_prefix_only_removes_first_occurrence(self):
-        data = factory.getRandomString().encode("ascii")
+        data = factory.make_string().encode("ascii")
         temp_dir = self.make_dir()
         temp_subdir = os.path.join(temp_dir, 'ppc64el')
         os.mkdir(temp_subdir)

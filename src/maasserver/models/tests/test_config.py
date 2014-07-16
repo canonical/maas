@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Config` class and friends."""
@@ -69,14 +69,14 @@ class ConfigTest(MAASServerTestCase):
         self.assertIsNone(config)
 
     def test_manager_get_config_not_found_in_default_config(self):
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         self.patch(maasserver.models.config, "DEFAULT_CONFIG", {name: value})
         config = Config.objects.get_config(name, None)
         self.assertEqual(value, config)
 
     def test_default_config_cannot_be_changed(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         self.patch(
             maasserver.models.config, "DEFAULT_CONFIG",
             {name: {'key': 'value'}})
@@ -100,8 +100,8 @@ class ConfigTest(MAASServerTestCase):
 
     def test_manager_config_changed_connect_connects(self):
         recorder = CallRecorder()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         Config.objects.config_changed_connect(name, recorder)
         Config.objects.set_config(name, value)
         config = Config.objects.get(name=name)
@@ -112,8 +112,8 @@ class ConfigTest(MAASServerTestCase):
     def test_manager_config_changed_connect_connects_multiple(self):
         recorder = CallRecorder()
         recorder2 = CallRecorder()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         Config.objects.config_changed_connect(name, recorder)
         Config.objects.config_changed_connect(name, recorder2)
         Config.objects.set_config(name, value)
@@ -125,8 +125,8 @@ class ConfigTest(MAASServerTestCase):
         # If the same method is connected twice, it will only get called
         # once.
         recorder = CallRecorder()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         Config.objects.config_changed_connect(name, recorder)
         Config.objects.config_changed_connect(name, recorder)
         Config.objects.set_config(name, value)
@@ -135,10 +135,10 @@ class ConfigTest(MAASServerTestCase):
 
     def test_manager_config_changed_connect_connects_by_config_name(self):
         recorder = CallRecorder()
-        name = factory.getRandomString()
-        value = factory.getRandomString()
+        name = factory.make_string()
+        value = factory.make_string()
         Config.objects.config_changed_connect(name, recorder)
-        another_name = factory.getRandomString()
+        another_name = factory.make_string()
         Config.objects.set_config(another_name, value)
 
         self.assertEqual(0, len(recorder.calls))

@@ -104,7 +104,7 @@ class TestNodeGroupManager(MAASServerTestCase):
 
     def test_ensure_master_preserves_existing_attributes(self):
         master = NodeGroup.objects.ensure_master()
-        key = factory.getRandomString()
+        key = factory.make_string()
         master.dhcp_key = key
         master.save()
         self.assertEqual(key, NodeGroup.objects.ensure_master().dhcp_key)

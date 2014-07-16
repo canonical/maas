@@ -238,9 +238,9 @@ class TestDHCPTasks(PservTestCase):
         ]
         return {
             'dhcp_subnets': [
-                {param: factory.getRandomString() for param in param_names}
+                {param: factory.make_string() for param in param_names}
             ],
-            'omapi_key': factory.getRandomString(),
+            'omapi_key': factory.make_string(),
         }
 
     def test_upload_dhcp_leases(self):
@@ -257,8 +257,8 @@ class TestDHCPTasks(PservTestCase):
         # do.
         mac = factory.getRandomMACAddress()
         ip = factory.getRandomIPAddress()
-        server_address = factory.getRandomString()
-        key = factory.getRandomString()
+        server_address = factory.make_string()
+        key = factory.make_string()
         recorder = FakeMethod(result=(0, "hardware-type"))
         self.patch(Omshell, '_run', recorder)
         add_new_dhcp_host_map.delay({ip: mac}, server_address, key)
@@ -270,8 +270,8 @@ class TestDHCPTasks(PservTestCase):
         # the Task code right now though.
         mac = factory.getRandomMACAddress()
         ip = factory.getRandomIPAddress()
-        server_address = factory.getRandomString()
-        key = factory.getRandomString()
+        server_address = factory.make_string()
+        key = factory.make_string()
         self.patch(Omshell, '_run', FakeMethod(result=(0, "this_will_fail")))
         self.assertRaises(
             CalledProcessError, add_new_dhcp_host_map.delay,
@@ -282,8 +282,8 @@ class TestDHCPTasks(PservTestCase):
         # out the wrapper class's _run method and record what it would
         # do.
         ip = factory.getRandomIPAddress()
-        server_address = factory.getRandomString()
-        key = factory.getRandomString()
+        server_address = factory.make_string()
+        key = factory.make_string()
         recorder = FakeMethod(result=(0, "obj: <null>"))
         self.patch(Omshell, '_run', recorder)
         remove_dhcp_host_map.delay(ip, server_address, key)
@@ -294,8 +294,8 @@ class TestDHCPTasks(PservTestCase):
         # Check that task failures are caught.  Nothing much happens in
         # the Task code right now though.
         ip = factory.getRandomIPAddress()
-        server_address = factory.getRandomString()
-        key = factory.getRandomString()
+        server_address = factory.make_string()
+        key = factory.make_string()
         self.patch(Omshell, '_run', FakeMethod(result=(0, "this_will_fail")))
         self.assertRaises(
             CalledProcessError, remove_dhcp_host_map.delay,
@@ -366,7 +366,7 @@ class TestDHCPTasks(PservTestCase):
 
     def test_stop_dhcp_server_raises_other_error_outputs(self):
         # Use an error output that is *not* ALREADY_STOPPED_MESSAGE.
-        output = factory.getRandomString()
+        output = factory.make_string()
         exception = utils.ExternalProcessError(
             ALREADY_STOPPED_RETURNCODE, [], output=output)
         self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
@@ -407,7 +407,7 @@ class TestDNSTasks(PservTestCase):
 
     def test_write_dns_config_writes_file(self):
         zone_names = [random.randint(1, 100), random.randint(1, 100)]
-        command = factory.getRandomString()
+        command = factory.make_string()
         result = write_dns_config.delay(
             zone_names=zone_names,
             callback=rndc_command.subtask(args=[command]))
@@ -432,14 +432,14 @@ class TestDNSTasks(PservTestCase):
             celery_config.WORKER_QUEUE_DNS)
 
     def test_write_dns_zone_config_writes_file(self):
-        command = factory.getRandomString()
-        domain = factory.getRandomString()
+        command = factory.make_string()
+        domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
         dns_ip = factory.getRandomIPInNetwork(network)
         ip = factory.getRandomIPInNetwork(network)
         forward_zone = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping={factory.getRandomString(): ip},
+            mapping={factory.make_string(): ip},
             dns_ip=dns_ip)
         reverse_zone = DNSReverseZoneConfig(
             domain, serial=random.randint(1, 100), network=network)
@@ -471,7 +471,7 @@ class TestDNSTasks(PservTestCase):
             celery_config.WORKER_QUEUE_DNS)
 
     def test_setup_rndc_configuration_writes_files(self):
-        command = factory.getRandomString()
+        command = factory.make_string()
         result = setup_rndc_configuration.delay(
             callback=rndc_command.subtask(args=[command]))
 
@@ -498,7 +498,7 @@ class TestDNSTasks(PservTestCase):
             celery_config.WORKER_QUEUE_DNS)
 
     def test_rndc_command_execute_command(self):
-        command = factory.getRandomString()
+        command = factory.make_string()
         result = rndc_command.delay(command)
 
         self.assertThat(
@@ -519,7 +519,7 @@ class TestDNSTasks(PservTestCase):
             [FakeMethod(failure=raised_exception)] * number_of_failures +
             [FakeMethod()])
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
-        command = factory.getRandomString()
+        command = factory.make_string()
         result = rndc_command.delay(command, retry=True)
         assertTaskRetried(
             self, result, RNDC_COMMAND_MAX_RETRY + 1,
@@ -535,7 +535,7 @@ class TestDNSTasks(PservTestCase):
             [FakeMethod(failure=raised_exception)] * number_of_failures +
             [FakeMethod()])
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
-        command = factory.getRandomString()
+        command = factory.make_string()
         self.assertRaises(
             utils.ExternalProcessError, rndc_command.delay,
             command, retry=True)
@@ -546,20 +546,20 @@ class TestDNSTasks(PservTestCase):
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes
         # the zone files, and reloads the dns service.
-        domain = factory.getRandomString()
+        domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
         ip = factory.getRandomIPInNetwork(network)
         dns_ip = factory.getRandomIPInNetwork(network)
         zones = [
             DNSForwardZoneConfig(
                 domain, serial=random.randint(1, 100),
-                mapping={factory.getRandomString(): ip},
+                mapping={factory.make_string(): ip},
                 dns_ip=dns_ip,
             ),
             DNSReverseZoneConfig(
                 domain, serial=random.randint(1, 100), network=network),
         ]
-        command = factory.getRandomString()
+        command = factory.make_string()
         result = write_full_dns_config.delay(
             zones=zones,
             callback=rndc_command.subtask(args=[command]),
@@ -631,7 +631,7 @@ class TestTagTasks(PservTestCase):
             [FakeMethod(failure=raised_exception)] * number_of_failures +
             [FakeMethod()])
         self.patch(tags, 'process_node_tags', simulate_failures)
-        tag = factory.getRandomString()
+        tag = factory.make_string()
         result = update_node_tags.delay(
             tag, '//node', tag_nsmap=None, retry=True)
         assertTaskRetried(
@@ -649,7 +649,7 @@ class TestTagTasks(PservTestCase):
             [FakeMethod(failure=raised_exception)] * number_of_failures +
             [FakeMethod()])
         self.patch(tags, 'process_node_tags', simulate_failures)
-        tag = factory.getRandomString()
+        tag = factory.make_string()
         self.assertRaises(
             MissingCredentials, update_node_tags.delay, tag,
             '//node', tag_nsmap=None, retry=True)

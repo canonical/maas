@@ -367,7 +367,7 @@ class TestRegisterAPI(MAASServerTestCase):
     def test_register_returns_compose_nodegroup_register_response(self):
         # register() returns whatever compose_nodegroup_register_response()
         # tells it to return.
-        expected_response = factory.getRandomString()
+        expected_response = factory.make_string()
         self.patch(
             api, 'compose_nodegroup_register_response',
             Mock(return_value=expected_response))

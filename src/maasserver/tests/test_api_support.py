@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for API helpers."""
@@ -42,7 +42,7 @@ class TestOperationsResource(APITestCase):
 
         # Create a valid configuration item.
         name = 'maas_name'
-        value = factory.getRandomString()
+        value = factory.make_string()
         Config.objects.set_config(name, value)
         # Patch ConfigManager.get_config so that it will raise a
         # TypeError exception.

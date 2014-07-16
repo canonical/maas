@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for API helpers."""
@@ -89,14 +89,14 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
         self.assertEqual(data_values, results.getlist(key))
 
     def test_fields_filter_results(self):
-        key1 = factory.getRandomString()
-        key2 = factory.getRandomString()
+        key1 = factory.make_string()
+        key2 = factory.make_string()
         defaults = {
-            key1: factory.getRandomString(),
-            key2: factory.getRandomString(),
+            key1: factory.make_string(),
+            key2: factory.make_string(),
         }
-        data_value1 = factory.getRandomString()
-        data_value2 = factory.getRandomString()
+        data_value1 = factory.make_string()
+        data_value2 = factory.make_string()
         data = {key1: data_value1, key2: data_value2}
         results = get_overridden_query_dict(defaults, data, [key1])
         self.assertEqual([data_value2], results.getlist(key2))
@@ -110,7 +110,7 @@ class TestOAuthHelpers(MAASServerTestCase):
         return FakeRequest(META={'HTTP_AUTHORIZATION': auth_header})
 
     def test_extract_oauth_key_from_auth_header_returns_key(self):
-        token = factory.getRandomString(18)
+        token = factory.make_string(18)
         self.assertEqual(
             token,
             extract_oauth_key_from_auth_header(
@@ -130,7 +130,7 @@ class TestOAuthHelpers(MAASServerTestCase):
             extract_oauth_key, self.make_fake_request(''))
 
     def test_extract_oauth_key_returns_key(self):
-        token = factory.getRandomString(18)
+        token = factory.make_string(18)
         self.assertEqual(
             token,
             extract_oauth_key(self.make_fake_request(
@@ -146,7 +146,7 @@ class TestOAuthHelpers(MAASServerTestCase):
                     factory.make_oauth_header(oauth_token=token.key))))
 
     def test_get_oauth_token_raises_Unauthorized_for_unknown_token(self):
-        fake_token = factory.getRandomString(18)
+        fake_token = factory.make_string(18)
         header = factory.make_oauth_header(oauth_token=fake_token)
         self.assertRaises(
             Unauthorized,

@@ -126,7 +126,7 @@ class TestUpdateLeases(PservTestCase):
         """Set the recorded MAAS URL for the duration of this test."""
         maas_url = 'http://%s.example.com/%s/' % (
             factory.make_name('host'),
-            factory.getRandomString(),
+            factory.make_string(),
             )
         os.environ["MAAS_URL"] = maas_url
 
@@ -137,7 +137,7 @@ class TestUpdateLeases(PservTestCase):
     def set_api_credentials(self):
         """Set recorded API credentials for the duration of this test."""
         creds_string = ':'.join(
-            factory.getRandomString() for counter in range(3))
+            factory.make_string() for counter in range(3))
         cache.cache.set('api_credentials', creds_string)
 
     def clear_api_credentials(self):
@@ -212,12 +212,12 @@ class TestUpdateLeases(PservTestCase):
         self.assertIsNone(parse_leases_file())
 
     def test_parse_leases_file_errors_if_unexpected_exception(self):
-        exception = IOError(errno.EBUSY, factory.getRandomString())
+        exception = IOError(errno.EBUSY, factory.make_string())
         self.patch(leases_module, 'open', Mock(side_effect=exception))
         self.assertRaises(IOError, parse_leases_file)
 
     def test_get_leases_timestamp_errors_if_unexpected_exception(self):
-        exception = OSError(errno.EBUSY, factory.getRandomString())
+        exception = OSError(errno.EBUSY, factory.make_string())
         self.patch(leases_module, 'open', Mock(side_effect=exception))
         self.assertRaises(OSError, parse_leases_file)
 

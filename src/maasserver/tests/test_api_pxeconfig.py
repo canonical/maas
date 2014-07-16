@@ -124,7 +124,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # An 'enlisting' node means it looks like a node with details but we
         # don't know about it yet.  It should still receive the global
         # kernel options.
-        value = factory.getRandomString()
+        value = factory.make_string()
         Config.objects.set_config("kernel_opts", value)
         architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
@@ -199,7 +199,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # ephemeral name from the filesystem.
         self.patch(
             kernel_opts, 'get_ephemeral_name',
-            FakeMethod(result=factory.getRandomString()))
+            FakeMethod(result=factory.make_string()))
 
     def test_pxeconfig_has_enlistment_preseed_url_for_default(self):
         self.silence_get_ephemeral_name()
@@ -357,7 +357,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def test_pxeconfig_returns_extra_kernel_options(self):
         node = factory.make_node()
-        extra_kernel_opts = factory.getRandomString()
+        extra_kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', extra_kernel_opts)
         mac = factory.make_mac_address(node=node)
         params = self.get_default_params()

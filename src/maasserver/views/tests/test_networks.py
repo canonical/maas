@@ -192,7 +192,7 @@ class NetworkAddTestAdmin(MAASServerTestCase):
         network = factory.getRandomNetwork()
         definition = {
             'name': factory.make_name('network'),
-            'description': factory.getRandomString(),
+            'description': factory.make_string(),
             'ip': "%s" % network.cidr.ip,
             'netmask': "%s" % network.netmask,
             'vlan_tag': factory.make_vlan_tag(),

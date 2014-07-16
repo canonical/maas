@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the maas package."""
@@ -38,8 +38,8 @@ class TestSettingsHelpers(DjangoTestCase):
         # find_settings() returns a dict of settings from a Django-like
         # settings file. It excludes settings beginning with underscores.
         module = new.module(b"example")
-        module.SETTING = factory.getRandomString()
-        module._NOT_A_SETTING = factory.getRandomString()
+        module.SETTING = factory.make_string()
+        module._NOT_A_SETTING = factory.make_string()
         expected = {"SETTING": module.SETTING}
         observed = find_settings(module)
         self.assertEqual(expected, observed)
@@ -48,7 +48,7 @@ class TestSettingsHelpers(DjangoTestCase):
         # import_settings() copies settings from another module into the
         # caller's global scope.
         source = new.module(b"source")
-        source.SETTING = factory.getRandomString()
+        source.SETTING = factory.make_string()
         target = new.module(b"target")
         target._source = source
         target._import_settings = import_settings
@@ -78,7 +78,7 @@ class TestSettingsHelpers(DjangoTestCase):
         config = dedent("""
             SETTING = %r
             _NOT_A_SETTING = %r
-            """ % (factory.getRandomString(), factory.getRandomString()))
+            """ % (factory.make_string(), factory.make_string()))
         module = self.make_file(
             name=b"%s.py" % self.local_settings_module, contents=config)
         module_dir, module_file = os.path.split(module)

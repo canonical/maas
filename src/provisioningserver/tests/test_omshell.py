@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the omshell.py file."""
@@ -45,8 +45,8 @@ from testtools.matchers import (
 class TestOmshell(MAASTestCase):
 
     def test_initialisation(self):
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         shell = Omshell(server_address, shared_key)
         self.assertThat(
             shell, MatchesStructure.byEquality(
@@ -54,8 +54,8 @@ class TestOmshell(MAASTestCase):
                 shared_key=shared_key))
 
     def test_create_calls_omshell_correctly(self):
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         mac_address = factory.getRandomMACAddress()
         shell = Omshell(server_address, shared_key)
@@ -93,14 +93,14 @@ class TestOmshell(MAASTestCase):
         # magic string 'hardware-type' it means the set of commands
         # failed.
 
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         mac_address = factory.getRandomMACAddress()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
-        random_output = factory.getRandomString()
+        random_output = factory.make_string()
         recorder = FakeMethod(result=(0, random_output))
         shell._run = recorder
 
@@ -138,8 +138,8 @@ class TestOmshell(MAASTestCase):
         pass
 
     def test_remove_calls_omshell_correctly(self):
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -170,13 +170,13 @@ class TestOmshell(MAASTestCase):
         # If the call to omshell doesn't result in output ending in the
         # text 'obj: <null>' we can be fairly sure this operation
         # failed.
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
-        random_output = factory.getRandomString()
+        random_output = factory.make_string()
         recorder = FakeMethod(result=(0, random_output))
         shell._run = recorder
 
@@ -187,8 +187,8 @@ class TestOmshell(MAASTestCase):
     def test_remove_works_when_extraneous_blank_last_lines(self):
         # Sometimes omshell puts blank lines after the 'obj: <null>' so
         # we need to test that the code still works if that's the case.
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -200,8 +200,8 @@ class TestOmshell(MAASTestCase):
     def test_remove_works_when_extraneous_gt_char_present(self):
         # Sometimes omshell puts a leading '>' character in responses.
         # We need to test that the code still works if that's the case.
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -211,8 +211,8 @@ class TestOmshell(MAASTestCase):
         self.assertIsNone(shell.remove(ip_address))
 
     def test_remove_works_when_object_already_removed(self):
-        server_address = factory.getRandomString()
-        shared_key = factory.getRandomString()
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
         ip_address = factory.getRandomIPAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -244,7 +244,7 @@ class Test_generate_omapi_key(MAASTestCase):
 
     def test_generate_omapi_key_raises_assertionerror_on_bad_output(self):
         def returns_junk(tmpdir):
-            key_name = factory.getRandomString()
+            key_name = factory.make_string()
             factory.make_file(tmpdir, "%s.private" % key_name)
             return key_name
 

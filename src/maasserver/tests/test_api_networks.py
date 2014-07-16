@@ -37,7 +37,7 @@ class TestNetworksAPI(APITestCase):
             'ip': '%s' % net.cidr.ip,
             'netmask': '%s' % net.netmask,
             'vlan_tag': factory.make_vlan_tag(),
-            'description': factory.getRandomString(),
+            'description': factory.make_string(),
         }
         response = self.client.post(reverse('networks_handler'), params)
         self.assertEqual(httplib.OK, response.status_code)

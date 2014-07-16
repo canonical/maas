@@ -315,7 +315,7 @@ class TestJSONObjectField(TestModelMixin, MAASServerTestCase):
             {"not": 5, "another": "test"},
             ]
         for value in values:
-            name = factory.getRandomString()
+            name = factory.make_string()
             test_instance = JSONFieldModel(name=name, value=value)
             test_instance.save()
 
@@ -345,21 +345,21 @@ class TestXMLField(TestModelMixin, MAASServerTestCase):
     app = 'maasserver.tests'
 
     def test_loads_string(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         value = "<test/>"
         XMLFieldModel.objects.create(name=name, value=value)
         instance = XMLFieldModel.objects.get(name=name)
         self.assertEqual(value, instance.value)
 
     def test_lookup_xpath_exists_result(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         XMLFieldModel.objects.create(name=name, value="<test/>")
         result = XMLFieldModel.objects.raw(
             "SELECT * FROM docs WHERE xpath_exists(%s, value)", ["//test"])
         self.assertEqual(name, result[0].name)
 
     def test_lookup_xpath_exists_no_result(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         XMLFieldModel.objects.create(name=name, value="<test/>")
         result = XMLFieldModel.objects.raw(
             "SELECT * FROM docs WHERE xpath_exists(%s, value)", ["//miss"])

@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the Tags API."""
@@ -386,23 +386,23 @@ class TestTagsAPI(APITestCase):
         self.assertItemsEqual([], json.loads(response.content))
 
     def test_POST_new_refuses_non_admin(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {
                 'op': 'new',
                 'name': name,
-                'comment': factory.getRandomString(),
-                'definition': factory.getRandomString(),
+                'comment': factory.make_string(),
+                'definition': factory.make_string(),
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertFalse(Tag.objects.filter(name=name).exists())
 
     def test_POST_new_creates_tag(self):
         self.become_admin()
-        name = factory.getRandomString()
+        name = factory.make_string()
         definition = '//node'
-        comment = factory.getRandomString()
+        comment = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {
@@ -420,8 +420,8 @@ class TestTagsAPI(APITestCase):
 
     def test_POST_new_without_definition_creates_tag(self):
         self.become_admin()
-        name = factory.getRandomString()
-        comment = factory.getRandomString()
+        name = factory.make_string()
+        comment = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {
@@ -443,7 +443,7 @@ class TestTagsAPI(APITestCase):
         # reasonable error here.
         invalid = 'invalid:name'
         definition = '//node'
-        comment = factory.getRandomString()
+        comment = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {
@@ -460,10 +460,10 @@ class TestTagsAPI(APITestCase):
 
     def test_POST_new_kernel_opts(self):
         self.become_admin()
-        name = factory.getRandomString()
+        name = factory.make_string()
         definition = '//node'
-        comment = factory.getRandomString()
-        extra_kernel_opts = factory.getRandomString()
+        comment = factory.make_string()
+        extra_kernel_opts = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {
@@ -491,9 +491,9 @@ class TestTagsAPI(APITestCase):
         inject_lshw_result(node2, b'<node/>')
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
-        name = factory.getRandomString()
+        name = factory.make_string()
         definition = '//node/child'
-        comment = factory.getRandomString()
+        comment = factory.make_string()
         response = self.client.post(
             reverse('tags_handler'),
             {

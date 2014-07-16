@@ -440,7 +440,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual('', node.power_parameters)
 
     def test_get_effective_power_parameters_returns_power_parameters(self):
-        params = {'test_parameter': factory.getRandomString()}
+        params = {'test_parameter': factory.make_string()}
         node = factory.make_node(power_parameters=params)
         self.assertEqual(
             params['test_parameter'],
@@ -513,7 +513,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_kernel_options_sees_global_config(self):
         node = factory.make_node()
-        kernel_opts = factory.getRandomString()
+        kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', kernel_opts)
         self.assertEqual(
             (None, kernel_opts), node.get_effective_kernel_options())
@@ -522,7 +522,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         tag = factory.make_tag()
         node.tags.add(tag)
-        kernel_opts = factory.getRandomString()
+        kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', kernel_opts)
         self.assertEqual(
             (None, kernel_opts), node.get_effective_kernel_options())
@@ -531,7 +531,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         tag = factory.make_tag(kernel_opts="")
         node.tags.add(tag)
-        kernel_opts = factory.getRandomString()
+        kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', kernel_opts)
         self.assertEqual(
             (None, kernel_opts), node.get_effective_kernel_options())
@@ -556,21 +556,21 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_kernel_options_ignores_unassociated_tag_value(self):
         node = factory.make_node()
-        factory.make_tag(kernel_opts=factory.getRandomString())
+        factory.make_tag(kernel_opts=factory.make_string())
         self.assertEqual((None, None), node.get_effective_kernel_options())
 
     def test_get_effective_kernel_options_uses_tag_value(self):
         node = factory.make_node()
-        tag = factory.make_tag(kernel_opts=factory.getRandomString())
+        tag = factory.make_tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
         self.assertEqual(
             (tag, tag.kernel_opts), node.get_effective_kernel_options())
 
     def test_get_effective_kernel_options_tag_overrides_global(self):
         node = factory.make_node()
-        global_opts = factory.getRandomString()
+        global_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', global_opts)
-        tag = factory.make_tag(kernel_opts=factory.getRandomString())
+        tag = factory.make_tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
         self.assertEqual(
             (tag, tag.kernel_opts), node.get_effective_kernel_options())
@@ -579,10 +579,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         # Intentionally create them in reverse order, so the default 'db' order
         # doesn't work, and we have asserted that we sort them.
-        tag3 = factory.make_tag(factory.make_name('tag-03-'),
-                                kernel_opts=factory.getRandomString())
-        tag2 = factory.make_tag(factory.make_name('tag-02-'),
-                                kernel_opts=factory.getRandomString())
+        tag3 = factory.make_tag(
+            factory.make_name('tag-03-'),
+            kernel_opts=factory.make_string())
+        tag2 = factory.make_tag(
+            factory.make_name('tag-02-'),
+            kernel_opts=factory.make_string())
         tag1 = factory.make_tag(factory.make_name('tag-01-'), kernel_opts=None)
         self.assertTrue(tag1.name < tag2.name)
         self.assertTrue(tag2.name < tag3.name)
@@ -889,7 +891,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        user_data = factory.getRandomString().encode('ascii')
+        user_data = factory.make_string().encode('ascii')
         self.patch(
             commissioning.user_data, 'generate_user_data'
             ).return_value = user_data
@@ -901,7 +903,7 @@ class NodeTest(MAASServerTestCase):
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
         NodeCommissionResult.objects.store_data(
-            node, factory.getRandomString(),
+            node, factory.make_string(),
             random.randint(0, 10),
             Bin(factory.make_bytes()))
         node.start_commissioning(factory.make_admin())
@@ -909,7 +911,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
         node = factory.make_node()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         data = factory.make_bytes()
         script_result = random.randint(0, 10)
         NodeCommissionResult.objects.store_data(
@@ -1001,10 +1003,10 @@ class NodeTest(MAASServerTestCase):
 
     def test_fqdn_returns_hostname_if_dns_not_managed(self):
         nodegroup = factory.make_node_group(
-            name=factory.getRandomString(),
+            name=factory.make_string(),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         hostname_with_domain = '%s.%s' % (
-            factory.getRandomString(), factory.getRandomString())
+            factory.make_string(), factory.make_string())
         node = factory.make_node(
             nodegroup=nodegroup, hostname=hostname_with_domain)
         self.assertEqual(hostname_with_domain, node.fqdn)
@@ -1012,7 +1014,7 @@ class NodeTest(MAASServerTestCase):
     def test_fqdn_replaces_hostname_if_dns_is_managed(self):
         hostname_without_domain = factory.make_name('hostname')
         hostname_with_domain = '%s.%s' % (
-            hostname_without_domain, factory.getRandomString())
+            hostname_without_domain, factory.make_string())
         domain = factory.make_name('domain')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
@@ -1220,7 +1222,7 @@ class NodeManagerTest(MAASServerTestCase):
 
     def make_user_data(self):
         """Create a blob of arbitrary user-data."""
-        return factory.getRandomString().encode('ascii')
+        return factory.make_string().encode('ascii')
 
     def test_filter_by_ids_filters_nodes_by_ids(self):
         nodes = [factory.make_node() for counter in range(5)]

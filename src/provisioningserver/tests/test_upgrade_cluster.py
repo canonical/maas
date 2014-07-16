@@ -160,7 +160,7 @@ class TestRetireBootResourcesYAML(MAASTestCase):
         self.assertThat(path, Not(FileExists()))
 
     def test__prefixes_header_to_file_if_present(self):
-        content = factory.getRandomString()
+        content = factory.make_string()
         path = self.set_bootresources_yaml(content)
         upgrade_cluster.retire_bootresources_yaml()
         self.assertThat(
@@ -168,7 +168,7 @@ class TestRetireBootResourcesYAML(MAASTestCase):
             FileContains(upgrade_cluster.BOOTRESOURCES_WARNING + content))
 
     def test__is_idempotent(self):
-        path = self.set_bootresources_yaml(factory.getRandomString())
+        path = self.set_bootresources_yaml(factory.make_string())
         upgrade_cluster.retire_bootresources_yaml()
         content_after_upgrade = read_text_file(path)
         upgrade_cluster.retire_bootresources_yaml()

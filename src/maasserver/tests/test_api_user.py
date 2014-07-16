@@ -34,7 +34,7 @@ class TestUsers(APITestCase):
         self.become_admin()
         username = factory.make_name('user')
         email = factory.make_email_address()
-        password = factory.getRandomString()
+        password = factory.make_string()
 
         response = self.client.post(
             reverse('users_handler'),
@@ -56,7 +56,7 @@ class TestUsers(APITestCase):
         self.become_admin()
         username = factory.make_name('user')
         email = factory.make_email_address()
-        password = factory.getRandomString()
+        password = factory.make_string()
 
         response = self.client.post(
             reverse('users_handler'),
@@ -80,7 +80,7 @@ class TestUsers(APITestCase):
             {
                 'username': factory.make_name('user'),
                 'email': factory.make_email_address(),
-                'password': factory.getRandomString(),
+                'password': factory.make_string(),
                 'is_superuser': '1' if factory.pick_bool() else '0',
             })
         self.assertEqual(

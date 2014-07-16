@@ -82,21 +82,21 @@ class TestEnum(MAASTestCase):
 class TestAbsoluteReverse(MAASServerTestCase):
 
     def test_absolute_reverse_uses_DEFAULT_MAAS_URL_by_default(self):
-        maas_url = 'http://%s' % factory.getRandomString()
+        maas_url = 'http://%s' % factory.make_string()
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         absolute_url = absolute_reverse('settings')
         expected_url = settings.DEFAULT_MAAS_URL + reverse('settings')
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_given_base_url(self):
-        maas_url = 'http://%s' % factory.getRandomString()
+        maas_url = 'http://%s' % factory.make_string()
         absolute_url = absolute_reverse('settings', base_url=maas_url)
         expected_url = maas_url + reverse('settings')
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_query_string(self):
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
-        parameters = {factory.getRandomString(): factory.getRandomString()}
+        parameters = {factory.make_string(): factory.make_string()}
         absolute_url = absolute_reverse('settings', query=parameters)
         expected_url = '%s?%s' % (reverse('settings'), urlencode(parameters))
         self.assertEqual(expected_url, absolute_url)

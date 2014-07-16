@@ -66,7 +66,7 @@ class TestMakeArgParser(MAASTestCase):
         output = make_roottar_location(self)
         user = factory.make_name('user')
 
-        parser = uec2roottar.make_argparser(factory.getRandomString())
+        parser = uec2roottar.make_argparser(factory.make_string())
         args = parser.parse_args([image, output, '--user', user])
 
         self.assertEqual(
@@ -82,7 +82,7 @@ class TestMakeArgParser(MAASTestCase):
             ))
 
     def test__user_defaults_to_None(self):
-        parser = uec2roottar.make_argparser(factory.getRandomString())
+        parser = uec2roottar.make_argparser(factory.make_string())
         args = parser.parse_args(
             [make_image(self), make_roottar_location(self)])
         self.assertIsNone(args.user)

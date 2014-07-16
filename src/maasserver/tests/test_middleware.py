@@ -53,7 +53,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
 
     def make_base_path(self):
         """Return a path to handle exceptions for."""
-        return "/%s" % factory.getRandomString()
+        return "/%s" % factory.make_string()
 
     def make_middleware(self, base_path):
         """Create an ExceptionMiddleware for base_path."""
@@ -84,7 +84,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
     def test_unknown_exception_generates_internal_server_error(self):
         # An unknown exception generates an internal server error with the
         # exception message.
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         response = self.process_exception(RuntimeError(error_message))
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, error_message),
@@ -94,7 +94,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         class MyException(MAASAPIException):
             api_error = httplib.UNAUTHORIZED
 
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         exception = MyException(error_message)
         response = self.process_exception(exception)
         self.assertEqual(
@@ -112,7 +112,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             (response.status_code, response.content.decode('utf-8')))
 
     def test_reports_ValidationError_as_Bad_Request(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         response = self.process_exception(ValidationError(error_message))
         self.assertEqual(
             (httplib.BAD_REQUEST, error_message),
@@ -126,7 +126,7 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         self.assertIn('application/json', response['Content-Type'])
 
     def test_reports_PermissionDenied_as_Forbidden(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         response = self.process_exception(PermissionDenied(error_message))
         self.assertEqual(
             (httplib.FORBIDDEN, error_message),
@@ -138,7 +138,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = factory.make_fake_request("/api/1.0/hello")
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
         response = middleware.process_exception(non_api_request, exception)
         self.assertEqual(
@@ -148,7 +148,7 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
     def test_ignores_error_outside_API(self):
         middleware = APIErrorsMiddleware()
         non_api_request = factory.make_fake_request("/middleware/api/hello")
-        exception = MAASAPINotFound(factory.getRandomString())
+        exception = MAASAPINotFound(factory.make_string())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
 
@@ -157,7 +157,7 @@ class ExceptionLoggerMiddlewareTest(MAASServerTestCase):
 
     def test_exception_logger_logs_error(self):
         logger = self.useFixture(FakeLogger('maasserver'))
-        error_text = factory.getRandomString()
+        error_text = factory.make_string()
         ExceptionLoggerMiddleware().process_exception(
             factory.make_fake_request('/middleware/api/hello'),
             ValueError(error_text))
@@ -220,7 +220,7 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_ignores_GET_requests(self):
         self.client_log_in()
-        request = factory.make_fake_request(factory.getRandomString(), 'GET')
+        request = factory.make_fake_request(factory.make_string(), 'GET')
         exception = MAASException()
         error_middleware = ErrorsMiddleware()
         response = error_middleware.process_exception(request, exception)
@@ -228,7 +228,7 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_ignores_non_ExternalComponentException(self):
         self.client_log_in()
-        request = factory.make_fake_request(factory.getRandomString(), 'GET')
+        request = factory.make_fake_request(factory.make_string(), 'GET')
         exception = ValueError()
         error_middleware = ErrorsMiddleware()
         response = error_middleware.process_exception(request, exception)
@@ -236,9 +236,9 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_error_middleware_handles_ExternalComponentException(self):
         self.client_log_in()
-        url = factory.getRandomString()
+        url = factory.make_string()
         request = factory.make_fake_request(url, 'POST')
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         exception = ExternalComponentException(error_message)
         error_middleware = ErrorsMiddleware()
         response = error_middleware.process_exception(request, exception)

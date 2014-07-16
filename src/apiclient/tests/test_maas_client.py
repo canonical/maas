@@ -57,7 +57,7 @@ class TestMAASOAuth(MAASTestCase):
 class TestMAASDispatcher(MAASTestCase):
 
     def test_dispatch_query_makes_direct_call(self):
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         url = "file://%s" % self.make_file(contents=contents)
         self.assertEqual(
             contents, MAASDispatcher().dispatch_query(url, {}).read())
@@ -67,8 +67,8 @@ class TestMAASDispatcher(MAASTestCase):
         # serve content from the current WD. And we don't want to create random
         # content in the original WD.
         self.useFixture(TempWDFixture())
-        name = factory.getRandomString()
-        content = factory.getRandomString().encode('ascii')
+        name = factory.make_string()
+        content = factory.make_string().encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
@@ -81,8 +81,8 @@ class TestMAASDispatcher(MAASTestCase):
         # GET. There is some extra code that makes sure the passed
         # method is honoured which is tested here.
         self.useFixture(TempWDFixture())
-        name = factory.getRandomString()
-        content = factory.getRandomString(300).encode('ascii')
+        name = factory.make_string()
+        content = factory.make_string(300).encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
 
         method = "PUT"
@@ -100,8 +100,8 @@ class TestMAASDispatcher(MAASTestCase):
         # also decompress the response if it comes back with Content-Encoding:
         # gzip.
         self.useFixture(TempWDFixture())
-        name = factory.getRandomString()
-        content = factory.getRandomString(300).encode('ascii')
+        name = factory.make_string()
+        content = factory.make_string(300).encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
         called = []
         orig_urllib = urllib2.urlopen
@@ -123,8 +123,8 @@ class TestMAASDispatcher(MAASTestCase):
         # If someone passes their own Accept-Encoding header, then dispatch
         # just passes it through.
         self.useFixture(TempWDFixture())
-        name = factory.getRandomString()
-        content = factory.getRandomString(300).encode('ascii')
+        name = factory.make_string()
+        content = factory.make_string(300).encode('ascii')
         factory.make_file(location='.', name=name, contents=content)
         with HTTPServerFixture() as httpd:
             url = urljoin(httpd.url, name)
@@ -142,13 +142,13 @@ def make_url():
     """Create an arbitrary URL."""
     return 'http://example.com:%d/%s/' % (
         factory.pick_port(),
-        factory.getRandomString(),
+        factory.make_string(),
         )
 
 
 def make_path():
     """Create an arbitrary resource path."""
-    return "/" + '/'.join(factory.getRandomString() for counter in range(2))
+    return "/" + '/'.join(factory.make_string() for counter in range(2))
 
 
 class FakeDispatcher:
@@ -174,8 +174,8 @@ def make_client(root=None, result=None):
     if root is None:
         root = make_url()
     auth = MAASOAuth(
-        factory.getRandomString(), factory.getRandomString(),
-        factory.getRandomString())
+        factory.make_string(), factory.make_string(),
+        factory.make_string())
     return MAASClient(auth, FakeDispatcher(result=result), root)
 
 
@@ -208,7 +208,7 @@ class TestMAASClient(MAASTestCase):
 
     def test_formulate_get_adds_parameters_to_url(self):
         params = {
-            factory.getRandomString(): factory.getRandomString()
+            factory.make_string(): factory.make_string()
             for counter in range(3)}
         url, headers = make_client()._formulate_get(make_path(), params)
         expectation = {key: [value] for key, value in params.items()}
@@ -216,10 +216,10 @@ class TestMAASClient(MAASTestCase):
 
     def test_formulate_get_adds_list_parameters_to_url(self):
         params = {
-            factory.getRandomString(): [
-                factory.getRandomString() for _ in range(2)],
-            factory.getRandomString(): [
-                factory.getRandomString() for _ in range(2)]
+            factory.make_string(): [
+                factory.make_string() for _ in range(2)],
+            factory.make_string(): [
+                factory.make_string() for _ in range(2)]
         }
         k = params.keys()
         v = [value for values in params.values() for value in values]
@@ -232,8 +232,8 @@ class TestMAASClient(MAASTestCase):
 
     def test_flatten_flattens_out_list(self):
         number = randint(0, 10)
-        key = factory.getRandomString()
-        param_list = [factory.getRandomString() for counter in range(number)]
+        key = factory.make_string()
+        param_list = [factory.make_string() for counter in range(number)]
         params = {key: param_list}
         flattend_list = list(make_client()._flatten(params))
         expectation = [(key, value) for value in param_list]
@@ -255,7 +255,7 @@ class TestMAASClient(MAASTestCase):
         self.assertIn('Authorization', headers)
 
     def test_formulate_change_passes_parameters_in_body(self):
-        params = {factory.getRandomString(): factory.getRandomString()}
+        params = {factory.make_string(): factory.make_string()}
         url, headers, body = make_client()._formulate_change(
             make_path(), params)
         post, _ = parse_headers_and_body_with_django(headers, body)
@@ -263,7 +263,7 @@ class TestMAASClient(MAASTestCase):
             {name: [value] for name, value in params.items()}, post)
 
     def test_formulate_change_as_json(self):
-        params = {factory.getRandomString(): factory.getRandomString()}
+        params = {factory.make_string(): factory.make_string()}
         url, headers, body = make_client()._formulate_change(
             make_path(), params, as_json=True)
         observed = [
@@ -291,14 +291,14 @@ class TestMAASClient(MAASTestCase):
         self.assertIsNone(request['data'])
 
     def test_get_without_op_gets_simple_resource(self):
-        expected_result = factory.getRandomString()
+        expected_result = factory.make_string()
         client = make_client(result=expected_result)
         result = client.get(make_path())
         self.assertEqual(expected_result, result)
 
     def test_get_with_op_queries_resource(self):
         path = make_path()
-        method = factory.getRandomString()
+        method = factory.make_string()
         client = make_client()
         client.get(path, method)
         dispatch = client.dispatcher.last_call
@@ -308,8 +308,8 @@ class TestMAASClient(MAASTestCase):
 
     def test_get_passes_parameters(self):
         path = make_path()
-        param = factory.getRandomString()
-        method = factory.getRandomString()
+        param = factory.make_string()
+        method = factory.make_string()
         client = make_client()
         client.get(path, method, parameter=param)
         request = client.dispatcher.last_call
@@ -320,7 +320,7 @@ class TestMAASClient(MAASTestCase):
     def test_post_dispatches_to_resource(self):
         path = make_path()
         client = make_client()
-        method = factory.getRandomString()
+        method = factory.make_string()
         client.post(path, method)
         request = client.dispatcher.last_call
         self.assertEqual(client._make_url(path) + "?op=%s" % (method,),
@@ -329,8 +329,8 @@ class TestMAASClient(MAASTestCase):
         self.assertEqual('POST', request['method'])
 
     def test_post_passes_parameters(self):
-        param = factory.getRandomString()
-        method = factory.getRandomString()
+        param = factory.make_string()
+        method = factory.make_string()
         client = make_client()
         client.post(make_path(), method, parameter=param)
         request = client.dispatcher.last_call
@@ -340,9 +340,9 @@ class TestMAASClient(MAASTestCase):
         self.assertEqual({"parameter": [param]}, post)
 
     def test_post_as_json(self):
-        param = factory.getRandomString()
-        method = factory.getRandomString()
-        list_param = [factory.getRandomString() for i in range(10)]
+        param = factory.make_string()
+        method = factory.make_string()
+        list_param = [factory.make_string() for i in range(10)]
         client = make_client()
         client.post(make_path(), method, as_json=True,
                     param=param, list_param=list_param)
@@ -357,7 +357,7 @@ class TestMAASClient(MAASTestCase):
     def test_put_dispatches_to_resource(self):
         path = make_path()
         client = make_client()
-        client.put(path, parameter=factory.getRandomString())
+        client.put(path, parameter=factory.make_string())
         request = client.dispatcher.last_call
         self.assertEqual(client._make_url(path), request['request_url'])
         self.assertIn('Authorization', request['headers'])

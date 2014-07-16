@@ -31,7 +31,7 @@ class FakeOS(OperatingSystem):
         self.purpose = purpose
         if releases is None:
             self.fake_list = [
-                factory.getRandomString()
+                factory.make_string()
                 for _ in range(3)
                 ]
         else:

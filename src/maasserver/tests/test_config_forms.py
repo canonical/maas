@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test config forms utilities."""
@@ -70,8 +70,8 @@ class TestFormWithDictCharField(MAASServerTestCase):
                         label='Field c', required=False)),
                 ])
 
-        fielda_value = factory.getRandomString()
-        fieldc_value = factory.getRandomString()
+        fielda_value = factory.make_string()
+        fieldc_value = factory.make_string()
         data = QueryDict(
             'multi_field_field_a=%s&multi_field_field_c=%s' % (
                 fielda_value, fieldc_value))
@@ -97,7 +97,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
                 ])
 
         # Create a value that will fail validation because it's too long.
-        fielda_value = factory.getRandomString(10)
+        fielda_value = factory.make_string(10)
         data = QueryDict('multi_field_field_b=%s' % fielda_value)
         form = FakeForm(data)
 
@@ -111,8 +111,8 @@ class TestFormWithDictCharField(MAASServerTestCase):
 
     def test_DictCharField_skip_check_true_skips_validation(self):
         # Create a value that will fail validation because it's too long.
-        field_name = factory.getRandomString(10)
-        field_value = factory.getRandomString(10)
+        field_name = factory.make_string(10)
+        field_value = factory.make_string(10)
         # multi_field_skip_check=true will make the form accept the value
         # even if it's not valid.
         data = QueryDict(
@@ -132,9 +132,9 @@ class TestFormWithDictCharField(MAASServerTestCase):
 
     def test_DictCharField_skip_check_false(self):
         # Create a value that will fail validation because it's too long.
-        field_value = factory.getRandomString(10)
-        field_name = factory.getRandomString()
-        field_label = factory.getRandomString()
+        field_value = factory.make_string(10)
+        field_name = factory.make_string()
+        field_label = factory.make_string()
         # Force the check with multi_field_skip_check=false.
         data = QueryDict(
             'multi_field_%s=%s&multi_field_skip_check=false' % (
@@ -165,7 +165,7 @@ class TestFormWithDictCharField(MAASServerTestCase):
                 required=False)
             char_field = forms.CharField(label='Field a')
 
-        char_value = factory.getRandomString(10)
+        char_value = factory.make_string(10)
         data = QueryDict('char_field=%s' % (char_value))
         form = FakeFormRequiredFalse(data)
         self.assertTrue(form.is_valid())
@@ -180,7 +180,7 @@ class TestUtilities(MAASServerTestCase):
         inputs = [
             {'prefix_test': 'a', 'key': 'b', 'prefix_2': 'c'},
             {},
-            {'b': factory.getRandomString()},
+            {'b': factory.make_string()},
             ]
         prefix = 'prefix_'
         expected = [
@@ -196,9 +196,9 @@ class TestUtilities(MAASServerTestCase):
 class TestDictCharWidget(MAASServerTestCase):
 
     def test_DictCharWidget_id_for_label_uses_first_fields_name(self):
-        names = [factory.getRandomString()]
+        names = [factory.make_string()]
         initials = []
-        labels = [factory.getRandomString()]
+        labels = [factory.make_string()]
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput], names, initials, labels)
         self.assertEqual(
@@ -206,14 +206,14 @@ class TestDictCharWidget(MAASServerTestCase):
             widget.id_for_label(' '))
 
     def test_DictCharWidget_renders_fieldset_with_label_and_field_names(self):
-        names = [factory.getRandomString(), factory.getRandomString()]
+        names = [factory.make_string(), factory.make_string()]
         initials = []
-        labels = [factory.getRandomString(), factory.getRandomString()]
-        values = [factory.getRandomString(), factory.getRandomString()]
+        labels = [factory.make_string(), factory.make_string()]
+        values = [factory.make_string(), factory.make_string()]
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
             names, initials, labels, skip_check=True)
-        name = factory.getRandomString()
+        name = factory.make_string()
         html_widget = fromstring(
             '<root>' + widget.render(name, values) + '</root>')
         widget_names = XPath('fieldset/input/@name')(html_widget)
@@ -228,24 +228,24 @@ class TestDictCharWidget(MAASServerTestCase):
     def test_empty_DictCharWidget_renders_as_empty_string(self):
         widget = DictCharWidget(
             [widgets.CheckboxInput], [], [], [], skip_check=True)
-        self.assertEqual('', widget.render(factory.getRandomString(), ''))
+        self.assertEqual('', widget.render(factory.make_string(), ''))
 
     def test_DictCharWidget_value_from_datadict_values_from_data(self):
         # 'value_from_datadict' extracts the values corresponding to the
         # field as a dictionary.
-        names = [factory.getRandomString(), factory.getRandomString()]
+        names = [factory.make_string(), factory.make_string()]
         initials = []
-        labels = [factory.getRandomString(), factory.getRandomString()]
-        name = factory.getRandomString()
-        field_1_value = factory.getRandomString()
-        field_2_value = factory.getRandomString()
+        labels = [factory.make_string(), factory.make_string()]
+        name = factory.make_string()
+        field_1_value = factory.make_string()
+        field_2_value = factory.make_string()
         # Create a query string with the field2 before the field1 and another
         # (unknown) value.
         data = QueryDict(
             '%s_%s=%s&%s_%s=%s&%s=%s' % (
                 name, names[1], field_2_value,
                 name, names[0], field_1_value,
-                factory.getRandomString(), factory.getRandomString())
+                factory.make_string(), factory.make_string())
             )
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput], names, initials, labels)
@@ -254,13 +254,13 @@ class TestDictCharWidget(MAASServerTestCase):
             widget.value_from_datadict(data, None, name))
 
     def test_DictCharWidget_renders_with_empty_string_as_input_data(self):
-        names = [factory.getRandomString(), factory.getRandomString()]
+        names = [factory.make_string(), factory.make_string()]
         initials = []
-        labels = [factory.getRandomString(), factory.getRandomString()]
+        labels = [factory.make_string(), factory.make_string()]
         widget = DictCharWidget(
             [widgets.TextInput, widgets.TextInput, widgets.CheckboxInput],
             names, initials, labels, skip_check=True)
-        name = factory.getRandomString()
+        name = factory.make_string()
         html_widget = fromstring(
             '<root>' + widget.render(name, '') + '</root>')
         widget_names = XPath('fieldset/input/@name')(html_widget)

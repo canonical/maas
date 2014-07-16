@@ -86,9 +86,9 @@ class SettingsTest(MAASServerTestCase):
         # Disable the DNS machinery so that we can skip the required
         # setup.
         self.patch(settings, "DNS_CONNECT", False)
-        new_name = factory.getRandomString()
-        new_domain = factory.getRandomString()
-        new_proxy = "http://%s.example.com:1234/" % factory.getRandomString()
+        new_name = factory.make_string()
+        new_domain = factory.make_string()
+        new_proxy = "http://%s.example.com:1234/" % factory.make_string()
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -273,12 +273,12 @@ class UserManagementTest(MAASServerTestCase):
     def test_add_user_POST(self):
         self.client_log_in(as_admin=True)
         params = {
-            'username': factory.getRandomString(),
-            'last_name': factory.getRandomString(30),
+            'username': factory.make_string(),
+            'last_name': factory.make_string(30),
             'email': factory.make_email_address(),
             'is_superuser': factory.pick_bool(),
         }
-        password = factory.getRandomString()
+        password = factory.make_string()
         params.update(make_password_params(password))
 
         response = self.client.post(reverse('accounts-add'), params)
@@ -293,7 +293,7 @@ class UserManagementTest(MAASServerTestCase):
         params = make_user_attribute_params(user)
         params.update({
             'last_name': factory.make_name('Newname'),
-            'email': 'new-%s@example.com' % factory.getRandomString(),
+            'email': 'new-%s@example.com' % factory.make_string(),
             'is_superuser': True,
             'username': factory.make_name('newname'),
             })
@@ -309,7 +309,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_edit_user_POST_updates_password(self):
         self.client_log_in(as_admin=True)
         user = factory.make_user()
-        new_password = factory.getRandomString()
+        new_password = factory.make_string()
         params = make_password_params(new_password)
         response = self.client.post(
             reverse('accounts-edit', args=[user.username]),

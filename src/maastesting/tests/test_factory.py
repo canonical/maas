@@ -41,9 +41,9 @@ from testtools.matchers import (
 
 class TestFactory(MAASTestCase):
 
-    def test_getRandomString_respects_size(self):
+    def test_make_string_respects_size(self):
         sizes = [1, 10, 100]
-        random_strings = [factory.getRandomString(size) for size in sizes]
+        random_strings = [factory.make_string(size) for size in sizes]
         self.assertEqual(sizes, [len(string) for string in random_strings])
 
     def test_pick_bool_returns_bool(self):
@@ -207,7 +207,7 @@ class TestFactory(MAASTestCase):
         self.assertThat(factory.make_file(self.make_dir()), FileExists())
 
     def test_make_file_writes_contents(self):
-        contents = factory.getRandomString().encode('ascii')
+        contents = factory.make_string().encode('ascii')
         self.assertThat(
             factory.make_file(self.make_dir(), contents=contents),
             FileContains(contents))
@@ -218,14 +218,14 @@ class TestFactory(MAASTestCase):
         self.assertNotEqual('', contents)
 
     def test_make_file_uses_given_name(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         self.assertEqual(
             name,
             os.path.basename(factory.make_file(self.make_dir(), name=name)))
 
     def test_make_file_uses_given_dir(self):
         directory = self.make_dir()
-        name = factory.getRandomString()
+        name = factory.make_string()
         self.assertEqual(
             (directory, name),
             os.path.split(factory.make_file(directory, name=name)))
@@ -248,7 +248,7 @@ class TestFactory(MAASTestCase):
 
     def test_make_name_uses_configurable_separator(self):
         sep = 'SEPARATOR'
-        prefix = factory.getRandomString(3)
+        prefix = factory.make_string(3)
         self.assertThat(
             factory.make_name(prefix, sep=sep),
             StartsWith(prefix + sep))
@@ -272,7 +272,7 @@ class TestFactory(MAASTestCase):
 
     def test_make_tarball_writes_tarball(self):
         filename = factory.make_name()
-        contents = {filename: factory.getRandomString()}
+        contents = {filename: factory.make_string()}
 
         tarball = factory.make_tarball(self.make_dir(), contents)
 

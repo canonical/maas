@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `DownloadProgress`."""
@@ -27,7 +27,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
     def test_get_latest_download_returns_None_if_nothing_found(self):
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
-                factory.make_node_group(), factory.getRandomString()))
+                factory.make_node_group(), factory.make_string()))
 
     def test_get_latest_download_finds_download_progress(self):
         progress = factory.make_download_progress()
@@ -38,7 +38,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
 
     def test_get_latest_download_returns_latest_matching_download(self):
         nodegroup = factory.make_node_group()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         progress = [
             factory.make_download_progress(
                 nodegroup=nodegroup, filename=filename)
@@ -59,7 +59,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
         progress = factory.make_download_progress()
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
-                progress.nodegroup, factory.getRandomString()))
+                progress.nodegroup, factory.make_string()))
 
 
 class TestDownloadProgress(MAASServerTestCase):

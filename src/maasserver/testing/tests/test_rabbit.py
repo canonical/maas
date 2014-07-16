@@ -25,7 +25,7 @@ class TestRabbitServerSettings(MAASTestCase):
 
     def test_patch(self):
         config = RabbitServerResources(
-            hostname=factory.getRandomString(),
+            hostname=factory.make_string(),
             port=factory.pick_port(),
             dist_port=factory.pick_port())
         self.useFixture(config)

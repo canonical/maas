@@ -35,7 +35,7 @@ class TestNodeCommissionResult(DjangoTestCase):
 
     def test_can_store_data(self):
         node = factory.make_node()
-        name = factory.getRandomString()
+        name = factory.make_string()
         data = factory.make_bytes()
         factory.make_node_commission_result(node=node, name=name, data=data)
 
@@ -59,7 +59,7 @@ class TestNodeCommissionResult(DjangoTestCase):
         self.assertEqual(ncr1.name, ncr2.name)
 
     def test_get_data_as_html_returns_output(self):
-        output = factory.getRandomString()
+        output = factory.make_string()
         result = factory.make_node_commission_result(
             data=output.encode('ascii'))
         self.assertEqual(output, result.get_data_as_html())
@@ -109,7 +109,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
 
     def test_store_data(self):
         node = factory.make_node()
-        name = factory.getRandomString(255)
+        name = factory.make_string(255)
         data = factory.make_bytes(1024 * 1024)
         script_result = randint(0, 10)
         result = NodeCommissionResult.objects.store_data(
@@ -122,7 +122,7 @@ class TestNodeCommissionResultManager(DjangoTestCase):
 
     def test_store_data_updates_existing(self):
         node = factory.make_node()
-        name = factory.getRandomString(255)
+        name = factory.make_string(255)
         script_result = randint(0, 10)
         factory.make_node_commission_result(node=node, name=name)
         data = factory.make_bytes(1024 * 1024)

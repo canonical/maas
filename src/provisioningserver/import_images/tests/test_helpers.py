@@ -28,14 +28,14 @@ class TestGetSigningPolicy(MAASTestCase):
     def test_picks_nonchecking_policy_for_json_index(self):
         path = 'streams/v1/index.json'
         policy = helpers.get_signing_policy(path)
-        content = factory.getRandomString()
+        content = factory.make_string()
         self.assertEqual(
             content,
             policy(content, path, factory.make_name('keyring')))
 
     def test_picks_checking_policy_for_sjson_index(self):
         path = 'streams/v1/index.sjson'
-        content = factory.getRandomString()
+        content = factory.make_string()
         policy = helpers.get_signing_policy(path)
         self.assertRaises(
             SignatureMissingException,
@@ -43,7 +43,7 @@ class TestGetSigningPolicy(MAASTestCase):
 
     def test_picks_checking_policy_for_json_gpg_index(self):
         path = 'streams/v1/index.json.gpg'
-        content = factory.getRandomString()
+        content = factory.make_string()
         policy = helpers.get_signing_policy(path)
         self.assertRaises(
             SignatureMissingException,
@@ -51,7 +51,7 @@ class TestGetSigningPolicy(MAASTestCase):
 
     def test_injects_default_keyring_if_passed(self):
         path = 'streams/v1/index.json.gpg'
-        content = factory.getRandomString()
+        content = factory.make_string()
         keyring = factory.make_name('keyring')
         self.patch(helpers, 'policy_read_signed')
         policy = helpers.get_signing_policy(path, keyring)

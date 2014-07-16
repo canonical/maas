@@ -59,7 +59,7 @@ class TestZoneAPI(APITestCase):
     def test_PUT_updates_zone(self):
         self.become_admin()
         zone = factory.make_zone()
-        new_description = factory.getRandomString()
+        new_description = factory.make_string()
 
         response = self.client_put(
             get_zone_uri(zone),
@@ -73,7 +73,7 @@ class TestZoneAPI(APITestCase):
         zone = factory.make_zone()
         response = self.client_put(
             get_zone_uri(zone),
-            {'description': factory.getRandomString()})
+            {'description': factory.make_string()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_zone_name(self):

@@ -62,7 +62,7 @@ class MultipleUsersScenarios:
         super(MultipleUsersScenarios, self).setUp()
         user = self.userfactory()
         if not user.is_anonymous():
-            password = factory.getRandomString()
+            password = factory.make_string()
             user.set_password(password)
             user.save()
             self.logged_in_user = user
@@ -98,7 +98,7 @@ class APITestCase(MAASServerTestCase):
 
 def log_in_as_normal_user(client):
     """Log `client` in as a normal user."""
-    password = factory.getRandomString()
+    password = factory.make_string()
     user = factory.make_user(password=password)
     client.login(username=user.username, password=password)
     return user

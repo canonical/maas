@@ -128,7 +128,7 @@ class Factory(maastesting.factory.Factory):
         :return: A file-like object, with the requested `content` and `name`.
         """
         if content is None:
-            content = self.getRandomString().encode('ascii')
+            content = self.make_string().encode('ascii')
         if name is None:
             name = self.make_name('file')
         assert isinstance(content, bytes)
@@ -221,7 +221,7 @@ class Factory(maastesting.factory.Factory):
         """
         # hostname=None is a valid value, hence the set_hostname trick.
         if hostname is None:
-            hostname = self.getRandomString(20)
+            hostname = self.make_string(20)
         if sortable_name:
             hostname = hostname.lower()
         if status is None:
@@ -411,7 +411,7 @@ class Factory(maastesting.factory.Factory):
         if node is None:
             node = self.make_node()
         if name is None:
-            name = "ncrname-" + self.getRandomString(92)
+            name = "ncrname-" + self.make_string(92)
         if data is None:
             data = b"ncrdata-" + self.make_bytes()
         if script_result is None:
@@ -486,7 +486,7 @@ class Factory(maastesting.factory.Factory):
         return lease
 
     def make_email(self):
-        return '%s@example.com' % self.getRandomString(10)
+        return '%s@example.com' % self.make_string(10)
 
     def make_user(self, username=None, password='test', email=None):
         if username is None:
@@ -585,14 +585,14 @@ class Factory(maastesting.factory.Factory):
         header items that you wish to override.
         """
         items = {
-            'realm': self.getRandomString(),
+            'realm': self.make_string(),
             'oauth_nonce': random.randint(0, 99999),
             'oauth_timestamp': time.time(),
-            'oauth_consumer_key': self.getRandomString(18),
+            'oauth_consumer_key': self.make_string(18),
             'oauth_signature_method': 'PLAINTEXT',
             'oauth_version': '1.0',
-            'oauth_token': self.getRandomString(18),
-            'oauth_signature': "%%26%s" % self.getRandomString(32),
+            'oauth_token': self.make_string(18),
+            'oauth_signature': "%%26%s" % self.make_string(32),
         }
         items.update(kwargs)
         return "OAuth " + ", ".join([
@@ -659,7 +659,7 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = self.make_name('script')
         if content is None:
-            content = b'content:' + self.getRandomString().encode('ascii')
+            content = b'content:' + self.make_string().encode('ascii')
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
 
@@ -694,7 +694,7 @@ class Factory(maastesting.factory.Factory):
                 bytes_downloaded = None
         if error is None:
             if self.pick_bool():
-                error = self.getRandomString()
+                error = self.make_string()
             else:
                 error = ''
         return DownloadProgress.objects.create(
@@ -742,7 +742,7 @@ class Factory(maastesting.factory.Factory):
                                        bytes_downloaded=NO_VALUE, error=None):
         """Create a `DownloadProgress` indicating failure."""
         if error is None:
-            error = self.getRandomString()
+            error = self.make_string()
         return self.make_download_progress_incomplete(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error=error)
@@ -762,7 +762,7 @@ class Factory(maastesting.factory.Factory):
         if sortable_name:
             name = name.lower()
         if description is None:
-            description = self.getRandomString()
+            description = self.make_string()
         zone = Zone(name=name, description=description)
         zone.save()
         if nodes is not None:
@@ -830,7 +830,7 @@ class Factory(maastesting.factory.Factory):
         ip = unicode(network.ip)
         netmask = unicode(network.netmask)
         if description is None:
-            description = self.getRandomString()
+            description = self.make_string()
         if vlan_tag is NO_VALUE:
             vlan_tag = self.make_vlan_tag()
         network = Network(

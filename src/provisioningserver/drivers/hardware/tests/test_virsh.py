@@ -109,7 +109,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_login_invalid(self):
         virsh_outputs = [
-            factory.getRandomString(),
+            factory.make_string(),
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')
@@ -133,7 +133,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_invalid_prompt(self):
         virsh_outputs = [
-            factory.getRandomString()
+            factory.make_string()
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         self.assertFalse(conn.prompt())
@@ -216,7 +216,7 @@ class TestVirsh(MAASTestCase):
 
         # Setup the power parameters that we should expect to be
         # the output of the probe_and_enlist
-        fake_password = factory.getRandomString()
+        fake_password = factory.make_string()
         poweraddr = factory.make_name('poweraddr')
         called_params = []
         fake_macs = []
@@ -272,7 +272,7 @@ class TestVirsh(MAASTestCase):
         mock_login.return_value = False
         self.assertRaises(
             virsh.VirshError, virsh.probe_virsh_and_enlist,
-            factory.make_name('poweraddr'), password=factory.getRandomString())
+            factory.make_name('poweraddr'), password=factory.make_string())
 
 
 class TestVirshPowerControl(MAASTestCase):
@@ -284,7 +284,7 @@ class TestVirshPowerControl(MAASTestCase):
         self.assertRaises(
             virsh.VirshError, virsh.power_control_virsh,
             factory.make_name('poweraddr'), factory.make_name('machine'),
-            'on', password=factory.getRandomString())
+            'on', password=factory.make_string())
 
     def test_power_control_on(self):
         mock_login = self.patch(virsh.VirshSSH, 'login')

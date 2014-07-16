@@ -44,7 +44,7 @@ class SSLKeyValidatorTest(MAASServerTestCase):
         # No ValidationError.
 
     def test_does_not_validate_random_data(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         self.assertRaises(
             ValidationError, validate_ssl_key, key_string)
 
@@ -81,7 +81,7 @@ class SSLKeyTest(MAASServerTestCase):
         # No ValidationError.
 
     def test_sslkey_validation_fails_if_key_is_invalid(self):
-        key_string = factory.getRandomString()
+        key_string = factory.make_string()
         user = factory.make_user()
         key = SSLKey(key=key_string, user=user)
         self.assertRaises(

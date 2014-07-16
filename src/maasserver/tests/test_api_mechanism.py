@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Testing of the API infrastructure, as opposed to code that uses it to
@@ -25,7 +25,7 @@ class TestOperationDecorator(MAASTestCase):
     """Testing for the `operation` decorator."""
 
     def test_valid_decoration(self):
-        value = "value" + factory.getRandomString()
+        value = "value" + factory.make_string()
         decorate = operation(idempotent=False)
         decorated = decorate(lambda: value)
         self.assertEqual(value, decorated())

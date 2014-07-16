@@ -30,8 +30,8 @@ class TestBootMethodUtils(MAASTestCase):
     def test_get_packages(self):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
-        release_gpg = factory.getRandomString()
-        packages_gz = factory.getRandomString()
+        release_gpg = factory.make_string()
+        packages_gz = factory.make_string()
 
         url = utils.urljoin(archive, 'dists', release)
         release_url = utils.urljoin(url, 'Release')
@@ -64,8 +64,8 @@ class TestBootMethodUtils(MAASTestCase):
     def test_get_packages_errors_on_invalid_checksum(self):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
-        release_gpg = factory.getRandomString()
-        packages_gz = factory.getRandomString()
+        release_gpg = factory.make_string()
+        packages_gz = factory.make_string()
 
         packages_path = '%s/binary-%s/Packages.gz' % (comp, arch)
         packages_gz_md5 = utils.get_md5sum(packages_gz + '0')
@@ -109,7 +109,7 @@ class TestBootMethodUtils(MAASTestCase):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
 
-        package_data = factory.getRandomString()
+        package_data = factory.make_string()
         package_md5 = utils.get_md5sum(package_data)
         package_info = {
             'Package': package,
@@ -137,7 +137,7 @@ class TestBootMethodUtils(MAASTestCase):
         archive = factory.make_name("archive")
         comp, arch, release = factory.make_names("comp", "arch", "release")
 
-        package_data = factory.getRandomString()
+        package_data = factory.make_string()
         package_md5 = utils.get_md5sum(package_data + '0')
         package_info = {
             'Package': package,

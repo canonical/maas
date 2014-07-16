@@ -93,9 +93,9 @@ class TestDNSUtilities(MAASServerTestCase):
 
     def patch_DEFAULT_MAAS_URL_with_random_values(self, hostname=None):
         if hostname is None:
-            hostname = factory.getRandomString()
+            hostname = factory.make_string()
         url = 'http://%s:%d/%s' % (
-            hostname, factory.pick_port(), factory.getRandomString())
+            hostname, factory.pick_port(), factory.make_string())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
 
     def test_get_dns_server_address_resolves_hostname(self):
@@ -490,7 +490,7 @@ class TestDNSConfigModifications(TestDNSServer):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         recorder = FakeMethod()
         self.patch(DNSZoneConfigBase, 'write_config', recorder)
-        node.error = factory.getRandomString()
+        node.error = factory.make_string()
         node.save()
         self.assertEqual(0, recorder.call_count)
 

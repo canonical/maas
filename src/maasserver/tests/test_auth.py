@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 from __future__ import (
@@ -37,8 +37,8 @@ class LoginLogoutTest(MAASServerTestCase):
         return factory.make_user(username=name, password=password)
 
     def test_login(self):
-        name = factory.getRandomString()
-        password = factory.getRandomString()
+        name = factory.make_string()
+        password = factory.make_string()
         user = self.make_user(name, password)
         response = self.client.post(
             reverse('login'), {'username': name, 'password': password})
@@ -49,16 +49,16 @@ class LoginLogoutTest(MAASServerTestCase):
     def test_login_failed(self):
         response = self.client.post(
             reverse('login'), {
-                'username': factory.getRandomString(),
-                'password': factory.getRandomString(),
+                'username': factory.make_string(),
+                'password': factory.make_string(),
                 })
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertNotIn('_auth_user_id', self.client.session)
 
     def test_logout(self):
-        name = factory.getRandomString()
-        password = factory.getRandomString()
+        name = factory.make_string()
+        password = factory.make_string()
         factory.make_user(name, password)
         self.client.login(username=name, password=password)
         self.client.post(reverse('logout'))

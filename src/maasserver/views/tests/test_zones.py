@@ -181,7 +181,7 @@ class ZoneAddTestAdmin(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         definition = {
             'name': factory.make_name('zone'),
-            'description': factory.getRandomString(),
+            'description': factory.make_string(),
         }
         response = self.client.post(reverse('zone-add'), definition)
         self.assertEqual(httplib.FOUND, response.status_code)

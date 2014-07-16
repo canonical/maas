@@ -708,7 +708,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
-            'hostname': factory.getRandomString(),
+            'hostname': factory.make_string(),
             'architecture': make_usable_architecture(self),
         }
         response = self.client.post(node_edit_link, params)
@@ -803,7 +803,7 @@ class NodeViewsTest(MAASServerTestCase):
         # output.
         self.client_log_in()
         node = factory.make_node(
-            owner=self.logged_in_user, error=factory.getRandomString(),
+            owner=self.logged_in_user, error=factory.make_string(),
             status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -816,7 +816,7 @@ class NodeViewsTest(MAASServerTestCase):
         # condition, the contents of node.error are displayed as error output.
         self.client_log_in()
         node = factory.make_node(
-            owner=self.logged_in_user, error=factory.getRandomString(),
+            owner=self.logged_in_user, error=factory.make_string(),
             status=NODE_STATUS.FAILED_TESTS)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -911,7 +911,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_node_list_query_includes_current(self):
         self.client_log_in()
-        qs = factory.getRandomString()
+        qs = factory.make_string()
         response = self.client.get(reverse('node-list'), {"query": qs})
         query_value = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//input[@name='query']/@value)")
@@ -1484,7 +1484,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
         # This returns a 404 rather than returning to the node page
         # with a nice error message because the node could not be found.
         self.client_log_in()
-        node_id = factory.getRandomString()
+        node_id = factory.make_string()
         mac = factory.getRandomMACAddress()
         mac_delete_link = reverse('mac-delete', args=[node_id, mac])
         response = self.client.get(mac_delete_link)
@@ -1597,7 +1597,7 @@ class AdminNodeViewsTest(MAASServerTestCase):
         node = factory.make_node(owner=factory.make_user())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
-            'hostname': factory.getRandomString(),
+            'hostname': factory.make_string(),
             'power_type': factory.pick_power_type(),
             'architecture': make_usable_architecture(self),
         }

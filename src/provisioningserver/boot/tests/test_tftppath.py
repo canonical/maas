@@ -188,13 +188,13 @@ class TestTFTPPath(MAASTestCase):
             self.tftproot, locate_tftp_path(None, tftproot=self.tftproot))
 
     def test_list_boot_images_copes_with_missing_directory(self):
-        self.assertEqual([], list_boot_images(factory.getRandomString()))
+        self.assertEqual([], list_boot_images(factory.make_string()))
 
     def test_list_boot_images_passes_on_other_exceptions(self):
         error = OSError(errno.EACCES, "Deliberate error for testing.")
         self.patch(tftppath, 'list_subdirs', Mock(side_effect=error))
         with ExpectedException(OSError):
-            list_boot_images(factory.getRandomString())
+            list_boot_images(factory.make_string())
 
     def test_list_boot_images_copes_with_empty_directory(self):
         self.assertEqual([], list_boot_images(self.tftproot))

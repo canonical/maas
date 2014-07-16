@@ -141,13 +141,13 @@ class TestLocateConfig(MAASTestCase):
         self.assertTrue(os.path.isabs(locate_config()))
 
     def test_locates_config_file(self):
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         self.assertEqual(
             get_branch_dir('etc/maas/', filename),
             locate_config(filename))
 
     def test_locates_full_path(self):
-        path = [factory.getRandomString() for counter in range(3)]
+        path = [factory.make_string() for counter in range(3)]
         self.assertEqual(
             get_branch_dir('etc/maas/', *path),
             locate_config(*path))
@@ -200,7 +200,7 @@ class TestSafe(MAASTestCase):
         self.assertIs(something, safe.value)
 
     def test_repr(self):
-        string = factory.getRandomString()
+        string = factory.make_string()
         safe = Safe(string)
         self.assertEqual("<Safe %r>" % string, repr(safe))
 
@@ -209,21 +209,21 @@ class TestWriteAtomic(MAASTestCase):
     """Test `atomic_write`."""
 
     def test_atomic_write_overwrites_dest_file(self):
-        content = factory.getRandomString()
-        filename = self.make_file(contents=factory.getRandomString())
+        content = factory.make_string()
+        filename = self.make_file(contents=factory.make_string())
         atomic_write(content, filename)
         self.assertThat(filename, FileContains(content))
 
     def test_atomic_write_does_not_overwrite_file_if_overwrite_false(self):
-        content = factory.getRandomString()
-        random_content = factory.getRandomString()
+        content = factory.make_string()
+        random_content = factory.make_string()
         filename = self.make_file(contents=random_content)
         atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(random_content))
 
     def test_atomic_write_writes_file_if_no_file_present(self):
-        filename = os.path.join(self.make_dir(), factory.getRandomString())
-        content = factory.getRandomString()
+        filename = os.path.join(self.make_dir(), factory.make_string())
+        content = factory.make_string()
         atomic_write(content, filename, overwrite=False)
         self.assertThat(filename, FileContains(content))
 
@@ -232,7 +232,7 @@ class TestWriteAtomic(MAASTestCase):
         # overwriting was disabled, atomic_write does not leak its
         # temporary file.
         filename = self.make_file()
-        atomic_write(factory.getRandomString(), filename, overwrite=False)
+        atomic_write(factory.make_string(), filename, overwrite=False)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
@@ -243,7 +243,7 @@ class TestWriteAtomic(MAASTestCase):
         self.patch(os, 'rename', Mock(side_effect=OSError()))
         filename = self.make_file()
         with ExpectedException(OSError):
-            atomic_write(factory.getRandomString(), filename)
+            atomic_write(factory.make_string(), filename)
         self.assertEqual(
             [os.path.basename(filename)],
             os.listdir(os.path.dirname(filename)))
@@ -254,7 +254,7 @@ class TestWriteAtomic(MAASTestCase):
         # umask.  We want this mode set, not treated as advice that may
         # be tightened up by umask later.
         mode = 0323
-        atomic_write(factory.getRandomString(), atomic_file, mode=mode)
+        atomic_write(factory.make_string(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
     def test_atomic_write_sets_permissions_before_moving_into_place(self):
@@ -269,7 +269,7 @@ class TestWriteAtomic(MAASTestCase):
         playground = self.make_dir()
         atomic_file = os.path.join(playground, factory.make_name('atomic'))
         mode = 0323
-        atomic_write(factory.getRandomString(), atomic_file, mode=mode)
+        atomic_write(factory.make_string(), atomic_file, mode=mode)
         [recorded_mode] = recorded_modes
         self.assertEqual(mode, stat.S_IMODE(recorded_mode))
 
@@ -303,7 +303,7 @@ class TestAtomicSymlink(MAASTestCase):
     """Test `atomic_symlink`."""
 
     def test_atomic_symlink_creates_symlink(self):
-        filename = self.make_file(contents=factory.getRandomString())
+        filename = self.make_file(contents=factory.make_string())
         target_dir = self.make_dir()
         link_name = factory.make_name('link')
         target = os.path.join(target_dir, link_name)
@@ -313,7 +313,7 @@ class TestAtomicSymlink(MAASTestCase):
         self.assertThat(target, SamePath(filename))
 
     def test_atomic_symlink_overwrites_dest_file(self):
-        filename = self.make_file(contents=factory.getRandomString())
+        filename = self.make_file(contents=factory.make_string())
         target_dir = self.make_dir()
         link_name = factory.make_name('link')
         # Create a file that will be overwritten.
@@ -342,8 +342,8 @@ class TestIncrementalWrite(MAASTestCase):
     """Test `incremental_write`."""
 
     def test_incremental_write_increments_modification_time(self):
-        content = factory.getRandomString()
-        filename = self.make_file(contents=factory.getRandomString())
+        content = factory.make_string()
+        filename = self.make_file(contents=factory.make_string())
         # Pretend that this file is older than it is.  So that
         # incrementing its mtime won't put it in the future.
         old_mtime = os.stat(filename).st_mtime - 10
@@ -355,7 +355,7 @@ class TestIncrementalWrite(MAASTestCase):
     def test_incremental_write_sets_permissions(self):
         atomic_file = self.make_file()
         mode = 0323
-        incremental_write(factory.getRandomString(), atomic_file, mode=mode)
+        incremental_write(factory.make_string(), atomic_file, mode=mode)
         self.assertEqual(mode, stat.S_IMODE(os.stat(atomic_file).st_mode))
 
 
@@ -574,7 +574,7 @@ class SudoWriteFileTest(MAASTestCase):
     def test_calls_atomic_write(self):
         self.patch_popen()
         path = os.path.join(self.make_dir(), factory.make_name('file'))
-        contents = factory.getRandomString()
+        contents = factory.make_string()
 
         sudo_write_file(path, contents)
 
@@ -586,7 +586,7 @@ class SudoWriteFileTest(MAASTestCase):
 
     def test_encodes_contents(self):
         process = self.patch_popen()
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         encoding = 'utf-16'
         sudo_write_file(self.make_file(), contents, encoding=encoding)
         self.assertThat(
@@ -597,7 +597,7 @@ class SudoWriteFileTest(MAASTestCase):
         self.patch_popen(1)
         self.assertRaises(
             CalledProcessError,
-            sudo_write_file, self.make_file(), factory.getRandomString())
+            sudo_write_file, self.make_file(), factory.make_string())
 
 
 class ParseConfigTest(MAASTestCase):
@@ -682,7 +682,7 @@ class TestActionScript(MAASTestCase):
         self.patch(sys, "stderr", StringIO.StringIO())
 
     def test_init(self):
-        description = factory.getRandomString()
+        description = factory.make_string()
         script = self.factory(description)
         self.assertIsInstance(script.parser, ArgumentParser)
         self.assertEqual(description, script.parser.description)
@@ -748,8 +748,8 @@ class TestActionScript(MAASTestCase):
     def test_call_with_process_exception(self):
         # CalledProcessError is converted into SystemExit.
         exception = CalledProcessError(
-            randint(0, 256), [factory.getRandomString()],
-            factory.getRandomString().encode("ascii"))
+            randint(0, 256), [factory.make_string()],
+            factory.make_string().encode("ascii"))
 
         def raise_exception():
             raise exception
@@ -826,7 +826,7 @@ class TestAtomicWriteScript(MAASTestCase):
 
     def test_arg_setup(self):
         parser = self.get_parser()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         args = parser.parse_args((
             '--no-overwrite',
             '--filename', filename,
@@ -843,12 +843,12 @@ class TestAtomicWriteScript(MAASTestCase):
 
     def test_no_overwrite_defaults_to_false(self):
         parser = self.get_parser()
-        filename = factory.getRandomString()
+        filename = factory.make_string()
         args = parser.parse_args(('--filename', filename))
         self.assertFalse(args.no_overwrite)
 
     def test_script_executable(self):
-        content = factory.getRandomString()
+        content = factory.make_string()
         script = [os.path.join(bindir, "maas-provision"), 'atomic-write']
         target_file = self.make_file()
         script.extend(('--filename', target_file, '--mode', '615'))
@@ -860,8 +860,8 @@ class TestAtomicWriteScript(MAASTestCase):
         self.assertEqual(0615, stat.S_IMODE(os.stat(target_file).st_mode))
 
     def test_passes_overwrite_flag(self):
-        content = factory.getRandomString()
-        filename = factory.getRandomString()
+        content = factory.make_string()
+        filename = factory.make_string()
         mocked_atomic_write = self.get_and_run_mocked_script(
             content, filename,
             ('--filename', filename, '--no-overwrite'))
@@ -871,8 +871,8 @@ class TestAtomicWriteScript(MAASTestCase):
             MockCalledOnceWith(content, filename, mode=0600, overwrite=False))
 
     def test_passes_mode_flag(self):
-        content = factory.getRandomString()
-        filename = factory.getRandomString()
+        content = factory.make_string()
+        filename = factory.make_string()
         # Mode that's unlikely to occur in the wild.
         mode = 0377
         mocked_atomic_write = self.get_and_run_mocked_script(
@@ -884,8 +884,8 @@ class TestAtomicWriteScript(MAASTestCase):
             MockCalledOnceWith(content, filename, mode=mode, overwrite=True))
 
     def test_default_mode(self):
-        content = factory.getRandomString()
-        filename = factory.getRandomString()
+        content = factory.make_string()
+        filename = factory.make_string()
         mocked_atomic_write = self.get_and_run_mocked_script(
             content, filename,
             ('--filename', filename))
@@ -928,7 +928,7 @@ class TestEnsureDir(MAASTestCase):
 
 class TestTempDir(MAASTestCase):
     def test_creates_real_fresh_directory(self):
-        stored_text = factory.getRandomString()
+        stored_text = factory.make_string()
         filename = factory.make_name('test-file')
         with tempdir() as directory:
             self.assertThat(directory, DirExists())
@@ -1013,14 +1013,14 @@ class TestTempDir(MAASTestCase):
         self.assertIsInstance(directory, unicode)
 
     def test_uses_prefix(self):
-        prefix = factory.getRandomString(3)
+        prefix = factory.make_string(3)
         with tempdir(prefix=prefix) as directory:
             pass
 
         self.assertThat(os.path.basename(directory), StartsWith(prefix))
 
     def test_uses_suffix(self):
-        suffix = factory.getRandomString(3)
+        suffix = factory.make_string(3)
         with tempdir(suffix=suffix) as directory:
             pass
 
@@ -1036,7 +1036,7 @@ class TestTempDir(MAASTestCase):
 
 class TestReadTextFile(MAASTestCase):
     def test_reads_file(self):
-        text = factory.getRandomString()
+        text = factory.make_string()
         self.assertEqual(text, read_text_file(self.make_file(contents=text)))
 
     def test_defaults_to_utf8(self):
@@ -1059,13 +1059,13 @@ class TestReadTextFile(MAASTestCase):
 class TestWriteTextFile(MAASTestCase):
     def test_creates_file(self):
         path = os.path.join(self.make_dir(), factory.make_name('text'))
-        text = factory.getRandomString()
+        text = factory.make_string()
         write_text_file(path, text)
         self.assertThat(path, FileContains(text))
 
     def test_overwrites_file(self):
         path = self.make_file(contents="original text")
-        text = factory.getRandomString()
+        text = factory.make_string()
         write_text_file(path, text)
         self.assertThat(path, FileContains(text))
 
@@ -1206,12 +1206,12 @@ class TestCallAndCheck(MAASTestCase):
         return process
 
     def test__returns_standard_output(self):
-        output = factory.getRandomString()
+        output = factory.make_string()
         self.assertEqual(output, call_and_check(['/bin/echo', '-n', output]))
 
     def test__raises_ExternalProcessError_on_failure(self):
         command = factory.make_name('command')
-        message = factory.getRandomString()
+        message = factory.make_string()
         self.patch_popen(returncode=1, stderr=message)
         error = self.assertRaises(
             ExternalProcessError, call_and_check, command)

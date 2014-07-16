@@ -154,7 +154,7 @@ class TestInnerStartUp(MAASServerTestCase):
         # knowledgeable warning.
         BootImage.objects.all().delete()
         register_persistent_error(
-            COMPONENT.IMPORT_PXE_FILES, factory.getRandomString())
+            COMPONENT.IMPORT_PXE_FILES, factory.make_string())
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.inner_start_up()

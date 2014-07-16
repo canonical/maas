@@ -50,8 +50,8 @@ class TestRunCommand(MAASTestCase):
     def test_output_returned(self):
         """Ensure output from stdout/stderr is returned to caller."""
 
-        test_stdout = factory.getRandomString()
-        test_stderr = factory.getRandomString()
+        test_stdout = factory.make_string()
+        test_stderr = factory.make_string()
         command = 'echo %s >&1 && echo %s >&2' % (test_stdout, test_stderr)
 
         output = run_command(['bash', '-c', command])
@@ -70,8 +70,8 @@ class TestFormatUserKey(MAASTestCase):
     def test_format_user_key(self):
         """Ensure user key strings are properly constructed."""
 
-        user = factory.getRandomString()
-        field = factory.getRandomString()
+        user = factory.make_string()
+        field = factory.make_string()
 
         user_key = format_user_key(user, field)
 

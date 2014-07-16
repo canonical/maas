@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test ORM utilities."""
@@ -61,20 +61,20 @@ class TestGetOne(MAASTestCase):
         self.assertIsNone(get_one([]))
 
     def test_get_one_returns_single_list_item(self):
-        item = factory.getRandomString()
+        item = factory.make_string()
         self.assertEqual(item, get_one([item]))
 
     def test_get_one_returns_None_from_any_empty_sequence(self):
         self.assertIsNone(get_one("no item" for counter in range(0)))
 
     def test_get_one_returns_item_from_any_sequence_of_length_one(self):
-        item = factory.getRandomString()
+        item = factory.make_string()
         self.assertEqual(item, get_one(item for counter in range(1)))
 
     def test_get_one_does_not_trigger_database_counting(self):
         # Avoid typical performance pitfall of querying objects *and*
         # the number of objects.
-        item = factory.getRandomString()
+        item = factory.make_string()
         sequence = FakeQueryResult(type(item), [item])
         sequence.__len__ = Mock(side_effect=Exception("len() was called"))
         self.assertEqual(item, get_one(sequence))
@@ -112,11 +112,11 @@ class TestGetFirst(MAASTestCase):
         self.assertIsNone(get_first([]))
 
     def test_get_first_returns_first_item(self):
-        items = [factory.getRandomString() for counter in range(10)]
+        items = [factory.make_string() for counter in range(10)]
         self.assertEqual(items[0], get_first(items))
 
     def test_get_first_accepts_any_sequence(self):
-        item = factory.getRandomString()
+        item = factory.make_string()
         self.assertEqual(item, get_first(repeat(item)))
 
     def test_get_first_does_not_retrieve_beyond_first_item(self):

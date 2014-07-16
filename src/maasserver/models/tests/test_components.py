@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver components module."""
@@ -39,14 +39,14 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
         super(PersistentErrorsUtilitiesTest, self).setUp()
 
     def test_register_persistent_error_registers_error(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
         self.assertItemsEqual([error_message], get_persistent_errors())
 
     def test_register_persistent_error_stores_last_error(self):
-        error_message = factory.getRandomString()
-        error_message2 = factory.getRandomString()
+        error_message = factory.make_string()
+        error_message2 = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
         register_persistent_error(component, error_message2)
@@ -54,14 +54,14 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
             [error_message2], get_persistent_errors())
 
     def test_discard_persistent_error_discards_error(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
         discard_persistent_error(component)
         self.assertItemsEqual([], get_persistent_errors())
 
     def test_discard_persistent_error_can_be_called_many_times(self):
-        error_message = factory.getRandomString()
+        error_message = factory.make_string()
         component = get_random_component()
         register_persistent_error(component, error_message)
         discard_persistent_error(component)
@@ -71,7 +71,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
     def get_persistent_errors_returns_text_for_error_codes(self):
         errors, components = [], []
         for i in range(3):
-            error_message = factory.getRandomString()
+            error_message = factory.make_string()
             component = get_random_component()
             register_persistent_error(component, error_message)
             errors.append(error_message)

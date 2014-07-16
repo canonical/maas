@@ -263,7 +263,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
-        invalid_distro_series = factory.getRandomString()
+        invalid_distro_series = factory.make_string()
         response = self.client.post(
             self.get_node_uri(node),
             {'op': 'start', 'distro_series': invalid_distro_series})
@@ -284,7 +284,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem.get_default_release()
-        license_key = factory.getRandomString()
+        license_key = factory.make_string()
         self.patch(osystem, 'requires_license_key').return_value = True
         self.patch(osystem, 'validate_license_key').return_value = True
         response = self.client.post(
@@ -307,7 +307,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
         distro_series = osystem.get_default_release()
-        license_key = factory.getRandomString()
+        license_key = factory.make_string()
         self.patch(osystem, 'requires_license_key').return_value = True
         self.patch(osystem, 'validate_license_key').return_value = False
         response = self.client.post(
@@ -339,7 +339,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake')
         user_data = (
             b'\xff\x00\xff\xfe\xff\xff\xfe' +
-            factory.getRandomString().encode('ascii'))
+            factory.make_string().encode('ascii'))
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
@@ -400,7 +400,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_release_resets_license_key(self):
         osystem = factory.pick_OS()
         release = factory.pick_release(osystem)
-        license_key = factory.getRandomString()
+        license_key = factory.make_string()
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release,
@@ -546,10 +546,10 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        field = factory.getRandomString()
+        field = factory.make_string()
         response = self.client_put(
             self.get_node_uri(node),
-            {field: factory.getRandomString()}
+            {field: factory.make_string()}
             )
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -671,7 +671,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         # Create an invalid power_parameter for WoL (not a valid
         # MAC address).
-        new_power_address = factory.getRandomString()
+        new_power_address = factory.make_string()
         response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
@@ -685,7 +685,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
-        power_parameters = factory.getRandomString()
+        power_parameters = factory.make_string()
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -693,7 +693,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
-            {'power_parameters_unknown_param': factory.getRandomString()})
+            {'power_parameters_unknown_param': factory.make_string()})
 
         self.assertEqual(
             (
@@ -708,7 +708,7 @@ class TestNodeAPI(APITestCase):
         # If one sets power_type to empty, power_parameter gets
         # reset by default (if skip_check is not set).
         self.become_admin()
-        power_parameters = factory.getRandomString()
+        power_parameters = factory.make_string()
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
@@ -726,13 +726,13 @@ class TestNodeAPI(APITestCase):
     def test_PUT_updates_power_type_empty_rejects_params(self):
         # If one sets power_type to empty, one cannot set power_parameters.
         self.become_admin()
-        power_parameters = factory.getRandomString()
+        power_parameters = factory.make_string()
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
-        new_param = factory.getRandomString()
+        new_param = factory.make_string()
         response = self.client_put(
             self.get_node_uri(node),
             {
@@ -755,13 +755,13 @@ class TestNodeAPI(APITestCase):
         # power_parameter_skip_check='true' to force power_parameters.
         # XXX bigjools 2014-01-21 Why is this necessary?
         self.become_admin()
-        power_parameters = factory.getRandomString()
+        power_parameters = factory.make_string()
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
-        new_param = factory.getRandomString()
+        new_param = factory.make_string()
         response = self.client_put(
             self.get_node_uri(node),
             {
@@ -782,8 +782,8 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        new_param = factory.getRandomString()
-        new_value = factory.getRandomString()
+        new_param = factory.make_string()
+        new_value = factory.make_string()
         response = self.client_put(
             self.get_node_uri(node),
             {
@@ -800,7 +800,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user,
             power_type='ether_wake',
-            power_parameters=factory.getRandomString(),
+            power_parameters=factory.make_string(),
             architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),

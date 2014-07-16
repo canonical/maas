@@ -438,7 +438,7 @@ class TestActionHelp(MAASTestCase):
             api.ActionHelp.compose(parser))
 
     def test_call_exits(self):
-        parser = ArgumentParser(description=factory.getRandomString())
+        parser = ArgumentParser(description=factory.make_string())
         action_help = self.make_help()
         self.patch(sys, 'exit')
         self.patch(api, 'print')

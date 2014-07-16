@@ -120,7 +120,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
     def test_get_archive_includes_builtin_scripts(self):
         name = factory.make_name('00-maas')
         path = os.path.join(ARCHIVE_PREFIX, name)
-        content = factory.getRandomString().encode('ascii')
+        content = factory.make_string().encode('ascii')
         data = dict(name=name, content=content, hook='hook')
         self.patch(cs_module, 'BUILTIN_COMMISSIONING_SCRIPTS', {name: data})
         archive = open_tarfile(CommissioningScript.objects.get_archive())

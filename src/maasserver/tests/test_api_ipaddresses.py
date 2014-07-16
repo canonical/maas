@@ -95,7 +95,7 @@ class TestNetworksAPI(APITestCase):
         self.assertNoMatchingNetworkError(response, net)
 
     def test_POST_reserve_errors_for_invalid_network(self):
-        net = factory.getRandomString()
+        net = factory.make_string()
         response = self.post_reservation_request(net)
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)

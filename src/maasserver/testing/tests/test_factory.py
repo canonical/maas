@@ -158,7 +158,7 @@ class TestFactory(MAASServerTestCase):
         self.assertIsInstance(networks[-1], Network)
 
     def test_make_networks_passes_on_keyword_arguments(self):
-        description = factory.getRandomString()
+        description = factory.make_string()
         [network] = factory.make_networks(1, description=description)
         self.assertEqual(description, network.description)
 

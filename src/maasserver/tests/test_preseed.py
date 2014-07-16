@@ -99,10 +99,10 @@ class TestGetPreseedFilenames(MAASServerTestCase):
     """Tests for `get_preseed_filenames`."""
 
     def test_get_preseed_filenames_returns_filenames(self):
-        hostname = factory.getRandomString()
-        prefix = factory.getRandomString()
-        osystem = factory.getRandomString()
-        release = factory.getRandomString()
+        hostname = factory.make_string()
+        prefix = factory.make_string()
+        osystem = factory.make_string()
+        release = factory.make_string()
         node = factory.make_node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
@@ -120,9 +120,9 @@ class TestGetPreseedFilenames(MAASServerTestCase):
                 node, prefix, osystem, release, default=True)))
 
     def test_get_preseed_filenames_if_node_is_None(self):
-        osystem = factory.getRandomString()
-        release = factory.getRandomString()
-        prefix = factory.getRandomString()
+        osystem = factory.make_string()
+        release = factory.make_string()
+        prefix = factory.make_string()
         self.assertSequenceEqual(
             [
                 '%s_%s_%s' % (prefix, osystem, release),
@@ -132,9 +132,9 @@ class TestGetPreseedFilenames(MAASServerTestCase):
             list(get_preseed_filenames(None, prefix, osystem, release)))
 
     def test_get_preseed_filenames_supports_empty_prefix(self):
-        hostname = factory.getRandomString()
-        osystem = factory.getRandomString()
-        release = factory.getRandomString()
+        hostname = factory.make_string()
+        osystem = factory.make_string()
+        release = factory.make_string()
         node = factory.make_node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
@@ -151,9 +151,9 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         # If default=False is passed to get_preseed_filenames, the
         # returned list won't include the default template name as a
         # last resort template.
-        hostname = factory.getRandomString()
-        prefix = factory.getRandomString()
-        release = factory.getRandomString()
+        hostname = factory.make_string()
+        prefix = factory.make_string()
+        release = factory.make_string()
         node = factory.make_node(hostname=hostname)
         self.assertSequenceEqual(
             'generic',
@@ -164,9 +164,9 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         # If default=True is passed to get_preseed_filenames, the
         # returned list will include the default template name as a
         # last resort template.
-        hostname = factory.getRandomString()
-        prefix = factory.getRandomString()
-        release = factory.getRandomString()
+        hostname = factory.make_string()
+        prefix = factory.make_string()
+        release = factory.make_string()
         node = factory.make_node(hostname=hostname)
         self.assertSequenceEqual(
             prefix,
@@ -193,7 +193,7 @@ class TestGetPreseedTemplate(MAASServerTestCase):
         self.assertEqual(
             (None, None),
             get_preseed_template(
-                (factory.getRandomString(), factory.getRandomString())))
+                (factory.make_string(), factory.make_string())))
 
     def test_get_preseed_template_returns_None_when_no_filenames(self):
         # get_preseed_template() returns None when no filenames are passed in.
@@ -201,7 +201,7 @@ class TestGetPreseedTemplate(MAASServerTestCase):
         self.assertEqual((None, None), get_preseed_template(()))
 
     def test_get_preseed_template_find_template_in_first_location(self):
-        template_content = factory.getRandomString()
+        template_content = factory.make_string()
         template_path = self.make_file(contents=template_content)
         template_filename = os.path.basename(template_path)
         locations = [
@@ -214,7 +214,7 @@ class TestGetPreseedTemplate(MAASServerTestCase):
             get_preseed_template([template_filename]))
 
     def test_get_preseed_template_find_template_in_last_location(self):
-        template_content = factory.getRandomString()
+        template_content = factory.make_string()
         template_path = self.make_file(contents=template_content)
         template_filename = os.path.basename(template_path)
         locations = [
@@ -243,14 +243,14 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         path = os.path.join(self.location, name)
         rendered_content = None
         if content is None:
-            rendered_content = factory.getRandomString()
+            rendered_content = factory.make_string()
             content = b'{{def stuff}}%s{{enddef}}{{stuff}}' % rendered_content
         with open(path, "wb") as outf:
             outf.write(content)
         return rendered_content
 
     def test_load_preseed_template_returns_PreseedTemplate(self):
-        name = factory.getRandomString()
+        name = factory.make_string()
         self.create_template(self.location, name)
         node = factory.make_node()
         template = load_preseed_template(node, name)
@@ -258,7 +258,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
 
     def test_load_preseed_template_raises_if_no_template(self):
         node = factory.make_node()
-        unknown_template_name = factory.getRandomString()
+        unknown_template_name = factory.make_string()
         self.assertRaises(
             TemplateNotFoundError, load_preseed_template, node,
             unknown_template_name)
@@ -267,34 +267,34 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # The template lookup method ends up picking up a template named
         # 'generic' if no more specific template exist.
         content = self.create_template(self.location, GENERIC_FILENAME)
-        node = factory.make_node(hostname=factory.getRandomString())
-        template = load_preseed_template(node, factory.getRandomString())
+        node = factory.make_node(hostname=factory.make_string())
+        template = load_preseed_template(node, factory.make_string())
         self.assertEqual(content, template.substitute())
 
     def test_load_preseed_template_prefix_lookup(self):
         # 2nd last in the hierarchy is a template named 'prefix'.
-        prefix = factory.getRandomString()
+        prefix = factory.make_string()
         # Create the generic template.  This one will be ignored due to the
         # presence of a more specific template.
         self.create_template(self.location, GENERIC_FILENAME)
         # Create the 'prefix' template.  This is the one which will be
         # picked up.
         content = self.create_template(self.location, prefix)
-        node = factory.make_node(hostname=factory.getRandomString())
+        node = factory.make_node(hostname=factory.make_string())
         template = load_preseed_template(node, prefix)
         self.assertEqual(content, template.substitute())
 
     def test_load_preseed_template_node_specific_lookup(self):
         # At the top of the lookup hierarchy is a template specific to this
         # node.  It will be used first if it's present.
-        prefix = factory.getRandomString()
-        osystem = factory.getRandomString()
-        release = factory.getRandomString()
+        prefix = factory.make_string()
+        osystem = factory.make_string()
+        release = factory.make_string()
         # Create the generic and 'prefix' templates.  They will be ignored
         # due to the presence of a more specific template.
         self.create_template(self.location, GENERIC_FILENAME)
         self.create_template(self.location, prefix)
-        node = factory.make_node(hostname=factory.getRandomString())
+        node = factory.make_node(hostname=factory.make_string())
         node_template_name = "%s_%s_%s_%s_%s" % (
             prefix, osystem, node.architecture.replace('/', '_'),
             release, node.hostname)
@@ -305,9 +305,9 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
 
     def test_load_preseed_template_with_inherits(self):
         # A preseed file can "inherit" from another file.
-        prefix = factory.getRandomString()
+        prefix = factory.make_string()
         # Create preseed template.
-        master_template_name = factory.getRandomString()
+        master_template_name = factory.make_string()
         preseed_content = '{{inherit "%s"}}' % master_template_name
         self.create_template(self.location, prefix, preseed_content)
         master_content = self.create_template(
@@ -319,11 +319,11 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
     def test_load_preseed_template_parent_lookup_doesnt_include_default(self):
         # The lookup for parent templates does not include the default
         # 'generic' file.
-        prefix = factory.getRandomString()
+        prefix = factory.make_string()
         # Create 'generic' template.  It won't be used because the
         # lookup for parent templates does not use the 'generic' template.
         self.create_template(self.location, GENERIC_FILENAME)
-        unknown_master_template_name = factory.getRandomString()
+        unknown_master_template_name = factory.make_string()
         # Create preseed template.
         preseed_content = '{{inherit "%s"}}' % unknown_master_template_name
         self.create_template(self.location, prefix, preseed_content)
@@ -453,8 +453,8 @@ class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
     def test_get_preseed_context_contains_keys(self):
-        release = factory.getRandomString()
-        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        release = factory.make_string()
+        nodegroup = factory.make_node_group(maas_url=factory.make_string())
         context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
@@ -470,7 +470,7 @@ class TestPreseedContext(MAASServerTestCase):
         ports_archive = make_url('ports_archive')
         Config.objects.set_config('main_archive', main_archive)
         Config.objects.set_config('ports_archive', ports_archive)
-        nodegroup = factory.make_node_group(maas_url=factory.getRandomString())
+        nodegroup = factory.make_node_group(maas_url=factory.make_string())
         context = get_preseed_context(factory.make_node(), nodegroup)
         parsed_main_archive = urlparse(main_archive)
         parsed_ports_archive = urlparse(ports_archive)
@@ -494,7 +494,7 @@ class TestNodePreseedContext(MAASServerTestCase):
 
     def test_get_node_preseed_context_contains_keys(self):
         node = factory.make_node()
-        release = factory.getRandomString()
+        release = factory.make_string()
         context = get_node_preseed_context(node, release)
         self.assertItemsEqual(
             ['driver', 'driver_package', 'node',
@@ -505,7 +505,7 @@ class TestNodePreseedContext(MAASServerTestCase):
 
     def test_context_contains_third_party_drivers(self):
         node = factory.make_node()
-        release = factory.getRandomString()
+        release = factory.make_string()
         enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
             'enable_third_party_drivers', enable_third_party_drivers)
@@ -893,7 +893,7 @@ class TestPreseedProxy(MAASServerTestCase):
     def test_preseed_uses_default_proxy(self):
         server_host = factory.make_hostname()
         url = 'http://%s:%d/%s' % (
-            server_host, factory.pick_port(), factory.getRandomString())
+            server_host, factory.pick_port(), factory.make_string())
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
         expected_proxy_statement = (
             "mirror/http/proxy string http://%s:8000" % server_host)
@@ -903,8 +903,7 @@ class TestPreseedProxy(MAASServerTestCase):
 
     def test_preseed_uses_configured_proxy(self):
         http_proxy = 'http://%s:%d/%s' % (
-            factory.getRandomString(), factory.pick_port(),
-            factory.getRandomString())
+            factory.make_string(), factory.pick_port(), factory.make_string())
         Config.objects.set_config('http_proxy', http_proxy)
         expected_proxy_statement = (
             "mirror/http/proxy string %s" % http_proxy)

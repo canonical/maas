@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the snippets-related support routines for commissioning user data."""
@@ -30,14 +30,14 @@ from metadataserver.commissioning.snippets import (
 class TestSnippets(MAASTestCase):
 
     def test_read_snippet_reads_snippet_file(self):
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         snippet = self.make_file(contents=contents)
         self.assertEqual(
             contents,
             read_snippet(os.path.dirname(snippet), os.path.basename(snippet)))
 
     def test_strip_name_leaves_simple_names_intact(self):
-        simple_name = factory.getRandomString()
+        simple_name = factory.make_string()
         self.assertEqual(simple_name, strip_name(simple_name))
 
     def test_strip_name_replaces_dots(self):
@@ -65,7 +65,7 @@ class TestSnippets(MAASTestCase):
         self.assertItemsEqual(['snippet'], list_snippets(snippets_dir))
 
     def test_get_snippet_context(self):
-        contents = factory.getRandomString()
+        contents = factory.make_string()
         snippets_dir = self.make_dir()
         factory.make_file(snippets_dir, 'snippet.py', contents=contents)
         self.assertItemsEqual(

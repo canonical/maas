@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.testing`."""
@@ -51,19 +51,19 @@ class TestHelpers(TestModelMixin, MAASServerTestCase):
     app = 'maasserver.testing.tests'
 
     def test_extract_redirect_extracts_redirect_location(self):
-        url = factory.getRandomString()
+        url = factory.make_string()
         self.assertEqual(
             url, extract_redirect(HttpResponseRedirect(url)))
 
     def test_extract_redirect_only_returns_target_path(self):
-        url_path = factory.getRandomString()
+        url_path = factory.make_string()
         self.assertEqual(
             "/%s" % url_path,
             extract_redirect(
                 HttpResponseRedirect("http://example.com/%s" % url_path)))
 
     def test_extract_redirect_errors_out_helpfully_if_not_a_redirect(self):
-        content = factory.getRandomString(10)
+        content = factory.make_string(10)
         other_response = HttpResponse(status=httplib.OK, content=content)
         try:
             extract_redirect(other_response)

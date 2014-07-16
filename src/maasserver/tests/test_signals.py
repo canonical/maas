@@ -33,10 +33,10 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
     def test_connect_to_field_change_calls_callback(self):
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
-        old_name1_value = factory.getRandomString()
+        old_name1_value = factory.make_string()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
-        obj.name1 = factory.getRandomString()
+        obj.name1 = factory.make_string()
         obj.save()
         self.assertEqual(
             [call(obj, (old_name1_value,), deleted=False)],
@@ -45,22 +45,22 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
     def test_connect_to_field_change_calls_callback_for_each_save(self):
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
-        old_name1_value = factory.getRandomString()
+        old_name1_value = factory.make_string()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
-        obj.name1 = factory.getRandomString()
+        obj.name1 = factory.make_string()
         obj.save()
-        obj.name1 = factory.getRandomString()
+        obj.name1 = factory.make_string()
         obj.save()
         self.assertEqual(2, callback.call_count)
 
     def test_connect_to_field_change_calls_callback_for_each_real_save(self):
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
-        old_name1_value = factory.getRandomString()
+        old_name1_value = factory.make_string()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
-        obj.name1 = factory.getRandomString()
+        obj.name1 = factory.make_string()
         obj.save()
         obj.save()
         self.assertEqual(1, callback.call_count)
@@ -70,31 +70,31 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
         connect_to_field_change(callback1, FieldChangeTestModel, ['name1'])
         callback2 = Mock()
         connect_to_field_change(callback2, FieldChangeTestModel, ['name1'])
-        old_name1_value = factory.getRandomString()
+        old_name1_value = factory.make_string()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
-        obj.name1 = factory.getRandomString()
+        obj.name1 = factory.make_string()
         obj.save()
         self.assertEqual((1, 1), (callback1.call_count, callback2.call_count))
 
     def test_connect_to_field_change_ignores_changes_to_other_fields(self):
-        obj = FieldChangeTestModel(name2=factory.getRandomString())
+        obj = FieldChangeTestModel(name2=factory.make_string())
         obj.save()
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
-        obj.name2 = factory.getRandomString()
+        obj.name2 = factory.make_string()
         obj.save()
         self.assertEqual(0, callback.call_count)
 
     def test_connect_to_field_change_ignores_object_creation(self):
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
-        obj = FieldChangeTestModel(name1=factory.getRandomString())
+        obj = FieldChangeTestModel(name1=factory.make_string())
         obj.save()
         self.assertEqual(0, callback.call_count)
 
     def test_connect_to_field_change_ignores_deletion_by_default(self):
-        obj = FieldChangeTestModel(name2=factory.getRandomString())
+        obj = FieldChangeTestModel(name2=factory.make_string())
         obj.save()
         callback = Mock()
         connect_to_field_change(callback, FieldChangeTestModel, ['name1'])
@@ -102,7 +102,7 @@ class ConnectToFieldChangeTest(TestModelMixin, MAASServerTestCase):
         self.assertEqual(0, callback.call_count)
 
     def test_connect_to_field_change_listens_to_deletion_if_delete_True(self):
-        old_name1_value = factory.getRandomString()
+        old_name1_value = factory.make_string()
         obj = FieldChangeTestModel(name1=old_name1_value)
         obj.save()
         callback = Mock()
