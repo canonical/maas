@@ -464,7 +464,7 @@ class NodeTest(MAASServerTestCase):
         mac = factory.getRandomMACAddress()
         node.add_mac_address(mac)
         self.assertNotIn('mac', node.get_effective_power_parameters())
-    
+
     def test_get_effective_power_parameters_adds_empty_power_off_mode(self):
         node = factory.make_node()
         params = node.get_effective_power_parameters()
