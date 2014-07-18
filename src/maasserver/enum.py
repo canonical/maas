@@ -93,21 +93,19 @@ class DISTRO_SERIES:
     #:
     precise = 'precise'
     #:
-    quantal = 'quantal'
-    #:
-    raring = 'raring'
-    #:
     saucy = 'saucy'
     #:
     trusty = 'trusty'
+    #:
+    utopic = 'utopic'
+
 
 DISTRO_SERIES_CHOICES = (
     (DISTRO_SERIES.default, 'Default Ubuntu Release'),
     (DISTRO_SERIES.precise, 'Ubuntu 12.04 LTS "Precise Pangolin"'),
-    (DISTRO_SERIES.quantal, 'Ubuntu 12.10 "Quantal Quetzal"'),
-    (DISTRO_SERIES.raring, 'Ubuntu 13.04 "Raring Ringtail"'),
     (DISTRO_SERIES.saucy, 'Ubuntu 13.10 "Saucy Salamander"'),
     (DISTRO_SERIES.trusty, 'Ubuntu 14.04 LTS "Trusty Tahr"'),
+    (DISTRO_SERIES.utopic, 'Ubuntu 14.10 "Utopic Unicorn"'),
 )
 
 

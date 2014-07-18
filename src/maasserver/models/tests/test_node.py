@@ -162,7 +162,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_set_get_distro_series_returns_series(self):
         node = factory.make_node()
-        series = DISTRO_SERIES.quantal
+        series = DISTRO_SERIES.utopic
         node.set_distro_series(series)
         self.assertEqual(series, node.get_distro_series())
 
@@ -474,7 +474,7 @@ class NodeTest(MAASServerTestCase):
     def test_release_clears_distro_series(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        node.set_distro_series(series=DISTRO_SERIES.quantal)
+        node.set_distro_series(series=DISTRO_SERIES.utopic)
         node.release()
         self.assertEqual("", node.distro_series)
 
