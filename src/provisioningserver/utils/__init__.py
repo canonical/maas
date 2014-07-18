@@ -14,8 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ActionScript",
-    "atomic_write",
     "atomic_symlink",
+    "atomic_write",
     "call_and_check",
     "compose_URL_on_IP",
     "create_node",
@@ -28,6 +28,7 @@ __all__ = [
     "MainScript",
     "parse_key_value_file",
     "read_text_file",
+    "retries",
     "ShellTemplate",
     "sudo_write_file",
     "write_custom_config_section",
@@ -75,7 +76,11 @@ from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
 import tempita
-from twisted.internet.defer import maybeDeferred
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    Deferred,
+    maybeDeferred,
+    )
 from twisted.python.threadable import isInIOThread
 
 
@@ -889,3 +894,37 @@ def compose_URL_on_IP(base_url, host):
     else:
         netloc = '%s:%d' % (netloc_host, parsed_url.port)
     return urlunparse(parsed_url._replace(netloc=netloc))
+
+
+def retries(timeout=30, interval=1, clock=reactor):
+    """Helper for retrying something, sleeping between attempts.
+
+    Yields ``(elapsed, remaining, wait)`` tuples, giving times in
+    seconds. The last item, `wait`, is the suggested amount of time to
+    sleep before trying again.
+
+    @param timeout: From now, how long to keep iterating, in seconds.
+    @param interval: The sleep between each iteration, in seconds.
+    @param clock: An optional `IReactorTime` provider. Defaults to the
+        installed reactor.
+
+    """
+    start = clock.seconds()
+    end = start + timeout
+    while True:
+        now = clock.seconds()
+        if now < end:
+            wait = min(interval, end - now)
+            yield now - start, end - now, wait
+        else:
+            break
+
+
+def pause(duration, clock=reactor):
+    """Pause execution for `duration` seconds.
+
+    Returns a `Deferred` that will fire after `duration` seconds.
+    """
+    d = Deferred(lambda d: dc.cancel())
+    dc = clock.callLater(duration, d.callback, None)
+    return d

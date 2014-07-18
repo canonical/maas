@@ -64,6 +64,7 @@ from mock import (
     )
 import provisioningserver
 from provisioningserver.testing.testcase import PservTestCase
+import provisioningserver.utils
 from provisioningserver.utils import (
     ActionScript,
     asynchronous,
@@ -84,8 +85,10 @@ from provisioningserver.utils import (
     maas_custom_config_markers,
     MainScript,
     parse_key_value_file,
+    pause,
     pick_new_mtime,
     read_text_file,
+    retries,
     Safe,
     ShellTemplate,
     sudo_write_file,
@@ -98,13 +101,19 @@ from provisioningserver.utils import (
 from testscenarios import multiply_scenarios
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
+    AfterPreprocessing,
     DirExists,
     DocTestMatches,
     EndsWith,
+    Equals,
     FileContains,
     FileExists,
+    HasLength,
+    Is,
     IsInstance,
+    MatchesAll,
     MatchesException,
+    MatchesListwise,
     MatchesStructure,
     Not,
     Raises,
@@ -112,8 +121,14 @@ from testtools.matchers import (
     StartsWith,
     )
 from testtools.testcase import ExpectedException
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    inlineCallbacks,
+    )
+from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
+from twisted.python.failure import Failure
 
 
 def get_branch_dir(*path):
@@ -1490,3 +1505,134 @@ class TestComposeURLOnIP(MAASTestCase):
         self.assertEqual(
             'https://[%s]:%s/' % (ip, port),
             compose_URL_on_IP('https://:%s/' % port, ip))
+
+
+class TestRetries(MAASTestCase):
+
+    def assertRetry(
+            self, clock, observed, expected_elapsed, expected_remaining,
+            expected_wait):
+        """Assert that the retry tuple matches the given expectations.
+
+        Retry tuples are those returned by `retries`.
+        """
+        self.assertThat(observed, MatchesListwise([
+            Equals(expected_elapsed),  # elapsed
+            Equals(expected_remaining),  # remaining
+            Equals(expected_wait),  # wait
+        ]))
+
+    def test_yields_elapsed_remaining_and_sleeper(self):
+        # Take control of time.
+        clock = Clock()
+
+        gen_retries = retries(5, 2, clock=clock)
+        # No time has passed, 5 seconds remain, and it suggests sleeping
+        # for 2 seconds.
+        self.assertRetry(clock, next(gen_retries), 0, 5, 2)
+        # Mimic sleeping for the suggested sleep time.
+        clock.advance(2)
+        # Now 2 seconds have passed, 3 seconds remain, and it suggests
+        # sleeping for 2 more seconds.
+        self.assertRetry(clock, next(gen_retries), 2, 3, 2)
+        # Mimic sleeping for the suggested sleep time.
+        clock.advance(2)
+        # Now 4 seconds have passed, 1 second remains, and it suggests
+        # sleeping for just 1 more second.
+        self.assertRetry(clock, next(gen_retries), 4, 1, 1)
+        # Mimic sleeping for the suggested sleep time.
+        clock.advance(1)
+        # All done.
+        self.assertRaises(StopIteration, next, gen_retries)
+
+    def test_calculates_times_with_reference_to_current_time(self):
+        # Take control of time.
+        clock = Clock()
+
+        gen_retries = retries(5, 2, clock=clock)
+        # No time has passed, 5 seconds remain, and it suggests sleeping
+        # for 2 seconds.
+        self.assertRetry(clock, next(gen_retries), 0, 5, 2)
+        # Mimic sleeping for 4 seconds, more than the suggested.
+        clock.advance(4)
+        # Now 4 seconds have passed, 1 second remains, and it suggests
+        # sleeping for just 1 more second.
+        self.assertRetry(clock, next(gen_retries), 4, 1, 1)
+        # Don't sleep, ask again immediately, and the same answer is given.
+        self.assertRetry(clock, next(gen_retries), 4, 1, 1)
+        # Mimic sleeping for 100 seconds, much more than the suggested.
+        clock.advance(100)
+        # All done.
+        self.assertRaises(StopIteration, next, gen_retries)
+
+
+class TestPause(MAASTestCase):
+
+    p_deferred_called = AfterPreprocessing(
+        lambda d: bool(d.called), Is(True))
+    p_deferred_cancelled = AfterPreprocessing(
+        lambda d: d.result, MatchesAll(
+            IsInstance(Failure), AfterPreprocessing(
+                lambda failure: failure.value,
+                IsInstance(CancelledError))))
+    p_call_cancelled = AfterPreprocessing(
+        lambda call: bool(call.cancelled), Is(True))
+    p_call_called = AfterPreprocessing(
+        lambda call: bool(call.called), Is(True))
+
+    def test_pause_returns_a_deferred_that_fires_after_a_delay(self):
+        # Take control of time.
+        clock = Clock()
+        wait = randint(4, 4000)
+
+        p_call_scheduled_in_wait_seconds = AfterPreprocessing(
+            lambda call: call.getTime(), Equals(wait))
+
+        d = pause(wait, clock=clock)
+
+        # pause() returns an uncalled deferred.
+        self.assertIsInstance(d, Deferred)
+        self.assertThat(d, Not(self.p_deferred_called))
+        # pause() has scheduled a call to happen in `wait` seconds.
+        self.assertThat(clock.getDelayedCalls(), HasLength(1))
+        [delayed_call] = clock.getDelayedCalls()
+        self.assertThat(delayed_call, MatchesAll(
+            p_call_scheduled_in_wait_seconds,
+            Not(self.p_call_cancelled),
+            Not(self.p_call_called),
+        ))
+        # Nothing has changed right before the deadline.
+        clock.advance(wait - 1)
+        self.assertThat(d, Not(self.p_deferred_called))
+        self.assertThat(delayed_call, MatchesAll(
+            Not(self.p_call_cancelled), Not(self.p_call_called)))
+        # After `wait` seconds the deferred is called.
+        clock.advance(1)
+        self.assertThat(d, self.p_deferred_called)
+        self.assertThat(delayed_call, MatchesAll(
+            Not(self.p_call_cancelled), self.p_call_called))
+        # The result is unexciting.
+        self.assertIsNone(d.result)
+
+    def test_pause_can_be_cancelled(self):
+        # Take control of time.
+        clock = Clock()
+        wait = randint(4, 4000)
+
+        d = pause(wait, clock=clock)
+        [delayed_call] = clock.getDelayedCalls()
+
+        d.cancel()
+
+        # The deferred has been cancelled.
+        self.assertThat(d, MatchesAll(
+            self.p_deferred_called, self.p_deferred_cancelled,
+            first_only=True))
+
+        # We must suppress the cancellation error here or the test suite
+        # will get huffy about it.
+        d.addErrback(lambda failure: None)
+
+        # The delayed call was cancelled too.
+        self.assertThat(delayed_call, MatchesAll(
+            self.p_call_cancelled, Not(self.p_call_called)))
