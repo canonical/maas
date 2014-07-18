@@ -24,10 +24,9 @@ from provisioningserver.drivers.osystem import (
 
 DISTRO_SERIES_CHOICES = {
     'precise': 'Ubuntu 12.04 LTS "Precise Pangolin"',
-    'quantal': 'Ubuntu 12.10 "Quantal Quetzal"',
-    'raring': 'Ubuntu 13.04 "Raring Ringtail"',
     'saucy': 'Ubuntu 13.10 "Saucy Salamander"',
     'trusty': 'Ubuntu 14.04 LTS "Trusty Tahr"',
+    'utopic': 'Ubuntu 14.10 "Utopic Unicorn"',
 }
 
 COMMISIONING_DISTRO_SERIES = [
