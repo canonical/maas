@@ -35,6 +35,7 @@ from textwrap import dedent
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -48,7 +49,6 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
-from maasserver.models.tag import Tag
 from maasserver.utils import map_enum
 
 # All node statuses.
@@ -212,24 +212,13 @@ class UseCurtin(NodeAction):
 
     def is_permitted(self):
         permitted = super(UseCurtin, self).is_permitted()
-        return permitted and self.node.should_use_traditional_installer()
+        return permitted and self.node.boot_type == NODE_BOOT.DEBIAN
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.use_fastpath_installer()
+        self.node.boot_type = NODE_BOOT.FASTPATH
+        self.node.save()
         return "Node marked as using curtin for install."
-
-    def inhibit(self):
-        """Inhibit if ``use-fastpath-installer`` uses an expression."""
-        tag, _ = Tag.objects.get_or_create(name="use-fastpath-installer")
-        if tag.is_defined:
-            return dedent("""\
-            The use-fastpath-installer tag is defined with an
-            expression. This expression must instead be updated to set
-            this node to install with the fast installer.
-            """)
-        else:
-            return None
 
 
 class UseDI(NodeAction):
@@ -242,24 +231,13 @@ class UseDI(NodeAction):
 
     def is_permitted(self):
         permitted = super(UseDI, self).is_permitted()
-        return permitted and self.node.should_use_fastpath_installer()
+        return permitted and self.node.boot_type == NODE_BOOT.FASTPATH
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.use_traditional_installer()
+        self.node.boot_type = NODE_BOOT.DEBIAN
+        self.node.save()
         return "Node marked as using the Debian installer."
-
-    def inhibit(self):
-        """Inhibit if ``use-fastpath-installer`` uses an expression."""
-        tag, _ = Tag.objects.get_or_create(name="use-fastpath-installer")
-        if tag.is_defined:
-            return dedent("""\
-            The use-fastpath-installer tag is defined with an
-            expression. This expression must instead be updated to set
-            this node to install with the Debian installer.
-            """)
-        else:
-            return None
 
 
 class StartNode(NodeAction):

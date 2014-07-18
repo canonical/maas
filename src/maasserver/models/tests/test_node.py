@@ -23,6 +23,7 @@ from maasserver import dns as dns_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -41,7 +42,6 @@ from maasserver.models import (
     MACAddress,
     Node,
     node as node_module,
-    Tag,
     )
 from maasserver.models.node import (
     generate_hostname,
@@ -1025,27 +1025,25 @@ class NodeTest(MAASServerTestCase):
         expected_hostname = '%s.%s' % (hostname_without_domain, domain)
         self.assertEqual(expected_hostname, node.fqdn)
 
-    def test_should_use_traditional_installer_by_default(self):
+    def test_boot_type_has_fastpath_set_by_default(self):
         node = factory.make_node()
+        self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
+
+    def test_should_use_traditional_installer_returns_True_for_debian(self):
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         self.assertTrue(node.should_use_traditional_installer())
 
-    def test_should_not_use_fastpath_installer_by_default(self):
-        node = factory.make_node()
-        self.assertFalse(node.should_use_fastpath_installer())
-
-    def test_should_use_traditional_installer_not_when_tag_applies(self):
-        node = factory.make_node()
-        tag = factory.make_tag(name="use-fastpath-installer")
-        tag.save()
-        node.tags.add(tag)
+    def test_should_use_traditional_installer_returns_False_for_fastpath(self):
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         self.assertFalse(node.should_use_traditional_installer())
 
-    def test_should_use_fastpath_installer_when_tag_applies(self):
-        node = factory.make_node()
-        tag = factory.make_tag(name="use-fastpath-installer")
-        tag.save()
-        node.tags.add(tag)
+    def test_should_use_fastpath_installer_returns_True_for_fastpath(self):
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         self.assertTrue(node.should_use_fastpath_installer())
+
+    def test_should_use_fastpath_installer_returns_False_for_debian(self):
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
+        self.assertFalse(node.should_use_fastpath_installer())
 
     def test_use_xxx_installer(self):
         # use_fastpath_installer() and use_traditional_installer() can be used
@@ -1057,56 +1055,6 @@ class NodeTest(MAASServerTestCase):
         node.use_fastpath_installer()
         self.assertTrue(node.should_use_fastpath_installer())
         self.assertFalse(node.should_use_traditional_installer())
-
-    def test_use_traditional_installer_dissociates_tag_from_node(self):
-        # use_traditional_installer removes any association with the
-        # use-fastpath-installer tag. The tag is created even if it did not
-        # previously exist. If it does already exist, it is not deleted.
-        find_tag = lambda: list(
-            Tag.objects.filter(name="use-fastpath-installer"))
-        node = factory.make_node()
-        node.use_traditional_installer()
-        self.assertNotEqual([], find_tag())
-        node.use_fastpath_installer()
-        node.use_traditional_installer()
-        self.assertNotEqual([], find_tag())
-
-    def test_use_fastpath_installer_associates_tag_with_node(self):
-        # use_traditional_installer() creates the use-traditional-installer
-        # tag when it is first needed, and associates it with the node.
-        find_tag = lambda: list(
-            Tag.objects.filter(name="use-fastpath-installer"))
-        self.assertEqual([], find_tag())
-        node = factory.make_node()
-        node.use_fastpath_installer()
-        self.assertNotEqual([], find_tag())
-
-    def test_use_traditional_installer_complains_when_tag_has_expression(self):
-        # use_traditional_installer() complains when the use-fastpath-installer
-        # tag exists and is defined with an expression.
-        node = factory.make_node()
-        factory.make_tag(
-            name="use-fastpath-installer",
-            definition="//something")
-        error = self.assertRaises(
-            RuntimeError, node.use_traditional_installer)
-        self.assertIn(
-            "The use-fastpath-installer tag is defined with an expression",
-            unicode(error))
-
-    def test_use_fastpath_installer_complains_when_tag_has_expression(self):
-        # use_fastpath_installer() complains when the
-        # use-fastpath-installer tag exists and is defined with an
-        # expression.
-        node = factory.make_node()
-        factory.make_tag(
-            name="use-fastpath-installer",
-            definition="//something")
-        error = self.assertRaises(
-            RuntimeError, node.use_fastpath_installer)
-        self.assertIn(
-            "The use-fastpath-installer tag is defined with an expression",
-            unicode(error))
 
     def test_split_arch_returns_arch_as_tuple(self):
         main_arch = factory.make_name('arch')

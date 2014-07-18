@@ -18,6 +18,7 @@ from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -316,74 +317,44 @@ def make_use_fastpath_installer_tag_with_expression():
 
 class TestUseCurtinNodeAction(MAASServerTestCase):
 
-    def test_sets_tag(self):
+    def test_sets_boot_type(self):
         user = factory.make_user()
-        node = factory.make_node(owner=user)
-        node.use_traditional_installer()
+        node = factory.make_node(owner=user, boot_type=NODE_BOOT.DEBIAN)
         action = UseCurtin(node, user)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertTrue(node.should_use_fastpath_installer())
+        self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
 
     def test_requires_edit_permission(self):
         user = factory.make_user()
-        node = factory.make_node()
-        node.use_traditional_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         self.assertFalse(UseCurtin(node, user).is_permitted())
 
     def test_not_permitted_if_already_uses_curtin(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         user = factory.make_admin()
         self.assertFalse(UseCurtin(node, user).is_permitted())
-
-    def test_inhibited_if_use_fastpath_installer_tag_uses_expr(self):
-        make_use_fastpath_installer_tag_with_expression()
-        node = factory.make_node()
-        user = factory.make_admin()
-        self.assertDocTestMatches(
-            """\
-            The use-fastpath-installer tag is defined with an
-            expression. This expression must instead be updated to set
-            this node to install with the fast installer.
-            """,
-            UseCurtin(node, user).inhibit())
 
 
 class TestUseDINodeAction(MAASServerTestCase):
 
-    def test_sets_tag(self):
+    def test_sets_boot_type(self):
         user = factory.make_user()
-        node = factory.make_node(owner=user)
-        node.use_fastpath_installer()
+        node = factory.make_node(owner=user, boot_type=NODE_BOOT.FASTPATH)
         action = UseDI(node, user)
         self.assertTrue(action.is_permitted())
         action.execute()
-        self.assertTrue(node.should_use_traditional_installer())
+        self.assertEqual(NODE_BOOT.DEBIAN, node.boot_type)
 
     def test_requires_edit_permission(self):
         user = factory.make_user()
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         self.assertFalse(UseDI(node, user).is_permitted())
 
     def test_not_permitted_if_already_uses_di(self):
-        node = factory.make_node()
-        node.use_traditional_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         user = factory.make_admin()
         self.assertFalse(UseDI(node, user).is_permitted())
-
-    def test_inhibited_if_use_fastpath_installer_tag_uses_expr(self):
-        make_use_fastpath_installer_tag_with_expression()
-        node = factory.make_node()
-        user = factory.make_admin()
-        self.assertDocTestMatches(
-            """\
-            The use-fastpath-installer tag is defined with an
-            expression. This expression must instead be updated to set
-            this node to install with the Debian installer.
-            """,
-            UseDI(node, user).inhibit())
 
 
 class TestMarkBrokenAction(MAASServerTestCase):

@@ -95,6 +95,20 @@ class NODE_PERMISSION:
     ADMIN = 'admin_node'
 
 
+class NODE_BOOT:
+    """Types of booting methods a node can use."""
+    FASTPATH = 'fastpath'  #: http://launchpad.net/curtin
+    DEBIAN = 'di'
+
+
+# Django choices for NODE_BOOT: sequence of tuples (key, UI
+# representation).
+NODE_BOOT_CHOICES = (
+    (NODE_BOOT.FASTPATH, "Fastpath Installer"),
+    (NODE_BOOT.DEBIAN, "Debian Installer"),
+)
+
+
 class PRESEED_TYPE:
     """Types of preseed documents that can be generated."""
     DEFAULT = ''

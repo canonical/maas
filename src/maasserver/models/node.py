@@ -51,6 +51,8 @@ from maasserver import (
     logger,
     )
 from maasserver.enum import (
+    NODE_BOOT,
+    NODE_BOOT_CHOICES,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
@@ -500,6 +502,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
+    :ivar boot_type: This `Node`'s booting method. See the vocabulary
+        :class:`NODE_BOOT`.
     :ivar osystem: This `Node`'s booting operating system, if it's blank then
         the default_osystem will be used.
     :ivar distro_series: This `Node`'s booting distro series, if
@@ -530,6 +534,9 @@ class Node(CleanSave, TimestampedModel):
 
     owner = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)
+
+    boot_type = CharField(
+        max_length=20, choices=NODE_BOOT_CHOICES, default=NODE_BOOT.FASTPATH)
 
     osystem = CharField(
         max_length=20, blank=True, default='')
@@ -1158,58 +1165,24 @@ class Node(CleanSave, TimestampedModel):
     def should_use_traditional_installer(self):
         """Should this node be installed with the traditional installer?
 
-        By default, nodes should be installed with the traditional installer,
-        so this returns `True` when no `use-fastpath-installer` tag has been
-        defined.
+        By default, nodes should be installed with the Fast Path installer.
         """
-        return not self.should_use_fastpath_installer()
+        return self.boot_type == NODE_BOOT.DEBIAN
 
     def should_use_fastpath_installer(self):
         """Should this node be installed with the Fast Path installer?
 
-        By default, nodes should be installed with the traditional installer,
-        so this returns `True` when the `use-fastpath-installer` has been
-        defined and `False` when it hasn't.
+        By default, nodes should be installed with the Fast Path installer.
         """
-        return self.tags.filter(name="use-fastpath-installer").exists()
+        return self.boot_type == NODE_BOOT.FASTPATH
 
     def use_traditional_installer(self):
-        """Set this node to be installed with the traditional installer.
-
-        By default, nodes should be installed with the Traditional installer.
-
-        :raises: :class:`RuntimeError` when the `use-traditional-installer`
-            tag is defined *with* an expression. The reason is that the tag
-            evaluation machinery will eventually ignore whatever changes you
-            make with this method.
-        """
-        uti_tag, _ = Tag.objects.get_or_create(
-            name="use-fastpath-installer")
-        if uti_tag.is_defined:
-            raise RuntimeError(
-                "The use-fastpath-installer tag is defined with an "
-                "expression. This expression must instead be updated to set "
-                "this node to install with the Debian installer.")
-        self.tags.remove(uti_tag)
+        """Set this node to be installed with the traditional installer."""
+        self.boot_type = NODE_BOOT.DEBIAN
 
     def use_fastpath_installer(self):
-        """Set this node to be installed with the Fast Path Installer.
-
-        By default, nodes should be installed with the Traditional Installer.
-
-        :raises: :class:`RuntimeError` when the `use-fastpath-installer`
-            tag is defined *with* an expression. The reason is that the tag
-            evaluation machinery will eventually ignore whatever changes you
-            make with this method.
-        """
-        uti_tag, _ = Tag.objects.get_or_create(
-            name="use-fastpath-installer")
-        if uti_tag.is_defined:
-            raise RuntimeError(
-                "The use-fastpath-installer tag is defined with an "
-                "expression. This expression must instead be updated to set "
-                "this node to install with the fast installer.")
-        self.tags.add(uti_tag)
+        """Set this node to be installed with the Fast Path Installer."""
+        self.boot_type = NODE_BOOT.FASTPATH
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
