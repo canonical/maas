@@ -1029,33 +1029,6 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
 
-    def test_should_use_traditional_installer_returns_True_for_debian(self):
-        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
-        self.assertTrue(node.should_use_traditional_installer())
-
-    def test_should_use_traditional_installer_returns_False_for_fastpath(self):
-        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
-        self.assertFalse(node.should_use_traditional_installer())
-
-    def test_should_use_fastpath_installer_returns_True_for_fastpath(self):
-        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
-        self.assertTrue(node.should_use_fastpath_installer())
-
-    def test_should_use_fastpath_installer_returns_False_for_debian(self):
-        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
-        self.assertFalse(node.should_use_fastpath_installer())
-
-    def test_use_xxx_installer(self):
-        # use_fastpath_installer() and use_traditional_installer() can be used
-        # to affect what the should_use_xxx_installer() methods return.
-        node = factory.make_node()
-        node.use_traditional_installer()
-        self.assertFalse(node.should_use_fastpath_installer())
-        self.assertTrue(node.should_use_traditional_installer())
-        node.use_fastpath_installer()
-        self.assertTrue(node.should_use_fastpath_installer())
-        self.assertFalse(node.should_use_traditional_installer())
-
     def test_split_arch_returns_arch_as_tuple(self):
         main_arch = factory.make_name('arch')
         sub_arch = factory.make_name('subarch')

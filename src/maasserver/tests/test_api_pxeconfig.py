@@ -25,6 +25,7 @@ from maasserver import (
     )
 from maasserver.api import find_nodegroup_for_pxeconfig_request
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
@@ -320,11 +321,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
             ("local", {"status": NODE_STATUS.ALLOCATED, "netboot": False}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
             ]
-        node = factory.make_node()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         for purpose, parameters in options:
             factory.make_boot_images_for_node_with_purposes(node, [purpose])
             if purpose == "xinstall":
-                node.use_fastpath_installer()
+                node.boot_type = NODE_BOOT.FASTPATH
             for name, value in parameters.items():
                 setattr(node, name, value)
             self.assertEqual(purpose, api.get_boot_purpose(node))
@@ -335,8 +336,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         release = factory.pick_release(osystem)
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, netboot=True,
-            osystem=osystem.name, distro_series=release)
-        node.use_fastpath_installer()
+            osystem=osystem.name, distro_series=release,
+            boot_type=NODE_BOOT.FASTPATH)
         self.assertEqual('install', api.get_boot_purpose(node))
 
     def test_pxeconfig_uses_boot_purpose(self):

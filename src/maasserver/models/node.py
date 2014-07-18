@@ -1162,28 +1162,6 @@ class Node(CleanSave, TimestampedModel):
         self.netboot = on
         self.save()
 
-    def should_use_traditional_installer(self):
-        """Should this node be installed with the traditional installer?
-
-        By default, nodes should be installed with the Fast Path installer.
-        """
-        return self.boot_type == NODE_BOOT.DEBIAN
-
-    def should_use_fastpath_installer(self):
-        """Should this node be installed with the Fast Path installer?
-
-        By default, nodes should be installed with the Fast Path installer.
-        """
-        return self.boot_type == NODE_BOOT.FASTPATH
-
-    def use_traditional_installer(self):
-        """Set this node to be installed with the traditional installer."""
-        self.boot_type = NODE_BOOT.DEBIAN
-
-    def use_fastpath_installer(self):
-        """Set this node to be installed with the Fast Path Installer."""
-        self.boot_type = NODE_BOOT.FASTPATH
-
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
         arch, subarch = self.architecture.split('/')

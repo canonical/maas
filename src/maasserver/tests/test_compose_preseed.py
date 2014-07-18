@@ -16,6 +16,7 @@ __all__ = []
 
 from maasserver.compose_preseed import compose_preseed
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     PRESEED_TYPE,
     )
@@ -106,8 +107,8 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(data["apt_preserve_sources_list"], True)
 
     def test_compose_preseed_with_curtin_installer(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
-        node.use_fastpath_installer()
+        node = factory.make_node(
+            status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 

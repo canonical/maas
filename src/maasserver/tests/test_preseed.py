@@ -22,6 +22,7 @@ from urlparse import urlparse
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
@@ -622,7 +623,7 @@ class TestGetCurtinUserData(MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata(self):
-        node = factory.make_node()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -632,7 +633,6 @@ class TestGetCurtinUserData(MAASServerTestCase):
             release=node.get_distro_series(), purpose='xinstall',
             xinstall_path='root-tgz', xinstall_type='tgz',
             nodegroup=node.nodegroup)
-        node.use_fastpath_installer()
         user_data = get_curtin_userdata(node)
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
@@ -648,7 +648,8 @@ class TestGetCurtinUserDataOS(MAASServerTestCase):
     ]
 
     def test_get_curtin_userdata(self):
-        node = factory.make_node(osystem=self.os_name)
+        node = factory.make_node(
+            osystem=self.os_name, boot_type=NODE_BOOT.FASTPATH)
         factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -658,7 +659,6 @@ class TestGetCurtinUserDataOS(MAASServerTestCase):
             release=node.get_distro_series(), purpose='xinstall',
             xinstall_path='root-tgz', xinstall_type='tgz',
             nodegroup=node.nodegroup)
-        node.use_fastpath_installer()
         user_data = get_curtin_userdata(node)
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
@@ -668,8 +668,7 @@ class TestCurtinUtilities(MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         config = get_curtin_config(node)
         self.assertThat(
             config,
@@ -689,8 +688,8 @@ class TestCurtinUtilities(MAASServerTestCase):
         if main_arch is None:
             main_arch = factory.make_name('arch')
         arch = '%s/%s' % (main_arch, factory.make_name('subarch'))
-        node = factory.make_node(architecture=arch)
-        node.use_fastpath_installer()
+        node = factory.make_node(
+            architecture=arch, boot_type=NODE_BOOT.FASTPATH)
         return node
 
     def extract_archive_setting(self, userdata):
@@ -735,8 +734,7 @@ class TestCurtinUtilities(MAASServerTestCase):
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_context(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         context = get_curtin_context(node)
         self.assertItemsEqual(['curtin_preseed'], context)
         self.assertIn('cloud-init', context['curtin_preseed'])
@@ -829,29 +827,25 @@ class TestCurtinUtilities(MAASServerTestCase):
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default(self):
-        node = factory.make_node()
-        node.use_traditional_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default_when_curtin_not_supported(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin_when_default_not_supported(self):
-        node = factory.make_node()
-        node.use_traditional_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
@@ -919,14 +913,13 @@ class TestPreseedMethods(MAASServerTestCase):
     """
 
     def test_get_preseed_returns_default_preseed(self):
-        node = factory.make_node()
+        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
     def test_get_preseed_returns_curtin_preseed(self):
-        node = factory.make_node()
-        node.use_fastpath_installer()
+        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')

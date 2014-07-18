@@ -28,10 +28,7 @@ from maasserver.exceptions import (
     NodeActionError,
     Redirect,
     )
-from maasserver.models import (
-    StaticIPAddress,
-    Tag,
-    )
+from maasserver.models import StaticIPAddress
 from maasserver.node_action import (
     AbortCommissioning,
     Commission,
@@ -308,11 +305,6 @@ class TestStopNodeNodeAction(MAASServerTestCase):
         self.assertEqual(
             'provisioningserver.tasks.power_off',
             self.celery.tasks[0]['task'].name)
-
-
-def make_use_fastpath_installer_tag_with_expression():
-    Tag.objects.get_or_create(
-        name="use-fastpath-installer", definition="true()")
 
 
 class TestUseCurtinNodeAction(MAASServerTestCase):

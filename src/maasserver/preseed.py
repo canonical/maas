@@ -34,6 +34,7 @@ from maasserver.compose_preseed import (
     compose_preseed,
     )
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
@@ -178,10 +179,12 @@ def get_preseed_type_for(node):
     series = node.get_distro_series()
     arch, subarch = node.split_arch()
 
-    if node.should_use_fastpath_installer():
+    if node.boot_type == NODE_BOOT.FASTPATH:
         purpose = 'xinstall'
-    else:
+    elif node.boot_type == NODE_BOOT.DEBIAN:
         purpose = 'install'
+    else:
+        purpose = 'unknown'
 
     image = BootImage.objects.get_latest_image(
         node.nodegroup, os_name, arch, subarch, series, purpose)

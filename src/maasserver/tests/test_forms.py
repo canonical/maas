@@ -30,6 +30,7 @@ from django.core.validators import validate_email
 from django.http import QueryDict
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -767,8 +768,8 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_get_action_form_for_admin(self):
         admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        node.use_traditional_installer()
+        node = factory.make_node(
+            status=NODE_STATUS.DECLARED, boot_type=NODE_BOOT.DEBIAN)
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(

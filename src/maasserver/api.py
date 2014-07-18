@@ -649,7 +649,6 @@ def create_node(request):
     form = Form(data=altered_query_data)
     if form.is_valid():
         node = form.save()
-        node.use_fastpath_installer()
         # Hack in the power parameters here.
         store_node_power_parameters(node, request)
         return node
