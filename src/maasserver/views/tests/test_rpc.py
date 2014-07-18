@@ -21,6 +21,7 @@ from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASServerTestCase
+from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
 from testtools.matchers import (
     Equals,
@@ -79,5 +80,7 @@ class RPCViewTest(MAASServerTestCase):
             eventloop.loop.name: MatchesListwise([
                 MatchesListwise((Equals(addr), is_valid_port))
                 for addr in get_all_interface_addresses()
+                if not IPAddress(addr).is_link_local()
+                and IPAddress(addr).version == 4
             ]),
         }))

@@ -36,6 +36,7 @@ from maasserver.rpc import (
     )
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
+from netaddr import IPAddress
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -401,6 +402,15 @@ class RegionAdvertisingService(TimerService, object):
             self._do_delete(cursor)
 
     def _get_addresses(self):
+        """Generate the addresses on which to advertise region availablilty.
+
+        This excludes link-local addresses. We may want to revisit this at a
+        later time, but right now it causes issues because multiple network
+        interfaces may have the same link-local address.
+
+        This also excludes IPv6 addresses because `RegionServer` only supports
+        IPv4. However, this will probably change in the near future.
+        """
         try:
             service = eventloop.services.getServiceNamed("rpc")
         except KeyError:
@@ -409,6 +419,11 @@ class RegionAdvertisingService(TimerService, object):
             port = service.getPort().wait(5)
             if port is not None:
                 for addr in get_all_interface_addresses():
+                    ipaddr = IPAddress(addr)
+                    if ipaddr.is_link_local():
+                        continue  # Don't advertise link-local addresses.
+                    if ipaddr.version != 4:
+                        continue  # Only advertise IPv4 for now.
                     yield addr, port
 
     _create_statement = dedent("""\
