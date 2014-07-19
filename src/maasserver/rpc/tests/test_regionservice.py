@@ -46,6 +46,7 @@ from maastesting.matchers import (
     Provides,
     )
 from maastesting.testcase import MAASTestCase
+import netaddr
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -859,16 +860,28 @@ class TestRegionAdvertisingService(MAASTestCase):
         getPort = getServiceNamed.return_value.getPort
         getPort.side_effect = asynchronous(lambda: example_port)
 
-        example_addrs = [
+        example_ipv4_addrs = {
             factory.getRandomIPAddress(),
             factory.getRandomIPAddress(),
-        ]
+        }
+        example_ipv6_addrs = {
+            factory.get_random_ipv6_address(),
+            factory.get_random_ipv6_address(),
+        }
+        example_link_local_addrs = {
+            factory.getRandomIPInNetwork(netaddr.ip.IPV4_LINK_LOCAL),
+            factory.getRandomIPInNetwork(netaddr.ip.IPV6_LINK_LOCAL),
+        }
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")
-        get_all_interface_addresses.return_value = example_addrs
+        get_all_interface_addresses.return_value = (
+            example_ipv4_addrs | example_ipv6_addrs |
+            example_link_local_addrs)
 
+        # IPv6 addresses and link-local addresses are excluded, and thus
+        # not advertised.
         self.assertItemsEqual(
-            [(addr, example_port) for addr in example_addrs],
+            [(addr, example_port) for addr in example_ipv4_addrs],
             service._get_addresses())
 
         getServiceNamed.assert_called_once_with("rpc")
