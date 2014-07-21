@@ -35,13 +35,13 @@ from maasserver.testing import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maasserver.views.clusters import ClusterListView
 from mock import (
     ANY,
     call,
     )
 from provisioningserver.boot.tests.test_tftppath import make_osystem
+from provisioningserver.utils import map_enum
 from testtools.matchers import (
     ContainsAll,
     HasLength,

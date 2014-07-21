@@ -37,7 +37,6 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -63,6 +62,7 @@ from provisioningserver.dns.config import (
     )
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
+from provisioningserver.utils import map_enum
 from rabbitfixture.server import allocate_ports
 from testtools import TestCase
 from testtools.matchers import (

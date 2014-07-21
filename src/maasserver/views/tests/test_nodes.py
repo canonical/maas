@@ -64,7 +64,6 @@ from maasserver.testing.testcase import (
     SeleniumTestCase,
     )
 from maasserver.third_party_drivers import get_third_party_driver
-from maasserver.utils import map_enum
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import message_from_form_stats
@@ -73,6 +72,7 @@ from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
     )
+from provisioningserver.utils import map_enum
 from testtools.matchers import ContainsAll
 
 

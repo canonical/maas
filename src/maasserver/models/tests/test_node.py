@@ -56,10 +56,7 @@ from maasserver.models.user import create_auth_token
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import (
-    ignore_unused,
-    map_enum,
-    )
+from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -74,6 +71,7 @@ from metadataserver.models import (
     )
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.tasks import Omshell
+from provisioningserver.utils import map_enum
 from testtools.matchers import (
     AllMatch,
     Contains,

@@ -26,7 +26,7 @@ from maasserver.components import (
 from maasserver.enum import COMPONENT
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
+from provisioningserver.utils import map_enum
 
 
 def get_random_component():

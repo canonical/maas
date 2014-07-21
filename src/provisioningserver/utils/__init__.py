@@ -896,6 +896,20 @@ def compose_URL_on_IP(base_url, host):
     return urlunparse(parsed_url._replace(netloc=netloc))
 
 
+def map_enum(enum_class):
+    """Map out an enumeration class as a "NAME: value" dict."""
+    # Filter out anything that starts with '_', which covers private and
+    # special methods.  We can make this smarter later if we start using
+    # a smarter enumeration base class etc.  Or if we switch to a proper
+    # enum mechanism, this function will act as a marker for pieces of
+    # code that should be updated.
+    return {
+        key: value
+        for key, value in vars(enum_class).items()
+        if not key.startswith('_')
+    }
+
+
 def retries(timeout=30, interval=1, clock=reactor):
     """Helper for retrying something, sleeping between attempts.
 

@@ -49,7 +49,7 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
-from maasserver.utils import map_enum
+from provisioningserver.utils import map_enum
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())

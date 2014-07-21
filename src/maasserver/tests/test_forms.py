@@ -114,7 +114,6 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
     )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
@@ -122,6 +121,7 @@ from netaddr import IPNetwork
 from provisioningserver import tasks
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+from provisioningserver.utils import map_enum
 from testtools import TestCase
 from testtools.matchers import (
     AllMatch,

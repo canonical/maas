@@ -21,11 +21,11 @@ from maasserver.exceptions import StaticIPAddressExhaustion
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from netaddr import (
     IPAddress,
     IPRange,
     )
+from provisioningserver.utils import map_enum
 
 
 class StaticIPAddressManagerTest(MAASServerTestCase):

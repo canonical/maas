@@ -45,7 +45,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import (
     commissioningscript,
@@ -53,6 +52,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from provisioningserver.utils import map_enum
 
 
 class NodeAnonAPITest(MAASServerTestCase):

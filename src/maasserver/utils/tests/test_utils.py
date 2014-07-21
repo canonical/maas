@@ -35,48 +35,12 @@ from maasserver.utils import (
     find_nodegroup,
     get_db_state,
     get_local_cluster_UUID,
-    map_enum,
     strip_domain,
     synchronised,
     )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from netaddr import IPAddress
-
-
-class TestEnum(MAASTestCase):
-
-    def test_map_enum_includes_all_enum_values(self):
-
-        class Enum:
-            ONE = 1
-            TWO = 2
-
-        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum).keys())
-
-    def test_map_enum_omits_private_or_special_methods(self):
-
-        class Enum:
-            def __init__(self):
-                pass
-
-            def __repr__(self):
-                return "Enum"
-
-            def _save(self):
-                pass
-
-            VALUE = 9
-
-        self.assertItemsEqual(['VALUE'], map_enum(Enum).keys())
-
-    def test_map_enum_maps_values(self):
-
-        class Enum:
-            ONE = 1
-            THREE = 3
-
-        self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
 
 
 class TestAbsoluteReverse(MAASServerTestCase):

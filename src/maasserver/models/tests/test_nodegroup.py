@@ -31,7 +31,6 @@ from maasserver.models import (
 from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
 from mock import (
@@ -39,6 +38,7 @@ from mock import (
     Mock,
     )
 from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.utils import map_enum
 from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,

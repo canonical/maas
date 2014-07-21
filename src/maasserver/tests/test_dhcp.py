@@ -31,13 +31,13 @@ from maasserver.models import Config
 from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
 from maastesting.celery import CeleryFixture
 from netaddr import (
     IPAddress,
     IPNetwork,
     )
 from provisioningserver import tasks
+from provisioningserver.utils import map_enum
 from testresources import FixtureResource
 from testtools.matchers import EndsWith
 

@@ -34,7 +34,7 @@ import os.path
 import sys
 from textwrap import dedent
 
-from maasserver.utils import map_enum
+from provisioningserver.utils import map_enum
 
 # Header.  Will be written on top of the output.
 header = dedent("""\

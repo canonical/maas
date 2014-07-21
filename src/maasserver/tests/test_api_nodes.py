@@ -41,12 +41,10 @@ from maasserver.testing.api import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import (
-    ignore_unused,
-    map_enum,
-    )
+from maasserver.utils import ignore_unused
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import count_queries
+from provisioningserver.utils import map_enum
 from testtools.matchers import (
     Contains,
     Equals,

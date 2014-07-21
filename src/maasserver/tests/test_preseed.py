@@ -56,7 +56,7 @@ from maasserver.preseed import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils import map_enum
+from provisioningserver.utils import map_enum
 from provisioningserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
