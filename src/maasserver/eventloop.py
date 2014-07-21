@@ -44,6 +44,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "loop",
+    "reset",
     "services",
     "start",
     "stop",
@@ -57,6 +58,7 @@ from socket import gethostname
 import crochet
 from django.db import connections
 from django.utils import autoreload
+from provisioningserver.utils import asynchronous
 from twisted.application.service import MultiService
 from twisted.internet.error import ReactorNotRunning
 
@@ -194,7 +196,7 @@ class RegionEventLoop:
             logger.info("Starting event loop in process %d", getpid())
             crochet.setup()
 
-    @crochet.run_in_reactor
+    @asynchronous
     def start(self):
         """start()
 
@@ -211,7 +213,7 @@ class RegionEventLoop:
             'before', 'shutdown', self.services.stopService)
         return self.services.startService()
 
-    @crochet.run_in_reactor
+    @asynchronous
     def stop(self):
         """stop()
 
@@ -222,13 +224,42 @@ class RegionEventLoop:
             crochet.reactor.removeSystemEventTrigger(handle)
         return self.services.stopService()
 
+    @asynchronous
+    def reset(self):
+        """reset()
+
+        Stop all services, then disown them all.
+        """
+        def disown_all_services(_):
+            for service in list(self.services):
+                service.disownServiceParent()
+
+        def reset_factories(_):
+            try:
+                # Unshadow class attribute.
+                del self.factories
+            except AttributeError:
+                # It wasn't shadowed.
+                pass
+
+        d = self.stop()
+        d.addCallback(disown_all_services)
+        d.addCallback(reset_factories)
+        return d
+
     @property
     def name(self):
         """A name for identifying this service in a distributed system."""
         return "%s:pid=%d" % (gethostname(), getpid())
 
+    @property
+    def running(self):
+        """Is this running?"""
+        return bool(self.services.running)
+
 
 loop = RegionEventLoop()
+reset = loop.reset
 services = loop.services
 start = loop.start
 stop = loop.stop

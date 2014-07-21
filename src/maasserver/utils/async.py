@@ -63,6 +63,13 @@ def gather(calls, timeout=10.0):
 
     Issue calls into the reactor, passing results back to another thread.
 
+    Note that `gather` does not explicitly report to the caller that it
+    has timed-out; calls are silently cancelled and the generator simply
+    reaches its end. If this information is important to your code, put
+    in place some mechanism to check that all expected responses have
+    been received, or create a modified version of thus function with
+    the required behaviour.
+
     :param calls: An iterable of no-argument callables to be called in
         the reactor thread. Each will be called via
         :py:func:`~twisted.internet.defer.maybeDeferred`.

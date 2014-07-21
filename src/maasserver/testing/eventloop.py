@@ -35,8 +35,22 @@ class RegionEventLoopFixture(Fixture):
         super(RegionEventLoopFixture, self).__init__()
         self.services = services
 
+    def checkEventLoopClean(self):
+        # Don't proceed if the event-loop is running.
+        if loop.services.running:
+            raise RuntimeError(
+                "The event-loop has been left running; this fixture cannot "
+                "make a reasonable decision about what to do next.")
+        # Don't proceed if any services are registered.
+        if list(loop.services) != []:
+            raise RuntimeError(
+                "One or more services are registered; this fixture cannot "
+                "make a reasonable decision about what to do next.")
+
     def setUp(self):
         super(RegionEventLoopFixture, self).setUp()
+        # Check that the event-loop is dormant and clean.
+        self.checkEventLoopClean()
         # Restore the current `factories` tuple on exit.
         self.addCleanup(setattr, loop, "factories", loop.factories)
         # Set the new `factories` tuple, with all factories stubbed-out
@@ -44,3 +58,5 @@ class RegionEventLoopFixture(Fixture):
         loop.factories = tuple(
             (name, (factory if name in self.services else Service))
             for name, factory in loop.factories)
+        # Ensure the event-loop has been left in a consistent state.
+        self.addCleanup(self.checkEventLoopClean)

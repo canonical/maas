@@ -53,7 +53,7 @@ class RPCViewTest(MAASServerTestCase):
         self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
 
         eventloop.start().wait(5)
-        self.addCleanup(lambda: eventloop.stop().wait(5))
+        self.addCleanup(lambda: eventloop.reset().wait(5))
 
         getServiceNamed = eventloop.services.getServiceNamed
 

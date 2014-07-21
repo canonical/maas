@@ -70,7 +70,7 @@ class TestStartUp(MAASServerTestCase):
     def tearDown(self):
         super(TestStartUp, self).tearDown()
         # start_up starts the Twisted event loop, so we need to stop it.
-        eventloop.stop().wait(5)
+        eventloop.reset().wait(5)
 
     def test_start_up_refreshes_workers_outside_lock(self):
         lock_checker = LockChecker()

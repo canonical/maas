@@ -23,9 +23,9 @@ from maasserver import (
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.utils.async import transactional
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import IsInstance
-from twisted.application.service import MultiService
 from twisted.python.threadable import isInIOThread
 
 
@@ -38,19 +38,22 @@ class TestRegionEventLoop(MAASTestCase):
 
     def test_start_and_stop(self):
         # Replace the factories in RegionEventLoop with non-functional
-        # dummies to avoid bringing up real services here.
+        # dummies to avoid bringing up real services here, and ensure
+        # that the services list is empty.
         self.useFixture(RegionEventLoopFixture())
-        # Reset the services list.
-        self.patch(eventloop.loop, "services", MultiService())
         # At the outset, the eventloop's services are dorment.
         self.assertFalse(eventloop.loop.services.running)
+        # RegionEventLoop.running is an alias for .services.running.
+        self.assertFalse(eventloop.loop.running)
         self.assertEqual(
             set(eventloop.loop.services),
             set())
         # After starting the loop, the services list is populated, and
         # the services are started too.
         eventloop.loop.start().wait(5)
+        self.addCleanup(eventloop.loop.reset)
         self.assertTrue(eventloop.loop.services.running)
+        self.assertTrue(eventloop.loop.running)
         self.assertEqual(
             {service.name for service in eventloop.loop.services},
             {name for name, _ in eventloop.loop.factories})
@@ -63,16 +66,44 @@ class TestRegionEventLoop(MAASTestCase):
         # but the services are all stopped.
         eventloop.loop.stop().wait(5)
         self.assertFalse(eventloop.loop.services.running)
+        self.assertFalse(eventloop.loop.running)
         self.assertEqual(
             {service.name for service in eventloop.loop.services},
             {name for name, _ in eventloop.loop.factories})
         # The hook has been cleared.
         self.assertIsNone(eventloop.loop.handle)
 
+    def test_reset(self):
+        # Replace the factories in RegionEventLoop with non-functional
+        # dummies to avoid bringing up real services here, and ensure
+        # that the services list is empty.
+        self.useFixture(RegionEventLoopFixture())
+        eventloop.loop.start().wait(5)
+        eventloop.loop.reset().wait(5)
+        # After stopping the loop, the services list is also emptied.
+        self.assertFalse(eventloop.loop.services.running)
+        self.assertFalse(eventloop.loop.running)
+        self.assertEqual(
+            set(eventloop.loop.services),
+            set())
+        # The hook has also been cleared.
+        self.assertIsNone(eventloop.loop.handle)
+
+    def test_reset_clears_factories(self):
+        eventloop.loop.factories = (
+            (factory.make_name("service"), None),
+        )
+        eventloop.loop.reset().wait(5)
+        # The loop's factories are also reset.
+        self.assertEqual(
+            eventloop.loop.__class__.factories,
+            eventloop.loop.factories)
+
     def test_module_globals(self):
         # Several module globals are references to a shared RegionEventLoop.
         self.assertIs(eventloop.services, eventloop.loop.services)
         # Must compare by equality here; these methods are decorated.
+        self.assertEqual(eventloop.reset, eventloop.loop.reset)
         self.assertEqual(eventloop.start, eventloop.loop.start)
         self.assertEqual(eventloop.stop, eventloop.loop.stop)
 
