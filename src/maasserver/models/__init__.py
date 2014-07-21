@@ -20,6 +20,7 @@ __all__ = [
     'Config',
     'DHCPLease',
     'DownloadProgress',
+    'Event',
     'FileStorage',
     'LicenseKey',
     'logger',
@@ -52,6 +53,8 @@ from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.downloadprogress import DownloadProgress
+from maasserver.models.event import Event
+from maasserver.models.eventtype import EventType
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
@@ -74,7 +77,7 @@ from piston.doc import HandlerDocumentation
 # export in __all__.
 ignore_unused(
     BootImage, ComponentError, Config, DHCPLease, DownloadProgress,
-    FileStorage, LicenseKey, StaticIPAddress, MACAddress,
+    Event, EventType, FileStorage, LicenseKey, StaticIPAddress, MACAddress,
     MACStaticIPAddressLink, Network, NodeGroup, SSHKey, Tag, UserProfile,
     NodeGroupInterface, Zone, logger)
 

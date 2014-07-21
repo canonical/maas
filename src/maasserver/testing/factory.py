@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 from io import BytesIO
+import logging
 import random
 import time
 
@@ -37,6 +38,8 @@ from maasserver.models import (
     BootSourceSelection,
     DHCPLease,
     DownloadProgress,
+    Event,
+    EventType,
     FileStorage,
     LicenseKey,
     MACAddress,
@@ -925,6 +928,24 @@ class Factory(maastesting.factory.Factory):
             osystem=osystem,
             distro_series=distro_series,
             license_key=license_key)
+
+    def make_event_type(self, name=None, level=None, description=None):
+        if name is None:
+            name = self.make_name('name', size=20)
+        if description is None:
+            description = factory.make_name('description')
+        if level is None:
+            level = random.choice([
+                logging.ERROR, logging.WARNING, logging.INFO])
+        return EventType.objects.create(
+            name=name, description=description, level=level)
+
+    def make_event(self, node=None, type=None):
+        if node is None:
+            node = self.make_node()
+        if type is None:
+            type = self.make_event_type()
+        return Event.objects.create(node=node, type=type)
 
 
 # Create factory singleton.
