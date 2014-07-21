@@ -15,11 +15,24 @@ __metaclass__ = type
 __all__ = [
     ]
 
+import random
+
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import (
+    call,
+    Mock,
+    )
 from provisioningserver.events import (
     EVENT_DETAILS,
     EVENT_TYPES,
     EventDetail,
+    send_event_node,
+    )
+from provisioningserver.rpc.exceptions import NoSuchEventType
+from provisioningserver.rpc.region import (
+    RegisterEventType,
+    SendEvent,
     )
 from provisioningserver.utils import map_enum
 from testtools.matchers import (
@@ -35,3 +48,36 @@ class TestEvents(MAASTestCase):
         self.assertItemsEqual(all_events.values(), EVENT_DETAILS)
         self.assertThat(
             EVENT_DETAILS.values(), AllMatch(IsInstance(EventDetail)))
+
+
+class TestSendEvent(MAASTestCase):
+
+    def test_send_node_event_stores_event(self):
+        client = Mock()
+        system_id = factory.make_name('system_id')
+        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+
+        send_event_node(client, event_name, system_id)
+        self.assertEquals(
+            [call(SendEvent, type_name=event_name, system_id=system_id)],
+            client.call_args_list,
+        )
+
+    def test_send_node_event_registers_event_type(self):
+        client = Mock(side_effect=[NoSuchEventType, None, None])
+        system_id = factory.make_name('system_id')
+        event_name = random.choice(map_enum(EVENT_TYPES).keys())
+
+        send_event_node(client, event_name, system_id)
+        event_detail = EVENT_DETAILS[event_name]
+        self.assertEquals(
+            [
+                call(SendEvent, type_name=event_name, system_id=system_id),
+                call(
+                    RegisterEventType, name=event_name,
+                    description=event_detail.description,
+                    level=event_detail.level),
+                call(SendEvent, type_name=event_name, system_id=system_id),
+            ],
+            client.call_args_list,
+        )

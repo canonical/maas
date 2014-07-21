@@ -23,6 +23,12 @@ from logging import (
     INFO,
     )
 
+from provisioningserver.rpc.exceptions import NoSuchEventType
+from provisioningserver.rpc.region import (
+    RegisterEventType,
+    SendEvent,
+    )
+
 
 class EVENT_TYPES:
     # Power-related events.
@@ -54,3 +60,27 @@ EVENT_DETAILS = {
         level=ERROR,
     ),
 }
+
+
+def send_event_node(client, event_type, system_id):
+    """Send the given node event to the region.
+
+    Also register the event type if it's not registered yet.
+
+    :param client: A region RPC client.
+    :type rpc_service: :class:`common.Client`
+    :param event_type: The type of the event.
+    :type event_type: unicode
+    :param system_id: The system ID of the node of the event.
+    :type system_id: unicode
+    """
+    try:
+        client(SendEvent, system_id=system_id, type_name=event_type)
+    except NoSuchEventType:
+        # The event type doesn't exist, register it and re-send the event.
+        event_detail = EVENT_DETAILS[event_type]
+        client(
+            RegisterEventType, name=event_type,
+            description=event_detail.description, level=event_detail.level
+        )
+        client(SendEvent, system_id=system_id, type_name=event_type)
