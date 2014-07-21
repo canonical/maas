@@ -20,8 +20,6 @@ import re
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from mock import Mock
-import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
@@ -41,11 +39,9 @@ from testtools.matchers import (
 class TestPowerAction(MAASTestCase):
     """Tests for PowerAction."""
 
-    def configure_templates_dir(self, path=None):
+    def configure_templates_dir(self, path):
         """Configure POWER_TEMPLATES_DIR to `path`."""
-        self.patch(
-            provisioningserver.power.poweraction, 'get_power_templates_dir',
-            Mock(return_value=path))
+        self.patch(PowerAction, 'get_template_basedir').return_value = path
 
     def test_init_raises_for_unknown_powertype(self):
         powertype = factory.make_name("powertype", sep='')
@@ -58,18 +54,18 @@ class TestPowerAction(MAASTestCase):
         self.assertEqual('ether_wake', pa.power_type)
 
     def test_init_stores_template_path(self):
-        self.configure_templates_dir()
         power_type = 'ether_wake'
         pa = PowerAction(power_type)
-        path = os.path.join(pa.template_basedir, power_type + ".template")
+        path = os.path.join(
+            pa.get_template_basedir(),
+            power_type + ".template")
         self.assertEqual(path, pa.path)
 
     def test_template_basedir_defaults_to_config_dir(self):
-        self.configure_templates_dir()
         power_type = 'ether_wake'
         self.assertEqual(
             locate_config('templates/power'),
-            PowerAction(power_type).template_basedir)
+            PowerAction(power_type).get_template_basedir())
 
     def test_template_basedir_prefers_configured_value(self):
         power_type = 'ether_wake'
@@ -79,10 +75,9 @@ class TestPowerAction(MAASTestCase):
         self.configure_templates_dir(template_dir)
         self.assertEqual(
             template_dir,
-            PowerAction('ether_wake').template_basedir)
+            PowerAction('ether_wake').get_template_basedir())
 
     def test_get_template_retrieves_template(self):
-        self.configure_templates_dir()
         pa = PowerAction('ether_wake')
         template = pa.get_template()
         self.assertIsInstance(template, ShellTemplate)
@@ -179,18 +174,15 @@ class TestPowerAction(MAASTestCase):
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from fence_cdu", output)
 
-    def configure_power_config_dir(self, path=None):
+    def configure_power_config_dir(self, path):
         """Configure POWER_CONFIG_DIR to `path`."""
-        self.patch(
-            provisioningserver.power.poweraction, 'get_power_config_dir',
-            Mock(return_value=path))
+        self.patch(PowerAction, 'get_config_basedir').return_value = path
 
     def test_config_basedir_defaults_to_local_dir(self):
-        self.configure_power_config_dir()
         power_type = 'ether_wake'
         self.assertEqual(
             locate_config('templates/power'),
-            PowerAction(power_type).config_basedir)
+            PowerAction(power_type).get_config_basedir())
 
     def test_ipmi_script_includes_config_dir(self):
         conf_dir = factory.make_name('power_config_dir')

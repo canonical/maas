@@ -14,14 +14,6 @@ str = None
 __metaclass__ = type
 
 
-# Location of power action templates.  Use an absolute path, or leave as
-# None to use the templates installed with the running version of MAAS.
-POWER_TEMPLATES_DIR = None
-
-# Location of power config files.  Use an absolute path, or leave as
-# None to use the files installed with the running version of MAAS.
-POWER_CONFIG_DIR = None
-
 # Location of MAAS' bind configuration files.
 DNS_CONFIG_DIR = '/etc/bind/maas'
 

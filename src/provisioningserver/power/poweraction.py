@@ -22,7 +22,6 @@ __all__ = [
 import os
 import subprocess
 
-from celery.app import app_or_default
 from provisioningserver.utils import (
     escape_py_literal,
     locate_config,
@@ -50,16 +49,6 @@ class PowerActionFail(Exception):
         return message
 
 
-def get_power_templates_dir():
-    """Get the power-templates directory from the config."""
-    return app_or_default().conf.POWER_TEMPLATES_DIR
-
-
-def get_power_config_dir():
-    """Get the power-config directory from the config."""
-    return app_or_default().conf.POWER_CONFIG_DIR
-
-
 class PowerAction:
     """Actions for power-related operations.
 
@@ -72,23 +61,21 @@ class PowerAction:
 
     def __init__(self, power_type):
         self.path = os.path.join(
-            self.template_basedir, power_type + ".template")
+            self.get_template_basedir(), power_type + ".template")
         if not os.path.exists(self.path):
             raise UnknownPowerType(power_type)
 
         self.power_type = power_type
 
-    @property
-    def template_basedir(self):
+    def get_template_basedir(self):
         """Directory where power templates are stored."""
-        return get_power_templates_dir() or locate_config('templates/power')
+        return locate_config('templates/power')
 
-    @property
-    def config_basedir(self):
+    def get_config_basedir(self):
         """Directory where power config are stored."""
         # By default, power config lives in the same directory as power
         # templates.  This makes it easy to customize them together.
-        return get_power_config_dir() or locate_config('templates/power')
+        return locate_config('templates/power')
 
     def get_template(self):
         with open(self.path, "rb") as f:
@@ -97,7 +84,7 @@ class PowerAction:
     def get_extra_context(self):
         """Extra context used when rending the power templates."""
         return {
-            'config_dir': self.config_basedir,
+            'config_dir': self.get_config_basedir(),
             'escape_py_literal': escape_py_literal,
         }
 
