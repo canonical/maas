@@ -33,6 +33,7 @@ from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
+from maasserver.testing.tags import TagCachedKnowledgeFixture
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
     cleanup_db,
@@ -43,7 +44,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
-from provisioningserver.testing.tags import TagCachedKnowledgeFixture
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 

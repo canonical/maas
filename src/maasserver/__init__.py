@@ -32,3 +32,11 @@ class DefaultMeta:
     the model and will fail to generate schema migrations for it.
     """
     app_label = 'maasserver'
+
+
+try:
+    import maasfascist
+except ImportError:
+    pass
+else:
+    maasfascist  # Silence lint.

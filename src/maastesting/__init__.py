@@ -52,3 +52,10 @@ packages_expr = r"^(?:%s)\b" % "|".join(
 filterwarnings('default', category=BytesWarning, module=packages_expr)
 filterwarnings('default', category=DeprecationWarning, module=packages_expr)
 filterwarnings('default', category=ImportWarning, module=packages_expr)
+
+try:
+    import maasfascist
+except ImportError:
+    pass
+else:
+    maasfascist  # Silence lint.

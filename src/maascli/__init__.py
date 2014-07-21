@@ -48,3 +48,11 @@ def main(argv=None):
         raise SystemExit(1)
     except StandardError as error:
         parser.error("%s" % error)
+
+
+try:
+    import maasfascist
+except ImportError:
+    pass
+else:
+    maasfascist  # Silence lint.

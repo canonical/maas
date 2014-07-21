@@ -57,3 +57,11 @@ def import_local_settings():
         source = find_settings(whence)
         target = sys._getframe(1).f_globals
         target.update(source)
+
+
+try:
+    import maasfascist
+except ImportError:
+    pass
+else:
+    maasfascist  # Silence lint.
