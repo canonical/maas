@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "NoConnectionsAvailable",
+    "NoSuchEventType",
     "NoSuchNode",
     "NoSuchOperatingSystem",
 ]
@@ -21,6 +22,16 @@ __all__ = [
 
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""
+
+
+class NoSuchEventType(Exception):
+    """The specified event type was not found."""
+
+    @classmethod
+    def from_name(cls, name):
+        return cls(
+            "Event type with name=%s could not be found." % name
+        )
 
 
 class NoSuchNode(Exception):

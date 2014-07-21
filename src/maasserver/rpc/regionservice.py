@@ -32,6 +32,7 @@ from maasserver import (
 from maasserver.rpc import (
     bootsources,
     configuration,
+    events,
     nodes,
     )
 from maasserver.utils import synchronised
@@ -140,6 +141,29 @@ class Region(amp.AMP):
         :py:class:`~provisioningserver.rpc.region.MarkNodeBroken`.
         """
         d = deferToThread(nodes.mark_node_broken, system_id)
+        d.addCallback(lambda args: {})
+        return d
+
+    @region.RegisterEventType.responder
+    def register_event_type(self, name, description, level):
+        """register_event_type()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.RegisterEventType`.
+        """
+        d = deferToThread(
+            events.register_event_type, name, description, level)
+        d.addCallback(lambda args: {})
+        return d
+
+    @region.SendEvent.responder
+    def send_event(self, system_id, type_name):
+        """send_event()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.SendEvent`.
+        """
+        d = deferToThread(events.send_event, system_id, type_name)
         d.addCallback(lambda args: {})
         return d
 

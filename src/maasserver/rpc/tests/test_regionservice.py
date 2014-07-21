@@ -31,6 +31,8 @@ from maasserver import (
     )
 from maasserver.enum import NODE_STATUS
 from maasserver.models.config import Config
+from maasserver.models.event import Event
+from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
@@ -54,14 +56,19 @@ from provisioningserver.rpc import (
     common,
     exceptions,
     )
-from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.exceptions import (
+    NoSuchEventType,
+    NoSuchNode,
+    )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetProxies,
     Identify,
     MarkNodeBroken,
+    RegisterEventType,
     ReportBootImages,
+    SendEvent,
     )
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
@@ -78,6 +85,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesListwise,
+    MatchesStructure,
     )
 from twisted.application.service import Service
 from twisted.internet import tcp
@@ -329,6 +337,113 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
             self.assertIn(system_id, error.value.message)
 
         return d.addErrback(check)
+
+
+class TestRegionProtocol_RegisterEventType(MAASTestCase):
+
+    def test_register_event_type_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(RegisterEventType.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def get_event_type(self, name):
+        return EventType.objects.get(name=name)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_event_type_creates_object(self):
+        name = factory.make_name('name')
+        description = factory.make_name('description')
+        level = random.randint(0, 100)
+        response = yield call_responder(
+            Region(), RegisterEventType,
+            {b'name': name, b'description': description, b'level': level})
+
+        self.assertIsNone(None, response)
+        event_type = yield deferToThread(self.get_event_type, name)
+        self.assertThat(
+            event_type,
+            MatchesStructure.byEquality(
+                name=name, description=description, level=level)
+        )
+
+
+class TestRegionProtocol_SendEvent(MAASTestCase):
+
+    def test_send_event_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(SendEvent.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def get_event(self, system_id, type_name):
+        # Pre-fetch the related 'node' and 'type' because the caller
+        # runs in the event-loop and this can't dereference related
+        # objects (unless they have been prefetched).
+        all_events_qs = Event.objects.all().select_related(
+            'node', 'type')
+        event = all_events_qs.get(
+            node__system_id=system_id, type__name=type_name)
+        return event
+
+    @transactional
+    def create_event_type(self, name, description, level):
+        EventType.objects.create(
+            name=name, description=description, level=level)
+
+    @transactional
+    def create_node(self):
+        return factory.make_node().system_id
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_send_event_stores_event(self):
+        name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        level = random.randint(0, 100)
+        yield deferToThread(self.create_event_type, name, description, level)
+        system_id = yield deferToThread(self.create_node)
+
+        response = yield call_responder(
+            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+
+        self.assertIsNone(None, response)
+        event = yield deferToThread(self.get_event, system_id, name)
+        self.assertEquals(system_id, event.node.system_id)
+        self.assertEquals(name, event.type.name)
+
+    @wait_for_reactor
+    def test_send_event_raises_if_unknown_type(self):
+        name = factory.make_name('type_name')
+        system_id = factory.make_name('system_id')
+
+        d = call_responder(
+            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchEventType)
+
+        return d.addErrback(check)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_send_event_raises_if_unknown_node(self):
+        name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        level = random.randint(0, 100)
+        yield deferToThread(self.create_event_type, name, description, level)
+
+        system_id = factory.make_name('system_id')
+        d = call_responder(
+            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchNode)
+
+        yield d.addErrback(check)
 
 
 class TestRegionServer(MAASServerTestCase):

@@ -26,7 +26,10 @@ from provisioningserver.rpc.arguments import (
     ParsedURL,
     )
 from provisioningserver.rpc.common import Identify
-from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.exceptions import (
+    NoSuchEventType,
+    NoSuchNode,
+    )
 from twisted.protocols import amp
 
 
@@ -97,4 +100,36 @@ class MarkNodeBroken(amp.Command):
         (b"system_id", amp.Unicode()),
     ]
     response = []
-    errors = {NoSuchNode: "no-such-node"}
+    errors = {NoSuchNode: b"NoSuchNode"}
+
+
+class RegisterEventType(amp.Command):
+    """Register an event type.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"name", amp.Unicode()),
+        (b"description", amp.Unicode()),
+        (b"level", amp.Integer()),
+    ]
+    response = []
+    errors = []
+
+
+class SendEvent(amp.Command):
+    """Send an event.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        (b"type_name", amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+        NoSuchEventType: b"NoSuchEventType"
+    }
