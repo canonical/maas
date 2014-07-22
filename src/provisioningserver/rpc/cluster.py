@@ -17,10 +17,14 @@ str = None
 __metaclass__ = type
 __all__ = [
     "DescribePowerTypes",
+    "GetPreseedData",
     "Identify",
     "ListBootImages",
     "ListOperatingSystems",
     "ListSupportedArchitectures",
+    "PowerOff",
+    "PowerOn",
+    "ValidateLicenseKey",
 ]
 
 from provisioningserver.power.poweraction import (
@@ -155,8 +159,8 @@ class GetPreseedData(amp.Command):
     }
 
 
-class PowerOn(amp.Command):
-    """Turn a node's power on.
+class _Power(amp.Command):
+    """Base class for power control commands.
 
     :since: 1.7
     """
@@ -177,3 +181,17 @@ class PowerOn(amp.Command):
         PowerActionFail: (
             b"PowerActionFail"),
     }
+
+
+class PowerOn(_Power):
+    """Turn a node's power on.
+
+    :since: 1.7
+    """
+
+
+class PowerOff(_Power):
+    """Turn a node's power off.
+
+    :since: 1.7
+    """

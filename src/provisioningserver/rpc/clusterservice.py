@@ -154,6 +154,13 @@ class Cluster(amp.AMP, object):
         action.execute(power_change='on', **context)
         return {}
 
+    @cluster.PowerOff.responder
+    def power_off(self, system_id, power_type, context):
+        """Turn a node off."""
+        action = PowerAction(power_type)
+        action.execute(power_change='off', **context)
+        return {}
+
     @amp.StartTLS.responder
     def get_tls_parameters(self):
         """get_tls_parameters()

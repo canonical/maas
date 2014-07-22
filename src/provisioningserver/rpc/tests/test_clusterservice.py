@@ -837,16 +837,27 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
                 Cluster(), cluster.GetPreseedData, arguments)
 
 
-class TestClusterProtocol_PowerOn(MAASTestCase):
+class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
-    def test_power_on_is_registered(self):
+    scenarios = (
+        ("power-on", {
+            "command": cluster.PowerOn,
+            "expected_power_change": "on",
+        }),
+        ("power-off", {
+            "command": cluster.PowerOff,
+            "expected_power_change": "off",
+        }),
+    )
+
+    def test_is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(cluster.PowerOn.commandName)
+        responder = protocol.locateResponder(self.command.commandName)
         self.assertIsNot(responder, None)
 
-    def test_power_on_executes_a_power_action(self):
+    def test_executes_a_power_action(self):
         PowerAction = self.patch(clusterservice, "PowerAction")
 
         system_id = factory.make_name("system_id")
@@ -855,7 +866,7 @@ class TestClusterProtocol_PowerOn(MAASTestCase):
             factory.make_name("name"): factory.make_name("value"),
         }
 
-        d = call_responder(Cluster(), cluster.PowerOn, {
+        d = call_responder(Cluster(), self.command, {
             "system_id": system_id,
             "power_type": power_type,
             "context": context,
@@ -865,14 +876,16 @@ class TestClusterProtocol_PowerOn(MAASTestCase):
             self.assertThat(PowerAction, MockCalledOnceWith(power_type))
             self.assertThat(
                 PowerAction.return_value.execute,
-                MockCalledOnceWith(power_change='on', **context))
+                MockCalledOnceWith(
+                    power_change=self.expected_power_change,
+                    **context))
         return d.addCallback(check)
 
     def test_power_on_can_propagate_UnknownPowerType(self):
         PowerAction = self.patch(clusterservice, "PowerAction")
         PowerAction.side_effect = UnknownPowerType
 
-        d = call_responder(Cluster(), cluster.PowerOn, {
+        d = call_responder(Cluster(), self.command, {
             "system_id": "id", "power_type": "type", "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
@@ -887,7 +900,7 @@ class TestClusterProtocol_PowerOn(MAASTestCase):
         PowerAction = self.patch(clusterservice, "PowerAction")
         PowerAction.side_effect = NotImplementedError
 
-        d = call_responder(Cluster(), cluster.PowerOn, {
+        d = call_responder(Cluster(), self.command, {
             "system_id": "id", "power_type": "type", "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
@@ -902,7 +915,7 @@ class TestClusterProtocol_PowerOn(MAASTestCase):
         PowerAction = self.patch(clusterservice, "PowerAction")
         PowerAction.return_value.execute.side_effect = PowerActionFail
 
-        d = call_responder(Cluster(), cluster.PowerOn, {
+        d = call_responder(Cluster(), self.command, {
             "system_id": "id", "power_type": "type", "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
