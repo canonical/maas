@@ -32,6 +32,7 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -145,6 +146,13 @@ class Cluster(amp.AMP, object):
                 osystem, preseed_type, node_system_id, node_hostname,
                 consumer_key, token_key, token_secret, metadata_url),
         }
+
+    @cluster.PowerOn.responder
+    def power_on(self, system_id, power_type, context):
+        """Turn a node on."""
+        action = PowerAction(power_type)
+        action.execute(power_change='on', **context)
+        return {}
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):

@@ -41,6 +41,10 @@ from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
     )
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+    )
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
     cluster,
@@ -831,3 +835,80 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
         with ExpectedException(exceptions.NoSuchOperatingSystem):
             yield call_responder(
                 Cluster(), cluster.GetPreseedData, arguments)
+
+
+class TestClusterProtocol_PowerOn(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_power_on_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(cluster.PowerOn.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_power_on_executes_a_power_action(self):
+        PowerAction = self.patch(clusterservice, "PowerAction")
+
+        system_id = factory.make_name("system_id")
+        power_type = factory.make_name("power_type")
+        context = {
+            factory.make_name("name"): factory.make_name("value"),
+        }
+
+        d = call_responder(Cluster(), cluster.PowerOn, {
+            "system_id": system_id,
+            "power_type": power_type,
+            "context": context,
+        })
+
+        def check(response):
+            self.assertThat(PowerAction, MockCalledOnceWith(power_type))
+            self.assertThat(
+                PowerAction.return_value.execute,
+                MockCalledOnceWith(power_change='on', **context))
+        return d.addCallback(check)
+
+    def test_power_on_can_propagate_UnknownPowerType(self):
+        PowerAction = self.patch(clusterservice, "PowerAction")
+        PowerAction.side_effect = UnknownPowerType
+
+        d = call_responder(Cluster(), cluster.PowerOn, {
+            "system_id": "id", "power_type": "type", "context": {},
+        })
+        # If the call doesn't fail then we have a test failure; we're
+        # *expecting* UnknownPowerType to be raised.
+        d.addCallback(self.fail)
+
+        def check(failure):
+            failure.trap(UnknownPowerType)
+        return d.addErrback(check)
+
+    def test_power_on_can_propagate_NotImplementedError(self):
+        PowerAction = self.patch(clusterservice, "PowerAction")
+        PowerAction.side_effect = NotImplementedError
+
+        d = call_responder(Cluster(), cluster.PowerOn, {
+            "system_id": "id", "power_type": "type", "context": {},
+        })
+        # If the call doesn't fail then we have a test failure; we're
+        # *expecting* NotImplementedError to be raised.
+        d.addCallback(self.fail)
+
+        def check(failure):
+            failure.trap(NotImplementedError)
+        return d.addErrback(check)
+
+    def test_power_on_can_propagate_PowerActionFail(self):
+        PowerAction = self.patch(clusterservice, "PowerAction")
+        PowerAction.return_value.execute.side_effect = PowerActionFail
+
+        d = call_responder(Cluster(), cluster.PowerOn, {
+            "system_id": "id", "power_type": "type", "context": {},
+        })
+        # If the call doesn't fail then we have a test failure; we're
+        # *expecting* PowerActionFail to be raised.
+        d.addCallback(self.fail)
+
+        def check(failure):
+            failure.trap(PowerActionFail)
+        return d.addErrback(check)

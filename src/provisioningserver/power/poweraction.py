@@ -37,17 +37,14 @@ class UnknownPowerType(Exception):
 class PowerActionFail(Exception):
     """Raised when there's a problem executing a power script."""
 
-    def __init__(self, power_action, err):
-        self.power_action = power_action
-        self.err = err
-
-    def __str__(self):
-        message = "%s failed: %s" % (self.power_action.power_type, self.err)
-        is_process_error = isinstance(self.err, subprocess.CalledProcessError)
-        if is_process_error and self.err.output:
+    @classmethod
+    def from_action(cls, power_action, err):
+        message = "%s failed: %s" % (power_action.power_type, err)
+        is_process_error = isinstance(err, subprocess.CalledProcessError)
+        if is_process_error and err.output:
             # Add error output to the message.
-            message += ":\n" + self.err.output.strip()
-        return message
+            message += ":\n" + err.output.strip()
+        return cls(message)
 
 
 class PowerAction:
@@ -98,7 +95,7 @@ class PowerAction:
         try:
             return template.substitute(context)
         except NameError as error:
-            raise PowerActionFail(self, error)
+            raise PowerActionFail.from_action(self, error)
 
     def run_shell(self, commands):
         """Execute raw shell script (as rendered from a template).
@@ -114,7 +111,7 @@ class PowerAction:
             output = subprocess.check_output(
                 commands, shell=True, stderr=subprocess.STDOUT, close_fds=True)
         except subprocess.CalledProcessError as e:
-            raise PowerActionFail(self, e)
+            raise PowerActionFail.from_action(self, e)
         return output.strip()
 
     def execute(self, **context):

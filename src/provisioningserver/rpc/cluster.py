@@ -23,6 +23,10 @@ __all__ = [
     "ListSupportedArchitectures",
 ]
 
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+    )
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
     ParsedURL,
@@ -148,4 +152,28 @@ class GetPreseedData(amp.Command):
             b"NoSuchOperatingSystem"),
         NotImplementedError: (
             b"NotImplementedError"),
+    }
+
+
+class PowerOn(amp.Command):
+    """Turn a node's power on.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"system_id", amp.Unicode()),
+        (b"power_type", amp.Unicode()),
+        # We can't define a tighter schema here because this is a highly
+        # variable bag of arguments from a variety of sources.
+        (b"context", StructureAsJSON()),
+    ]
+    response = []
+    errors = {
+        UnknownPowerType: (
+            b"UnknownPowerType"),
+        NotImplementedError: (
+            b"NotImplementedError"),
+        PowerActionFail: (
+            b"PowerActionFail"),
     }
