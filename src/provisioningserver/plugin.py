@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import provisioningserver
 from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.config import Config
 from provisioningserver.rpc.clusterservice import ClusterClientService
@@ -185,5 +186,7 @@ class ProvisioningServiceMaker(object):
 
         rpc_service = self._makeRPCService(config["rpc"])
         rpc_service.setServiceParent(services)
+        # Store a handle to the cluster services.
+        provisioningserver.services = services
 
         return services

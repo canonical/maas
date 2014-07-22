@@ -19,6 +19,7 @@ import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+import provisioningserver
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
@@ -107,6 +108,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
+        self.assertEqual(service, provisioningserver.services)
 
     def test_makeService_with_broker(self):
         """
