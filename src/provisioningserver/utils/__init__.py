@@ -31,6 +31,7 @@ __all__ = [
     "retries",
     "ShellTemplate",
     "sudo_write_file",
+    "warn_deprecated",
     "write_custom_config_section",
     "write_text_file",
     ]
@@ -61,6 +62,8 @@ from urlparse import (
     urlparse,
     urlunparse,
     )
+from sys import _getframe as getframe
+from warnings import warn
 
 from apiclient.maas_client import (
     MAASClient,
@@ -942,3 +945,18 @@ def pause(duration, clock=reactor):
     d = Deferred(lambda d: dc.cancel())
     dc = clock.callLater(duration, d.callback, None)
     return d
+
+
+def warn_deprecated(alternative=None):
+    """Issue a `DeprecationWarning` for the calling function.
+
+    :param alternative: Text describing an alternative to using this
+        deprecated function.
+    """
+    target = getframe(1).f_code.co_name
+    message = "%s is deprecated" % target
+    if alternative is None:
+        message = "%s." % (message,)
+    else:
+        message = "%s; %s" % (message, alternative)
+    warn(message, DeprecationWarning, 1)

@@ -66,6 +66,7 @@ from provisioningserver.utils import (
     call_and_check,
     ExternalProcessError,
     sudo_write_file,
+    warn_deprecated,
     )
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.network import find_ip_via_arp
@@ -151,7 +152,12 @@ def refresh_secrets(**kwargs):
 @task
 @log_exception_text
 def power_on(power_type, **kwargs):
-    """Turn a node on."""
+    """Turn a node on.
+
+    :deprecated: Use the RPC command
+        :py:class:`~provisioningserver.rpc.cluster.PowerOn` instead.
+    """
+    warn_deprecated("use the PowerOn RPC command instead.")
     pa = PowerAction(power_type)
     pa.execute(power_change='on', **kwargs)
 
@@ -159,7 +165,12 @@ def power_on(power_type, **kwargs):
 @task
 @log_exception_text
 def power_off(power_type, **kwargs):
-    """Turn a node off."""
+    """Turn a node off.
+
+    :deprecated: Use the RPC command
+        :py:class:`~provisioningserver.rpc.cluster.PowerOff` instead.
+    """
+    warn_deprecated("use the PowerOff RPC command instead.")
     pa = PowerAction(power_type)
     pa.execute(power_change='off', **kwargs)
 
