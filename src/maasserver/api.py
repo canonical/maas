@@ -593,6 +593,20 @@ class NodeHandler(OperationsHandler):
         node.mark_fixed()
         return node
 
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request, system_id):
+        """Obtain power parameters.
+
+        This method is reserved for admin users.
+
+        This returns the power parameters, if any, configured for a
+        node. For some types of power control this will include private
+        information such as passwords and secret keys.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        return node.power_parameters
+
 
 def create_node(request):
     """Service an http request to create a node.

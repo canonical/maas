@@ -1132,3 +1132,35 @@ class TestMarkFixed(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestPowerParameters(APITestCase):
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_get_power_parameters(self):
+        self.become_admin()
+        node = factory.make_node(
+            power_parameters=factory.make_name("power_parameters"))
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_params = json.loads(response.content)
+        self.assertEqual(node.power_parameters, parsed_params)
+
+    def test_get_power_parameters_empty(self):
+        self.become_admin()
+        node = factory.make_node()
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_params = json.loads(response.content)
+        self.assertEqual("", parsed_params)
+
+    def test_power_parameters_requires_admin(self):
+        node = factory.make_node()
+        response = self.client.get(
+            self.get_node_uri(node), {'op': 'power_parameters'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
