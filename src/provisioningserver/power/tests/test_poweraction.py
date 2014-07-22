@@ -19,13 +19,20 @@ import os
 import re
 
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
+from mock import (
+    ANY,
+    sentinel,
+    )
+import provisioningserver.power.poweraction
 from provisioningserver.power.poweraction import (
     PowerAction,
     PowerActionFail,
     UnknownPowerType,
     )
 from provisioningserver.utils import (
+    escape_py_literal,
     locate_config,
     ShellTemplate,
     )
@@ -98,7 +105,8 @@ class TestPowerAction(MAASTestCase):
         # its variables.
         pa = PowerAction('ether_wake')
         template = ShellTemplate("template: {{mac}}")
-        rendered = pa.render_template(template, mac="mymac")
+        rendered = pa.render_template(
+            template, pa.update_context({"mac": "mymac"}))
         self.assertEqual("template: mymac", rendered)
 
     def test_render_template_raises_PowerActionFail(self):
@@ -108,7 +116,7 @@ class TestPowerAction(MAASTestCase):
         template_name = factory.make_string()
         template = ShellTemplate("template: {{mac}}", name=template_name)
         self.assertThat(
-            lambda: pa.render_template(template),
+            lambda: pa.render_template(template, pa.update_context({})),
             Raises(MatchesException(
                 PowerActionFail,
                 ".*name 'mac' is not defined at line \d+ column \d+ "
@@ -168,9 +176,12 @@ class TestPowerAction(MAASTestCase):
         # line.  It will complain about this and fail.
         action = PowerAction("fence_cdu")
         script = action.render_template(
-            action.get_template(), power_change='on',
-            power_address='mysystem', power_id='system',
-            power_user='me', power_pass='me', fence_cdu='echo')
+            action.get_template(),
+            action.update_context(dict(
+                power_change='on', power_address='mysystem',
+                power_id='system', power_user='me', power_pass='me',
+                fence_cdu='echo')),
+        )
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from fence_cdu", output)
 
@@ -189,11 +200,14 @@ class TestPowerAction(MAASTestCase):
         self.configure_power_config_dir(conf_dir)
         action = PowerAction('ipmi')
         script = action.render_template(
-            action.get_template(), power_change='on',
-            power_address='mystystem', power_user='me', power_pass='me',
-            ipmipower='echo', ipmi_chassis_config='echo', config_dir='dir',
-            ipmi_config='file.conf', power_driver='LAN', ip_address='',
-            power_off_mode='hard')
+            action.get_template(),
+            action.update_context(dict(
+                power_change='on', power_address='mystystem',
+                power_user='me', power_pass='me', ipmipower='echo',
+                ipmi_chassis_config='echo', config_dir='dir',
+                ipmi_config='file.conf', power_driver='LAN',
+                ip_address='', power_off_mode='hard')),
+        )
         self.assertIn(conf_dir, script)
 
     def test_moonshot_checks_state(self):
@@ -204,9 +218,12 @@ class TestPowerAction(MAASTestCase):
         # line.  It will complain about this and fail.
         action = PowerAction("moonshot")
         script = action.render_template(
-            action.get_template(), power_change='on',
-            power_address='mysystem', power_user='me',
-            power_pass='me', power_hwaddress='me', ipmitool='echo')
+            action.get_template(),
+            action.update_context(dict(
+                power_change='on', power_address='mysystem',
+                power_user='me', power_pass='me', power_hwaddress='me',
+                ipmitool='echo')),
+        )
         output = action.run_shell(script)
         self.assertIn("Got unknown power state from ipmipower", output)
 
@@ -216,9 +233,11 @@ class TestPowerAction(MAASTestCase):
         # rendering namespace so I passed on that.
         action = PowerAction('ucsm')
         script = action.render_template(
-            action.get_template(), power_address='foo',
-            power_user='bar', power_pass='baz',
-            uuid=factory.make_UUID(), power_change='on')
+            action.get_template(),
+            action.update_context(dict(
+                power_address='foo', power_user='bar', power_pass='baz',
+                uuid=factory.make_UUID(), power_change='on')),
+        )
         self.assertIn('power_control_ucsm', script)
 
     def test_mscm_renders_template(self):
@@ -227,15 +246,79 @@ class TestPowerAction(MAASTestCase):
         # rendering namespace so I passed on that.
         action = PowerAction('mscm')
         script = action.render_template(
-            action.get_template(), power_address='foo',
-            power_user='bar', power_pass='baz',
-            node_id='c1n1', power_change='on')
+            action.get_template(),
+            action.update_context(dict(
+                power_address='foo', power_user='bar', power_pass='baz',
+                node_id='c1n1', power_change='on')),
+        )
         self.assertIn('power_control_mscm', script)
 
     def test_umg_renders_template(self):
         action = PowerAction('umg')
         script = action.render_template(
-            action.get_template(), power_address='foo',
-            power_user='bar', power_pass='baz',
-            system_alias='1F-C9-DF_MMC-1-2-31', power_change='on')
+            action.get_template(),
+            action.update_context(dict(
+                power_address='foo', power_user='bar', power_pass='baz',
+                system_alias='1F-C9-DF_MMC-1-2-31', power_change='on')),
+        )
         self.assertIn('power_control_umg', script)
+
+
+class TestTemplateContext(MAASTestCase):
+
+    def make_stubbed_power_action(self):
+        power_action = PowerAction("ipmi")
+        render_template = self.patch(power_action, "render_template")
+        render_template.return_value = "echo done"
+        return power_action
+
+    def test_basic_context(self):
+        power_action = self.make_stubbed_power_action()
+        result = power_action.execute()
+        self.assertEqual("done", result)
+        self.assertThat(
+            power_action.render_template,
+            MockCalledOnceWith(
+                template=ANY,
+                context=dict(
+                    config_dir=locate_config("templates/power"),
+                    escape_py_literal=escape_py_literal, ip_address=None,
+                ),
+            ))
+
+    def test_ip_address_is_unmolested_if_set(self):
+        power_action = self.make_stubbed_power_action()
+        ip_address = factory.make_ipv6_address()
+        result = power_action.execute(ip_address=ip_address)
+        self.assertEqual("done", result)
+        self.assertThat(
+            power_action.render_template,
+            MockCalledOnceWith(
+                template=ANY,
+                context=dict(
+                    config_dir=locate_config("templates/power"),
+                    escape_py_literal=escape_py_literal,
+                    ip_address=ip_address,
+                ),
+            ))
+
+    def test_execute_looks_up_ip_address_from_mac_address(self):
+        find_ip_via_arp = self.patch(
+            provisioningserver.power.poweraction, "find_ip_via_arp")
+        find_ip_via_arp.return_value = sentinel.ip_address_from_mac
+
+        power_action = self.make_stubbed_power_action()
+        mac_address = factory.getRandomMACAddress()
+        result = power_action.execute(mac_address=mac_address)
+        self.assertEqual("done", result)
+        self.assertThat(
+            power_action.render_template,
+            MockCalledOnceWith(
+                template=ANY,
+                context=dict(
+                    config_dir=locate_config("templates/power"),
+                    escape_py_literal=escape_py_literal,
+                    ip_address=sentinel.ip_address_from_mac,
+                    mac_address=mac_address,
+                ),
+            ))

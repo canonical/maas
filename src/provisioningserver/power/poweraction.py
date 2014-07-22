@@ -27,6 +27,7 @@ from provisioningserver.utils import (
     locate_config,
     ShellTemplate,
     )
+from provisioningserver.utils.network import find_ip_via_arp
 
 
 class UnknownPowerType(Exception):
@@ -81,17 +82,21 @@ class PowerAction:
         with open(self.path, "rb") as f:
             return ShellTemplate(f.read(), name=self.path)
 
-    def get_extra_context(self):
-        """Extra context used when rending the power templates."""
-        return {
-            'config_dir': self.get_config_basedir(),
-            'escape_py_literal': escape_py_literal,
-        }
+    def update_context(self, context):
+        """Add and manipulate `context` as necessary."""
+        context['config_dir'] = self.get_config_basedir()
+        context['escape_py_literal'] = escape_py_literal
+        if 'mac_address' in context:
+            mac_address = context['mac_address']
+            ip_address = find_ip_via_arp(mac_address)
+            context['ip_address'] = ip_address
+        else:
+            context.setdefault('ip_address', None)
+        return context
 
-    def render_template(self, template, **kwargs):
+    def render_template(self, template, context):
         try:
-            kwargs.update(self.get_extra_context())
-            return template.substitute(kwargs)
+            return template.substitute(context)
         except NameError as error:
             raise PowerActionFail(self, error)
 
@@ -112,7 +117,7 @@ class PowerAction:
             raise PowerActionFail(self, e)
         return output.strip()
 
-    def execute(self, **kwargs):
+    def execute(self, **context):
         """Execute the template.
 
         :returns: Standard output and standard error returned by the execution
@@ -122,5 +127,7 @@ class PowerAction:
         values.
         """
         template = self.get_template()
-        rendered = self.render_template(template, **kwargs)
+        context = self.update_context(context)
+        rendered = self.render_template(
+            template=template, context=context)
         return self.run_shell(rendered)

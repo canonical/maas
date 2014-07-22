@@ -69,7 +69,8 @@ class TestPowerActionRendering(MAASServerTestCase):
         # built in parameter.
         params.update(power_off_mode=factory.make_name('power_off_mode'))
         action = PowerAction(self.power_type)
-        script = action.render_template(action.get_template(), **params)
+        script = action.render_template(
+            action.get_template(), action.update_context(params))
         # The real check is that the rendering went fine.
         self.assertIsInstance(script, bytes)
 

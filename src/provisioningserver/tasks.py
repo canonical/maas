@@ -61,10 +61,7 @@ from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.import_images import boot_resources
 from provisioningserver.omshell import Omshell
-from provisioningserver.power.poweraction import (
-    PowerAction,
-    PowerActionFail,
-    )
+from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.utils import (
     call_and_check,
     ExternalProcessError,
@@ -151,45 +148,20 @@ def refresh_secrets(**kwargs):
 # =====================================================================
 
 
-def issue_power_action(power_type, power_change, **kwargs):
-    """Issue a power action to a node.
-
-    :param power_type: The node's power type.  Must have a corresponding
-        power template.
-    :param power_change: The change to request: 'on' or 'off'.
-    :param **kwargs: Keyword arguments are passed on to :class:`PowerAction`.
-    """
-    assert power_change in ('on', 'off'), (
-        "Unknown power change keyword: %s" % power_change)
-    kwargs['power_change'] = power_change
-    if 'mac_address' in kwargs:
-        kwargs['ip_address'] = find_ip_via_arp(kwargs['mac_address'])
-    kwargs.setdefault('ip_address', None)
-    try:
-        pa = PowerAction(power_type)
-        pa.execute(**kwargs)
-    except PowerActionFail:
-        # TODO: signal to webapp that it failed
-
-        # Re-raise, so the job is marked as failed.  Only currently
-        # useful for tests.
-        raise
-
-    # TODO: signal to webapp that it worked.
-
-
 @task
 @log_exception_text
 def power_on(power_type, **kwargs):
     """Turn a node on."""
-    issue_power_action(power_type, 'on', **kwargs)
+    pa = PowerAction(power_type)
+    pa.execute(power_change='on', **kwargs)
 
 
 @task
 @log_exception_text
 def power_off(power_type, **kwargs):
     """Turn a node off."""
-    issue_power_action(power_type, 'off', **kwargs)
+    pa = PowerAction(power_type)
+    pa.execute(power_change='off', **kwargs)
 
 
 # =====================================================================
