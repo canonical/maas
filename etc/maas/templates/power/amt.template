@@ -2,10 +2,13 @@
 # -*- mode: shell-script -*-
 #
 # Control a system via amttool
-power_address='{{power_address}}'
-power_change='{{power_change}}'
-power_pass='{{power_pass}}'
-ip_address='{{ip_address}}'
+#
+# Parameters.  Don't quote these: the templating system will quote as needed,
+# so adding quotes of our own might cause double-quoating.
+power_address={{power_address}}
+power_change={{power_change}}
+power_pass={{power_pass}}
+ip_address={{ip_address}}
 
 # The user specified power_address overrides any automatically determined
 # ip_address.
@@ -13,72 +16,119 @@ if [ -n "$power_address" ]; then
   ip_address=$power_address
 fi
 
-echo amt.template starting $*
 
-echo ip_address $ip_address
-echo power_change $power_change
-echo power_pass $power_pass
-
-amt() {
-  echo running amttool "$ip_address" $*
-  AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@"
-}
-
-state() {
-  # Retry the state if it fails because it often fails the first time.
-  local count=0
-  local state=
-  while true; do
-    state=$(amt info | grep '^Powerstate:' | awk '{print $2}')
-    [ -n "$state" ] && break
-    count=$((count+1))
-    [ $count -gt 10 ] && break
-    sleep 1
-  done
-  echo $state
-}
-
-is_power_on() {
-  [ "$power_change" '=' on ]
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
 }
 
 
-if is_power_on; then
-  desired_state=S0
-else
-  desired_state=S5
-fi
+# Perform a command using amttool.
+issue_amt_command() {
+  LC_ALL='C' AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@"
+}
 
-echo desired $desired_state
 
-current_state=`state`
-for i in `seq 0 10`; do
-  echo found current_state $current_state
-  if [ "$current_state" '=' "" ]; then
-    echo Cannot get current state
-    exit 2
-  fi
-  if is_power_on; then
-    if [ "$current_state" '=' S0 ]; then
-      # If the machine is already up, the powerup command will
-      # not work - we need to powercycle instead.
-      args='powercycle pxe'
-    else
-      args='powerup pxe'
-    fi
-  else
-    if [ "$current_state" '=' S5 ]; then
-       # Machine is already off, so no need to do anything.
-       exit 0
-    fi
-    args='powerdown'
-  fi
-  yes | amt $args
-  current_state=`state`
-  if [ "$current_state" '=' $desired_state ]; then
-    exit 0
-  fi
-  echo retrying
-done
-echo Failed after several attempts
-exit 1
+# Ask for node's power state: 'on' or 'off'.
+query_state() {
+    # Retry the state if it fails because it often fails the first time.
+    local state=
+    local count=
+    for attempts in $(seq 0 10)
+    do
+        state=$(issue_amt_command info | grep '^Powerstate:' | awk '{print $2}')
+        if [ -n "$state" ]
+        then
+            break
+        fi
+        sleep 0.1
+    done
+    case "$state" in
+    S[0-4])
+        # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
+        # will lead to a fresh boot.
+        echo 'on'
+        ;;
+    S5)
+        echo 'off'
+        ;;
+    *)
+        fail 2 "Got unknown power state from node: '$state'"
+        ;;
+    esac
+}
+
+
+# Power-cycle the machine, and boot it using PXE.
+restart() {
+    issue_amt_command powercycle pxe
+}
+
+
+# Power the machine on, and boot it using PXE.
+power_on() {
+    local attempts=
+    # Try several times.  Power commands often fail the first time.
+    for attempts in $(seq 0 10)
+    do
+        # Issue the AMT command; amttool will prompt for confirmation.
+        yes | issue_amt_command powerup pxe
+        if [ "$(query_state)" = 'on' ]
+        then
+            # Success.  Machine is on.
+            return 0
+        fi
+        sleep 1
+    done
+    fail 1 "Machine is not powering on.  Giving up."
+}
+
+
+# Power the machine off.
+power_off() {
+    local attempts=
+    # Try several times.  Power commands often fail the first time.
+    for attempts in $(seq 0 10)
+    do
+        if [ "$(query_state)" = 'off' ]
+        then
+            # Success.  Machine is off.
+            return 0
+        fi
+        # Issue the AMT command; amttool will prompt for confirmation.
+        yes | issue_amt_command powerdown
+        sleep 1
+    done
+    fail 1 "Machine is not powering off.  Giving up."
+}
+
+
+main() {
+    case "${power_change}" in
+    'on')
+        if [ "$(query_state)" = 'on' ]
+        then
+            # The machine is already up, so powering it up will do nothing.
+            # Cycle the power instead.
+            restart
+        else
+            power_on
+        fi
+        ;;
+    'off')
+        if [ "$(query_state)" != 'off' ]
+        then
+            power_off
+        fi
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 1 "Unknown power command: '$1'"
+    esac
+}
+
+main "$power_change"
