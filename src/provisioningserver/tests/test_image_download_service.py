@@ -29,15 +29,20 @@ from mock import (
 from provisioningserver import image_download_service
 from provisioningserver.image_download_service import (
     PeriodicImageDownloadService,
+    service_lock,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tasks import import_boot_images
+from provisioningserver.utils import pause
+from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
 
 
 class TestPeriodicImageDownloadService(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     def test_init(self):
         service = PeriodicImageDownloadService(
@@ -155,3 +160,38 @@ class TestPeriodicImageDownloadService(MAASTestCase):
             rpc_client, Clock(), sentinel.uuid)
         service.startService()
         self.assertThat(deferToThread, MockNotCalled())
+
+    @defer.inlineCallbacks
+    def test_does_not_run_if_lock_taken(self):
+        maas_meta_last_modified = self.patch(
+            image_download_service, 'maas_meta_last_modified')
+        yield service_lock.acquire()
+        self.addCleanup(service_lock.release)
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, Clock(), sentinel.uuid)
+        service.startService()
+        self.assertThat(maas_meta_last_modified, MockNotCalled())
+
+    def test_takes_lock_when_running(self):
+        clock = Clock()
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, clock, sentinel.uuid)
+
+        # Patch the download func so it's just a Deferred that waits for
+        # one second.
+        _start_download = self.patch(service, '_start_download')
+        _start_download.return_value = pause(1, clock)
+
+        # Set conditions for a required download:
+        one_week_ago = clock.seconds() - timedelta(weeks=1).total_seconds()
+        self.patch(
+            image_download_service,
+            'maas_meta_last_modified').return_value = one_week_ago
+
+        # Lock is acquired for the first download after startup.
+        service.startService()
+        self.assertTrue(service_lock.locked)
+
+        # Lock is released once the download is done.
+        clock.advance(1)
+        self.assertFalse(service_lock.locked)

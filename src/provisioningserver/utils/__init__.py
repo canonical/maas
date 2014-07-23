@@ -56,13 +56,13 @@ from subprocess import (
     Popen,
     )
 import sys
+from sys import _getframe as getframe
 import tempfile
 from time import time
 from urlparse import (
     urlparse,
     urlunparse,
     )
-from sys import _getframe as getframe
 from warnings import warn
 
 from apiclient.maas_client import (
