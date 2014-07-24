@@ -1,23 +1,53 @@
+from django.db import models
 from maasserver.enum import NODE_BOOT
+from maasserver.models.timestampedmodel import now
 from south.db import db
-from south.v2 import SchemaMigration
+from south.v2 import DataMigration
 
 
-class Migration(SchemaMigration):
+def find_fastpath_tag(orm):
+    """Return the `use-fastpath-installer` tag from the database, or `None`."""
+    fastpath_tag_list = orm['maasserver.Tag'].objects.filter(
+        name='use-fastpath-installer')
+    if len(fastpath_tag_list) == 0:
+        return None
+    else:
+        # There is a unique constraint on Tag.name; we'll find at most one.
+        [fastpath_tag] = fastpath_tag_list
+        return fastpath_tag
+
+
+class Migration(DataMigration):
 
     def forwards(self, orm):
-        # Adding field 'Node.boot_type'
-        # A subsequent data migration sets the fast-path type for nodes
-        # that were previously tagged to use the fast installer.
-        db.add_column(
-            u'maasserver_node', 'boot_type',
-            self.gf('django.db.models.fields.CharField')(
-                default=NODE_BOOT.DEBIAN, max_length=20),
-            keep_default=False)
+        # Node.boot_type defaults to 'di'.  But change it to 'fastpath'
+        # for nodes that have the old use-fastpath-installer tag.
+        fastpath_tag = find_fastpath_tag(orm)
+        if fastpath_tag is not None:
+            fastpath_tag.node_set.update(boot_type=NODE_BOOT.FASTPATH)
+            # Delete the "use-fastpath-installer" tag.  It is no longer used.
+            fastpath_tag.delete()
 
     def backwards(self, orm):
-        # Deleting field 'Node.boot_type'
-        db.delete_column(u'maasserver_node', 'boot_type')
+        # Create the "use-fastpath-installer" tag.
+        current_time = now()
+        fpi_tag, _ = orm['maasserver.Tag'].objects.get_or_create(
+            name="use-fastpath-installer", defaults={
+                'created': current_time,
+                'updated': current_time,
+                })
+
+        # Add the "use-fastpath-installer" tag, to nodes that use that
+        # boot_type.
+        for node in orm['maasserver.Node'].objects.all():
+            if node.boot_type == NODE_BOOT.FASTPATH:
+                node.tags.add(fpi_tag)
+            elif node.boot_type == NODE_BOOT.DEBIAN:
+                if fpi_tag in node.tags.all():
+                    node.tags.remove(fpi_tag)
+            node.save()
+
+
 
     models = {
         u'auth.group': {
@@ -130,7 +160,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'a95c24b8-0dbb-11e4-a6c6-bcee7b78dc5b'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'43c1958e-126b-11e4-91f7-bcaec594d3f6'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.licensekey': {
@@ -193,7 +223,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-a95b43ea-0dbb-11e4-a6c6-bcee7b78dc5b'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-43c2e3c6-126b-11e4-91f7-bcaec594d3f6'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -299,7 +329,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1405606037L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1406121263L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
@@ -307,3 +337,4 @@ class Migration(SchemaMigration):
     }
 
     complete_apps = ['maasserver']
+    symmetrical = True
