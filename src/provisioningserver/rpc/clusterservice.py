@@ -32,7 +32,6 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
-from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -45,6 +44,7 @@ from provisioningserver.rpc.osystems import (
     get_preseed_data,
     validate_license_key,
     )
+from provisioningserver.rpc.power import change_power_state
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
@@ -150,15 +150,15 @@ class Cluster(amp.AMP, object):
     @cluster.PowerOn.responder
     def power_on(self, system_id, power_type, context):
         """Turn a node on."""
-        action = PowerAction(power_type)
-        action.execute(power_change='on', **context)
+        change_power_state(
+            system_id, power_type, power_change='on', context=context)
         return {}
 
     @cluster.PowerOff.responder
     def power_off(self, system_id, power_type, context):
         """Turn a node off."""
-        action = PowerAction(power_type)
-        action.execute(power_change='off', **context)
+        change_power_state(
+            system_id, power_type, power_change='off', context=context)
         return {}
 
     @amp.StartTLS.responder
