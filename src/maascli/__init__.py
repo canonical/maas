@@ -52,7 +52,6 @@ def main(argv=None):
 
 try:
     import maasfascist
+    maasfascist  # Silence lint.
 except ImportError:
     pass
-else:
-    maasfascist  # Silence lint.

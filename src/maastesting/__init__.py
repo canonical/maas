@@ -55,7 +55,6 @@ filterwarnings('default', category=ImportWarning, module=packages_expr)
 
 try:
     import maasfascist
+    maasfascist  # Silence lint.
 except ImportError:
     pass
-else:
-    maasfascist  # Silence lint.
