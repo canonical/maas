@@ -35,6 +35,7 @@ import time
 from uuid import uuid1
 
 from maastesting.fixtures import TempDirectory
+import mock
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -263,6 +264,14 @@ class Factory:
             subprocess.check_call(['tar', '-C', source, '-czf', tarball, '.'])
 
         return tarball
+
+    def make_streams(self, stdin=None, stdout=None, stderr=None):
+        """Make a fake return value for a SSHClient.exec_command."""
+        # stdout.read() is called so stdout can't be None.
+        if stdout is None:
+            stdout = mock.Mock()
+
+        return (stdin, stdout, stderr)
 
 
 # Create factory singleton.

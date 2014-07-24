@@ -134,6 +134,12 @@ builtin_architectures = [
     Architecture(name="i386/generic", description="i386"),
     Architecture(name="amd64/generic", description="amd64"),
     Architecture(
+        name="arm64/generic", description="arm64/generic",
+        pxealiases=["arm"]),
+    Architecture(
+        name="arm64/xgene-uboot", description="arm64/xgene-uboot",
+        pxealiases=["arm"]),
+    Architecture(
         name="armhf/highbank", description="armhf/highbank",
         pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
     Architecture(

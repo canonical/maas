@@ -460,6 +460,32 @@ class TestNodeGroupAPI(APITestCase):
         matcher = MockCalledOnceWith(queue=nodegroup.uuid, args=args)
         self.assertThat(mock.apply_async, matcher)
 
+    def test_probe_and_enlist_mscm_adds_mscm(self):
+        nodegroup = factory.make_node_group()
+        host = 'http://host'
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        self.become_admin()
+
+        mock = self.patch(nodegroup_module, 'enlist_nodes_from_mscm')
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_mscm',
+                'host': host,
+                'username': username,
+                'password': password,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        args = (host, username, password)
+        matcher = MockCalledOnceWith(queue=nodegroup.uuid, args=args)
+        self.assertThat(mock.apply_async, matcher)
+
 
 class TestNodeGroupAPIAuth(MAASServerTestCase):
     """Authorization tests for nodegroup API."""

@@ -42,6 +42,7 @@ from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     add_seamicro15k,
     add_virsh,
+    enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
     import_boot_images,
     report_boot_images,
@@ -306,6 +307,16 @@ class NodeGroup(TimestampedModel):
         """
         args = (url, username, password)
         enlist_nodes_from_ucsm.apply_async(queue=self.uuid, args=args)
+
+    def enlist_nodes_from_mscm(self, host, username, password):
+        """ Add the servers from a Moonshot HP iLO Chassis Manager.
+
+        :param host: IP address for the MSCM.
+        :param username: username for MSCM.
+        :param password: password for MSCM.
+        """
+        args = (host, username, password)
+        enlist_nodes_from_mscm.apply_async(queue=self.uuid, args=args)
 
     def add_dhcp_host_maps(self, new_leases):
         if len(new_leases) > 0 and len(self.get_managed_interfaces()) > 0:
