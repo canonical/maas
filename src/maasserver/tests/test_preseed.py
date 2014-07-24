@@ -442,14 +442,6 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
             pick_cluster_controller_address(node))
 
 
-def make_url(name):
-    """Create a fake archive URL."""
-    return "http://%s.example.com/%s/" % (
-        factory.make_name(name),
-        factory.make_name('path'),
-        )
-
-
 class TestPreseedContext(MAASServerTestCase):
     """Tests for `get_preseed_context`."""
 
@@ -467,8 +459,8 @@ class TestPreseedContext(MAASServerTestCase):
     def test_get_preseed_context_archive_refs(self):
         # urlparse lowercases the hostnames. That should not have any
         # impact but for testing, create lower-case hostnames.
-        main_archive = make_url('main_archive')
-        ports_archive = make_url('ports_archive')
+        main_archive = factory.make_url(netloc="main-archive.example.com")
+        ports_archive = factory.make_url(netloc="ports-archive.example.com")
         Config.objects.set_config('main_archive', main_archive)
         Config.objects.set_config('ports_archive', ports_archive)
         nodegroup = factory.make_node_group(maas_url=factory.make_string())

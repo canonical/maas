@@ -138,14 +138,6 @@ class TestMAASDispatcher(MAASTestCase):
         self.assertEqual(content, read_content)
 
 
-def make_url():
-    """Create an arbitrary URL."""
-    return 'http://example.com:%d/%s/' % (
-        factory.pick_port(),
-        factory.make_string(),
-        )
-
-
 def make_path():
     """Create an arbitrary resource path."""
     return "/" + '/'.join(factory.make_string() for counter in range(2))
@@ -172,7 +164,8 @@ class FakeDispatcher:
 def make_client(root=None, result=None):
     """Create a MAASClient."""
     if root is None:
-        root = make_url()
+        root = factory.make_simple_http_url(
+            path=factory.make_name("path") + "/")
     auth = MAASOAuth(
         factory.make_string(), factory.make_string(),
         factory.make_string())

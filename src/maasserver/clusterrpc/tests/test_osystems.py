@@ -20,12 +20,18 @@ from collections import (
     )
 
 from maasserver import eventloop
-from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
+from maasserver.clusterrpc.osystems import (
+    gen_all_known_operating_systems,
+    get_preseed_data,
+    )
+from maasserver.enum import PRESEED_TYPE
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import ClusterRPCFixture
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from metadataserver.models import NodeKey
+from provisioningserver.rpc.exceptions import NoSuchOperatingSystem
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -37,21 +43,22 @@ from testtools.matchers import (
 from twisted.internet.defer import succeed
 
 
+def fake_cluster_rpc(test):
+    # Set-up the event-loop with only the RPC service running, then
+    # layer on a fake cluster RPC implementation.
+    test.useFixture(RegionEventLoopFixture("rpc"))
+    test.addCleanup(lambda: eventloop.reset().wait(5))
+    eventloop.start().wait(5)
+    test.useFixture(ClusterRPCFixture())
+
+
 class TestGenAllKnownOperatingSystems(MAASServerTestCase):
     """Tests for `gen_all_known_operating_systems`."""
-
-    def fake_cluster_rpc(self):
-        # Set-up the event-loop with only the RPC service running, then
-        # layer on a fake cluster RPC implementation.
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.addCleanup(lambda: eventloop.reset().wait(5))
-        eventloop.start().wait(5)
-        self.useFixture(ClusterRPCFixture())
 
     def test_yields_oses_known_to_a_cluster(self):
         # The operating systems known to a single node are returned.
         factory.make_node_group().accept()
-        self.fake_cluster_rpc()
+        fake_cluster_rpc(self)
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
         osystems = list(osystems)
@@ -61,7 +68,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
     def test_yields_oses_known_to_multiple_clusters(self):
         factory.make_node_group().accept()
         factory.make_node_group().accept()
-        self.fake_cluster_rpc()
+        fake_cluster_rpc(self)
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
         osystems = list(osystems)
@@ -73,7 +80,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         # every cluster will have several (or all) OSes in common.
         factory.make_node_group().accept()
         factory.make_node_group().accept()
-        self.fake_cluster_rpc()
+        fake_cluster_rpc(self)
         counter = Counter(
             osystem["name"] for osystem in
             gen_all_known_operating_systems())
@@ -88,7 +95,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
 
     def test_os_data_is_passed_through_unmolested(self):
         factory.make_node_group().accept()
-        self.fake_cluster_rpc()
+        fake_cluster_rpc(self)
         example = {
             "osystems": [
                 {
@@ -109,7 +116,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         factory.make_node_group().accept()
         factory.make_node_group().accept()
         factory.make_node_group().accept()
-        self.fake_cluster_rpc()
+        fake_cluster_rpc(self)
 
         clients = getAllClients().wait()
         for index, client in enumerate(clients):
@@ -129,3 +136,39 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         self.assertItemsEqual(
             [{"name": clients[0].ident}],
             gen_all_known_operating_systems())
+
+
+class TestGetPreseedData(MAASServerTestCase):
+    """Tests for `get_preseed_data`."""
+
+    def test_returns_preseed_data(self):
+        # The Windows driver is known to provide custom preseed data.
+        node = factory.make_node(osystem="windows")
+        node.nodegroup.accept()
+        fake_cluster_rpc(self)
+        preseed_data = get_preseed_data(
+            PRESEED_TYPE.COMMISSIONING, node,
+            token=NodeKey.objects.get_token_for_node(node),
+            metadata_url=factory.make_url())
+        self.assertThat(preseed_data, IsInstance(dict))
+        self.assertThat(preseed_data, Not(HasLength(0)))
+
+    def test_propagates_NotImplementedError(self):
+        # The Windows driver is known to *not* provide custom preseed
+        # data when using Curtin.
+        node = factory.make_node(osystem="windows")
+        node.nodegroup.accept()
+        fake_cluster_rpc(self)
+        self.assertRaises(
+            NotImplementedError, get_preseed_data, PRESEED_TYPE.CURTIN,
+            node, token=NodeKey.objects.get_token_for_node(node),
+            metadata_url=factory.make_url())
+
+    def test_propagates_NoSuchOperatingSystem(self):
+        node = factory.make_node(osystem=factory.make_name("foo"))
+        node.nodegroup.accept()
+        fake_cluster_rpc(self)
+        self.assertRaises(
+            NoSuchOperatingSystem, get_preseed_data, PRESEED_TYPE.CURTIN,
+            node, token=NodeKey.objects.get_token_for_node(node),
+            metadata_url=factory.make_url())

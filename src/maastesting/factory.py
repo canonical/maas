@@ -322,23 +322,59 @@ class Factory:
         scheme for scheme in urlparse.uses_params
         if scheme != "")
 
-    def make_parsed_url(self):
+    def make_parsed_url(
+            self, scheme=None, netloc=None, path=None, params=None,
+            query=None, fragment=None):
         """Generate a random parsed URL object.
+
+        Contains randomly generated values for all parts of a URL: scheme,
+        location, path, parameters, query, and fragment. However, each part
+        can be overridden individually.
 
         :return: Instance of :py:class:`urlparse.ParseResult`.
         """
-        return urlparse.ParseResult(
+        if scheme is None:
             # Select a scheme that allows parameters; see above.
-            random.choice(self._make_parsed_url_schemes),
-            self.make_name("netloc").lower(),
+            scheme = random.choice(self._make_parsed_url_schemes)
+        if netloc is None:
+            netloc = "%s.example.com" % self.make_name("netloc").lower()
+        if path is None:
             # A leading forward-slash will be added in geturl() if we
             # don't, so ensure it's here now so tests can compare URLs
             # without worrying about it.
-            self.make_name("/path"),
-            self.make_name("params"),
-            self.make_name("query"),
-            self.make_name("fragment"),
-        )
+            path = self.make_name("/path")
+        else:
+            # Same here with the forward-slash prefix.
+            if not path.startswith("/"):
+                path = "/" + path
+        if params is None:
+            params = self.make_name("params")
+        if query is None:
+            query = self.make_name("query")
+        if fragment is None:
+            fragment = self.make_name("fragment")
+        return urlparse.ParseResult(
+            scheme, netloc, path, params, query, fragment)
+
+    def make_url(
+            self, scheme=None, netloc=None, path=None, params=None,
+            query=None, fragment=None):
+        """Generate a random URL.
+
+        Contains randomly generated values for all parts of a URL: scheme,
+        location, path, parameters, query, and fragment. However, each part
+        can be overridden individually.
+
+        :return: string
+        """
+        return self.make_parsed_url(
+            scheme, netloc, path, params, query, fragment).geturl()
+
+    def make_simple_http_url(self, netloc=None, path=None):
+        """Create an arbitrary HTTP URL with only a location and path."""
+        return self.make_parsed_url(
+            scheme="http", netloc=netloc, path=path, params="", query="",
+            fragment="").geturl()
 
     def make_names(self, *prefixes):
         """Generate random names.
