@@ -15,6 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 import errno
+from datetime import (
+    datetime,
+    timedelta,
+    )
 import hashlib
 import json
 import os
@@ -30,6 +34,7 @@ from maastesting.matchers import (
     MockCalledWith,
     )
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import age_file
 import mock
 from provisioningserver.boot import BootMethodRegistry
 import provisioningserver.config
@@ -386,6 +391,43 @@ class TestMain(MAASTestCase):
         self.assertRaises(
             boot_resources.NoConfigFile,
             boot_resources.main, self.make_args(sources="", sources_file=""))
+
+
+class TestMetaContains(MAASTestCase):
+    """Tests for the `meta_contains` function."""
+
+    def make_meta_file(self, content=None):
+        if content is None:
+            content = factory.make_string()
+        storage = self.make_dir()
+        current = os.path.join(storage, 'current')
+        os.mkdir(current)
+        return storage, factory.make_file(current, 'maas.meta', content)
+
+    def test_matching_content_is_compared_True(self):
+        content = factory.make_string()
+        storage, meta_file = self.make_meta_file(content)
+        self.assertTrue(boot_resources.meta_contains(storage, content))
+
+    def test_mismatching_content_is_compared_False(self):
+        content = factory.make_string()
+        storage, meta_file = self.make_meta_file()
+        self.assertFalse(boot_resources.meta_contains(storage, content))
+
+    def test_meta_contains_updates_file_timestamp(self):
+        content = factory.make_string()
+        storage, meta_file = self.make_meta_file(content)
+
+        # Change the file's timestamp to a week ago.
+        one_week_ago = timedelta(weeks=1).total_seconds()
+        age_file(meta_file, one_week_ago)
+
+        boot_resources.meta_contains(storage, content)
+
+        # Check the timestamp was updated.
+        expected_date = datetime.now()
+        actual_date = datetime.fromtimestamp(int(os.path.getmtime(meta_file)))
+        self.assertEqual(expected_date.day, actual_date.day)
 
 
 class TestParseSources(MAASTestCase):

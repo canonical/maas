@@ -143,12 +143,17 @@ def meta_contains(storage, content):
     """Does the `maas.meta` file match `content`?
 
     If the file's contents match the latest data, there is no need to update.
+
+    The file's timestamp is also updated to now to reflect the last time
+    that this import was run.
     """
     current_meta = os.path.join(storage, 'current', 'maas.meta')
-    return (
-        os.path.isfile(current_meta) and
-        content == read_text_file(current_meta)
-        )
+    exists = os.path.isfile(current_meta)
+    if exists:
+        # Touch file to the current timestamp so that the last time this
+        # import ran can be determined.
+        os.utime(current_meta, None)
+    return exists and content == read_text_file(current_meta)
 
 
 def update_current_symlink(storage, latest_snapshot):
