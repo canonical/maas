@@ -1177,3 +1177,54 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         node = reload_object(node)
         self.assertEqual(original_zone, node.zone)
+
+    def test_GET_power_parameters_requires_admin(self):
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {
+                'op': 'power_parameters',
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_GET_power_parameters_without_ids_does_not_filter(self):
+        self.become_admin()
+        nodes = [
+            factory.make_node(
+                power_parameters=factory.make_name("power_parameters"))
+            for _ in range(0, 3)
+        ]
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {
+                'op': 'power_parameters',
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed = json.loads(response.content)
+        expected = {
+            node.system_id: node.power_parameters
+            for node in nodes
+        }
+        self.assertEqual(expected, parsed)
+
+    def test_GET_power_parameters_with_ids_filters(self):
+        self.become_admin()
+        nodes = [
+            factory.make_node(
+                power_parameters=factory.make_name("power_parameters"))
+            for _ in range(0, 6)
+        ]
+        expected_nodes = random.sample(nodes, 3)
+        response = self.client.get(
+            reverse('nodes_handler'),
+            {
+                'op': 'power_parameters',
+                'id': [node.system_id for node in expected_nodes],
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed = json.loads(response.content)
+        expected = {
+            node.system_id: node.power_parameters
+            for node in expected_nodes
+        }
+        self.assertEqual(expected, parsed)

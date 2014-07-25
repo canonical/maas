@@ -1048,6 +1048,26 @@ class NodesHandler(OperationsHandler):
             raise ValidationError(form.errors)
         form.save()
 
+    @admin_method
+    @operation(idempotent=True)
+    def power_parameters(self, request):
+        """Retrieve power parameters for multiple nodes.
+
+        :param id: An optional list of system ids.  Only nodes with
+            matching system ids will be returned.
+        :type id: iterable
+
+        :return: A dictionary of power parameters, keyed by node system_id.
+        """
+        match_ids = get_optional_list(request.GET, 'id')
+
+        if match_ids is None:
+            nodes = Node.objects.all()
+        else:
+            nodes = Node.objects.filter(system_id__in=match_ids)
+
+        return {node.system_id: node.power_parameters for node in nodes}
+
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('nodes_handler', [])
