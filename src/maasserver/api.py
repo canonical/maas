@@ -579,10 +579,16 @@ class NodeHandler(OperationsHandler):
         """Mark a node as 'broken'.
 
         If the node is allocated, release it first.
+
+        :param error_description: An optional description of the reason the
+            node is being marked broken.
+        :type error_description: unicode
         """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
-        node.mark_broken()
+        error_description = get_optional_param(
+            request.POST, 'error_description', '')
+        node.mark_broken(error_description)
         return node
 
     @operation(idempotent=False)

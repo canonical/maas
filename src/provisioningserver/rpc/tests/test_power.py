@@ -170,7 +170,9 @@ class TestPowerHelpers(MAASTestCase):
 
         # The node has been marked broken.
         self.assertThat(
-            client.mark_node_broken, MockCalledOnceWith(system_id))
+            client.mark_node_broken,
+            MockCalledOnceWith(system_id, "Node could not be powered on")
+        )
 
     def test_change_power_state_marks_the_node_broken_if_exception(self):
         system_id = factory.make_name('system_id')
@@ -183,14 +185,18 @@ class TestPowerHelpers(MAASTestCase):
         client = Mock()
         self.patch(power, 'getRegionClient').return_value = client
         # Simulate an exception.
-        power_action, execute = self.patch_power_action(side_effect=Exception)
+        exception_message = factory.make_name('exception')
+        power_action, execute = self.patch_power_action(
+            side_effect=Exception(exception_message))
 
         d = power.change_power_state(
             system_id, power_type, power_change, context)
         assert_fails_with(d, Exception)
-        return d.addErrback(
+        error_message = "Node could not be powered on: %s" % exception_message
+        return d.addCallbacks(
             lambda failure: self.assertThat(
-                client.mark_node_broken, MockCalledOnceWith(system_id)))
+                client.mark_node_broken,
+                MockCalledOnceWith(system_id, error_message)))
 
     def test_change_power_state_pauses_in_between_retries(self):
         system_id = factory.make_name('system_id')

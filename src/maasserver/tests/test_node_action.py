@@ -359,6 +359,17 @@ class TestMarkBrokenAction(MAASServerTestCase):
         action.execute()
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
+    def test_updates_error_description(self):
+        user = factory.make_user()
+        node = factory.make_node(owner=user, status=NODE_STATUS.COMMISSIONING)
+        action = MarkBroken(node, user)
+        self.assertTrue(action.is_permitted())
+        action.execute()
+        self.assertEqual(
+            "Manually marked as broken by user '%s'" % user.username,
+            reload_object(node).error_description
+        )
+
     def test_requires_edit_permission(self):
         user = factory.make_user()
         node = factory.make_node()

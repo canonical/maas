@@ -312,23 +312,37 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
         node = Node.objects.get(system_id=system_id)
         return node.status
 
+    @transactional
+    def get_node_error_description(self, system_id):
+        node = Node.objects.get(system_id=system_id)
+        return node.error_description
+
     @wait_for_reactor
     @inlineCallbacks
-    def test_mark_node_broken_changes_status(self):
+    def test_mark_node_broken_changes_status_and_updates_error_msg(self):
         system_id = yield deferToThread(self.create_broken_node)
 
+        error_description = factory.make_name('error-description')
         response = yield call_responder(
-            Region(), MarkNodeBroken, {b'system_id': system_id})
+            Region(), MarkNodeBroken,
+            {b'system_id': system_id, b'error_description': error_description})
 
         self.assertIsNone(None, response)
         new_status = yield deferToThread(self.get_node_status, system_id)
-        self.assertEqual(NODE_STATUS.BROKEN, new_status)
+        new_error_description = yield deferToThread(
+            self.get_node_error_description, system_id)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, error_description),
+            (new_status, new_error_description))
 
     @wait_for_reactor
     def test_mark_node_broken_errors_if_node_cannot_be_found(self):
         system_id = factory.make_name('unknown-system-id')
+        error_description = factory.make_name('error-description')
+
         d = call_responder(
-            Region(), MarkNodeBroken, {b'system_id': system_id})
+            Region(), MarkNodeBroken,
+            {b'system_id': system_id, b'error_description': error_description})
 
         def check(error):
             self.assertIsInstance(error, Failure)

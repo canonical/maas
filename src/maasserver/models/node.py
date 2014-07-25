@@ -43,6 +43,7 @@ from django.db.models import (
     ManyToManyField,
     Q,
     SET_DEFAULT,
+    TextField,
     )
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
@@ -501,6 +502,8 @@ class Node(CleanSave, TimestampedModel):
     :ivar hostname: This `Node`'s hostname.  Must conform to RFCs 952 and 1123.
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
+    :ivar error_description: A human-readable description of why a node is
+        marked broken.  Only meaningful when the node is in the state 'BROKEN'.
     :ivar owner: This `Node`'s owner if it's in use, None otherwise.
     :ivar boot_type: This `Node`'s booting method. See the vocabulary
         :class:`NODE_BOOT`.
@@ -549,6 +552,8 @@ class Node(CleanSave, TimestampedModel):
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
     agent_name = CharField(max_length=255, default='', blank=True, null=True)
+
+    error_description = TextField(blank=True, default='', editable=False)
 
     zone = ForeignKey(
         Zone, verbose_name="Physical zone",
@@ -1171,7 +1176,7 @@ class Node(CleanSave, TimestampedModel):
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 
-    def mark_broken(self):
+    def mark_broken(self, error_description):
         """Mark this node as 'BROKEN'.
 
         If the node is allocated, release it first.
@@ -1179,6 +1184,7 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.ALLOCATED:
             self.release()
         self.status = NODE_STATUS.BROKEN
+        self.error_description = error_description
         self.save()
 
     def mark_fixed(self):
@@ -1187,4 +1193,5 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
         self.status = NODE_STATUS.READY
+        self.error_description = ''
         self.save()

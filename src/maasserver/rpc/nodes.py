@@ -25,7 +25,7 @@ from provisioningserver.utils import synchronous
 
 @synchronous
 @transactional
-def mark_node_broken(system_id):
+def mark_node_broken(system_id, error_description):
     """Mark a node as broken.
 
     for :py:class:`~provisioningserver.rpc.region.MarkBroken`.
@@ -34,4 +34,4 @@ def mark_node_broken(system_id):
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
-    node.mark_broken()
+    node.mark_broken(error_description)

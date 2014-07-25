@@ -41,9 +41,11 @@ def perform_power_change(system_id, power_type, power_change, context):
     action = PowerAction(power_type)
     try:
         return action.execute(power_change=power_change, **context)
-    except Exception:
+    except Exception as error:
         client = getRegionClient()
-        client.mark_node_broken(system_id)
+        message = "Node could not be powered %s: %s" % (
+            power_change, error)
+        client.mark_node_broken(system_id, message)
         raise
 
 
@@ -80,4 +82,5 @@ def change_power_state(system_id, power_type, power_change, context,
 
     # Failure: the power state of the node hasn't changed: mark it as broken.
     client = getRegionClient()
-    client.mark_node_broken(system_id)
+    client.mark_node_broken(
+        system_id, "Node could not be powered %s" % power_change)

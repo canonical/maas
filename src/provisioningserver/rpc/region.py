@@ -98,6 +98,8 @@ class MarkNodeBroken(amp.Command):
     arguments = [
         # The node's system_id.
         (b"system_id", amp.Unicode()),
+        # The error description.
+        (b"error_description", amp.Unicode()),
     ]
     response = []
     errors = {NoSuchNode: b"NoSuchNode"}

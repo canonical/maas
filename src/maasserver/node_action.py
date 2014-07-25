@@ -308,7 +308,8 @@ class MarkBroken(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.mark_broken()
+        self.node.mark_broken(
+            "Manually marked as broken by user '%s'" % self.user.username)
         return "Node marked broken."
 
 

@@ -134,13 +134,14 @@ class Region(amp.AMP):
         return d
 
     @region.MarkNodeBroken.responder
-    def mark_node_broken(self, system_id):
+    def mark_node_broken(self, system_id, error_description):
         """mark_node_broken()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.MarkNodeBroken`.
         """
-        d = deferToThread(nodes.mark_node_broken, system_id)
+        d = deferToThread(
+            nodes.mark_node_broken, system_id, error_description)
         d.addCallback(lambda args: {})
         return d
 

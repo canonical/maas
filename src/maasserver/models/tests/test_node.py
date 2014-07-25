@@ -1056,13 +1056,19 @@ class NodeTest(MAASServerTestCase):
 
     def test_mark_broken_changes_status(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        node.mark_broken()
+        node.mark_broken(factory.make_name('error-description'))
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_mark_broken_updates_error_description(self):
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        description = factory.make_name('error-description')
+        node.mark_broken(description)
+        self.assertEqual(description, reload_object(node).error_description)
 
     def test_mark_broken_releases_allocated_node(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        node.mark_broken()
+        node.mark_broken(factory.make_name('error-description'))
         node = reload_object(node)
         self.assertEqual(
             (NODE_STATUS.BROKEN, None), (node.status, node.owner))
@@ -1071,6 +1077,13 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node(status=NODE_STATUS.BROKEN)
         node.mark_fixed()
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+
+    def test_mark_fixed_updates_error_description(self):
+        description = factory.make_name('error-description')
+        node = factory.make_node(
+            status=NODE_STATUS.BROKEN, error_description=description)
+        node.mark_fixed()
+        self.assertEqual('', reload_object(node).error_description)
 
     def test_mark_fixed_fails_if_node_isnt_broken(self):
         status = factory.pick_choice(

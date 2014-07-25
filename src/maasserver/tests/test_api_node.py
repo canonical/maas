@@ -1105,6 +1105,20 @@ class TestMarkBroken(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
+    def test_mark_broken_updates_error_description(self):
+        node = factory.make_node(
+            status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
+        error_description = factory.make_name('error-description')
+        response = self.client.post(
+            self.get_node_uri(node),
+            {'op': 'mark_broken', 'error_description': error_description})
+        self.assertEqual(httplib.OK, response.status_code)
+        node = reload_object(node)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, error_description),
+            (node.status, node.error_description)
+        )
+
     def test_mark_broken_requires_ownership(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
