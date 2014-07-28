@@ -15,24 +15,31 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import timedelta
+import os
 
+from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
     MockCalledOnceWith,
     MockNotCalled,
     )
-from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
     sentinel,
     )
-from provisioningserver import image_download_service
+from provisioningserver import (
+    image_download_service,
+    utils,
+    )
 from provisioningserver.image_download_service import (
+    import_boot_images,
     PeriodicImageDownloadService,
     service_lock,
     )
+from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.tasks import import_boot_images
+from provisioningserver.testing.config import BootSourcesFixture
+from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import pause
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.internet import TimerService
@@ -40,7 +47,7 @@ from twisted.internet import defer
 from twisted.internet.task import Clock
 
 
-class TestPeriodicImageDownloadService(MAASTestCase):
+class TestPeriodicImageDownloadService(PservTestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
@@ -131,8 +138,10 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         rpc_client = Mock()
         client_call = Mock()
         client_call.side_effect = [
-            defer.succeed(sentinel.sources),
-            defer.succeed(dict(http_proxy=sentinel.http_proxy)),
+            defer.succeed(dict(sources=sentinel.sources)),
+            defer.succeed(dict(
+                http_proxy=sentinel.http_proxy,
+                https_proxy=sentinel.https_proxy)),
             ]
         rpc_client.getClient.return_value = client_call
 
@@ -148,7 +157,8 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         service.startService()
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                import_boot_images, sentinel.sources, sentinel.http_proxy))
+                import_boot_images, sentinel.sources, sentinel.http_proxy,
+                sentinel.https_proxy))
 
     def test_no_download_if_no_rpc_connections(self):
         rpc_client = Mock()
@@ -195,3 +205,82 @@ class TestPeriodicImageDownloadService(MAASTestCase):
         # Lock is released once the download is done.
         clock.advance(1)
         self.assertFalse(service_lock.locked)
+
+
+class TestImportBootImages(PservTestCase):
+
+    # Cargo-culted from src/provisioningserver/tests/test_tasks.py
+    # At some point the celery task will go away and the previous code can
+    # simply be deleted.
+
+    def make_archive_url(self, name=None):
+        if name is None:
+            name = factory.make_name('archive')
+        return 'http://%s.example.com/%s' % (name, factory.make_name('path'))
+
+    def patch_boot_resources_function(self):
+        """Patch out `boot_resources.import_images`.
+
+        Returns the installed fake.  After the fake has been called, but not
+        before, its `env` attribute will have a copy of the environment dict.
+        """
+
+        class CaptureEnv:
+            """Fake function; records a copy of the environment."""
+
+            def __call__(self, *args, **kwargs):
+                self.args = args
+                self.env = os.environ.copy()
+
+        return self.patch(boot_resources, 'import_images', CaptureEnv())
+
+    def test_import_boot_images_integrates_with_boot_resources_function(self):
+        # If the config specifies no sources, nothing will be imported.  But
+        # the task succeeds without errors.
+        fixture = self.useFixture(BootSourcesFixture([]))
+        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'locate_config').return_value = (
+            fixture.filename)
+        self.assertIsNone(import_boot_images(sources=[]))
+
+    def test_import_boot_images_sets_GPGHOME(self):
+        home = factory.make_name('home')
+        self.patch(image_download_service, 'MAAS_USER_GPGHOME', home)
+        fake = self.patch_boot_resources_function()
+        import_boot_images(sources=[])
+        self.assertEqual(home, fake.env['GNUPGHOME'])
+
+    def test_import_boot_images_sets_proxy_if_given(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        proxy_vars = ['http_proxy', 'https_proxy']
+        fake = self.patch_boot_resources_function()
+        import_boot_images(sources=[], http_proxy=proxy, https_proxy=proxy)
+        self.assertEqual(
+            {
+                var: proxy
+                for var in proxy_vars
+            }, utils.filter_dict(fake.env, proxy_vars))
+
+    def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
+        proxy_vars = ['http_proxy', 'https_proxy']
+        fake = self.patch_boot_resources_function()
+        import_boot_images(sources=[])
+        self.assertEqual({}, utils.filter_dict(fake.env, proxy_vars))
+
+    def test_import_boot_images_accepts_sources_parameter(self):
+        fake = self.patch(boot_resources, 'import_images')
+        sources = [
+            {
+                'path': "http://example.com",
+                'selections': [
+                    {
+                        'release': "trusty",
+                        'arches': ["amd64"],
+                        'subarches': ["generic"],
+                        'labels': ["release"]
+                    },
+                ],
+            },
+        ]
+        import_boot_images(sources=sources)
+        self.assertThat(fake, MockCalledOnceWith(sources))

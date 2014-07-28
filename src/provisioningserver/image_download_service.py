@@ -14,19 +14,24 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "PeriodicImageDownloadService",
+    ]
 
 
 from datetime import timedelta
 from logging import getLogger
 
+from provisioningserver.auth import MAAS_USER_GPGHOME
 from provisioningserver.boot.tftppath import maas_meta_last_modified
+from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetProxies,
     )
-from provisioningserver.tasks import import_boot_images
+from provisioningserver.utils import pause
+from provisioningserver.utils.env import environment_variables
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredLock,
@@ -37,6 +42,23 @@ from twisted.internet.threads import deferToThread
 
 logger = getLogger(__name__)
 service_lock = DeferredLock()
+
+
+def import_boot_images(sources, http_proxy=None, https_proxy=None):
+    """Set up environment and run an import."""
+    # Note that this is cargo-culted from provisioningserver.tasks. That
+    # code cannot be imported because it is decorated with celery.task,
+    # which pulls in celery config that doesn't exist in the pserv
+    # environment.
+    variables = {
+        'GNUPGHOME': MAAS_USER_GPGHOME,
+        }
+    if http_proxy is not None:
+        variables['http_proxy'] = http_proxy
+    if https_proxy is not None:
+        variables['https_proxy'] = https_proxy
+    with environment_variables(variables):
+        boot_resources.import_images(sources)
 
 
 class PeriodicImageDownloadService(TimerService, object):
@@ -59,9 +81,16 @@ class PeriodicImageDownloadService(TimerService, object):
 
     @inlineCallbacks
     def _start_download(self):
-        try:
-            client = self.client_service.getClient()
-        except NoConnectionsAvailable:
+        client = None
+        # Retry a few times, since this service usually comes up before
+        # the RPC service.
+        for _ in range(3):
+            try:
+                client = self.client_service.getClient()
+                break
+            except NoConnectionsAvailable:
+                yield pause(5)
+        if client is None:
             logger.error(
                 "Can't initiate image download, no RPC connection to region.")
             return
@@ -71,7 +100,8 @@ class PeriodicImageDownloadService(TimerService, object):
         # Get http proxy from region
         proxies = yield client(GetProxies)
         yield deferToThread(
-            import_boot_images, sources, proxies['http_proxy'])
+            import_boot_images, sources.get("sources"),
+            proxies.get('http_proxy'), proxies.get('https_proxy'))
 
     @inlineCallbacks
     def maybe_start_download(self):

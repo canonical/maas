@@ -17,8 +17,6 @@ str = None
 
 __metaclass__ = type
 
-from datetime import timedelta
-
 import celeryconfig_common
 from maas import import_settings
 
@@ -29,11 +27,6 @@ CELERY_IMPORTS = None
 
 import_settings(celeryconfig_common)
 
-CELERY_IMPORTS = CELERY_IMPORTS + (
-    # Master tasks.
-    "maasserver.tasks",
-)
-
 try:
     import maas_local_celeryconfig
 except ImportError:
@@ -41,17 +34,5 @@ except ImportError:
 else:
     import_settings(maas_local_celeryconfig)
 
-IMPORT_BOOT_IMAGES_SCHEDULE = timedelta(days=7)
-
 CELERYBEAT_SCHEDULE = {
-    # Periodically (re-)import boot images.  This is a job for the region
-    # controller, although the region controller delegates it to the clusters.
-    'import-boot-images': {
-        'task': 'maasserver.tasks.import_boot_images_on_schedule',
-        'schedule': IMPORT_BOOT_IMAGES_SCHEDULE,
-        'options': {
-            'queue': WORKER_QUEUE_REGION,
-            'expires': int(IMPORT_BOOT_IMAGES_SCHEDULE.total_seconds()),
-        },
-    },
 }

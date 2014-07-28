@@ -249,10 +249,9 @@ class TestRegionProtocol_GetBootSources(MAASTestCase):
         uuid, boot_source = yield deferToThread(
             self.make_boot_source_selection, keyring)
 
-        # To the cluster there's no distinction between the keyring file
-        # and keyring data, so it's passed as keyring.
-        boot_source["keyring"] = keyring
-        del boot_source["keyring_data"]
+        # keyring_data contains the b64decoded representation since AMP
+        # is fine with bytes.
+        boot_source["keyring_data"] = keyring
 
         response = yield call_responder(
             Region(), GetBootSources, {b"uuid": uuid})

@@ -13,9 +13,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from base64 import b64encode
 import os
 
+from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
@@ -32,8 +32,7 @@ class TestWriteKeyring(MAASTestCase):
     def test_writes_keyring_to_file(self):
         keyring_data = b"A keyring! My kingdom for a keyring!"
         keyring_path = os.path.join(self.make_dir(), "a-keyring-file")
-        keyrings.write_keyring(
-            keyring_path, b64encode(keyring_data))
+        keyrings.write_keyring(keyring_path, keyring_data)
         self.assertTrue(os.path.exists(keyring_path))
         self.assertThat(keyring_path, FileContains(keyring_data))
 
@@ -58,7 +57,7 @@ class TestWriteAllKeyrings(MAASTestCase):
 
         sources = [{
             'url': "http://%s" % self.getUniqueString(),
-            'keyring_data': b64encode(self.getUniqueString()),
+            'keyring_data': factory.make_bytes(),
             } for i in range(5)]
 
         keyring_path = self.make_dir()
@@ -81,7 +80,7 @@ class TestWriteAllKeyrings(MAASTestCase):
         self.patch(keyrings, 'write_keyring')
         sources = [{
             'url': "http://%s" % self.getUniqueString(),
-            'keyring_data': b64encode(self.getUniqueString()),
+            'keyring_data': factory.make_bytes(),
             } for i in range(5)]
 
         keyring_path = self.make_dir()

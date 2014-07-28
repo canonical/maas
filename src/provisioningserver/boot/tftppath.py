@@ -205,7 +205,7 @@ def maas_meta_last_modified(tftproot=None):
         provisioningserver.config.BOOT_RESOURCES_STORAGE
     """
     if tftproot is None:
-        tftproot = config.BOOT_RESOURCES_STORAGE
+        tftproot = os.path.join(config.BOOT_RESOURCES_STORAGE, 'current')
     meta_file = maas_meta_file_path(tftproot)
     try:
         return os.path.getmtime(meta_file)

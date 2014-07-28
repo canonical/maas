@@ -27,6 +27,7 @@ __all__ = [
     'write_full_dns_config',
     ]
 
+from base64 import b64decode
 from functools import wraps
 from logging import getLogger
 from subprocess import CalledProcessError
@@ -468,6 +469,11 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 @task
 @log_exception_text
 def import_boot_images(sources, http_proxy=None, callback=None):
+    for source in sources:
+        # Decode any b64 keyring data to bytes.
+        data = source.get("keyring_data")
+        if data is not None:
+            source["keyring_data"] = b64decode(data)
     variables = {
         'GNUPGHOME': MAAS_USER_GPGHOME,
         }

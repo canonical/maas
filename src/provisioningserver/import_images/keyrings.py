@@ -13,7 +13,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from base64 import b64decode
 import os
 import tempfile
 from urlparse import urlsplit
@@ -29,9 +28,8 @@ def write_keyring(keyring_path, keyring_data):
         base64-encoded string.
     """
     logger.debug("Writing keyring %s to disk.", keyring_path)
-    decoded_data = b64decode(keyring_data)
     with open(keyring_path, 'wb') as keyring_file:
-        keyring_file.write(decoded_data)
+        keyring_file.write(keyring_data)
 
 
 def calculate_keyring_name(source_url):

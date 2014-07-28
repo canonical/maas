@@ -65,7 +65,7 @@ class GetBootSources(amp.Command):
     response = [
         (b"sources", amp.AmpList(
             [(b"url", amp.Unicode()),
-             (b"keyring", Bytes()),
+             (b"keyring_data", Bytes()),
              (b"selections", amp.AmpList(
                  [(b"release", amp.Unicode()),
                   (b"arches", amp.ListOf(amp.Unicode())),

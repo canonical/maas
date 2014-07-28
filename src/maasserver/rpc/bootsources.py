@@ -44,5 +44,5 @@ def get_boot_sources(uuid):
     # the raw bytes; AMP is fine with bytes.
     for source in sources:
         keyring_data = source.pop("keyring_data")
-        source["keyring"] = b64decode(keyring_data)
+        source["keyring_data"] = b64decode(keyring_data)
     return sources

@@ -20,6 +20,10 @@ import os
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver
+from provisioningserver import plugin as plugin_module
+from provisioningserver.image_download_service import (
+    PeriodicImageDownloadService,
+    )
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
@@ -81,6 +85,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
         self.tempdir = self.make_dir()
+        cluster_uuid = factory.make_UUID()
+        self.patch(plugin_module, 'get_cluster_uuid').return_value = (
+            cluster_uuid)
 
     def write_config(self, config):
         config_filename = os.path.join(self.tempdir, "config.yaml")
@@ -103,7 +110,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["log", "oops", "rpc", "tftp"],
+            ["image_download", "log", "oops", "rpc", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -122,11 +129,19 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["amqp", "log", "oops", "rpc", "tftp"],
+            ["amqp", "image_download", "log", "oops", "rpc", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
+
+    def test_image_download_service(self):
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        image_service = service.getServiceNamed("image_download")
+        self.assertIsInstance(image_service, PeriodicImageDownloadService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

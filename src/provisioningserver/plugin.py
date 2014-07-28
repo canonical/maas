@@ -16,7 +16,11 @@ __all__ = []
 
 import provisioningserver
 from provisioningserver.amqpclient import AMQFactory
+from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
+from provisioningserver.image_download_service import (
+    PeriodicImageDownloadService,
+    )
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.services import (
     LogService,
@@ -158,6 +162,12 @@ class ProvisioningServiceMaker(object):
         tftp_service.setName("tftp")
         return tftp_service
 
+    def _makePeriodicImageDownloadService(self, rpc_service):
+        image_download_service = PeriodicImageDownloadService(
+            rpc_service, reactor, get_cluster_uuid())
+        image_download_service.setName("image_download")
+        return image_download_service
+
     def _makeRPCService(self, rpc_config):
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
@@ -186,6 +196,11 @@ class ProvisioningServiceMaker(object):
 
         rpc_service = self._makeRPCService(config["rpc"])
         rpc_service.setServiceParent(services)
+
+        image_download_service = self._makePeriodicImageDownloadService(
+            rpc_service)
+        image_download_service.setServiceParent(services)
+
         # Store a handle to the cluster services.
         provisioningserver.services = services
 

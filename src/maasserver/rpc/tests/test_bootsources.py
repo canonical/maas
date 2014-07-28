@@ -32,9 +32,8 @@ class TestGetBootSources(MAASTestCase):
         factory.make_boot_source_selection(source)
 
         expected = source.to_dict()
-        # To the cluster there's no distinction between the keyring file
-        # and keyring data, so it's passed as keyring.
-        expected["keyring"] = keyring
-        del expected["keyring_data"]
+        # keyring_data contains the b64decoded representation since AMP
+        # is fine with bytes.
+        expected["keyring_data"] = keyring
 
         self.assertEqual([expected], get_boot_sources(nodegroup.uuid))
