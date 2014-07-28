@@ -419,21 +419,36 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
         yield deferToThread(self.create_event_type, name, description, level)
         system_id = yield deferToThread(self.create_node)
 
+        event_description = factory.make_name('description')
         response = yield call_responder(
-            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+            Region(), SendEvent,
+            {
+                b'system_id': system_id,
+                b'type_name': name,
+                b'description': event_description,
+            }
+        )
 
         self.assertIsNone(None, response)
         event = yield deferToThread(self.get_event, system_id, name)
-        self.assertEquals(system_id, event.node.system_id)
-        self.assertEquals(name, event.type.name)
+        self.assertEquals(
+            (system_id, event_description, name),
+            (event.node.system_id, event.description, event.type.name)
+        )
 
     @wait_for_reactor
     def test_send_event_raises_if_unknown_type(self):
         name = factory.make_name('type_name')
         system_id = factory.make_name('system_id')
+        description = factory.make_name('description')
 
         d = call_responder(
-            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+            Region(), SendEvent,
+            {
+                b'system_id': system_id,
+                b'type_name': name,
+                b'description': description,
+            })
 
         def check(error):
             self.assertIsInstance(error, Failure)
@@ -450,8 +465,14 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
         yield deferToThread(self.create_event_type, name, description, level)
 
         system_id = factory.make_name('system_id')
+        event_description = factory.make_name('event-description')
         d = call_responder(
-            Region(), SendEvent, {b'system_id': system_id, b'type_name': name})
+            Region(), SendEvent,
+            {
+                b'system_id': system_id,
+                b'type_name': name,
+                b'description': event_description,
+            })
 
         def check(error):
             self.assertIsInstance(error, Failure)

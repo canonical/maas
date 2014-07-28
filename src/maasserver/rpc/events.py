@@ -44,7 +44,7 @@ def register_event_type(name, description, level):
 
 @synchronous
 @transactional
-def send_event(system_id, type_name):
+def send_event(system_id, type_name, description=''):
     """Send an event.
 
     for :py:class:`~provisioningserver.rpc.region.SendEvent`.
@@ -59,4 +59,5 @@ def send_event(system_id, type_name):
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
 
-    Event.objects.create(node=node, type=event_type)
+    Event.objects.create(
+        node=node, type=event_type, description=description)

@@ -158,13 +158,14 @@ class Region(amp.AMP):
         return d
 
     @region.SendEvent.responder
-    def send_event(self, system_id, type_name):
+    def send_event(self, system_id, type_name, description):
         """send_event()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.region.SendEvent`.
         """
-        d = deferToThread(events.send_event, system_id, type_name)
+        d = deferToThread(
+            events.send_event, system_id, type_name, description)
         d.addCallback(lambda args: {})
         return d
 

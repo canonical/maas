@@ -55,29 +55,38 @@ class TestSendEvent(MAASTestCase):
     def test_send_node_event_stores_event(self):
         client = Mock()
         system_id = factory.make_name('system_id')
+        description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 
-        send_event_node(client, event_name, system_id)
+        send_event_node(client, event_name, system_id, description)
         self.assertEquals(
-            [call(SendEvent, type_name=event_name, system_id=system_id)],
+            [call(
+                SendEvent, type_name=event_name, system_id=system_id,
+                description=description,
+            )],
             client.call_args_list,
         )
 
     def test_send_node_event_registers_event_type(self):
         client = Mock(side_effect=[NoSuchEventType, None, None])
         system_id = factory.make_name('system_id')
+        description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 
-        send_event_node(client, event_name, system_id)
+        send_event_node(client, event_name, system_id, description)
         event_detail = EVENT_DETAILS[event_name]
         self.assertEquals(
             [
-                call(SendEvent, type_name=event_name, system_id=system_id),
+                call(
+                    SendEvent, type_name=event_name, system_id=system_id,
+                    description=description),
                 call(
                     RegisterEventType, name=event_name,
                     description=event_detail.description,
                     level=event_detail.level),
-                call(SendEvent, type_name=event_name, system_id=system_id),
+                call(
+                    SendEvent, type_name=event_name, system_id=system_id,
+                    description=description),
             ],
             client.call_args_list,
         )

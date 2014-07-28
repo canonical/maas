@@ -62,7 +62,7 @@ EVENT_DETAILS = {
 }
 
 
-def send_event_node(client, event_type, system_id):
+def send_event_node(client, event_type, system_id, description=''):
     """Send the given node event to the region.
 
     Also register the event type if it's not registered yet.
@@ -73,9 +73,13 @@ def send_event_node(client, event_type, system_id):
     :type event_type: unicode
     :param system_id: The system ID of the node of the event.
     :type system_id: unicode
+    :param description: An optional description for of the event.
+    :type description: unicode
     """
     try:
-        client(SendEvent, system_id=system_id, type_name=event_type)
+        client(
+            SendEvent, system_id=system_id, type_name=event_type,
+            description=description)
     except NoSuchEventType:
         # The event type doesn't exist, register it and re-send the event.
         event_detail = EVENT_DETAILS[event_type]
@@ -83,4 +87,6 @@ def send_event_node(client, event_type, system_id):
             RegisterEventType, name=event_type,
             description=event_detail.description, level=event_detail.level
         )
-        client(SendEvent, system_id=system_id, type_name=event_type)
+        client(
+            SendEvent, system_id=system_id, type_name=event_type,
+            description=description)

@@ -129,6 +129,7 @@ class SendEvent(amp.Command):
     arguments = [
         (b"system_id", amp.Unicode()),
         (b"type_name", amp.Unicode()),
+        (b"description", amp.Unicode()),
     ]
     response = []
     errors = {

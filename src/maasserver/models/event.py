@@ -17,7 +17,10 @@ __all__ = [
     ]
 
 
-from django.db.models import ForeignKey
+from django.db.models import (
+    ForeignKey,
+    TextField,
+    )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -28,11 +31,14 @@ class Event(CleanSave, TimestampedModel):
 
     :ivar type: The event's type.
     :ivar node: The node of the event.
+    :ivar description: A free-form description of the event.
     """
 
     type = ForeignKey('EventType', null=False, editable=False)
 
     node = ForeignKey('Node', null=False, editable=False)
+
+    description = TextField(default='', blank=True, editable=False)
 
     class Meta(DefaultMeta):
         verbose_name = "Event record"
