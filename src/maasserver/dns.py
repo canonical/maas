@@ -42,11 +42,16 @@ from maasserver.sequence import (
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import IPAddress
 from provisioningserver import tasks
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.dns.config import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     SRVRecord,
     )
+
+
+maaslog = get_maas_logger("dns")
+
 
 # A DNS zone's serial is a 32-bit integer.  Also, we start with the
 # value 1 because 0 has special meaning for some DNS servers.  Even if
@@ -287,6 +292,7 @@ def change_dns_zones(nodegroups):
         return
     serial = next_zone_serial()
     for zone in ZoneGenerator(nodegroups, serial):
+        maaslog.info("Generating new DNS zone file for %s", zone.zone_name)
         zone_reload_subtask = tasks.rndc_command.subtask(
             args=[['reload', zone.zone_name]])
         tasks.write_dns_zone_config.delay(

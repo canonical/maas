@@ -436,7 +436,7 @@ class TestSetVirtualTag(MAASServerTestCase):
         self.assertTagsEqual(node, [])
         set_virtual_tag(node, b"wibble", 0)
         self.assertTagsEqual(node, [])
-        self.assertEqual(
+        self.assertIn(
             "Neither 'virtual' nor 'notvirtual' appeared in the captured "
             "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
             logger.output)
@@ -448,7 +448,7 @@ class TestSetVirtualTag(MAASServerTestCase):
         self.assertTagsEqual(node, ["virtual"])
         set_virtual_tag(node, b"wibble", 0)
         self.assertTagsEqual(node, ["virtual"])
-        self.assertEqual(
+        self.assertIn(
             "Neither 'virtual' nor 'notvirtual' appeared in the captured "
             "VIRTUALITY_SCRIPT output for node %s.\n" % node.system_id,
             logger.output)
@@ -588,6 +588,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger())
         update_hardware_details(factory.make_node(), b"garbage", 0)
         expected_log = dedent("""\
+        ...
         Invalid lshw data.
         Traceback (most recent call last):
         ...
@@ -598,6 +599,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
                 expected_log, self.doctest_flags))
 
     def test_hardware_updates_does_nothing_when_exit_status_is_not_zero(self):
-        logger = self.useFixture(FakeLogger())
+        logger = self.useFixture(FakeLogger(name='commissioningscript'))
         update_hardware_details(factory.make_node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
