@@ -14,11 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import errno
 from datetime import (
     datetime,
     timedelta,
     )
+import errno
 import hashlib
 import json
 import os
