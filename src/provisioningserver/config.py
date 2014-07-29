@@ -101,7 +101,12 @@ class ConfigOops(Schema):
 
 
 class ConfigBroker(Schema):
-    """Configuration validator for message broker options."""
+    """Configuration validator for message broker options.
+
+    Deprecated: MAAS no longer uses a message broker. This remains here to
+    avoid validation failures when using old versions of the cluster's
+    configuration file.
+    """
 
     if_key_missing = None
 

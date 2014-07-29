@@ -29,7 +29,6 @@ from oops_twisted import (
     OOPSObserver,
     )
 import provisioningserver
-from provisioningserver.amqpclient import AMQFactory
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
 from provisioningserver.image_download_service import (
@@ -37,10 +36,7 @@ from provisioningserver.image_download_service import (
     )
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.tftp import TFTPService
-from twisted.application.internet import (
-    TCPClient,
-    TCPServer,
-    )
+from twisted.application.internet import TCPServer
 from twisted.application.service import (
     IServiceMaker,
     Service,
@@ -55,10 +51,7 @@ from twisted.internet.defer import (
     returnValue,
     )
 from twisted.plugin import IPlugin
-from twisted.python import (
-    log,
-    usage,
-    )
+from twisted.python import usage
 from twisted.python.log import (
     addObserver,
     FileLogObserver,
@@ -222,26 +215,6 @@ class ProvisioningServiceMaker(object):
         site_service.setName("site")
         return site_service
 
-    def _makeBroker(self, broker_config):
-        """Create the messaging broker."""
-        broker_port = broker_config["port"]
-        broker_host = broker_config["host"]
-        broker_username = broker_config["username"]
-        broker_password = broker_config["password"]
-        broker_vhost = broker_config["vhost"]
-
-        cb_connected = lambda ignored: None  # TODO
-        cb_disconnected = lambda ignored: None  # TODO
-        cb_failed = lambda connector_and_reason: (
-            log.err(connector_and_reason[1], "Connection failed"))
-        client_factory = AMQFactory(
-            broker_username, broker_password, broker_vhost,
-            cb_connected, cb_disconnected, cb_failed)
-        client_service = TCPClient(
-            broker_host, broker_port, client_factory)
-        client_service.setName("amqp")
-        return client_service
-
     def _makeTFTPService(self, tftp_config):
         """Create the dynamic TFTP service."""
         tftp_service = TFTPService(
@@ -271,13 +244,6 @@ class ProvisioningServiceMaker(object):
 
         oops_service = self._makeOopsService(log_service, config["oops"])
         oops_service.setServiceParent(services)
-
-        broker_config = config["broker"]
-        # Connecting to RabbitMQ is not yet a required component of a running
-        # MAAS installation; skip unless the password has been set explicitly.
-        if broker_config["password"] != b"test":
-            client_service = self._makeBroker(broker_config)
-            client_service.setServiceParent(services)
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)

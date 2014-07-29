@@ -118,24 +118,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "Not all services are named.")
         self.assertEqual(service, provisioningserver.services)
 
-    def test_makeService_with_broker(self):
-        """
-        The log, oops, site, and amqp services are created when the broker
-        user and password options are given.
-        """
-        options = Options()
-        options["config-file"] = self.write_config(
-            {"broker": {"username": "Bob", "password": "Hoskins"}})
-        service_maker = ProvisioningServiceMaker("Harry", "Hill")
-        service = service_maker.makeService(options)
-        self.assertIsInstance(service, MultiService)
-        self.assertSequenceEqual(
-            ["amqp", "image_download", "log", "oops", "rpc", "tftp"],
-            sorted(service.namedServices))
-        self.assertEqual(
-            len(service.namedServices), len(service.services),
-            "Not all services are named.")
-
     def test_image_download_service(self):
         options = Options()
         options["config-file"] = self.write_config({})
