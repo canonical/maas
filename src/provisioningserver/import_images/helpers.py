@@ -20,9 +20,10 @@ __all__ = [
 
 from collections import namedtuple
 import functools
-import logging
+from provisioningserver.logger import get_maas_logger
 
 from simplestreams.util import policy_read_signed
+
 
 # A tuple of the items that together select a boot image.
 ImageSpec = namedtuple(b'ImageSpec', [
@@ -60,14 +61,4 @@ def get_signing_policy(path, keyring=None):
     return policy
 
 
-def init_logger(log_level=logging.INFO):
-    logger = logging.getLogger(__name__)
-    formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(log_level)
-    return logger
-
-
-logger = init_logger()
+logger = get_maas_logger("import-images")

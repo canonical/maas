@@ -20,18 +20,18 @@ __all__ = [
 import argparse
 from contextlib import contextmanager
 from glob import glob
-from logging import getLogger
 import os.path
 from subprocess import (
     check_call,
     check_output,
     )
 
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import tempdir
 from provisioningserver.utils.env import environment_variables
 
 
-logger = getLogger(__name__)
+logger = get_maas_logger("uec2roottar")
 
 
 def make_argparser(description):
