@@ -15,6 +15,13 @@ __metaclass__ = type
 __all__ = []
 
 
+from twisted.application.service import MultiService
+
+# The cluster's services. This is initialised by
+# ProvisioningServiceMaker.
+services = MultiService()
+
+
 try:
     import maasfascist
     maasfascist  # Silence lint.

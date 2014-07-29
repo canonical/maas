@@ -19,11 +19,6 @@ __all__ = [
 import provisioningserver
 from provisioningserver.rpc import exceptions
 
-# A reference to the cluster's services.  This is initialized
-# in ProvisioningServiceMaker.makeServer from
-# (src/provisioningserver/plugin.py).
-services = None
-
 
 def getRegionClient():
     """getRegionClient()
@@ -35,8 +30,10 @@ def getRegionClient():
     """
     # TODO: retry a couple of times before giving up if the service is
     # not running or if exceptions.NoConnectionsAvailable gets raised.
-    if provisioningserver.services is None:
+    try:
+        rpc_service = provisioningserver.services.getServiceNamed('rpc')
+    except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Cluster services are unavailable.")
-    rpc_service = provisioningserver.services.getServiceNamed('rpc')
-    return rpc_service.getClient()
+    else:
+        return rpc_service.getClient()

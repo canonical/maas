@@ -17,9 +17,10 @@ __all__ = [
 
 from maastesting.testcase import MAASTestCase
 import provisioningserver
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
-class TestFunctions(MAASTestCase):
+class TestUtilities(MAASTestCase):
 
     def test_get_rpc_client_returns_client(self):
         services = self.patch(provisioningserver, "services")
@@ -29,3 +30,10 @@ class TestFunctions(MAASTestCase):
             services.getServiceNamed('rpc').getClient(),
             client,
         )
+
+    def test_error_when_cluster_services_are_down(self):
+        services = self.patch(provisioningserver, "services")
+        services.getServiceNamed.side_effect = KeyError
+        self.assertRaises(
+            NoConnectionsAvailable,
+            provisioningserver.rpc.getRegionClient)

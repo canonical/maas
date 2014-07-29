@@ -307,8 +307,7 @@ class ClusterClientService(TimerService, object):
         """
         try:
             info_url = self._get_rpc_info_url()
-            info_page = yield getPage(info_url)
-            info = json.loads(info_page)
+            info = yield self._fetch_rpc_info(info_url)
             eventloops = info["eventloops"]
             yield self._update_connections(eventloops)
         except ConnectError as error:
@@ -327,6 +326,10 @@ class ClusterClientService(TimerService, object):
         url = url._replace(path="%s/rpc/" % url.path.rstrip("/"))
         url = url.geturl()
         return ascii_url(url)
+
+    @staticmethod
+    def _fetch_rpc_info(url):
+        return getPage(url).addCallback(json.loads)
 
     def _calculate_interval(self, num_eventloops, num_connections):
         """Calculate the update interval.

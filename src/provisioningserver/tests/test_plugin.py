@@ -84,6 +84,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
 
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
+        self.patch(provisioningserver, "services", MultiService())
         self.tempdir = self.make_dir()
         cluster_uuid = factory.make_UUID()
         self.patch(plugin_module, 'get_cluster_uuid').return_value = (

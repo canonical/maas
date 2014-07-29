@@ -1,7 +1,7 @@
 # Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for `provisioningserver.services`."""
+"""Tests for extra services in `provisioningserver.plugin`."""
 
 from __future__ import (
     absolute_import,
@@ -21,7 +21,7 @@ import sys
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from oops_twisted import OOPSObserver
-from provisioningserver.services import (
+from provisioningserver.plugin import (
     LogService,
     OOPSService,
     )
