@@ -23,8 +23,114 @@ from abc import (
     abstractmethod,
     )
 
+from jsonschema import validate
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.utils.registry import Registry
+
+# JSON schema representing the Django choices format as JSON; an array of
+# 2-item arrays.
+CHOICE_FIELD_SCHEMA = {
+    'type': 'array',
+    'items': {
+        'title': "Setting parameter field choice",
+        'type': 'array',
+        'minItems': 2,
+        'maxItems': 2,
+        'uniqueItems': True,
+        'items': {
+            'type': 'string',
+        }
+    },
+}
+
+# JSON schema for what a settings field should look like.
+SETTING_PARAMETER_FIELD_SCHEMA = {
+    'title': "Setting parameter field",
+    'type': 'object',
+    'properties': {
+        'name': {
+            'type': 'string',
+        },
+        'field_type': {
+            'type': 'string',
+        },
+        'label': {
+            'type': 'string',
+        },
+        'required': {
+            'type': 'boolean',
+        },
+        'choices': CHOICE_FIELD_SCHEMA,
+        'default': {
+            'type': 'string',
+        },
+    },
+    'required': ['field_type', 'label', 'required'],
+}
+
+
+# JSON schema for what group of setting parameters should look like.
+JSON_SETTING_SCHEMA = {
+    'title': "Setting parameters set",
+    'type': 'object',
+    'properties': {
+        'name': {
+            'type': 'string',
+        },
+        'description': {
+            'type': 'string',
+        },
+        'fields': {
+            'type': 'array',
+            'items': SETTING_PARAMETER_FIELD_SCHEMA,
+        },
+    },
+    'required': ['name', 'description', 'fields'],
+}
+
+
+def make_setting_field(
+        name, label, field_type=None, choices=None, default=None,
+        required=False):
+    """Helper function for building a JSON setting parameters field.
+
+    :param name: The name of the field.
+    :type name: string
+    :param label: The label to be presented to the user for this field.
+    :type label: string
+    :param field_type: The type of field to create. Can be one of
+        (string, choice, mac_address). Defaults to string.
+    :type field_type: string.
+    :param choices: The collection of choices to present to the user.
+        Needs to be structured as a list of lists, otherwise
+        make_setting_field() will raise a ValidationError.
+    :type list:
+    :param default: The default value for the field.
+    :type default: string
+    :param required: Whether or not a value for the field is required.
+    :type required: boolean
+    """
+    if field_type not in ('string', 'mac_address', 'choice'):
+        field_type = 'string'
+    if choices is None:
+        choices = []
+    validate(choices, CHOICE_FIELD_SCHEMA)
+    if default is None:
+        default = ""
+    field = {
+        'name': name,
+        'label': label,
+        'required': required,
+        'field_type': field_type,
+        'choices': choices,
+        'default': default,
+    }
+    return field
+
+
+def validate_settings(setting_fields):
+    """Helper that validates that the fields adhere to the JSON schema."""
+    validate(setting_fields, JSON_SETTING_SCHEMA)
 
 
 class Architecture:
