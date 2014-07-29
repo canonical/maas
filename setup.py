@@ -71,6 +71,7 @@ setup(
              'contrib/maas_local_celeryconfig.py',
              'contrib/maas_local_celeryconfig_cluster.py',
              'contrib/maas-http.conf',
+             'contrib/maas-rsyslog.conf',
              'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
         ('/etc/maas/templates/uefi',
