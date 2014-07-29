@@ -45,6 +45,6 @@ def get_maas_logger(syslog_tag=None):
     maaslog.setLevel(logging.DEBUG)
     handler = SysLogHandler("/dev/log")
     maaslog.addHandler(handler)
-    formatter = logging.Formatter(fmt=maaslog.name + ": %(message)s")
+    formatter = logging.Formatter(fmt=maaslog.name + ": [%(levelname)s] %(message)s")
     handler.setFormatter(formatter)
     return maaslog

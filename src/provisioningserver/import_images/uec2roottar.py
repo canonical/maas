@@ -31,7 +31,7 @@ from provisioningserver.utils import tempdir
 from provisioningserver.utils.env import environment_variables
 
 
-logger = get_maas_logger("uec2roottar")
+maaslog = get_maas_logger("uec2roottar")
 
 
 def make_argparser(description):
@@ -67,7 +67,7 @@ def extract_image_from_tarball(tarball, working_dir):
     exactly one of those, in the tarball's root directory.
     """
     glob_pattern = '*.img'
-    logger.debug(
+    maaslog.debug(
         "Extracting %s from %s into %s.", glob_pattern, tarball, working_dir)
     check_call([
         'tar',
@@ -120,7 +120,7 @@ def unmount(mountpoint):
     try:
         check_call(['umount', mountpoint])
     except BaseException as e:
-        logger.error("Could not unmount %s: %s", mountpoint, e)
+        maaslog.error("Could not unmount %s: %s", mountpoint, e)
         raise
 
 
@@ -168,16 +168,16 @@ def extract_image(image, output):
 def set_ownership(path, user=None):
     """Set file ownership to `user` if specified."""
     if user is not None:
-        logger.debug("Setting file owner to %s.", user)
+        maaslog.debug("Setting file owner to %s.", user)
         check_call(['/bin/chown', user, path])
 
 
 def main(args):
     """Do the work: loop-mount image, write contents to output file."""
     output = args.output
-    logger.debug("Converting %s to %s.", args.image, output)
+    maaslog.debug("Converting %s to %s.", args.image, output)
     with tempdir() as working_dir:
         image = get_image_file(args.image, working_dir)
         extract_image(image, output)
     set_ownership(output, args.user)
-    logger.debug("Finished.  Wrote to %s.", output)
+    maaslog.debug("Finished.  Wrote to %s.", output)

@@ -101,7 +101,7 @@ class TestWriteAllKeyrings(MAASTestCase):
 
     def test_ignores_existing_keyrings(self):
         self.patch(keyrings, 'write_keyring')
-        fake_logger = self.patch(keyrings, 'logger')
+        fake_maaslog = self.patch(keyrings, 'maaslog')
         source = {
             'url': self.getUniqueString(),
             'keyring': self.getUniqueString(),
@@ -118,7 +118,7 @@ class TestWriteAllKeyrings(MAASTestCase):
             keyring_path, keyrings.calculate_keyring_name(source['url']))
         self.assertEqual(expected_keyring, returned_source.get('keyring'))
         self.assertThat(
-            fake_logger.warning,
+            fake_maaslog.warning,
             MockCalledWith(
                 "Both a keyring file and keyring data were specified; "
                 "ignoring the keyring file."))

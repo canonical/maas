@@ -117,9 +117,9 @@ class TestMain(MAASTestCase):
         self.arch, self.subarch, self.release, self.label = self.image
         self.repo = self.make_simplestreams_repo(self.image)
 
-    def patch_logger(self):
+    def patch_maaslog(self):
         """Suppress log output from the import code."""
-        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'maaslog')
 
     def make_args(self, sources="", **kwargs):
         """Fake an `argumentparser` parse result."""
@@ -276,7 +276,7 @@ class TestMain(MAASTestCase):
         # Patch out things that we don't want running during the test.  Patch
         # at a low level, so that we exercise all the function calls that a
         # unit test might not put to the test.
-        self.patch_logger()
+        self.patch_maaslog()
         self.patch(boot_resources, 'call_and_check')
 
         # We'll go through installation of a PXE boot loader here, but skip
@@ -326,14 +326,14 @@ class TestMain(MAASTestCase):
             meta_data[arch][subarch][release][label].keys())
 
     def test_warns_if_no_sources_selected(self):
-        self.patch_logger()
+        self.patch_maaslog()
         sources_fixture = self.useFixture(BootSourcesFixture([]))
         args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
 
         self.assertThat(
-            boot_resources.logger.warn,
+            boot_resources.maaslog.warn,
             MockAnyCall("Can't import: no Simplestreams sources selected."))
 
     def test_warns_if_no_boot_resources_found(self):
@@ -351,20 +351,20 @@ class TestMain(MAASTestCase):
         self.patch(boot_resources, 'download_all_image_descriptions')
         boot_resources.download_all_image_descriptions.return_value = (
             BootImageMapping())
-        self.patch_logger()
+        self.patch_maaslog()
         self.patch(boot_resources, 'RepoWriter')
         args = self.make_args(sources_file=sources_fixture.filename)
 
         boot_resources.main(args)
 
         self.assertThat(
-            boot_resources.logger.warn,
+            boot_resources.maaslog.warn,
             MockAnyCall(
                 "No boot resources found.  "
                 "Check sources specification and connectivity."))
 
     def test_raises_ioerror_when_no_sources_file_found(self):
-        self.patch_logger()
+        self.patch_maaslog()
         no_sources = os.path.join(
             self.make_dir(), '%s.yaml' % factory.make_name('no-sources'))
         self.assertRaises(
@@ -378,7 +378,7 @@ class TestMain(MAASTestCase):
         mock_load = self.patch(BootSources, 'load')
         other_error = IOError(randint(errno.ENOENT + 1, 1000))
         mock_load.side_effect = other_error
-        self.patch_logger()
+        self.patch_maaslog()
         raised_error = self.assertRaises(
             IOError,
             boot_resources.main, self.make_args())
@@ -387,7 +387,7 @@ class TestMain(MAASTestCase):
     def test_raises_error_when_no_sources_passed(self):
         # main() raises an error when neither a sources file nor a sources
         # listing is specified.
-        self.patch_logger()
+        self.patch_maaslog()
         self.assertRaises(
             boot_resources.NoConfigFile,
             boot_resources.main, self.make_args(sources="", sources_file=""))
@@ -434,7 +434,7 @@ class TestParseSources(MAASTestCase):
     """Tests for the `parse_sources` function."""
 
     def test_parses_sources(self):
-        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'maaslog')
         sources = [
             {
                 'keyring': factory.make_name("keyring"),
@@ -459,7 +459,7 @@ class TestImportImages(MAASTestCase):
 
     def test_writes_source_keyrings(self):
         # Stop import_images() from actually doing anything.
-        self.patch(boot_resources, 'logger')
+        self.patch(boot_resources, 'maaslog')
         self.patch(boot_resources, 'call_and_check')
         self.patch(boot_resources, 'download_all_boot_resources')
         self.patch(boot_resources, 'download_all_image_descriptions')

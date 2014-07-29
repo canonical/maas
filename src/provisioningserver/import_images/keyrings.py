@@ -17,7 +17,7 @@ import os
 import tempfile
 from urlparse import urlsplit
 
-from provisioningserver.import_images.helpers import logger
+from provisioningserver.import_images.helpers import maaslog
 
 
 def write_keyring(keyring_path, keyring_data):
@@ -27,7 +27,7 @@ def write_keyring(keyring_path, keyring_data):
     :param keyring_data: The data to write to the keyring_file, as a
         base64-encoded string.
     """
-    logger.debug("Writing keyring %s to disk.", keyring_path)
+    maaslog.debug("Writing keyring %s to disk.", keyring_path)
     with open(keyring_path, 'wb') as keyring_file:
         keyring_file.write(keyring_data)
 
@@ -56,7 +56,7 @@ def write_all_keyrings(sources):
         keyring_data = source.get('keyring_data')
 
         if keyring_file is not None and keyring_data is not None:
-            logger.warning(
+            maaslog.warning(
                 "Both a keyring file and keyring data were specified; "
                 "ignoring the keyring file.")
 

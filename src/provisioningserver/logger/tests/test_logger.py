@@ -47,7 +47,7 @@ class TestGetMAASLogger(PservTestCase):
         self.assertThat(
             formatter,
             MockCalledOnceWith(
-                fmt=("maas.%s:" % extra_formatting) + " %(message)s"))
+                fmt=("maas.%s:" % extra_formatting) + " [%(levelname)s] %(message)s"))
 
     def test_sets_logger_name(self):
         self.patch(log, 'SysLogHandler')

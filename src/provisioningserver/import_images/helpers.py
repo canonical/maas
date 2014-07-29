@@ -61,4 +61,4 @@ def get_signing_policy(path, keyring=None):
     return policy
 
 
-logger = get_maas_logger("import-images")
+maaslog = get_maas_logger("import-images")

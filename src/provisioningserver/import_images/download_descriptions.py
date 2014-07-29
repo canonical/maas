@@ -28,7 +28,7 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.helpers import (
     get_signing_policy,
     ImageSpec,
-    logger,
+    maaslog,
     )
 from simplestreams.mirrors import (
     BasicMirrorWriter,
@@ -153,7 +153,7 @@ def boot_merge(destination, additions, filters=None):
     for image, resource in additions.items():
         arch, subarch, release, label = image
         if image_passes_filter(filters, arch, subarch, release, label):
-            logger.debug(
+            maaslog.debug(
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
             # Do not override an existing entry with the same
@@ -176,7 +176,7 @@ def download_image_descriptions(path, keyring=None):
     dumper = RepoDumper(boot_images_dict)
     dumper.sync(reader, rpath)
     if boot_images_dict.is_empty():
-        logger.warn(
+        maaslog.warn(
             "No resources found in Simplestreams repository %r.  "
             "Is it correctly configured?",
             path)

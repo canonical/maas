@@ -213,13 +213,13 @@ class TestBootMerge(MAASTestCase):
 class TestDownloadImageDescriptions(MAASTestCase):
 
     def test_warns_if_no_resources_found(self):
-        self.patch(download_descriptions, 'logger')
+        self.patch(download_descriptions, 'maaslog')
         # Stop the RepoDumper from finding any boot resources at all.
         self.patch(download_descriptions, 'RepoDumper')
         path = factory.make_name('path')
         download_descriptions.download_image_descriptions(path)
         self.assertThat(
-            download_descriptions.logger.warn,
+            download_descriptions.maaslog.warn,
             MockAnyCall(
                 "No resources found in Simplestreams repository %r.  "
                 "Is it correctly configured?",

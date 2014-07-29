@@ -22,7 +22,7 @@ import os.path
 
 from provisioningserver.import_images.helpers import (
     get_signing_policy,
-    logger,
+    maaslog,
     )
 from provisioningserver.utils import call_and_check
 from simplestreams.contentsource import FdContentSource
@@ -61,7 +61,7 @@ def insert_file(store, name, tag, checksums, size, content_source):
         the directory managed by `store` and has a filename based on `tag`,
         not logical name.
     """
-    logger.debug("Inserting file %s (tag=%s, size=%s).", name, tag, size)
+    maaslog.debug("Inserting file %s (tag=%s, size=%s).", name, tag, size)
     store.insert(tag, content_source, checksums, mutable=False, size=size)
     # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
     return [(store._fullpath(tag), name)]
@@ -103,20 +103,20 @@ def insert_root_image(store, tag, checksums, size, content_source):
         as tuples of (path, logical name).  The path lies in the directory
         managed by `store` and has a filename based on `tag`, not logical name.
     """
-    logger.debug("Inserting root image (tag=%s, size=%s).", tag, size)
+    maaslog.debug("Inserting root image (tag=%s, size=%s).", tag, size)
     root_image_tag = 'root-image-%s' % tag
     # XXX jtv 2014-04-24 bug=1313580: Isn't _fullpath meant to be private?
     root_image_path = store._fullpath(root_image_tag)
     root_tgz_tag = 'root-tgz-%s' % tag
     root_tgz_path = store._fullpath(root_tgz_tag)
     if not os.path.isfile(root_image_path):
-        logger.debug("New root image: %s.", root_image_path)
+        maaslog.debug("New root image: %s.", root_image_path)
         store.insert(tag, content_source, checksums, mutable=False, size=size)
         uncompressed = FdContentSource(GzipFile(store._fullpath(tag)))
         store.insert(root_image_tag, uncompressed, mutable=False)
         store.remove(tag)
     if not os.path.isfile(root_tgz_path):
-        logger.debug("Converting root tarball: %s.", root_tgz_path)
+        maaslog.debug("Converting root tarball: %s.", root_tgz_path)
         call_uec2roottar(root_image_path, root_tgz_path)
     return [(root_image_path, 'root-image'), (root_tgz_path, 'root-tgz')]
 

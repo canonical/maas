@@ -231,11 +231,11 @@ class TestUnmount(MAASTestCase):
     def test__propagates_failure(self):
         failure = CalledProcessError(9, factory.make_name('delibfail'))
         self.patch(uec2roottar, 'check_call').side_effect = failure
-        self.patch(uec2roottar, 'logger')
+        self.patch(uec2roottar, 'maaslog')
         mountpoint = factory.make_name('mount')
         self.assertRaises(CalledProcessError, uec2roottar.unmount, mountpoint)
         self.assertThat(
-            uec2roottar.logger.error,
+            uec2roottar.maaslog.error,
             MockCalledOnceWith(
                 "Could not unmount %s: %s", mountpoint, failure))
 

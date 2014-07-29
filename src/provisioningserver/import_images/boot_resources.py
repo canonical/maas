@@ -31,7 +31,7 @@ from provisioningserver.import_images.download_descriptions import (
 from provisioningserver.import_images.download_resources import (
     download_all_boot_resources,
     )
-from provisioningserver.import_images.helpers import logger
+from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils import (
@@ -221,9 +221,9 @@ def import_images(sources):
     :param config: An iterable of dicts representing the sources from
         which boot images will be downloaded.
     """
-    logger.info("Importing boot resources.")
+    maaslog.info("Importing boot resources.")
     if len(sources) == 0:
-        logger.warn("Can't import: no Simplestreams sources selected.")
+        maaslog.warn("Can't import: no Simplestreams sources selected.")
         return
 
     # We download the keyrings now  because we need them for both
@@ -233,7 +233,7 @@ def import_images(sources):
 
     image_descriptions = download_all_image_descriptions(sources)
     if image_descriptions.is_empty():
-        logger.warn(
+        maaslog.warn(
             "No boot resources found.  "
             "Check sources specification and connectivity.")
         return
@@ -250,18 +250,18 @@ def import_images(sources):
     snapshot_path = download_all_boot_resources(
         sources, storage, product_mapping)
 
-    logger.info("Writing metadata and iSCSI targets.")
+    maaslog.info("Writing metadata and iSCSI targets.")
     write_snapshot_metadata(snapshot_path, meta_file_content)
     write_targets_conf(snapshot_path)
 
-    logger.info("Installing boot images snapshot %s.", snapshot_path)
+    maaslog.info("Installing boot images snapshot %s.", snapshot_path)
     install_boot_loaders(snapshot_path)
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
-    logger.info("Updating iSCSI targets.")
+    maaslog.info("Updating iSCSI targets.")
     update_targets_conf(snapshot_path)
-    logger.info("Import done.")
+    maaslog.info("Import done.")
 
 
 def main(args):

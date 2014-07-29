@@ -29,7 +29,6 @@ __all__ = [
 
 from base64 import b64decode
 from functools import wraps
-from logging import getLogger
 from subprocess import CalledProcessError
 
 from celery.app import app_or_default
@@ -61,6 +60,7 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.import_images import boot_resources
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.utils import (
@@ -81,7 +81,27 @@ refresh_functions = {
 
 celery_config = app_or_default().conf
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("tasks")
+
+
+def log_task_events(func):
+    """Log to the maaslog that something happened with a task.
+
+    :param event: The event that we want to log.
+    :param task_name: The name of the task.
+    :**kwargs: A dict of args passed to the task.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        arg_string = "%s %s" % (args, kwargs)
+        maaslog.info(
+            "Starting task '%s' with args: %s" %
+            (func.__name__, arg_string))
+        func(*args, **kwargs)
+        maaslog.info(
+            "Finished task '%s' with args: %s" %
+            (func.__name__, arg_string))
+    return wrapper
 
 
 # The tasks catch bare exceptions in an attempt to circumvent Celery's
@@ -89,7 +109,7 @@ logger = getLogger(__name__)
 # error message contained in the exception itself!  The message is
 # printed and then the exception re-raised so that it marks the task as
 # failed - in doing so it logs the stack trace, which is why the code
-# does not do a simple logger.exception(exc).
+# does not do a simple maaslog.exception(exc).
 def log_exception_text(func):
     """Wrap a function and log any exception text raised."""
     @wraps(func)
@@ -97,12 +117,13 @@ def log_exception_text(func):
         try:
             func(*args, **kwargs)
         except Exception as e:
-            logger.error("%s: %s", func.__name__, unicode(e))
+            maaslog.error("%s: %s", func.__name__, unicode(e))
             raise
     return wrapper
 
 
 @task
+@log_task_events
 @log_exception_text
 def refresh_secrets(**kwargs):
     """Update the worker's knowledge of various secrets it needs.
@@ -151,6 +172,7 @@ def refresh_secrets(**kwargs):
 
 
 @task
+@log_task_events
 @log_exception_text
 def power_on(power_type, **kwargs):
     """Turn a node on.
@@ -164,6 +186,7 @@ def power_on(power_type, **kwargs):
 
 
 @task
+@log_task_events
 @log_exception_text
 def power_off(power_type, **kwargs):
     """Turn a node off.
@@ -188,6 +211,7 @@ RNDC_COMMAND_RETRY_DELAY = 2
 
 
 @task(max_retries=RNDC_COMMAND_MAX_RETRY, queue=celery_config.WORKER_QUEUE_DNS)
+@log_task_events
 @log_exception_text
 def rndc_command(arguments, retry=False, callback=None):
     """Use rndc to execute a command.
@@ -205,13 +229,14 @@ def rndc_command(arguments, retry=False, callback=None):
             return rndc_command.retry(
                 exc=exc, countdown=RNDC_COMMAND_RETRY_DELAY)
         else:
-            logger.error("rndc_command failed: %s", unicode(exc))
+            maaslog.error("rndc_command failed: %s", unicode(exc))
             raise
     if callback is not None:
         callback.delay()
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
+@log_task_events
 @log_exception_text
 def write_full_dns_config(zones=None, callback=None, **kwargs):
     """Write out the DNS configuration files: the main configuration
@@ -235,6 +260,7 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
+@log_task_events
 @log_exception_text
 def write_dns_config(zones=(), callback=None, **kwargs):
     """Write out the DNS configuration file.
@@ -253,6 +279,7 @@ def write_dns_config(zones=(), callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
+@log_task_events
 @log_exception_text
 def write_dns_zone_config(zones, callback=None, **kwargs):
     """Write out DNS zones.
@@ -270,6 +297,7 @@ def write_dns_zone_config(zones, callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
+@log_task_events
 @log_exception_text
 def setup_rndc_configuration(callback=None):
     """Write out the two rndc configuration files (rndc.conf and
@@ -289,6 +317,7 @@ def setup_rndc_configuration(callback=None):
 
 
 @task
+@log_task_events
 @log_exception_text
 def upload_dhcp_leases():
     """Upload DHCP leases.
@@ -300,6 +329,7 @@ def upload_dhcp_leases():
 
 
 @task
+@log_task_events
 @log_exception_text
 def add_new_dhcp_host_map(mappings, server_address, shared_key):
     """Add address mappings to the DHCP server.
@@ -321,11 +351,12 @@ def add_new_dhcp_host_map(mappings, server_address, shared_key):
 
         # Re-raise, so the job is marked as failed.  Only currently
         # useful for tests.
-        logger.error("add_new_dhcp_host_map failed: %s", unicode(e))
+        maaslog.error("add_new_dhcp_host_map failed: %s", unicode(e))
         raise
 
 
 @task
+@log_task_events
 @log_exception_text
 def remove_dhcp_host_map(ip_address, server_address, omapi_key):
     """Remove an IP to MAC mapping in the DHCP server.
@@ -345,11 +376,12 @@ def remove_dhcp_host_map(ip_address, server_address, omapi_key):
 
         # Re-raise, so the job is marked as failed.  Only currently
         # useful for tests.
-        logger.error("remove_dhcp_host_map failed: %s", unicode(e))
+        maaslog.error("remove_dhcp_host_map failed: %s", unicode(e))
         raise
 
 
 @task
+@log_task_events
 @log_exception_text
 def write_dhcp_config(callback=None, **kwargs):
     """Write out the DHCP configuration file and restart the DHCP server.
@@ -367,6 +399,7 @@ def write_dhcp_config(callback=None, **kwargs):
 
 
 @task
+@log_task_events
 @log_exception_text
 def restart_dhcp_server():
     """Restart the DHCP server."""
@@ -386,6 +419,7 @@ ALREADY_STOPPED_RETURNCODE = 1
 
 
 @task
+@log_task_events
 @log_exception_text
 def stop_dhcp_server():
     """Write a blank config file and stop a DHCP server."""
@@ -413,6 +447,7 @@ def stop_dhcp_server():
 
 
 @task
+@log_task_events
 @log_exception_text
 def periodic_probe_dhcp():
     """Probe for foreign DHCP servers."""
@@ -425,6 +460,7 @@ def periodic_probe_dhcp():
 
 
 @task
+@log_task_events
 @log_exception_text
 def report_boot_images():
     """For master worker only: report available netboot images."""
@@ -444,6 +480,7 @@ UPDATE_NODE_TAGS_RETRY_DELAY = 2
 
 
 @task(max_retries=UPDATE_NODE_TAGS_MAX_RETRY)
+@log_task_events
 @log_exception_text
 def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
     """Update the nodes for a new/changed tag definition.
@@ -467,6 +504,7 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 # =====================================================================
 
 @task
+@log_task_events
 @log_exception_text
 def import_boot_images(sources, http_proxy=None, callback=None):
     for source in sources:
@@ -491,6 +529,7 @@ def import_boot_images(sources, http_proxy=None, callback=None):
 # =====================================================================
 
 @task
+@log_task_events
 @log_exception_text
 def add_seamicro15k(mac, username, password, power_control=None):
     """ See `maasserver.api.NodeGroup.add_seamicro15k`. """
@@ -500,10 +539,11 @@ def add_seamicro15k(mac, username, password, power_control=None):
             ip, username, password,
             power_control=power_control)
     else:
-        logger.warning("Couldn't find IP address for MAC %s" % mac)
+        maaslog.warning("Couldn't find IP address for MAC %s" % mac)
 
 
 @task
+@log_task_events
 @log_exception_text
 def add_virsh(poweraddr, password=None):
     """ See `maasserver.api.NodeGroup.add_virsh`. """
@@ -511,6 +551,7 @@ def add_virsh(poweraddr, password=None):
 
 
 @task
+@log_task_events
 @log_exception_text
 def enlist_nodes_from_ucsm(url, username, password):
     """ See `maasserver.api.NodeGroupHandler.enlist_nodes_from_ucsm`. """
@@ -518,6 +559,7 @@ def enlist_nodes_from_ucsm(url, username, password):
 
 
 @task
+@log_task_events
 @log_exception_text
 def enlist_nodes_from_mscm(host, username, password):
     """ See `maasserver.api.NodeGroupHandler.enlist_nodes_from_mscm`. """
