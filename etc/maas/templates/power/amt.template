@@ -43,7 +43,9 @@ query_state() {
         then
             break
         fi
-        sleep 0.1
+        # Wait 1 second between retries.  AMT controllers are generally very
+        # light and may not be comfortable with more frequent queries.
+        sleep 1
     done
     case "$state" in
     S[0-4])
