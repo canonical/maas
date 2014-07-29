@@ -43,7 +43,7 @@ LOGGING = {
     'handlers': {
         'log': {
             'class': 'logging.handlers.RotatingFileHandler',
-            'filename': '/var/log/maas/maas.log',
+            'filename': '/var/log/maas/maas-django.log',
             'formatter': 'simple',
         },
     },
