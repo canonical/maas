@@ -74,7 +74,7 @@ class VirshSSH(pexpect.spawn):
     def login(self, poweraddr, password=None):
         """Starts connection to virsh."""
         self._execute(poweraddr)
-        i = self.expect(self.PROMPTS, timeout=10)
+        i = self.expect(self.PROMPTS, timeout=min(10, self.timeout))
         if i == self.I_PROMPT_SSHKEY:
             # New certificate, lets always accept but if
             # it changes it will fail to login.

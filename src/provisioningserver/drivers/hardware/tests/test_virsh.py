@@ -56,7 +56,7 @@ class TestVirshSSH(MAASTestCase):
     def configure_virshssh_pexpect(self, inputs=None):
         """Configures the VirshSSH class to use 'cat' process
         for testing instead of the actual virsh."""
-        conn = virsh.VirshSSH(timeout=1)
+        conn = virsh.VirshSSH(timeout=0.1)
         self.addCleanup(conn.close)
         self.patch(conn, '_execute')
         conn._spawn('cat')
