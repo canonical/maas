@@ -19,6 +19,7 @@ __all__ = [
 
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.region import MarkNodeBroken
 from provisioningserver.utils import pause
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
@@ -32,6 +33,16 @@ from twisted.internet.threads import deferToThread
 QUERY_POWER_TYPES = ['amt', 'ipmi']
 
 
+def power_change_failure(system_id, power_change, message):
+    """Deal with a node failing to be powered up or down."""
+    client = getRegionClient()
+    client(
+        MarkNodeBroken,
+        system_id=system_id,
+        error_description=message,
+    )
+
+
 def perform_power_change(system_id, power_type, power_change, context):
     """Issue the given `power_change` command.
 
@@ -42,10 +53,9 @@ def perform_power_change(system_id, power_type, power_change, context):
     try:
         return action.execute(power_change=power_change, **context)
     except Exception as error:
-        client = getRegionClient()
         message = "Node could not be powered %s: %s" % (
             power_change, error)
-        client.mark_node_broken(system_id, message)
+        power_change_failure(system_id, power_change, message)
         raise
 
 
@@ -81,6 +91,5 @@ def change_power_state(system_id, power_type, power_change, context,
             return
 
     # Failure: the power state of the node hasn't changed: mark it as broken.
-    client = getRegionClient()
-    client.mark_node_broken(
-        system_id, "Node could not be powered %s" % power_change)
+    message = "Node could not be powered %s" % power_change
+    power_change_failure(system_id, power_change, message)

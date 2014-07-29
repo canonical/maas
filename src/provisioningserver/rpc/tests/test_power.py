@@ -25,10 +25,15 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     call,
     Mock,
     )
-from provisioningserver.rpc import power
+from provisioningserver.rpc import (
+    power,
+    region,
+    )
+from provisioningserver.rpc.testing import RegionRPCFixture
 from testtools.deferredruntest import (
     assert_fails_with,
     AsynchronousDeferredRunTest,
@@ -65,6 +70,13 @@ class TestPowerHelpers(MAASTestCase):
         power_action.return_value = power_action_obj
         return power_action, power_action_obj_execute
 
+    def patch_MarkNodeBroken(self, return_value={}, side_effect=None):
+        fixture = self.useFixture(RegionRPCFixture())
+        protocol, io = fixture.makeEventLoop(region.MarkNodeBroken)
+        protocol.MarkNodeBroken.return_value = return_value
+        protocol.MarkNodeBroken.side_effect = side_effect
+        return protocol.MarkNodeBroken, io
+
     @inlineCallbacks
     def test_change_power_state_changes_power_state(self):
         system_id = factory.make_name('system_id')
@@ -74,15 +86,15 @@ class TestPowerHelpers(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         # Patch the power action utility so that it says the node is
         # in the required power state.
         power_action, execute = self.patch_power_action(
             return_value=power_change)
+        markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
             system_id, power_type, power_change, context)
+        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -93,7 +105,7 @@ class TestPowerHelpers(MAASTestCase):
             ),
         )
         # The node hasn't been marked broken.
-        self.assertThat(client.mark_node_broken, MockNotCalled())
+        self.assertThat(markNodeBroken, MockNotCalled())
 
     @inlineCallbacks
     def test_change_power_state_doesnt_retry_for_certain_power_types(self):
@@ -105,13 +117,13 @@ class TestPowerHelpers(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         power_action, execute = self.patch_power_action(
             return_value=random.choice(['on', 'off']))
+        markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
             system_id, power_type, power_change, context)
+        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -120,7 +132,7 @@ class TestPowerHelpers(MAASTestCase):
             ),
         )
         # The node hasn't been marked broken.
-        self.assertThat(client.mark_node_broken, MockNotCalled())
+        self.assertThat(markNodeBroken, MockNotCalled())
 
     @inlineCallbacks
     def test_change_power_state_retries_if_power_state_doesnt_change(self):
@@ -131,14 +143,14 @@ class TestPowerHelpers(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         # Simulate a failure to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'on'])
+        markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
             system_id, power_type, power_change, context)
+        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -149,7 +161,7 @@ class TestPowerHelpers(MAASTestCase):
             )
         )
         # The node hasn't been marked broken.
-        self.assertThat(client.mark_node_broken, MockNotCalled())
+        self.assertThat(markNodeBroken, MockNotCalled())
 
     @inlineCallbacks
     def test_change_power_state_marks_the_node_broken_if_failure(self):
@@ -160,18 +172,21 @@ class TestPowerHelpers(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         # Simulate a persistent failure.
         power_action, execute = self.patch_power_action(return_value='off')
+        markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
             system_id, power_type, power_change, context)
+        io.flush()
 
         # The node has been marked broken.
         self.assertThat(
-            client.mark_node_broken,
-            MockCalledOnceWith(system_id, "Node could not be powered on")
+            markNodeBroken,
+            MockCalledOnceWith(
+                ANY,
+                system_id=system_id,
+                error_description="Node could not be powered on")
         )
 
     def test_change_power_state_marks_the_node_broken_if_exception(self):
@@ -182,21 +197,25 @@ class TestPowerHelpers(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         # Simulate an exception.
         exception_message = factory.make_name('exception')
         power_action, execute = self.patch_power_action(
             side_effect=Exception(exception_message))
+        markNodeBroken, io = self.patch_MarkNodeBroken()
 
         d = power.change_power_state(
             system_id, power_type, power_change, context)
         assert_fails_with(d, Exception)
         error_message = "Node could not be powered on: %s" % exception_message
-        return d.addCallbacks(
-            lambda failure: self.assertThat(
-                client.mark_node_broken,
-                MockCalledOnceWith(system_id, error_message)))
+
+        def check(failure):
+            io.flush()
+            self.assertThat(
+                markNodeBroken,
+                MockCalledOnceWith(
+                    ANY, system_id=system_id, error_description=error_message))
+
+        return d.addCallback(check)
 
     def test_change_power_state_pauses_in_between_retries(self):
         system_id = factory.make_name('system_id')
@@ -205,8 +224,6 @@ class TestPowerHelpers(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
-        client = Mock()
-        self.patch(power, 'getRegionClient').return_value = client
         # Simulate two failures to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'off', None, 'on'])
