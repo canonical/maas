@@ -294,7 +294,10 @@ def synchronous(func):
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if isInIOThread():
+        # isInIOThread() can return True if the reactor has previously been
+        # started but has now stopped, so don't test isInIOThread() until
+        # we've also checked if the reactor is running.
+        if reactor.running and isInIOThread():
             raise AssertionError(
                 "Function %s(...) must not be called in the "
                 "reactor thread." % func.__name__)

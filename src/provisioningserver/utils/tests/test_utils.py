@@ -122,6 +122,7 @@ from testtools.matchers import (
     StartsWith,
     )
 from testtools.testcase import ExpectedException
+from twisted.internet import reactor
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
@@ -1363,6 +1364,10 @@ class TestSynchronousDecorator(MAASTestCase):
         # modification. The arguments passed back match those passed in
         # from do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
+
+    def test_allows_call_in_any_thread_when_reactor_not_running(self):
+        self.patch(reactor, "running", False)
+        self.assertEqual(((3, 4), {"five": 5}), self.return_args(3, 4, five=5))
 
 
 class TestQuotePyLiteral(MAASTestCase):
