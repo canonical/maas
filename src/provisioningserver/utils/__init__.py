@@ -174,6 +174,22 @@ class ExternalProcessError(CalledProcessError):
         return b"Command `%s` returned non-zero exit status %d:\n%s" % (
             cmd, self.returncode, output)
 
+    @property
+    def output_as_ascii(self):
+        """The command's output as printable ASCII.
+
+        Non-printable and non-ASCII characters are filtered out.
+        """
+        return self._to_ascii(self.output)
+
+    @property
+    def output_as_unicode(self):
+        """The command's output as Unicode text.
+
+        Invalid Unicode characters are filtered out.
+        """
+        return self._to_unicode(self.output)
+
 
 def call_and_check(command, *args, **kwargs):
     """A wrapper around subprocess.check_call().

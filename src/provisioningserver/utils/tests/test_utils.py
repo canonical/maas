@@ -1300,17 +1300,32 @@ class TestExternalProcessError(MAASTestCase):
         self.assertIsInstance(error.__unicode__(), unicode)
 
     def test__str__contains_output(self):
-        output = u"Joyeux No\xebl"
+        output = b"Joyeux No\xebl"
         ascii_output = "Joyeux No?l"
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertIn(ascii_output, error.__str__())
 
     def test__unicode__contains_output(self):
-        output = "Mot\xf6rhead"
+        output = b"Mot\xf6rhead"
+        unicode_output = "Mot\ufffdrhead"
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
-        self.assertIn(output, error.__unicode__())
+        self.assertIn(unicode_output, error.__unicode__())
+
+    def test_output_as_ascii(self):
+        output = b"Joyeux No\xebl"
+        ascii_output = "Joyeux No?l"
+        error = ExternalProcessError(
+            returncode=-1, cmd="foo-bar", output=output)
+        self.assertEqual(ascii_output, error.output_as_ascii)
+
+    def test_output_as_unicode(self):
+        output = b"Mot\xf6rhead"
+        unicode_output = "Mot\ufffdrhead"
+        error = ExternalProcessError(
+            returncode=-1, cmd="foo-bar", output=output)
+        self.assertEqual(unicode_output, error.output_as_unicode)
 
 
 class TestAsynchronousDecorator(MAASTestCase):
