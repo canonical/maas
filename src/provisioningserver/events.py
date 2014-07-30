@@ -23,15 +23,23 @@ from logging import (
     INFO,
     )
 
+from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
     )
+from twisted.internet.defer import inlineCallbacks
+
+
+maaslog = get_maas_logger("events")
 
 
 class EVENT_TYPES:
     # Power-related events.
+    NODE_POWER_ON_STARTING = 'NODE_POWER_ON_STARTING'
+    NODE_POWER_OFF_STARTING = 'NODE_POWER_OFF_STARTING'
     NODE_POWERED_ON = 'NODE_POWERED_ON'
     NODE_POWERED_OFF = 'NODE_POWERED_OFF'
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
@@ -43,6 +51,14 @@ EventDetail = namedtuple("EventDetail", ("description", "level"))
 
 EVENT_DETAILS = {
     # Event type -> EventDetail mapping.
+    EVENT_TYPES.NODE_POWER_ON_STARTING: EventDetail(
+        description="Node power on starting",
+        level=INFO,
+    ),
+    EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
+        description="Node power off starintg",
+        level=INFO,
+    ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
         description="Node powered on",
         level=INFO,
@@ -62,31 +78,36 @@ EVENT_DETAILS = {
 }
 
 
-def send_event_node(client, event_type, system_id, description=''):
+@inlineCallbacks
+def send_event_node(event_type, system_id, hostname, description=''):
     """Send the given node event to the region.
 
     Also register the event type if it's not registered yet.
 
-    :param client: A region RPC client.
-    :type rpc_service: :class:`common.Client`
     :param event_type: The type of the event.
     :type event_type: unicode
     :param system_id: The system ID of the node of the event.
     :type system_id: unicode
-    :param description: An optional description for of the event.
+    :param hostname: The hostname of the node of the event.
+    :type hostname: unicode
+    :param description: An optional description of the event.
     :type description: unicode
     """
+    client = getRegionClient()
     try:
-        client(
+        yield client(
             SendEvent, system_id=system_id, type_name=event_type,
             description=description)
     except NoSuchEventType:
         # The event type doesn't exist, register it and re-send the event.
         event_detail = EVENT_DETAILS[event_type]
-        client(
+        yield client(
             RegisterEventType, name=event_type,
             description=event_detail.description, level=event_detail.level
         )
-        client(
+        yield client(
             SendEvent, system_id=system_id, type_name=event_type,
             description=description)
+    maaslog.debug(
+        "Node event %s sent for node: %s (%s)",
+        event_type, hostname, system_id)

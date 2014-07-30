@@ -20,8 +20,8 @@ import random
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     call,
-    Mock,
     )
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -29,12 +29,11 @@ from provisioningserver.events import (
     EventDetail,
     send_event_node,
     )
+from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import NoSuchEventType
-from provisioningserver.rpc.region import (
-    RegisterEventType,
-    SendEvent,
-    )
+from provisioningserver.rpc.testing import RegionRPCFixture
 from provisioningserver.utils import map_enum
+from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -52,41 +51,64 @@ class TestEvents(MAASTestCase):
 
 class TestSendEvent(MAASTestCase):
 
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def patch_rpc_methods(self, side_effect=None):
+        fixture = self.useFixture(RegionRPCFixture())
+        protocol, io = fixture.makeEventLoop(
+            region.SendEvent, region.RegisterEventType)
+        protocol.SendEvent.side_effect = side_effect
+        return protocol, io
+
     def test_send_node_event_stores_event(self):
-        client = Mock()
+        protocol, io = self.patch_rpc_methods()
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 
-        send_event_node(client, event_name, system_id, description)
+        d = send_event_node(
+            event_name, system_id, hostname, description)
+        io.flush()
         self.assertEquals(
             [call(
-                SendEvent, type_name=event_name, system_id=system_id,
+                ANY, type_name=event_name, system_id=system_id,
                 description=description,
             )],
-            client.call_args_list,
+            protocol.SendEvent.call_args_list,
         )
+        return d
 
     def test_send_node_event_registers_event_type(self):
-        client = Mock(side_effect=[NoSuchEventType, None, None])
+        protocol, io = self.patch_rpc_methods(
+            side_effect=[NoSuchEventType, {}])
+
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 
-        send_event_node(client, event_name, system_id, description)
+        d = send_event_node(event_name, system_id, hostname, description)
+        io.flush()
         event_detail = EVENT_DETAILS[event_name]
         self.assertEquals(
             [
                 call(
-                    SendEvent, type_name=event_name, system_id=system_id,
+                    ANY, type_name=event_name, system_id=system_id,
                     description=description),
                 call(
-                    RegisterEventType, name=event_name,
-                    description=event_detail.description,
-                    level=event_detail.level),
-                call(
-                    SendEvent, type_name=event_name, system_id=system_id,
+                    ANY, type_name=event_name, system_id=system_id,
                     description=description),
             ],
-            client.call_args_list,
+            protocol.SendEvent.call_args_list,
         )
+        self.assertEquals(
+            [
+                call(
+                    ANY, name=event_name,
+                    description=event_detail.description,
+                    level=event_detail.level),
+            ],
+            protocol.RegisterEventType.call_args_list,
+        )
+        return d
