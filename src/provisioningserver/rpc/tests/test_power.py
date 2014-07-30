@@ -254,7 +254,8 @@ class TestPowerHelpers(MAASTestCase):
         ]
         calls = []
         yield power.change_power_state(
-            system_id, hostname, power_type, power_change, context, clock=clock)
+            system_id, hostname, power_type, power_change, context,
+            clock=clock)
         for newcalls, waiting_time in calls_and_pause:
             calls.extend(newcalls)
             self.assertThat(execute, MockCallsMatch(*calls))

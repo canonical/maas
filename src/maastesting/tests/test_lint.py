@@ -14,17 +14,25 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from subprocess import check_call
-from unittest import skip
+from subprocess import (
+    PIPE,
+    Popen,
+    STDOUT,
+    )
 
 from maastesting import root
 from maastesting.testcase import MAASTestCase
+from testtools.content import (
+    Content,
+    UTF8_TEXT,
+    )
 
 
 class TestLint(MAASTestCase):
 
-    @skip(
-        "XXX: GavinPanella 2014-01-09 bug=1267472: "
-        "This needs altering once the new package structure is in place.")
     def test_that_there_is_no_lint_in_the_tree(self):
-        check_call(("make", "-C", root, "lint"))
+        command = "make", "-C", root, "lint"
+        process = Popen(command, stdout=PIPE, stderr=STDOUT)
+        output, _ = process.communicate()
+        self.addDetail("output", Content(UTF8_TEXT, lambda: [output]))
+        self.assertEqual(0, process.wait(), "(return code is not zero)")
