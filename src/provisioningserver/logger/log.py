@@ -21,6 +21,15 @@ import logging
 from logging.handlers import SysLogHandler
 
 
+class MAASLogger(logging.getLoggerClass()):
+    """A Logger class that doesn't allow you to call exception()."""
+
+    def exception(self, *args, **kwargs):
+        raise NotImplementedError(
+            "Don't log exceptions to maaslog; use the default "
+            "Django logger instead")
+
+
 def get_maas_logger(syslog_tag=None):
     """Return a MAAS logger that will log to syslog.
 
@@ -35,7 +44,13 @@ def get_maas_logger(syslog_tag=None):
         logger_name = "maas"
     else:
         logger_name = "maas.%s" % syslog_tag
+
     maaslog = logging.getLogger(logger_name)
+    # This line is pure filth, but it allows us to return MAASLoggers
+    # for any logger constructed by this function, whilst leaving all
+    # other loggers to be the domain of the logging package.
+    maaslog.__class__ = MAASLogger
+
     # If the logger already has handlers, it's already been
     # instantiated, so we don't need to go through the setup dance
     # again.

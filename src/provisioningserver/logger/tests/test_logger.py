@@ -19,7 +19,7 @@ import logging
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.logger import log
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger.log import get_maas_logger, MAASLogger
 from provisioningserver.testing.testcase import PservTestCase
 
 
@@ -64,3 +64,35 @@ class TestGetMAASLogger(PservTestCase):
         maaslog = get_maas_logger(name)
         maaslog_2 = get_maas_logger(name)
         self.assertIs(maaslog, maaslog_2)
+
+    def test_exception_calls_disallowed(self):
+        self.patch(log, 'SysLogHandler')
+        self.patch(logging, 'Formatter')
+        name = factory.make_string()
+        maaslog = get_maas_logger(name)
+        self.assertRaises(
+            NotImplementedError, maaslog.exception,
+            factory.make_string())
+
+    def test_returns_MAASLogger_instances(self):
+        self.patch(log, 'SysLogHandler')
+        self.patch(logging, 'Formatter')
+        name = factory.make_string()
+        maaslog = get_maas_logger(name)
+        self.assertIsInstance(maaslog, MAASLogger)
+
+    def test_doesnt_affect_general_logger_class(self):
+        self.patch(log, 'SysLogHandler')
+        self.patch(logging, 'Formatter')
+        name = factory.make_string()
+        get_maas_logger(name)
+        self.assertIsNot(
+            MAASLogger, logging.getLoggerClass())
+
+    def test_general_logger_class_accepts_exceptions(self):
+        self.patch(log, 'SysLogHandler')
+        self.patch(logging, 'Formatter')
+        name = factory.make_string()
+        get_maas_logger(name)
+        other_logger = logging.getLogger()
+        self.assertIsNone(other_logger.exception(factory.make_string()))

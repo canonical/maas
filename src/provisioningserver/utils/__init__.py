@@ -865,10 +865,10 @@ def try_match_xpath(xpath, doc, logger=logging):
         # Casting the return value into a boolean context appears to
         # be the most reliable way of detecting a match.
         return bool(match_xpath(xpath, doc))
-    except etree.XPathEvalError:
+    except etree.XPathEvalError as error:
         # Get a plaintext version of `xpath`.
         expr = xpath.path if is_compiled_xpath(xpath) else xpath
-        logger.exception("Invalid expression: %s", expr)
+        logger.warning("Invalid expression '%s': %s", expr, unicode(error))
         return False
 
 

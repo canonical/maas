@@ -1144,10 +1144,7 @@ class TestTryMatchXPathScenarios(MAASTestCase):
             "unrecognised namespace",
             "/foo:bar", '<foo/>', False,
             expected_log="""\
-            Invalid expression: /foo:bar
-            Traceback (most recent call last):
-            ...
-            XPathEvalError: Undefined namespace prefix
+            Invalid expression '/foo:bar': Undefined namespace prefix
             """),
     )
 
@@ -1193,8 +1190,10 @@ class TestTryMatchXPath(MAASTestCase):
         try_match_xpath(xpath, doc, callers_logger)
         self.assertEqual("", root_logger.output)
         self.assertThat(
-            callers_logger.exception,
-            MockCalledOnceWith("Invalid expression: %s", xpath.path))
+            callers_logger.warning,
+            MockCalledOnceWith(
+                u"Invalid expression '%s': %s",
+                u'/foo:bar', u'Undefined namespace prefix'))
 
 
 class TestClassify(MAASTestCase):
