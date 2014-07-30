@@ -20,7 +20,6 @@ __all__ = [
 from grp import getgrnam
 import httplib
 import json
-from logging import getLogger
 import os
 from pwd import getpwnam
 from time import sleep
@@ -35,10 +34,11 @@ from apiclient.maas_client import (
     NoAuth,
     )
 from provisioningserver.cluster_config import get_cluster_uuid
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.network import discover_networks
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("cluster")
 
 
 class ClusterControllerRejected(Exception):
@@ -58,7 +58,7 @@ def add_arguments(parser):
 
 
 def log_error(exception):
-    logger.info(
+    maaslog.info(
         "Could not register with region controller: %s."
         % exception.reason)
 
@@ -141,7 +141,7 @@ def request_refresh(server_url):
     try:
         client.post('api/1.0/nodegroups/', 'refresh_workers')
     except URLError as e:
-        logger.warn(
+        maaslog.warn(
             "Could not request secrets from region controller: %s"
             % e.reason)
 
@@ -176,6 +176,7 @@ def run(args):
     If this system is still awaiting approval as a cluster controller, this
     command will keep looping until it gets a definite answer.
     """
+    maaslog.info("Starting cluster controller %s." % get_cluster_uuid())
     set_up_logging()
     connection_details = register(args.server_url)
     while connection_details is None:

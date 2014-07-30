@@ -20,11 +20,11 @@ __all__ = [
 
 
 from datetime import timedelta
-from logging import getLogger
 
 from provisioningserver.auth import MAAS_USER_GPGHOME
 from provisioningserver.boot.tftppath import maas_meta_last_modified
 from provisioningserver.import_images import boot_resources
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
@@ -40,7 +40,7 @@ from twisted.internet.defer import (
 from twisted.internet.threads import deferToThread
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("image_download_service")
 service_lock = DeferredLock()
 
 
@@ -91,7 +91,7 @@ class PeriodicImageDownloadService(TimerService, object):
             except NoConnectionsAvailable:
                 yield pause(5)
         if client is None:
-            logger.error(
+            maaslog.error(
                 "Can't initiate image download, no RPC connection to region.")
             return
 

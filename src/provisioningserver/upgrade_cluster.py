@@ -32,7 +32,6 @@ __all__ = [
     'run',
     ]
 
-from logging import getLogger
 import os
 from os import makedirs
 import shutil
@@ -49,9 +48,10 @@ from provisioningserver.import_images.boot_resources import (
     update_targets_conf,
     write_targets_conf,
     )
+from provisioningserver.logger import get_maas_logger
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("cluster_upgrade")
 
 
 def make_maas_own_boot_resources():
@@ -229,4 +229,6 @@ def add_arguments(parser):
 def run(args):
     """Perform any data migrations needed for upgrading this cluster."""
     for hook in UPGRADE_HOOKS:
+        maaslog.info("Cluster upgrade hook %s started." % hook.__name__)
         hook()
+        maaslog.info("Cluster upgrade hook %s finished." % hook.__name__)

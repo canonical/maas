@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 import json
-from logging import getLogger
 
 from apiclient.maas_client import (
     MAASClient,
@@ -31,9 +30,10 @@ from provisioningserver.cluster_config import (
     get_maas_url,
     )
 from provisioningserver.config import Config
+from provisioningserver.logger import get_maas_logger
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("boot_images")
 
 
 def get_cached_knowledge():
@@ -44,10 +44,10 @@ def get_cached_knowledge():
     """
     maas_url = get_maas_url()
     if maas_url is None:
-        logger.debug("Not reporting boot images: don't have API URL yet.")
+        maaslog.debug("Not reporting boot images: don't have API URL yet.")
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
-        logger.debug("Not reporting boot images: don't have API key yet.")
+        maaslog.debug("Not reporting boot images: don't have API key yet.")
     return maas_url, api_credentials
 
 

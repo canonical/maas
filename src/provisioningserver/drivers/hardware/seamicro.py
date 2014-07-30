@@ -18,17 +18,17 @@ __all__ = [
 
 import httplib
 import json
-import logging
 import time
 import urllib2
 import urlparse
 
+from provisioningserver.logger import get_maas_logger
 import provisioningserver.utils as utils
 from seamicroclient import exceptions as seamicro_exceptions
 from seamicroclient.v2 import client as seamicro_client
 
 
-logger = logging.getLogger(__name__)
+maaslog = get_maas_logger("drivers.seamicro")
 
 
 class POWER_STATUS:
@@ -272,6 +272,10 @@ def find_seamicro15k_servers(ip, username, password, power_control):
 def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
     power_control = power_control or 'ipmi'
 
+    maaslog.info(
+        "Probing for seamicro15k nodes with arguments "
+        "ip=%s, username=%s, password=%s, power_control=%s",
+        ip, username, password, power_control)
     servers = find_seamicro15k_servers(ip, username, password, power_control)
     for system_id, macs in servers:
         params = {
@@ -281,7 +285,9 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
             'power_control': power_control,
             'system_id': system_id
         }
-
+        maaslog.info(
+            "Found seamicro15k node with macs %s; adding to MAAS with "
+            "params : %s", macs, params)
         utils.create_node(macs, 'amd64', 'sm15k', params)
 
 

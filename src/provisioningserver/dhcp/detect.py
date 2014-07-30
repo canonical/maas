@@ -20,7 +20,6 @@ import errno
 import fcntl
 import httplib
 import json
-from logging import getLogger
 from random import randint
 import socket
 import struct
@@ -39,9 +38,10 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
     )
 from provisioningserver.cluster_config import get_maas_url
+from provisioningserver.logger import get_maas_logger
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("dhcp.detect")
 
 
 def make_transaction_ID():
@@ -223,11 +223,11 @@ def process_request(client_func, *args, **kwargs):
     try:
         response = client_func(*args, **kwargs)
     except (HTTPError, URLError) as e:
-        logger.error("Failed to contact region controller:\n%s", e)
+        maaslog.warning("Failed to contact region controller:\n%s", e)
         return None
     code = response.getcode()
     if code != httplib.OK:
-        logger.error(
+        maaslog.error(
             "Failed talking to region controller, it returned:\n%s\n%s",
             code, response.read())
         return None
@@ -238,7 +238,7 @@ def process_request(client_func, *args, **kwargs):
         else:
             return None
     except ValueError as e:
-        logger.error(
+        maaslog.error(
             "Failed to decode response from region controller:\n%s", e)
         return None
     return data
@@ -287,13 +287,13 @@ def probe_interface(interface, ip):
             # which we need to ignore; it means the interface has no IP
             # and there's no need to scan this interface as it's not in
             # use.
-            logger.info(
+            maaslog.info(
                 "Ignoring DHCP scan for %s, it has no IP address", interface)
         elif e.errno == errno.ENODEV:
             # Errno ENODEV is "no such device". This seems an odd situation
             # since we're scanning detected devices, so this is probably
             # a bug.
-            logger.error(
+            maaslog.error(
                 "Ignoring DHCP scan for %s, it no longer exists. Check "
                 "your cluster interfaces configuration.", interface)
         else:
@@ -341,7 +341,7 @@ def periodic_probe_task():
     if None in knowledge.values():
         # The MAAS server hasn't sent us enough information for us to do
         # this yet.  Leave it for another time.
-        logger.info(
+        maaslog.info(
             "Not probing for rogue DHCP servers; not all required knowledge "
             "received from server yet.  "
             "Missing: %s" % ', '.join(sorted(
@@ -351,7 +351,7 @@ def periodic_probe_task():
     # Determine all the active interfaces on this cluster (nodegroup).
     interfaces = determine_cluster_interfaces(knowledge)
     if interfaces is None:
-        logger.info("No interfaces on cluster, not probing DHCP.")
+        maaslog.info("No interfaces on cluster, not probing DHCP.")
         return
 
     # Iterate over interfaces and probe each one.
@@ -359,7 +359,7 @@ def periodic_probe_task():
         try:
             servers = probe_interface(interface, ip)
         except socket.error:
-            logger.exception(
+            maaslog.exception(
                 "Failed to probe sockets; did you configure authbind as per "
                 "HACKING.txt?")
             return

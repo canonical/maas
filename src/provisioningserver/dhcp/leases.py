@@ -36,7 +36,6 @@ __all__ = [
 
 import errno
 import json
-from logging import getLogger
 from os import (
     fstat,
     stat,
@@ -55,9 +54,10 @@ from provisioningserver.auth import (
     )
 from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.dhcp.leases_parser_fast import parse_leases
+from provisioningserver.logger import get_maas_logger
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("dhcp.leases")
 
 
 # Cache key for the modification time on last-processed leases file.
@@ -159,7 +159,7 @@ def send_leases(leases):
     if None in knowledge.values():
         # The MAAS server hasn't sent us enough information for us to do
         # this yet.  Leave it for another time.
-        logger.info(
+        maaslog.info(
             "Not sending DHCP leases to server: not all required knowledge "
             "received from server yet.  "
             "Missing: %s"
@@ -191,7 +191,7 @@ def upload_leases():
         timestamp, leases = parse_result
         process_leases(timestamp, leases)
     else:
-        logger.info(
+        maaslog.info(
             "The DHCP leases file does not exist.  This is only a problem if "
             "this cluster controller is managing its DHCP server.  If that's "
             "the case then you need to install the 'maas-dhcp' package on "

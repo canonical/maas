@@ -25,7 +25,6 @@ __all__ = [
 from collections import OrderedDict
 from functools import partial
 import httplib
-from logging import getLogger
 import urllib2
 
 from apiclient.maas_client import (
@@ -40,6 +39,7 @@ from provisioningserver.auth import (
     get_recorded_nodegroup_uuid,
     )
 from provisioningserver.cluster_config import get_maas_url
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import (
     classify,
     try_match_xpath,
@@ -47,7 +47,7 @@ from provisioningserver.utils import (
 import simplejson as json
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("tag_processing")
 
 
 class MissingCredentials(Exception):
@@ -69,11 +69,11 @@ def get_cached_knowledge():
     """
     api_credentials = get_recorded_api_credentials()
     if api_credentials is None:
-        logger.error("Not updating tags: don't have API key yet.")
+        maaslog.error("Not updating tags: don't have API key yet.")
         return None, None
     nodegroup_uuid = get_recorded_nodegroup_uuid()
     if nodegroup_uuid is None:
-        logger.error("Not updating tags: don't have UUID yet.")
+        maaslog.error("Not updating tags: don't have UUID yet.")
         return None, None
     client = MAASClient(
         MAASOAuth(*api_credentials), MAASDispatcher(),
@@ -150,7 +150,7 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
     :param removed: Set of nodes to remove
     """
     path = '/api/1.0/tags/%s/' % (tag_name,)
-    logger.debug(
+    maaslog.debug(
         "Updating nodes for %s %s, adding %s removing %s"
         % (tag_name, uuid, len(added), len(removed)))
     try:
@@ -163,7 +163,7 @@ def post_updated_nodes(client, tag_name, tag_definition, uuid, added, removed):
                 msg = e.fp.read()
             else:
                 msg = e.msg
-            logger.info("Got a CONFLICT while updating tag: %s", msg)
+            maaslog.info("Got a CONFLICT while updating tag: %s", msg)
             return {}
         raise
 
@@ -198,7 +198,7 @@ def _details_make_backwards_compatible(details, root):
         try:
             lshw = etree.fromstring(xmldata)
         except etree.XMLSyntaxError as e:
-            logger.warn("Invalid lshw details: %s", e)
+            maaslog.warn("Invalid lshw details: %s", e)
             del details["lshw"]  # Don't process again later.
         else:
             # We're throwing away the existing root, but we can adopt
@@ -218,7 +218,7 @@ def _details_do_merge(details, root):
             try:
                 detail = etree.fromstring(xmldata)
             except etree.XMLSyntaxError as e:
-                logger.warn("Invalid %s details: %s", namespace, e)
+                maaslog.warn("Invalid %s details: %s", namespace, e)
             else:
                 # Add the namespace to all unqualified elements.
                 for elem in detail.iter("{}*"):
@@ -327,7 +327,7 @@ def gen_node_details(client, nodegroup_uuid, batches):
 
 def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
                 xpath, batch_size=None):
-    logger.debug(
+    maaslog.debug(
         "processing %d system_ids for tag %s nodegroup %s",
         len(system_ids), tag_name, nodegroup_uuid)
 
@@ -337,7 +337,7 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
     batches = gen_batches(system_ids, batch_size)
     node_details = gen_node_details(client, nodegroup_uuid, batches)
     nodes_matched, nodes_unmatched = classify(
-        partial(try_match_xpath, xpath, logger=logger), node_details)
+        partial(try_match_xpath, xpath, logger=maaslog), node_details)
 
     # Upload all updates for one nodegroup at one time. This should be no more
     # than ~41*10,000 = 410kB. That should take <1s even on a 10Mbit network.
@@ -357,7 +357,7 @@ def process_node_tags(tag_name, tag_definition, tag_nsmap, batch_size=None):
     """
     client, nodegroup_uuid = get_cached_knowledge()
     if not all([client, nodegroup_uuid]):
-        logger.error(
+        maaslog.error(
             "Unable to update tag: %s for definition %r. "
             "Please refresh secrets, then rebuild this tag."
             % (tag_name, tag_definition))

@@ -15,15 +15,14 @@ __metaclass__ = type
 __all__ = [
     'get_signing_policy',
     'ImageSpec',
-    'logger',
+    'maaslog',
     ]
 
 from collections import namedtuple
 import functools
+
 from provisioningserver.logger import get_maas_logger
-
 from simplestreams.util import policy_read_signed
-
 
 # A tuple of the items that together select a boot image.
 ImageSpec = namedtuple(b'ImageSpec', [

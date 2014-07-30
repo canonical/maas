@@ -47,9 +47,7 @@ from django.db.models import (
     )
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
-from maasserver import (
-    DefaultMeta,
-    )
+from maasserver import DefaultMeta
 from maasserver.enum import (
     NODE_BOOT,
     NODE_BOOT_CHOICES,

@@ -21,7 +21,6 @@ __all__ = [
 
 import errno
 from itertools import chain
-from logging import getLogger
 import os.path
 
 from provisioningserver import config
@@ -33,9 +32,10 @@ from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.helpers import ImageSpec
+from provisioningserver.logger import get_maas_logger
 
 
-logger = getLogger(__name__)
+maaslog = get_maas_logger("tftp")
 
 
 def compose_image_path(osystem, arch, subarch, release, label):
@@ -229,7 +229,7 @@ def list_boot_images(tftproot):
     except OSError as exception:
         if exception.errno == errno.ENOENT:
             # Directory does not exist, so return empty list.
-            logger.warning("No boot images have been imported yet.")
+            maaslog.warning("No boot images have been imported yet.")
             return []
 
         # Other error. Propagate.

@@ -57,6 +57,7 @@ class TestUpgradeCluster(MAASTestCase):
 
     def test_calls_hooks(self):
         upgrade_hook = Mock()
+        upgrade_hook.__name__ = "upgrade_hook"
         self.patch_upgrade_hooks([upgrade_hook])
         self.run_command()
         self.assertThat(upgrade_hook, MockCalledOnceWith())
