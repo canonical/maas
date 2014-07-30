@@ -89,6 +89,7 @@ from provisioningserver.tasks import (
     power_on,
     remove_dhcp_host_map,
     )
+from provisioningserver.utils import map_enum_reverse
 
 
 maaslog = get_maas_logger("node")
@@ -796,9 +797,12 @@ class Node(CleanSave, TimestampedModel):
             pass
         elif self.status in NODE_TRANSITIONS.get(old_status, ()):
             # Valid transition.
-            maaslog.debug(
-                "Transition status from %s to %s for node %s (%s)", old_status,
-                self.status, self.hostname, self.system_id)
+            if old_status is not None:
+                stat = map_enum_reverse(NODE_STATUS, ignore='DEFAULT')
+                maaslog.debug(
+                    "Transition status from %s to %s for node %s (%s)",
+                    stat[old_status], stat[self.status], self.hostname,
+                    self.system_id)
             pass
         else:
             # Transition not permitted.

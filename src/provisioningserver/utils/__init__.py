@@ -932,6 +932,19 @@ def map_enum(enum_class):
     }
 
 
+def map_enum_reverse(enum_class, ignore=None):
+    """Like map_enum(), but reverse its keys and values so you can lookup
+    text representations from the enum's integer value.
+
+    Any values in `ignore` are left out of the returned dict.
+    """
+    if ignore is None:
+        ignore = []
+    return dict([
+        (v, k) for k, v in map_enum(enum_class).viewitems()
+        if k not in ignore])
+
+
 def retries(timeout=30, interval=1, clock=reactor):
     """Helper for retrying something, sleeping between attempts.
 

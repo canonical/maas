@@ -85,6 +85,7 @@ from provisioningserver.utils import (
     maas_custom_config_markers,
     MainScript,
     map_enum,
+    map_enum_reverse,
     parse_key_value_file,
     pause,
     pick_new_mtime,
@@ -1560,6 +1561,28 @@ class TestEnum(MAASTestCase):
             THREE = 3
 
         self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
+
+    def test_map_enum_reverse_maps_values(self):
+
+        class Enum:
+            ONE = 1
+            NINE = 9
+
+        self.assertEqual(
+            {1: 'ONE', 9: 'NINE'},
+            map_enum_reverse(Enum))
+
+    def test_map_enum_reverse_ignores_values(self):
+
+        class Enum:
+            ONE = 1
+            ONE_2 = 1
+            FIVE = 5
+            FIVE_2 = 5
+
+        self.assertEqual(
+            {1: 'ONE', 5: 'FIVE'},
+            map_enum_reverse(Enum, ignore=['ONE_2', 'FIVE_2']))
 
 
 class TestRetries(MAASTestCase):

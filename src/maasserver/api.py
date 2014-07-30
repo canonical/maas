@@ -265,8 +265,11 @@ from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
+
+maaslog = get_maas_logger("api")
 
 # Node's fields exposed on the API.
 DISPLAYED_NODE_FIELDS = (
@@ -571,7 +574,10 @@ class NodeHandler(OperationsHandler):
             except MACAddress.DoesNotExist:
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the node" % raw_mac)
-        mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        sip = mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        maaslog.info(
+            "Sticky IP address %s allocated for %s (%s)", sip.ip,
+            node.hostname, node.system_id)
         return node
 
     @operation(idempotent=False)
@@ -589,6 +595,9 @@ class NodeHandler(OperationsHandler):
         error_description = get_optional_param(
             request.POST, 'error_description', '')
         node.mark_broken(error_description)
+        maaslog.info(
+            "User %s marked node %s (%s) as broken", request.user.username,
+            node.hostname, node.system_id)
         return node
 
     @operation(idempotent=False)
@@ -597,6 +606,9 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed()
+        maaslog.info(
+            "User %s marked node %s (%s) as fixed", request.user.username,
+            node.hostname, node.system_id)
         return node
 
     @admin_method
@@ -671,6 +683,8 @@ def create_node(request):
         node = form.save()
         # Hack in the power parameters here.
         store_node_power_parameters(node, request)
+        maaslog.info(
+            "Enlisted new node %s (%s)", node.hostname, node.system_id)
         return node
     else:
         raise ValidationError(form.errors)
@@ -1005,6 +1019,9 @@ class NodesHandler(OperationsHandler):
         :type agent_name: unicode
          """
         form = AcquireNodeForm(data=request.data)
+        maaslog.info(
+            "Request from user %s to acquire a node with constraints %s",
+            request.user.username, request.data)
         if form.is_valid():
             nodes = Node.objects.get_available_nodes_for_acquisition(
                 request.user)
@@ -1518,7 +1535,9 @@ def register_nodegroup(request, uuid):
     if not form.is_valid():
         raise ValidationError(form.errors)
 
-    return form.save()
+    cluster = form.save()
+    maaslog.info("New cluster controller registered: %s", cluster.name)
+    return cluster
 
 
 def compose_nodegroup_register_response(nodegroup, already_existed):

@@ -588,7 +588,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger())
         update_hardware_details(factory.make_node(), b"garbage", 0)
         expected_log = dedent("""\
-        ...
         Invalid lshw data.
         Traceback (most recent call last):
         ...
