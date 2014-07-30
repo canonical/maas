@@ -63,13 +63,13 @@ def find_default_interface(ip_route_output):
     """
     route_lines = list(ip_route_output)
     for line in route_lines:
-        match = re.match('default\s+.*\sdev\s+(\w+)', line)
+        match = re.match('default\s+.*\sdev\s+([^\s]+)', line)
         if match is not None:
             return match.groups()[0]
 
     # Still nothing?  Try the first recognizable interface in the list.
     for line in route_lines:
-        match = re.match('\s*(?:\S+\s+)*dev\s+(\w+)', line)
+        match = re.match('\s*(?:\S+\s+)*dev\s+([^\s]+)', line)
         if match is not None:
             return match.groups()[0]
     return None

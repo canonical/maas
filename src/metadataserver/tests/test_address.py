@@ -59,6 +59,26 @@ class TestAddress(MAASTestCase):
         self.assertEqual(
             'eth1', address.find_default_interface(sample_ip_route))
 
+    def test_find_default_interface_finds_default_tagged_interface(self):
+        sample_ip_route = [
+            "default via 10.20.64.1 dev eth0.2",
+            "10.14.0.0/16 dev br0  proto kernel  scope link  src 10.14.4.1",
+            "10.90.90.0/24 dev br0  proto kernel  scope link  src 10.90.90.1",
+            "169.254.0.0/16 dev br0  scope link  metric 1000",
+        ]
+        self.assertEqual(
+            'eth0.2', address.find_default_interface(sample_ip_route))
+
+    def test_find_default_interface_finds_default_aliased_interface(self):
+        sample_ip_route = [
+            "default via 10.20.64.1 dev eth0:2",
+            "10.14.0.0/16 dev br0  proto kernel  scope link  src 10.14.4.1",
+            "10.90.90.0/24 dev br0  proto kernel  scope link  src 10.90.90.1",
+            "169.254.0.0/16 dev br0  scope link  metric 1000",
+        ]
+        self.assertEqual(
+            'eth0:2', address.find_default_interface(sample_ip_route))
+
     def test_find_default_interface_makes_a_guess_if_no_default(self):
         sample_ip_route = [
             "10.0.0.0/24 dev eth2  proto kernel  scope link  src 10.0.0.11  "
@@ -68,6 +88,26 @@ class TestAddress(MAASTestCase):
             ]
         self.assertEqual(
             'eth2', address.find_default_interface(sample_ip_route))
+
+    def test_find_default_tagged_interface_makes_a_guess_if_no_default(self):
+        sample_ip_route = [
+            "10.0.0.0/24 dev eth2.4  proto kernel  scope link  src 10.0.0.11  "
+            "metric 2",
+            "10.1.0.0/24 dev virbr0  proto kernel  scope link  src 10.1.0.1",
+            "10.1.1.0/24 dev virbr1  proto kernel  scope link  src 10.1.1.1",
+            ]
+        self.assertEqual(
+            'eth2.4', address.find_default_interface(sample_ip_route))
+
+    def test_find_default_aliased_interface_makes_a_guess_if_no_default(self):
+        sample_ip_route = [
+            "10.0.0.0/24 dev eth2:4  proto kernel  scope link  src 10.0.0.11  "
+            "metric 2",
+            "10.1.0.0/24 dev virbr0  proto kernel  scope link  src 10.1.0.1",
+            "10.1.1.0/24 dev virbr1  proto kernel  scope link  src 10.1.1.1",
+            ]
+        self.assertEqual(
+            'eth2:4', address.find_default_interface(sample_ip_route))
 
     def test_find_default_interface_returns_None_on_failure(self):
         self.assertIsNone(address.find_default_interface([]))
