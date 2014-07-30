@@ -80,6 +80,7 @@ class TestPowerHelpers(MAASTestCase):
     @inlineCallbacks
     def test_change_power_state_changes_power_state(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = random.choice(['on', 'off'])
         context = {
@@ -93,7 +94,7 @@ class TestPowerHelpers(MAASTestCase):
         markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
-            system_id, power_type, power_change, context)
+            system_id, hostname, power_type, power_change, context)
         io.flush()
         self.assertThat(
             execute,
@@ -110,6 +111,7 @@ class TestPowerHelpers(MAASTestCase):
     @inlineCallbacks
     def test_change_power_state_doesnt_retry_for_certain_power_types(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         # Use a power type that is not among power.QUERY_POWER_TYPES.
         power_type = factory.make_name('power_type')
         power_change = random.choice(['on', 'off'])
@@ -122,7 +124,7 @@ class TestPowerHelpers(MAASTestCase):
         markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
-            system_id, power_type, power_change, context)
+            system_id, hostname, power_type, power_change, context)
         io.flush()
         self.assertThat(
             execute,
@@ -137,6 +139,7 @@ class TestPowerHelpers(MAASTestCase):
     @inlineCallbacks
     def test_change_power_state_retries_if_power_state_doesnt_change(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = 'on'
         context = {
@@ -149,7 +152,7 @@ class TestPowerHelpers(MAASTestCase):
         markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
-            system_id, power_type, power_change, context)
+            system_id, hostname, power_type, power_change, context)
         io.flush()
         self.assertThat(
             execute,
@@ -166,6 +169,7 @@ class TestPowerHelpers(MAASTestCase):
     @inlineCallbacks
     def test_change_power_state_marks_the_node_broken_if_failure(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = 'on'
         context = {
@@ -177,7 +181,7 @@ class TestPowerHelpers(MAASTestCase):
         markNodeBroken, io = self.patch_MarkNodeBroken()
 
         yield power.change_power_state(
-            system_id, power_type, power_change, context)
+            system_id, hostname, power_type, power_change, context)
         io.flush()
 
         # The node has been marked broken.
@@ -191,6 +195,7 @@ class TestPowerHelpers(MAASTestCase):
 
     def test_change_power_state_marks_the_node_broken_if_exception(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = 'on'
         context = {
@@ -204,7 +209,7 @@ class TestPowerHelpers(MAASTestCase):
         markNodeBroken, io = self.patch_MarkNodeBroken()
 
         d = power.change_power_state(
-            system_id, power_type, power_change, context)
+            system_id, hostname, power_type, power_change, context)
         assert_fails_with(d, Exception)
         error_message = "Node could not be powered on: %s" % exception_message
 
@@ -219,6 +224,7 @@ class TestPowerHelpers(MAASTestCase):
 
     def test_change_power_state_pauses_in_between_retries(self):
         system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
         power_type = random.choice(power.QUERY_POWER_TYPES)
         power_change = 'on'
         context = {
@@ -248,7 +254,7 @@ class TestPowerHelpers(MAASTestCase):
         ]
         calls = []
         yield power.change_power_state(
-            system_id, power_type, power_change, context, clock=clock)
+            system_id, hostname, power_type, power_change, context, clock=clock)
         for newcalls, waiting_time in calls_and_pause:
             calls.extend(newcalls)
             self.assertThat(execute, MockCallsMatch(*calls))

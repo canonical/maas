@@ -60,7 +60,7 @@ def perform_power_change(system_id, power_type, power_change, context):
 
 
 @inlineCallbacks
-def change_power_state(system_id, power_type, power_change, context,
+def change_power_state(system_id, hostname, power_type, power_change, context,
                        clock=reactor):
     """Change the power state of a node.
 

@@ -167,6 +167,7 @@ class _Power(amp.Command):
 
     arguments = [
         (b"system_id", amp.Unicode()),
+        (b"hostname", amp.Unicode()),
         (b"power_type", amp.Unicode()),
         # We can't define a tighter schema here because this is a highly
         # variable bag of arguments from a variety of sources.

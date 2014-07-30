@@ -148,17 +148,17 @@ class Cluster(amp.AMP, object):
         }
 
     @cluster.PowerOn.responder
-    def power_on(self, system_id, power_type, context):
+    def power_on(self, system_id, hostname, power_type, context):
         """Turn a node on."""
         change_power_state(
-            system_id, power_type, power_change='on', context=context)
+            system_id, hostname, power_type, power_change='on', context=context)
         return {}
 
     @cluster.PowerOff.responder
-    def power_off(self, system_id, power_type, context):
+    def power_off(self, system_id, hostname, power_type, context):
         """Turn a node off."""
         change_power_state(
-            system_id, power_type, power_change='off', context=context)
+            system_id, hostname, power_type, power_change='off', context=context)
         return {}
 
     @amp.StartTLS.responder

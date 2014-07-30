@@ -861,6 +861,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         change_power_state = self.patch(clusterservice, "change_power_state")
 
         system_id = factory.make_name("system_id")
+        hostname = factory.make_name("hostname")
         power_type = factory.make_name("power_type")
         context = {
             factory.make_name("name"): factory.make_name("value"),
@@ -868,6 +869,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
         d = call_responder(Cluster(), self.command, {
             "system_id": system_id,
+            "hostname": hostname,
             "power_type": power_type,
             "context": context,
         })
@@ -876,7 +878,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
             self.assertThat(
                 change_power_state,
                 MockCalledOnceWith(
-                    system_id, power_type,
+                    system_id, hostname, power_type,
                     power_change=self.expected_power_change, context=context))
         return d.addCallback(check)
 
@@ -885,7 +887,8 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
             UnknownPowerType)
 
         d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "power_type": "type", "context": {},
+            "system_id": "id", "hostname": "hostname", "power_type": "type",
+            "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* UnknownPowerType to be raised.
@@ -900,7 +903,8 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
             NotImplementedError)
 
         d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "power_type": "type", "context": {},
+            "system_id": "id", "hostname": "hostname", "power_type": "type",
+            "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* NotImplementedError to be raised.
@@ -915,7 +919,8 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
             PowerActionFail)
 
         d = call_responder(Cluster(), self.command, {
-            "system_id": "id", "power_type": "type", "context": {},
+            "system_id": "id", "hostname": "hostname", "power_type": "type",
+            "context": {},
         })
         # If the call doesn't fail then we have a test failure; we're
         # *expecting* PowerActionFail to be raised.
