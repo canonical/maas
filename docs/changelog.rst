@@ -2,6 +2,21 @@
 Changelog
 =========
 
+1.5.4
+=====
+
+Bug fix update
+--------------
+
+ - Package fails to install when the default route is through an
+   aliased/tagged interface (LP: #1350235)
+ - ERROR Nonce already used (LP: #1190986)
+ - Add MAAS arm64/xgene support (LP: #1338851)
+ - Add utopic support (LP: #1337437)
+ - API documentation for nodegroup op=details missing parameter
+   (LP: #1331982)
+
+
 1.5.3
 =====
 
