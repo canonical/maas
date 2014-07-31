@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CannotCreateHostMap",
     "NoConnectionsAvailable",
     "NoSuchEventType",
     "NoSuchNode",
@@ -46,3 +47,7 @@ class NoSuchNode(Exception):
 
 class NoSuchOperatingSystem(Exception):
     """The specified OS was not found."""
+
+
+class CannotCreateHostMap(Exception):
+    """The host map could not be created."""

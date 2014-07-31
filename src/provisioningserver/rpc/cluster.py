@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CreateHostMaps",
     "DescribePowerTypes",
     "GetPreseedData",
     "Identify",
@@ -196,3 +197,23 @@ class PowerOff(_Power):
 
     :since: 1.7
     """
+
+
+class CreateHostMaps(amp.Command):
+    """Create host maps in the DHCP server's configuration.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"mappings", amp.AmpList([
+            (b"ip_address", amp.Unicode()),
+            (b"mac_address", amp.Unicode()),
+        ])),
+        (b"shared_key", amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        exceptions.CannotCreateHostMap: (
+            "CannotCreateHostMap"),
+    }

@@ -929,3 +929,36 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         def check(failure):
             failure.trap(PowerActionFail)
         return d.addErrback(check)
+
+
+class TestClusterProtocol_CreateHostMaps(MAASTestCase):
+
+    scenarios = (
+        ("create-host-maps", {
+            "command": cluster.CreateHostMaps,
+        }),
+    )
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(self.command.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_executes_create_host_maps(self):
+        create_host_maps = self.patch(clusterservice, "create_host_maps")
+        mappings = [
+            {"ip_address": factory.getRandomIPAddress(),
+             "mac_address": factory.getRandomMACAddress()}
+            for _ in range(2)
+        ]
+        shared_key = factory.make_name("shared_key")
+
+        d = call_responder(Cluster(), self.command, {
+            "mappings": mappings, "shared_key": shared_key,
+        })
+
+        def check(response):
+            self.assertThat(
+                create_host_maps, MockCalledOnceWith(
+                    mappings, shared_key))
+        return d.addCallback(check)

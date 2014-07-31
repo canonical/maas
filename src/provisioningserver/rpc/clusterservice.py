@@ -38,6 +38,7 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
+from provisioningserver.rpc.dhcp import create_host_maps
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
@@ -161,6 +162,11 @@ class Cluster(amp.AMP, object):
         change_power_state(
             system_id, hostname, power_type, power_change='off',
             context=context)
+        return {}
+
+    @cluster.CreateHostMaps.responder
+    def create_host_maps(self, mappings, shared_key):
+        create_host_maps(mappings, shared_key)
         return {}
 
     @amp.StartTLS.responder
