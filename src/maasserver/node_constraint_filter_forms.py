@@ -192,6 +192,9 @@ class AcquireNodeForm(RenamableFieldsForm):
 
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
 
+    not_tags = UnconstrainedMultipleChoiceField(
+        label="Not having tags", required=False)
+
     networks = ValidatorMultipleChoiceField(
         validator=parse_network_spec, label="Attached to networks",
         required=False, error_messages={
@@ -412,6 +415,12 @@ class AcquireNodeForm(RenamableFieldsForm):
         if tags:
             for tag in tags:
                 filtered_nodes = filtered_nodes.filter(tags__name=tag)
+
+        # Filter by not_tags.
+        not_tags = self.cleaned_data.get(self.get_field_name('not_tags'))
+        if len(not_tags) > 0:
+            for not_tag in not_tags:
+                filtered_nodes = filtered_nodes.exclude(tags__name=not_tag)
 
         # Filter by zone.
         zone = self.cleaned_data.get(self.get_field_name('zone'))

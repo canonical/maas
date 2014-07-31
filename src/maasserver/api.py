@@ -269,6 +269,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
 
+
 maaslog = get_maas_logger("api")
 
 # Node's fields exposed on the API.
@@ -987,6 +988,8 @@ class NodesHandler(OperationsHandler):
         :type mem: float
         :param tags: List of tags the returned node must have.
         :type tags: list of unicodes
+        :param not_tags: List of tags the acquired node must not have.
+        :type tags: List of unicodes.
         :param connected_to: List of routers' MAC addresses the returned
             node must be connected to.
         :type connected_to: unicode or list of unicodes
@@ -1017,7 +1020,7 @@ class NodesHandler(OperationsHandler):
         :param agent_name: An optional agent name to attach to the
             acquired node.
         :type agent_name: unicode
-         """
+        """
         form = AcquireNodeForm(data=request.data)
         maaslog.info(
             "Request from user %s to acquire a node with constraints %s",

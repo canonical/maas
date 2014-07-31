@@ -578,6 +578,30 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             [node_bignburly], {'tags': ['big', 'burly']})
 
+    def test_not_tags_negates_individual_tags(self):
+        tag = factory.make_tag()
+        tagged_node = factory.make_node()
+        tagged_node.tags.add(tag)
+        untagged_node = factory.make_node()
+
+        self.assertConstrainedNodes(
+            [untagged_node], {'not_tags': [tag.name]})
+
+    def test_not_tags_negates_multiple_tags(self):
+        tagged_node = factory.make_node()
+        tags = [
+            factory.make_tag('spam'),
+            factory.make_tag('eggs'),
+            factory.make_tag('ham'),
+            ]
+        tagged_node.tags = tags
+        partially_tagged_node = factory.make_node()
+        partially_tagged_node.tags.add(tags[0])
+
+        self.assertConstrainedNodes(
+            [partially_tagged_node],
+            {'not_tags': ['eggs', 'ham']})
+
     def test_invalid_tags(self):
         form = AcquireNodeForm(data={'tags': ['big', 'unknown']})
         self.assertEquals(
@@ -674,6 +698,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'cpu_count': randint(1, 32),
             'mem': randint(1024, 256 * 1024),
             'tags': [factory.make_tag().name],
+            'not_tags': [factory.make_tag().name],
             'networks': [factory.make_network().name],
             'not_networks': [factory.make_network().name],
             'connected_to': [factory.getRandomMACAddress()],

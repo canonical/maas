@@ -24,10 +24,10 @@ import urllib2
 
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from fixtures import FakeLogger
 import mock
 from provisioningserver import cache
 from provisioningserver.auth import (

@@ -19,7 +19,10 @@ import logging
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.logger import log
-from provisioningserver.logger.log import get_maas_logger, MAASLogger
+from provisioningserver.logger.log import (
+    get_maas_logger,
+    MAASLogger,
+    )
 from provisioningserver.testing.testcase import PservTestCase
 
 

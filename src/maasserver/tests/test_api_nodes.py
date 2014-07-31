@@ -688,6 +688,26 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
+    def test_POST_acquire_allocates_node_by_negated_tags(self):
+        tagged_node = factory.make_node(status=NODE_STATUS.READY)
+        partially_tagged_node = factory.make_node(status=NODE_STATUS.READY)
+        node_tag_names = ["fast", "stable", "cute"]
+        tags = [factory.make_tag(t) for t in node_tag_names]
+        tagged_node.tags = tags
+        partially_tagged_node.tags = tags[:-1]
+        # Legacy call using comma-separated tags.
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'not_tags': ['cute']
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        self.assertEqual(
+            partially_tagged_node.system_id,
+            response_json['system_id'])
+        self.assertItemsEqual(
+            node_tag_names[:-1], response_json['tag_names'])
+
     def test_POST_acquire_allocates_node_by_zone(self):
         factory.make_node(status=NODE_STATUS.READY)
         zone = factory.make_zone()
