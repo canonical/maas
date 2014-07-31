@@ -111,6 +111,10 @@ from maasserver.models import (
     Tag,
     Zone,
     )
+from maasserver.models.node import (
+    fqdn_is_duplicate,
+    nodegroup_fqdn,
+    )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import (
     ACTION_CLASSES,
@@ -334,6 +338,20 @@ class NodeForm(ModelForm):
         if new_hostname != hostname and status == NODE_STATUS.ALLOCATED:
             raise ValidationError(
                 "Can't change hostname to %s: node is in use." % new_hostname)
+
+        # XXX 2014-07-30 jason-hobbs, bug=1350459: This check shouldn't be
+        # necessary, but many tests don't provide a nodegroup to NodeForm.
+        if self.instance.nodegroup is None:
+            return new_hostname
+
+        if self.instance.nodegroup.manages_dns():
+            new_fqdn = nodegroup_fqdn(
+                new_hostname, self.instance.nodegroup.name)
+        else:
+            new_fqdn = new_hostname
+        if fqdn_is_duplicate(self.instance, new_fqdn):
+            raise ValidationError(
+                "Node with FQDN '%s' already exists." % (new_fqdn))
 
         return new_hostname
 

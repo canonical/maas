@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = [
     "NODE_TRANSITIONS",
     "Node",
+    "fqdn_is_duplicate",
+    "nodegroup_fqdn",
     ]
 
 from itertools import (
@@ -506,6 +508,29 @@ def patch_pgarray_types():
 patch_pgarray_types()
 
 
+def nodegroup_fqdn(hostname, nodegroup_name):
+    """Build a FQDN from a hostname and a nodegroup name.
+
+    If hostname includes a domain, it is replaced with nodegroup_name.
+    Otherwise, nodegroup name is append to hostname as a domain.
+    """
+    stripped_hostname = strip_domain(hostname)
+    return '%s.%s' % (stripped_hostname, nodegroup_name)
+
+
+def fqdn_is_duplicate(node, fqdn):
+    """Determine if fqdn exists on any other nodes."""
+    hostname = strip_domain(fqdn)
+    nodes = Node.objects.filter(
+        hostname__startswith=hostname).exclude(id=node.id)
+
+    for check_node in nodes:
+        if check_node.fqdn == fqdn:
+            return True
+
+    return False
+
+
 class Node(CleanSave, TimestampedModel):
     """A `Node` represents a physical machine used by the MAAS Server.
 
@@ -630,13 +655,8 @@ class Node(CleanSave, TimestampedModel):
         If not, simply return the node's hostname.
         """
         if self.nodegroup.manages_dns():
-            # If the hostname field contains a domain, strip it.
-            hostname = strip_domain(self.hostname)
-            # Build the FQDN by using the hostname and nodegroup.name
-            # as the domain name.
-            return '%s.%s' % (hostname, self.nodegroup.name)
-        else:
-            return self.hostname
+            return nodegroup_fqdn(self.hostname, self.nodegroup.name)
+        return self.hostname
 
     def claim_static_ips(self):
         """Assign AUTO static IPs for our MACs and return a list of

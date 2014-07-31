@@ -615,6 +615,40 @@ class TestNodeForm(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         mock_validate.assert_called_once()
 
+    def test_rejects_duplicate_fqdn_with_unmanaged_dns_on_one_nodegroup(self):
+        # If a host with a given hostname exists on a managed nodegroup,
+        # new nodes on unmanaged nodegroups with hostnames that match
+        # that FQDN will be rejected.
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node = factory.make_node(
+            hostname=factory.make_name("hostname"), nodegroup=nodegroup)
+        other_nodegroup = factory.make_node_group()
+        form = NodeForm(data={
+            'nodegroup': other_nodegroup,
+            'hostname': node.fqdn,
+            'architecture': make_usable_architecture(self),
+        })
+        form.instance.nodegroup = other_nodegroup
+        self.assertFalse(form.is_valid())
+
+    def test_rejects_duplicate_fqdn_on_same_nodegroup(self):
+        # If a node with a given FQDN exists on a managed nodegroup, new
+        # nodes on that nodegroup with duplicate FQDNs will be rejected.
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node = factory.make_node(
+            hostname=factory.make_name("hostname"), nodegroup=nodegroup)
+        form = NodeForm(data={
+            'nodegroup': nodegroup,
+            'hostname': node.fqdn,
+            'architecture': make_usable_architecture(self),
+        })
+        form.instance.nodegroup = nodegroup
+        self.assertFalse(form.is_valid())
+
 
 class TestAdminNodeForm(MAASServerTestCase):
 
