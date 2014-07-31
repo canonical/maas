@@ -109,6 +109,9 @@ def power_change_starting(system_id, hostname, power_change):
     yield send_event_node(event_type, system_id, hostname)
 
 
+default_waiting_policy = (3, 5, 10)
+
+
 @inlineCallbacks
 def change_power_state(system_id, hostname, power_type, power_change, context,
                        clock=reactor):
@@ -124,7 +127,7 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     yield power_change_starting(system_id, hostname, power_change)
     # Use increasing waiting times to work around race conditions that could
     # arise when power-cycling the node.
-    for waiting_time in (3, 5, 10):
+    for waiting_time in default_waiting_policy:
         # Perform power change.
         yield deferToThread(
             perform_power_change, system_id, hostname, power_type,
@@ -145,5 +148,5 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
 
     # Failure: the power state of the node hasn't changed: mark it as
     # broken.
-    message = "Node could not be powered %s" % power_change
+    message = "Timeout after %s tries" % len(default_waiting_policy)
     yield power_change_failure(system_id, hostname, power_change, message)

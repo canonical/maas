@@ -253,12 +253,14 @@ class TestChangePowerChange(MAASTestCase):
         io.flush()
 
         # The node has been marked broken.
+        msg = "Timeout after %s tries" % len(
+            power.default_waiting_policy)
         self.assertThat(
             markNodeBroken,
             MockCalledOnceWith(
                 ANY,
                 system_id=system_id,
-                error_description="Node could not be powered on")
+                error_description=msg)
         )
         return d
 
