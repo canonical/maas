@@ -1085,6 +1085,32 @@ class NodesHandler(OperationsHandler):
 
         return {node.system_id: node.power_parameters for node in nodes}
 
+    @operation(idempotent=True)
+    def deployment_status(self, request):
+        """Retrieve deployment status for multiple nodes.
+
+        :param nodes: Mandatory list of system IDs for nodes whose status
+            you wish to check.
+        """
+        system_ids = set(request.GET.getlist('nodes'))
+        # Check the existence of these nodes first.
+        self._check_system_ids_exist(system_ids)
+        # Make sure that the user has the required permission.
+        nodes = Node.objects.get_nodes(
+            request.user, perm=NODE_PERMISSION.VIEW, ids=system_ids)
+        permitted_ids = set(node.system_id for node in nodes)
+        if len(nodes) != len(system_ids):
+            raise PermissionDenied(
+                "You don't have the required permission to view the "
+                "following node(s): %s." % (
+                    ', '.join(system_ids - permitted_ids)))
+
+        # Create a dict of system_id to status.
+        response = dict()
+        for node in nodes:
+            response[node.system_id] = node.get_deployment_status()
+        return response
+
     @classmethod
     def resource_uri(cls, *args, **kwargs):
         return ('nodes_handler', [])

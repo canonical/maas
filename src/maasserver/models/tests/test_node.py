@@ -1701,3 +1701,23 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         task_mapping_arg = observed_tasks[0].kwargs["mappings"]
         [observed_mac] = task_mapping_arg.values()
         self.assertEqual(second_mac.mac_address.get_raw(), observed_mac)
+
+
+class TestDeploymentStatus(MAASServerTestCase):
+    """Tests for node.get_deployment_status."""
+
+    def test_returns_deployed_when_deployed(self):
+        node = factory.make_node(owner=factory.make_user(), netboot=False)
+        self.assertEqual("Deployed", node.get_deployment_status())
+
+    def test_returns_deploying_when_deploying(self):
+        node = factory.make_node(owner=factory.make_user(), netboot=True)
+        self.assertEqual("Deploying", node.get_deployment_status())
+
+    def test_returns_broken_when_broken(self):
+        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        self.assertEqual("Broken", node.get_deployment_status())
+
+    def test_returns_unused_when_unused(self):
+        node = factory.make_node(owner=None)
+        self.assertEqual("Unused", node.get_deployment_status())
