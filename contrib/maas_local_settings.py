@@ -43,6 +43,9 @@ LOGGING = {
     'handlers': {
         'log': {
             'class': 'logging.handlers.RotatingFileHandler',
+            # DO NOT point this file at /var/log/maas/maas.log; MAAS now
+            # uses syslog to log to that file, and pointing the Django
+            # log output to it will clobber the syslog output.
             'filename': '/var/log/maas/maas-django.log',
             'formatter': 'simple',
         },
