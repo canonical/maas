@@ -27,20 +27,20 @@ power_address={{ip_address}}
 # This workaround is required on many BMCs, and should have no impact
 # on BMCs that don't require it.
 # See https://bugs.launchpad.net/maas/+bug/1287964
-power_options="-W opensesspriv"
-
-# If a soft power off is requested, pass this request to ipmipower.
-if [ "$power_change" = "off" ] && [ "$power_off_mode" = "soft" ];
-then
-    power_options="$power_options --soft"
-fi
+workarounds="-W opensesspriv"
 
 # Determines the power command needed to execute the desired
 # action. This function receives ${power_change} as argument.
 formulate_power_command() {
     case $1 in
     'on') echo '--cycle --on-if-off' ;;
-    'off') echo '--off' ;;
+    'off')
+        if [ "$power_off_mode" = "soft" ];
+        then
+            echo '--soft'
+        else
+            echo '--off'
+        fi ;;
     'query') echo '--stat' ;;
     *)
         echo "Got unknown power state from ipmipower: '$1'" >&2
@@ -60,7 +60,7 @@ issue_ipmi_command() {
     echo workaround |\
     ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
     result=$(echo workaround |\
-    ${ipmipower} ${power_options} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
+    ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
     case "$result" in
         *:* )
                 # Result looks like the usual IPMI output:
