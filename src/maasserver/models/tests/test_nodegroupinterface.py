@@ -95,6 +95,12 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'eth0:1',
             factory.make_node_group_interface(cluster, name='eth0:1').name)
 
+    def test_name_accepts_vlan_interface(self):
+        cluster = factory.make_node_group()
+        self.assertEqual(
+            'eth0.1',
+            factory.make_node_group_interface(cluster, name='eth0.1').name)
+
     def test_name_accepts_dashes(self):
         cluster = factory.make_node_group()
         self.assertEqual(

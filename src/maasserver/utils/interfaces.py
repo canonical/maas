@@ -33,4 +33,4 @@ def make_name_from_interface(interface):
         base_name = u'unnamed-%d' % randint(1000000, 9999999)
     else:
         base_name = interface
-    return re.sub(u'[^\w:-]', '--', base_name)
+    return re.sub(u'[^\w:.-]', '--', base_name)
