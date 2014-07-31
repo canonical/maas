@@ -837,20 +837,20 @@ class Node(CleanSave, TimestampedModel):
         self.clean_status()
 
     def display_status(self):
-        """Return status text as displayed to the user.
+        """Return status text as displayed to the user."""
+        return NODE_STATUS_CHOICES_DICT[self.status]
 
-        The UI representation is taken from NODE_STATUS_CHOICES_DICT and may
-        interpolate the variable "owner" to reflect the username of the node's
-        current owner, if any.
-        """
-        status_text = NODE_STATUS_CHOICES_DICT[self.status]
-        if self.status == NODE_STATUS.ALLOCATED:
-            # The User is represented as its username in interpolation.
-            # Don't just say self.owner.username here, or there will be
-            # trouble with unowned nodes!
-            return "%s to %s" % (status_text, self.owner)
-        else:
-            return status_text
+    def display_memory(self):
+        """Return memory in GB."""
+        if self.memory < 1024:
+            return '%.1f' % (self.memory / 1024.0)
+        return '%d' % (self.memory / 1024)
+
+    def display_storage(self):
+        """Return storage in GB."""
+        if self.storage < 1024:
+            return '%.1f' % (self.storage / 1024.0)
+        return '%d' % (self.storage / 1024)
 
     def add_mac_address(self, mac_address):
         """Add a new MAC address to this `Node`.

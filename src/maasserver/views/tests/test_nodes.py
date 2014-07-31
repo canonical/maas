@@ -151,9 +151,19 @@ class NodeViewsTest(MAASServerTestCase):
         response = self.client.get(reverse('node-list'))
         sort_hostname = '?sort=hostname&dir=asc'
         sort_status = '?sort=status&dir=asc'
+        sort_owner = '?sort=owner&dir=asc'
+        sort_cpu_count = '?sort=cpu_count&dir=asc'
+        sort_memory = '?sort=memory&dir=asc'
+        sort_storage = '?sort=storage&dir=asc'
+        sort_primary_mac = '?sort=primary_mac&dir=asc'
         sort_zone = '?sort=zone&dir=asc'
         self.assertIn(sort_hostname, get_content_links(response))
         self.assertIn(sort_status, get_content_links(response))
+        self.assertIn(sort_owner, get_content_links(response))
+        self.assertIn(sort_cpu_count, get_content_links(response))
+        self.assertIn(sort_memory, get_content_links(response))
+        self.assertIn(sort_storage, get_content_links(response))
+        self.assertIn(sort_primary_mac, get_content_links(response))
         self.assertIn(sort_zone, get_content_links(response))
 
     def test_node_list_ignores_unknown_sort_param(self):

@@ -25,6 +25,11 @@ __all__ = [
     ]
 
 from cgi import escape
+from operator import attrgetter
+from netaddr import (
+    EUI,
+    NotRegisteredError,
+    )
 from textwrap import dedent
 from urllib import urlencode
 
@@ -192,11 +197,44 @@ def generate_js_power_types(nodegroup=None):
     return mark_safe("[\n%s\n]" % ',\n'.join(names))
 
 
+def get_vendor_for_mac(mac):
+    """Return vendor for MAC."""
+    data = EUI(mac)
+    try:
+        return data.oui.registration().org
+    except NotRegisteredError:
+        return 'Unknown Vendor'
+
+
+def configure_macs(nodes):
+    """Configures the each node in the query to have an "macs" attribute,
+    that contains a list of macs, sorted by created.
+
+    The list is structed to contain the MAC and its vendor.
+    """
+    for node in nodes:
+        macs = node.macaddress_set.all()
+        macs = sorted(macs, key=lambda mac: mac.created)
+        macs = ['%s' % mac.mac_address for mac in macs]
+        if len(macs) == 0:
+            node.primary_mac = None
+            node.primary_mac_vendor = None
+            node.extra_macs = []
+        else:
+            node.primary_mac = macs[0]
+            node.primary_mac_vendor = get_vendor_for_mac(node.primary_mac)
+            node.extra_macs = macs[1:]
+    return nodes
+
+
 class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
     form_class = BulkNodeActionForm
-    sort_fields = ('hostname', 'status', 'zone')
+    sort_fields = (
+        'hostname', 'status', 'owner', 'cpu_count',
+        'memory', 'storage', 'zone')
+    late_sort_fields = ('primary_mac', )
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
@@ -284,7 +322,6 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             if self.sort_dir == 'desc':
                 custom_order = '-%s' % custom_order
             order_by = (custom_order, )
-
         return order_by + ('-created', )
 
     def _constrain_nodes(self, nodes_query):
@@ -315,7 +352,8 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         nodes = nodes.order_by(*self._compose_sort_order())
         if self.query:
             nodes = self._constrain_nodes(nodes)
-        return prefetch_nodes_listing(nodes)
+        nodes = prefetch_nodes_listing(nodes)
+        return configure_macs(nodes)
 
     def _prepare_sort_links(self):
         """Returns 2 dicts, with sort fields as keys and
@@ -323,13 +361,14 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         """
 
         # Build relative URLs for the links, just with the params
-        links = {field: '?' for field in self.sort_fields}
-        classes = {field: 'sort-none' for field in self.sort_fields}
+        fields = self.sort_fields + self.late_sort_fields
+        links = {field: '?' for field in fields}
+        classes = {field: 'sort-none' for field in fields}
 
         params = self.request.GET.copy()
         reverse_dir = 'asc' if self.sort_dir == 'desc' else 'desc'
 
-        for field in self.sort_fields:
+        for field in fields:
             params['sort'] = field
             if field == self.sort_by:
                 params['dir'] = reverse_dir
@@ -341,8 +380,22 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
         return links, classes
 
+    def late_sort(self, context):
+        """Sorts the node_list with sorting arguments that require
+        late sorting.
+        """
+        node_list = context['node_list']
+        reverse = (self.sort_dir == 'desc')
+        if self.sort_by in self.late_sort_fields:
+            node_list = sorted(
+                node_list, key=attrgetter(self.sort_by),
+                reverse=reverse)
+        context['node_list'] = node_list
+        return context
+
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)
+        context = self.late_sort(context)
         context.update(get_longpoll_context())
         form_class = self.get_form_class()
         form = self.get_form(form_class)

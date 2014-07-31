@@ -243,12 +243,21 @@ class NodeTest(MAASServerTestCase):
             NODE_STATUS_CHOICES_DICT[node.status],
             node.display_status())
 
-    def test_display_status_for_allocated_node_shows_owner(self):
-        node = factory.make_node(
-            owner=factory.make_user(), status=NODE_STATUS.ALLOCATED)
-        self.assertEqual(
-            "Allocated to %s" % node.owner.username,
-            node.display_status())
+    def test_display_memory_returns_decimal_less_than_1024(self):
+        node = factory.make_node(memory=512)
+        self.assertEqual('0.5', node.display_memory())
+
+    def test_display_memory_returns_value_divided_by_1024(self):
+        node = factory.make_node(memory=2048)
+        self.assertEqual('2', node.display_memory())
+
+    def test_display_storage_returns_decimal_less_than_1024(self):
+        node = factory.make_node(storage=512)
+        self.assertEqual('0.5', node.display_storage())
+
+    def test_display_storage_returns_value_divided_by_1024(self):
+        node = factory.make_node(storage=2048)
+        self.assertEqual('2', node.display_storage())
 
     def test_add_node_with_token(self):
         user = factory.make_user()

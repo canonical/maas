@@ -69,6 +69,7 @@ class MACAddress(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         verbose_name = "MAC address"
         verbose_name_plural = "MAC addresses"
+        ordering = ('created', )
 
     def __unicode__(self):
         address = self.mac_address

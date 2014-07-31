@@ -10,13 +10,33 @@
              class="{{ sort_classes.hostname }}">
         <acronym title="Fully Qualified Domain Name">FQDN</acronym>
       </a></th>
-      <th>
-        <acronym
-           title="Media Access Control addresses">MAC</acronym>
-      </th>
+      <th></th>
       <th>
         <a href="{{ sort_links.status }}"
 	       class="{{ sort_classes.status }}">Status</a>
+      </th>
+      <th>
+        <a href="{{ sort_links.owner }}"
+         class="{{ sort_classes.owner }}">Owner</a>
+      </th>
+      <th>
+        <a href="{{ sort_links.cpu_count }}"
+         class="{{ sort_classes.cpu_count }}">Cores</a>
+      </th>
+      <th>
+        <a href="{{ sort_links.memory }}"
+         class="{{ sort_classes.memory }}">RAM (GB)</a>
+      </th>
+      <th>
+        <a href="{{ sort_links.storage }}"
+         class="{{ sort_classes.storage }}">Disk (GB)</a>
+      </th>
+      <th>
+        <a href="{{ sort_links.primary_mac }}"
+         class="{{ sort_classes.primary_mac }}">
+           <acronym
+            title="Media Access Control addresses">MAC</acronym>
+        </a>
       </th>
       <th>
         <a href="{{ sort_links.zone }}"
@@ -24,9 +44,14 @@
       </th>
       {% else %}
         <th><acronym title="Fully Qualified Domain Name">FQDN</acronym></th>
+        <th></th>
+        <th>Status</th>
+        <th>Owner</th>
+        <th>Cores</th>
+        <th>RAM (GB)</th>
+        <th>Disk (GB)</th>
         <th><acronym
           title="Media Access Control addresses">MAC</acronym></th>
-        <th>Status</th>
         <th>Zone</th>
       {% endif %}
       </tr>
@@ -43,14 +68,23 @@
           <a href="{% url 'node-view' node.system_id %}">
           {{ node.fqdn }}
           </a>
-          {% if node.power_type == '' %} <img src="{{ STATIC_URL }}img/warning.png" title="No power type defined"/> {% endif %}
         </td>
-        <td>
-          {% for macaddress in node.macaddress_set.all reversed %}
-            {{ macaddress }}{% if not forloop.last %},{% endif %}
-          {% endfor %}
-        </td>
+        <td>{% if node.power_type == '' %} <img src="{{ STATIC_URL }}img/warning.png" title="No power type defined"/> {% endif %}</td>
         <td>{{ node.display_status }}</td>
+        <th>{{ node.owner|default_if_none:"" }}</th>
+        <th>{{ node.cpu_count }}</th>
+        <th>{{ node.display_memory }}</th>
+        <th>{{ node.display_storage }}</th>
+        <td>
+          <span title="{{node.primary_mac_vendor}}">{{node.primary_mac}}</span>
+          {% if node.extra_macs %}
+          <span title="
+            {% for mac in node.extra_macs %}
+              {{mac}}
+            {% endfor %}
+          ">(+{{ node.extra_macs|length }})</span>
+          {% endif %}
+        </td>
         <td class="zone-column">
           <a href="{% url 'zone-view' node.zone.name %}">{{ node.zone }}</a>
         </td>

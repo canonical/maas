@@ -22,7 +22,10 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.views import PaginatedListView
-from maasserver.views.nodes import prefetch_nodes_listing
+from maasserver.views.nodes import (
+    prefetch_nodes_listing,
+    configure_macs,
+    )
 
 
 class TagView(PaginatedListView):
@@ -43,7 +46,8 @@ class TagView(PaginatedListView):
             user=self.request.user, perm=NODE_PERMISSION.VIEW,
             from_nodes=self.tag.node_set.all())
         nodes = nodes.order_by('-created')
-        return prefetch_nodes_listing(nodes)
+        nodes = prefetch_nodes_listing(nodes)
+        return configure_macs(nodes)
 
     def get_context_data(self, **kwargs):
         context = super(TagView, self).get_context_data(**kwargs)
