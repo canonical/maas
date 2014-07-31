@@ -26,10 +26,6 @@ __all__ = [
 
 from cgi import escape
 from operator import attrgetter
-from netaddr import (
-    EUI,
-    NotRegisteredError,
-    )
 from textwrap import dedent
 from urllib import urlencode
 
@@ -94,6 +90,10 @@ from maasserver.views import (
     PaginatedListView,
     )
 from metadataserver.models import NodeCommissionResult
+from netaddr import (
+    EUI,
+    NotRegisteredError,
+    )
 from provisioningserver.tags import merge_details_cleanly
 
 

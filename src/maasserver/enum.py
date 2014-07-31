@@ -187,3 +187,26 @@ class IPADDRESS_TYPE:
 
     # Reserved by a user, no DHCP map required in MAAS.
     USER_RESERVED = 4
+
+
+class POWER_STATE:
+
+    # Node is on
+    ON = 'on'
+
+    # Node is off
+    OFF = 'off'
+
+    # Node is power state is unknown
+    UNKNOWN = 'unknown'
+
+    # Error getting the nodes power state
+    ERROR = 'error'
+
+
+POWER_STATE_CHOICES = (
+    (POWER_STATE.ON, "On"),
+    (POWER_STATE.OFF, "Off"),
+    (POWER_STATE.UNKNOWN, "Unknown"),
+    (POWER_STATE.ERROR, "Error"),
+    )

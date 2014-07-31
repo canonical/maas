@@ -30,6 +30,7 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    POWER_STATE,
     )
 from maasserver.exceptions import (
     NodeStateViolation,
@@ -1099,6 +1100,12 @@ class NodeTest(MAASServerTestCase):
             NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
         node = factory.make_node(status=status)
         self.assertRaises(NodeStateViolation, node.mark_fixed)
+
+    def test_update_power_state(self):
+        node = factory.make_node()
+        state = factory.pick_enum(POWER_STATE)
+        node.update_power_state(state)
+        self.assertEqual(state, reload_object(node).power_state)
 
 
 class NodeRoutersTest(MAASServerTestCase):

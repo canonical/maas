@@ -58,6 +58,8 @@ from maasserver.enum import (
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     NODEGROUPINTERFACE_MANAGEMENT,
+    POWER_STATE,
+    POWER_STATE_CHOICES,
     )
 from maasserver.exceptions import (
     NodeStateViolation,
@@ -613,6 +615,11 @@ class Node(CleanSave, TimestampedModel):
 
     # JSON-encoded set of parameters for power control.
     power_parameters = JSONObjectField(blank=True, default="")
+
+    power_state = CharField(
+        max_length=10, null=False, blank=False,
+        choices=POWER_STATE_CHOICES, default=POWER_STATE.UNKNOWN,
+        editable=False)
 
     token = ForeignKey(
         Token, db_index=True, null=True, editable=False, unique=False)
@@ -1266,4 +1273,9 @@ class Node(CleanSave, TimestampedModel):
             "Marking node fixed: %s (%s)", self.hostname, self.system_id)
         self.status = NODE_STATUS.READY
         self.error_description = ''
+        self.save()
+
+    def update_power_state(self, power_state):
+        """Update a node's power state """
+        self.power_state = power_state
         self.save()

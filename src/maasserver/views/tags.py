@@ -23,8 +23,8 @@ from maasserver.models import (
     )
 from maasserver.views import PaginatedListView
 from maasserver.views.nodes import (
-    prefetch_nodes_listing,
     configure_macs,
+    prefetch_nodes_listing,
     )
 
 
