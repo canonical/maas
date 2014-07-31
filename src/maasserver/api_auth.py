@@ -31,6 +31,7 @@ class OAuthUnauthorized(Unauthorized):
     def __init__(self, error):
         super(OAuthUnauthorized, self).__init__()
         self.error = error
+        self.error.message = "Authorization Error: %r" % error.message
 
     def make_http_response(self):
         return send_oauth_error(self.error)

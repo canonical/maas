@@ -27,4 +27,6 @@ class TestOAuthUnauthorized(MAASTestCase):
         error_msg = factory.make_name('error-message')
         original_exception = oauth.OAuthError(error_msg)
         maas_exception = api_auth.OAuthUnauthorized(original_exception)
-        self.assertThat(unicode(maas_exception), Contains(error_msg))
+        self.assertThat(
+            unicode(maas_exception),
+            Contains("Authorization Error: %r" % error_msg))
