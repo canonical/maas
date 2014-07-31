@@ -75,3 +75,40 @@ class TestCreateHostMaps(MAASTestCase):
         self.assertDocTestMatches(
             "Could not create host map for ... with address ...: ...",
             logger.output)
+
+
+class TestRemoveHostMaps(MAASTestCase):
+
+    def test_removes_omshell(self):
+        omshell = self.patch(dhcp, "Omshell")
+        dhcp.remove_host_maps([], sentinel.shared_key)
+        self.assertThat(omshell, MockCallsMatch(
+            call(server_address=ANY, shared_key=sentinel.shared_key),
+        ))
+
+    def test_calls_omshell_remove(self):
+        omshell_remove = self.patch(Omshell, "remove")
+        ip_addresses = [factory.getRandomIPAddress() for _ in range(5)]
+        dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
+        self.assertThat(omshell_remove, MockCallsMatch(*(
+            call(ip_address) for ip_address in ip_addresses
+        )))
+
+    def test_raises_error_when_omshell_crashes(self):
+        error_message = factory.make_name("error").encode("ascii")
+        omshell_remove = self.patch(Omshell, "remove")
+        omshell_remove.side_effect = ExternalProcessError(
+            returncode=2, cmd=("omshell",), output=error_message)
+        ip_address = factory.getRandomIPAddress()
+        with FakeLogger("maas.dhcp") as logger:
+            error = self.assertRaises(
+                exceptions.CannotRemoveHostMap, dhcp.remove_host_maps,
+                [ip_address], sentinel.shared_key)
+        # The CannotRemoveHostMap exception includes a message describing the
+        # problematic mapping.
+        self.assertDocTestMatches("%s: ..." % ip_address, unicode(error))
+        # A message is also written to the maas.dhcp logger that describes the
+        # problematic mapping.
+        self.assertDocTestMatches(
+            "Could not remove host map for ...: ...",
+            logger.output)

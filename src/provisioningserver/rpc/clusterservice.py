@@ -38,7 +38,10 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
-from provisioningserver.rpc.dhcp import create_host_maps
+from provisioningserver.rpc.dhcp import (
+    create_host_maps,
+    remove_host_maps,
+    )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
@@ -167,6 +170,11 @@ class Cluster(amp.AMP, object):
     @cluster.CreateHostMaps.responder
     def create_host_maps(self, mappings, shared_key):
         create_host_maps(mappings, shared_key)
+        return {}
+
+    @cluster.RemoveHostMaps.responder
+    def remove_host_maps(self, ip_addresses, shared_key):
+        remove_host_maps(ip_addresses, shared_key)
         return {}
 
     @amp.StartTLS.responder

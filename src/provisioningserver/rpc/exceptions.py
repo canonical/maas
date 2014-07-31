@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "CannotCreateHostMap",
+    "CannotRemoveHostMap",
     "NoConnectionsAvailable",
     "NoSuchEventType",
     "NoSuchNode",
@@ -51,3 +52,7 @@ class NoSuchOperatingSystem(Exception):
 
 class CannotCreateHostMap(Exception):
     """The host map could not be created."""
+
+
+class CannotRemoveHostMap(Exception):
+    """The host map could not be removed."""

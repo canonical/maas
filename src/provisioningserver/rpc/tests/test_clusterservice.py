@@ -933,15 +933,10 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
 class TestClusterProtocol_CreateHostMaps(MAASTestCase):
 
-    scenarios = (
-        ("create-host-maps", {
-            "command": cluster.CreateHostMaps,
-        }),
-    )
-
     def test_is_registered(self):
         protocol = Cluster()
-        responder = protocol.locateResponder(self.command.commandName)
+        responder = protocol.locateResponder(
+            cluster.CreateHostMaps.commandName)
         self.assertIsNot(responder, None)
 
     def test_executes_create_host_maps(self):
@@ -953,12 +948,36 @@ class TestClusterProtocol_CreateHostMaps(MAASTestCase):
         ]
         shared_key = factory.make_name("shared_key")
 
-        d = call_responder(Cluster(), self.command, {
+        d = call_responder(Cluster(), cluster.CreateHostMaps, {
             "mappings": mappings, "shared_key": shared_key,
         })
+        # The call above is synchronous because call_responder() does not go
+        # via the reactor.
+        self.assertTrue(d.called)
+        self.assertThat(
+            create_host_maps, MockCalledOnceWith(
+                mappings, shared_key))
 
-        def check(response):
-            self.assertThat(
-                create_host_maps, MockCalledOnceWith(
-                    mappings, shared_key))
-        return d.addCallback(check)
+
+class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.RemoveHostMaps.commandName)
+        self.assertIsNot(responder, None)
+
+    def test_executes_remove_host_maps(self):
+        remove_host_maps = self.patch(clusterservice, "remove_host_maps")
+        ip_addresses = [factory.getRandomIPAddress() for _ in range(2)]
+        shared_key = factory.make_name("shared_key")
+
+        d = call_responder(Cluster(), cluster.RemoveHostMaps, {
+            "ip_addresses": ip_addresses, "shared_key": shared_key,
+        })
+        # The call above is synchronous because call_responder() does not go
+        # via the reactor.
+        self.assertTrue(d.called)
+        self.assertThat(
+            remove_host_maps, MockCalledOnceWith(
+                ip_addresses, shared_key))

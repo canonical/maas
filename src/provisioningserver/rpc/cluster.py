@@ -217,3 +217,20 @@ class CreateHostMaps(amp.Command):
         exceptions.CannotCreateHostMap: (
             "CannotCreateHostMap"),
     }
+
+
+class RemoveHostMaps(amp.Command):
+    """Remove host maps from the DHCP server's configuration.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"ip_addresses", amp.ListOf(amp.Unicode())),
+        (b"shared_key", amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        exceptions.CannotRemoveHostMap: (
+            "CannotRemoveHostMap"),
+    }
