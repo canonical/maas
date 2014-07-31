@@ -57,7 +57,7 @@ def get_maas_logger(syslog_tag=None):
     if len(maaslog.handlers) > 0:
         return maaslog
 
-    maaslog.setLevel(logging.DEBUG)
+    maaslog.setLevel(logging.INFO)
     handler = SysLogHandler("/dev/log")
     maaslog.addHandler(handler)
     formatter = logging.Formatter(
