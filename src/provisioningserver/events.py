@@ -56,7 +56,7 @@ EVENT_DETAILS = {
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
-        description="Node power off starintg",
+        description="Node power off starting",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
