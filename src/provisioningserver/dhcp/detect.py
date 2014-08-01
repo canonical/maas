@@ -287,7 +287,7 @@ def probe_interface(interface, ip):
             # which we need to ignore; it means the interface has no IP
             # and there's no need to scan this interface as it's not in
             # use.
-            maaslog.info(
+            maaslog.debug(
                 "Ignoring DHCP scan for %s, it has no IP address", interface)
         elif e.errno == errno.ENODEV:
             # Errno ENODEV is "no such device". This seems an odd situation
