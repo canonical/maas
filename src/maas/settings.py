@@ -19,10 +19,12 @@ from urlparse import urljoin
 # Use new style url tag:
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
-from maas import import_local_settings
+from maas import (
+    fix_up_databases,
+    import_local_settings,
+    )
 from metadataserver.address import guess_server_address
 from provisioningserver.utils import compose_URL_on_IP
-from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
 
 django.template.add_to_builtins('django.templatetags.future')
@@ -140,9 +142,6 @@ DATABASES = {
         # Unix socket directory.
         'HOST': '',
         'PORT': '',
-        'OPTIONS': {
-            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
-        },
     },
 }
 
@@ -253,7 +252,6 @@ MIDDLEWARE_CLASSES = (
     'maasserver.middleware.APIErrorsMiddleware',
     'maasserver.middleware.ExternalComponentsMiddleware',
     'metadataserver.middleware.MetadataErrorsMiddleware',
-    'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'maasserver.middleware.ExceptionLoggerMiddleware',
@@ -330,3 +328,6 @@ SERIALIZATION_MODULES = {
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
+
+# Fix crooked settings.
+fix_up_databases(DATABASES)

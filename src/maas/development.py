@@ -18,6 +18,7 @@ import os
 from os.path import abspath
 
 from maas import (
+    fix_up_databases,
     import_local_settings,
     import_settings,
     settings,
@@ -123,3 +124,6 @@ PASSWORD_HASHERS = (
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
+
+# Fix crooked settings.
+fix_up_databases(DATABASES)
