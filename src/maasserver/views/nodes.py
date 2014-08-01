@@ -17,6 +17,7 @@ __all__ = [
     'MacAdd',
     'MacDelete',
     'NodeDelete',
+    'NodeEventListView',
     'NodeListView',
     'NodePreseedView',
     'NodeView',
@@ -74,6 +75,7 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.models.config import Config
+from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.node_constraint_filter_forms import (
@@ -522,6 +524,9 @@ class NodeView(NodeViewMixin, UpdateView):
     def get_form_class(self):
         return get_action_form(self.request.user, self.request)
 
+    # The number of events shown on the node view page.
+    number_of_events_shown = 5
+
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)
         node = self.get_object()
@@ -561,6 +566,13 @@ class NodeView(NodeViewMixin, UpdateView):
             'enable_third_party_drivers')
         context['drivers'] = get_third_party_driver(node)
 
+        event_list = (
+            Event.objects.filter(node=self.get_object())
+            .order_by('-id')[:self.number_of_events_shown])
+        context['event_list'] = event_list
+        context['event_count'] = Event.objects.filter(
+            node=self.get_object()).count()
+
         return context
 
     def dispatch(self, *args, **kwargs):
@@ -577,6 +589,23 @@ class NodeView(NodeViewMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])
+
+
+class NodeEventListView(NodeViewMixin, PaginatedListView):
+
+    context_object_name = "event_list"
+
+    template_name = "maasserver/node_event_list.html"
+
+    def get_queryset(self):
+        return Event.objects.filter(
+            node=self.get_object()).order_by('-id')
+
+    def get_context_data(self, **kwargs):
+        context = super(NodeEventListView, self).get_context_data(**kwargs)
+        node = self.get_object()
+        context['node'] = node
+        return context
 
 
 class NodeEdit(UpdateView):

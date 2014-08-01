@@ -17,6 +17,8 @@ __all__ = [
     ]
 
 
+import logging
+
 from django.db.models import (
     CharField,
     IntegerField,
@@ -24,6 +26,15 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+
+# Describes how the log levels are displayed in the UI.
+LOGGING_LEVELS = {
+    logging.DEBUG: 'DEBUG',
+    logging.INFO: 'INFO',
+    logging.WARNING: 'WARNING',
+    logging.ERROR: 'ERROR',
+    logging.CRITICAL: 'CRITICAL',
+}
 
 
 class EventType(CleanSave, TimestampedModel):
@@ -41,6 +52,11 @@ class EventType(CleanSave, TimestampedModel):
     description = CharField(max_length=255, blank=False, editable=False)
 
     level = IntegerField(blank=False, editable=False)
+
+    @property
+    def level_str(self):
+        """A human-readable version of the log level."""
+        return LOGGING_LEVELS[self.level]
 
     class Meta(DefaultMeta):
         verbose_name = "Event type"

@@ -43,6 +43,14 @@ table.list .icon-controls {
     }
 
 table.list tr.warning {
+    background-color: #FEEFB3;
+    }
+
+table.list tr.error, table.list tr.critical {
+    background-color: #FFBABA;
+    }
+
+table.list tr.critical {
     background-color: #ecd7a9;
     }
 

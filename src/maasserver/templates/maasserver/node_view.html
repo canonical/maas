@@ -222,6 +222,13 @@
         </span>
       </li>
     {% endif %}
+    <li class="block first separate">
+      <h2>Latest node events</h2>
+      {% include "maasserver/node_event_list_snippet.html" %}
+      {% if event_count != 0 %}
+        <a href="{% url 'node-event-list-view' object.system_id %}">Full node event log ({{ event_count }} events).</a>
+      {% endif %}
+    </li>
     {% if probed_details %}
       <li class="block first separate">
         <h2>Raw discovery data</h2>

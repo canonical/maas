@@ -66,7 +66,11 @@ from maasserver.testing.testcase import (
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
-from maasserver.views.nodes import message_from_form_stats
+from maasserver.views.nodes import (
+    message_from_form_stats,
+    NodeEventListView,
+    NodeView,
+    )
 from maastesting.djangotestcase import count_queries
 from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
@@ -1148,6 +1152,93 @@ class NodeViewsTest(MAASServerTestCase):
             data=data.encode("utf-8"))
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertNotIn("Third Party Drivers", response.content)
+
+    def test_node_view_show_latest_node_events(self):
+        self.client_log_in()
+        node = factory.make_node()
+        # Create old events.
+        [
+            factory.make_event(node=node)
+            for _ in range(4)
+        ]
+        # Create NodeView.number_of_events_shown events.
+        events = [
+            factory.make_event(node=node)
+            for _ in range(NodeView.number_of_events_shown)
+        ]
+        response = self.client.get(reverse('node-view', args=[node.system_id]))
+        self.assertIn("Latest node events", response.content)
+        document = fromstring(response.content)
+        events_displayed = document.xpath(
+            "//div[@id='node_event_list']//td[@class='event_description']")
+        self.assertItemsEqual(
+            [event.type.description for event in events],
+            [display.text_content().strip() for display in events_displayed]
+        )
+
+    def test_node_view_doesnt_show_events_from_other_nodes(self):
+        self.client_log_in()
+        node = factory.make_node()
+        # Create an event related to another node.
+        event = factory.make_event()
+        response = self.client.get(
+            reverse('node-view', args=[node.system_id]))
+        self.assertIn("Latest node events", response.content)
+        document = fromstring(response.content)
+        events_displayed = document.xpath("//div[@id='node_event_list']")
+        self.assertNotIn(
+            event.type.description,
+            events_displayed[0].text_content().strip(),
+        )
+
+    def test_node_view_contains_link_to_node_event_log(self):
+        self.client_log_in()
+        node = factory.make_node()
+        # Create an event related to another node.
+        [
+            factory.make_event(node=node)
+            for _ in range(4)
+        ]
+        response = self.client.get(
+            reverse('node-view', args=[node.system_id]))
+        node_event_list = reverse(
+            'node-event-list-view', args=[node.system_id])
+        self.assertIn(node_event_list, get_content_links(response))
+
+
+class NodeEventLogTest(MAASServerTestCase):
+
+    def test_event_log_shows_event_list(self):
+        self.client_log_in()
+        node = factory.make_node()
+        events = [
+            factory.make_event(node=node)
+            for _ in range(NodeView.number_of_events_shown)
+        ]
+        response = self.client.get(
+            reverse('node-event-list-view', args=[node.system_id]))
+        document = fromstring(response.content)
+        events_displayed = document.xpath(
+            "//div[@id='node_event_list']//td[@class='event_description']")
+        self.assertItemsEqual(
+            [event.type.description for event in events],
+            [display.text_content().strip() for display in events_displayed]
+        )
+
+    def test_event_log_is_paginated(self):
+        self.client_log_in()
+        self.patch(NodeEventListView, "paginate_by", 3)
+        node = factory.make_node()
+        # Create 4 events.
+        [factory.make_event(node=node) for _ in range(4)]
+
+        response = self.client.get(
+            reverse('node-event-list-view', args=[node.system_id]))
+        self.assertEqual(httplib.OK, response.status_code)
+        doc = fromstring(response.content)
+        self.assertEqual(
+            1, len(doc.cssselect('div.pagination')),
+            "Couldn't find pagination tag.")
 
 
 class ConstructThirdPartyDriversNoticeTest(MAASServerTestCase):

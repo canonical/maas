@@ -54,6 +54,7 @@ from maasserver.views.nodes import (
     MacDelete,
     NodeDelete,
     NodeEdit,
+    NodeEventListView,
     NodeListView,
     NodePreseedView,
     NodeView,
@@ -142,6 +143,9 @@ urlpatterns += patterns(
     url(r'^nodes/$', NodeListView.as_view(model=Node), name='node-list'),
     url(r'^nodes/enlist-preseed/$', enlist_preseed_view,
         name='enlist-preseed-view'),
+    url(
+        r'^nodes/(?P<system_id>[\w\-]+)/events/$', NodeEventListView.as_view(),
+        name='node-event-list-view'),
     url(
         r'^nodes/(?P<system_id>[\w\-]+)/view/$', NodeView.as_view(),
         name='node-view'),

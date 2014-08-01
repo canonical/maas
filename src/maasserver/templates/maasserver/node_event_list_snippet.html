@@ -1,0 +1,35 @@
+<div id="node_event_list">
+  {% if event_list %}
+  <table class="list">
+    <thead>
+      <tr>
+        <th>Level</th>
+        <th>Timestamp</th>
+        <th>Event</th>
+        </tr>
+    </thead>
+    <tbody>
+      {% for event_item in event_list %}
+      <tr {% if event_item.type.level_str == 'WARNING' %} class="warning"
+          {% elif event_item.type.level_str == 'ERROR' %} class="error"
+          {% elif event_item.type.level_str == 'CRITICAL' %} class="critical"
+          {% endif %} id="{{ event_item.id }}">
+        <td width="10%">{{ event_item.type.level_str }}</td>
+        <td width="30%">{{ event_item.created|date:'Y-m-d H:i:s' }}</td>
+        <td class="event_description">
+        {{ event_item.type.description }} 
+        {% if event_item.description %}
+        / {{ event_item.description }}
+        {% endif %}
+        </td>
+        <td></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% include "maasserver/pagination.html" %}
+  {% else %}
+  No event.
+  {% endif %}
+  <div class="clear"></div>
+</div>
