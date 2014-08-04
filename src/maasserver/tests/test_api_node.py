@@ -18,6 +18,7 @@ from base64 import b64encode
 from cStringIO import StringIO
 import httplib
 import json
+from netaddr import IPAddress
 import sys
 
 import bson
@@ -1039,6 +1040,63 @@ class TestStickyIP(APITestCase):
         self.assertEqual(
             "mac_address %s not found on the node" % random_mac,
             response.content)
+
+    def test_claim_sticky_ip_allows_requested_ip(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        ngi = node.get_primary_mac().cluster_interface
+        requested_address = ngi.static_ip_range_low
+
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'claim_sticky_ip_address',
+                'requested_address': requested_address,
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        [observed_static_ip] = StaticIPAddress.objects.all()
+        self.assertEqual(observed_static_ip.ip, requested_address)
+
+    def test_claim_sticky_ip_address_detects_out_of_range_requested_ip(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        ngi = node.get_primary_mac().cluster_interface
+        requested_address = IPAddress(ngi.static_ip_range_low) - 1
+
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'claim_sticky_ip_address',
+                'requested_address': requested_address.format(),
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_claim_sticky_ip_address_detects_unavailable_requested_ip(self):
+        self.become_admin()
+        # Create 2 nodes on the same nodegroup and interface.
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        ngi = node.get_primary_mac().cluster_interface
+        other_node = factory.make_node(mac=True, nodegroup=ngi.nodegroup)
+        other_mac = other_node.get_primary_mac()
+        other_mac.cluster_interface = ngi
+        other_mac.save()
+
+        # Allocate an IP to one of the nodes.
+        requested_address = IPAddress(ngi.static_ip_range_low) + 1
+        requested_address = requested_address.format()
+        other_node.get_primary_mac().claim_static_ip(
+            requested_address=requested_address)
+
+        # Use the API to try to duplicate the same IP on the other node.
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'claim_sticky_ip_address',
+                'requested_address': requested_address,
+            })
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
 
 
 class TestGetDetails(APITestCase):

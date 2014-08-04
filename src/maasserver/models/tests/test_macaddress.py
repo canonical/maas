@@ -131,3 +131,9 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
         ip = mac.claim_static_ip(alloc_type=iptype)
         self.assertEqual(
             ip, mac.claim_static_ip(alloc_type=iptype))
+
+    def test_passes_requested_ip(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        ip = node.get_primary_mac().cluster_interface.static_ip_range_high
+        self.assertEqual(ip, mac.claim_static_ip(requested_address=ip).ip)

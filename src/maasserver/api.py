@@ -553,6 +553,10 @@ class NodeHandler(OperationsHandler):
         :param mac_address: Optional MAC address on the node on which to
             assign the sticky IP address.  If not passed, defaults to the
             primary MAC for the node.
+        :param requested_address: Optional IP address to claim.  Must be in
+            the range defined on the cluster interface to which the context
+            MAC is related, or 403 Forbidden is returned.  If the requested
+            address is unavailable for use, 404 Not Found is returned.
 
         A sticky IP is one which stays with the node until the IP is
         disassociated with the node, or the node is deleted.  It allows
@@ -575,9 +579,12 @@ class NodeHandler(OperationsHandler):
             except MACAddress.DoesNotExist:
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the node" % raw_mac)
-        sip = mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        requested_address = request.POST.get('requested_address', None)
+        sticky_ip = mac_address.claim_static_ip(
+            alloc_type=IPADDRESS_TYPE.STICKY,
+            requested_address=requested_address)
         maaslog.info(
-            "%s: Sticky IP address %s allocated", node.hostname, sip.ip)
+            "%s: Sticky IP address %s allocated", node.hostname, sticky_ip.ip)
         return node
 
     @operation(idempotent=False)

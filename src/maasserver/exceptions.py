@@ -127,7 +127,7 @@ class StaticIPAddressUnavailable(MAASAPIException):
     api_error = httplib.NOT_FOUND
 
 
-class StaticIPAddressOutOfRange(MAASException):
+class StaticIPAddressOutOfRange(MAASAPIException):
     """Raised when a requested IP is not in an acceptable range."""
     api_error = httplib.FORBIDDEN
 

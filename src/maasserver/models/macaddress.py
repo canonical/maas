@@ -89,7 +89,8 @@ class MACAddress(CleanSave, TimestampedModel):
         """Return networks to which this MAC is connected, sorted by name."""
         return self.networks.all().order_by('name')
 
-    def claim_static_ip(self, alloc_type=IPADDRESS_TYPE.AUTO):
+    def claim_static_ip(self, alloc_type=IPADDRESS_TYPE.AUTO,
+                        requested_address=None):
         """Assign a static IP to this MAC.
 
         It is the caller's responsibility to create a celery Task that will
@@ -99,6 +100,9 @@ class MACAddress(CleanSave, TimestampedModel):
 
         :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
             This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
+        :param requested_address: Optional IP address to claim.  Must be in
+            the range defined on the cluster interface to which this MACAddress
+            is related.
         :return: A :class:`StaticIPAddress` object. Returns None if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the
@@ -107,6 +111,10 @@ class MACAddress(CleanSave, TimestampedModel):
         :raises: StaticIPAddressExhaustion if there are not enough IPs left.
         :raises: StaticIPAddressTypeClash if an IP already exists with a
             different type.
+        :raises: StaticIPAddressOutOfRange if the requested_address is not in
+            the cluster interface's defined range.
+        :raises: StaticIPAddressUnavailable if the requested_address is already
+            allocated.
         """
         # Avoid circular import.
         from maasserver.models.staticipaddress import StaticIPAddress
@@ -141,6 +149,7 @@ class MACAddress(CleanSave, TimestampedModel):
             MACStaticIPAddressLink,
             StaticIPAddress,
             )
-        sip = StaticIPAddress.objects.allocate_new(low, high, alloc_type)
+        sip = StaticIPAddress.objects.allocate_new(
+            low, high, alloc_type, requested_address=requested_address)
         MACStaticIPAddressLink(mac_address=self, ip_address=sip).save()
         return sip
