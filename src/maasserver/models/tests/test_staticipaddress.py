@@ -17,7 +17,11 @@ __all__ = []
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import IPADDRESS_TYPE
-from maasserver.exceptions import StaticIPAddressExhaustion
+from maasserver.exceptions import (
+    StaticIPAddressExhaustion,
+    StaticIPAddressOutOfRange,
+    StaticIPAddressUnavailable,
+    )
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -75,6 +79,37 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         factory.make_staticipaddress("10.0.0.99")
         ipaddress = StaticIPAddress.objects.allocate_new(low, high)
         self.assertEqual(ipaddress.ip, "10.0.0.98")
+
+    def test_allocate_new_returns_requested_IP_if_available(self):
+        low, high = factory.make_ip_range()
+        requested_address = low + 1
+        ipaddress = StaticIPAddress.objects.allocate_new(
+            low, high, factory.pick_enum(
+                IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED]),
+            requested_address=requested_address)
+        self.assertEqual(requested_address.format(), ipaddress.ip)
+
+    def test_allocate_new_raises_when_requested_IP_unavailable(self):
+        low, high = factory.make_ip_range()
+        requested_address = StaticIPAddress.objects.allocate_new(
+            low, high, factory.pick_enum(
+                IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])).ip
+        self.assertRaises(
+            StaticIPAddressUnavailable, StaticIPAddress.objects.allocate_new,
+            low, high, requested_address=requested_address)
+
+    def test_allocate_new_raises_when_requested_IP_out_of_range(self):
+        low, high = factory.make_ip_range()
+        requested_address = low - 1
+        e = self.assertRaises(
+            StaticIPAddressOutOfRange, StaticIPAddress.objects.allocate_new,
+            low, high, factory.pick_enum(
+                IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED]),
+            requested_address=requested_address)
+        self.assertEqual(
+            "%s is not inside the range %s to %s" % (
+                requested_address, low, high),
+            e.message)
 
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_node()

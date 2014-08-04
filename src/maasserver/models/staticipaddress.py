@@ -33,7 +33,11 @@ from django.db.models import (
     )
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
-from maasserver.exceptions import StaticIPAddressExhaustion
+from maasserver.exceptions import (
+    StaticIPAddressExhaustion,
+    StaticIPAddressOutOfRange,
+    StaticIPAddressUnavailable,
+    )
 from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -48,7 +52,8 @@ class StaticIPAddressManager(Manager):
     """A utility to manage collections of IPAddresses."""
 
     def allocate_new(self, range_low, range_high,
-                     alloc_type=IPADDRESS_TYPE.AUTO, user=None):
+                     alloc_type=IPADDRESS_TYPE.AUTO, user=None,
+                     requested_address=None):
         """Return a new StaticIPAddress.
 
         :param range_low: The lowest address to allocate in a range
@@ -59,8 +64,10 @@ class StaticIPAddressManager(Manager):
             IPADDRESS_TYPE.USER_RESERVED. Conversely, if the alloc_type is
             IPADDRESS_TYPE.USER_RESERVED the user must also be provided.
             AssertionError is raised if these conditions are not met.
+        :param requested_address: Optional IP address that the caller wishes
+            to use instead of being allocated one at random.
 
-        The range parameters can be strings or netaddr.IPAddress.
+        All IP parameters can be strings or netaddr.IPAddress.
 
         Note: This method is inherently racy and depends on database
             serialisation to catch conflicts.  The caller should catch
@@ -77,8 +84,16 @@ class StaticIPAddressManager(Manager):
             range_low = range_low.ipv4().format()
         if isinstance(range_high, IPAddress):
             range_high = range_high.ipv4().format()
+        if isinstance(requested_address, IPAddress):
+            requested_address = requested_address.format()
 
         static_range = IPRange(range_low, range_high)
+        if (requested_address is not None and
+                IPAddress(requested_address) not in static_range):
+            raise StaticIPAddressOutOfRange(
+                "%s is not inside the range %s to %s" % (
+                    requested_address, range_low, range_high))
+
         # When we do ipv6, this needs changing.
         range_list = [ip.ipv4().format() for ip in static_range]
 
@@ -88,18 +103,34 @@ class StaticIPAddressManager(Manager):
         # with large sets, but it will do for now.
         available = set(range_list) - set([addr.ip for addr in existing])
 
-        # Return the first one available.  Should there be a period
-        # where old addresses are not reallocated?
-        # Other algorithms could be random, or round robin.
-        try:
-            ip = available.pop()
-        except KeyError:
-            raise StaticIPAddressExhaustion()
+        # Try to allocate the IP.
+        if requested_address is not None:
+            self._get_specific_ip_from_set(available, requested_address)
+            ip = requested_address
+        else:
+            ip = self._get_random_ip_from_set(available)
 
+        # Convert to a StaticIPAddress record and return that.
         ipaddress = StaticIPAddress(
             ip=ip.format(), alloc_type=alloc_type, user=user)
         ipaddress.save()
         return ipaddress
+
+    def _get_specific_ip_from_set(self, ips, requested_address):
+        try:
+            ips.remove(requested_address)
+        except KeyError:
+            raise StaticIPAddressUnavailable()
+
+    def _get_random_ip_from_set(self, ips):
+        # Return the first one available.  Should there be a period
+        # where old addresses are not reallocated?
+        # Other algorithms could be random, or round robin.
+        try:
+            ip = ips.pop()
+        except KeyError:
+            raise StaticIPAddressExhaustion()
+        return ip
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset

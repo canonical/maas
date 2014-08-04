@@ -122,6 +122,16 @@ class StaticIPAddressExhaustion(MAASAPIException):
     api_error = httplib.SERVICE_UNAVAILABLE
 
 
+class StaticIPAddressUnavailable(MAASAPIException):
+    """Raised when a requested IP is not available."""
+    api_error = httplib.NOT_FOUND
+
+
+class StaticIPAddressOutOfRange(MAASException):
+    """Raised when a requested IP is not in an acceptable range."""
+    api_error = httplib.FORBIDDEN
+
+
 class StaticIPAddressTypeClash(MAASAPIException):
     """Raised when trying to allocate an IP for a MAC where one of another
     type already exists."""
