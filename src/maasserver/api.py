@@ -577,8 +577,7 @@ class NodeHandler(OperationsHandler):
                     "mac_address %s not found on the node" % raw_mac)
         sip = mac_address.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
         maaslog.info(
-            "Sticky IP address %s allocated for %s (%s)", sip.ip,
-            node.hostname, node.system_id)
+            "%s: Sticky IP address %s allocated", node.hostname, sip.ip)
         return node
 
     @operation(idempotent=False)
@@ -597,8 +596,8 @@ class NodeHandler(OperationsHandler):
             request.POST, 'error_description', '')
         node.mark_broken(error_description)
         maaslog.info(
-            "User %s marked node %s (%s) as broken", request.user.username,
-            node.hostname, node.system_id)
+            "%s: User %s marked node as broken", node.hostname,
+            request.user.username)
         return node
 
     @operation(idempotent=False)
@@ -608,8 +607,8 @@ class NodeHandler(OperationsHandler):
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed()
         maaslog.info(
-            "User %s marked node %s (%s) as fixed", request.user.username,
-            node.hostname, node.system_id)
+            "%s: User %s marked node as fixed", node.hostname,
+            request.user.username)
         return node
 
     @admin_method
@@ -684,8 +683,7 @@ def create_node(request):
         node = form.save()
         # Hack in the power parameters here.
         store_node_power_parameters(node, request)
-        maaslog.info(
-            "Enlisted new node %s (%s)", node.hostname, node.system_id)
+        maaslog.info("%s: Enlisted new node", node.hostname)
         return node
     else:
         raise ValidationError(form.errors)

@@ -379,15 +379,14 @@ class NodeManager(Manager):
                 # Skip the rest of the loop to avoid creating a power
                 # event for a node that we can't power down.
                 maaslog.warning(
-                    "Node %s (%s) has an unknown power type. Not creating "
-                    "power down event.", node.hostname, node.system_id)
+                    "%s: Node has an unknown power type. Not creating "
+                    "power down event.", node.hostname)
                 continue
             power_params['power_off_mode'] = stop_mode
             # WAKE_ON_LAN does not support poweroff.
             if node_power_type != 'ether_wake':
                 maaslog.info(
-                    "Asking cluster to power off node: %s (%s)",
-                    node.hostname, node.system_id)
+                    "%s: Asking cluster to power off node", node.hostname)
                 power_off.apply_async(
                     queue=node.work_queue, args=[node_power_type],
                     kwargs=power_params)
@@ -423,9 +422,7 @@ class NodeManager(Manager):
             NodeUserData.objects.set_user_data(node, user_data)
         processed_nodes = []
         for node in nodes:
-            maaslog.info(
-                "Attempting start up of %s (%s)", node.hostname,
-                node.system_id)
+            maaslog.info("%s: Attempting start up", node.hostname)
             power_params = node.get_effective_power_parameters()
             try:
                 node_power_type = node.get_effective_power_type()
@@ -433,8 +430,8 @@ class NodeManager(Manager):
                 # Skip the rest of the loop to avoid creating a power
                 # event for a node that we can't power up.
                 maaslog.warning(
-                    "Node %s (%s) has an unknown power type. Not creating "
-                    "power up event.", node.hostname, node.system_id)
+                    "%s: Node has an unknown power type. Not creating "
+                    "power up event.", node.hostname)
                 continue
             if node_power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
@@ -448,8 +445,8 @@ class NodeManager(Manager):
                         tasks.extend(node.claim_static_ips())
                 except StaticIPAddressExhaustion:
                     maaslog.error(
-                        "Node %s (%s): Unable to allocate static IP due to "
-                        "address exhaustion.", node.hostname, node.system_id)
+                        "%s: Unable to allocate static IP due to "
+                        "address exhaustion.", node.hostname)
                     # XXX 2014-06-17 bigjools bug=1330762
                     # This function is supposed to start all the nodes
                     # it can, but gives no way to return errors about
@@ -466,9 +463,7 @@ class NodeManager(Manager):
                 task.set(queue=node.work_queue)
                 tasks.append(task)
                 chained_tasks = celery.chain(tasks)
-                maaslog.debug(
-                    "Asking cluster to power on %s (%s)", node.hostname,
-                    node.system_id)
+                maaslog.debug("%s: Asking cluster to power on", node.hostname)
                 chained_tasks.apply_async()
                 processed_nodes.append(node)
         return processed_nodes
@@ -722,8 +717,8 @@ class Node(CleanSave, TimestampedModel):
             if sip is not None:
                 tasks.append(self._create_hostmap_task(mac, sip))
                 maaslog.info(
-                    "Claimed static IP %s on %s for %s (%s)", sip.ip,
-                    mac.mac_address.get_raw(), self.hostname, self.system_id)
+                    "%s: Claimed static IP %s on %s", self.hostname,
+                    sip.ip, mac.mac_address.get_raw())
         if len(tasks) > 0:
             # Delete any existing dynamic maps as the first task.  This
             # is a belt and braces approach to deal with legacy code
@@ -827,9 +822,8 @@ class Node(CleanSave, TimestampedModel):
             if old_status is not None:
                 stat = map_enum_reverse(NODE_STATUS, ignore='DEFAULT')
                 maaslog.debug(
-                    "Transition status from %s to %s for node %s (%s)",
-                    stat[old_status], stat[self.status], self.hostname,
-                    self.system_id)
+                    "%s: Transition status from %s to %s",
+                    self.hostname, stat[old_status], stat[self.status])
             pass
         else:
             # Transition not permitted.
@@ -926,8 +920,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         # The commissioning profile is handled in start_nodes.
         maaslog.info(
-            "Starting commissioning for %s (%s)", self.hostname,
-            self.system_id)
+            "%s: Starting commissioning for", self.hostname)
         Node.objects.start_nodes(
             [self.system_id], user, user_data=commissioning_user_data)
 
@@ -939,8 +932,7 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         maaslog.info(
-            "Aborting commissioning for %s (%s)", self.hostname,
-            self.system_id)
+            "%s: Aborting commissioning", self.hostname)
         stopped_node = Node.objects.stop_nodes([self.system_id], user)
         if len(stopped_node) == 1:
             self.status = NODE_STATUS.DECLARED
@@ -952,7 +944,7 @@ class Node(CleanSave, TimestampedModel):
             raise NodeStateViolation(
                 "Cannot delete node %s: node is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
-        maaslog.info("Deleting node %s (%s)", self.hostname, self.system_id)
+        maaslog.info("%s: Deleting node", self.hostname)
         # Delete any dynamic host maps in the DHCP server.  This is only
         # here to cope with legacy code that used to create these, the
         # current code does not.
@@ -983,8 +975,7 @@ class Node(CleanSave, TimestampedModel):
             tasks.append(task)
         if len(tasks) > 0:
             maaslog.info(
-                "Asking cluster to delete static host maps for %s (%s)",
-                self.hostname, self.system_id)
+                "%s: Asking cluster to delete static host maps", self.hostname)
             chain = celery.chain(tasks)
             chain.apply_async()
 
@@ -1206,13 +1197,11 @@ class Node(CleanSave, TimestampedModel):
         self.agent_name = agent_name
         self.token = token
         self.save()
-        maaslog.info(
-            "Node %s (%s) allocated to user %s", self.hostname, self.system_id,
-            user.username)
+        maaslog.info("%s allocated to user %s", self.hostname, user.username)
 
     def release(self):
         """Mark allocated or reserved node as available again and power off."""
-        maaslog.info("Releasing node %s (%s)", self.hostname, self.system_id)
+        maaslog.info("%s: Releasing node", self.hostname)
         Node.objects.stop_nodes([self.system_id], self.owner)
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
         self.delete_static_host_maps(deallocated_ips)
@@ -1230,9 +1219,7 @@ class Node(CleanSave, TimestampedModel):
 
     def set_netboot(self, on=True):
         """Set netboot on or off."""
-        maaslog.debug(
-            "Turning on netboot for node %s (%s)", self.hostname,
-            self.system_id)
+        maaslog.debug("%s: Turning on netboot for node", self.hostname)
         self.netboot = on
         self.save()
 
@@ -1256,8 +1243,7 @@ class Node(CleanSave, TimestampedModel):
 
         If the node is allocated, release it first.
         """
-        maaslog.info(
-            "Marking node broken: %s (%s)", self.hostname, self.system_id)
+        maaslog.info("%s: Marking node broken", self.hostname)
         if self.status == NODE_STATUS.ALLOCATED:
             self.release()
         self.status = NODE_STATUS.BROKEN
@@ -1269,8 +1255,7 @@ class Node(CleanSave, TimestampedModel):
         if self.status != NODE_STATUS.BROKEN:
             raise NodeStateViolation(
                 "Can't mark a non-broken node as 'Ready'.")
-        maaslog.info(
-            "Marking node fixed: %s (%s)", self.hostname, self.system_id)
+        maaslog.info("%s: Marking node fixed", self.hostname)
         self.status = NODE_STATUS.READY
         self.error_description = ''
         self.save()
