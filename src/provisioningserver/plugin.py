@@ -35,6 +35,7 @@ from provisioningserver.image_download_service import (
     PeriodicImageDownloadService,
     )
 from provisioningserver.rpc.clusterservice import ClusterClientService
+from provisioningserver.rpc.power import NodePowerMonitorService
 from provisioningserver.tftp import TFTPService
 from twisted.application.internet import TCPServer
 from twisted.application.service import (
@@ -229,6 +230,12 @@ class ProvisioningServiceMaker(object):
         image_download_service.setName("image_download")
         return image_download_service
 
+    def _makeNodePowerMonitorService(self, rpc_service):
+        node_monitor = NodePowerMonitorService(
+            rpc_service, reactor, get_cluster_uuid())
+        node_monitor.setName("node_monitor")
+        return node_monitor
+
     def _makeRPCService(self, rpc_config):
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
@@ -250,6 +257,9 @@ class ProvisioningServiceMaker(object):
 
         rpc_service = self._makeRPCService(config["rpc"])
         rpc_service.setServiceParent(services)
+
+        node_monitor = self._makeNodePowerMonitorService(rpc_service)
+        node_monitor.setServiceParent(services)
 
         image_download_service = self._makePeriodicImageDownloadService(
             rpc_service)

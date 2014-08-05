@@ -145,6 +145,30 @@ class Region(amp.AMP):
         d.addCallback(lambda args: {})
         return d
 
+    @region.ListNodePowerParameters.responder
+    def list_node_power_parameters(self, uuid):
+        """list_node_power_parameters()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.ListNodePowerParameters`.
+        """
+        d = deferToThread(
+            nodes.list_cluster_nodes_power_parameters, uuid)
+        d.addCallback(lambda nodes: {b"nodes": nodes})
+        return d
+
+    @region.UpdateNodePowerState.responder
+    def update_node_power_state(self, system_id, power_state):
+        """update_node_power_state()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.UpdateNodePowerState`.
+        """
+        d = deferToThread(
+            nodes.update_node_power_state, system_id, power_state)
+        d.addCallback(lambda args: {})
+        return d
+
     @region.RegisterEventType.responder
     def register_event_type(self, name, description, level):
         """register_event_type()

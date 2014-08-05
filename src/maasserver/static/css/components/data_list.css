@@ -19,3 +19,31 @@
 .data-list li.separate {
     border-top: 1px solid #e5e2e0;
     }
+
+td.power-state {
+    width: 10px;
+    text-align: center;
+    }
+
+div.power-state {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    }
+
+.power-on {
+    background-color: #33CC00;
+    }
+
+.power-off {
+    background-color: #D00000;
+    }
+
+.power-unknown {
+    background-color: #FFCC00;
+    }
+
+.power-error {
+    background-color: #000000;
+    }

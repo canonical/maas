@@ -25,6 +25,7 @@ __all__ = [
     "ListSupportedArchitectures",
     "PowerOff",
     "PowerOn",
+    "PowerQuery",
     "ValidateLicenseKey",
 ]
 
@@ -197,6 +198,16 @@ class PowerOff(_Power):
 
     :since: 1.7
     """
+
+
+class PowerQuery(_Power):
+    """Query a node's power state.
+
+    :since: 1.7
+    """
+    response = [
+        (b"state", amp.Unicode()),
+    ]
 
 
 class CreateHostMaps(amp.Command):

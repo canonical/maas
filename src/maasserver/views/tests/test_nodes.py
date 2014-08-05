@@ -961,7 +961,7 @@ class NodeViewsTest(MAASServerTestCase):
         node2_link = reverse('node-view', args=[node2.system_id])
         document = fromstring(response.content)
         node_links = document.xpath(
-            "//div[@id='nodes']/form/table/tr/td[2]/a/@href")
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
         self.assertEqual([node2_link], node_links)
 
     def test_node_list_paginates(self):
@@ -980,7 +980,7 @@ class NodeViewsTest(MAASServerTestCase):
             for node in reversed(nodes)
         ]
         expr_node_links = XPath(
-            "//div[@id='nodes']/form/table/tr/td[2]/a/@href")
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
         expr_page_anchors = XPath("//div[@class='pagination']//a")
         # Fetch first page, should link newest two nodes and page 2
         response = self.client.get(reverse('node-list'))
@@ -1029,7 +1029,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
         self.assertEqual(
             [last_node_link],
-            document.xpath("//div[@id='nodes']/form/table/tr/td[2]/a/@href"))
+            document.xpath("//div[@id='nodes']/form/table/tr/td[3]/a/@href"))
         self.assertEqual(
             [
                 ("first", "?query=maas-tags%3Dodd"),

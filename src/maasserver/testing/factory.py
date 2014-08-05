@@ -30,6 +30,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    POWER_STATE,
     )
 from maasserver.fields import MAC
 from maasserver.models import (
@@ -213,7 +214,7 @@ class Factory(maastesting.factory.Factory):
                   architecture="i386/generic", updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
-                  **kwargs):
+                  power_state=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -237,6 +238,8 @@ class Factory(maastesting.factory.Factory):
             zone = self.make_zone()
         if power_type is None:
             power_type = 'ether_wake'
+        if power_state is None:
+            power_state = self.pick_enum(POWER_STATE)
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             nodegroup=nodegroup, routers=routers, zone=zone,

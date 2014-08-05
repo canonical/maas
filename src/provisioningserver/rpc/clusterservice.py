@@ -48,7 +48,10 @@ from provisioningserver.rpc.osystems import (
     get_preseed_data,
     validate_license_key,
     )
-from provisioningserver.rpc.power import change_power_state
+from provisioningserver.rpc.power import (
+    change_power_state,
+    get_power_state,
+    )
 from twisted.application.internet import (
     StreamServerEndpointService,
     TimerService,
@@ -166,6 +169,13 @@ class Cluster(amp.AMP, object):
             system_id, hostname, power_type, power_change='off',
             context=context)
         return {}
+
+    @cluster.PowerQuery.responder
+    def power_query(self, system_id, hostname, power_type, context):
+        state = get_power_state(
+            system_id, hostname, power_type, power_change='query',
+            context=context)
+        return {'state': state}
 
     @cluster.CreateHostMaps.responder
     def create_host_maps(self, mappings, shared_key):

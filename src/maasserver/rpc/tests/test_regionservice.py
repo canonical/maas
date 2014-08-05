@@ -29,7 +29,10 @@ from maasserver import (
     eventloop,
     locks,
     )
-from maasserver.enum import NODE_STATUS
+from maasserver.enum import (
+    NODE_STATUS,
+    POWER_STATE,
+    )
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
@@ -45,6 +48,7 @@ from maasserver.rpc.testing.doubles import IdentifyingRegionServer
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.async import transactional
+from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     Provides,
@@ -65,10 +69,12 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetProxies,
     Identify,
+    ListNodePowerParameters,
     MarkNodeBroken,
     RegisterEventType,
     ReportBootImages,
     SendEvent,
+    UpdateNodePowerState,
     )
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
@@ -342,6 +348,112 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
         d = call_responder(
             Region(), MarkNodeBroken,
             {b'system_id': system_id, b'error_description': error_description})
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchNode)
+            # The error message contains a reference to system_id.
+            self.assertIn(system_id, error.value.message)
+
+        return d.addErrback(check)
+
+
+class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
+
+    @transactional
+    def create_nodegroup(self, **kwargs):
+        nodegroup = factory.make_node_group(**kwargs)
+        return nodegroup
+
+    @transactional
+    def create_node(self, nodegroup, **kwargs):
+        node = factory.make_node(nodegroup=nodegroup, **kwargs)
+        return node
+
+    @transactional
+    def get_node_power_parameters(self, node):
+        return node.get_effective_power_parameters()
+
+    def test__is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            ListNodePowerParameters.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__returns_correct_arguments(self):
+        nodegroup = yield deferToThread(self.create_nodegroup)
+        nodes = []
+        for _ in range(3):
+            node = yield deferToThread(self.create_node, nodegroup)
+            power_params = yield deferToThread(
+                self.get_node_power_parameters, node)
+            nodes.append({
+                'system_id': node.system_id,
+                'hostname': node.hostname,
+                'state': node.power_state,
+                'power_type': node.get_effective_power_type(),
+                'context': power_params,
+                })
+
+        response = yield call_responder(
+            Region(), ListNodePowerParameters,
+            {b'uuid': nodegroup.uuid})
+
+        self.assertItemsEqual(nodes, response['nodes'])
+
+    @wait_for_reactor
+    def test__returns_empty_if_nodegroup_doesnt_exist(self):
+        uuid = factory.make_UUID()
+
+        response = yield call_responder(
+            Region(), ListNodePowerParameters,
+            {b'uuid': uuid})
+
+        self.assertEquals([], response['nodes'])
+
+
+class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
+
+    @transactional
+    def create_node(self, power_state):
+        node = factory.make_node(power_state=power_state)
+        return node
+
+    @transactional
+    def get_node_power_state(self, system_id):
+        node = Node.objects.get(system_id=system_id)
+        return node.power_state
+
+    def test__is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(UpdateNodePowerState.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__changes_power_state(self):
+        power_state = factory.pick_enum(POWER_STATE)
+        node = yield deferToThread(self.create_node, power_state)
+
+        new_state = factory.pick_enum(POWER_STATE, but_not=power_state)
+        yield call_responder(
+            Region(), UpdateNodePowerState,
+            {b'system_id': node.system_id, b'power_state': new_state})
+
+        db_state = yield deferToThread(
+            self.get_node_power_state, node.system_id)
+        self.assertEqual(new_state, db_state)
+
+    @wait_for_reactor
+    def test__errors_if_node_cannot_be_found(self):
+        system_id = factory.make_name('unknown-system-id')
+        power_state = factory.pick_enum(POWER_STATE)
+
+        d = call_responder(
+            Region(), UpdateNodePowerState,
+            {b'system_id': system_id, b'power_state': power_state})
 
         def check(error):
             self.assertIsInstance(error, Failure)

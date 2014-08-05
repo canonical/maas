@@ -21,6 +21,7 @@ from collections import namedtuple
 from logging import (
     ERROR,
     INFO,
+    WARN,
     )
 
 from provisioningserver.logger.log import get_maas_logger
@@ -44,6 +45,7 @@ class EVENT_TYPES:
     NODE_POWERED_OFF = 'NODE_POWERED_OFF'
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
+    NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -74,6 +76,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_POWER_OFF_FAILED: EventDetail(
         description="Failed to power off node",
         level=ERROR,
+    ),
+    EVENT_TYPES.NODE_POWER_QUERY_FAILED: EventDetail(
+        description="Failed to query node's BMC",
+        level=WARN,
     ),
 }
 

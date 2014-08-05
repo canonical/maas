@@ -6,6 +6,7 @@
         {% if actions == "true" %}
         <th><input type="checkbox" id="all_system_id_control" /></th>
         {% endif %}
+      <th class="power-state"></th>
       <th><a href="{{ sort_links.hostname }}"
              class="{{ sort_classes.hostname }}">
         <acronym title="Fully Qualified Domain Name">FQDN</acronym>
@@ -43,6 +44,7 @@
            class="{{ sort_classes.zone }}">Zone</a>
       </th>
       {% else %}
+        <th class="power-state"></th>
         <th><acronym title="Fully Qualified Domain Name">FQDN</acronym></th>
         <th></th>
         <th>Status</th>
@@ -64,6 +66,7 @@
           <td><input type="checkbox" name="system_id"
                      value="{{ node.system_id }}" /></td>
         {% endif %}
+        <td class="power-state"><div class="power-state power-{{ node.power_state }}"></div></td>
         <td class="node-column">
           <a href="{% url 'node-view' node.system_id %}">
           {{ node.fqdn }}

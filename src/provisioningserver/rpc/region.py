@@ -19,11 +19,13 @@ __all__ = [
     "Identify",
     "MarkNodeBroken",
     "ReportBootImages",
+    "UpdateNodePowerState",
 ]
 
 from provisioningserver.rpc.arguments import (
     Bytes,
     ParsedURL,
+    StructureAsJSON,
     )
 from provisioningserver.rpc.common import Identify
 from provisioningserver.rpc.exceptions import (
@@ -100,6 +102,49 @@ class MarkNodeBroken(amp.Command):
         (b"system_id", amp.Unicode()),
         # The error description.
         (b"error_description", amp.Unicode()),
+    ]
+    response = []
+    errors = {NoSuchNode: b"NoSuchNode"}
+
+
+class ListNodePowerParameters(amp.Command):
+    """Return the list of power parameters for nodes
+    that this cluster controls.
+
+    Used to query all of the nodes that the cluster
+    composes.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        # The cluster UUID.
+        (b"uuid", amp.Unicode()),
+    ]
+    response = [
+        (b"nodes", amp.AmpList(
+            [(b"system_id", amp.Unicode()),
+             (b"hostname", amp.Unicode()),
+             (b"state", amp.Unicode()),
+             (b"power_type", amp.Unicode()),
+             # We can't define a tighter schema here because this is a highly
+             # variable bag of arguments from a variety of sources.
+             (b"context", StructureAsJSON())])),
+    ]
+    errors = []
+
+
+class UpdateNodePowerState(amp.Command):
+    """Update Node Power State.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        # The node's system_id.
+        (b"system_id", amp.Unicode()),
+        # The node's power_state.
+        (b"power_state", amp.Unicode()),
     ]
     response = []
     errors = {NoSuchNode: b"NoSuchNode"}

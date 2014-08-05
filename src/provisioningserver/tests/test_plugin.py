@@ -30,6 +30,7 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
+from provisioningserver.rpc.power import NodePowerMonitorService
 from provisioningserver.tftp import (
     TFTPBackend,
     TFTPService,
@@ -111,7 +112,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["image_download", "log", "oops", "rpc", "tftp"],
+            ["image_download", "log", "node_monitor", "oops", "rpc", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
@@ -125,6 +126,14 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         image_service = service.getServiceNamed("image_download")
         self.assertIsInstance(image_service, PeriodicImageDownloadService)
+
+    def test_node_monitor_service(self):
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        node_monitor = service.getServiceNamed("node_monitor")
+        self.assertIsInstance(node_monitor, NodePowerMonitorService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
