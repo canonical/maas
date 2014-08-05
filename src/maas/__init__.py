@@ -13,9 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "fix_up_databases",
-    "import_local_settings",
     "import_settings",
+    "import_local_settings",
     ]
 
 import sys
@@ -58,22 +57,6 @@ def import_local_settings():
         source = find_settings(whence)
         target = sys._getframe(1).f_globals
         target.update(source)
-
-
-def fix_up_databases(databases):
-    """Increase isolation level, use atomic requests.
-
-    Does not modify connections to non-PostgreSQL databases.
-    """
-    from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
-    for _, database in databases.viewitems():
-        engine = database.get("ENGINE")
-        if engine == 'django.db.backends.postgresql_psycopg2':
-            options = database.setdefault("OPTIONS", {})
-            # Increase the transaction isolation level.
-            options["isolation_level"] = ISOLATION_LEVEL_SERIALIZABLE
-            # Wrap each HTTP request in a transaction.
-            database["ATOMIC_REQUESTS"] = True
 
 
 try:
