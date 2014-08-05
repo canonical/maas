@@ -620,6 +620,16 @@ class NodeTest(MAASServerTestCase):
             (NODE_STATUS.READY, None, node.agent_name),
             (node.status, node.owner, ''))
 
+    def test_release_does_not_mark_broken_node_ready(self):
+        agent_name = factory.make_name('agent-name')
+        node = factory.make_node(
+            status=NODE_STATUS.BROKEN, owner=factory.make_user(),
+            agent_name=agent_name)
+        node.release()
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, None, node.agent_name),
+            (node.status, node.owner, ''))
+
     def test_release_deletes_static_ip_host_maps(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(

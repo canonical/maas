@@ -1207,7 +1207,13 @@ class Node(CleanSave, TimestampedModel):
         self.delete_static_host_maps(deallocated_ips)
         from maasserver.dns import change_dns_zones
         change_dns_zones([self.nodegroup])
-        self.status = NODE_STATUS.READY
+        # Belt-and-braces: we should never reach a point where the node
+        # is BROKEN and still allocated, since mark_broken() releases
+        # the node anyway, but bug 1351451 seemed to suggest that it was
+        # possible. This can be removed if that proves not to be the
+        # case.
+        if self.status != NODE_STATUS.BROKEN:
+            self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None
         self.agent_name = ''

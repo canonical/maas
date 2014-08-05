@@ -381,6 +381,18 @@ class TestNodeAPI(APITestCase):
             [NODE_STATUS.READY] * len(owned_nodes),
             [node.status for node in reload_objects(Node, owned_nodes)])
 
+    def test_POST_release_releases_broken_node(self):
+        owned_node = factory.make_node(
+            owner=self.logged_in_user, status=NODE_STATUS.BROKEN)
+        response = self.client.post(
+            self.get_node_uri(owned_node), {'op': 'release'})
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        owned_node = Node.objects.get(id=owned_node.id)
+        self.assertEqual(
+            (NODE_STATUS.BROKEN, None),
+            (owned_node.status, owned_node.owner))
+
     def test_POST_release_turns_on_netboot(self):
         node = factory.make_node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
@@ -448,6 +460,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_fails_for_other_node_states(self):
         releasable_statuses = [
+            NODE_STATUS.BROKEN,
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
             NODE_STATUS.READY,
