@@ -115,6 +115,7 @@ from maasserver.testing.osystems import (
     )
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
@@ -1157,6 +1158,85 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(
             [ERROR_MESSAGE_STATIC_RANGE_IN_USE],
             form._errors['static_ip_range_high'])
+
+    def test_calls_get_duplicate_fqdns_when_appropriate(self):
+        # Check for duplicate FQDNs if the NodeGroupInterface has a
+        # NodeGroup and is managing DNS.
+        int_settings = factory.get_interface_fields(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        mock = self.patch(form, "get_duplicate_fqdns")
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertThat(mock, MockCalledOnceWith())
+
+    def test_reports_error_if_fqdns_duplicated(self):
+        int_settings = factory.get_interface_fields(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=self.make_ngi_instance())
+        mock = self.patch(form, "get_duplicate_fqdns")
+        hostnames = [
+            factory.make_hostname("duplicate") for _ in range(0, 3)]
+        mock.return_value = hostnames
+        self.assertFalse(form.is_valid())
+        message = "Enabling DNS management creates duplicate FQDN(s): %s." % (
+            ", ".join(set(hostnames)))
+        self.assertEqual(
+            {'management': [message]},
+            form.errors)
+
+    def test_identifies_duplicate_fqdns_in_nodegroup(self):
+        # Don't allow DNS management to be enabled when it would
+        # cause more than one node on the nodegroup to have the
+        # same FQDN.
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        base_hostname = factory.make_hostname("host")
+        full_hostnames = [
+            "%s.%s" % (base_hostname, factory.make_hostname("domain"))
+            for _ in range(0, 2)]
+        for hostname in full_hostnames:
+            factory.make_node(hostname=hostname, nodegroup=nodegroup)
+        [interface] = nodegroup.get_managed_interfaces()
+        data = {"management": NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS}
+        form = NodeGroupInterfaceForm(data=data, instance=interface)
+        duplicates = form.get_duplicate_fqdns()
+        expected_duplicates = set(["%s.%s" % (base_hostname, nodegroup.name)])
+        self.assertEqual(expected_duplicates, duplicates)
+
+    def test_identifies_duplicate_fqdns_across_nodegroups(self):
+        # Don't allow DNS management to be enabled when it would
+        # cause a node in this nodegroup to have the same FQDN
+        # as a node in another nodegroup.
+
+        conflicting_domain = factory.make_hostname("conflicting-domain")
+        nodegroup_a = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            name=conflicting_domain)
+        conflicting_hostname = factory.make_hostname("conflicting-hostname")
+        factory.make_node(
+            hostname="%s.%s" % (conflicting_hostname, conflicting_domain),
+            nodegroup=nodegroup_a)
+
+        nodegroup_b = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            name=conflicting_domain)
+        factory.make_node(
+            hostname="%s.%s" % (
+                conflicting_hostname, factory.make_hostname("other-domain")),
+            nodegroup=nodegroup_b)
+
+        [interface] = nodegroup_b.get_managed_interfaces()
+        data = {"management": NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS}
+        form = NodeGroupInterfaceForm(data=data, instance=interface)
+        duplicates = form.get_duplicate_fqdns()
+        expected_duplicates = set(
+            ["%s.%s" % (conflicting_hostname, conflicting_domain)])
+        self.assertEqual(expected_duplicates, duplicates)
 
 
 class TestValidateNewStaticIPRanges(MAASServerTestCase):

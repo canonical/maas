@@ -1213,6 +1213,51 @@ class NodeGroupInterfaceForm(ModelForm):
 
         return name
 
+    def get_duplicate_fqdns(self):
+        """Get duplicate FQDNs created by using the new management setting."""
+        # We need to know if the new fqdn of any of the nodes in this
+        # cluster will conflict with the new FQDN of other nodes in this
+        # cluster.
+        cluster_nodes = Node.objects.filter(nodegroup=self.instance.nodegroup)
+        fqdns = [
+            nodegroup_fqdn(node.hostname, self.instance.nodegroup.name)
+            for node in cluster_nodes]
+        duplicates = [fqdn for fqdn in fqdns if fqdns.count(fqdn) > 1]
+
+        # We also don't want FQDN conflicts with nodes in other clusters.
+        nodes_and_fqdns = zip(cluster_nodes, fqdns)
+        other_cluster_duplicates = [
+            fqdn for node, fqdn in nodes_and_fqdns
+            if fqdn_is_duplicate(node, fqdn)]
+        duplicates.extend(other_cluster_duplicates)
+
+        return set(duplicates)
+
+    def clean_management(self):
+        management = self.cleaned_data['management']
+
+        # When the interface doesn't manage DNS, we don't need to worry
+        # about creating duplicate FQDNs, because we're covered by hostname
+        # uniqueness.
+        if management != NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
+            return management
+
+        # The NodeGroupInterface instance doesn't always have a
+        # nodegroup defined for it when we validate. For instance, when
+        # a NodeGroupDefineForm is used, NodeGroupInterfaceForms are
+        # validated prior to the NodeGroup being created.
+        if not hasattr(self.instance, "nodegroup"):
+            return management
+
+        duplicates = self.get_duplicate_fqdns()
+
+        if len(duplicates) > 0:
+            raise ValidationError(
+                "Enabling DNS management creates duplicate FQDN(s): %s." % (
+                    ", ".join(set(duplicates))))
+
+        return management
+
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()
         cleaned_data['name'] = self.compute_name()
