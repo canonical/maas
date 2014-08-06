@@ -232,6 +232,19 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         expected = 'BOOTIF=%s' % format_bootif(fake_mac)
         self.assertIn(expected, config['execute']['APPEND'])
 
+    def test_format_bootif_replaces_colon(self):
+        fake_mac = factory.getRandomMACAddress()
+        self.assertEqual(
+            '01-%s' % fake_mac.replace(':', '-').lower(),
+            format_bootif(fake_mac))
+
+    def test_format_bootif_makes_mac_address_lower(self):
+        fake_mac = factory.getRandomMACAddress()
+        fake_mac = fake_mac.upper()
+        self.assertEqual(
+            '01-%s' % fake_mac.replace(':', '-').lower(),
+            format_bootif(fake_mac))
+
 
 class TestPowerNVBootMethodPathPrefix(MAASTestCase):
     """Tests for
