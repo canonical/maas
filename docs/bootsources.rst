@@ -15,10 +15,10 @@ that source.
 
 The following example use the MAAS CLI to list the boot sources and the boot
 source selections for a particular cluster.  Assuming that ``CLUSTER_UUID`` is
-the UUID of the cluster being examined and the CLI ``PROFILE`` is the name of
-the profile being used::
+the UUID of that cluster, and the CLI ``PROFILE`` is the name of the profile
+under which you're logged in to the server::
 
-    $ sudo maas $PROFILE boot-sources read $CLUSTER_UUID
+    $ maas $PROFILE boot-sources read $CLUSTER_UUID
     [
         {
             "url": "http://maas.ubuntu.com/images/ephemeral-v2/releases/",
@@ -29,7 +29,7 @@ the profile being used::
         }
     ]
 
-    $ sudo maas $PROFILE boot-source-selections read $CLUSTER_UUID 1
+    $ maas $PROFILE boot-source-selections read $CLUSTER_UUID 1
     [
         {
             "release": "precise",
@@ -56,13 +56,13 @@ you would need to:
 
 - Delete the "Precise" selection (the selection '1' of the source '1')::
 
-    $ sudo maas $PROFILE boot-source-selection delete  $CLUSTER_UUID 1 1
+    $ maas $PROFILE boot-source-selection delete  $CLUSTER_UUID 1 1
 
 - Update the architecture list of the "Trusty" selection so that only the
   image for amd64 will be downloaded (this is the selection '2' of the source
   '1')::
 
-    $ sudo maas $PROFILE boot-source-selection update $CLUSTER_UUID 1 2 arches=amd64
+    $ maas $PROFILE boot-source-selection update $CLUSTER_UUID 1 2 arches=amd64
     {
         "release": "trusty",
         "arches": ["amd64"],
@@ -77,7 +77,7 @@ Downloading the images from a different source
 Let's say you want to import the images from a different location.  You would
 need to to change the source's url and keyring::
 
-    $ sudo maas $PROFILE boot-source update $CLUSTER_UUID 1 url="http://custom.url" keyring_filename="" keyring_data@=./custom_keyring_file
+    $ maas $PROFILE boot-source update $CLUSTER_UUID 1 url="http://custom.url" keyring_filename="" keyring_data@=./custom_keyring_file
     {
         "url": "http://custom.url/",
         "keyring_data": "<base64 encoded content of `custom_keyring_file`>",
@@ -91,7 +91,7 @@ Adding a source
 
 You can also add a new source::
 
-    $ sudo maas maas boot-sources create $CLUSTER_UUID url=http://my.url keyring_filename="" keyring_data@=./ custom_keyring_file
+    $ maas maas boot-sources create $CLUSTER_UUID url=http://my.url keyring_filename="" keyring_data@=./ custom_keyring_file
     {
         "url": "http://my.url/",
         "keyring_data": "ZW1wdHkK",
@@ -102,7 +102,7 @@ You can also add a new source::
 
 Inside that newly created source ('2') you can add selections::
 
-    $ sudo maas $PROFILE boot-source-selections create $CLUSTER_UUID 2 arches=amd64 subarches='*' release='trusty' labels='*'
+    $ maas $PROFILE boot-source-selections create $CLUSTER_UUID 2 arches=amd64 subarches='*' release='trusty' labels='*'
     {
         "labels": ["*"],
         "arches": ["amd64"],
