@@ -25,6 +25,7 @@ from django.db.models import (
     )
 from maasserver.fields import (
     JSONObjectField,
+    LargeObjectField,
     MAASIPAddressField,
     XMLField,
     )
@@ -73,3 +74,8 @@ class BulkManagerTestModel(Model):
 
 class MAASIPAddressFieldModel(Model):
     ip_address = MAASIPAddressField()
+
+
+class LargeObjectFieldModel(Model):
+    name = CharField(max_length=255, unique=False)
+    large_object = LargeObjectField(block_size=10)

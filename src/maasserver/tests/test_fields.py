@@ -27,6 +27,8 @@ from django.db.models import BinaryField
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.fields import (
     EditableBinaryField,
+    LargeObjectField,
+    LargeObjectFile,
     MAC,
     NodeGroupFormField,
     register_mac_type,
@@ -42,10 +44,13 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import (
     JSONFieldModel,
+    LargeObjectFieldModel,
     MAASIPAddressFieldModel,
     XMLFieldModel,
     )
 from maastesting.djangotestcase import TestModelMixin
+from maastesting.matchers import MockCalledOnceWith
+from psycopg2 import OperationalError
 from psycopg2.extensions import ISQLQuote
 
 
@@ -401,3 +406,109 @@ class TestMAASIPAddressField(TestModelMixin, MAASServerTestCase):
         results = MAASIPAddressFieldModel.objects.filter(
             ip_address__lte='192.0.2.100')
         self.assertItemsEqual([ip_object], results)
+
+
+class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
+
+    app = 'maasserver.tests'
+
+    def test_stores_data(self):
+        data = factory.make_string()
+        test_name = factory.make_name('name')
+        test_instance = LargeObjectFieldModel(name=test_name)
+        large_object = LargeObjectFile()
+        with large_object.open('wb') as stream:
+            stream.write(data)
+        test_instance.large_object = large_object
+        test_instance.save()
+        test_instance = LargeObjectFieldModel.objects.get(name=test_name)
+        with test_instance.large_object.open('rb') as stream:
+            saved_data = stream.read()
+        self.assertEqual(data, saved_data)
+
+    def test_with_exit_calls_close(self):
+        data = factory.make_string()
+        large_object = LargeObjectFile()
+        with large_object.open('wb') as stream:
+            self.addCleanup(large_object.close)
+            mock_close = self.patch(large_object, 'close')
+            stream.write(data)
+        self.assertThat(mock_close, MockCalledOnceWith())
+
+    def test_unlink(self):
+        data = factory.make_string()
+        large_object = LargeObjectFile()
+        with large_object.open('wb') as stream:
+            stream.write(data)
+        oid = large_object.oid
+        large_object.unlink()
+        self.assertEqual(0, large_object.oid)
+        self.assertRaises(
+            OperationalError,
+            connection.connection.lobject, oid)
+
+    def test_interates_on_block_size(self):
+        # String size is multiple of block_size in the testing model
+        data = factory.make_string(10 * 2)
+        test_name = factory.make_name('name')
+        test_instance = LargeObjectFieldModel(name=test_name)
+        large_object = LargeObjectFile()
+        with large_object.open('wb') as stream:
+            stream.write(data)
+        test_instance.large_object = large_object
+        test_instance.save()
+        test_instance = LargeObjectFieldModel.objects.get(name=test_name)
+        with test_instance.large_object.open('rb') as stream:
+            offset = 0
+            for block in stream:
+                self.assertEqual(data[offset:offset + 10], block)
+                offset += 10
+
+    def test_get_db_prep_value_returns_None_when_value_None(self):
+        field = LargeObjectField()
+        self.assertEqual(None, field.get_db_prep_value(None))
+
+    def test_get_db_prep_value_returns_oid_when_value_LargeObjectFile(self):
+        oid = randint(1, 100)
+        field = LargeObjectField()
+        obj_file = LargeObjectFile()
+        obj_file.oid = oid
+        self.assertEqual(oid, field.get_db_prep_value(obj_file))
+
+    def test_get_db_prep_value_raises_error_when_oid_less_than_zero(self):
+        oid = randint(-100, 0)
+        field = LargeObjectField()
+        obj_file = LargeObjectFile()
+        obj_file.oid = oid
+        self.assertRaises(AssertionError, field.get_db_prep_value, obj_file)
+
+    def test_get_db_prep_value_raises_error_when_not_LargeObjectFile(self):
+        field = LargeObjectField()
+        self.assertRaises(
+            AssertionError, field.get_db_prep_value, factory.make_string())
+
+    def test_to_python_returns_None_when_value_None(self):
+        field = LargeObjectField()
+        self.assertEqual(None, field.to_python(None))
+
+    def test_to_python_returns_value_when_value_LargeObjectFile(self):
+        field = LargeObjectField()
+        obj_file = LargeObjectFile()
+        self.assertEqual(obj_file, field.to_python(obj_file))
+
+    def test_to_python_returns_LargeObjectFile_when_value_int(self):
+        oid = randint(1, 100)
+        field = LargeObjectField()
+        obj_file = field.to_python(oid)
+        self.assertEqual(oid, obj_file.oid)
+
+    def test_to_python_returns_LargeObjectFile_when_value_long(self):
+        oid = long(randint(1, 100))
+        field = LargeObjectField()
+        obj_file = field.to_python(oid)
+        self.assertEqual(oid, obj_file.oid)
+
+    def test_to_python_raises_error_when_not_valid_type(self):
+        field = LargeObjectField()
+        self.assertRaises(
+            AssertionError, field.to_python, factory.make_string())

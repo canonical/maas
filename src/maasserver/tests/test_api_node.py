@@ -18,7 +18,6 @@ from base64 import b64encode
 from cStringIO import StringIO
 import httplib
 import json
-from netaddr import IPAddress
 import sys
 
 import bson
@@ -53,6 +52,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from netaddr import IPAddress
 from provisioningserver.utils import map_enum
 
 

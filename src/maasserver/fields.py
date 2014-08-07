@@ -31,12 +31,15 @@ import re
 
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
+from django.db import connections
 from django.db.models import (
     BinaryField,
     Field,
     GenericIPAddressField,
+    IntegerField,
     SubfieldBase,
     )
+from django.db.models.fields.subclassing import Creator
 from django.forms import (
     CharField,
     ModelChoiceField,
@@ -93,6 +96,7 @@ add_introspection_rules(
         "^maasserver\.fields\.XMLField",
         "^maasserver\.fields\.EditableBinaryField",
         "^maasserver\.fields\.MAASIPAddressField",
+        "^maasserver\.fields\.LargeObjectField",
     ])
 
 
@@ -412,3 +416,114 @@ class MAASIPAddressField(GenericIPAddressField):
         and force a 'inet' type field.
         """
         return 'inet'
+
+
+class LargeObjectFile(object):
+    """Large object file.
+
+    Proxy the access from this object to psycopg2.
+    """
+    def __init__(self, oid=0, field=None, instance=None, block_size=(1 << 16)):
+        self.oid = oid
+        self.field = field
+        self.instance = instance
+        self.block_size = block_size
+        self._lobject = None
+
+    def __getattr__(self, name):
+        if self._lobject is None:
+            raise IOError("LargeObjectFile is not opened.")
+        return getattr(self._lobject, name)
+
+    def __enter__(self, *args, **kwargs):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.close()
+
+    def __iter__(self):
+        return self
+
+    def open(self, mode="rwb", new_file=None, using="default"):
+        """Opens the internal large object instance."""
+        connection = connections[using]
+        self._lobject = connection.connection.lobject(
+            self.oid, mode, 0, new_file)
+        self.oid = self._lobject.oid
+        return self
+
+    def unlink(self):
+        """Removes the large object."""
+        if self._lobject is None:
+            # Need to open the lobject so we get a reference to it in the
+            # database, to perform the unlink.
+            self.open()
+            self.close()
+        self._lobject.unlink()
+        self._lobject = None
+        self.oid = 0
+
+    def next(self):
+        r = self.read(self.block_size)
+        if len(r) == 0:
+            raise StopIteration
+        return r
+
+
+class LargeObjectDescriptor(Creator):
+    """LargeObjectField descriptor."""
+
+    def __set__(self, instance, value):
+        value = self.field.to_python(value)
+        if value is not None:
+            if not isinstance(value, LargeObjectFile):
+                value = LargeObjectFile(value, self.field, instance)
+        instance.__dict__[self.field.name] = value
+
+
+class LargeObjectField(IntegerField):
+    """A field that stores large amounts of data into postgres large object
+    storage.
+
+    Internally the field on the model is an `oid` field, that returns a proxy
+    to the referenced large object.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.block_size = kwargs.pop('block_size', 1 << 16)
+        super(LargeObjectField, self).__init__(*args, **kwargs)
+
+    def db_type(self, connection):
+        """Returns the database column data type for LargeObjectField."""
+        # oid is the column type postgres uses to reference a large object
+        return 'oid'
+
+    def contribute_to_class(self, cls, name):
+        """Set the descriptor for the large object."""
+        super(LargeObjectField, self).contribute_to_class(cls, name)
+        setattr(cls, self.name, LargeObjectDescriptor(self))
+
+    def get_db_prep_value(self, value, connection=None, prepared=False):
+        """python -> db: `oid` value"""
+        if value is None:
+            return None
+        if isinstance(value, LargeObjectFile):
+            if value.oid > 0:
+                return value.oid
+            raise AssertionError(
+                "LargeObjectFile's oid must be greater than 0.")
+        raise AssertionError(
+            "Invalid LargeObjectField value (expected LargeObjectFile): '%s'"
+            % repr(value))
+
+    def to_python(self, value):
+        """db -> python: `LargeObjectFile`"""
+        if value is None:
+            return None
+        elif isinstance(value, LargeObjectFile):
+            return value
+        elif isinstance(value, (int, long)):
+            return LargeObjectFile(value, self, self.model, self.block_size)
+        raise AssertionError(
+            "Invalid LargeObjectField value (expected integer): '%s'"
+            % repr(value))
