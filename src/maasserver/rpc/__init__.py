@@ -19,7 +19,7 @@ __all__ = [
 
 from maasserver import eventloop
 from provisioningserver.rpc import exceptions
-from provisioningserver.utils import asynchronous
+from provisioningserver.utils.twisted import asynchronous
 
 
 @asynchronous

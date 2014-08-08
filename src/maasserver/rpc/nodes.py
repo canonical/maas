@@ -24,7 +24,7 @@ from maasserver.models import (
     )
 from maasserver.utils.async import transactional
 from provisioningserver.rpc.exceptions import NoSuchNode
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous

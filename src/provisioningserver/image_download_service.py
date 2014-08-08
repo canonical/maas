@@ -30,8 +30,8 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetProxies,
     )
-from provisioningserver.utils import pause
 from provisioningserver.utils.env import environment_variables
+from provisioningserver.utils.twisted import pause
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredLock,

@@ -58,7 +58,7 @@ from socket import gethostname
 import crochet
 from django.db import connections
 from django.utils import autoreload
-from provisioningserver.utils import asynchronous
+from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import MultiService
 from twisted.internet.error import ReactorNotRunning
 

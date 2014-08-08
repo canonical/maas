@@ -27,10 +27,7 @@ from mock import (
     Mock,
     sentinel,
     )
-from provisioningserver import (
-    image_download_service,
-    utils,
-    )
+from provisioningserver import image_download_service
 from provisioningserver.image_download_service import (
     import_boot_images,
     PeriodicImageDownloadService,
@@ -40,7 +37,8 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.utils import pause
+from provisioningserver.utils import filter_dict
+from provisioningserver.utils.twisted import pause
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.internet import TimerService
 from twisted.internet import defer
@@ -259,13 +257,14 @@ class TestImportBootImages(PservTestCase):
             {
                 var: proxy
                 for var in proxy_vars
-            }, utils.filter_dict(fake.env, proxy_vars))
+            },
+            filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
         proxy_vars = ['http_proxy', 'https_proxy']
         fake = self.patch_boot_resources_function()
         import_boot_images(sources=[])
-        self.assertEqual({}, utils.filter_dict(fake.env, proxy_vars))
+        self.assertEqual({}, filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')

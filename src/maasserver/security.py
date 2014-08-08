@@ -20,7 +20,7 @@ from datetime import datetime
 
 from maasserver import locks
 from maasserver.models.config import Config
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 from pytz import UTC
 from twisted.internet import ssl
 

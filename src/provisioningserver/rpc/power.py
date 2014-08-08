@@ -33,7 +33,7 @@ from provisioningserver.rpc.region import (
     MarkNodeBroken,
     UpdateNodePowerState,
     )
-from provisioningserver.utils import pause
+from provisioningserver.utils.twisted import pause
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (

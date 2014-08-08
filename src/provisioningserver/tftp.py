@@ -34,8 +34,8 @@ from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.drivers import ArchitectureRegistry
 from provisioningserver.kernel_opts import KernelParameters
-from provisioningserver.utils import deferred
 from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.twisted import deferred
 from tftp.backend import FilesystemSynchronousBackend
 from tftp.errors import FileNotFound
 from tftp.protocol import TFTP

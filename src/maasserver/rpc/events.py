@@ -28,7 +28,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchEventType,
     NoSuchNode,
     )
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous

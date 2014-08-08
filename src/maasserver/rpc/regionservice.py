@@ -45,11 +45,11 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.utils import (
+from provisioningserver.utils.network import get_all_interface_addresses
+from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
     )
-from provisioningserver.utils.network import get_all_interface_addresses
 from twisted.application import service
 from twisted.application.internet import TimerService
 from twisted.internet import (

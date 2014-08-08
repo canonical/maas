@@ -23,7 +23,7 @@ import time
 from maasserver.utils.async import transactional
 from oauth.oauth import OAuthServer
 from piston.models import Nonce
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 from twisted.application.internet import TimerService
 from twisted.internet.threads import deferToThread
 

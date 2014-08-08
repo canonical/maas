@@ -20,7 +20,7 @@ from base64 import b64decode
 
 from maasserver.models import NodeGroup
 from maasserver.utils.async import transactional
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous

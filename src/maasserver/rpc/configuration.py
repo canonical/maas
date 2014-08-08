@@ -20,7 +20,7 @@ from urlparse import urlparse
 
 from maasserver.models.config import Config
 from maasserver.utils.async import transactional
-from provisioningserver.utils import synchronous
+from provisioningserver.utils.twisted import synchronous
 
 
 @synchronous

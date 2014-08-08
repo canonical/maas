@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 from provisioningserver.rpc.interfaces import IConnection
-from provisioningserver.utils import asynchronous
+from provisioningserver.utils.twisted import asynchronous
 from twisted.protocols import amp
 
 

@@ -83,7 +83,7 @@ from provisioningserver.rpc.testing import (
     )
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
-from provisioningserver.utils import asynchronous
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
