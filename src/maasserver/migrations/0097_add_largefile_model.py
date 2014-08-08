@@ -14,7 +14,7 @@ class Migration(SchemaMigration):
             ('created', self.gf('django.db.models.fields.DateTimeField')()),
             ('updated', self.gf('django.db.models.fields.DateTimeField')()),
             ('sha256', self.gf('django.db.models.fields.CharField')(unique=True, max_length=64)),
-            ('total_size', self.gf('django.db.models.fields.IntegerField')()),
+            ('total_size', self.gf('django.db.models.fields.BigIntegerField')()),
             ('content', self.gf('maasserver.fields.LargeObjectField')()),
         ))
         db.send_create_signal(u'maasserver', ['LargeFile'])
@@ -163,7 +163,7 @@ class Migration(SchemaMigration):
             'created': ('django.db.models.fields.DateTimeField', [], {}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
             'sha256': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '64'}),
-            'total_size': ('django.db.models.fields.IntegerField', [], {}),
+            'total_size': ('django.db.models.fields.BigIntegerField', [], {}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
         u'maasserver.licensekey': {
