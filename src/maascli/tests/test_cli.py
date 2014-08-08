@@ -21,7 +21,9 @@ from textwrap import dedent
 
 from maascli import cli
 from maascli.parser import ArgumentParser
+from maascli.tests.test_auth import make_options
 from maastesting.factory import factory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import DocTestMatches
 
@@ -44,6 +46,19 @@ class TestRegisterCLICommands(MAASTestCase):
 
 
 class TestLogin(MAASTestCase):
+
+    def test_cmd_login_calls_check_valid_apikey(self):
+        parser = ArgumentParser()
+        options = make_options()
+        check_key = self.patch(cli, "check_valid_apikey")
+        check_key.return_value = False
+        stdout = self.patch(sys, "stdout", StringIO())
+        expected = "MAAS server rejected your API key.\n"
+        login = cli.cmd_login(parser)
+        login(options)
+        observed = stdout.getvalue()
+        self.assertThat(check_key, MockCalledOnceWith(options))
+        self.assertEqual(expected, observed)
 
     def test_print_whats_next(self):
         profile = {

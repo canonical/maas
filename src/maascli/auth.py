@@ -17,9 +17,19 @@ __all__ = [
     ]
 
 from getpass import getpass
+import httplib
 import sys
+from urlparse import urljoin
 
 from apiclient.creds import convert_string_to_tuple
+from maascli.api import (
+    Action,
+    http_request,
+    )
+
+
+class UnexpectedResponse(Exception):
+    """Unexpected API response."""
 
 
 def try_getpass(prompt):
@@ -46,3 +56,29 @@ def obtain_credentials(credentials):
         return convert_string_to_tuple(credentials)
     else:
         return None
+
+
+def check_valid_apikey(options):
+    """Check for valid apikey."""
+    url_nodegroups = urljoin(options.url, "nodegroups/")
+    uri, body, headers = Action.prepare_payload(
+        op="list", method="GET", uri=url_nodegroups, data=[])
+
+    headers = dict(headers)
+    credentials = options.credentials.split(':')
+    Action.sign(uri, headers, credentials)
+
+    insecure = options.insecure
+    response, content = http_request(
+        uri, method="GET", body=body, headers=headers,
+        insecure=insecure)
+
+    status = int(response['status'])
+    if status == httplib.UNAUTHORIZED:
+        return False
+    elif status != httplib.OK:
+        if options.debug:
+            print("%s" % response.body)
+        raise UnexpectedResponse(
+            "MAAS server gave an unexpected response: %s" % status)
+    return True

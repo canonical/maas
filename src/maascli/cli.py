@@ -20,7 +20,11 @@ from textwrap import fill
 
 from apiclient.creds import convert_tuple_to_string
 from maascli.api import fetch_api_description
-from maascli.auth import obtain_credentials
+from maascli.auth import (
+    check_valid_apikey,
+    obtain_credentials,
+    UnexpectedResponse,
+    )
 from maascli.command import Command
 from maascli.config import ProfileConfig
 from maascli.utils import (
@@ -63,6 +67,16 @@ class cmd_login(Command):
         parser.set_defaults(credentials=None)
 
     def __call__(self, options):
+        # Check for bogus apikey
+        if options.credentials is not None:
+            try:
+                if not check_valid_apikey(options):
+                    print("MAAS server rejected your API key.")
+                    return
+            except UnexpectedResponse as e:
+                print("%s" % e)
+                return
+
         # Try and obtain credentials interactively if they're not given, or
         # read them from stdin if they're specified as "-".
         credentials = obtain_credentials(options.credentials)
