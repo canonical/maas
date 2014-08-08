@@ -17,6 +17,7 @@ __all__ = [
     "Messages",
     ]
 
+import hashlib
 from io import BytesIO
 import logging
 import random
@@ -32,7 +33,10 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     )
-from maasserver.fields import MAC
+from maasserver.fields import (
+    LargeObjectFile,
+    MAC,
+    )
 from maasserver.models import (
     BootImage,
     BootSource,
@@ -42,6 +46,7 @@ from maasserver.models import (
     Event,
     EventType,
     FileStorage,
+    LargeFile,
     LicenseKey,
     MACAddress,
     MACStaticIPAddressLink,
@@ -949,6 +954,26 @@ class Factory(maastesting.factory.Factory):
         if type is None:
             type = self.make_event_type()
         return Event.objects.create(node=node, type=type)
+
+    def make_large_file(self, content=None, size=512):
+        """Create `LargeFile`.
+
+        :param content: Data to store in large file object.
+        :param size: Size of `content`. If `content` is None
+            then it will be a random string of this size. If content is
+            provided and `size` is not the same length, then it will
+            be an inprogress file.
+        """
+        if content is None:
+            content = factory.make_string(size=size)
+        sha256 = hashlib.sha256()
+        sha256.update(content)
+        sha256 = sha256.hexdigest()
+        largeobject = LargeObjectFile()
+        with largeobject.open('wb') as stream:
+            stream.write(content)
+        return LargeFile.objects.create(
+            sha256=sha256, total_size=size, content=largeobject)
 
 
 # Create factory singleton.

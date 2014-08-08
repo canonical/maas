@@ -1,0 +1,92 @@
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for :class:`LargeFile`."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = []
+
+from random import randint
+
+from maasserver.models.largefile import LargeFile
+from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+
+
+class TestLargeFileManager(MAASServerTestCase):
+
+    def test_has_file(self):
+        largefile = factory.make_large_file()
+        self.assertTrue(LargeFile.objects.has_file(largefile.sha256))
+
+    def test_get_file(self):
+        largefile = factory.make_large_file()
+        obj = LargeFile.objects.get_file(largefile.sha256)
+        self.assertEqual(largefile, obj)
+
+
+class TestLargeFile(MAASServerTestCase):
+
+    def test_content(self):
+        size = randint(512, 1024)
+        content = factory.make_string(size=size)
+        largefile = factory.make_large_file(content, size=size)
+        with largefile.content.open('rb') as stream:
+            data = stream.read()
+        self.assertEqual(content, data)
+
+    def test_empty_content(self):
+        size = 0
+        content = ""
+        largefile = factory.make_large_file(content, size=size)
+        with largefile.content.open('rb') as stream:
+            data = stream.read()
+        self.assertEqual(content, data)
+
+    def test_size(self):
+        size = randint(512, 1024)
+        total_size = randint(1025, 2048)
+        content = factory.make_string(size=size)
+        largefile = factory.make_large_file(content, size=total_size)
+        self.assertEqual(size, largefile.size)
+
+    def test_progress(self):
+        size = randint(512, 1024)
+        total_size = randint(1025, 2048)
+        content = factory.make_string(size=size)
+        largefile = factory.make_large_file(content, size=total_size)
+        self.assertEqual(total_size / float(size), largefile.progress)
+
+    def test_progress_of_empty_file(self):
+        size = 0
+        content = ""
+        largefile = factory.make_large_file(content, size=size)
+        self.assertEqual(0, largefile.progress)
+
+    def test_complete_returns_False_when_content_incomplete(self):
+        size = randint(512, 1024)
+        total_size = randint(1025, 2048)
+        content = factory.make_string(size=size)
+        largefile = factory.make_large_file(content, size=total_size)
+        self.assertFalse(largefile.complete)
+
+    def test_complete_returns_True_when_content_is_complete(self):
+        largefile = factory.make_large_file()
+        self.assertTrue(largefile.complete)
+
+    def test_delete_calls_unlink_on_content(self):
+        largefile = factory.make_large_file()
+        content = largefile.content
+        self.addCleanup(content.unlink)
+        unlink_mock = self.patch(content, 'unlink')
+        largefile.delete()
+        self.assertThat(unlink_mock, MockCalledOnceWith())
