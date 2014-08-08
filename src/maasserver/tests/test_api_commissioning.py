@@ -15,15 +15,12 @@ __metaclass__ = type
 __all__ = []
 
 from base64 import b64encode
-from datetime import (
-    datetime,
-    timedelta,
-    )
 import httplib
 import json
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from django.db import connection
 from maasserver.enum import NODE_STATUS
 from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
@@ -36,9 +33,22 @@ from metadataserver.models import CommissioningScript
 class TestCommissioningTimeout(MAASServerTestCase):
     """Testing of commissioning timeout API."""
 
+    def age_node(self, node, minutes, cursor=None):
+        """Set back the update/creation timestamps on `node` by `minutes`."""
+        if cursor is None:
+            cursor = connection.cursor()
+        cursor.execute("""
+            UPDATE maasserver_node
+            SET
+                created = created - interval '%f minutes',
+                updated = updated - interval '%f minutes'
+            WHERE id = %d
+            """ % (minutes, minutes, node.id))
+
     def test_check_with_no_action(self):
         self.client_log_in()
         node = factory.make_node(status=NODE_STATUS.READY)
+        self.age_node(node, settings.COMMISSIONING_TIMEOUT + 100)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
         # Anything that's not commissioning should be ignored.
@@ -49,8 +59,8 @@ class TestCommissioningTimeout(MAASServerTestCase):
 
     def test_check_with_commissioning_but_not_expired_node(self):
         self.client_log_in()
-        node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.age_node(node, settings.COMMISSIONING_TIMEOUT - 1)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
         node = reload_object(node)
@@ -60,12 +70,8 @@ class TestCommissioningTimeout(MAASServerTestCase):
 
     def test_check_with_commissioning_and_expired_node(self):
         self.client_log_in()
-        # Have an interval 1 second longer than the timeout.
-        interval = timedelta(seconds=1, minutes=settings.COMMISSIONING_TIMEOUT)
-        updated_at = datetime.now() - interval
-        node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING, created=datetime.now(),
-            updated=updated_at)
+        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.age_node(node, settings.COMMISSIONING_TIMEOUT + 1)
 
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
@@ -81,6 +87,36 @@ class TestCommissioningTimeout(MAASServerTestCase):
                 [response_node['system_id']
                  for response_node in json.loads(response.content)],
             ))
+
+    def test_check_ignores_timezone_skew_between_python_and_database(self):
+        cursor = connection.cursor()
+        # Set time zone, for the duration of the ongoing transaction.
+        cursor.execute("SET LOCAL TIME ZONE +13")
+        self.client_log_in()
+        late_node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.age_node(
+            late_node, settings.COMMISSIONING_TIMEOUT + 1, cursor=cursor)
+        timely_node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        self.age_node(
+            timely_node, settings.COMMISSIONING_TIMEOUT - 1, cursor=cursor)
+
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'check_commissioning'})
+        self.assertEqual(
+            (httplib.OK, [late_node.system_id]),
+            (
+                response.status_code,
+                [
+                    response_node['system_id']
+                    for response_node in json.loads(response.content)
+                ],
+            ))
+        self.assertEqual(
+            NODE_STATUS.FAILED_TESTS,
+            reload_object(late_node).status)
+        self.assertEqual(
+            NODE_STATUS.COMMISSIONING,
+            reload_object(timely_node).status)
 
 
 class AdminCommissioningScriptsAPITest(MAASServerTestCase):
