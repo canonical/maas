@@ -28,9 +28,9 @@ from maasserver.models.config import DEFAULT_OS
 from maasserver.testing import (
     extract_redirect,
     get_prefixed_form_data,
-    reload_object,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 

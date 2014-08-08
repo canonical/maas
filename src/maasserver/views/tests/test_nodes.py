@@ -54,11 +54,13 @@ from maasserver.preseed import (
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    reload_object,
-    reload_objects,
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import (
+    reload_object,
+    reload_objects,
+    )
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     SeleniumTestCase,

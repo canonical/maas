@@ -18,8 +18,8 @@ from maasserver.models.zone import (
     DEFAULT_ZONE_NAME,
     Zone,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 
 

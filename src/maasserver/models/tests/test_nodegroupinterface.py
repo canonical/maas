@@ -25,8 +25,8 @@ from maasserver.models import (
     NodeGroupInterface,
     )
 from maasserver.models.nodegroupinterface import MINIMUM_NETMASK_BITS
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import (
     IPAddress,

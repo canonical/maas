@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Sources` API."""
@@ -20,9 +20,9 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.api import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maastesting.utils import sample_binary_data
 from testtools.matchers import MatchesStructure
 

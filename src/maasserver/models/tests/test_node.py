@@ -54,8 +54,8 @@ from maasserver.models.staticipaddress import (
     StaticIPAddressManager,
     )
 from maasserver.models.user import create_auth_token
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries

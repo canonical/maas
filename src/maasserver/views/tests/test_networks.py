@@ -25,9 +25,9 @@ from maasserver.models import Network
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    reload_object,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maasserver.views.networks import (

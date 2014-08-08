@@ -23,9 +23,9 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     )
 from maasserver.models import StaticIPAddress
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 
 
 class TestNetworksAPI(APITestCase):

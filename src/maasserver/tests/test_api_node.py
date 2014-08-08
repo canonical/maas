@@ -35,14 +35,14 @@ from maasserver.models import (
     Node,
     StaticIPAddress,
     )
-from maasserver.testing import (
-    reload_object,
-    reload_objects,
-    )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.orm import (
+    reload_object,
+    reload_objects,
+    )
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith

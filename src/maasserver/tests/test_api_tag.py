@@ -21,13 +21,13 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import Tag
 from maasserver.models.node import generate_node_system_id
-from maasserver.testing import reload_object
 from maasserver.testing.api import (
     APITestCase,
     make_worker_client,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.orm import reload_object
 from metadataserver.models.commissioningscript import inject_lshw_result
 
 

@@ -39,10 +39,7 @@ from maasserver.models import (
     SSHKey,
     )
 from maasserver.models.user import get_auth_tokens
-from maasserver.testing import (
-    get_data,
-    reload_object,
-    )
+from maasserver.testing import get_data
 from maasserver.testing.api import (
     APITestCase,
     log_in_as_normal_user,
@@ -50,6 +47,7 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import get_one

@@ -20,9 +20,9 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.api import DISPLAYED_BOOTSOURCESELECTION_FIELDS
 from maasserver.models import BootSourceSelection
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools.matchers import MatchesStructure
 

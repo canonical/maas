@@ -102,12 +102,12 @@ from maasserver.node_action import (
     StopNode,
     UseCurtin,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import (
     make_osystem_with_releases,
     make_usable_osystem,

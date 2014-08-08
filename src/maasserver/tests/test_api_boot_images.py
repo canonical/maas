@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the `Boot Images` API."""
@@ -35,13 +35,13 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.refresh_worker import refresh_worker
-from maasserver.testing import reload_object
 from maasserver.testing.api import (
     APITestCase,
     log_in_as_normal_user,
     make_worker_client,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maastesting.celery import CeleryFixture
 from maastesting.matchers import MockCalledOnceWith
 from mock import (

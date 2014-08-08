@@ -28,8 +28,8 @@ from maasserver.models import (
     NodeGroup,
     nodegroup as nodegroup_module,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture

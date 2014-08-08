@@ -27,10 +27,12 @@ from django.http import (
 from maasserver.testing import (
     extract_redirect,
     NoReceivers,
+    )
+from maasserver.testing.factory import factory
+from maasserver.testing.orm import (
     reload_object,
     reload_objects,
     )
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.testing.tests.models import TestModel
 from maastesting.djangotestcase import TestModelMixin

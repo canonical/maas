@@ -36,8 +36,8 @@ import time
 from fixtures import FakeLogger
 from maasserver.fields import MAC
 from maasserver.models.tag import Tag
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import (
     MAASServerTestCase,
     TestWithoutCrochetMixin,

@@ -41,10 +41,6 @@ from maasserver.models import (
     nodegroup as nodegroup_module,
     )
 from maasserver.refresh_worker import refresh_worker
-from maasserver.testing import (
-    reload_object,
-    reload_objects,
-    )
 from maasserver.testing.api import (
     APITestCase,
     explain_unexpected_response,
@@ -54,6 +50,10 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
+from maasserver.testing.orm import (
+    reload_object,
+    reload_objects,
+    )
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod

@@ -20,9 +20,9 @@ import json
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.models import MACAddress
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 
 
 class MACAddressAPITest(APITestCase):

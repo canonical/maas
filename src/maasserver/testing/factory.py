@@ -61,10 +61,8 @@ from maasserver.models import (
     Zone,
     )
 from maasserver.models.node import NODE_TRANSITIONS
-from maasserver.testing import (
-    get_data,
-    reload_object,
-    )
+from maasserver.testing import get_data
+from maasserver.testing.orm import reload_object
 import maastesting.factory
 from maastesting.factory import NO_VALUE
 from metadataserver.fields import Bin

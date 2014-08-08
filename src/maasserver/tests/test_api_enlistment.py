@@ -29,10 +29,10 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.api import MultipleUsersScenarios
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import strip_domain
 from maasserver.utils.orm import get_one

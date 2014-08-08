@@ -42,8 +42,8 @@ from maasserver.node_action import (
     UseCurtin,
     UseDI,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.power.poweraction import PowerAction
 

@@ -19,8 +19,8 @@ from maasserver.models import (
     BootImage,
     Config,
     )
-from maasserver.testing import reload_object
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.testing.boot_images import make_boot_image_params
 

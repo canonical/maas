@@ -25,9 +25,9 @@ import json
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript

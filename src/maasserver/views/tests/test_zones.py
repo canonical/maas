@@ -26,9 +26,9 @@ from maasserver.models.zone import DEFAULT_ZONE_NAME
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
-    reload_object,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views.zones import (
     ZoneAdd,

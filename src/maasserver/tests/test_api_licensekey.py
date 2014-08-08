@@ -19,9 +19,9 @@ import json
 
 from django.core.urlresolvers import reverse
 from maasserver.models.licensekey import LicenseKey
-from maasserver.testing import reload_object
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.utils.orm import get_one
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
