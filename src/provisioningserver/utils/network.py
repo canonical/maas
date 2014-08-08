@@ -113,9 +113,12 @@ def find_mac_via_arp(ip):
 def clean_up_netifaces_address(address, interface):
     """Strip extraneous matter from `netifaces` IPv6 address.
 
-    An apparent bug in `netifaces` suffixes the network interface name to
-    each IPv6 address it sees.  Where that happens, this function fixes it
-    and returns a proper IP address string.
+    Each IPv6 address we get from `netifaces` has a "zone index": a suffix
+    consisting of a percent sign and a network interface name, e.g. `eth0`
+    in GNU/Linux or `0` in Windows.  These are normally used to disambiguate
+    link-local addresses (which have the same network prefix on each link,
+    but may not actually be connected).  `IPAddress` doesn't parse that
+    suffix, so we strip it off.
     """
     return address.replace('%' + interface, '')
 

@@ -339,7 +339,7 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
         interface = factory.make_name('eth')
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
-    def test__removes_interface_suffix(self):
+    def test__removes_zone_index_suffix(self):
         ip = unicode(factory.make_ipv6_address())
         interface = factory.make_name('eth')
         self.assertEqual(
