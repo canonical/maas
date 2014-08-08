@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "are_valid_tls_parameters",
     "call_responder",
+    "ClusterToRegionRPCFixture",
     "make_amp_protocol_factory",
     "TwistedLoggerFixture",
 ]
@@ -106,14 +107,14 @@ are_valid_tls_parameters = MatchesDict({
 })
 
 
-class RegionRPCFixture(fixtures.Fixture):
+class ClusterToRegionRPCFixture(fixtures.Fixture):
     """Patch in a stub region RPC implementation to enable end-to-end testing.
 
     Use this in *cluster* tests.
 
     Example usage::
 
-      fixture = self.useFixture(RegionRPCFixture())
+      fixture = self.useFixture(ClusterToRegionRPCFixture())
       protocol, io = fixture.makeEventLoop(region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
 
@@ -126,7 +127,7 @@ class RegionRPCFixture(fixtures.Fixture):
     """
 
     def setUp(self):
-        super(RegionRPCFixture, self).setUp()
+        super(ClusterToRegionRPCFixture, self).setUp()
         # If services are running, what do we do with any existing RPC
         # service? Do we shut it down and patch in? Do we just patch in and
         # move the running service aside? If it's not running, do we patch
