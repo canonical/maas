@@ -20,7 +20,7 @@ import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.start_cluster_controller
 import provisioningserver.upgrade_cluster
-from provisioningserver.utils import (
+from provisioningserver.utils.script import (
     AtomicWriteScript,
     MainScript,
     )

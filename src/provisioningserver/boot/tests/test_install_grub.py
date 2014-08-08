@@ -21,7 +21,7 @@ from maastesting.testcase import MAASTestCase
 import provisioningserver.boot.install_grub
 from provisioningserver.boot.tftppath import locate_tftp_path
 from provisioningserver.testing.config import set_tftp_root
-from provisioningserver.utils import MainScript
+from provisioningserver.utils.script import MainScript
 from testtools.matchers import FileExists
 
 
