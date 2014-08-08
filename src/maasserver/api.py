@@ -102,10 +102,6 @@ from base64 import (
     b64encode,
     )
 from cStringIO import StringIO
-from datetime import (
-    datetime,
-    timedelta,
-    )
 from functools import partial
 import httplib
 from inspect import getdoc
@@ -858,12 +854,35 @@ class NodesHandler(OperationsHandler):
         Anything that has been commissioning for longer than
         settings.COMMISSIONING_TIMEOUT is moved into the FAILED_TESTS status.
         """
-        interval = timedelta(minutes=settings.COMMISSIONING_TIMEOUT)
-        cutoff = datetime.now() - interval
-        query = Node.objects.filter(
-            status=NODE_STATUS.COMMISSIONING, updated__lte=cutoff)
+        # Compute the cutoff time on the database, using the database's
+        # clock to compare to the "updated" timestamp, also set from the
+        # database's clock.  Otherwise, a sufficient difference between the
+        # two clocks (including timezone offset!) might cause commissioning to
+        # "time out" immediately, or hours late.
+        #
+        # This timeout relies on nothing else updating the commissioning node
+        # within the hour.  Otherwise, the timestamp will be refreshed as a
+        # side effect and timeout will be postponed.
+        #
+        # This query both identifies and updates the failed nodes.  It
+        # refreshes the "updated" timestamp, but does not run any Django-side
+        # code associated with saving the nodes.
+        params = {
+            'commissioning': NODE_STATUS.COMMISSIONING,
+            'failed_tests': NODE_STATUS.FAILED_TESTS,
+            'minutes': settings.COMMISSIONING_TIMEOUT
+            }
+        query = Node.objects.raw("""
+            UPDATE maasserver_node
+            SET
+                status = %(failed_tests)s,
+                updated = now()
+            WHERE
+                status = %(commissioning)s AND
+                updated <= (now() - interval '%(minutes)f minutes')
+            RETURNING *
+            """ % params)
         results = list(query)
-        query.update(status=NODE_STATUS.FAILED_TESTS)
         # Note that Django doesn't call save() on updated nodes here,
         # but I don't think anything requires its effects anyway.
         return results
