@@ -89,6 +89,7 @@ from provisioningserver.utils import (
     parse_key_value_file,
     pause,
     pick_new_mtime,
+    reactor_sync,
     read_text_file,
     retries,
     Safe,
@@ -131,6 +132,7 @@ from twisted.internet.defer import (
     )
 from twisted.internet.task import Clock
 from twisted.internet.threads import deferToThread
+from twisted.python import threadable
 from twisted.python.failure import Failure
 
 
@@ -1383,6 +1385,115 @@ class TestSynchronousDecorator(MAASTestCase):
     def test_allows_call_in_any_thread_when_reactor_not_running(self):
         self.patch(reactor, "running", False)
         self.assertEqual(((3, 4), {"five": 5}), self.return_args(3, 4, five=5))
+
+
+class TestReactorSync(MAASTestCase):
+    """Tests for `reactor_sync`."""
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test__does_what_it_claims(self):
+        whence = []
+
+        def record_whence_while_in_sync_with_reactor():
+            # Sync up with the reactor three times. This increases the chance
+            # that something unexpected could happen, thus breaking the test.
+            # The hope is, naturally, that nothing breaks. It also means we
+            # can see the reactor spinning in between; see the callLater() to
+            # see how we measure this.
+            for _ in xrange(3):
+                with reactor_sync():
+                    # Schedule a call that the reactor will make when we
+                    # release sync with it.
+                    reactor.callLater(0, whence.append, "reactor")
+                    # Spin a bit to demonstrate that the reactor doesn't run
+                    # while we're in the reactor_sync context.
+                    for _ in xrange(10):
+                        whence.append("thread")
+                        # Sleep for a moment to allow other threads - like the
+                        # reactor's thread - a chance to run. Our bet is that
+                        # the reactor's thread _won't_ run because we're
+                        # synchronised with it.
+                        time.sleep(0.01)
+
+        def check(_):
+            self.assertEqual(
+                (["thread"] * 10) + ["reactor"] +
+                (["thread"] * 10) + ["reactor"] +
+                (["thread"] * 10) + ["reactor"],
+                whence)
+
+        d = deferToThread(record_whence_while_in_sync_with_reactor)
+        d.addCallback(check)
+        return d
+
+    def test__updates_io_thread(self):
+        # We're in the reactor thread right now.
+        self.assertTrue(threadable.isInIOThread())
+        reactorThread = threadable.ioThread
+
+        # The rest of this test runs in a separate thread.
+        def in_thread():
+            thisThread = threadable.getThreadID()
+            # This is definitely not the reactor thread.
+            self.assertNotEqual(thisThread, reactorThread)
+            # The IO thread is still the reactor thread.
+            self.assertEqual(reactorThread, threadable.ioThread)
+            self.assertFalse(threadable.isInIOThread())
+            # When we sync with the reactor the current thread is marked
+            # as the IO thread.
+            with reactor_sync():
+                self.assertEqual(thisThread, threadable.ioThread)
+                self.assertTrue(threadable.isInIOThread())
+            # When sync is released the IO thread reverts to the
+            # reactor's thread.
+            self.assertEqual(reactorThread, threadable.ioThread)
+            self.assertFalse(threadable.isInIOThread())
+
+        return deferToThread(in_thread)
+
+    def test__releases_sync_on_error(self):
+
+        def in_thread():
+            with reactor_sync():
+                raise RuntimeError("Boom")
+
+        def check(failure):
+            failure.trap(RuntimeError)
+
+        # The test is that this completes; if sync with the reactor
+        # thread is not released then this will deadlock.
+        return deferToThread(in_thread).addCallbacks(self.fail, check)
+
+    def test__restores_io_thread_on_error(self):
+        # We're in the reactor thread right now.
+        self.assertTrue(threadable.isInIOThread())
+        reactorThread = threadable.ioThread
+
+        def in_thread():
+            with reactor_sync():
+                raise RuntimeError("Boom")
+
+        def check(failure):
+            failure.trap(RuntimeError)
+            self.assertEqual(reactorThread, threadable.ioThread)
+            self.assertTrue(threadable.isInIOThread())
+
+        return deferToThread(in_thread).addCallbacks(self.fail, check)
+
+    def test__does_nothing_in_the_reactor_thread(self):
+        self.assertTrue(threadable.isInIOThread())
+        with reactor_sync():
+            self.assertTrue(threadable.isInIOThread())
+        self.assertTrue(threadable.isInIOThread())
+
+    def test__does_nothing_in_the_reactor_thread_on_error(self):
+        self.assertTrue(threadable.isInIOThread())
+        with ExpectedException(RuntimeError):
+            with reactor_sync():
+                self.assertTrue(threadable.isInIOThread())
+                raise RuntimeError("I sneezed")
+        self.assertTrue(threadable.isInIOThread())
 
 
 class TestQuotePyLiteral(MAASTestCase):
