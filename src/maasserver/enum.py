@@ -210,3 +210,72 @@ POWER_STATE_CHOICES = (
     (POWER_STATE.UNKNOWN, "Unknown"),
     (POWER_STATE.ERROR, "Error"),
     )
+
+
+class BOOT_RESOURCE_TYPE:
+    """The vocabulary of possible types for `BootResource`."""
+    # Downloaded from `BootSources`.
+    SYNCED = 0
+
+    # Generate by MAAS.
+    GENERATED = 1
+
+    # Uploaded by User.
+    UPLOADED = 2
+
+
+# Django choices for BOOT_RESOURCE_TYPE: sequence of tuples (key, UI
+# representation).
+BOOT_RESOURCE_TYPE_CHOICES = (
+    (BOOT_RESOURCE_TYPE.SYNCED, "Synced"),
+    (BOOT_RESOURCE_TYPE.GENERATED, "Generated"),
+    (BOOT_RESOURCE_TYPE.UPLOADED, "Uploaded"),
+    )
+
+
+class BOOT_RESOURCE_FILE_TYPE:
+    """The vocabulary of possible file types for `BootResource`."""
+    #: Tarball of root image.
+    TGZ = 'tgz'
+
+    #: Tarball of dd image.
+    DDTGZ = 'dd-tgz'
+
+    # Following are not allowed on user upload. Only used for syncing
+    # from another simplestreams source. (Most likely maas.ubuntu.com)
+
+    #: Root Image (gets converted to root-image root-tgz, on Cluster)
+    ROOT_IMAGE = 'root-image.gz'
+
+    #: Boot Kernel (ISCSI kernel)
+    BOOT_KERNEL = 'boot-kernel'
+
+    #: Boot Initrd (ISCSI initrd)
+    BOOT_INITRD = 'boot-initrd'
+
+    #: DI Kernel (Debian Installer kernel)
+    DI_KERNEL = 'di-kernel'
+
+    #: DI Initrd (Debian Installer initrd)
+    DI_INITRD = 'di-initrd'
+
+
+# Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
+# representation).
+BOOT_RESOURCE_FILE_TYPE_CHOICES = (
+    (BOOT_RESOURCE_FILE_TYPE.TGZ, "Root Image (tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.DDTGZ, "Root Compreseed DD (dd -> tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE, "Compressed Root Image"),
+    (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),
+    (BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, "Initial ISCSI Ramdisk"),
+    (BOOT_RESOURCE_FILE_TYPE.DI_KERNEL, "Linux DI Kernel"),
+    (BOOT_RESOURCE_FILE_TYPE.DI_INITRD, "Initial DI Ramdisk"),
+    )
+
+
+# Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
+# representation). (Choices allowed for user uploading.)
+BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
+    (BOOT_RESOURCE_FILE_TYPE.TGZ, "Root Image (tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.DDTGZ, "Root Compreseed DD (dd -> tar.gz)"),
+    )

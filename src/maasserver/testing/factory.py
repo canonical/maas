@@ -27,6 +27,8 @@ from django.contrib.auth.models import User
 from django.test.client import RequestFactory
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -39,6 +41,9 @@ from maasserver.fields import (
     )
 from maasserver.models import (
     BootImage,
+    BootResource,
+    BootResourceFile,
+    BootResourceSet,
     BootSource,
     BootSourceSelection,
     DHCPLease,
@@ -972,6 +977,52 @@ class Factory(maastesting.factory.Factory):
             stream.write(content)
         return LargeFile.objects.create(
             sha256=sha256, total_size=size, content=largeobject)
+
+    def make_boot_resource(self, rtype=None, name=None, architecture=None,
+                           extra=None):
+        if rtype is None:
+            rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
+        if name is None:
+            if rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+                name = self.make_name('name')
+            else:
+                os = self.make_name('os')
+                series = self.make_name('series')
+                name = '%s/%s' % (os, series)
+        if architecture is None:
+            arch = self.make_name('arch')
+            subarch = self.make_name('subarch')
+            architecture = '%s/%s' % (arch, subarch)
+        if extra is None:
+            extra = {
+                self.make_name('key'): self.make_name('value')
+                for _ in range(3)
+                }
+        return BootResource.objects.create(
+            rtype=rtype, name=name, architecture=architecture, extra=extra)
+
+    def make_boot_resource_set(self, resource, version=None, label=None):
+        if version is None:
+            version = self.make_name('version')
+        if label is None:
+            label = self.make_name('label')
+        return BootResourceSet.objects.create(
+            resource=resource, version=version, label=label)
+
+    def make_boot_resource_file(self, resource_set, largefile, filename=None,
+                                filetype=None, extra=None):
+        if filename is None:
+            filename = self.make_name('name')
+        if filetype is None:
+            filetype = self.pick_enum(BOOT_RESOURCE_FILE_TYPE)
+        if extra is None:
+            extra = {
+                self.make_name('key'): self.make_name('value')
+                for _ in range(3)
+                }
+        return BootResourceFile.objects.create(
+            resource_set=resource_set, largefile=largefile, filename=filename,
+            filetype=filetype, extra=extra)
 
 
 # Create factory singleton.

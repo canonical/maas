@@ -14,6 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = [
     'BootImage',
+    'BootResource',
+    'BootResourceFile',
+    'BootResourceSet',
     'BootSource',
     'BootSourceSelection',
     'ComponentError',
@@ -48,6 +51,9 @@ from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootimage import BootImage
+from maasserver.models.bootresource import BootResource
+from maasserver.models.bootresourcefile import BootResourceFile
+from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.component_error import ComponentError
@@ -78,10 +84,11 @@ from piston.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    BootImage, ComponentError, Config, DHCPLease, DownloadProgress,
-    Event, EventType, FileStorage, LargeFile, LicenseKey, StaticIPAddress,
-    MACAddress, MACStaticIPAddressLink, Network, NodeGroup, SSHKey, Tag,
-    UserProfile, NodeGroupInterface, Zone, logger)
+    BootImage, BootResource, BootResourceFile, BootResourceSet, ComponentError,
+    Config, DHCPLease, DownloadProgress, Event, EventType, FileStorage,
+    LargeFile, LicenseKey, StaticIPAddress, MACAddress, MACStaticIPAddressLink,
+    Network, NodeGroup, SSHKey, Tag, UserProfile, NodeGroupInterface, Zone,
+    logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
