@@ -402,7 +402,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
 
     def test_created_node_nodegroup_is_inferred_from_origin_network(self):
         network = IPNetwork('192.168.0.3/24')
-        origin_ip = factory.getRandomIPInNetwork(network)
+        origin_ip = factory.pick_ip_in_network(network)
         NodeGroup.objects.ensure_master()
         nodegroup = factory.make_node_group(
             network=network,

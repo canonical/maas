@@ -130,9 +130,9 @@ class TestFactory(MAASTestCase):
         self.assertNotIn(new_network, existing_network)
         self.assertNotIn(existing_network, new_network)
 
-    def test_getRandomIPInNetwork(self):
+    def test_pick_ip_in_network(self):
         network = factory.getRandomNetwork()
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         self.assertTrue(
             network.first <= IPAddress(ip).value <= network.last)
 

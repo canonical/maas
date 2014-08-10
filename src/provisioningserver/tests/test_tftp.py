@@ -352,12 +352,12 @@ class TestTFTPService(MAASTestCase):
         # Initial set of interfaces to bind to.
         ipv4_test_net_3 = IPNetwork("203.0.113.0/24")  # RFC 5737
         normal_addresses = {
-            factory.getRandomIPInNetwork(ipv4_test_net_3),
+            factory.pick_ip_in_network(ipv4_test_net_3),
             factory.make_ipv6_address(),
         }
         link_local_addresses = {
-            factory.getRandomIPInNetwork(IPV4_LINK_LOCAL),
-            factory.getRandomIPInNetwork(IPV6_LINK_LOCAL),
+            factory.pick_ip_in_network(IPV4_LINK_LOCAL),
+            factory.pick_ip_in_network(IPV6_LINK_LOCAL),
         }
         self.patch(
             tftp_module, "get_all_interface_addresses",

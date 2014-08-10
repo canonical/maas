@@ -318,9 +318,9 @@ class Factory(maastesting.factory.Factory):
         if ip_range_high is None:
             ip_range_high = unicode(IPAddress(dynamic_range.last))
         if router_ip is None:
-            router_ip = factory.getRandomIPInNetwork(network)
+            router_ip = factory.pick_ip_in_network(network)
         if ip is None:
-            ip = factory.getRandomIPInNetwork(network)
+            ip = factory.pick_ip_in_network(network)
         if management is None:
             management = factory.pick_enum(NODEGROUPINTERFACE_MANAGEMENT)
         if interface is None:

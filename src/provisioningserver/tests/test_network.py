@@ -35,7 +35,7 @@ def make_inet_address(subnet=None):
     subnet = IPNetwork(subnet)
     addr = {
         'netmask': unicode(subnet.netmask),
-        'addr': factory.getRandomIPInNetwork(subnet),
+        'addr': factory.pick_ip_in_network(subnet),
     }
     if subnet.version == 4:
         # IPv4 addresses also have a broadcast field.
@@ -156,8 +156,8 @@ class TestNetworks(MAASTestCase):
         eth = factory.make_name('eth')
         net1 = factory.make_ipv6_network()
         net2 = factory.make_ipv6_network(disjoint_from=[net1])
-        addr1 = factory.getRandomIPInNetwork(net1)
-        addr2 = factory.getRandomIPInNetwork(net2)
+        addr1 = factory.pick_ip_in_network(net1)
+        addr2 = factory.pick_ip_in_network(net2)
         self.patch_netifaces({
             eth: {
                 AF_INET6: [
@@ -180,8 +180,8 @@ class TestNetworks(MAASTestCase):
         eth = factory.make_name('eth')
         ipv4_net = factory.getRandomNetwork()
         ipv6_net = factory.make_ipv6_network()
-        ipv4_addr = factory.getRandomIPInNetwork(ipv4_net)
-        ipv6_addr = factory.getRandomIPInNetwork(ipv6_net)
+        ipv4_addr = factory.pick_ip_in_network(ipv4_net)
+        ipv6_addr = factory.pick_ip_in_network(ipv6_net)
         self.patch_netifaces({
             eth: {
                 AF_INET: [make_inet_address(ipv4_addr)],

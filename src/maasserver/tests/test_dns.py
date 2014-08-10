@@ -445,7 +445,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_changing_interface_management_updates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         network = IPNetwork('192.168.7.1/24')
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_node_group(
             network=network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
@@ -457,7 +457,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_delete_nodegroup_disables_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         network = IPNetwork('192.168.7.1/24')
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         nodegroup = factory.make_node_group(
             network=network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)

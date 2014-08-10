@@ -215,7 +215,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         hostname = factory.make_hostname()
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         addr_info_result = [(
             server_address.AF_INET, None, None, None, (ip, None))]
         self.patch(
@@ -239,7 +239,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         hostname = factory.make_hostname()
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         addr_info_result = [(
             server_address.AF_INET, None, None, None, (ip, None))]
         mock = self.patch(
@@ -282,7 +282,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_preseed_url_for_known_node_uses_nodegroup_maas_url(self):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         addr_info_result = [(
             server_address.AF_INET, None, None, None, (ip, None))]
         self.patch(server_address, 'getaddrinfo').return_value = (

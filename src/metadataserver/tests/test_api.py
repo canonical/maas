@@ -834,7 +834,7 @@ class TestAnonymousAPI(DjangoTestCase):
     def test_anonymous_get_enlist_preseed_detects_request_origin(self):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         factory.make_node_group(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -926,7 +926,7 @@ class TestEnlistViews(DjangoTestCase):
         maas_url = 'http://%s' % factory.make_hostname()
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         network = IPNetwork("10.1.1/24")
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         factory.make_node_group(
             maas_url=nodegroup_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)

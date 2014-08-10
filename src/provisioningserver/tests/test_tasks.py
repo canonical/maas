@@ -395,8 +395,8 @@ class TestDNSTasks(PservTestCase):
         command = factory.make_string()
         domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
-        dns_ip = factory.getRandomIPInNetwork(network)
-        ip = factory.getRandomIPInNetwork(network)
+        dns_ip = factory.pick_ip_in_network(network)
+        ip = factory.pick_ip_in_network(network)
         forward_zone = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
             mapping={factory.make_string(): ip},
@@ -508,8 +508,8 @@ class TestDNSTasks(PservTestCase):
         # the zone files, and reloads the dns service.
         domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
-        ip = factory.getRandomIPInNetwork(network)
-        dns_ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
+        dns_ip = factory.pick_ip_in_network(network)
         zones = [
             DNSForwardZoneConfig(
                 domain, serial=random.randint(1, 100),

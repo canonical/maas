@@ -1179,8 +1179,8 @@ class TestRegionAdvertisingService(MAASTestCase):
             factory.make_ipv6_address(),
         }
         example_link_local_addrs = {
-            factory.getRandomIPInNetwork(netaddr.ip.IPV4_LINK_LOCAL),
-            factory.getRandomIPInNetwork(netaddr.ip.IPV6_LINK_LOCAL),
+            factory.pick_ip_in_network(netaddr.ip.IPV4_LINK_LOCAL),
+            factory.pick_ip_in_network(netaddr.ip.IPV6_LINK_LOCAL),
         }
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")

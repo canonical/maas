@@ -333,7 +333,7 @@ class TestDNSConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         domain = factory.make_string()
         network = IPNetwork('192.168.0.3/24')
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         forward_zone = DNSForwardZoneConfig(
             domain, mapping={factory.make_string(): ip})
         reverse_zone = DNSReverseZoneConfig(domain, network=network)
@@ -401,7 +401,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         serial = random.randint(1, 200)
         hostname = factory.make_string()
         network = factory.getRandomNetwork()
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         mapping = {hostname: ip}
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=serial, mapping=mapping)
@@ -424,7 +424,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
     def test_get_a_mapping_returns_ipv4_mapping(self):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
-        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_ip = factory.pick_ip_in_network(network)
         ipv4_mapping = {
             factory.make_name('host'): factory.getRandomIPAddress(),
             factory.make_name('host'): factory.getRandomIPAddress(),
@@ -442,7 +442,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
     def test_get_aaaa_mapping_returns_ipv6_mapping(self):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
-        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_ip = factory.pick_ip_in_network(network)
         ipv6_mapping = {
             factory.make_name('host'): factory.make_ipv6_address(),
             factory.make_name('host'): factory.make_ipv6_address(),
@@ -492,9 +492,9 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         domain = factory.make_string()
         network = factory.getRandomNetwork()
-        dns_ip = factory.getRandomIPInNetwork(network)
+        dns_ip = factory.pick_ip_in_network(network)
         ipv4_hostname = factory.make_name('host')
-        ipv4_ip = factory.getRandomIPInNetwork(network)
+        ipv4_ip = factory.pick_ip_in_network(network)
         ipv6_hostname = factory.make_name('host')
         ipv6_ip = factory.make_ipv6_address()
         mapping = {
@@ -608,8 +608,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         mapping = {
-            factory.make_string(): factory.getRandomIPInNetwork(network),
-            factory.make_string(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.pick_ip_in_network(network),
+            factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
@@ -623,8 +623,8 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         in_network_mapping = {
-            factory.make_string(): factory.getRandomIPInNetwork(network),
-            factory.make_string(): factory.getRandomIPInNetwork(network),
+            factory.make_string(): factory.pick_ip_in_network(network),
+            factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))

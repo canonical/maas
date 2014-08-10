@@ -197,7 +197,7 @@ class Factory:
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv6_address)
 
-    def getRandomIPInNetwork(self, network, but_not=None):
+    def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:
             but_not = []
         but_not = [IPAddress(but) for but in but_not]
@@ -222,7 +222,7 @@ class Factory:
             but_not = (IPAddress(low), IPAddress(high))
         for _ in range(100):
             ip_range = tuple(sorted(
-                IPAddress(factory.getRandomIPInNetwork(network))
+                IPAddress(factory.pick_ip_in_network(network))
                 for _ in range(2)
                 ))
             if ip_range[0] < ip_range[1] and ip_range != but_not:

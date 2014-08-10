@@ -73,19 +73,19 @@ class TestServerAddress(MAASServerTestCase):
         self.assertEqual(ip, get_maas_facing_server_address())
 
     def test_get_maas_facing_server_address_returns_local_IP(self):
-        ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.0/8'))
+        ip = factory.pick_ip_in_network(IPNetwork('127.0.0.0/8'))
         self.set_DEFAULT_MAAS_URL(hostname=ip)
         self.assertEqual(ip, get_maas_facing_server_address())
 
     def test_get_maas_facing_server_address_returns_nodegroup_maas_url(self):
-        ip = factory.getRandomIPInNetwork(IPNetwork('127.0.0.0/8'))
+        ip = factory.pick_ip_in_network(IPNetwork('127.0.0.0/8'))
         maas_url = 'http://%s' % ip
         nodegroup = factory.make_node_group(maas_url=maas_url)
         self.assertEqual(
             ip, server_address.get_maas_facing_server_host(nodegroup))
 
     def test_get_maas_facing_server_address_returns_local_v6_IP(self):
-        ip = factory.getRandomIPInNetwork(IPNetwork('::1/128'))
+        ip = factory.pick_ip_in_network(IPNetwork('::1/128'))
         self.set_DEFAULT_MAAS_URL(hostname=ip)
         self.assertEqual(ip, get_maas_facing_server_address())
 

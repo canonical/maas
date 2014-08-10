@@ -222,7 +222,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
 
     def test__ignores_non_address_information(self):
         network = self.network_factory()
-        ip = factory.getRandomIPInNetwork(network)
+        ip = factory.pick_ip_in_network(network)
         interface = factory.make_name('eth', sep='')
         patch_interfaces(self, {
             interface: {
@@ -231,7 +231,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
                     'broadcast': unicode(network.broadcast),
                     'netmask': unicode(network.netmask),
                     'peer': unicode(
-                        factory.getRandomIPInNetwork(network, but_not=[ip])),
+                        factory.pick_ip_in_network(network, but_not=[ip])),
                     }],
                 },
             })

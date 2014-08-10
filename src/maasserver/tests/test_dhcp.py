@@ -241,7 +241,7 @@ class TestDHCP(MAASServerTestCase):
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
 
-        interface.ip = factory.getRandomIPInNetwork(
+        interface.ip = factory.pick_ip_in_network(
             interface.network, but_not=[interface.ip])
         interface.save()
 
@@ -294,7 +294,7 @@ class TestDHCP(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
         self.patch(dhcp, 'write_dhcp_config')
-        new_router_ip = factory.getRandomIPInNetwork(
+        new_router_ip = factory.pick_ip_in_network(
             interface.network, but_not=[interface.router_ip])
 
         interface.router_ip = new_router_ip
@@ -326,7 +326,7 @@ class TestDHCP(MAASServerTestCase):
         self.patch(dhcp, 'write_dhcp_config')
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.foreign_dhcp = factory.getRandomIPInNetwork(
+        interface.foreign_dhcp = factory.pick_ip_in_network(
             interface.network)
         interface.save()
 

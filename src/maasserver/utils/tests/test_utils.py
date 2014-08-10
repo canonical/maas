@@ -213,7 +213,7 @@ class TestFindNodegroup(MAASServerTestCase):
             find_nodegroup(make_request(interface.ip)))
 
     def test_find_nodegroup_returns_None_if_not_found(self):
-        requesting_ip = factory.getRandomIPInNetwork(self.network_factory())
+        requesting_ip = factory.pick_ip_in_network(self.network_factory())
         self.assertIsNone(find_nodegroup(make_request(requesting_ip)))
 
     #
@@ -231,7 +231,7 @@ class TestFindNodegroup(MAASServerTestCase):
         self.assertEqual(
             interface.nodegroup,
             find_nodegroup(
-                make_request(factory.getRandomIPInNetwork(network))))
+                make_request(factory.pick_ip_in_network(network))))
 
     def test_1_managed_interface_and_1_unmanaged(self):
         # The managed nodegroup is chosen in preference to the unmanaged
@@ -243,11 +243,11 @@ class TestFindNodegroup(MAASServerTestCase):
         self.assertEqual(
             interface.nodegroup,
             find_nodegroup(
-                make_request(factory.getRandomIPInNetwork(network))))
+                make_request(factory.pick_ip_in_network(network))))
 
     def test_more_than_1_managed_interface(self):
         network = self.network_factory()
-        requesting_ip = factory.getRandomIPInNetwork(network)
+        requesting_ip = factory.pick_ip_in_network(network)
         self.make_cluster_interface(network=network)
         self.make_cluster_interface(network=network)
         exception = self.assertRaises(
@@ -267,7 +267,7 @@ class TestFindNodegroup(MAASServerTestCase):
         self.assertEqual(
             interface.nodegroup,
             find_nodegroup(
-                make_request(factory.getRandomIPInNetwork(network))))
+                make_request(factory.pick_ip_in_network(network))))
 
     def test_more_than_1_unmanaged_interface(self):
         network = self.network_factory()
@@ -279,11 +279,11 @@ class TestFindNodegroup(MAASServerTestCase):
         self.assertEqual(
             interfaces[0].nodegroup,
             find_nodegroup(
-                make_request(factory.getRandomIPInNetwork(network))))
+                make_request(factory.pick_ip_in_network(network))))
 
     def test_handles_mixed_IPv4_and_IPv6(self):
         matching_network = self.network_factory()
-        requesting_ip = factory.getRandomIPInNetwork(matching_network)
+        requesting_ip = factory.pick_ip_in_network(matching_network)
         self.make_cluster_interface(factory.getRandomNetwork())
         self.make_cluster_interface(factory.make_ipv6_network())
         matching_interface = self.make_cluster_interface(matching_network)
