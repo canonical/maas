@@ -54,10 +54,18 @@ def extract_redirect(http_response):
 
 
 def get_data(filename):
-    """Utility method to read the content of files in
-    src/maasserver/tests.
+    """Read the content of a file in `src/maasserver/tests`.
 
-    Usually used to read files in src/maasserver/tests/data."""
+    Some tests use this to read fixed data stored in files in
+    `src/maasserver/tests/data/`.
+
+    Where possible, provide data in-line in tests, or use fakes, to keep the
+    information close to the tests that rely on it.
+
+    :param filename: A file path relative to `src/maasserver/tests` in
+        this branch.
+    :return: Binary contents of the file, as `bytes`.
+    """
     path = os.path.join(
         os.path.dirname(os.path.abspath(__file__)), '..', 'tests', filename)
     return file(path).read()
