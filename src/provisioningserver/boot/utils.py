@@ -26,10 +26,8 @@ import re
 import StringIO
 import urllib2
 
-from provisioningserver.utils import (
-    call_and_check,
-    tempdir,
-    )
+from provisioningserver.utils import call_and_check
+from provisioningserver.utils.fs import tempdir
 
 
 def urljoin(*args):

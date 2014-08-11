@@ -24,7 +24,7 @@ import signal
 from subprocess import CalledProcessError
 import sys
 
-from provisioningserver.utils import atomic_write
+from provisioningserver.utils.fs import atomic_write
 
 
 class ActionScript:

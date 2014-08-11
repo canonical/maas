@@ -27,8 +27,8 @@ from subprocess import (
     )
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import tempdir
 from provisioningserver.utils.env import environment_variables
+from provisioningserver.utils.fs import tempdir
 
 
 maaslog = get_maas_logger("uec2roottar")

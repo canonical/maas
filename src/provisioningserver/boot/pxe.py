@@ -26,7 +26,7 @@ from provisioningserver.boot import (
     get_parameters,
     )
 from provisioningserver.boot.install_bootloader import install_bootloader
-from provisioningserver.utils import atomic_symlink
+from provisioningserver.utils.fs import atomic_symlink
 
 # Bootloader file names to install.
 BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']

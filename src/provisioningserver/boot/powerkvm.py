@@ -26,10 +26,8 @@ from provisioningserver.boot import (
     utils,
     )
 from provisioningserver.boot.install_bootloader import install_bootloader
-from provisioningserver.utils import (
-    call_and_check,
-    tempdir,
-    )
+from provisioningserver.utils import call_and_check
+from provisioningserver.utils.fs import tempdir
 
 
 GRUB_CONFIG = dedent("""\

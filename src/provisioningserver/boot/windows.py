@@ -33,7 +33,7 @@ from provisioningserver.boot import (
     )
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
-from provisioningserver.utils import tempdir
+from provisioningserver.utils.fs import tempdir
 from tftp.backend import FilesystemReader
 from twisted.python.context import get
 from twisted.python.filepath import FilePath

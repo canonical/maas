@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Low-level routines for access to snippets.
@@ -26,10 +26,8 @@ __all__ = [
 
 import os
 
-from provisioningserver.utils import (
-    locate_config,
-    read_text_file,
-    )
+from provisioningserver.utils import locate_config
+from provisioningserver.utils.fs import read_text_file
 
 
 USERDATA_BASE_DIR = 'templates/commissioning-user-data'

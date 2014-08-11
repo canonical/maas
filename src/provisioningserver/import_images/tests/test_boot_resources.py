@@ -45,7 +45,7 @@ from provisioningserver.import_images.boot_image_mapping import (
     )
 from provisioningserver.import_images.testing.factory import make_image_spec
 from provisioningserver.testing.config import BootSourcesFixture
-from provisioningserver.utils import write_text_file
+from provisioningserver.utils.fs import write_text_file
 from testtools.content import Content
 from testtools.content_type import UTF8_TEXT
 from testtools.matchers import (

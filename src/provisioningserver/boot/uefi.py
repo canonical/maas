@@ -33,10 +33,8 @@ from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
     )
-from provisioningserver.utils import (
-    call_and_check,
-    tempdir,
-    )
+from provisioningserver.utils import call_and_check
+from provisioningserver.utils.fs import tempdir
 
 
 ARCHIVE_URL = "http://archive.ubuntu.com/ubuntu/dists/"

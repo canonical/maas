@@ -98,6 +98,7 @@ from provisioningserver.testing.config import (
     set_tftp_root,
     )
 from provisioningserver.testing.testcase import PservTestCase
+import provisioningserver.utils.fs as fs_module
 from testresources import FixtureResource
 from testtools.matchers import (
     ContainsAll,
@@ -266,7 +267,7 @@ class TestDHCPTasks(PservTestCase):
         mocked_proc.returncode = 0
         mocked_proc.communicate = Mock(return_value=('output', 'error output'))
         mocked_popen = self.patch(
-            utils, "Popen", Mock(return_value=mocked_proc))
+            fs_module, "Popen", Mock(return_value=mocked_proc))
 
         config_params = self.make_dhcp_config_params()
         write_dhcp_config(**config_params)

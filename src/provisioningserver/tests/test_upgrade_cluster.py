@@ -32,7 +32,7 @@ from provisioningserver import (
     upgrade_cluster,
     )
 from provisioningserver.boot.tftppath import list_subdirs
-from provisioningserver.utils import read_text_file
+from provisioningserver.utils.fs import read_text_file
 from testtools.matchers import (
     DirExists,
     FileContains,

@@ -78,7 +78,7 @@ from formencode.validators import (
     Set,
     String,
     )
-from provisioningserver.utils import atomic_write
+from provisioningserver.utils.fs import atomic_write
 import yaml
 
 # Path to the directory on the cluster controller where boot resources are

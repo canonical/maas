@@ -36,10 +36,12 @@ from celery.app import app_or_default
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
 from provisioningserver.utils import (
-    atomic_write,
     call_and_check,
-    incremental_write,
     locate_config,
+    )
+from provisioningserver.utils.fs import (
+    atomic_write,
+    incremental_write,
     )
 import tempita
 

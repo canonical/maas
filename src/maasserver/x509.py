@@ -25,7 +25,7 @@ from string import (
     )
 
 import OpenSSL
-from provisioningserver.utils import (
+from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
     read_text_file,

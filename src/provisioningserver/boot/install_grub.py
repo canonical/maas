@@ -21,7 +21,7 @@ import os.path
 
 from provisioningserver.boot.install_bootloader import make_destination
 from provisioningserver.config import Config
-from provisioningserver.utils import write_text_file
+from provisioningserver.utils.fs import write_text_file
 
 
 CONFIG_FILE = """

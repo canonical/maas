@@ -31,8 +31,8 @@ from provisioningserver.utils import (
     call_and_check,
     ExternalProcessError,
     parse_key_value_file,
-    tempdir,
     )
+from provisioningserver.utils.fs import tempdir
 
 
 bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)

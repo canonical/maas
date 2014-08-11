@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Server fixture for BIND."""
@@ -26,7 +26,7 @@ import time
 import fixtures
 from maastesting.fixtures import TempDirectory
 from provisioningserver.dns.config import generate_rndc
-from provisioningserver.utils import (
+from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
     )
