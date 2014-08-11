@@ -20,9 +20,9 @@ from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from maasserver.models import Network
 from maasserver.models.network import (
+    get_name_and_vlan_from_cluster_interface,
     get_specifier_type,
     IPSpecifier,
-    get_name_and_vlan_from_cluster_interface,
     NameSpecifier,
     parse_network_spec,
     VLANSpecifier,

@@ -141,6 +141,7 @@ from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
 
+
 maaslog = get_maas_logger()
 
 # A reusable null-option for choice fields.
