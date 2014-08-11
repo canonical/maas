@@ -52,7 +52,7 @@ from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
-from provisioningserver.utils import compose_URL_on_IP
+from provisioningserver.utils import compose_URL
 import tempita
 
 
@@ -127,7 +127,7 @@ def get_curtin_installer_url(node):
         image.label,
         image.xinstall_path,
         ])
-    url = compose_URL_on_IP(
+    url = compose_URL(
         'http:///MAAS/static/images/%s' % dyn_uri, cluster_host)
     return url_prepend + url
 

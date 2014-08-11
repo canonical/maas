@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "call_and_check",
-    "compose_URL_on_IP",
+    "compose_URL",
     "create_node",
     "filter_dict",
     "import_settings",
@@ -28,11 +28,13 @@ __all__ = [
 import logging
 import os
 from pipes import quote
+import re
 import string
 import subprocess
 from subprocess import CalledProcessError
 import sys
 from sys import _getframe as getframe
+import urllib
 from urlparse import (
     urlparse,
     urlunparse,
@@ -46,7 +48,6 @@ from apiclient.maas_client import (
     )
 import bson
 from lxml import etree
-from netaddr import IPAddress
 from provisioningserver.auth import get_recorded_api_credentials
 from provisioningserver.cluster_config import get_maas_url
 import simplejson as json
@@ -448,21 +449,24 @@ def classify(func, subjects):
     return matched, other
 
 
-def compose_URL_on_IP(base_url, host):
-    """Produce a URL referring to a host by IP address.
+def compose_URL(base_url, host):
+    """Produce a URL on a given hostname or IP address.
 
-    This is straightforward if the IP address is an IPv4 address; but if it's
-    an IPv6 address, the URL must contain the IP address in square brackets as
-    per RFC 3986.
+    This is straightforward if the IP address is a hostname or an IPv4
+    address; but if it's an IPv6 address, the URL must contain the IP address
+    in square brackets as per RFC 3986.
 
     :param base_url: URL without the host part, e.g. `http:///path'.
-    :param host: IP address to insert in the host part of the URL.
+    :param host: Host name or IP address to insert in the host part of the URL.
     :return: A URL string with the host part taken from `host`, and all others
         from `base_url`.
     """
-    if IPAddress(host).version == 6:
-        netloc_host = '[%s]' % host
+    if re.match('[:.0-9a-fA-F]+(?:%.+)?$', host) and host.count(':') > 0:
+        # IPv6 address, without the brackets.  Add square brackets.
+        # In case there's a zone index (introduced by a % sign), escape it.
+        netloc_host = '[%s]' % urllib.quote(host, safe=':')
     else:
+        # IPv4 address, hostname, or IPv6 with brackets.  Keep as-is.
         netloc_host = host
     parsed_url = urlparse(base_url)
     if parsed_url.port is None:
