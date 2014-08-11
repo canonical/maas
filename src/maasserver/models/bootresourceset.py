@@ -21,8 +21,33 @@ from django.db.models import (
     ForeignKey,
     )
 from maasserver import DefaultMeta
+from maasserver.enum import BOOT_RESOURCE_FILE_TYPE
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+
+# `BootResourceSet` must contain all file types to be consider as supporting
+# the ability to commission.
+COMMISSIONABLE_SET = {
+    BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
+    BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD,
+    BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+    }
+
+# `BootResourceSet` must contain all file types to be consider as supporting
+# the ability to install. 'install' being the 'Debian Installer'.
+INSTALL_SET = {
+    BOOT_RESOURCE_FILE_TYPE.DI_KERNEL,
+    BOOT_RESOURCE_FILE_TYPE.DI_INITRD,
+    }
+
+# `BootResourceSet` must contain atleast one of the file types to be consider
+# as supporting the ability to xinstall. 'xinstall' being the
+# fastpath-installer.
+XINSTALL_TYPES = (
+    BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
+    BOOT_RESOURCE_FILE_TYPE.TGZ,
+    BOOT_RESOURCE_FILE_TYPE.DDTGZ,
+    )
 
 
 class BootResourceSet(CleanSave, TimestampedModel):
@@ -61,3 +86,58 @@ class BootResourceSet(CleanSave, TimestampedModel):
 
     def __repr__(self):
         return "<BootResourceSet %s/%s>" % (self.version, self.label)
+
+    @property
+    def commissionable(self):
+        """True if `BootResourceSet` supports the ability to commission a
+        node."""
+        types = {resource_file.filetype for resource_file in self.files.all()}
+        return COMMISSIONABLE_SET.issubset(types)
+
+    @property
+    def installable(self):
+        """True if `BootResourceSet` supports the ability to install to a
+        node."""
+        types = {resource_file.filetype for resource_file in self.files.all()}
+        return INSTALL_SET.issubset(types)
+
+    @property
+    def xinstallable(self):
+        """True if `BootResourceSet` supports the ability to xinstall to a
+        node."""
+        return any(
+            resource_file.filetype in XINSTALL_TYPES
+            for resource_file in self.files.all())
+
+    @property
+    def total_size(self):
+        """Total amount of space this set will consume."""
+        return sum(
+            resource_file.largefile.total_size
+            for resource_file in self.files.all())
+
+    @property
+    def size(self):
+        """Amount of space this set currently consumes."""
+        return sum(
+            resource_file.largefile.size
+            for resource_file in self.files.all())
+
+    @property
+    def progress(self):
+        """Percentage complete for all files in the set."""
+        size = self.size
+        if size <= 0:
+            # Handle division by zero
+            return 0
+        return self.total_size / float(size)
+
+    @property
+    def complete(self):
+        """True if all files in the set are complete."""
+        if not self.files.exists():
+            return False
+        for resource_file in self.files.all():
+            if not resource_file.largefile.complete:
+                return False
+        return True

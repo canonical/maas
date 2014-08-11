@@ -65,6 +65,11 @@ from maasserver.models import (
     Tag,
     Zone,
     )
+from maasserver.models.bootresourceset import (
+    COMMISSIONABLE_SET,
+    INSTALL_SET,
+    XINSTALL_TYPES,
+    )
 from maasserver.models.node import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
@@ -1023,6 +1028,31 @@ class Factory(maastesting.factory.Factory):
         return BootResourceFile.objects.create(
             resource_set=resource_set, largefile=largefile, filename=filename,
             filetype=filetype, extra=extra)
+
+    def make_boot_resource_file_with_content(
+            self, resource_set, filename=None, filetype=None, extra=None,
+            content=None, size=512):
+        largefile = self.make_large_file(content=content, size=size)
+        return self.make_boot_resource_file(
+            resource_set, largefile, filename=filename, filetype=filetype,
+            extra=extra)
+
+    def make_usable_boot_resource(
+            self, rtype=None, name=None, architecture=None,
+            extra=None, version=None, label=None):
+        resource = self.make_boot_resource(
+            rtype=rtype, name=name, architecture=architecture, extra=extra)
+        resource_set = self.make_boot_resource_set(
+            resource, version=version, label=label)
+        filetypes = COMMISSIONABLE_SET.union(INSTALL_SET)
+        filetypes.add(random.choice(XINSTALL_TYPES))
+        for filetype in filetypes:
+            # We set the filename to the same value as filetype, as in most
+            # cases this will always be true. The simplestreams content from
+            # maas.ubuntu.com, is formatted this way.
+            self.make_boot_resource_file_with_content(
+                resource_set, filename=filetype, filetype=filetype)
+        return resource
 
 
 # Create factory singleton.
