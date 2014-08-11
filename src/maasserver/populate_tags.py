@@ -29,10 +29,8 @@ from maasserver.models.nodeprobeddetails import (
 from maasserver.refresh_worker import refresh_worker
 from provisioningserver.tags import merge_details
 from provisioningserver.tasks import update_node_tags
-from provisioningserver.utils import (
-    classify,
-    try_match_xpath,
-    )
+from provisioningserver.utils import classify
+from provisioningserver.utils.xpath import try_match_xpath
 
 # The nsmap that XPath expression must be compiled with. This will
 # ensure that expressions like //lshw:something will work correctly.

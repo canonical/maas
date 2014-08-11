@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Celery jobs for managing tags.
@@ -40,10 +40,8 @@ from provisioningserver.auth import (
     )
 from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import (
-    classify,
-    try_match_xpath,
-    )
+from provisioningserver.utils import classify
+from provisioningserver.utils.xpath import try_match_xpath
 import simplejson as json
 
 
