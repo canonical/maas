@@ -20,7 +20,7 @@ from urlparse import urljoin
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
 from maas import import_local_settings
-from metadataserver.address import guess_server_address
+from metadataserver.address import guess_server_host
 from provisioningserver.utils import compose_URL
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
 
@@ -70,7 +70,7 @@ LONGPOLL_PATH = '/longpoll/'
 # Default URL specifying protocol, host, and (if necessary) port where
 # systems in this MAAS can find the MAAS server.  Configuration can, and
 # probably should, override this.
-DEFAULT_MAAS_URL = compose_URL("http:///", guess_server_address())
+DEFAULT_MAAS_URL = compose_URL("http:///", guess_server_host())
 
 if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL

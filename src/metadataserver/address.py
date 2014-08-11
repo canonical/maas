@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Figure out server address for the maas_url setting."""
@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'guess_server_address',
+    'guess_server_host',
     ]
 
 from os import environ
@@ -98,8 +98,12 @@ def get_ip_address(interface):
         return None
 
 
-def guess_server_address():
-    """Make a guess as to this server's IP address."""
+def guess_server_host():
+    """Make a guess as to this server's IP address or hostname.
+
+    :return: IP address or hostname.
+    :rtype: unicode
+    """
     ip_route_output = get_command_output(
         '/bin/ip', '-oneline', 'route', 'show')
     interface = find_default_interface(ip_route_output)

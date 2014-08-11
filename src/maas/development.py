@@ -22,7 +22,7 @@ from maas import (
     import_settings,
     settings,
     )
-from metadataserver.address import guess_server_address
+from metadataserver.address import guess_server_host
 import provisioningserver.config
 from provisioningserver.utils import compose_URL
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
@@ -35,7 +35,7 @@ INSTALLED_APPS = None
 import_settings(settings)
 
 # In development, django can be accessed directly on port 5240.
-DEFAULT_MAAS_URL = compose_URL("http://:5240/", guess_server_address())
+DEFAULT_MAAS_URL = compose_URL("http://:5240/", guess_server_host())
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.

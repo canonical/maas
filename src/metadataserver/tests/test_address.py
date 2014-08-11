@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test server-address-guessing logic."""
@@ -151,14 +151,14 @@ class TestAddress(MAASTestCase):
     def test_get_ip_address_returns_None_on_failure(self):
         self.assertIsNone(address.get_ip_address(b'ethturboveyronsuper9'))
 
-    def test_guess_server_address_finds_IP_address(self):
+    def test_guess_server_host_finds_IP_address(self):
         self.assertThat(
-            address.guess_server_address(),
+            address.guess_server_host(),
             MatchesRegex("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"))
 
-    def test_guess_server_address_returns_hostname_as_last_ditch_guess(self):
+    def test_guess_server_host_returns_hostname_as_last_ditch_guess(self):
         def return_empty_list(*args):
             return []
 
         self.patch(address, 'get_command_output', return_empty_list)
-        self.assertEqual(gethostname(), address.guess_server_address())
+        self.assertEqual(gethostname(), address.guess_server_host())
