@@ -111,6 +111,7 @@ from maasserver.models import (
     Tag,
     Zone,
     )
+from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.node import (
     fqdn_is_duplicate,
     nodegroup_fqdn,
@@ -137,7 +138,10 @@ from maasserver.utils.osystems import (
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.network import make_network
+
+maaslog = get_maas_logger()
 
 # A reusable null-option for choice fields.
 BLANK_CHOICE = ('', '-------')
@@ -1175,6 +1179,34 @@ class NodeGroupInterfaceForm(ModelForm):
             'static_ip_range_low',
             'static_ip_range_high',
             )
+
+    def save(self, *args, **kwargs):
+        """Override `ModelForm`.save() so that the network data is copied
+        to a `Network` instance."""
+        interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
+        if interface.network is None:
+            return interface
+        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+        network = Network(
+            name=name,
+            ip=unicode(interface.network.network),
+            netmask=unicode(interface.network.netmask),
+            vlan_tag=vlan_tag,
+            # I bloody hate the damn linter. It actually prefers this.
+            description="Auto created when creating interface %s on "
+                        "cluster %s" % (
+                            interface.name, interface.nodegroup.name),
+            )
+        try:
+            network.save()
+        except ValidationError as e:
+            # It probably already exists, keep calm and carry on.
+            maaslog.warning(
+                "Failed to create Network when adding/editing cluster "
+                "interface %s with error [%s]. This is OK if it already "
+                "exists, or it could be another error" % (name, unicode(e)))
+            pass
+        return interface
 
     def compute_name(self):
         """Return the value the `name` field should have.
