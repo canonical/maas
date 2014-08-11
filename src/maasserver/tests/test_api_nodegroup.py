@@ -58,10 +58,11 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
-    NodeCommissionResult,
+    NodeResult,
     )
 from mock import Mock
 import netaddr
@@ -524,9 +525,10 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
     example_lshw_details_bin = bson.binary.Binary(example_lshw_details)
 
     def set_lshw_details(self, node, data):
-        NodeCommissionResult.objects.store_data(
+        NodeResult.objects.store_data(
             node, commissioningscript.LSHW_OUTPUT_NAME,
-            script_result=0, data=Bin(data))
+            script_result=0, result_type=RESULT_TYPE.COMMISSIONING,
+            data=Bin(data))
 
     example_lldp_details = dedent("""\
         <?xml version="1.0" encoding="UTF-8"?>
@@ -536,9 +538,10 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
     example_lldp_details_bin = bson.binary.Binary(example_lldp_details)
 
     def set_lldp_details(self, node, data):
-        NodeCommissionResult.objects.store_data(
+        NodeResult.objects.store_data(
             node, commissioningscript.LLDP_OUTPUT_NAME,
-            script_result=0, data=Bin(data))
+            script_result=0, result_type=RESULT_TYPE.COMMISSIONING,
+            data=Bin(data))
 
     def test_nodegroup_requires_authentication(self):
         nodegroup = factory.make_node_group()

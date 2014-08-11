@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the `NodeCommissionResult` views."""
+"""Tests for the `NodeResult` views."""
 
 from __future__ import (
     absolute_import,
@@ -38,7 +38,7 @@ def normalise_whitespace(text):
 class TestNodeCommissionResultView(MAASServerTestCase):
 
     def request_page(self, result):
-        """Request and parse the  page for the given `NodeCommissionResult`.
+        """Request and parse the  page for the given `NodeResult`.
 
         :return: The page's main content as an `lxml.html.HtmlElement`.
         """
@@ -112,7 +112,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         return '&'.join('node=%s' % node.system_id for node in nodes)
 
     def request_page(self, nodes=None):
-        """Request and parse the  page for the given `NodeCommissionResult`.
+        """Request and parse the  page for the given `NodeResult`.
 
         :param node: Optional list of `Node` for which results should be
             displayed.  If not given, all results are displayed.

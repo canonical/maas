@@ -45,11 +45,12 @@ from lxml import etree
 from maasserver.fields import MAC
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import (
     Bin,
     BinaryField,
     )
-from metadataserver.models.nodecommissionresult import NodeCommissionResult
+from metadataserver.models.noderesult import NodeResult
 
 
 logger = logging.getLogger(__name__)
@@ -459,13 +460,14 @@ class CommissioningScript(Model):
 def inject_result(node, name, output, exit_status=0):
     """Inject a `name` result and trigger related hooks, if any.
 
-    `output` and `exit_status` are recorded as `NodeCommissionResult`
+    `output` and `exit_status` are recorded as `NodeResult`
     instances with the `name` given. A built-in hook is then searched
     for; if found, it is invoked.
     """
     assert isinstance(output, bytes)
-    NodeCommissionResult.objects.store_data(
-        node, name, script_result=exit_status, data=Bin(output))
+    NodeResult.objects.store_data(
+        node, name, script_result=exit_status,
+        result_type=RESULT_TYPE.COMMISSIONING, data=Bin(output))
     if name in BUILTIN_COMMISSIONING_SCRIPTS:
         postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
         postprocess_hook(node=node, output=output, exit_status=exit_status)

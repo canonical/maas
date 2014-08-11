@@ -1,7 +1,7 @@
 # Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-""":class:`NodeCommissionResult` model."""
+""":class:`NodeResult` model."""
 
 from __future__ import (
     absolute_import,
@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'NodeCommissionResult',
+    'NodeResult',
     ]
 
 
@@ -28,17 +28,21 @@ from django.utils.html import escape
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from metadataserver import DefaultMeta
+from metadataserver.enum import (
+    RESULT_TYPE,
+    RESULT_TYPE_CHOICES,
+    )
 from metadataserver.fields import BinaryField
 
 
-class NodeCommissionResultManager(Manager):
-    """Utility to manage a collection of :class:`NodeCommissionResult`s."""
+class NodeResultManager(Manager):
+    """Utility to manage a collection of :class:`NodeResult`s."""
 
     def clear_results(self, node):
         """Remove all existing results for a node."""
         self.filter(node=node).delete()
 
-    def store_data(self, node, name, script_result, data):
+    def store_data(self, node, name, script_result, result_type, data):
         """Store data about a node.
 
         :param node: The node that this result pertains to.
@@ -52,6 +56,10 @@ class NodeCommissionResultManager(Manager):
             script.
         :type script_result: int
 
+        :param result_type: The enum value for either commissioning (0)
+            or installing (1).
+        :type script_result: int
+
         :param data: The raw binary output of the commissioning
             script.
         :type data: :class:`metadataserver.fields.Bin`
@@ -59,30 +67,34 @@ class NodeCommissionResultManager(Manager):
         """
         existing, created = self.get_or_create(
             node=node, name=name,
-            defaults=dict(script_result=script_result, data=data))
+            defaults=dict(
+                script_result=script_result, result_type=result_type,
+                data=data))
         if not created:
             existing.script_result = script_result
+            existing.result_type = result_type
             existing.data = data
             existing.save()
         return existing
 
     def get_data(self, node, name):
         """Get data about a node."""
-        ncr = get_object_or_404(NodeCommissionResult, node=node, name=name)
+        ncr = get_object_or_404(NodeResult, node=node, name=name)
         return ncr.data
 
 
-class NodeCommissionResult(CleanSave, TimestampedModel):
-    """Storage for data returned from node commissioning.
+class NodeResult(CleanSave, TimestampedModel):
+    """Storage for data returned from node commissioning/installing.
 
-    Commissioning a node results in various bits of data that need to be
-    stored, such as lshw output.  This model allows storing of this data
-    as unicode text, with an arbitrary name, for later retrieval.
+    Commissioning/Installing a node results in various bits of data that
+    need to be stored, such as lshw output.  This model allows storing of
+    this data as unicode text, with an arbitrary name, for later retrieval.
 
     :ivar node: The context :class:`Node`.
-    :ivar status: If this data results from the execution of a script, this
-        is the status of this execution.  This can be "OK", "FAILED" or
+    :ivar script_result: If this data results from the execution of a script,
+        this is the status of this execution.  This can be "OK", "FAILED" or
         "WORKING" for progress reports.
+    :ivar result_type: This can be either commissioning or installing.
     :ivar name: A unique name to use for the data being stored.
     :ivar data: The file's actual data, unicode only.
     """
@@ -90,11 +102,14 @@ class NodeCommissionResult(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         unique_together = ('node', 'name')
 
-    objects = NodeCommissionResultManager()
+    objects = NodeResultManager()
 
     node = ForeignKey(
         'maasserver.Node', null=False, editable=False, unique=False)
     script_result = IntegerField(editable=False)
+    result_type = IntegerField(
+        choices=RESULT_TYPE_CHOICES, editable=False,
+        default=RESULT_TYPE.COMMISSIONING)
     name = CharField(max_length=255, unique=False, editable=False)
     data = BinaryField(
         max_length=1024 * 1024, editable=True, blank=True, default=b'',

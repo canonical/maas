@@ -27,10 +27,11 @@ from maasserver.third_party_drivers import (
     )
 from maastesting import root
 from maastesting.testcase import MAASTestCase
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     commissioningscript,
-    NodeCommissionResult,
+    NodeResult,
     )
 
 
@@ -39,9 +40,9 @@ class TestNodeModaliases(MAASTestCase):
     def test_uses_commissioning_modaliases(self):
         test_data = b'hulla\nbaloo'
         node = factory.make_node()
-        NodeCommissionResult.objects.store_data(
+        NodeResult.objects.store_data(
             node, commissioningscript.LIST_MODALIASES_OUTPUT_NAME,
-            0, Bin(test_data))
+            0, RESULT_TYPE.COMMISSIONING, Bin(test_data))
 
         aliases = node_modaliases(node)
         self.assertEqual(['hulla', 'baloo'], aliases)

@@ -63,12 +63,15 @@ from maasserver.preseed import (
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_one
 from metadataserver import logger
-from metadataserver.enum import COMMISSIONING_STATUS
+from metadataserver.enum import (
+    RESULT_TYPE,
+    SIGNAL_STATUS,
+    )
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
-    NodeCommissionResult,
     NodeKey,
+    NodeResult,
     NodeUserData,
     )
 from metadataserver.models.commissioningscript import (
@@ -169,20 +172,23 @@ class VersionIndexHandler(MetadataViewHandler):
     create = update = delete = None
     fields = ('maas-commissioning-scripts', 'meta-data', 'user-data')
 
-    # States in which a node is allowed to signal commissioning status.
-    # (Only in Commissioning state, however, will it have any effect.)
+    # States in which a node is allowed to signal
+    # commissioning/installing status.
+    # (Only in Commissioning/Allocated state, however,
+    # will it have any effect.)
     signalable_states = [
+        NODE_STATUS.ALLOCATED,
         NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.READY,
         NODE_STATUS.FAILED_TESTS,
+        NODE_STATUS.READY,
         ]
 
     # Statuses that a commissioning node may signal, and the respective
     # state transitions that they trigger on the node.
     signaling_statuses = {
-        COMMISSIONING_STATUS.OK: NODE_STATUS.READY,
-        COMMISSIONING_STATUS.FAILED: NODE_STATUS.FAILED_TESTS,
-        COMMISSIONING_STATUS.WORKING: None,
+        SIGNAL_STATUS.OK: NODE_STATUS.READY,
+        SIGNAL_STATUS.FAILED: NODE_STATUS.FAILED_TESTS,
+        SIGNAL_STATUS.WORKING: None,
     }
 
     def read(self, request, version, mac=None):
@@ -196,6 +202,14 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_fields.remove('user-data')
         return make_list_response(sorted(shown_fields))
 
+    def _store_installing_results(self, node, request):
+        """Store installing result file for `node`."""
+        for name, uploaded_file in request.FILES.items():
+            raw_content = uploaded_file.read()
+            NodeResult.objects.store_data(
+                node, name, script_result=0,
+                result_type=RESULT_TYPE.INSTALLING, data=Bin(raw_content))
+
     def _store_commissioning_results(self, node, request):
         """Store commissioning result files for `node`."""
         script_result = int(request.POST.get('script_result', 0))
@@ -206,47 +220,53 @@ class VersionIndexHandler(MetadataViewHandler):
                 postprocess_hook(
                     node=node, output=raw_content,
                     exit_status=script_result)
-            NodeCommissionResult.objects.store_data(
-                node, name, script_result, Bin(raw_content))
+            NodeResult.objects.store_data(
+                node, name, script_result,
+                result_type=RESULT_TYPE.COMMISSIONING, data=Bin(raw_content))
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
-        """Signal commissioning status.
+        """Signal commissioning/installing status.
 
-        A commissioning node can call this to report progress of the
-        commissioning process to the metadata server.
+        A commissioning/installing node can call this to report progress of
+        the commissioning/installing process to the metadata server.
 
-        Calling this from a node that is not Commissioning, Ready, or
-        Failed Tests is an error.  Signaling completion more than once is not
-        an error; all but the first successful call are ignored.
+        Calling this from a node that is not Allocated, Commissioning, Ready,
+        or Failed Tests is an error. Signaling completion more than once is
+        not an error; all but the first successful call are ignored.
 
-        :param status: A commissioning status code.  This can be "OK" (to
-            signal that commissioning has completed successfully), or "FAILED"
-            (to signal failure), or "WORKING" (for progress reports).
+        :param status: A commissioning/installing status code. This can be "OK"
+            (to signal that commissioning has completed successfully), or
+            "FAILED" (to signal failure), or "WORKING" (for progress reports).
         :param script_result: If this call uploads files, this parameter must
             be provided and will be stored as the return value for the script
             which produced these files.
-        :param error: An optional error string.  If given, this will be stored
+        :param error: An optional error string. If given, this will be stored
             (overwriting any previous error string), and displayed in the MAAS
-            UI.  If not given, any previous error string will be cleared.
+            UI. If not given, any previous error string will be cleared.
         """
         node = get_queried_node(request, for_mac=mac)
         status = get_mandatory_param(request.POST, 'status')
         if node.status not in self.signalable_states:
             raise NodeStateViolation(
-                "Node wasn't commissioning (status is %s)"
+                "Node wasn't commissioning/installing (status is %s)"
                 % NODE_STATUS_CHOICES_DICT[node.status])
 
         if status not in self.signaling_statuses:
             raise MAASAPIBadRequest(
-                "Unknown commissioning status: '%s'" % status)
+                "Unknown commissioning/installing status: '%s'" % status)
 
-        if node.status != NODE_STATUS.COMMISSIONING:
-            # Already registered.  Nothing to be done.
+        if node.status != NODE_STATUS.COMMISSIONING and \
+           node.status != NODE_STATUS.ALLOCATED:
+            # If commissioning, it is already registered.  Nothing to be done.
+            # If it is installing, should be in allocated state.
             return rc.ALL_OK
 
-        self._store_commissioning_results(node, request)
-        store_node_power_parameters(node, request)
+        if node.status == NODE_STATUS.COMMISSIONING:
+            self._store_commissioning_results(node, request)
+            store_node_power_parameters(node, request)
+        elif node.status == NODE_STATUS.ALLOCATED:
+            self._store_installing_results(node, request)
 
         target_status = self.signaling_statuses.get(status)
         if target_status in (None, node.status):

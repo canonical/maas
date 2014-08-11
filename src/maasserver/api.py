@@ -254,7 +254,7 @@ from maasserver.utils.orm import (
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
-    NodeCommissionResult,
+    NodeResult,
     )
 import netaddr
 from piston.emitters import JSONEmitter
@@ -3509,33 +3509,41 @@ class CommissioningScriptHandler(OperationsHandler):
 
 
 class CommissioningResultsHandler(OperationsHandler):
-    """Read the collection of NodeCommissionResult in the MAAS."""
+    """Read the collection of NodeResult in the MAAS."""
     api_doc_section_name = "Commissioning results"
     create = read = update = delete = None
 
-    model = NodeCommissionResult
-    fields = ('name', 'script_result', 'updated', 'created', 'node', 'data')
+    model = NodeResult
+    fields = (
+        'name', 'script_result', 'result_type', 'updated', 'created',
+        'node', 'data')
 
     @operation(idempotent=True)
     def list(self, request):
-        """List NodeCommissionResult visible to the user, optionally filtered.
+        """List NodeResult visible to the user, optionally filtered.
 
         :param system_id: An optional list of system ids.  Only the
-            commissioning results related to the nodes with these system ids
+            results related to the nodes with these system ids
             will be returned.
         :type system_id: iterable
-        :param name: An optional list of names.  Only the commissioning
-            results with the specified names will be returned.
+        :param name: An optional list of names.  Only the results
+            with the specified names will be returned.
+        :type name: iterable
+        :param result_type: An optional result_type.  Only the results
+            with the specified result_type will be returned.
         :type name: iterable
         """
         # Get filters from request.
         system_ids = get_optional_list(request.GET, 'system_id')
         names = get_optional_list(request.GET, 'name')
+        result_type = get_optional_param(request.GET, 'result_type')
         nodes = Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=system_ids)
-        results = NodeCommissionResult.objects.filter(node_id__in=nodes)
+        results = NodeResult.objects.filter(node_id__in=nodes)
         if names is not None:
             results = results.filter(name__in=names)
+        if result_type is not None:
+            results = results.filter(result_type__in=result_type)
         return results
 
     @classmethod

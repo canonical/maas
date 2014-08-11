@@ -57,8 +57,8 @@ from metadataserver.api import (
     UnknownMetadataVersion,
     )
 from metadataserver.models import (
-    NodeCommissionResult,
     NodeKey,
+    NodeResult,
     NodeUserData,
     )
 from metadataserver.models.commissioningscript import ARCHIVE_PREFIX
@@ -479,7 +479,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             (
                 httplib.CONFLICT,
-                "Node wasn't commissioning (status is Declared)",
+                "Node wasn't commissioning/installing (status is Declared)",
             ),
             (response.status_code, response.content))
 
@@ -500,7 +500,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             client, script_result=script_result,
             files={filename: factory.make_string().encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        result = NodeCommissionResult.objects.get(node=node)
+        result = NodeResult.objects.get(node=node)
         self.assertEqual(script_result, result.script_result)
 
     def test_signaling_stores_empty_script_result(self):
@@ -510,7 +510,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             client, script_result=random.randint(0, 10),
             files={factory.make_string(): ''.encode('ascii')})
         self.assertEqual(httplib.OK, response.status_code, response.content)
-        result = NodeCommissionResult.objects.get(node=node)
+        result = NodeResult.objects.get(node=node)
         self.assertEqual('', result.data)
 
     def test_signaling_WORKING_keeps_owner(self):
@@ -603,7 +603,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             {status: filename for status in statuses},
             {
-                status: NodeCommissionResult.objects.get(node=node).name
+                status: NodeResult.objects.get(node=node).name
                 for status, node in nodes.items()})
 
     def test_signal_stores_file_contents(self):
@@ -615,7 +615,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             client, script_result=script_result, files={'file.txt': text})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
-            text, NodeCommissionResult.objects.get_data(node, 'file.txt'))
+            text, NodeResult.objects.get_data(node, 'file.txt'))
 
     def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
@@ -628,7 +628,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             unicode_text.encode("utf-8"),
-            NodeCommissionResult.objects.get_data(node, 'file.txt'))
+            NodeResult.objects.get_data(node, 'file.txt'))
 
     def test_signal_stores_multiple_files(self):
         contents = {
@@ -644,7 +644,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             contents,
             {
                 result.name: result.data
-                for result in node.nodecommissionresult_set.all()
+                for result in node.noderesult_set.all()
             })
 
     def test_signal_stores_files_up_to_documented_size_limit(self):
@@ -660,7 +660,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             client, script_result=script_result,
             files={'output.txt': contents.encode('utf-8')})
         self.assertEqual(httplib.OK, response.status_code)
-        stored_data = NodeCommissionResult.objects.get_data(
+        stored_data = NodeResult.objects.get_data(
             node, 'output.txt')
         self.assertEqual(size_limit, len(stored_data))
 

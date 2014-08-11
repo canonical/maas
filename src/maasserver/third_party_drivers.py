@@ -123,7 +123,7 @@ class DriversConfig(ConfigBase):
 def node_modaliases(node):
     """Return a list of modaliases from the node."""
     name = commissioningscript.LIST_MODALIASES_OUTPUT_NAME
-    query = node.nodecommissionresult_set.filter(name__exact=name)
+    query = node.noderesult_set.filter(name__exact=name)
 
     if len(query) == 0:
         return []

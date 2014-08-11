@@ -75,10 +75,11 @@ from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
 import maastesting.factory
 from maastesting.factory import NO_VALUE
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
-    NodeCommissionResult,
+    NodeResult,
     )
 from netaddr import (
     IPAddress,
@@ -435,8 +436,9 @@ class Factory(maastesting.factory.Factory):
             data = b"ncrdata-" + self.make_bytes()
         if script_result is None:
             script_result = random.randint(0, 10)
-        ncr = NodeCommissionResult(
-            node=node, name=name, script_result=script_result, data=Bin(data))
+        ncr = NodeResult(
+            node=node, name=name, script_result=script_result,
+            result_type=RESULT_TYPE.COMMISSIONING, data=Bin(data))
         ncr.save()
         return ncr
 

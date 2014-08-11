@@ -44,6 +44,7 @@ from maasserver.testing.testcase import (
     )
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     CommissioningScript,
@@ -62,7 +63,7 @@ from metadataserver.models.commissioningscript import (
     set_virtual_tag,
     update_hardware_details,
     )
-from metadataserver.models.nodecommissionresult import NodeCommissionResult
+from metadataserver.models.noderesult import NodeResult
 from mock import (
     call,
     create_autospec,
@@ -368,9 +369,10 @@ class TestInjectResult(MAASServerTestCase):
         inject_result(node, name, output, exit_status)
 
         self.assertThat(
-            NodeCommissionResult.objects.get(node=node, name=name),
+            NodeResult.objects.get(node=node, name=name),
             MatchesStructure.byEquality(
                 node=node, name=name, script_result=exit_status,
+                result_type=RESULT_TYPE.COMMISSIONING,
                 data=output))
 
     def test_inject_result_calls_hook(self):

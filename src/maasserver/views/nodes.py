@@ -91,7 +91,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
-from metadataserver.models import NodeCommissionResult
+from metadataserver.models import NodeResult
 from netaddr import (
     EUI,
     NotRegisteredError,
@@ -559,7 +559,7 @@ class NodeView(NodeViewMixin, UpdateView):
             context["probed_details"] = etree.tostring(
                 probed_details, encoding=unicode, pretty_print=True)
 
-        results = NodeCommissionResult.objects.filter(node=node).count()
+        results = NodeResult.objects.filter(node=node).count()
         context['nodecommissionresults'] = results
 
         context['third_party_drivers_enabled'] = Config.objects.get_config(

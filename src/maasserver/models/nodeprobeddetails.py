@@ -23,9 +23,10 @@ __all__ = [
 from base64 import b64decode
 from collections import Sequence
 
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import (
     commissioningscript,
-    NodeCommissionResult,
+    NodeResult,
     )
 
 # A map of commissioning script output names to their detail
@@ -67,9 +68,9 @@ def get_probed_details(system_ids):
 
     assert not any(isinstance(system_id, bytes) for system_id in system_ids)
 
-    query = NodeCommissionResult.objects.filter(
+    query = NodeResult.objects.filter(
         node__system_id__in=system_ids, name__in=script_output_nsmap,
-        script_result=0)
+        script_result=0, result_type=RESULT_TYPE.COMMISSIONING)
     results = query.values_list('node__system_id', 'name', 'data')
 
     detail_template = dict.fromkeys(script_output_nsmap.values())

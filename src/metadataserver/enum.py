@@ -13,13 +13,14 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'COMMISSIONING_STATUS',
-    'COMMISSIONING_STATUS_CHOICES',
+    'SIGNAL_STATUS',
+    'SIGNAL_STATUS_CHOICES',
+    'RESULT_TYPE',
+    'RESULT_TYPE_CHOICES',
     ]
 
 
-class COMMISSIONING_STATUS:
-    """The vocabulary of a commissioning script's possible statuses."""
+class SIGNAL_STATUS:
     DEFAULT = "OK"
 
     OK = "OK"
@@ -27,8 +28,20 @@ class COMMISSIONING_STATUS:
     WORKING = "WORKING"
 
 
-COMMISSIONING_STATUS_CHOICES = (
-    (COMMISSIONING_STATUS.OK, "OK"),
-    (COMMISSIONING_STATUS.FAILED, "FAILED"),
-    (COMMISSIONING_STATUS.WORKING, "WORKING"),
+SIGNAL_STATUS_CHOICES = (
+    (SIGNAL_STATUS.OK, "OK"),
+    (SIGNAL_STATUS.FAILED, "FAILED"),
+    (SIGNAL_STATUS.WORKING, "WORKING"),
+)
+
+
+class RESULT_TYPE:
+
+    COMMISSIONING = 0
+    INSTALLING = 1
+
+
+RESULT_TYPE_CHOICES = (
+    (RESULT_TYPE.COMMISSIONING, "Commissioning"),
+    (RESULT_TYPE.INSTALLING, "Installing"),
 )

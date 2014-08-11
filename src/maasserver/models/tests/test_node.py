@@ -65,9 +65,10 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
-    NodeCommissionResult,
+    NodeResult,
     NodeUserData,
     )
 from provisioningserver.power.poweraction import PowerAction
@@ -920,24 +921,26 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.DECLARED)
-        NodeCommissionResult.objects.store_data(
+        NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
+            RESULT_TYPE.COMMISSIONING,
             Bin(factory.make_bytes()))
         node.start_commissioning(factory.make_admin())
-        self.assertItemsEqual([], node.nodecommissionresult_set.all())
+        self.assertItemsEqual([], node.noderesult_set.all())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
         node = factory.make_node()
         filename = factory.make_string()
         data = factory.make_bytes()
         script_result = random.randint(0, 10)
-        NodeCommissionResult.objects.store_data(
-            node, filename, script_result, Bin(data))
+        NodeResult.objects.store_data(
+            node, filename, script_result, RESULT_TYPE.COMMISSIONING,
+            Bin(data))
         other_node = factory.make_node(status=NODE_STATUS.DECLARED)
         other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
-            data, NodeCommissionResult.objects.get_data(node, filename))
+            data, NodeResult.objects.get_data(node, filename))
 
     def test_abort_commissioning_changes_status_and_stops_node(self):
         self.patch(PowerAction, 'run_shell').return_value = ('', '')
