@@ -158,6 +158,22 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         """Return true if this interface is managed by MAAS."""
         return self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
 
+    def get_dynamic_ip_range(self):
+        if self.ip_range_low and self.ip_range_high:
+            return IPRange(
+                self.ip_range_low,
+                self.ip_range_high)
+        else:
+            return None
+
+    def get_static_ip_range(self):
+        if self.static_ip_range_low and self.static_ip_range_high:
+            return IPRange(
+                self.static_ip_range_low,
+                self.static_ip_range_high)
+        else:
+            return None
+
     def display_management(self):
         """Return management status text as displayed to the user."""
         return NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT[self.management]

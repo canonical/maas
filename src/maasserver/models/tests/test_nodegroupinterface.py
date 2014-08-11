@@ -372,3 +372,51 @@ class TestNodeGroupInterface(MAASServerTestCase):
             static_ip_range_high='10.9.9.200',
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertTrue(interface.manages_static_range())
+
+    @staticmethod
+    def make_managed_interface():
+        return factory.make_node_group_interface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            nodegroup=factory.make_node_group())
+
+    def test_dynamic_ip_range_returns_None_if_range_low_not_set(self):
+        interface = self.make_managed_interface()
+        interface.ip_range_low = None
+        self.assertIsNone(interface.get_dynamic_ip_range())
+
+    def test_dynamic_ip_range_returns_None_if_range_high_not_set(self):
+        interface = self.make_managed_interface()
+        interface.ip_range_high = None
+        self.assertIsNone(interface.get_dynamic_ip_range())
+
+    def test_static_ip_range_returns_None_if_range__not_set(self):
+        interface = self.make_managed_interface()
+        interface.static_ip_range_low = None
+        self.assertIsNone(interface.get_static_ip_range())
+
+    def test_static_ip_range_returns_None_if_range_high_not_set(self):
+        interface = self.make_managed_interface()
+        interface.static_ip_range_high = None
+        self.assertIsNone(interface.get_static_ip_range())
+
+    def test_dynamic_ip_range_returns_IPRange_if_range_set(self):
+        interface = self.make_managed_interface()
+        ip_range = interface.get_dynamic_ip_range()
+        self.assertIsNotNone(ip_range)
+        self.assertEqual(
+            IPAddress(ip_range.first).format(),
+            interface.ip_range_low)
+        self.assertEqual(
+            IPAddress(ip_range.last).format(),
+            interface.ip_range_high)
+
+    def test_static_ip_range_returns_IPRange_if_range_set(self):
+        interface = self.make_managed_interface()
+        ip_range = interface.get_static_ip_range()
+        self.assertIsNotNone(ip_range)
+        self.assertEqual(
+            IPAddress(ip_range.first).format(),
+            interface.static_ip_range_low)
+        self.assertEqual(
+            IPAddress(ip_range.last).format(),
+            interface.static_ip_range_high)
