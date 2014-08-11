@@ -27,12 +27,12 @@ from subprocess import (
     )
 from textwrap import dedent
 
-from provisioningserver.utils import (
+from provisioningserver.utils import parse_key_value_file
+from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
-    parse_key_value_file,
     )
-from provisioningserver.utils.fs import tempdir
 
 
 bad_key_pattern = re.compile("[+/]no|no[+/]", flags=re.IGNORECASE)

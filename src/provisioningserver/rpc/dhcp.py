@@ -22,7 +22,7 @@ from provisioningserver.rpc.exceptions import (
     CannotCreateHostMap,
     CannotRemoveHostMap,
     )
-from provisioningserver.utils import ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 maaslog = get_maas_logger("dhcp")

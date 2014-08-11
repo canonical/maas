@@ -35,7 +35,7 @@ from provisioningserver.omshell import (
     generate_omapi_key,
     Omshell,
     )
-from provisioningserver.utils import ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import (
     EndsWith,
     MatchesStructure,

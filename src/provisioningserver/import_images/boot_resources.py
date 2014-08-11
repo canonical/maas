@@ -34,11 +34,11 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
-from provisioningserver.utils import call_and_check
 from provisioningserver.utils.fs import (
     atomic_write,
     read_text_file,
     )
+from provisioningserver.utils.shell import call_and_check
 
 
 class NoConfigFile(Exception):

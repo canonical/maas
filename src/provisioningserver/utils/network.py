@@ -27,7 +27,7 @@ from netaddr import (
     IPNetwork,
     )
 import netifaces
-from provisioningserver.utils import call_and_check
+from provisioningserver.utils.shell import call_and_check
 
 
 def make_network(ip_address, netmask_or_bits, **kwargs):

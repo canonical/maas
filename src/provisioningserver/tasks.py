@@ -64,14 +64,14 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import PowerAction
-from provisioningserver.utils import (
-    call_and_check,
-    ExternalProcessError,
-    warn_deprecated,
-    )
+from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.network import find_ip_via_arp
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+    )
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {

@@ -48,7 +48,6 @@ from provisioningserver import (
     cache,
     tags,
     tasks,
-    utils,
     )
 from provisioningserver.boot import tftppath
 from provisioningserver.dhcp import (
@@ -98,7 +97,9 @@ from provisioningserver.testing.config import (
     set_tftp_root,
     )
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.utils import filter_dict
 import provisioningserver.utils.fs as fs_module
+from provisioningserver.utils.shell import ExternalProcessError
 from testresources import FixtureResource
 from testtools.matchers import (
     ContainsAll,
@@ -310,7 +311,7 @@ class TestDHCPTasks(PservTestCase):
         # Add whitespaces around the error message to make sure they
         # are stipped off.
         output = ' ' + ALREADY_STOPPED_MESSAGE + '\n'
-        exception = utils.ExternalProcessError(
+        exception = ExternalProcessError(
             ALREADY_STOPPED_RETURNCODE, [], output=output)
         self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
@@ -319,20 +320,20 @@ class TestDHCPTasks(PservTestCase):
     def test_stop_dhcp_server_raises_other_returncodes(self):
         # Use a returncode that is *not* ALREADY_STOPPED_RETURNCODE.
         returncode = ALREADY_STOPPED_RETURNCODE + 1
-        exception = utils.ExternalProcessError(
+        exception = ExternalProcessError(
             returncode, [], output=ALREADY_STOPPED_MESSAGE)
         self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
-        self.assertRaises(utils.ExternalProcessError, stop_dhcp_server)
+        self.assertRaises(ExternalProcessError, stop_dhcp_server)
 
     def test_stop_dhcp_server_raises_other_error_outputs(self):
         # Use an error output that is *not* ALREADY_STOPPED_MESSAGE.
         output = factory.make_string()
-        exception = utils.ExternalProcessError(
+        exception = ExternalProcessError(
             ALREADY_STOPPED_RETURNCODE, [], output=output)
         self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
-        self.assertRaises(utils.ExternalProcessError, stop_dhcp_server)
+        self.assertRaises(ExternalProcessError, stop_dhcp_server)
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):
@@ -490,7 +491,7 @@ class TestDNSTasks(PservTestCase):
         # If we simulate RNDC_COMMAND_MAX_RETRY + 1 failures, the
         # task fails.
         number_of_failures = RNDC_COMMAND_MAX_RETRY + 1
-        raised_exception = utils.ExternalProcessError(
+        raised_exception = ExternalProcessError(
             random.randint(100, 200), factory.make_name('exception'))
         simulate_failures = MultiFakeMethod(
             [FakeMethod(failure=raised_exception)] * number_of_failures +
@@ -498,7 +499,7 @@ class TestDNSTasks(PservTestCase):
         self.patch(tasks, 'execute_rndc_command', simulate_failures)
         command = factory.make_string()
         self.assertRaises(
-            utils.ExternalProcessError, rndc_command.delay,
+            ExternalProcessError, rndc_command.delay,
             command, retry=True)
 
     def test_rndc_command_attached_to_dns_worker_queue(self):
@@ -665,13 +666,14 @@ class TestImportBootImages(PservTestCase):
             {
                 var: proxy
                 for var in proxy_vars
-            }, utils.filter_dict(fake.env, proxy_vars))
+            },
+            filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
         proxy_vars = ['http_proxy', 'https_proxy']
         fake = self.patch_boot_resources_function()
         import_boot_images(sources=[])
-        self.assertEqual({}, utils.filter_dict(fake.env, proxy_vars))
+        self.assertEqual({}, filter_dict(fake.env, proxy_vars))
 
     def test_import_boot_images_calls_callback(self):
         self.patch_boot_resources_function()

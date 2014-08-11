@@ -28,7 +28,7 @@ from provisioningserver.rpc import (
     dhcp,
     exceptions,
     )
-from provisioningserver.utils import ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 class TestCreateHostMaps(MAASTestCase):

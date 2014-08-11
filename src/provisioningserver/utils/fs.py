@@ -39,7 +39,7 @@ import tempfile
 from time import time
 
 from lockfile import FileLock
-from provisioningserver.utils import ExternalProcessError
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 def _write_temp_file(content, filename):

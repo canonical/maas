@@ -24,7 +24,7 @@ from provisioningserver.import_images.helpers import (
     get_signing_policy,
     maaslog,
     )
-from provisioningserver.utils import call_and_check
+from provisioningserver.utils.shell import call_and_check
 from simplestreams.contentsource import FdContentSource
 from simplestreams.mirrors import (
     BasicMirrorWriter,

@@ -35,14 +35,12 @@ import re
 from celery.app import app_or_default
 from netaddr import IPAddress
 from netaddr.core import AddrFormatError
-from provisioningserver.utils import (
-    call_and_check,
-    locate_config,
-    )
+from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import (
     atomic_write,
     incremental_write,
     )
+from provisioningserver.utils.shell import call_and_check
 import tempita
 
 
