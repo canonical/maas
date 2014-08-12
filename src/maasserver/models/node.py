@@ -1188,6 +1188,34 @@ class Node(CleanSave, TimestampedModel):
                 power_params['mac_address'] = mac
         return power_params
 
+    def get_effective_power_info(self):
+        """Get information on how to control this node's power.
+
+        Returns a ``(can-be-controlled, power-type, power-parameters)`` tuple,
+        where ``can-be-controlled`` is a hint, based on the power type and
+        power parameters, whether it's even worth trying to control this
+        node's power.
+
+        Put another way, if ``can-be-controlled`` is `False`, the node almost
+        certainly cannot be started or stopped. If it's `True`, then it may be
+        possible to control this node's power, but there are *no* guarantees.
+        """
+        power_params = self.get_effective_power_parameters()
+        try:
+            power_type = self.get_effective_power_type()
+        except UnknownPowerType:
+            maaslog.warning(
+                "Node %s (%s) has an unknown power type.",
+                self.hostname, self.system_id)
+            return False, None, None
+        else:
+            if power_type == 'ether_wake':
+                mac = power_params.get('mac_address')
+                can_be_controlled = (mac != '' and mac is not None)
+            else:
+                can_be_controlled = True
+            return can_be_controlled, power_type, power_params
+
     def acquire(self, user, token=None, agent_name=''):
         """Mark commissioned node as acquired by the given user and token."""
         assert self.owner is None
