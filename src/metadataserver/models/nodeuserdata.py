@@ -64,6 +64,17 @@ class NodeUserDataManager(Manager):
         """Remove metadata from node, if it has any any."""
         self.filter(node=node).delete()
 
+    def bulk_set_user_data(self, nodes, data):
+        """Set the user data for the given nodes in bulk.
+
+        This is more efficient than calling `set_user_data` on each node.
+        """
+        self.filter(node__in=nodes).delete()
+        self.bulk_create((
+            self.model(node=node, data=Bin(data))
+            for node in nodes
+        ))
+
 
 class NodeUserData(CleanSave, Model):
     """User-data portion of a node's metadata.

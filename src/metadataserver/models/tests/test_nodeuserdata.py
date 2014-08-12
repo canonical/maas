@@ -79,3 +79,20 @@ class TestNodeUserDataManager(DjangoTestCase):
         node = factory.make_node()
         NodeUserData.objects.set_user_data(node, b"This node has user data.")
         self.assertTrue(NodeUserData.objects.has_user_data(node))
+
+    def test_bulk_set_user_data(self):
+        nodes = [factory.make_node() for _ in xrange(5)]
+        data = factory.make_bytes()
+        NodeUserData.objects.bulk_set_user_data(nodes, data)
+        for node in nodes:
+            self.assertEqual(data, NodeUserData.objects.get_user_data(node))
+
+    def test_bulk_set_user_data_with_preexisting_data(self):
+        nodes = [factory.make_node() for _ in xrange(2)]
+        data1 = factory.make_bytes()
+        NodeUserData.objects.bulk_set_user_data(nodes, data1)
+        nodes.extend(factory.make_node() for _ in xrange(3))
+        data2 = factory.make_bytes()
+        NodeUserData.objects.bulk_set_user_data(nodes, data2)
+        for node in nodes:
+            self.assertEqual(data2, NodeUserData.objects.get_user_data(node))
