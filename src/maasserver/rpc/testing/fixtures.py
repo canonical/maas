@@ -14,7 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ClusterRPCFixture",
-    "RegionToClusterRPCFixture",
+    "MockRegionToClusterRPCFixture",
 ]
 
 from collections import defaultdict
@@ -61,23 +61,23 @@ class FakeConnection:
 
 
 class ClusterRPCFixture(fixtures.Fixture):
-    """Deprecated: use :py:class:`RegionToClusterRPCFixture` instead.
+    """Deprecated: use :py:class:`MockRegionToClusterRPCFixture` instead.
 
     This creates connections to the "real" cluster RPC implementation,
     but this relies on real data. This makes tests fragile, and, as time
     progresses, will result in ever more elaborate test fixtures to get
     that data into place.
 
-    Instead, use :py:class:`RegionToClusterRPCFixture`, which helps you
-    stub out those RPC calls that you're testing against, and verifies
-    each call's arguments *and* response against the RPC schema.
+    Instead, use :py:class:`MockRegionToClusterRPCFixture`, which helps you
+    stub out those RPC calls that you're testing against, and verifies each
+    call's arguments *and* response against the RPC schema.
     """
 
     def __init__(self):
         super(ClusterRPCFixture, self).__init__()
         warn(
             ("ClusterRPCFixture is deprecated; use "
-             "RegionToClusterRPCFixture instead."),
+             "MockRegionToClusterRPCFixture instead."),
             DeprecationWarning)
 
     def setUp(self):
@@ -102,7 +102,7 @@ class ClusterRPCFixture(fixtures.Fixture):
         self.addCleanup(patch(rpc_service, "connections", fake_connections))
 
 
-class RegionToClusterRPCFixture(fixtures.Fixture):
+class MockRegionToClusterRPCFixture(fixtures.Fixture):
     """Patch in a stub cluster RPC implementation to enable end-to-end testing.
 
     Use this in *region* tests.
@@ -110,7 +110,7 @@ class RegionToClusterRPCFixture(fixtures.Fixture):
     Example usage::
 
       nodegroup = factory.make_node_group()
-      fixture = self.useFixture(RegionToClusterRPCFixture())
+      fixture = self.useFixture(MockRegionToClusterRPCFixture())
       protocol, io = fixture.makeCluster(nodegroup, region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
 
@@ -123,7 +123,7 @@ class RegionToClusterRPCFixture(fixtures.Fixture):
     """
 
     def setUp(self):
-        super(RegionToClusterRPCFixture, self).setUp()
+        super(MockRegionToClusterRPCFixture, self).setUp()
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(

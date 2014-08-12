@@ -31,7 +31,7 @@ from provisioningserver.events import (
     )
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import NoSuchEventType
-from provisioningserver.rpc.testing import ClusterToRegionRPCFixture
+from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from provisioningserver.utils import map_enum
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
@@ -54,7 +54,7 @@ class TestSendEvent(MAASTestCase):
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self, side_effect=None):
-        fixture = self.useFixture(ClusterToRegionRPCFixture())
+        fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
             region.SendEvent, region.RegisterEventType)
         protocol.SendEvent.side_effect = side_effect

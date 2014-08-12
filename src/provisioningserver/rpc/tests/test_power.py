@@ -36,7 +36,7 @@ from provisioningserver.rpc import (
     power,
     region,
     )
-from provisioningserver.rpc.testing import ClusterToRegionRPCFixture
+from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
 from testtools.deferredruntest import (
     assert_fails_with,
     AsynchronousDeferredRunTest,
@@ -50,7 +50,7 @@ class TestPowerHelpers(MAASTestCase):
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self):
-        fixture = self.useFixture(ClusterToRegionRPCFixture())
+        fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
             region.MarkNodeBroken, region.UpdateNodePowerState,
             region.SendEvent)
@@ -205,7 +205,7 @@ class TestChangePowerChange(MAASTestCase):
         return power_action, power_action_obj_execute
 
     def patch_rpc_methods(self, return_value={}, side_effect=None):
-        fixture = self.useFixture(ClusterToRegionRPCFixture())
+        fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
             region.MarkNodeBroken, region.UpdateNodePowerState,
             region.SendEvent)
@@ -434,7 +434,7 @@ class TestPowerQuery(MAASTestCase):
         return power_action, power_action_obj_execute
 
     def patch_rpc_methods(self, return_value={}, side_effect=None):
-        fixture = self.useFixture(ClusterToRegionRPCFixture())
+        fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
             region.MarkNodeBroken, region.SendEvent)
         protocol.MarkNodeBroken.return_value = return_value
