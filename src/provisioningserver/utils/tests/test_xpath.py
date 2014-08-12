@@ -19,8 +19,8 @@ from textwrap import dedent
 
 from fixtures import FakeLogger
 from lxml import etree
-from maastesting.testcase import MAASTestCase
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver.utils.xpath import try_match_xpath
 from testscenarios import multiply_scenarios
