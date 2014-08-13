@@ -20,6 +20,7 @@ __all__ = [
 from collections import defaultdict
 from contextlib import closing
 import random
+from socket import AF_INET
 from textwrap import dedent
 import threading
 
@@ -251,27 +252,34 @@ class RegionService(service.Service, object):
 
     def __init__(self):
         super(RegionService, self).__init__()
-        self.endpoint = TCP4ServerEndpoint(reactor, 0)
+        self.endpoints = [TCP4ServerEndpoint(reactor, 0)]
         self.connections = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
-        self._port = None
+        self.ports = []
+
+    def _save_ports(self, results):
+        """Save the opened ports to ``self.ports``.
+
+        Expects `results` to be an iterable of ``(success, result)`` tuples,
+        just as is passed into a :py:class:`~defer.DeferredList` callback.
+        """
+        for success, result in results:
+            if success:
+                self.ports.append(result)
+            elif result.check(defer.CancelledError):
+                pass  # Ignore.
+            else:
+                log.err(result)
 
     @asynchronous
     def startService(self):
         """Start listening on an ephemeral port."""
         super(RegionService, self).startService()
-        self.starting = self.endpoint.listen(self.factory)
-
-        def save_port(port):
-            self._port = port
-            return port
-        self.starting.addCallback(save_port)
-
-        def ignore_cancellation(failure):
-            failure.trap(defer.CancelledError)
-        self.starting.addErrback(ignore_cancellation)
-
+        self.starting = defer.DeferredList(
+            endpoint.listen(self.factory)
+            for endpoint in self.endpoints)
+        self.starting.addCallback(self._save_ports)
         self.starting.addErrback(log.err)
 
     @asynchronous
@@ -279,8 +287,9 @@ class RegionService(service.Service, object):
     def stopService(self):
         """Stop listening."""
         self.starting.cancel()
-        if self._port is not None:
-            yield self._port.stopListening()
+        for port in list(self.ports):
+            self.ports.remove(port)
+            yield port.stopListening()
         for conns in self.connections.itervalues():
             for conn in conns:
                 try:
@@ -291,19 +300,32 @@ class RegionService(service.Service, object):
 
     @asynchronous
     def getPort(self):
-        """Return the port on which this service is listening.
+        """Return the TCP port number on which this service is listening.
 
-        `None` if the port has not yet been opened.
+        This currently only considers ports (in the Twisted sense) for
+        ``AF_INET`` sockets, i.e. IPv4 sockets.
+
+        Returns `None` if the port has not yet been opened.
         """
         try:
-            socket = self._port.socket
-        except AttributeError:
-            # self._port might be None, or self._port.socket may not yet
-            # be set; either implies that there is no connection.
+            # Look for the first AF_INET port.
+            port = next(
+                port for port in self.ports
+                if port.addressFamily == AF_INET)
+        except StopIteration:
+            # There's no AF_INET (IPv4) port. As far as this method goes, this
+            # means there's no connection.
             return None
-        else:
-            host, port = socket.getsockname()
-            return port
+
+        try:
+            socket = port.socket
+        except AttributeError:
+            # When self._port.socket is not set it means there's no
+            # connection.
+            return None
+
+        host, port = socket.getsockname()
+        return port
 
     @asynchronous
     def getClientFor(self, uuid):

@@ -54,6 +54,7 @@ from maastesting.matchers import (
     Provides,
     )
 from maastesting.testcase import MAASTestCase
+from mock import Mock
 import netaddr
 from provisioningserver.rpc import (
     cluster,
@@ -88,6 +89,7 @@ from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
     Equals,
+    HasLength,
     Is,
     IsInstance,
     MatchesListwise,
@@ -681,7 +683,8 @@ class TestRegionService(MAASTestCase):
         self.assertThat(service, IsInstance(Service))
         self.assertThat(service.connections, IsInstance(defaultdict))
         self.assertThat(service.connections.default_factory, Is(set))
-        self.assertThat(service.endpoint, Provides(IStreamServerEndpoint))
+        self.assertThat(
+            service.endpoints, AllMatch(Provides(IStreamServerEndpoint)))
         self.assertThat(service.factory, IsInstance(Factory))
         self.assertThat(service.factory.protocol, Equals(RegionServer))
 
@@ -692,18 +695,19 @@ class TestRegionService(MAASTestCase):
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
 
-        def check_started(port):
+        def check_started(_):
+            # Ports are saved as private instance vars.
+            self.assertThat(service.ports, HasLength(1))
+            [port] = service.ports
             self.assertThat(port, IsInstance(tcp.Port))
             self.assertThat(port.factory, IsInstance(Factory))
             self.assertThat(port.factory.protocol, Equals(RegionServer))
-            # The port is saved as a private instance var.
-            self.assertThat(service._port, Is(port))
             return service.stopService()
 
         service.starting.addCallback(check_started)
 
         def check_stopped(ignore, service=service):
-            self.assertTrue(service._port.disconnected)
+            self.assertThat(service.ports, Equals([]))
 
         service.starting.addCallback(check_stopped)
 
@@ -714,7 +718,8 @@ class TestRegionService(MAASTestCase):
         service = RegionService()
 
         # Return an inert Deferred from the listen() call.
-        self.patch(service.endpoint, "listen").return_value = Deferred()
+        endpoints = self.patch(service, "endpoints", [Mock()])
+        endpoints[0].listen.return_value = Deferred()
 
         service.startService()
         self.assertThat(service.starting, IsInstance(Deferred))
@@ -723,7 +728,7 @@ class TestRegionService(MAASTestCase):
 
         def check(port):
             self.assertThat(port, Is(None))
-            self.assertThat(service._port, Is(None))
+            self.assertThat(service.ports, HasLength(0))
             return service.stopService()
 
         return service.starting.addCallback(check)
@@ -734,7 +739,8 @@ class TestRegionService(MAASTestCase):
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is not the messiah.")
-        self.patch(service.endpoint, "listen").return_value = fail(exception)
+        endpoints = self.patch(service, "endpoints", [Mock()])
+        endpoints[0].listen.return_value = fail(exception)
 
         err_calls = []
         self.patch(log, "err", err_calls.append)
@@ -753,15 +759,15 @@ class TestRegionService(MAASTestCase):
         service = RegionService()
 
         # Return an inert Deferred from the listen() call.
-        self.patch(service.endpoint, "listen").return_value = Deferred()
+        endpoints = self.patch(service, "endpoints", [Mock()])
+        endpoints[0].listen.return_value = Deferred()
 
         service.startService()
         service.stopService()
 
-        def check(port):
+        def check(_):
             # The CancelledError is suppressed.
-            self.assertThat(port, Is(None))
-            self.assertThat(service._port, Is(None))
+            self.assertThat(service.ports, HasLength(0))
 
         return service.starting.addCallback(check)
 
@@ -828,7 +834,8 @@ class TestRegionService(MAASTestCase):
 
         # Ensure that endpoint.listen fails with a obvious error.
         exception = ValueError("This is a very naughty boy.")
-        self.patch(service.endpoint, "listen").return_value = fail(exception)
+        endpoints = self.patch(service, "endpoints", [Mock()])
+        endpoints[0].listen.return_value = fail(exception)
         # Suppress logged messages.
         self.patch(log.theLogPublisher, "observers", [])
 
