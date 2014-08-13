@@ -409,6 +409,66 @@ class TestCurtinMetadataUserData(DjangoTestCase):
         self.assertIn("PREFIX='curtin'", response.content)
 
 
+class TestInstallingAPI(MAASServerTestCase):
+
+    def test_other_user_than_node_cannot_signal_installing_result(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        client = OAuthAuthenticatedClient(factory.make_user())
+        response = call_signal(client)
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_signaling_installing_result_does_not_affect_other_node(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        client = make_node_client(
+            node=factory.make_node(status=NODE_STATUS.ALLOCATED))
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_signaling_installing_success_leaves_node_allocated(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_signaling_installing_success_is_idempotent(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        client = make_node_client(node=node)
+        call_signal(client, status='OK')
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+
+    def test_signaling_installing_success_does_not_clear_owner(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED,
+                                 owner=factory.make_user())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(node.owner, reload_object(node).owner)
+
+    def test_signaling_installing_failure_makes_node_broken(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED,
+                                 owner=factory.make_user())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+    def test_signaling_installing_failure_is_idempotent(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED,
+                                 owner=factory.make_user())
+        client = make_node_client(node=node)
+        call_signal(client, status='FAILED')
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+
+
 class TestCommissioningAPI(MAASServerTestCase):
 
     def test_commissioning_scripts(self):

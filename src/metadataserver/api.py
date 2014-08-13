@@ -178,6 +178,7 @@ class VersionIndexHandler(MetadataViewHandler):
     # will it have any effect.)
     signalable_states = [
         NODE_STATUS.ALLOCATED,
+        NODE_STATUS.BROKEN,
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.FAILED_TESTS,
         NODE_STATUS.READY,
@@ -265,10 +266,13 @@ class VersionIndexHandler(MetadataViewHandler):
         if node.status == NODE_STATUS.COMMISSIONING:
             self._store_commissioning_results(node, request)
             store_node_power_parameters(node, request)
+            target_status = self.signaling_statuses.get(status)
         elif node.status == NODE_STATUS.ALLOCATED:
             self._store_installing_results(node, request)
+            if status == SIGNAL_STATUS.FAILED:
+                node.mark_broken("Failed to get installation result.")
+            target_status = None
 
-        target_status = self.signaling_statuses.get(status)
         if target_status in (None, node.status):
             # No status change.  Nothing to be done.
             return rc.ALL_OK
