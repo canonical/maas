@@ -14,10 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ClusterRPCFixture",
+    "MockLiveRegionToClusterRPCFixture",
     "MockRegionToClusterRPCFixture",
 ]
 
 from collections import defaultdict
+from os import path
 from warnings import warn
 
 from crochet import run_in_reactor
@@ -35,8 +37,19 @@ from provisioningserver.rpc.testing import (
     call_responder,
     make_amp_protocol_factory,
     )
-from testtools.monkey import patch
-from twisted.internet import defer
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    synchronous,
+    )
+from testtools.monkey import (
+    MonkeyPatcher,
+    patch,
+    )
+from twisted.internet import (
+    defer,
+    endpoints,
+    reactor,
+    )
 from twisted.internet.protocol import Factory
 from twisted.test import iosim
 from zope.interface import implementer
@@ -175,3 +188,115 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         protocol.Identify.side_effect = (
             lambda protocol: defer.succeed(ident_response.copy()))
         return protocol, self.addCluster(protocol)
+
+
+class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
+    """Patch in a stub cluster RPC implementation to enable end-to-end testing.
+
+    This connects up the region's RPC implementation to a stub cluster RPC
+    implementation using UNIX sockets. There's no need to pump IO (though
+    that's useful in places); as long as the reactor is running this will
+    propagate IO between each end.
+
+    Use this in *region* tests.
+
+    Example usage::
+
+      nodegroup = factory.make_node_group()
+      fixture = self.useFixture(RegionToClusterRPCFixture())
+      protocol = fixture.makeCluster(nodegroup, region.Identify)
+      protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
+
+      client = getClientFor(nodegroup.uuid)
+      d = client(region.Identify)
+
+      def check(result):
+          self.assertThat(result, ...)
+      d.addCallback(check)
+
+    """
+
+    @synchronous
+    def start(self):
+        # Shutdown the RPC service, switch endpoints, then start again.
+        self.rpc.stopService().wait(10)
+
+        # The RPC service uses a list to manage endpoints, but let's check
+        # those assumptions.
+        assert isinstance(self.rpc.endpoints, list)
+        # Patch a fake UNIX endpoint in to the RPC service.
+        endpoint = endpoints.UNIXServerEndpoint(reactor, self.sockfile)
+        self.monkey.add_patch(self.rpc, "endpoints", [endpoint])
+
+        # The RPC service uses a defaultdict(set) to manage connections, but
+        # let's check those assumptions.
+        assert isinstance(self.rpc.connections, defaultdict)
+        assert self.rpc.connections.default_factory is set
+        # Patch a fake connections dict into place for this fixture's lifetime.
+        self.monkey.add_patch(self.rpc, "connections", defaultdict(set))
+
+        # Modify the state of the service.
+        self.monkey.patch()
+
+        # Start the service back up again.
+        self.rpc.startService().wait(10)
+
+    @synchronous
+    def stop(self):
+        # Shutdown the RPC service, switch endpoints, then start again.
+        self.rpc.stopService().wait(10)
+        # Restore the state of the service.
+        self.monkey.restore()
+        # Start the service back up again.
+        self.rpc.startService().wait(10)
+
+    def setUp(self):
+        super(MockLiveRegionToClusterRPCFixture, self).setUp()
+        self.monkey = MonkeyPatcher()
+        # We need the event-loop up and running.
+        if not eventloop.loop.running:
+            raise RuntimeError(
+                "Please start the event-loop before using this fixture.")
+        self.rpc = get_service_in_eventloop("rpc").wait(10)
+        # Where we're going to put the UNIX socket files.
+        self.sockdir = self.useFixture(fixtures.TempDir()).path
+        self.sockfile = path.join(self.sockdir, "sock")
+        # Configure the RPC service with a UNIX endpoint.
+        self.addCluster(self.stop)
+        self.start()
+
+    @asynchronous
+    def addCluster(self, protocol):
+        """Add a new stub cluster using the given `protocol`.
+
+        The `protocol` should be an instance of `amp.AMP`.
+
+        :returns: A `Deferred` that fires with the connected protocol
+            instance.
+        """
+        endpoint = endpoints.UNIXClientEndpoint(reactor, self.sockfile)
+        return endpoints.connectProtocol(endpoint, protocol)
+
+    @synchronous
+    def makeCluster(self, nodegroup, *commands):
+        """Make and add a new stub cluster connection with the `commands`.
+
+        See `make_amp_protocol_factory` for details.
+
+        Note that if the ``Identify`` call is not amongst `commands`, it will
+        be added. In addition, its return value is also set to return the UUID
+        of `nodegroup`. There's a good reason: the first thing that
+        `RegionServer` does when a connection is made is call `Identify`. This
+        has to succeed or the connection will never been added to the RPC
+        service's list of connections.
+
+        :returns: The protocol instance created.
+        """
+        if cluster.Identify not in commands:
+            commands = commands + (cluster.Identify,)
+        protocol_factory = make_amp_protocol_factory(*commands)
+        protocol = protocol_factory()
+        ident_response = {"ident": nodegroup.uuid.decode("ascii")}
+        protocol.Identify.side_effect = (
+            lambda protocol: defer.succeed(ident_response.copy()))
+        return self.addCluster(protocol).wait(10)
