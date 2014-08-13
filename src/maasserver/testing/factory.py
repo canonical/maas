@@ -89,7 +89,7 @@ from netaddr import (
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 
 # We have a limited number of public keys:
 # src/maasserver/tests/data/test_rsa{0, 1, 2, 3, 4}.pub

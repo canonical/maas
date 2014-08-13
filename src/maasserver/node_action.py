@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Node actions.
@@ -49,7 +49,7 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())

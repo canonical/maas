@@ -74,7 +74,7 @@ from metadataserver.models import (
 from mock import sentinel
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.tasks import Omshell
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     AllMatch,
     Contains,

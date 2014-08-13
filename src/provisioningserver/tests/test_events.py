@@ -32,7 +32,7 @@ from provisioningserver.events import (
 from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     AllMatch,

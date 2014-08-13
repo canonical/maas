@@ -53,7 +53,7 @@ from metadataserver.models import (
     )
 from metadataserver.nodeinituser import get_node_init_user
 from netaddr import IPAddress
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 
 
 class NodeAnonAPITest(MAASServerTestCase):

@@ -78,10 +78,10 @@ def get_enums(filename):
     return get_enum_classes(namespace)
 
 
-# This method is duplicated from provisioningserver/utils/__init__.py
+# This method is duplicated from provisioningserver/utils/enum.py
 # because jsenums is used by the packaging to build the JS file and
 # we don't want to force the packaging to require all the dependencies
-# that using provisioningserver/utils/__init__.py would imply.
+# that using provisioningserver/utils/enum.py would imply.
 def map_enum(enum_class):
     """Map out an enumeration class as a "NAME: value" dict."""
     # Filter out anything that starts with '_', which covers private and

@@ -37,7 +37,7 @@ from netaddr import (
     IPNetwork,
     )
 from provisioningserver import tasks
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
 from testtools.matchers import EndsWith
 

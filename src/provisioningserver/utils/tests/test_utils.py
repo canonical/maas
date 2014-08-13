@@ -45,8 +45,6 @@ from provisioningserver.utils import (
     filter_dict,
     locate_config,
     maas_custom_config_markers,
-    map_enum,
-    map_enum_reverse,
     parse_key_value_file,
     Safe,
     ShellTemplate,
@@ -564,60 +562,3 @@ class TestComposeURL(MAASTestCase):
         self.assertEqual(
             'https://%s:%s/' % (hostname, port),
             compose_URL('https://:%s/' % port, hostname))
-
-
-class TestEnum(MAASTestCase):
-
-    def test_map_enum_includes_all_enum_values(self):
-
-        class Enum:
-            ONE = 1
-            TWO = 2
-
-        self.assertItemsEqual(['ONE', 'TWO'], map_enum(Enum).keys())
-
-    def test_map_enum_omits_private_or_special_methods(self):
-
-        class Enum:
-            def __init__(self):
-                pass
-
-            def __repr__(self):
-                return "Enum"
-
-            def _save(self):
-                pass
-
-            VALUE = 9
-
-        self.assertItemsEqual(['VALUE'], map_enum(Enum).keys())
-
-    def test_map_enum_maps_values(self):
-
-        class Enum:
-            ONE = 1
-            THREE = 3
-
-        self.assertEqual({'ONE': 1, 'THREE': 3}, map_enum(Enum))
-
-    def test_map_enum_reverse_maps_values(self):
-
-        class Enum:
-            ONE = 1
-            NINE = 9
-
-        self.assertEqual(
-            {1: 'ONE', 9: 'NINE'},
-            map_enum_reverse(Enum))
-
-    def test_map_enum_reverse_ignores_values(self):
-
-        class Enum:
-            ONE = 1
-            ONE_2 = 1
-            FIVE = 5
-            FIVE_2 = 5
-
-        self.assertEqual(
-            {1: 'ONE', 5: 'FIVE'},
-            map_enum_reverse(Enum, ignore=['ONE_2', 'FIVE_2']))

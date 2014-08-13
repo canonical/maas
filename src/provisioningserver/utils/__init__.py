@@ -332,33 +332,6 @@ def compose_URL(base_url, host):
     return urlunparse(parsed_url._replace(netloc=netloc))
 
 
-def map_enum(enum_class):
-    """Map out an enumeration class as a "NAME: value" dict."""
-    # Filter out anything that starts with '_', which covers private and
-    # special methods.  We can make this smarter later if we start using
-    # a smarter enumeration base class etc.  Or if we switch to a proper
-    # enum mechanism, this function will act as a marker for pieces of
-    # code that should be updated.
-    return {
-        key: value
-        for key, value in vars(enum_class).items()
-        if not key.startswith('_')
-    }
-
-
-def map_enum_reverse(enum_class, ignore=None):
-    """Like map_enum(), but reverse its keys and values so you can lookup
-    text representations from the enum's integer value.
-
-    Any values in `ignore` are left out of the returned dict.
-    """
-    if ignore is None:
-        ignore = []
-    return dict([
-        (v, k) for k, v in map_enum(enum_class).viewitems()
-        if k not in ignore])
-
-
 def warn_deprecated(alternative=None):
     """Issue a `DeprecationWarning` for the calling function.
 

@@ -19,7 +19,6 @@ __all__ = [
     'get_db_state',
     'get_local_cluster_UUID',
     'ignore_unused',
-    'map_enum',
     'strip_domain',
     'synchronised',
     ]

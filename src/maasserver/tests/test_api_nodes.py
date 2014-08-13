@@ -44,7 +44,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import count_queries
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Contains,
     Equals,

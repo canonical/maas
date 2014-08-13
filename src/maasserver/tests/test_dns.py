@@ -62,7 +62,7 @@ from provisioningserver.dns.config import (
     )
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from rabbitfixture.server import allocate_ports
 from testtools import TestCase
 from testtools.matchers import (

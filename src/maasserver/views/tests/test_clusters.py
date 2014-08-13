@@ -41,7 +41,7 @@ from mock import (
     call,
     )
 from provisioningserver.boot.tests.test_tftppath import make_osystem
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     ContainsAll,
     HasLength,

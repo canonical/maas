@@ -24,7 +24,7 @@ from maasserver.utils.jsenums import (
     serialize_enum,
     )
 from maastesting.testcase import MAASTestCase
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 
 
 class ENUM:

@@ -29,7 +29,7 @@ from netaddr import (
     IPAddress,
     IPRange,
     )
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 
 
 class StaticIPAddressManagerTest(MAASServerTestCase):

@@ -78,7 +78,7 @@ from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
     )
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testtools.matchers import ContainsAll
 
 

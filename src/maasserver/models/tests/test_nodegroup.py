@@ -38,7 +38,7 @@ from mock import (
     Mock,
     )
 from provisioningserver.omshell import generate_omapi_key
-from provisioningserver.utils import map_enum
+from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,

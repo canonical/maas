@@ -46,6 +46,7 @@ from netaddr import (
     IPAddress,
     IPRange,
     )
+from provisioningserver.utils.enum import map_enum_reverse
 
 
 class StaticIPAddressManager(Manager):
@@ -210,17 +211,8 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     def __unicode__(self):
         # Attempt to show the symbolic alloc_type name if possible.
-
-        # __iter__ does not work here for some reason, so using
-        # iteritems().
-        # XXX: convert this into a reverse_map_enum in maasserver.utils.
-        for k, v in IPADDRESS_TYPE.__dict__.iteritems():
-            if v == self.alloc_type:
-                strtype = k
-                break
-        else:
-            # Should never get here, but defensive coding FTW.
-            strtype = "%s" % self.alloc_type
+        type_names = map_enum_reverse(IPADDRESS_TYPE)
+        strtype = type_names.get(self.alloc_type, '%s' % self.alloc_type)
         return "<StaticIPAddress: <%s:type=%s>>" % (self.ip, strtype)
 
     def deallocate(self):
