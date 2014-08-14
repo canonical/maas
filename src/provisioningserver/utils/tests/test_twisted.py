@@ -20,14 +20,20 @@ import time
 
 from crochet import EventualResult
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
+from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
+    deferWithTimeout,
     pause,
     reactor_sync,
     retries,
     synchronous,
     )
-from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.deferredruntest import (
+    AsynchronousDeferredRunTest,
+    extract_result,
+    )
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -37,6 +43,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesException,
     MatchesListwise,
+    MatchesStructure,
     Not,
     Raises,
     )
@@ -348,3 +355,135 @@ class TestPause(MAASTestCase):
         # The delayed call was cancelled too.
         self.assertThat(delayed_call, MatchesAll(
             self.p_call_cancelled, Not(self.p_call_called)))
+
+
+DelayedCallActive = MatchesStructure(
+    cancelled=AfterPreprocessing(bool, Is(False)),
+    called=AfterPreprocessing(bool, Is(False)),
+)
+
+DelayedCallCancelled = MatchesStructure(
+    cancelled=AfterPreprocessing(bool, Is(True)),
+    called=AfterPreprocessing(bool, Is(False)),
+)
+
+DelayedCallCalled = MatchesStructure(
+    cancelled=AfterPreprocessing(bool, Is(False)),
+    called=AfterPreprocessing(bool, Is(True)),
+)
+
+
+class TestDeferWithTimeout(MAASTestCase):
+
+    def test__returns_Deferred_that_will_be_cancelled_after_timeout(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+
+        # Called with only a timeout, `deferWithTimeout` returns a Deferred.
+        timeout = randint(10, 100)
+        d = deferWithTimeout(timeout)
+        self.assertThat(d, IsInstance(Deferred))
+        self.assertFalse(d.called)
+
+        # It's been scheduled for cancellation in `timeout` seconds.
+        self.assertThat(clock.getDelayedCalls(), HasLength(1))
+        [delayed_call] = clock.getDelayedCalls()
+        self.assertThat(delayed_call, DelayedCallActive)
+        self.assertThat(delayed_call, MatchesStructure.byEquality(
+            time=timeout, func=d.cancel, args=(), kw={}))
+
+        # Once the timeout is reached, the delayed call is called, and this
+        # cancels `d`. The default canceller for Deferred errbacks with
+        # CancelledError.
+        clock.advance(timeout)
+        self.assertThat(delayed_call, DelayedCallCalled)
+        self.assertRaises(CancelledError, extract_result, d)
+
+    def test__returns_Deferred_that_wont_be_cancelled_if_called(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+
+        # Called without a function argument, `deferWithTimeout` returns a new
+        # Deferred, and schedules it to be cancelled in `timeout` seconds.
+        timeout = randint(10, 100)
+        d = deferWithTimeout(timeout)
+        [delayed_call] = clock.getDelayedCalls()
+
+        # Advance some amount of time to simulate something happening.
+        clock.advance(5)
+        # The timeout call is still in place.
+        self.assertThat(delayed_call, DelayedCallActive)
+
+        d.callback(sentinel.result)
+        # After calling d the timeout call has been cancelled.
+        self.assertThat(delayed_call, DelayedCallCancelled)
+        # The result has been safely passed on.
+        self.assertThat(extract_result(d), Is(sentinel.result))
+
+    def test__returns_Deferred_that_wont_be_cancelled_if_errored(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+
+        # Called without a function argument, `deferWithTimeout` returns a new
+        # Deferred, and schedules it to be cancelled in `timeout` seconds.
+        timeout = randint(10, 100)
+        d = deferWithTimeout(timeout)
+        [delayed_call] = clock.getDelayedCalls()
+
+        # Advance some amount of time to simulate something happening, but
+        # less than the timeout.
+        clock.advance(timeout - 1)
+        # The timeout call is still in place.
+        self.assertThat(delayed_call, DelayedCallActive)
+
+        error = RuntimeError()
+        d.errback(error)
+        # After calling d the timeout call has been cancelled.
+        self.assertThat(delayed_call, DelayedCallCancelled)
+        # The error has been passed safely on.
+        self.assertRaises(RuntimeError, extract_result, d)
+
+    def test__calls_given_function(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+
+        class OurDeferred(Deferred):
+            """A Deferred subclass that we use as a marker."""
+
+        # Any given function is called via `maybeDeferred`. In this case, we
+        # get an instance of our marker class back because it is a Deferred.
+        timeout = randint(10, 100)
+        d = deferWithTimeout(timeout, OurDeferred)
+        self.assertThat(d, IsInstance(OurDeferred))
+        self.assertFalse(d.called)
+
+        # Just as with the non-function form, it's been scheduled for
+        # cancellation in `timeout` seconds.
+        self.assertThat(clock.getDelayedCalls(), HasLength(1))
+        [delayed_call] = clock.getDelayedCalls()
+        self.assertThat(delayed_call, DelayedCallActive)
+        self.assertThat(delayed_call, MatchesStructure.byEquality(
+            time=timeout, func=d.cancel, args=(), kw={}))
+
+        # Once the timeout is reached, the delayed call is called, and this
+        # cancels `d`. The default canceller for Deferred errbacks with
+        # CancelledError.
+        clock.advance(timeout)
+        self.assertThat(delayed_call, DelayedCallCalled)
+        self.assertRaises(CancelledError, extract_result, d)
+
+    def test__calls_given_function_and_always_returns_Deferred(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+
+        def do_something(a, *b, **c):
+            return do_something, a, b, c
+
+        # Any given function is called via `maybeDeferred`. In this case, we
+        # get an already-called Deferred, because `do_something` is
+        # synchronous.
+        timeout = randint(10, 100)
+        d = deferWithTimeout(
+            timeout, do_something, sentinel.a, sentinel.b, c=sentinel.c)
+        self.assertThat(d, IsInstance(Deferred))
+        self.assertEqual(
+            (do_something, sentinel.a, (sentinel.b,), {"c": sentinel.c}),
+            extract_result(d))
+
+        # The timeout has already been cancelled.
+        self.assertThat(clock.getDelayedCalls(), Equals([]))
