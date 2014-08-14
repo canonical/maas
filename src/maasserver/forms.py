@@ -18,6 +18,7 @@ __all__ = [
     "BootSourceForm",
     "BootSourceSelectionForm",
     "BulkNodeActionForm",
+    "create_Network_from_NodeGroupInterface",
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
@@ -1153,6 +1154,37 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     return True
 
 
+def create_Network_from_NodeGroupInterface(interface):
+    """Given a `NodeGroupInterface`, create its Network counterpart."""
+    # This method cannot use non-orm model properties because it needs
+    # to be used in a data migration, where they won't work.
+    if not interface.subnet_mask:
+        # Can be None or empty string, do nothing if so.
+        return
+
+    name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+    ipnetwork = make_network(interface.ip, interface.subnet_mask)
+    network = Network(
+        name=name,
+        ip=unicode(ipnetwork.network),
+        netmask=unicode(ipnetwork.netmask),
+        vlan_tag=vlan_tag,
+        description=(
+            "Auto created when creating interface %s on cluster "
+            "%s" % (interface.name, interface.nodegroup.name)),
+        )
+    try:
+        network.save()
+    except ValidationError as e:
+        # It probably already exists, keep calm and carry on.
+        maaslog.warning(
+            "Failed to create Network when adding/editing cluster "
+            "interface %s with error [%s]. This is OK if it already "
+            "exists." % (name, unicode(e)))
+        return
+    return network
+
+
 class NodeGroupInterfaceForm(ModelForm):
 
     management = forms.TypedChoiceField(
@@ -1187,26 +1219,7 @@ class NodeGroupInterfaceForm(ModelForm):
         interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
         if interface.network is None:
             return interface
-        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-        network = Network(
-            name=name,
-            ip=unicode(interface.network.network),
-            netmask=unicode(interface.network.netmask),
-            vlan_tag=vlan_tag,
-            # I bloody hate the damn linter. It actually prefers this.
-            description="Auto created when creating interface %s on "
-                        "cluster %s" % (
-                            interface.name, interface.nodegroup.name),
-            )
-        try:
-            network.save()
-        except ValidationError as e:
-            # It probably already exists, keep calm and carry on.
-            maaslog.warning(
-                "Failed to create Network when adding/editing cluster "
-                "interface %s with error [%s]. This is OK if it already "
-                "exists, or it could be another error" % (name, unicode(e)))
-            pass
+        create_Network_from_NodeGroupInterface(interface)
         return interface
 
     def compute_name(self):
