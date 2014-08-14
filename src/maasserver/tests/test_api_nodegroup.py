@@ -32,6 +32,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
     Config,
     DHCPLease,
@@ -833,7 +834,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 class TestUpdateMacClusterInterfaces(MAASServerTestCase):
     """Tests for `update_mac_cluster_interfaces`()."""
 
-    def test_updates_mac_cluster_interfaces(self):
+    def make_cluster_with_macs_and_leases(self):
         cluster = factory.make_node_group()
         mac_addresses = {
             factory.make_mac_address(): factory.make_node_group_interface(
@@ -843,8 +844,13 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         leases = {
             get_random_ip_from_interface_range(interface): (
                 mac_address.mac_address)
-            for mac_address, interface in mac_addresses.items()
+            for mac_address, interface in mac_addresses.viewitems()
         }
+        return cluster, mac_addresses, leases
+
+    def test_updates_mac_cluster_interfaces(self):
+        cluster, mac_addresses, leases = (
+            self.make_cluster_with_macs_and_leases())
         update_mac_cluster_interfaces(leases, cluster)
         results = {
             mac_address: mac_address.cluster_interface
@@ -852,6 +858,22 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
                 mac_address__in=leases.values())
             }
         self.assertEqual(mac_addresses, results)
+
+    def test_updates_network_relations(self):
+        # update_mac_cluster_interfaces should also associate the mac
+        # with the network on which it resides.
+        cluster, mac_addresses, leases = (
+            self.make_cluster_with_macs_and_leases())
+        expected_relations = []
+        for mac, interface in mac_addresses.viewitems():
+            net = create_Network_from_NodeGroupInterface(interface)
+            expected_relations.append((net, mac))
+        update_mac_cluster_interfaces(leases, cluster)
+        # Doing a single giant comparison here would be unintuitive and
+        # fugly, so I'm iterating.
+        for net, mac in expected_relations:
+            [observed_macddress] = net.macaddress_set.all()
+            self.assertEqual(mac, observed_macddress)
 
     def test_ignores_mac_not_attached_to_cluster(self):
         cluster = factory.make_node_group()

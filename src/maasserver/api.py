@@ -1728,6 +1728,16 @@ def update_mac_cluster_interfaces(leases, cluster):
             if netaddr.IPAddress(ip) in ip_range:
                 mac_address.cluster_interface = interface
                 mac_address.save()
+
+                # Locate the Network to which this MAC belongs.
+                ipnetwork = interface.network
+                if ipnetwork is not None:
+                    try:
+                        network = Network.objects.get(ip=ipnetwork.ip.format())
+                        network.macaddress_set.add(mac_address)
+                    except Network.DoesNotExist:
+                        pass
+
                 # Cheap optimisation. No other interfaces will match, so
                 # break out of the loop.
                 break
