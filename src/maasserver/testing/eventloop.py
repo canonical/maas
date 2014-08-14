@@ -45,10 +45,13 @@ class RegionEventLoopFixture(Fixture):
                 "The event-loop has been left running; this fixture cannot "
                 "make a reasonable decision about what to do next.")
         # Don't proceed if any services are registered.
-        if list(loop.services) != []:
+        services = list(loop.services)
+        if services != []:
             raise RuntimeError(
                 "One or more services are registered; this fixture cannot "
-                "make a reasonable decision about what to do next.")
+                "make a reasonable decision about what to do next.  "
+                "The services are: %s."
+                % ', '.join(service.name for service in services))
 
     def setUp(self):
         super(RegionEventLoopFixture, self).setUp()
