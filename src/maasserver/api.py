@@ -1717,15 +1717,21 @@ def update_mac_cluster_interfaces(leases, cluster):
     for interface in interfaces:
         ip_range = netaddr.IPRange(
             interface.ip_range_low, interface.ip_range_high)
-        interface_ranges[interface] = ip_range
+        if interface.static_ip_range_low and interface.static_ip_range_high:
+            static_range = netaddr.IPRange(
+                interface.static_ip_range_low, interface.static_ip_range_high)
+        else:
+            static_range = []
+        interface_ranges[interface] = (ip_range, static_range)
     for ip, mac in leases.items():
         try:
             mac_address = MACAddress.objects.get(mac_address=mac)
         except MACAddress.DoesNotExist:
             # Silently ignore MAC addresses that we don't know about.
             continue
-        for interface, ip_range in interface_ranges.items():
-            if netaddr.IPAddress(ip) in ip_range:
+        for interface, (ip_range, static_range) in interface_ranges.items():
+            ipaddress = netaddr.IPAddress(ip)
+            if ipaddress in ip_range or ipaddress in static_range:
                 mac_address.cluster_interface = interface
                 mac_address.save()
 
@@ -1735,6 +1741,9 @@ def update_mac_cluster_interfaces(leases, cluster):
                     try:
                         network = Network.objects.get(ip=ipnetwork.ip.format())
                         network.macaddress_set.add(mac_address)
+                        maaslog.info(
+                            "Linking %s to network %s",
+                            mac_address, network.name)
                     except Network.DoesNotExist:
                         pass
 
