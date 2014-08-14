@@ -710,37 +710,6 @@ class TestAdminNodeForm(MAASServerTestCase):
             (node.hostname, node.power_type, node.zone),
             (hostname, power_type, zone))
 
-    def test_AdminNodeForm_refuses_to_update_hostname_on_allocated_node(self):
-        old_name = factory.make_name('old-hostname')
-        new_name = factory.make_name('new-hostname')
-        node = factory.make_node(
-            hostname=old_name, status=NODE_STATUS.ALLOCATED)
-        form = AdminNodeForm(
-            data={
-                'hostname': new_name,
-                'architecture': node.architecture,
-                },
-            instance=node)
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            ["Can't change hostname to %s: node is in use." % new_name],
-            form._errors['hostname'])
-
-    def test_AdminNodeForm_accepts_unchanged_hostname_on_allocated_node(self):
-        old_name = factory.make_name('old-hostname')
-        node = factory.make_node(
-            hostname=old_name, status=NODE_STATUS.ALLOCATED)
-        patch_usable_architectures(self, [node.architecture])
-        form = AdminNodeForm(
-            data={
-                'hostname': old_name,
-                'architecture': node.architecture,
-            },
-            instance=node)
-        self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        self.assertEqual(old_name, reload_object(node).hostname)
-
     def test_AdminNodeForm_populates_power_type_choices(self):
         form = AdminNodeForm()
         self.assertEqual(

@@ -335,18 +335,16 @@ class NodeForm(ModelForm):
                 self.initial['distro_series'] = initial_value
 
     def clean_hostname(self):
-        # Don't allow the hostname to be changed if the node is
-        # currently allocated.  Juju knows the node by its old name, so
-        # changing the name would confuse things.
-        hostname = self.instance.hostname
-        status = self.instance.status
-        new_hostname = self.cleaned_data.get('hostname', hostname)
-        if new_hostname != hostname and status == NODE_STATUS.ALLOCATED:
-            raise ValidationError(
-                "Can't change hostname to %s: node is in use." % new_hostname)
+        # XXX 2014-08-14 jason-hobbs, bug=1356880; MAAS shouldn't allow
+        # a hostname to be changed on a "deployed" node, but it doesn't
+        # yet have the ability to distinguish between an "acquired" node
+        # and a "deployed" node.
 
-        # XXX 2014-07-30 jason-hobbs, bug=1350459: This check shouldn't be
-        # necessary, but many tests don't provide a nodegroup to NodeForm.
+        new_hostname = self.cleaned_data.get('hostname')
+
+        # XXX 2014-07-30 jason-hobbs, bug=1350459: This check for no
+        # nodegroup shouldn't be necessary, but many tests don't provide
+        # a nodegroup to NodeForm.
         if self.instance.nodegroup is None:
             return new_hostname
 
