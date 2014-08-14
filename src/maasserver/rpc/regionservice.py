@@ -49,6 +49,8 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
+    callOut,
+    deferWithTimeout,
     synchronous,
     )
 from twisted.application import service
@@ -57,7 +59,10 @@ from twisted.internet import (
     defer,
     ssl,
     )
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    CancelledError,
+    inlineCallbacks,
+    )
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
@@ -219,7 +224,7 @@ class RegionServer(Region):
 
             def cb_identify(response):
                 self.ident = response.get("ident")
-                self.factory.service.connections[self.ident].add(self)
+                self.factory.service._addConnectionFor(self.ident, self)
 
             def eb_identify(failure):
                 log.err(failure)
@@ -230,7 +235,7 @@ class RegionServer(Region):
             self.transport.loseConnection()
 
     def connectionLost(self, reason):
-        self.factory.service.connections[self.ident].discard(self)
+        self.factory.service._removeConnectionFor(self.ident, self)
         super(RegionServer, self).connectionLost(reason)
 
 
@@ -240,11 +245,13 @@ class RegionService(service.Service, object):
     This is a service - in the Twisted sense - that exposes the
     ``Region`` protocol on a port.
 
-    :ivar connections: A set of :class:`Region` connections to clusters.
-
-    :ivar starting: Either `None`, or a :class:`Deferred` that fires
-        with the port that's been opened, or the error that prevented it
-        from opening.
+    :ivar endpoints: The endpoints on which to listen.
+    :ivar ports: The opened :py:class:`IListeningPort`s.
+    :ivar connections: Maps :class:`Region` connections to clusters.
+    :ivar waiters: Maps cluster idents to callers waiting for a connection.
+    :ivar starting: Either `None`, or a :class:`Deferred` that fires when
+        attempts have been made to open all endpoints. Some or all of them may
+        not have been opened successfully.
     """
 
     connections = None
@@ -254,11 +261,44 @@ class RegionService(service.Service, object):
         super(RegionService, self).__init__()
         self.endpoints = [TCP4ServerEndpoint(reactor, 0)]
         self.connections = defaultdict(set)
+        self.waiters = defaultdict(set)
         self.factory = Factory.forProtocol(RegionServer)
         self.factory.service = self
         self.ports = []
 
-    def _save_ports(self, results):
+    def _getConnectionFor(self, ident, timeout):
+        """Wait up to `timeout` seconds for a connection for `ident`.
+
+        Returns a `Deferred` which will fire with the connection, or fail with
+        `CancelledError`.
+
+        The public interface to this method is `getClientFor`.
+        """
+        conns = list(self.connections[ident])
+        if len(conns) == 0:
+            waiters = self.waiters[ident]
+            d = deferWithTimeout(timeout)
+            d.addBoth(callOut(waiters.discard, d))
+            waiters.add(d)
+            return d
+        else:
+            connection = random.choice(conns)
+            return defer.succeed(connection)
+
+    def _addConnectionFor(self, ident, connection):
+        """Adds `connection` to the set of connections for `ident`.
+
+        Notifies all waiters of this new connection.
+        """
+        self.connections[ident].add(connection)
+        for waiter in self.waiters[ident].copy():
+            waiter.callback(connection)
+
+    def _removeConnectionFor(self, ident, connection):
+        """Removes `connection` from the set of connections for `ident`."""
+        self.connections[ident].discard(connection)
+
+    def _savePorts(self, results):
         """Save the opened ports to ``self.ports``.
 
         Expects `results` to be an iterable of ``(success, result)`` tuples,
@@ -279,7 +319,7 @@ class RegionService(service.Service, object):
         self.starting = defer.DeferredList(
             endpoint.listen(self.factory)
             for endpoint in self.endpoints)
-        self.starting.addCallback(self._save_ports)
+        self.starting.addCallback(self._savePorts)
         self.starting.addErrback(log.err)
 
     @asynchronous
@@ -290,8 +330,11 @@ class RegionService(service.Service, object):
         for port in list(self.ports):
             self.ports.remove(port)
             yield port.stopListening()
-        for conns in self.connections.itervalues():
-            for conn in conns:
+        for waiters in list(self.waiters.viewvalues()):
+            for waiter in waiters.copy():
+                waiter.cancel()
+        for conns in list(self.connections.viewvalues()):
+            for conn in conns.copy():
                 try:
                     yield conn.transport.loseConnection()
                 except:
@@ -328,7 +371,7 @@ class RegionService(service.Service, object):
         return port
 
     @asynchronous
-    def getClientFor(self, uuid):
+    def getClientFor(self, uuid, timeout=30):
         """Return a :class:`common.Client` for the specified cluster.
 
         If more than one connection exists to that cluster - implying
@@ -337,14 +380,18 @@ class RegionService(service.Service, object):
 
         :param uuid: The UUID - as a string - of the cluster that a
             connection is wanted for.
+        :param timeout: The number of seconds to wait for a connection
+            to become available.
         :raises exceptions.NoConnectionsAvailable: When no connection to the
             given cluster is available.
         """
-        conns = list(self.connections[uuid])
-        if len(conns) == 0:
+        d = self._getConnectionFor(uuid, timeout)
+
+        def cancelled(failure):
+            failure.trap(CancelledError)
             raise exceptions.NoConnectionsAvailable()
-        else:
-            return common.Client(random.choice(conns))
+
+        return d.addCallbacks(common.Client, cancelled)
 
     @asynchronous
     def getAllClients(self):

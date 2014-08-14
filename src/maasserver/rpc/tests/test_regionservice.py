@@ -51,10 +51,14 @@ from maasserver.utils.async import transactional
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     Provides,
     )
 from maastesting.testcase import MAASTestCase
-from mock import Mock
+from mock import (
+    call,
+    Mock,
+    )
 import netaddr
 from provisioningserver.rpc import (
     cluster,
@@ -85,6 +89,7 @@ from provisioningserver.rpc.testing import (
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -96,9 +101,14 @@ from testtools.matchers import (
     MatchesStructure,
     )
 from twisted.application.service import Service
-from twisted.internet import tcp
+from twisted.internet import (
+    reactor,
+    tcp,
+    )
 from twisted.internet.defer import (
+    CancelledError,
     Deferred,
+    DeferredList,
     fail,
     inlineCallbacks,
     succeed,
@@ -847,18 +857,18 @@ class TestRegionService(MAASTestCase):
     def test_getClientFor_errors_when_no_connections(self):
         service = RegionService()
         service.connections.clear()
-        self.assertRaises(
-            exceptions.NoConnectionsAvailable,
-            service.getClientFor, factory.make_UUID())
+        return assert_fails_with(
+            service.getClientFor(factory.make_UUID(), timeout=0),
+            exceptions.NoConnectionsAvailable)
 
     @wait_for_reactor
     def test_getClientFor_errors_when_no_connections_for_cluster(self):
         service = RegionService()
         uuid = factory.make_UUID()
         service.connections[uuid].clear()
-        self.assertRaises(
-            exceptions.NoConnectionsAvailable,
-            service.getClientFor, uuid)
+        return assert_fails_with(
+            service.getClientFor(uuid, timeout=0),
+            exceptions.NoConnectionsAvailable)
 
     @wait_for_reactor
     def test_getClientFor_returns_random_connection(self):
@@ -876,9 +886,10 @@ class TestRegionService(MAASTestCase):
             return chosen
         self.patch(random, "choice", check_choice)
 
-        self.assertThat(
-            service.getClientFor(uuid),
-            Equals(common.Client(chosen)))
+        def check(client):
+            self.assertThat(client, Equals(common.Client(chosen)))
+
+        return service.getClientFor(uuid).addCallback(check)
 
     @wait_for_reactor
     def test_getAllClients_empty(self):
@@ -902,6 +913,135 @@ class TestRegionService(MAASTestCase):
             common.Client(c1), common.Client(c2),
             common.Client(c3), common.Client(c4),
         })
+
+    def test_addConnectionFor_adds_connection(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+
+        service._addConnectionFor(uuid, c1)
+        service._addConnectionFor(uuid, c2)
+
+        self.assertEqual({uuid: {c1, c2}}, service.connections)
+
+    def test_addConnectionFor_notifies_waiters(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+
+        waiter1 = Mock()
+        waiter2 = Mock()
+        service.waiters[uuid].add(waiter1)
+        service.waiters[uuid].add(waiter2)
+
+        service._addConnectionFor(uuid, c1)
+        service._addConnectionFor(uuid, c2)
+
+        self.assertEqual({uuid: {c1, c2}}, service.connections)
+        # Both mock waiters are called twice. A real waiter would only be
+        # called once because it immediately unregisters itself once called.
+        self.assertThat(waiter1.callback, MockCallsMatch(call(c1), call(c2)))
+        self.assertThat(waiter2.callback, MockCallsMatch(call(c1), call(c2)))
+
+    def test_removeConnectionFor_removes_connection(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        c1 = DummyConnection()
+        c2 = DummyConnection()
+
+        service._addConnectionFor(uuid, c1)
+        service._addConnectionFor(uuid, c2)
+        service._removeConnectionFor(uuid, c1)
+
+        self.assertEqual({uuid: {c2}}, service.connections)
+
+    def test_removeConnectionFor_is_okay_if_connection_is_not_there(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+
+        service._removeConnectionFor(uuid, DummyConnection())
+
+        self.assertEqual({uuid: set()}, service.connections)
+
+    @wait_for_reactor
+    def test_getConnectionFor_returns_existing_connection(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        conn = DummyConnection()
+
+        service._addConnectionFor(uuid, conn)
+
+        d = service._getConnectionFor(uuid, 1)
+        # No waiter is added because a connection is available.
+        self.assertEqual({uuid: set()}, service.waiters)
+
+        def check(conn_returned):
+            self.assertThat(conn_returned, Is(conn))
+
+        return d.addCallback(check)
+
+    @wait_for_reactor
+    def test_getConnectionFor_waits_for_connection(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        conn = DummyConnection()
+
+        # Add the connection later (we're in the reactor thread right
+        # now so this won't happen until after we return).
+        reactor.callLater(0, service._addConnectionFor, uuid, conn)
+
+        d = service._getConnectionFor(uuid, 1)
+        # A waiter is added for the connection we're interested in.
+        self.assertEqual({uuid: {d}}, service.waiters)
+
+        def check(conn_returned):
+            self.assertThat(conn_returned, Is(conn))
+            # The waiter has been unregistered.
+            self.assertEqual({uuid: set()}, service.waiters)
+
+        return d.addCallback(check)
+
+    @wait_for_reactor
+    def test_getConnectionFor_with_concurrent_waiters(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+        conn = DummyConnection()
+
+        # Add the connection later (we're in the reactor thread right
+        # now so this won't happen until after we return).
+        reactor.callLater(0, service._addConnectionFor, uuid, conn)
+
+        d1 = service._getConnectionFor(uuid, 1)
+        d2 = service._getConnectionFor(uuid, 1)
+        # A waiter is added for each call to _getConnectionFor().
+        self.assertEqual({uuid: {d1, d2}}, service.waiters)
+
+        d = DeferredList((d1, d2))
+
+        def check(results):
+            self.assertEqual([(True, conn), (True, conn)], results)
+            # The waiters have both been unregistered.
+            self.assertEqual({uuid: set()}, service.waiters)
+
+        return d.addCallback(check)
+
+    @wait_for_reactor
+    def test_getConnectionFor_cancels_waiter_when_it_times_out(self):
+        service = RegionService()
+        uuid = factory.make_UUID()
+
+        d = service._getConnectionFor(uuid, 1)
+        # A waiter is added for the connection we're interested in.
+        self.assertEqual({uuid: {d}}, service.waiters)
+        d = assert_fails_with(d, CancelledError)
+
+        def check(_):
+            # The waiter has been unregistered.
+            self.assertEqual({uuid: set()}, service.waiters)
+
+        return d.addCallback(check)
 
 
 class TestRegionAdvertisingService(MAASTestCase):
