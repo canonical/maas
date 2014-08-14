@@ -54,11 +54,13 @@ from netaddr import (
     )
 from provisioningserver import tasks
 from provisioningserver.dns.config import (
-    conf,
+    celery_conf,
+    SRVRecord,
+    )
+from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     DNSZoneConfigBase,
-    SRVRecord,
     )
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
@@ -255,10 +257,11 @@ class TestDNSServer(MAASServerTestCase):
     def setUp(self):
         super(TestDNSServer, self).setUp()
         self.bind = self.useFixture(BINDServer())
-        self.patch(conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
+        self.patch(celery_conf, 'DNS_CONFIG_DIR', self.bind.config.homedir)
 
         # Use a random port for rndc.
-        self.patch(conf, 'DNS_RNDC_PORT', allocate_ports("localhost")[0])
+        self.patch(
+            celery_conf, 'DNS_RNDC_PORT', allocate_ports("localhost")[0])
         # This simulates what should happen when the package is
         # installed:
         # Create MAAS-specific DNS configuration files.

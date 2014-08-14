@@ -42,10 +42,10 @@ from maasserver.sequence import (
 from maasserver.server_address import get_maas_facing_server_address
 from netaddr import IPAddress
 from provisioningserver import tasks
-from provisioningserver.dns.config import (
+from provisioningserver.dns.config import SRVRecord
+from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    SRVRecord,
     )
 from provisioningserver.logger import get_maas_logger
 

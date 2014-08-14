@@ -55,13 +55,15 @@ from provisioningserver.dhcp import (
     leases,
     )
 from provisioningserver.dns.config import (
-    conf,
-    DNSForwardZoneConfig,
-    DNSReverseZoneConfig,
+    celery_conf,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
+    )
+from provisioningserver.dns.zoneconfig import (
+    DNSForwardZoneConfig,
+    DNSReverseZoneConfig,
     )
 from provisioningserver.import_images import boot_resources
 from provisioningserver.power.poweraction import PowerActionFail
@@ -360,7 +362,7 @@ class TestDNSTasks(PservTestCase):
         # Patch DNS_CONFIG_DIR so that the configuration files will be
         # written in a temporary directory.
         self.dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', self.dns_conf_dir)
+        self.patch(celery_conf, 'DNS_CONFIG_DIR', self.dns_conf_dir)
         # Record the calls to 'execute_rndc_command' (instead of
         # executing real rndc commands).
         self.rndc_recorder = FakeMethod()
