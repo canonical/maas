@@ -2,6 +2,131 @@
 Changelog
 =========
 
+1.6.0
+=====
+
+Special notice:
+  Cluster interfaces now have static IP ranges in order to give nodes stable
+  IP addresses.  You need to set the range in each interface to turn on this
+  feature.  See below for details.
+
+
+Major new features
+------------------
+
+IP addresses overhaul.
+  This release contains a total reworking of IP address allocation.  You can
+  now define a separate "static" range in each cluster interface configuration
+  that is separate from the DHCP server's dynamic range.  Any node in use by
+  a user will receive an IP address from the static range that is guaranteed
+  not to change during its allocated lifetime.  Previously, this was at the
+  whim of the DHCP server despite MAAS placing host maps in its configuration.
+
+  Currently, dynamic IP addresses will continue to receive DNS entries so as
+  to maintain backward compatibility with installations being upgraded from
+  1.5.  However, this will be changed in a future release to only give
+  DNS entries to static IPs.
+
+  You can also use the API to `reserve IP addresses`_ on a per-user basis.
+
+.. _reserve IP addresses: http://maas.ubuntu.com/docs1.6/api.html#ip-addresses
+
+Support for additional OSes.
+  MAAS can now install operating systems other than Ubuntu on nodes.
+  Preliminary beta support exists for CentOS and SuSE via the `Curtin`_ "fast"
+  installer.  This has not been thoroughly tested yet and has been provided
+  in case anyone finds this useful and is willing to help find and report bugs.
+
+
+Minor notable changes
+---------------------
+
+DNS entries
+  In 1.5 DNS entries for nodes were a CNAME record.  As of 1.6, they are now
+  all "A" records, which allows for reliable reverse look-ups.
+
+  Only nodes that are allocated to a user and started will receive "A" record
+  entries.  Unallocated nodes no longer have DNS entries.
+
+Removal of bootresources.yaml
+  The bootresources.yaml file, which had to be configured separately on each
+  cluster controller, is no longer in use.  Instead, the configuration for
+  which images to download is now held by the region controller, and defaults
+  to downloading all images for LTS releases.  A `rudimentary API`_ is
+  available to manipulate this configuration.
+
+.. _rudimentary API: http://maas.ubuntu.com/docs1.6/api.html#boot-source
+
+Fast installer is now the default
+  Prevously, the slower Debian installer was used by default.  Any newly-
+  enlisted nodes will now use the newer `fast installer`_.  Existing nodes
+  will keep the installer setting that they already have.
+
+.. _fast installer: https://launchpad.net/curtin
+
+
+Bugs fixed in this release
+--------------------------
+#1307779    fallback from specific to generic subarch broken
+#1310082    d-i with precise+hwe-s stops at "Architecture not supported"
+#1314174    Autodetection of the IPMI IP address fails when the 'power_address' of the power parameters is empty.
+#1314267    MAAS dhcpd will re-issue leases for nodes
+#1317675    Exception powering down a virsh machine
+#1322256    Import boot resources failing to verify keyring
+#1322336    import_boot_images crashes with KeyError on 'keyring'
+#1322606    maas-import-pxe-files fails when run from the command line
+#1324237    call_and_check does not report error output
+#1328659    import_boot_images task fails on utopic
+#1332596    AddrFormatError: failed to detect a valid IP address from None executing upload_dhcp_leases task
+#1250370    "sudo maas-import-ephemerals" steps on ~/.gnupg/pubring.gpg
+#1250435    CNAME record leaks into juju's private-address, breaks host based access control
+#1305758    Import fails while writing maas.meta: No such file or directory
+#1308292    Unhelpful error when re-enlisting a previously enlisted node
+#1309601    maas-enlist prints "successfully enlisted" even when enlistment fails.
+#1309729    Fast path installer is not the default
+#1310844    find_ip_via_arp() results in unpredictable, and in some cases, incorrect IP addresses
+#1310846    amt template gives up way too easily
+#1312863    MAAS fails to detect SuperMicro-based server's power type
+#1314536    Copyright date in web UI is 2012
+#1315160    no support for different operating systems
+#1316627    API needed to allocate and return an extra IP for a container
+#1323291    Can't re-commission a commissioning node
+#1324268    maas-cli 'nodes list' or 'node read <system_id>' doesn't display the osystem or distro_series node fields
+#1325093    install centos using curtin
+#1325927    YUI.Array.each not working as expected
+#1328656    MAAS sends multiple stop_dhcp_server tasks even though there's no dhcp server running.
+#1331139    IP is inconsistently capitalized on the 'edit a cluster interface' page
+#1331148    When editing a cluster interface, last 3 fields are unintuitive
+#1331165    Please do not hardcode the IP address of Canonical services into MAAS managed DHCP configs
+#1338851    Add MAAS arm64/xgene support
+#1307693    Enlisting a SeaMicro or Virsh chassis twice will not replace the missing entries
+#1311726    No documentation about the supported power types and the related power parameters
+#1331982    API documentation for nodegroup op=details missing parameter
+#1274085    error when maas can't meet juju constraints is confusing and not helpful
+#1330778    MAAS needs support for managing nodes via the Moonshot HP iLO Chassis Manager CLI       
+#1337683    The API client MAASClient doesn't encode list parameters when doing a GET
+#1190986    ERROR Nonce already used
+#1342135    Allow domains to be used for NTP server configuration, not just IPs
+#1337437    Allow 14.10 Utopic Unicorn as a deployable series
+#1350235    Package fails to install when the default route is through an aliased/tagged interface
+#1353597    PowerNV: format_bootif should make sure mac address is all lowercase
+
+1.5.3
+=====
+
+Bug fix update
+--------------
+
+ - Reduce number of celery tasks emitted when updating a cluster controller
+   (LP: #1324944)
+ - Fix VirshSSH template which was referencing invalid attributes
+   (LP: #1324966)
+ - Fix a start up problem where a database lock was being taken outside of
+   a transaction (LP: #1325759)
+ - Reformat badly formatted Architecture error message (LP: #1301465)
+ - Final changes to support ppc64el (now known as PowerNV) (LP: #1315154)
+
+
 1.5.2
 =====
 
