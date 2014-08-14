@@ -20,6 +20,7 @@ from contextlib import contextmanager
 import doctest
 import unittest
 
+from maastesting.crochet import EventualResultCatchingMixin
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from maastesting.scenarios import WithScenarios
@@ -53,7 +54,10 @@ def active_test(result, test):
         yield
 
 
-class MAASTestCase(WithScenarios, testtools.TestCase):
+class MAASTestCase(
+        WithScenarios,
+        EventualResultCatchingMixin,
+        testtools.TestCase):
     """Base `TestCase` for MAAS.
 
     Supports `test resources`_, `test scenarios`_, and `fixtures`_.

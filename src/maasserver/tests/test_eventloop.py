@@ -51,7 +51,7 @@ class TestRegionEventLoop(MAASTestCase):
         # After starting the loop, the services list is populated, and
         # the services are started too.
         eventloop.loop.start().wait(5)
-        self.addCleanup(eventloop.loop.reset)
+        self.addCleanup(lambda: eventloop.loop.reset().wait(5))
         self.assertTrue(eventloop.loop.services.running)
         self.assertTrue(eventloop.loop.running)
         self.assertEqual(
