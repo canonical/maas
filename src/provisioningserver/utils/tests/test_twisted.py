@@ -14,16 +14,22 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import operator
 from random import randint
 import re
 import time
 
 from crochet import EventualResult
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    Mock,
+    sentinel,
+    )
 from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
+    callOut,
     deferWithTimeout,
     pause,
     reactor_sync,
@@ -487,3 +493,26 @@ class TestDeferWithTimeout(MAASTestCase):
 
         # The timeout has already been cancelled.
         self.assertThat(clock.getDelayedCalls(), Equals([]))
+
+
+class TestCallOut(MAASTestCase):
+    """Tests for `callOut`."""
+
+    def test__without_arguments(self):
+        func = Mock()
+        func_callout = callOut(func)
+        # The result is passed through untouched.
+        self.assertThat(func_callout(sentinel.result), Is(sentinel.result))
+        self.assertThat(func, MockCalledOnceWith())
+
+    def test__with_arguments(self):
+        func = Mock()
+        func_callout = callOut(func, sentinel.a, sentinel.b, c=sentinel.c)
+        # The result is passed through untouched.
+        self.assertThat(func_callout(sentinel.result), Is(sentinel.result))
+        self.assertThat(func, MockCalledOnceWith(
+            sentinel.a, sentinel.b, c=sentinel.c))
+
+    def test__does_not_suppress_errors(self):
+        func_callout = callOut(operator.div, 0, 0)
+        self.assertRaises(ZeroDivisionError, func_callout, sentinel.result)

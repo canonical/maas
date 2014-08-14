@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'asynchronous',
+    'callOut',
     'deferred',
     'deferWithTimeout',
     'pause',
@@ -232,3 +233,28 @@ def deferWithTimeout(timeout, func=None, *args, **kwargs):
         return result
 
     return d.addBoth(done)
+
+
+def callOut(func, *args, **kwargs):
+    """Wrap a function call so it can be used as a transparent callback.
+
+    For example::
+
+      d = client.fetchSomethingReallyImportant()
+      d.addCallback(callOut(updateStats))
+      d.addCallback(doSomethingWithReallyImportantThing)
+
+    Use this where you need a side-effect as a :py:class:`~Deferred` is fired,
+    but you don't want to clobber the result being propagated with the return
+    value from the call to the given function.
+
+    Not that the result being passed through is *not* passed to the function.
+
+    Note also that if the call-out raises an exception, this will be
+    propagated; nothing is done to suppress the exception or preserve the
+    result in this case.
+    """
+    def callCallOut(thing):
+        func(*args, **kwargs)
+        return thing
+    return callCallOut
