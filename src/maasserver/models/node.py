@@ -664,7 +664,7 @@ class Node(CleanSave, TimestampedModel):
             raise
 
         # Update the DNS zone with the new static IP info as necessary.
-        from maasserver.dns import change_dns_zones
+        from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
         return tasks
 
@@ -1214,7 +1214,7 @@ class Node(CleanSave, TimestampedModel):
         Node.objects.stop_nodes([self.system_id], self.owner)
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
         self.delete_static_host_maps(deallocated_ips)
-        from maasserver.dns import change_dns_zones
+        from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
         # Belt-and-braces: we should never reach a point where the node
         # is BROKEN and still allocated, since mark_broken() releases

@@ -6,7 +6,7 @@
 import datetime
 
 from django.db import models
-from maasserver.dns import zone_serial
+from maasserver.dns.config import zone_serial
 from south.db import db
 from south.v2 import SchemaMigration
 

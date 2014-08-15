@@ -34,7 +34,10 @@ from maasserver.signals import connect_to_field_change
 @receiver(post_save, sender=NodeGroup)
 def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroup."""
-    from maasserver.dns import write_full_dns_config, add_zone
+    from maasserver.dns.config import (
+        write_full_dns_config,
+        add_zone,
+        )
     if created:
         add_zone(instance)
     else:
@@ -47,7 +50,10 @@ def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
 @receiver(post_save, sender=NodeGroupInterface)
 def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
-    from maasserver.dns import write_full_dns_config, add_zone
+    from maasserver.dns.config import (
+        write_full_dns_config,
+        add_zone,
+        )
     if created:
         add_zone(instance.nodegroup)
     else:
@@ -56,7 +62,7 @@ def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
 
 def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
     """Delete DNS zones related to the interface."""
-    from maasserver.dns import write_full_dns_config
+    from maasserver.dns.config import write_full_dns_config
     [old_field] = old_values
     if old_field == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
         # Force the dns config to be written as this might have been
@@ -74,7 +80,7 @@ connect_to_field_change(
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
     try:
-        from maasserver.dns import change_dns_zones
+        from maasserver.dns.config import change_dns_zones
         change_dns_zones(instance.nodegroup)
     except NodeGroup.DoesNotExist:
         # If this Node is being deleted because the whole NodeGroup
@@ -85,7 +91,7 @@ def dns_post_delete_Node(sender, instance, **kwargs):
 
 def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
-    from maasserver.dns import change_dns_zones
+    from maasserver.dns.config import change_dns_zones
     change_dns_zones(instance.nodegroup)
 
 
@@ -93,7 +99,7 @@ connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
-    from maasserver.dns import write_full_dns_config
+    from maasserver.dns.config import write_full_dns_config
     write_full_dns_config()
 
 

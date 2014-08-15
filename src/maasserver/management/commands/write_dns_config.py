@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Django command: write the MAAS named zone files.
@@ -24,7 +24,7 @@ __all__ = [
     ]
 
 from django.core.management.base import BaseCommand
-from maasserver.dns import write_full_dns_config
+from maasserver.dns.config import write_full_dns_config
 
 
 class Command(BaseCommand):

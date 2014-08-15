@@ -50,7 +50,7 @@ def configure_dhcp(nodegroup):
         return
 
     # Circular imports.
-    from maasserver.dns import get_dns_server_address
+    from maasserver.dns.zonegenerator import get_dns_server_address
 
     interfaces = get_interfaces_managed_by(nodegroup)
     if interfaces in [None, []]:

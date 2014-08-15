@@ -22,7 +22,7 @@ from maasserver.dhcp import (
     configure_dhcp,
     get_interfaces_managed_by,
     )
-from maasserver.dns import get_dns_server_address
+from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,

@@ -19,8 +19,8 @@ import random
 
 import celery
 from django.core.exceptions import ValidationError
-from maasserver import dns as dns_module
 from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.dns import config as dns_config
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_BOOT,
@@ -826,7 +826,7 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(deallocate, MockCalledOnceWith(node))
 
     def test_release_updates_dns(self):
-        change_dns_zones = self.patch(dns_module, 'change_dns_zones')
+        change_dns_zones = self.patch(dns_config, 'change_dns_zones')
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ACCEPTED)
@@ -1721,7 +1721,7 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         node.nodegroup.status = NODEGROUP_STATUS.ACCEPTED
-        change_dns_zones = self.patch(dns_module, 'change_dns_zones')
+        change_dns_zones = self.patch(dns_config, 'change_dns_zones')
         node.claim_static_ips()
         self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
 

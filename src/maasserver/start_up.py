@@ -31,7 +31,7 @@ from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
     )
-from maasserver.dns import write_full_dns_config
+from maasserver.dns.config import write_full_dns_config
 from maasserver.enum import COMPONENT
 from maasserver.fields import register_mac_type
 from maasserver.models import (
