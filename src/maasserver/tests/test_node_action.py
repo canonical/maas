@@ -31,6 +31,7 @@ from maasserver.exceptions import (
 from maasserver.models import StaticIPAddress
 from maasserver.node_action import (
     AbortCommissioning,
+    AcquireNode,
     Commission,
     compile_node_actions,
     Delete,
@@ -239,6 +240,26 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
             self.celery.tasks[0]['task'].name)
 
 
+class TestAcquireNodeNodeAction(MAASServerTestCase):
+
+    def test_AcquireNode_inhibit_disallows_user_without_SSH_key(self):
+        user_without_key = factory.make_user()
+        self.assertItemsEqual([], user_without_key.sshkey_set.all())
+        action = StartNode(factory.make_node(), user_without_key)
+        inhibition = action.inhibit()
+        self.assertIsNotNone(inhibition)
+        self.assertIn("SSH key", inhibition)
+
+    def test_AcquireNode_acquires_node(self):
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.READY,
+            power_type='ether_wake')
+        user = factory.make_user()
+        AcquireNode(node, user).execute()
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+        self.assertEqual(user, node.owner)
+
+
 class TestStartNodeNodeAction(MAASServerTestCase):
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
@@ -254,21 +275,20 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertIsNotNone(inhibition)
         self.assertIn("SSH key", inhibition)
 
-    def test_StartNode_acquires_and_starts_node(self):
-        node = factory.make_node(
-            mac=True, status=NODE_STATUS.READY,
-            power_type='ether_wake')
+    def test_StartNode_starts_node(self):
         user = factory.make_user()
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
         StartNode(node, user).execute()
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
-        self.assertEqual(user, node.owner)
         self.assertEqual(
             'provisioningserver.tasks.power_on',
             self.celery.tasks[0]['task'].name)
 
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
+        user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            status=NODE_STATUS.READY, power_type='ether_wake')
+            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user)
         ngi = node.get_primary_mac().cluster_interface
 
         # Narrow the available IP range and pre-claim the only address.
@@ -277,12 +297,18 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         StaticIPAddress.objects.allocate_new(
             ngi.static_ip_range_high, ngi.static_ip_range_low)
 
-        user = factory.make_user()
         e = self.assertRaises(NodeActionError, StartNode(node, user).execute)
         self.assertEqual(
             "%s: Failed to start, static IP addresses are exhausted." %
             node.hostname, e.message)
         self.assertEqual(NODE_STATUS.READY, node.status)
+
+    def test_StartNode_requires_edit_permission(self):
+        user = factory.make_user()
+        node = factory.make_node()
+        self.assertFalse(
+            user.has_perm(NODE_PERMISSION.EDIT, node))
+        self.assertFalse(StartNode(node, user).is_permitted())
 
 
 class TestStopNodeNodeAction(MAASServerTestCase):

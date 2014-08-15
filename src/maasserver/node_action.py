@@ -240,13 +240,32 @@ class UseDI(NodeAction):
         return "Node marked as using the Debian installer."
 
 
+class AcquireNode(NodeAction):
+    """Acquire a node."""
+    name = "acquire"
+    display = "Acquire node"
+    display_bulk = "Acquire selected nodes"
+    actionable_statuses = (NODE_STATUS.READY, )
+    permission = NODE_PERMISSION.VIEW
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        # The UI does not use OAuth, so there is no token to pass to the
+        # acquire() call.
+        self.node.acquire(self.user, token=None)
+
+        return dedent("""\
+            This node is now allocated to you.
+            """)
+
+
 class StartNode(NodeAction):
-    """Acquire and start a node."""
+    """Start a node."""
     name = "start"
     display = "Start node"
     display_bulk = "Start selected nodes"
-    actionable_statuses = (NODE_STATUS.READY, )
-    permission = NODE_PERMISSION.VIEW
+    actionable_statuses = (NODE_STATUS.ALLOCATED, )
+    permission = NODE_PERMISSION.EDIT
 
     def inhibit(self):
         """The user must have an SSH key, so that they access the node."""
@@ -261,12 +280,6 @@ class StartNode(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        # The UI does not use OAuth, so there is no token to pass to the
-        # acquire() call.
-        self.node.acquire(self.user, token=None)
-
-        # Be sure to acquire before starting, or start_nodes will think
-        # the node ineligible based on its un-acquired status.
         try:
             Node.objects.start_nodes([self.node.system_id], self.user)
         except StaticIPAddressExhaustion:
@@ -275,8 +288,7 @@ class StartNode(NodeAction):
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname)
         return dedent("""\
-            This node is now allocated to you.
-            It has been asked to start up.
+            This node has been asked to start up.
             """)
 
 
@@ -329,6 +341,7 @@ class MarkFixed(NodeAction):
 
 ACTION_CLASSES = (
     AbortCommissioning,
+    AcquireNode,
     Delete,
     Commission,
     MarkBroken,

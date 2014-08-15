@@ -43,6 +43,7 @@ from maasserver.models import (
     Node,
     )
 from maasserver.node_action import (
+    AcquireNode,
     Commission,
     Delete,
     StartNode,
@@ -853,7 +854,8 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         factory.make_sshkey(self.logged_in_user)
         self.set_up_oauth_token()
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
             node_link, data={NodeActionForm.input_name: StartNode.name})
@@ -920,7 +922,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.set_up_oauth_token()
         node = factory.make_node(status=NODE_STATUS.READY)
         response = self.perform_action_and_get_node_page(
-            node, StartNode.name)
+            node, AcquireNode.name)
         self.assertIn(
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))

@@ -826,7 +826,8 @@ class TestNodeActionForm(MAASServerTestCase):
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.READY, owner=user)
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=user)
         action = StartNode.name
         # Required for messages to work:
         request = factory.make_fake_request("/fake")
