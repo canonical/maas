@@ -31,15 +31,15 @@ def get_boot_source_uri(boot_source):
     """Return a boot source's URI on the API."""
     return reverse(
         'boot_source_handler',
-        args=[boot_source.cluster.uuid, boot_source.id])
+        args=[boot_source.id])
 
 
 class TestBootSourceAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/',
-            reverse('boot_source_handler', args=['uuid', '3']))
+            '/api/1.0/boot-sources/3/',
+            reverse('boot_source_handler', args=['3']))
 
     def test_GET_returns_boot_source(self):
         self.become_admin()
@@ -51,7 +51,7 @@ class TestBootSourceAPI(APITestCase):
         self.assertEqual(
             reverse(
                 'boot_source_handler',
-                args=[boot_source.cluster.uuid, boot_source.id]
+                args=[boot_source.id]
             ),
             returned_boot_source['resource_uri'])
         # The other fields are the boot source's fields.
@@ -109,18 +109,15 @@ class TestBootSourcesAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/',
-            reverse('boot_sources_handler', args=['uuid']))
+            '/api/1.0/boot-sources/',
+            reverse('boot_sources_handler'))
 
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
         sources = [
-            factory.make_boot_source(cluster=nodegroup) for _ in range(3)]
-        # Create boot sources in another nodegroup.
-        [factory.make_boot_source() for _ in range(3)]
+            factory.make_boot_source() for _ in range(3)]
         response = self.client.get(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]))
+            reverse('boot_sources_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
@@ -128,14 +125,12 @@ class TestBootSourcesAPI(APITestCase):
             [boot_source.get('id') for boot_source in parsed_result])
 
     def test_GET_requires_admin(self):
-        nodegroup = factory.make_node_group()
         response = self.client.get(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]))
+            reverse('boot_sources_handler'))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_with_keyring_filename(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
 
         params = {
             'url': 'http://example.com/',
@@ -143,7 +138,7 @@ class TestBootSourcesAPI(APITestCase):
             'keyring_data': '',
         }
         response = self.client.post(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]), params)
+            reverse('boot_sources_handler'), params)
         self.assertEqual(httplib.CREATED, response.status_code)
         parsed_result = json.loads(response.content)
 
@@ -156,7 +151,6 @@ class TestBootSourcesAPI(APITestCase):
 
     def test_POST_creates_boot_source_with_keyring_data(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
 
         params = {
             'url': 'http://example.com/',
@@ -165,7 +159,7 @@ class TestBootSourcesAPI(APITestCase):
                 factory.make_file_upload(content=sample_binary_data)),
         }
         response = self.client.post(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]), params)
+            reverse('boot_sources_handler'), params)
         self.assertEqual(httplib.CREATED, response.status_code)
         parsed_result = json.loads(response.content)
 
@@ -178,17 +172,15 @@ class TestBootSourcesAPI(APITestCase):
 
     def test_POST_validates_boot_source(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
 
         params = {
             'url': 'http://example.com/',
         }
         response = self.client.post(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]), params)
+            reverse('boot_sources_handler'), params)
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_POST_requires_admin(self):
-        nodegroup = factory.make_node_group()
         params = {
             'url': 'http://example.com/',
             'keyring_filename': '',
@@ -196,5 +188,5 @@ class TestBootSourcesAPI(APITestCase):
                 factory.make_file_upload(content=sample_binary_data)),
         }
         response = self.client.post(
-            reverse('boot_sources_handler', args=[nodegroup.uuid]), params)
+            reverse('boot_sources_handler'), params)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)

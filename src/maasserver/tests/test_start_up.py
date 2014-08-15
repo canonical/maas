@@ -108,17 +108,9 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertItemsEqual([NodeGroup.objects.ensure_master()], clusters)
 
     def test__initialises_boot_source_config(self):
-        cluster = factory.make_node_group()
-        self.assertItemsEqual([], cluster.bootsource_set.all())
+        self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
-        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
-
-    def test__creates_master_with_boot_source_config(self):
-        NodeGroup.objects.all().delete()
-        start_up.inner_start_up()
-        master = NodeGroup.objects.ensure_master()
-        self.assertThat(
-            BootSource.objects.filter(cluster=master), HasLength(1))
+        self.assertThat(BootSource.objects.all(), HasLength(1))
 
     def test__warns_about_missing_boot_images(self):
         # If no boot images have been registered yet, that may mean that

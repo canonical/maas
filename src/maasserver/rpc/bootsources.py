@@ -18,7 +18,7 @@ __all__ = [
 
 from base64 import b64decode
 
-from maasserver.models import NodeGroup
+from maasserver.models import BootSource
 from maasserver.utils.async import transactional
 from provisioningserver.utils.twisted import synchronous
 
@@ -31,15 +31,12 @@ def get_boot_sources(uuid):
     Returns them as a structure suitable for returning in the response
     for :py:class:`~provisioningserver.rpc.region.GetBootSources`.
     """
-    try:
-        nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
-    except NodeGroup.DoesNotExist:
-        sources = []
-    else:
-        sources = [
-            source.to_dict()
-            for source in nodegroup.bootsource_set.all()
-        ]
+    # No longer is uuid used for this, as its now global. The uuid is just
+    # ignored.
+    sources = [
+        source.to_dict()
+        for source in BootSource.objects.all()
+    ]
     # Replace the keyring_data value (base-64 encoded keyring) with
     # the raw bytes; AMP is fine with bytes.
     for source in sources:

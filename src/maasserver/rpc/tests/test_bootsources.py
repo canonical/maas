@@ -16,19 +16,15 @@ __all__ = []
 
 from maasserver.rpc.bootsources import get_boot_sources
 from maasserver.testing.factory import factory
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestGetBootSources(MAASTestCase):
-
-    def test_returns_empty_list_when_cluster_does_not_exist(self):
-        uuid = factory.make_UUID()
-        self.assertEqual([], get_boot_sources(uuid))
+class TestGetBootSources(MAASServerTestCase):
 
     def test_returns_boot_sources_and_selections(self):
         keyring = factory.make_bytes()
         nodegroup = factory.make_node_group()
-        source = factory.make_boot_source(nodegroup, keyring_data=keyring)
+        source = factory.make_boot_source(keyring_data=keyring)
         factory.make_boot_source_selection(source)
 
         expected = source.to_dict()

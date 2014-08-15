@@ -22,7 +22,6 @@ from base64 import b64encode
 from django.core.exceptions import ValidationError
 from django.db.models import (
     FilePathField,
-    ForeignKey,
     URLField,
     )
 from maasserver import DefaultMeta
@@ -37,10 +36,8 @@ class BootSource(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    cluster = ForeignKey(
-        'maasserver.NodeGroup', editable=True, null=True, blank=False)
-
-    url = URLField(blank=False, help_text="The URL of the BootSource.")
+    url = URLField(
+        blank=False, help_text="The URL of the BootSource.")
 
     keyring_filename = FilePathField(
         blank=True,

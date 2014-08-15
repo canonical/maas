@@ -233,7 +233,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetBootSources(MAASTestCase):
+class TestRegionProtocol_GetBootSources(TransactionTestCase):
 
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
@@ -254,8 +254,7 @@ class TestRegionProtocol_GetBootSources(MAASTestCase):
     @transactional
     def make_boot_source_selection(self, keyring):
         nodegroup = factory.make_node_group()
-        boot_source = factory.make_boot_source(
-            nodegroup, keyring_data=keyring)
+        boot_source = factory.make_boot_source(keyring_data=keyring)
         factory.make_boot_source_selection(boot_source)
         return nodegroup.uuid, boot_source.to_dict()
 

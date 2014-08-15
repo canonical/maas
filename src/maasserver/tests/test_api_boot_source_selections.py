@@ -33,7 +33,7 @@ def get_boot_source_selection_uri(boot_source_selection):
     return reverse(
         'boot_source_selection_handler',
         args=[
-            boot_source.cluster.uuid, boot_source.id,
+            boot_source.id,
             boot_source_selection.id,
         ]
     )
@@ -43,10 +43,10 @@ class TestBootSourceSelectionAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/selections/4/',
+            '/api/1.0/boot-sources/3/selections/4/',
             reverse(
                 'boot_source_selection_handler',
-                args=['uuid', '3', '4']))
+                args=['3', '4']))
 
     def test_GET_returns_boot_source(self):
         self.become_admin()
@@ -61,7 +61,7 @@ class TestBootSourceSelectionAPI(APITestCase):
             reverse(
                 'boot_source_selection_handler',
                 args=[
-                    boot_source.cluster.uuid, boot_source.id,
+                    boot_source.id,
                     boot_source_selection.id]
             ),
             returned_boot_source_selection['resource_uri'])
@@ -128,8 +128,8 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_handler_path(self):
         self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-sources/3/selections/',
-            reverse('boot_source_selections_handler', args=['uuid', '3']))
+            '/api/1.0/boot-sources/3/selections/',
+            reverse('boot_source_selections_handler', args=['3']))
 
     def test_GET_returns_boot_source_selection_list(self):
         self.become_admin()
@@ -142,7 +142,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
         response = self.client.get(
             reverse(
                 'boot_source_selections_handler',
-                args=[boot_source.cluster.uuid, boot_source.id]))
+                args=[boot_source.id]))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
         self.assertItemsEqual(
@@ -154,7 +154,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
         response = self.client.get(
             reverse(
                 'boot_source_selections_handler',
-                args=[boot_source.cluster.uuid, boot_source.id]))
+                args=[boot_source.id]))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_selection(self):
@@ -172,7 +172,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
         response = self.client.post(
             reverse(
                 'boot_source_selections_handler',
-                args=[boot_source.cluster.uuid, boot_source.id]), params)
+                args=[boot_source.id]), params)
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
 
@@ -194,5 +194,5 @@ class TestBootSourceSelectionsAPI(APITestCase):
         response = self.client.post(
             reverse(
                 'boot_source_selections_handler',
-                args=[boot_source.cluster.uuid, boot_source.id]), params)
+                args=[boot_source.id]), params)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ensure_boot_source_definition",
     "get_simplestream_endpoint",
     "simplestreams_file_handler",
     "simplestreams_stream_handler",
@@ -34,6 +35,8 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
+    BootSource,
+    BootSourceSelection,
     )
 from maasserver.utils import absolute_reverse
 from simplestreams import util as sutil
@@ -50,6 +53,20 @@ def get_simplestream_endpoint():
             'simplestreams_stream_handler', kwargs={'filename': 'index.json'}),
         'selections': [],
         }
+
+
+def ensure_boot_source_definition():
+    """Set default boot source if none is currently defined."""
+    if not BootSource.objects.exists():
+        source = BootSource.objects.create(
+            url='http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+            keyring_filename=(
+                '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
+        # Default is to import newest Ubuntu LTS releases, for only amd64
+        # release versions only.
+        BootSourceSelection.objects.create(
+            boot_source=source, release='trusty',
+            arches=['amd64'], subarches=['*'], labels=['release'])
 
 
 class TransactionWrapper:

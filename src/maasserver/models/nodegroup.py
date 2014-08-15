@@ -31,7 +31,6 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models.bootsource import BootSource
-from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
 from piston.models import (
@@ -202,21 +201,6 @@ class NodeGroup(TimestampedModel):
             if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
             ]
 
-    def ensure_boot_source_definition(self):
-        """Set default boot source if none is currently defined."""
-        if not self.bootsource_set.exists():
-            source = BootSource.objects.create(
-                cluster=self,
-                url='http://maas.ubuntu.com/images/ephemeral-v2/releases/',
-                keyring_filename=(
-                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
-            # Default is to import supported Ubuntu LTS releases, for all
-            # architectures, release versions only.
-            for os_release in ('precise', 'trusty'):
-                BootSourceSelection.objects.create(
-                    boot_source=source, release=os_release,
-                    arches=['*'], subarches=['*'], labels=['release'])
-
     def manages_dns(self):
         """Does this `NodeGroup` manage DNS on any interfaces?
 
@@ -259,7 +243,7 @@ class NodeGroup(TimestampedModel):
         # Avoid circular imports.
         from maasserver.models import Config
         sources = [
-            source.to_dict() for source in self.bootsource_set.all()]
+            source.to_dict() for source in BootSource.objects.all()]
         task_kwargs = {
             'callback': report_boot_images.subtask(
                 options={'queue': self.uuid}),

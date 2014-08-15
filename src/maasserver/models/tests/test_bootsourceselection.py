@@ -19,16 +19,14 @@ from maasserver.models import (
     BootSourceSelection,
     )
 from maasserver.testing.factory import factory
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 
 
-class TestBootSourceSelection(MAASTestCase):
+class TestBootSourceSelection(MAASServerTestCase):
     """Tests for the `BootSourceSelection` model."""
 
     def test_can_create_selection(self):
-        cluster = factory.make_node_group()
         boot_source = BootSource(
-            cluster=cluster,
             url="http://example.com",
             keyring_filename="/path/to/something")
         boot_source.save()

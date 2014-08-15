@@ -1476,7 +1476,6 @@ class NodeGroupDefineForm(ModelForm):
 
     def save(self):
         nodegroup = super(NodeGroupDefineForm, self).save()
-        nodegroup.ensure_boot_source_definition()
         for interface in self.cleaned_data['interfaces']:
             instance = NodeGroupInterface(nodegroup=nodegroup)
             form = NodeGroupInterfaceForm(data=interface, instance=instance)
@@ -1997,12 +1996,8 @@ class BootSourceForm(ModelForm):
         label="The GPG keyring for this BootSource, as a binary blob.",
         required=False)
 
-    def __init__(self, nodegroup=None, **kwargs):
+    def __init__(self, **kwargs):
         super(BootSourceForm, self).__init__(**kwargs)
-        if 'instance' in kwargs:
-            self.nodegroup = kwargs['instance'].cluster
-        else:
-            self.nodegroup = nodegroup
 
     def clean_keyring_data(self):
         """Process 'keyring_data' field.
@@ -2014,13 +2009,6 @@ class BootSourceForm(ModelForm):
         if data is not None:
             return data.read()
         return data
-
-    def save(self, *args, **kwargs):
-        boot_source = super(BootSourceForm, self).save(commit=False)
-        boot_source.cluster = self.nodegroup
-        if kwargs.get('commit', True):
-            boot_source.save(*args, **kwargs)
-        return boot_source
 
 
 class BootSourceSelectionForm(ModelForm):

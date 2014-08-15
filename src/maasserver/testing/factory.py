@@ -888,18 +888,16 @@ class Factory(maastesting.factory.Factory):
                     vlan_tag=tag, disjoint_from=networks, **kwargs))
         return networks
 
-    def make_boot_source(self, cluster=None, url=None,
-                         keyring_filename=None, keyring_data=None):
+    def make_boot_source(self, url=None, keyring_filename=None,
+                         keyring_data=None):
         """Create a new `BootSource`."""
-        if cluster is None:
-            cluster = self.make_node_group()
         if url is None:
             url = "http://%s.com" % self.make_name('source-url')
         # Only set _one_ of keyring_filename and keyring_data.
         if keyring_filename is None and keyring_data is None:
             keyring_filename = self.make_name("keyring")
         boot_source = BootSource(
-            cluster=cluster, url=url,
+            url=url,
             keyring_filename=(
                 "" if keyring_filename is None else keyring_filename),
             keyring_data=(

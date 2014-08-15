@@ -22,8 +22,6 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
-    BootSource,
-    BootSourceSelection,
     Config,
     NodeGroup,
     nodegroup as nodegroup_module,
@@ -43,7 +41,6 @@ from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
     GreaterThan,
-    HasLength,
     )
 
 
@@ -404,55 +401,12 @@ class TestNodeGroup(MAASServerTestCase):
         recorder = self.patch(nodegroup_module, 'import_boot_images')
         self.patch(nodegroup_module, 'report_boot_images', Mock())
         nodegroup = factory.make_node_group()
-        nodegroup.ensure_boot_source_definition()
         sources = [
-            source.to_dict() for source in nodegroup.bootsource_set.all()]
+            factory.make_boot_source(
+                keyring_data=b"123445").to_dict()
+            for _ in range(3)
+            ]
         nodegroup.import_boot_images()
         [call] = recorder.mock_calls
         _, _, kwargs = call
         self.assertEqual(sources, kwargs['kwargs'].get('sources'))
-
-    def test_ensure_boot_source_definition_creates_default_source(self):
-        cluster = factory.make_node_group()
-        cluster.ensure_boot_source_definition()
-        sources = BootSource.objects.filter(cluster=cluster)
-        self.assertThat(sources, HasLength(1))
-        [source] = sources
-        self.assertAttributes(
-            source,
-            {
-                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
-                'keyring_filename': (
-                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-            })
-        selections = BootSourceSelection.objects.filter(boot_source=source)
-        by_release = {
-            selection.release: selection
-            for selection in selections
-            }
-        self.assertItemsEqual(['precise', 'trusty'], by_release.keys())
-        self.assertAttributes(
-            by_release['precise'],
-            {
-                'release': 'precise',
-                'arches': ['*'],
-                'subarches': ['*'],
-                'labels': ['release'],
-            })
-        self.assertAttributes(
-            by_release['trusty'],
-            {
-                'release': 'trusty',
-                'arches': ['*'],
-                'subarches': ['*'],
-                'labels': ['release'],
-            })
-
-    def test_ensure_boot_source_definition_skips_if_already_present(self):
-        cluster = factory.make_node_group()
-        sources = [
-            factory.make_boot_source(cluster=cluster)
-            for _ in range(3)
-            ]
-        cluster.ensure_boot_source_definition()
-        self.assertItemsEqual(sources, cluster.bootsource_set.all())

@@ -130,7 +130,6 @@ from testtools.matchers import (
     AllMatch,
     Contains,
     Equals,
-    HasLength,
     MatchesAll,
     MatchesRegex,
     MatchesStructure,
@@ -1719,27 +1718,6 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 uuid_nodegroup.nodegroupinterface_set.all()
             ])
 
-    def test_ensures_boot_sources_when_creating_cluster(self):
-        form = NodeGroupDefineForm(
-            data={
-                'name': factory.make_name('cluster'),
-                'uuid': factory.make_UUID(),
-            })
-        self.assertTrue(form.is_valid(), form._errors)
-        cluster = form.save()
-        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
-
-    def test_ensures_boot_sources_when_updating_cluster(self):
-        form = NodeGroupDefineForm(
-            instance=NodeGroup.objects.ensure_master(),
-            data={
-                'name': factory.make_name('cluster'),
-                'uuid': factory.make_UUID(),
-            })
-        self.assertTrue(form.is_valid(), form._errors)
-        cluster = form.save()
-        self.assertThat(cluster.bootsource_set.all(), HasLength(1))
-
 
 class TestNodeGroupEdit(MAASServerTestCase):
 
@@ -2393,18 +2371,16 @@ class TestBootSourceForm(MAASServerTestCase):
         self.assertAttributes(boot_source, params)
 
     def test_creates_boot_source_object_with_keyring_filename(self):
-        nodegroup = factory.make_node_group()
         params = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('keyring_filename'),
         }
-        form = BootSourceForm(nodegroup=nodegroup, data=params)
+        form = BootSourceForm(data=params)
         self.assertTrue(form.is_valid(), form._errors)
         boot_source = form.save()
         self.assertAttributes(boot_source, params)
 
     def test_creates_boot_source_object_with_keyring_data(self):
-        nodegroup = factory.make_node_group()
         in_mem_file = InMemoryUploadedFile(
             StringIO(sample_binary_data), name=factory.make_name('name'),
             field_name=factory.make_name('field-name'),
@@ -2413,7 +2389,7 @@ class TestBootSourceForm(MAASServerTestCase):
             charset=None)
         params = {'url': 'http://example.com/'}
         form = BootSourceForm(
-            nodegroup=nodegroup, data=params,
+            data=params,
             files={'keyring_data': in_mem_file})
         self.assertTrue(form.is_valid(), form._errors)
         boot_source = form.save()

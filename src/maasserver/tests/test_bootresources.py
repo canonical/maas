@@ -22,16 +22,26 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.test.client import Client
-from maasserver.bootresources import get_simplestream_endpoint
+from maasserver.bootresources import (
+    ensure_boot_source_definition,
+    get_simplestream_endpoint,
+    )
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    )
+from maasserver.models import (
+    BootSource,
+    BootSourceSelection,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    ContainsAll,
+    HasLength,
+    )
 
 
 class TestHelpers(MAASServerTestCase):
@@ -45,6 +55,41 @@ class TestHelpers(MAASServerTestCase):
                 kwargs={'filename': 'index.json'}),
             endpoint['url'])
         self.assertEqual([], endpoint['selections'])
+
+    def test_ensure_boot_source_definition_creates_default_source(self):
+        ensure_boot_source_definition()
+        sources = BootSource.objects.all()
+        self.assertThat(sources, HasLength(1))
+        [source] = sources
+        self.assertAttributes(
+            source,
+            {
+                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
+                'keyring_filename': (
+                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
+            })
+        selections = BootSourceSelection.objects.filter(boot_source=source)
+        by_release = {
+            selection.release: selection
+            for selection in selections
+            }
+        self.assertItemsEqual(['trusty'], by_release.keys())
+        self.assertAttributes(
+            by_release['trusty'],
+            {
+                'release': 'trusty',
+                'arches': ['amd64'],
+                'subarches': ['*'],
+                'labels': ['release'],
+            })
+
+    def test_ensure_boot_source_definition_skips_if_already_present(self):
+        sources = [
+            factory.make_boot_source()
+            for _ in range(3)
+            ]
+        ensure_boot_source_definition()
+        self.assertItemsEqual(sources, BootSource.objects.all())
 
 
 class TestSimpleStreamsHandler(MAASServerTestCase):

@@ -26,6 +26,7 @@ from maasserver import (
     eventloop,
     locks,
     )
+from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -87,10 +88,8 @@ def inner_start_up():
     # This must be serialized or we may initialize the master more than once.
     NodeGroup.objects.ensure_master()
 
-    # If any clusters have no boot-source definitions yet, provide them
-    # with the default definition.
-    for cluster in NodeGroup.objects.all():
-        cluster.ensure_boot_source_definition()
+    # If no boot-source definitions yet, create the default definition.
+    ensure_boot_source_definition()
 
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
