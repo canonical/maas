@@ -88,7 +88,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         hostname = factory.make_string()
         network = factory.getRandomNetwork()
         ip = factory.pick_ip_in_network(network)
-        mapping = {hostname: ip}
+        mapping = {hostname: [ip]}
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=serial, mapping=mapping)
         self.assertThat(
@@ -115,32 +115,39 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             factory.make_name('host'): factory.getRandomIPAddress(),
             factory.make_name('host'): factory.getRandomIPAddress(),
         }
-        mapping = {
+        ipv6_mapping = {
             factory.make_name('host'): factory.make_ipv6_address(),
             factory.make_name('host'): factory.make_ipv6_address(),
         }
-        mapping.update(ipv4_mapping)
+        combined_mapping = {
+            hostname: [ip]
+            for hostname, ip in (ipv4_mapping.items() + ipv6_mapping.items())
+            }
         expected = [('%s.' % name, dns_ip)] + ipv4_mapping.items()
         self.assertItemsEqual(
             expected,
-            DNSForwardZoneConfig.get_A_mapping(mapping, name, dns_ip))
+            DNSForwardZoneConfig.get_A_mapping(combined_mapping, name, dns_ip))
 
     def test_get_aaaa_mapping_returns_ipv6_mapping(self):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.pick_ip_in_network(network)
+        ipv4_mapping = {
+            factory.make_name('host'): factory.getRandomIPAddress(),
+            factory.make_name('host'): factory.getRandomIPAddress(),
+        }
         ipv6_mapping = {
             factory.make_name('host'): factory.make_ipv6_address(),
             factory.make_name('host'): factory.make_ipv6_address(),
         }
-        mapping = {
-            factory.make_name('host'): factory.getRandomIPAddress(),
-            factory.make_name('host'): factory.getRandomIPAddress(),
-        }
-        mapping.update(ipv6_mapping)
+        combined_mapping = {
+            hostname: [ip]
+            for hostname, ip in (ipv4_mapping.items() + ipv6_mapping.items())
+            }
         self.assertItemsEqual(
             ipv6_mapping.items(),
-            DNSForwardZoneConfig.get_AAAA_mapping(mapping, name, dns_ip))
+            DNSForwardZoneConfig.get_AAAA_mapping(
+                combined_mapping, name, dns_ip))
 
     def test_get_srv_mapping_returns_iterator(self):
         srv = self.make_srv_record()
@@ -184,8 +191,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         ipv6_hostname = factory.make_name('host')
         ipv6_ip = factory.make_ipv6_address()
         mapping = {
-            ipv4_hostname: ipv4_ip,
-            ipv6_hostname: ipv6_ip,
+            ipv4_hostname: [ipv4_ip],
+            ipv6_hostname: [ipv6_ip],
         }
         srv = self.make_srv_record()
         dns_zone_config = DNSForwardZoneConfig(
@@ -293,14 +300,18 @@ class TestDNSReverseZoneConfig(MAASTestCase):
     def test_get_ptr_mapping(self):
         name = factory.make_string()
         network = IPNetwork('192.12.0.1/30')
-        mapping = {
+        hosts = {
             factory.make_string(): factory.pick_ip_in_network(network),
             factory.make_string(): factory.pick_ip_in_network(network),
         }
         expected = [
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
-            for hostname, ip in mapping.items()
+            for hostname, ip in hosts.items()
         ]
+        mapping = {
+            hostname: [ip]
+            for hostname, ip in hosts.items()
+            }
         self.assertItemsEqual(
             expected,
             DNSReverseZoneConfig.get_PTR_mapping(mapping, name, network))
@@ -316,10 +327,13 @@ class TestDNSReverseZoneConfig(MAASTestCase):
             (IPAddress(ip).reverse_dns, '%s.%s.' % (hostname, name))
             for hostname, ip in in_network_mapping.items()
         ]
-        mapping = in_network_mapping
+        mapping = {
+            hostname: [ip]
+            for hostname, ip in in_network_mapping.items()
+            }
         extra_mapping = {
-            factory.make_string(): '192.50.0.2',
-            factory.make_string(): '192.70.0.2',
+            factory.make_string(): ['192.50.0.2'],
+            factory.make_string(): ['192.70.0.2'],
         }
         mapping.update(extra_mapping)
         self.assertItemsEqual(

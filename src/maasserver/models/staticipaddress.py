@@ -180,10 +180,10 @@ class StaticIPAddressManager(Manager):
             WHERE node.nodegroup_id = %s
             ORDER BY node.hostname, mac.id
             """, (nodegroup.id,))
-        return dict(
-            (strip_domain(hostname), ip)
+        return {
+            strip_domain(hostname): [ip]
             for hostname, ip in cursor.fetchall()
-            )
+            }
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):

@@ -180,7 +180,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             factory.make_mac_address(node=node)
             lease = factory.make_dhcp_lease(
                 nodegroup=nodegroup, mac=mac.mac_address)
-            expected_mapping[node.hostname] = lease.ip
+            expected_mapping[node.hostname] = [lease.ip]
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
         self.assertEqual(expected_mapping, mapping)
 
@@ -210,7 +210,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         lease = factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
-        self.assertEqual({hostname: lease.ip}, mapping)
+        self.assertEqual({hostname: [lease.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_picks_mac_with_lease(self):
         node = factory.make_node(
@@ -222,7 +222,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=second_mac.mac_address)
         mapping = DHCPLease.objects.get_hostname_ip_mapping(node.nodegroup)
-        self.assertEqual({node.hostname: lease.ip}, mapping)
+        self.assertEqual({node.hostname: [lease.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_picks_oldest_mac_with_lease(self):
         node = factory.make_node(
@@ -237,7 +237,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             nodegroup=node.nodegroup, mac=older_mac.mac_address)
 
         mapping = DHCPLease.objects.get_hostname_ip_mapping(node.nodegroup)
-        self.assertEqual({node.hostname: lease_for_older_mac.ip}, mapping)
+        self.assertEqual({node.hostname: [lease_for_older_mac.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
         nodegroup = factory.make_node_group()

@@ -189,8 +189,8 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         staticip = factory.make_staticipaddress(mac=node2.get_primary_mac())
 
         expected_mapping = {
-            node1.hostname: lease.ip,
-            node2.hostname: staticip.ip,
+            node1.hostname: [lease.ip],
+            node2.hostname: [staticip.ip],
         }
         self.assertEqual(
             expected_mapping, get_hostname_ip_mapping(nodegroup))
@@ -206,11 +206,9 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         # Create static mapping for the *same* node.
         staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
 
-        expected_mapping = {
-            node.hostname: staticip.ip,
-        }
         self.assertEqual(
-            expected_mapping, get_hostname_ip_mapping(nodegroup))
+            {node.hostname: [staticip.ip]},
+            get_hostname_ip_mapping(nodegroup))
 
 
 def forward_zone(domain):

@@ -141,10 +141,10 @@ class DHCPLeaseManager(Manager):
             AND node.status = %s
             ORDER BY node.hostname, mac.id
             """, (nodegroup.id, NODE_STATUS.ALLOCATED))
-        return dict(
-            (strip_domain(hostname), ip)
+        return {
+            strip_domain(hostname): [ip]
             for hostname, ip in cursor.fetchall()
-            )
+            }
 
 
 class DHCPLease(CleanSave, Model):

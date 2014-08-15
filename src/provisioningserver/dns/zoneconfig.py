@@ -42,6 +42,16 @@ def get_fqdn_or_ip_address(target):
         return target.rstrip('.') + '.'
 
 
+def enumerate_mapping(mapping):
+    """Generate `(hostname, ip)` tuples from `mapping`.
+
+    :param mapping: A dict mapping host names to lists of IP addresses.
+    """
+    for hostname, ips in mapping.viewitems():
+        for ip in ips:
+            yield hostname, ip
+
+
 class DNSZoneConfigBase:
     """Base class for zone writers."""
 
@@ -101,7 +111,7 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
             on each change.
         :param dns_ip: The IP address of the DNS server authoritative for this
             zone.
-        :param mapping: A hostname:ip-address mapping for all known hosts in
+        :param mapping: A hostname:ip-addresses mapping for all known hosts in
             the zone.  They will be mapped as A records.
         :param srv_mapping: Set of SRVRecord mappings.
         """
@@ -117,12 +127,15 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         """Return a generator mapping hostnames to IP addresses.
 
         This includes the record for the name server's IP.
-        :param mapping: A dict mapping host names to IP addresses.
+
+        :param mapping: A dict mapping host names to lists of IP addresses.
         :param domain: Zone's domain name.
         :param dns_ip: IP address for the zone's authoritative DNS server.
-        :return: A generator of tuples: (host name, IP addresses).
+        :return: A generator of tuples: (host name, IP address).
         """
-        return chain([('%s.' % domain, dns_ip)], mapping.items())
+        return chain(
+            [('%s.' % domain, dns_ip)],
+            enumerate_mapping(mapping))
 
     @classmethod
     def get_A_mapping(cls, mapping, domain, dns_ip):
@@ -133,10 +146,10 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         the forward zone file.
 
         This includes the A record for the name server's IP.
-        :param mapping: A dict mapping host names to IP addresses.
+        :param mapping: A dict mapping host names to lists of IP addresses.
         :param domain: Zone's domain name.
         :param dns_ip: IP address for the zone's authoritative DNS server.
-        :return: A generator of tuples: (host name, IP addresses).
+        :return: A generator of tuples: (host name, IP address).
         """
         mapping = cls.get_mapping(mapping, domain, dns_ip)
         return (item for item in mapping if IPAddress(item[1]).version == 4)
@@ -149,10 +162,10 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
         The returned mapping is meant to be used to generate AAAA records
         in the forward zone file.
 
-        :param mapping: A dict mapping host names to IP addresses.
+        :param mapping: A dict mapping host names to lists of IP addresses.
         :param domain: Zone's domain name.
         :param dns_ip: IP address for the zone's authoritative DNS server.
-        :return: A generator of tuples: (host name, IP addresses).
+        :return: A generator of tuples: (host name, IP address).
         """
         mapping = cls.get_mapping(mapping, domain, dns_ip)
         return (item for item in mapping if IPAddress(item[1]).version == 6)
@@ -204,7 +217,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         :param domain: The domain name of the forward zone.
         :param serial: The serial to use in the zone file. This must increment
             on each change.
-        :param mapping: A hostname:ip mapping for all known hosts in
+        :param mapping: A hostname:ips mapping for all known hosts in
             the reverse zone.  They will be mapped as PTR records.  IP
             addresses not in `network` will be dropped.
         :param network: The network that the mapping exists within.
@@ -250,7 +263,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
         The returned mapping is meant to be used to generate PTR records in
         the reverse zone file.
 
-        :param mapping: A hostname:ip-address mapping for all known hosts in
+        :param mapping: A hostname:ip-addresses mapping for all known hosts in
             the reverse zone.
         :param domain: Zone's domain name.
         :param network: Zone's network.
@@ -261,7 +274,7 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
                 IPAddress(ip).reverse_dns,
                 '%s.%s.' % (hostname, domain),
             )
-            for hostname, ip in mapping.items()
+            for hostname, ip in enumerate_mapping(mapping)
             # Filter out the IP addresses that are not in `network`.
             if IPAddress(ip) in network
         )
