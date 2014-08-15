@@ -52,6 +52,7 @@ except ImportError:
     build_request_repr = repr
 from django.utils.http import urlquote_plus
 from maasserver import logger
+from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
 from maasserver.exceptions import (
     ExternalComponentException,
     MAASAPIException,
@@ -97,6 +98,8 @@ class AccessMiddleware:
             reverse('metadata'),
             # RPC information is for use by clusters; no login.
             reverse('rpc-info'),
+            # Boot resources simple streams endpoint; no login.
+            SIMPLESTREAMS_URL_REGEXP,
             # API calls are protected by piston.
             settings.API_URL_REGEXP,
             ]

@@ -21,6 +21,10 @@ from django.conf.urls import (
     url,
     )
 from django.contrib.auth.decorators import user_passes_test
+from maasserver.bootresources import (
+    simplestreams_file_handler,
+    simplestreams_stream_handler,
+    )
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Node
 from maasserver.views import TextTemplateView
@@ -103,6 +107,13 @@ urlpatterns = patterns(
 urlpatterns += patterns(
     'maasserver.views',
     url(r'^accounts/login/$', login, name='login'),
+    url(
+        r'^images-stream/streams/v1/(?P<filename>.*)$',
+        simplestreams_stream_handler, name='simplestreams_stream_handler'),
+    url(
+        r'^images-stream/(?P<os>.*)/(?P<arch>.*)/(?P<subarch>.*)/'
+        '(?P<series>.*)/(?P<version>.*)/(?P<filename>.*)$',
+        simplestreams_file_handler, name='simplestreams_file_handler'),
     url(
         r'^robots\.txt$', TextTemplateView.as_view(
             template_name='maasserver/robots.txt'),
