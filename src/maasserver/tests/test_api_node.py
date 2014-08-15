@@ -897,6 +897,36 @@ class TestNodeAPI(APITestCase):
         node = reload_object(node)
         self.assertEqual(old_zone, node.zone)
 
+    def test_PUT_sets_disable_ipv4(self):
+        original_setting = factory.pick_bool()
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self),
+            disable_ipv4=original_setting)
+        new_setting = not original_setting
+
+        response = self.client_put(
+            self.get_node_uri(node), {'disable_ipv4': new_setting})
+        self.assertEqual(httplib.OK, response.status_code)
+
+        node = reload_object(node)
+        self.assertEqual(new_setting, node.disable_ipv4)
+
+    def test_PUT_leaves_disable_ipv4_unchanged_by_default(self):
+        original_setting = factory.pick_bool()
+        node = factory.make_node(
+            owner=self.logged_in_user,
+            architecture=make_usable_architecture(self),
+            disable_ipv4=original_setting)
+        self.assertEqual(original_setting, node.disable_ipv4)
+
+        response = self.client_put(
+            self.get_node_uri(node), {'zone': factory.make_zone()})
+        self.assertEqual(httplib.OK, response.status_code)
+
+        node = reload_object(node)
+        self.assertEqual(original_setting, node.disable_ipv4)
+
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
         self.become_admin()

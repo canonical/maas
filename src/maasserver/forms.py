@@ -440,6 +440,7 @@ class NodeForm(ModelForm):
             'osystem',
             'distro_series',
             'license_key',
+            'disable_ipv4',
             )
 
 

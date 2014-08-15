@@ -228,7 +228,7 @@ class Factory(maastesting.factory.Factory):
                   architecture="i386/generic", updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
-                  power_state=None, **kwargs):
+                  power_state=None, disable_ipv4=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -254,10 +254,13 @@ class Factory(maastesting.factory.Factory):
             power_type = 'ether_wake'
         if power_state is None:
             power_state = self.pick_enum(POWER_STATE)
+        if disable_ipv4 is None:
+            disable_ipv4 = self.pick_bool()
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
             nodegroup=nodegroup, routers=routers, zone=zone,
-            power_type=power_type, **kwargs)
+            power_type=power_type, disable_ipv4=disable_ipv4,
+            **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
         # number of VLAN identifiers (4,094) makes it very likely to

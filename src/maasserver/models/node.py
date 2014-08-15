@@ -624,6 +624,15 @@ class Node(CleanSave, TimestampedModel):
 
     tags = ManyToManyField(Tag)
 
+    # Disable IPv4 support on node once deployed, on operating systems that
+    # support this choice.
+    disable_ipv4 = BooleanField(
+        default=False, verbose_name="Disable IPv4 when deployed",
+        help_text=(
+            "On operating systems where this choice is supported, "
+            "disable IPv4 networking on this node when it is deployed.  "
+            "IPv4 may still be used for booting and installing the node."))
+
     objects = NodeManager()
 
     def __unicode__(self):

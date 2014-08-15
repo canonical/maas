@@ -457,6 +457,7 @@ class TestNodeForm(MAASServerTestCase):
                 'osystem',
                 'distro_series',
                 'license_key',
+                'disable_ipv4',
                 'nodegroup',
             ], list(form.fields))
 
@@ -665,6 +666,7 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'osystem',
                 'distro_series',
                 'license_key',
+                'disable_ipv4',
                 'power_type',
                 'power_parameters',
                 'cpu_count',

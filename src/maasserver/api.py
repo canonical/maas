@@ -287,6 +287,7 @@ DISPLAYED_NODE_FIELDS = (
     'ip_addresses',
     'routers',
     'zone',
+    'disable_ipv4',
     )
 
 

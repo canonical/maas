@@ -516,6 +516,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'memory',
                 'routers',
                 'zone',
+                'disable_ipv4',
             ],
             list(parsed_result))
 
@@ -605,6 +606,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'memory',
                 'routers',
                 'zone',
+                'disable_ipv4',
             ],
             list(parsed_result))
 
@@ -747,6 +749,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'memory',
                 'routers',
                 'zone',
+                'disable_ipv4',
             ],
             list(parsed_result))
 
