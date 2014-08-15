@@ -34,6 +34,11 @@ class TestBootSource(MAASServerTestCase):
         self.assertTrue(
             BootSource.objects.filter(id=boot_source.id).exists())
 
+    def test_url_is_unqiue(self):
+        boot_source = factory.make_boot_source()
+        self.assertRaises(
+            ValidationError, factory.make_boot_source, url=boot_source.url)
+
     def test_cannot_set_keyring_data_and_filename(self):
         # A BootSource cannot have both a keyring filename and keyring
         # data. Attempting to set both will raise an error.

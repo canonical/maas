@@ -37,7 +37,7 @@ class BootSource(CleanSave, TimestampedModel):
         """Needed for South to recognize this model."""
 
     url = URLField(
-        blank=False, help_text="The URL of the BootSource.")
+        blank=False, unique=True, help_text="The URL of the BootSource.")
 
     keyring_filename = FilePathField(
         blank=True,
