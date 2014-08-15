@@ -128,7 +128,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual([tag.name], parsed_result['tag_names'])
 
     def test_GET_returns_associated_ip_addresses(self):
-        node = factory.make_node()
+        node = factory.make_node(disable_ipv4=False)
         mac = factory.make_mac_address(node=node)
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=mac.mac_address)

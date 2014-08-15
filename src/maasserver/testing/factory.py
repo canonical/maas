@@ -463,7 +463,8 @@ class Factory(maastesting.factory.Factory):
         return mac
 
     def make_node_with_mac_attached_to_nodegroupinterface(
-            self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP, **kwargs):
+            self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            disable_ipv4=False, **kwargs):
         """Create a Node that has a MACAddress which has a
         NodeGroupInterface.
 
@@ -473,7 +474,8 @@ class Factory(maastesting.factory.Factory):
             nodegroup = kwargs.pop("nodegroup")
         else:
             nodegroup = self.make_node_group()
-        node = self.make_node(mac=True, nodegroup=nodegroup, **kwargs)
+        node = self.make_node(
+            mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
         ngi = self.make_node_group_interface(
             nodegroup, management=management)
         mac = node.get_primary_mac()

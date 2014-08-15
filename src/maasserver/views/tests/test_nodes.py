@@ -451,7 +451,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_contains_ip_addresses(self):
         self.client_log_in()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(owner=self.logged_in_user, disable_ipv4=False)
         nodegroup = node.nodegroup
         macs = [
             factory.make_mac_address(node=node).mac_address for i in range(2)]
@@ -465,7 +465,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_does_not_contain_ip_addresses_if_no_lease(self):
         self.client_log_in()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(owner=self.logged_in_user, disable_ipv4=False)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         self.assertNotIn("IP addresses", response.content)

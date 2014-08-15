@@ -79,6 +79,7 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
+from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
@@ -729,6 +730,8 @@ class Node(CleanSave, TimestampedModel):
 
         Return the current IP addresses for this Node, or the empty
         list if there are none.
+
+        If `disable_ipv4` is set, any IPv4 addresses will be omitted.
         """
         # The static IP addresses are assigned/removed when a node is
         # allocated/deallocated.
@@ -739,11 +742,17 @@ class Node(CleanSave, TimestampedModel):
         # for backward-compatiblity reasons (the static IP addresses were
         # introduced after the dynamic IP addresses) as only the static
         # mappings are guaranteed to be, well, static.
-        static_ips = self.static_ip_addresses()
-        if len(static_ips) != 0:
-            return static_ips
+        ips = self.static_ip_addresses()
+        if len(ips) == 0:
+            ips = self.dynamic_ip_addresses()
+        if self.disable_ipv4:
+            return [
+                ip
+                for ip in ips
+                if IPAddress(ip).version > 4
+                ]
         else:
-            return self.dynamic_ip_addresses()
+            return ips
 
     def static_ip_addresses(self):
         """Static IP addresses allocated to this node."""

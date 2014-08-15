@@ -766,12 +766,12 @@ class NodeTest(MAASServerTestCase):
         # We still get exactly the right IP addresses.
         self.assertItemsEqual([ip1.ip, ip2.ip], addresses)
 
-    def test_ip_addresses_returns_static_ip_addresses(self):
+    def test_ip_addresses_returns_static_ip_addresses_if_allocated(self):
         # If both static and dynamic IP addresses are present, the static
         # addresses take precedence: they are allocated and deallocated in
         # a synchronous fashion whereas the dynamic addresses are updated
         # periodically.
-        node = factory.make_node(mac=True)
+        node = factory.make_node(mac=True, disable_ipv4=False)
         mac = node.macaddress_set.all()[0]
         # Create a dynamic IP attached to the node.
         factory.make_dhcp_lease(
@@ -781,11 +781,55 @@ class NodeTest(MAASServerTestCase):
         self.assertItemsEqual([ip.ip], node.ip_addresses())
 
     def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
-        node = factory.make_node(mac=True)
+        node = factory.make_node(mac=True, disable_ipv4=False)
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup,
             mac=node.macaddress_set.all()[0].mac_address)
         self.assertItemsEqual([lease.ip], node.ip_addresses())
+
+    def test_ip_addresses_includes_static_ipv4_addresses_by_default(self):
+        node = factory.make_node(disable_ipv4=False)
+        ipv4_address = factory.getRandomIPAddress()
+        ipv6_address = factory.make_ipv6_address()
+        self.patch(node, 'static_ip_addresses').return_value = [
+            ipv4_address,
+            ipv6_address,
+            ]
+        self.assertItemsEqual(
+            [ipv4_address, ipv6_address],
+            node.ip_addresses())
+
+    def test_ip_addresses_includes_dynamic_ipv4_addresses_by_default(self):
+        node = factory.make_node(disable_ipv4=False)
+        ipv4_address = factory.getRandomIPAddress()
+        ipv6_address = factory.make_ipv6_address()
+        self.patch(node, 'dynamic_ip_addresses').return_value = [
+            ipv4_address,
+            ipv6_address,
+            ]
+        self.assertItemsEqual(
+            [ipv4_address, ipv6_address],
+            node.ip_addresses())
+
+    def test_ip_addresses_strips_static_ipv4_addresses_if_ipv4_disabled(self):
+        node = factory.make_node(disable_ipv4=True)
+        ipv4_address = factory.getRandomIPAddress()
+        ipv6_address = factory.make_ipv6_address()
+        self.patch(node, 'static_ip_addresses').return_value = [
+            ipv4_address,
+            ipv6_address,
+            ]
+        self.assertEqual([ipv6_address], node.ip_addresses())
+
+    def test_ip_addresses_strips_dynamic_ipv4_addresses_if_ipv4_disabled(self):
+        node = factory.make_node(disable_ipv4=True)
+        ipv4_address = factory.getRandomIPAddress()
+        ipv6_address = factory.make_ipv6_address()
+        self.patch(node, 'dynamic_ip_addresses').return_value = [
+            ipv4_address,
+            ipv6_address,
+            ]
+        self.assertEqual([ipv6_address], node.ip_addresses())
 
     def test_release_turns_on_netboot(self):
         node = factory.make_node(
