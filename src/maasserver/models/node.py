@@ -19,13 +19,7 @@ __all__ = [
     "nodegroup_fqdn",
     ]
 
-from itertools import (
-    chain,
-    imap,
-    islice,
-    repeat,
-    )
-import random
+from itertools import chain
 import re
 from string import whitespace
 from uuid import uuid1
@@ -69,6 +63,7 @@ from maasserver.fields import (
     JSONObjectField,
     MAC,
     )
+from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
@@ -467,16 +462,6 @@ class NodeManager(Manager):
                 chained_tasks.apply_async()
                 processed_nodes.append(node)
         return processed_nodes
-
-
-# Non-ambiguous characters (i.e. without 'ilousvz1250').
-non_ambiguous_characters = imap(
-    random.choice, repeat('abcdefghjkmnpqrtwxy346789'))
-
-
-def generate_hostname(size):
-    """Generate a hostname using only non-ambiguous characters."""
-    return "".join(islice(non_ambiguous_characters, size))
 
 
 def patch_pgarray_types():
@@ -1032,19 +1017,15 @@ class Node(CleanSave, TimestampedModel):
             chain.apply_async()
 
     def set_random_hostname(self):
-        """Set 5 character `hostname` using non-ambiguous characters.
+        """Set `hostname` from a shuffled list of candidate names.
 
-        Using 5 letters from the set 'abcdefghjkmnpqrtwxy346789' we get
-        9,765,625 combinations (pow(25, 5)).
+        See `gen_candidate_names`.
 
-        Note that having a hostname starting with a number is perfectly
-        valid, see
         http://en.wikipedia.org/wiki/Hostname#Restrictions_on_valid_host_names
         """
         domain = Config.objects.get_config("enlistment_domain")
         domain = domain.strip("." + whitespace)
-        while True:
-            new_hostname = generate_hostname(5)
+        for new_hostname in gen_candidate_names():
             if len(domain) > 0:
                 self.hostname = "%s.%s" % (new_hostname, domain)
             else:

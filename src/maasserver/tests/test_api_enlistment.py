@@ -225,7 +225,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
             })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(5, len(strip_domain(node.hostname)))
+        self.assertNotEqual("", strip_domain(node.hostname))
 
     def test_POST_fails_without_operation(self):
         # If there is no operation ('op=operation_name') specified in the

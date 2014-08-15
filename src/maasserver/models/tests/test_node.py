@@ -45,7 +45,6 @@ from maasserver.models import (
     node as node_module,
     )
 from maasserver.models.node import (
-    generate_hostname,
     NODE_TRANSITIONS,
     validate_hostname,
     )
@@ -75,31 +74,7 @@ from mock import sentinel
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.tasks import Omshell
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import (
-    AllMatch,
-    Contains,
-    Equals,
-    MatchesAll,
-    Not,
-    )
-
-
-class UtilitiesTest(MAASTestCase):
-
-    def test_generate_hostname_does_not_contain_ambiguous_chars(self):
-        ambiguous_chars = 'ilousvz1250'
-        hostnames = [generate_hostname(5) for i in range(200)]
-        does_not_contain_chars_matcher = (
-            MatchesAll(*[Not(Contains(char)) for char in ambiguous_chars]))
-        self.assertThat(
-            hostnames, AllMatch(does_not_contain_chars_matcher))
-
-    def test_generate_hostname_uses_size(self):
-        sizes = [
-            random.randint(1, 10), random.randint(1, 10),
-            random.randint(1, 10)]
-        hostnames = [generate_hostname(size) for size in sizes]
-        self.assertEqual(sizes, [len(hostname) for hostname in hostnames])
+from testtools.matchers import Equals
 
 
 class TestHostnameValidator(MAASTestCase):
@@ -407,9 +382,11 @@ class NodeTest(MAASServerTestCase):
     def test_set_random_hostname_set_hostname(self):
         # Blank out enlistment_domain.
         Config.objects.set_config("enlistment_domain", '')
-        node = factory.make_node('test' * 10)
+        node = factory.make_node()
+        original_hostname = node.hostname
         node.set_random_hostname()
-        self.assertEqual(5, len(node.hostname))
+        self.assertNotEqual(original_hostname, node.hostname)
+        self.assertNotEqual("", node.hostname)
 
     def test_set_random_hostname_checks_hostname_existence(self):
         Config.objects.set_config("enlistment_domain", '')
@@ -417,8 +394,8 @@ class NodeTest(MAASServerTestCase):
 
         hostnames = [existing_node.hostname, "new-hostname"]
         self.patch(
-            node_module, "generate_hostname",
-            lambda size: hostnames.pop(0))
+            node_module, "gen_candidate_names",
+            lambda: iter(hostnames))
 
         node = factory.make_node()
         node.set_random_hostname()

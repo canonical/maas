@@ -56,6 +56,7 @@ from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
 from maasserver.models.bootsourceselection import BootSourceSelection
+from maasserver.models.candidatename import CandidateName
 from maasserver.models.component_error import ComponentError
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
@@ -84,11 +85,11 @@ from piston.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    BootImage, BootResource, BootResourceFile, BootResourceSet, ComponentError,
-    Config, DHCPLease, DownloadProgress, Event, EventType, FileStorage,
-    LargeFile, LicenseKey, StaticIPAddress, MACAddress, MACStaticIPAddressLink,
-    Network, NodeGroup, SSHKey, Tag, UserProfile, NodeGroupInterface, Zone,
-    logger)
+    BootImage, BootResource, BootResourceFile, BootResourceSet, CandidateName,
+    ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
+    FileStorage, LargeFile, LicenseKey, StaticIPAddress, MACAddress,
+    MACStaticIPAddressLink, Network, NodeGroup, SSHKey, Tag, UserProfile,
+    NodeGroupInterface, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
