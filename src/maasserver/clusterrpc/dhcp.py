@@ -12,12 +12,16 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    "update_host_maps",
+]
 
 from collections import defaultdict
 from functools import partial
 
 from maasserver.models.dhcplease import DHCPLease
+from maasserver.rpc import getClientFor
+from maasserver.utils import async
 from netaddr import (
     IPAddress,
     IPRange,
@@ -26,6 +30,8 @@ from provisioningserver.rpc.cluster import (
     CreateHostMaps,
     RemoveHostMaps,
     )
+from provisioningserver.utils.twisted import synchronous
+from twisted.python.failure import Failure
 
 
 def gen_calls_to_create_host_maps(clients, static_mappings):
@@ -100,3 +106,37 @@ def gen_calls_to_remove_dynamic_host_maps(clients, static_mappings):
         yield partial(
             clients[nodegroup], RemoveHostMaps, ip_addresses=ip_addresses,
             shared_key=nodegroup.dhcp_key)
+
+
+@synchronous
+def update_host_maps(static_mappings, timeout=30):
+    """Create host maps in clusters' DHCP servers.
+
+    :param static_mappings: A mapping from `NodeGroup` model instances
+        to mappings of ``ip-address -> mac-address``.
+    :param timeout: The number of seconds before attempts to create host
+        maps are cancelled.
+    :return: A generator of :py:class:`~Failure`s, if any.
+    """
+    clients = {
+        nodegroup: getClientFor(nodegroup.uuid).wait()
+        for nodegroup in static_mappings
+    }
+    # Record the number of failures.
+    failure_count = 0
+    # Remove old host maps first, if there are any.
+    calls = gen_calls_to_remove_dynamic_host_maps(clients, static_mappings)
+    # Listify the calls so that database access happens in this thread.
+    for response in async.gather(list(calls), timeout=timeout):
+        if isinstance(response, Failure):
+            failure_count += 1
+            yield response
+    # Don't continue if there have been failures.
+    if failure_count != 0:
+        return
+    # Now create the new host maps.
+    calls = gen_calls_to_create_host_maps(clients, static_mappings)
+    # Listify the calls so that database access happens in this thread.
+    for response in async.gather(list(calls), timeout=timeout):
+        if isinstance(response, Failure):
+            yield response

@@ -262,7 +262,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         self.sockdir = self.useFixture(fixtures.TempDir()).path
         self.sockfile = path.join(self.sockdir, "sock")
         # Configure the RPC service with a UNIX endpoint.
-        self.addCluster(self.stop)
+        self.addCleanup(self.stop)
         self.start()
 
     @asynchronous
