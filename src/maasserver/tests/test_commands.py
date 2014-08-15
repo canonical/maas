@@ -92,15 +92,39 @@ class TestCommands(DjangoTestCase):
         self.assertEquals('', stdout.getvalue().strip())
         self.assertTrue(user.check_password(password))
 
-    def test_createadmin_requires_email(self):
-        username = factory.make_string()
+    def test_createadmin_prompts_for_username_if_not_given(self):
+        stderr = BytesIO()
+        stdout = BytesIO()
+        username = factory.make_name('user')
         password = factory.make_string()
-        error_text = assertCommandErrors(
-            self, 'createadmin',
-            username=username, password=password)
-        self.assertIn(
-            "You must provide an email with --email.",
-            error_text)
+        email = factory.make_email_address()
+        self.patch(createadmin, 'prompt_for_username').return_value = username
+
+        call_command(
+            'createadmin', password=password, email=email, stdout=stdout,
+            stderr=stderr)
+        user = User.objects.get(username=username)
+
+        self.assertEquals('', stderr.getvalue().strip())
+        self.assertEquals('', stdout.getvalue().strip())
+        self.assertTrue(user.check_password(password))
+
+    def test_createadmin_prompts_for_email_if_not_given(self):
+        stderr = BytesIO()
+        stdout = BytesIO()
+        username = factory.make_name('user')
+        password = factory.make_string()
+        email = factory.make_email_address()
+        self.patch(createadmin, 'prompt_for_email').return_value = email
+
+        call_command(
+            'createadmin', username=username, password=password, stdout=stdout,
+            stderr=stderr)
+        user = User.objects.get(username=username)
+
+        self.assertEquals('', stderr.getvalue().strip())
+        self.assertEquals('', stderr.getvalue().strip())
+        self.assertTrue(user.check_password(password))
 
     def test_createadmin_creates_admin(self):
         stderr = BytesIO()
@@ -131,6 +155,32 @@ class TestCommands(DjangoTestCase):
         self.assertRaises(
             createadmin.InconsistentPassword,
             createadmin.prompt_for_password)
+
+    def test_prompt_for_username_returns_selected_username(self):
+        username = factory.make_name('user')
+        self.patch(createadmin, 'raw_input').return_value = username
+
+        self.assertEqual(username, createadmin.prompt_for_username())
+
+    def test_prompt_for_username_checks_for_empty_username(self):
+        self.patch(createadmin, 'raw_input', lambda x: '')
+
+        self.assertRaises(
+            createadmin.EmptyUsername,
+            createadmin.prompt_for_username)
+
+    def test_prompt_for_email_returns_selected_email(self):
+        email = factory.make_email_address()
+        self.patch(createadmin, 'raw_input').return_value = email
+
+        self.assertEqual(email, createadmin.prompt_for_email())
+
+    def test_prompt_for_email_checks_for_empty_email(self):
+        self.patch(createadmin, 'raw_input', lambda x: '')
+
+        self.assertRaises(
+            createadmin.EmptyEmail,
+            createadmin.prompt_for_email)
 
     def test_clearcache_clears_entire_cache(self):
         key = factory.make_string()
