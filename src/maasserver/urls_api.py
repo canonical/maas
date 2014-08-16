@@ -18,8 +18,8 @@ from django.conf.urls import (
     patterns,
     url,
     )
+from maasserver.api.account import AccountHandler
 from maasserver.api.api import (
-    AccountHandler,
     api_doc,
     BootSourceHandler,
     BootSourceSelectionHandler,
