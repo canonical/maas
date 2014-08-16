@@ -35,8 +35,6 @@ from maasserver.api.api import (
     LicenseKeyHandler,
     LicenseKeysHandler,
     MaasHandler,
-    NetworkHandler,
-    NetworksHandler,
     NodeGroupHandler,
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
@@ -62,6 +60,10 @@ from maasserver.api.auth import api_auth
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
+    )
+from maasserver.api.networks import (
+    NetworkHandler,
+    NetworksHandler,
     )
 from maasserver.api.support import (
     AdminRestrictedResource,
