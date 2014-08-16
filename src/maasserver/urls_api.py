@@ -32,8 +32,6 @@ from maasserver.api.api import (
     LicenseKeysHandler,
     MaasHandler,
     NodeGroupHandler,
-    NodeGroupInterfaceHandler,
-    NodeGroupInterfacesHandler,
     NodeGroupsHandler,
     NodeHandler,
     NodeMacHandler,
@@ -60,6 +58,10 @@ from maasserver.api.files import (
 from maasserver.api.networks import (
     NetworkHandler,
     NetworksHandler,
+    )
+from maasserver.api.node_group_interfaces import (
+    NodeGroupInterfaceHandler,
+    NodeGroupInterfacesHandler,
     )
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,

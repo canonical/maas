@@ -20,9 +20,9 @@ import json
 
 from django.core.urlresolvers import reverse
 from maasserver.api import api as api_module
-from maasserver.api.api import (
+from maasserver.api.api import store_node_power_parameters
+from maasserver.api.node_group_interfaces import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
-    store_node_power_parameters,
     )
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASAPIBadRequest
