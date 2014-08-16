@@ -49,8 +49,6 @@ from maasserver.api.api import (
     UserHandler,
     UsersHandler,
     VersionHandler,
-    ZoneHandler,
-    ZonesHandler,
     )
 from maasserver.api.auth import api_auth
 from maasserver.api.boot_images import (
@@ -72,6 +70,10 @@ from maasserver.api.support import (
 from maasserver.api.tags import (
     TagHandler,
     TagsHandler,
+    )
+from maasserver.api.zones import (
+    ZoneHandler,
+    ZonesHandler,
     )
 
 
