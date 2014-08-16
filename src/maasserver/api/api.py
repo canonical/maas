@@ -131,13 +131,19 @@ from django.shortcuts import (
 from django.template import RequestContext
 from docutils import core
 from formencode import validators
-from maasserver.api_support import (
+from maasserver.api.doc import (
+    describe_resource,
+    find_api_resources,
+    generate_api_docs,
+    generate_power_types_doc,
+    )
+from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
     operation,
     OperationsHandler,
     )
-from maasserver.api_utils import (
+from maasserver.api.utils import (
     extract_bool,
     extract_oauth_key,
     get_list_from_dict_or_multidict,
@@ -145,12 +151,6 @@ from maasserver.api_utils import (
     get_oauth_token,
     get_optional_list,
     get_optional_param,
-    )
-from maasserver.apidoc import (
-    describe_resource,
-    find_api_resources,
-    generate_api_docs,
-    generate_power_types_doc,
     )
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,

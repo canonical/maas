@@ -19,8 +19,8 @@ from itertools import izip
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver import api
-from maasserver.api import (
+from maasserver.api import api as api_module
+from maasserver.api.api import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     store_node_power_parameters,
     warn_if_missing_boot_images,
@@ -64,7 +64,7 @@ from testtools.matchers import (
 
 
 class TestAuthentication(MAASServerTestCase):
-    """Tests for `maasserver.api_auth`."""
+    """Tests for `maasserver.api.auth`."""
 
     def test_invalid_oauth_request(self):
         # An OAuth-signed request that does not validate is an error.
@@ -470,7 +470,7 @@ class APIErrorsTest(TransactionTestCase):
         # Monkey patch api.create_node to have it raise a RuntimeError.
         def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
-        self.patch(api, 'create_node', raise_exception)
+        self.patch(api_module, 'create_node', raise_exception)
         response = self.client.post(reverse('nodes_handler'), {'op': 'new'})
 
         self.assertEqual(
@@ -741,7 +741,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
 
     def test_warns_if_no_images_found(self):
         factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        recorder = self.patch(api, 'register_persistent_error')
+        recorder = self.patch(api_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertIn(
             COMPONENT.IMPORT_PXE_FILES,
@@ -753,7 +753,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
 
     def test_warns_if_any_nodegroup_has_no_images(self):
         factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        recorder = self.patch(api, 'register_persistent_error')
+        recorder = self.patch(api_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertIn(
             COMPONENT.IMPORT_PXE_FILES,
@@ -762,18 +762,18 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
     def test_ignores_non_accepted_groups(self):
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
         factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        recorder = self.patch(api, 'register_persistent_error')
+        recorder = self.patch(api_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertEqual([], recorder.mock_calls)
 
     def test_removes_warning_if_images_found(self):
-        self.patch(api, 'register_persistent_error')
-        self.patch(api, 'discard_persistent_error')
+        self.patch(api_module, 'register_persistent_error')
+        self.patch(api_module, 'discard_persistent_error')
         factory.make_boot_image(
             nodegroup=factory.make_node_group(
                 status=NODEGROUP_STATUS.ACCEPTED))
         warn_if_missing_boot_images()
-        self.assertEqual([], api.register_persistent_error.mock_calls)
+        self.assertEqual([], api_module.register_persistent_error.mock_calls)
         self.assertThat(
-            api.discard_persistent_error,
+            api_module.discard_persistent_error,
             MockCalledOnceWith(COMPONENT.IMPORT_PXE_FILES))

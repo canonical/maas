@@ -17,7 +17,7 @@ __all__ = []
 from collections import namedtuple
 
 from django.http import QueryDict
-from maasserver.api_utils import (
+from maasserver.api.utils import (
     extract_bool,
     extract_oauth_key,
     extract_oauth_key_from_auth_header,

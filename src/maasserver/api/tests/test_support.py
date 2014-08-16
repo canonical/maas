@@ -20,7 +20,7 @@ import httplib
 
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from maasserver.api_support import admin_method
+from maasserver.api.support import admin_method
 from maasserver.models.config import (
     Config,
     ConfigManager,

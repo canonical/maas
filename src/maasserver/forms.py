@@ -69,7 +69,7 @@ from django.forms import (
     )
 from django.utils.safestring import mark_safe
 from lxml import etree
-from maasserver.api_utils import get_overridden_query_dict
+from maasserver.api.utils import get_overridden_query_dict
 from maasserver.clusterrpc.power_parameters import (
     get_power_type_choices,
     get_power_type_parameters,

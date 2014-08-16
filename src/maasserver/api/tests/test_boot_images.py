@@ -21,8 +21,8 @@ from apiclient.maas_client import MAASClient
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
-from maasserver import api
-from maasserver.api import (
+from maasserver.api import api as api_module
+from maasserver.api.api import (
     summarise_boot_image_dict,
     summarise_boot_image_object,
     )
@@ -269,7 +269,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
             (response.status_code, response.content))
 
     def test_report_boot_images_warns_about_missing_boot_images(self):
-        register_error = self.patch(api, 'register_persistent_error')
+        register_error = self.patch(api_module, 'register_persistent_error')
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.report_images(
             nodegroup, [], client=make_worker_client(nodegroup))

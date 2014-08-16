@@ -27,7 +27,13 @@ from django.core.exceptions import (
     )
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
-from maasserver import api
+from maasserver.api import api as api_module
+from maasserver.api.api import (
+    compose_nodegroup_register_response,
+    get_celery_credentials,
+    register_nodegroup,
+    update_nodegroup_maas_url,
+    )
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.forms import DEFAULT_DNS_ZONE_NAME
 from maasserver.models import NodeGroup
@@ -55,7 +61,7 @@ class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
             "example.com", script="/script", path="/script/path")
         nodegroup = factory.make_node_group()
 
-        api.update_nodegroup_maas_url(nodegroup, request)
+        update_nodegroup_maas_url(nodegroup, request)
 
         self.assertEqual("http://example.com/script", nodegroup.maas_url)
 
@@ -64,7 +70,7 @@ class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
         maas_url = factory.make_name('maas_url')
         nodegroup = factory.make_node_group(maas_url=maas_url)
 
-        api.update_nodegroup_maas_url(nodegroup, request)
+        update_nodegroup_maas_url(nodegroup, request)
 
         # nodegroup.maas_url was not updated.
         self.assertEqual(maas_url, nodegroup.maas_url)
@@ -124,7 +130,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         uuid = factory.make_UUID()
         request = make_register_request(uuid)
 
-        nodegroup = api.register_nodegroup(request, uuid)
+        nodegroup = register_nodegroup(request, uuid)
 
         self.assertEqual(uuid, nodegroup.uuid)
         self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
@@ -135,7 +141,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         uuid = factory.make_UUID()
         request = make_register_request(uuid)
 
-        nodegroup = api.register_nodegroup(request, uuid)
+        nodegroup = register_nodegroup(request, uuid)
 
         self.assertEqual(uuid, nodegroup.uuid)
         self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
@@ -147,7 +153,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         create_local_cluster_config(self, uuid)
         request = make_register_request(uuid)
 
-        nodegroup = api.register_nodegroup(request, uuid)
+        nodegroup = register_nodegroup(request, uuid)
 
         self.assertEqual(uuid, nodegroup.uuid)
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, nodegroup.status)
@@ -159,7 +165,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         create_local_cluster_config(self, uuid)
         request = make_register_request(uuid)
 
-        nodegroup = api.register_nodegroup(request, uuid)
+        nodegroup = register_nodegroup(request, uuid)
 
         self.assertEqual(uuid, nodegroup.uuid)
         self.assertEqual(NODEGROUP_STATUS.PENDING, nodegroup.status)
@@ -170,7 +176,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         request = make_register_request(nodegroup.uuid)
 
         self.assertRaises(
-            ValidationError, api.register_nodegroup, request, nodegroup.uuid)
+            ValidationError, register_nodegroup, request, nodegroup.uuid)
 
 
 class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
@@ -180,15 +186,15 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         existed = factory.pick_bool()
         self.assertEqual(
-            api.get_celery_credentials(),
-            api.compose_nodegroup_register_response(nodegroup, existed))
+            get_celery_credentials(),
+            compose_nodegroup_register_response(nodegroup, existed))
 
     def test_credentials_contain_broker_url(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         broker_url = patch_broker_url(self)
         existed = factory.pick_bool()
 
-        response = api.compose_nodegroup_register_response(nodegroup, existed)
+        response = compose_nodegroup_register_response(nodegroup, existed)
 
         self.assertEqual({'BROKER_URL': broker_url}, response)
 
@@ -197,11 +203,11 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
         already_existed = factory.pick_bool()
 
         with ExpectedException(PermissionDenied, "Rejected cluster."):
-            api.compose_nodegroup_register_response(nodegroup, already_existed)
+            compose_nodegroup_register_response(nodegroup, already_existed)
 
     def test_returns_accepted_for_new_pending_nodegroup(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        response = api.compose_nodegroup_register_response(
+        response = compose_nodegroup_register_response(
             nodegroup, already_existed=False)
         self.assertEqual(
             (httplib.ACCEPTED,
@@ -210,7 +216,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
 
     def test_returns_accepted_for_existing_pending_nodegroup(self):
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        response = api.compose_nodegroup_register_response(
+        response = compose_nodegroup_register_response(
             nodegroup, already_existed=True)
         self.assertEqual(
             (httplib.ACCEPTED, "Awaiting admin approval."),
@@ -369,7 +375,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # tells it to return.
         expected_response = factory.make_string()
         self.patch(
-            api, 'compose_nodegroup_register_response',
+            api_module, 'compose_nodegroup_register_response',
             Mock(return_value=expected_response))
 
         response = self.client.post(
@@ -389,7 +395,7 @@ class TestRegisterAPI(MAASServerTestCase):
         create_configured_master()
         name = factory.make_name('cluster')
         uuid = factory.make_UUID()
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'name': name, 'uuid': uuid})
@@ -401,7 +407,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # it in the future is updated to the one on which the call was made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -414,7 +420,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -427,7 +433,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -441,7 +447,7 @@ class TestRegisterAPI(MAASServerTestCase):
         name = factory.make_name('cluster')
         uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
-        update_maas_url = self.patch(api, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'name': name, 'uuid': uuid})

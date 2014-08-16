@@ -25,7 +25,7 @@ from django.core.urlresolvers import (
     get_script_prefix,
     )
 from django.test.client import RequestFactory
-from maasserver.api import describe
+from maasserver.api.api import describe
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from testscenarios import multiply_scenarios

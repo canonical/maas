@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver API documentation functionality."""
@@ -25,18 +25,18 @@ from django.conf.urls import (
     )
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
-from maasserver import apidoc
-from maasserver.api_support import (
-    operation,
-    OperationsHandler,
-    OperationsResource,
-    )
-from maasserver.apidoc import (
+from maasserver.api import doc as doc_module
+from maasserver.api.doc import (
     describe_handler,
     describe_resource,
     find_api_resources,
     generate_api_docs,
     generate_power_types_doc,
+    )
+from maasserver.api.support import (
+    operation,
+    OperationsHandler,
+    OperationsResource,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -247,7 +247,7 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_handler_with_maas_handler(self):
         # Ensure that describe_handler() yields something sensible with a
         # "real" MAAS API handler.
-        from maasserver.api import NodeHandler as handler
+        from maasserver.api.api import NodeHandler as handler
         description = describe_handler(handler)
         # The RUD of CRUD actions are still available, but the C(reate) action
         # has been overridden with custom non-ReSTful operations.
@@ -336,7 +336,7 @@ class TestGeneratePowerTypesDoc(MAASServerTestCase):
                 make_json_field(param_name, param_description),
             ],
         }]
-        self.patch(apidoc, "JSON_POWER_TYPE_PARAMETERS", json_fields)
+        self.patch(doc_module, "JSON_POWER_TYPE_PARAMETERS", json_fields)
         doc = generate_power_types_doc()
         self.assertThat(
             doc,

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Utilities to help document/describe the public facing API."""
@@ -29,7 +29,7 @@ from django.core.urlresolvers import (
     RegexURLPattern,
     RegexURLResolver,
     )
-from maasserver.api_support import OperationsResource
+from maasserver.api.support import OperationsResource
 from piston.authentication import NoAuthentication
 from piston.doc import generate_doc
 from piston.handler import BaseHandler

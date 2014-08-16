@@ -18,7 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.api import DISPLAYED_BOOTSOURCE_FIELDS
+from maasserver.api.api import DISPLAYED_BOOTSOURCE_FIELDS
 from maasserver.models import BootSource
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory

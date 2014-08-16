@@ -25,8 +25,8 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
-from maasserver import api as api_module
-from maasserver.api import update_mac_cluster_interfaces
+from maasserver.api import api as api_module
+from maasserver.api.api import update_mac_cluster_interfaces
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,

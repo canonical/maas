@@ -19,11 +19,12 @@ import json
 
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
-from maasserver import (
-    api,
-    server_address,
+from maasserver import server_address
+from maasserver.api import api as api_module
+from maasserver.api.api import (
+    find_nodegroup_for_pxeconfig_request,
+    get_boot_purpose,
     )
-from maasserver.api import find_nodegroup_for_pxeconfig_request
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
@@ -304,7 +305,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_get_boot_purpose_unknown_node(self):
         # A node that's not yet known to MAAS is assumed to be enlisting,
         # which uses a "commissioning" image.
-        self.assertEqual("commissioning", api.get_boot_purpose(None))
+        self.assertEqual("commissioning", get_boot_purpose(None))
 
     def test_get_boot_purpose_known_node(self):
         # The following table shows the expected boot "purpose" for each set
@@ -328,7 +329,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 node.boot_type = NODE_BOOT.FASTPATH
             for name, value in parameters.items():
                 setattr(node, name, value)
-            self.assertEqual(purpose, api.get_boot_purpose(node))
+            self.assertEqual(purpose, get_boot_purpose(node))
 
     def test_get_boot_purpose_osystem_no_xinstall_support(self):
         osystem = make_usable_osystem(
@@ -338,11 +339,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
             status=NODE_STATUS.ALLOCATED, netboot=True,
             osystem=osystem.name, distro_series=release,
             boot_type=NODE_BOOT.FASTPATH)
-        self.assertEqual('install', api.get_boot_purpose(node))
+        self.assertEqual('install', get_boot_purpose(node))
 
     def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")
-        self.patch(api, "get_boot_purpose").return_value = fake_boot_purpose
+        self.patch(
+            api_module, "get_boot_purpose"
+            ).return_value = fake_boot_purpose
         response = self.client.get(reverse('pxeconfig'),
                                    self.get_default_params())
         self.assertEqual(

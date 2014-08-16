@@ -18,7 +18,7 @@ from django.conf.urls import (
     patterns,
     url,
     )
-from maasserver.api import (
+from maasserver.api.api import (
     AccountHandler,
     api_doc,
     BootImageHandler,
@@ -60,8 +60,8 @@ from maasserver.api import (
     ZoneHandler,
     ZonesHandler,
     )
-from maasserver.api_auth import api_auth
-from maasserver.api_support import (
+from maasserver.api.auth import api_auth
+from maasserver.api.support import (
     AdminRestrictedResource,
     RestrictedResource,
     )

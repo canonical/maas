@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Metadata API."""
@@ -28,12 +28,12 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver.api import store_node_power_parameters
-from maasserver.api_support import (
+from maasserver.api.api import store_node_power_parameters
+from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api_utils import (
+from maasserver.api.utils import (
     extract_oauth_key,
     get_mandatory_param,
     )
