@@ -48,8 +48,6 @@ from maasserver.api.api import (
     SSHKeysHandler,
     SSLKeyHandler,
     SSLKeysHandler,
-    TagHandler,
-    TagsHandler,
     UserHandler,
     UsersHandler,
     VersionHandler,
@@ -68,6 +66,10 @@ from maasserver.api.networks import (
 from maasserver.api.support import (
     AdminRestrictedResource,
     RestrictedResource,
+    )
+from maasserver.api.tags import (
+    TagHandler,
+    TagsHandler,
     )
 
 
