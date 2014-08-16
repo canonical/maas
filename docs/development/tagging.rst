@@ -64,7 +64,7 @@ When a new commissioning result comes in containing ``lshw`` or ``lldp``
 XML output, every tag with an expression must be evaluated against the
 result so that the node is correctly tagged.
 
-To do this, ``maasserver.api.VersionIndexHandler.signal`` calls
+To do this, ``VersionIndexHandler.signal`` calls
 ``populate_tags_for_single_node`` just before saving all the changes.
 This happens in the **region**. While it's a computationally expensive
 operation, the overhead of spinning this work out to a cluster

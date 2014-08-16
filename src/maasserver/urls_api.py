@@ -31,8 +31,6 @@ from maasserver.api.api import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
     describe,
-    FileHandler,
-    FilesHandler,
     IPAddressesHandler,
     LicenseKeyHandler,
     LicenseKeysHandler,
@@ -61,6 +59,10 @@ from maasserver.api.api import (
     ZonesHandler,
     )
 from maasserver.api.auth import api_auth
+from maasserver.api.files import (
+    FileHandler,
+    FilesHandler,
+    )
 from maasserver.api.support import (
     AdminRestrictedResource,
     RestrictedResource,
