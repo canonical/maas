@@ -25,6 +25,7 @@ from maasserver.exceptions import (
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from mock import sentinel
 from netaddr import (
     IPAddress,
     IPRange,
@@ -110,6 +111,22 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             "%s is not inside the range %s to %s" % (
                 requested_address, low, high),
             e.message)
+
+    def test_allocate_new_raises_when_alloc_type_is_None(self):
+        error = self.assertRaises(
+            ValueError, StaticIPAddress.objects.allocate_new,
+            sentinel.range_low, sentinel.range_high, alloc_type=None)
+        self.assertEqual(
+            "IP address type None is not a member of IPADDRESS_TYPE.",
+            unicode(error))
+
+    def test_allocate_new_raises_when_alloc_type_is_invalid(self):
+        error = self.assertRaises(
+            ValueError, StaticIPAddress.objects.allocate_new,
+            sentinel.range_low, sentinel.range_high, alloc_type=12345)
+        self.assertEqual(
+            "IP address type 12345 is not a member of IPADDRESS_TYPE.",
+            unicode(error))
 
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_node()

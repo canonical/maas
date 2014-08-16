@@ -23,9 +23,11 @@ __all__ = [
     'StaticIPAddress',
     ]
 
-
 from django.contrib.auth.models import User
-from django.db import connection
+from django.db import (
+    connection,
+    IntegrityError,
+    )
 from django.db.models import (
     ForeignKey,
     IntegerField,
@@ -70,68 +72,99 @@ class StaticIPAddressManager(Manager):
 
         All IP parameters can be strings or netaddr.IPAddress.
 
-        Note: This method is inherently racy and depends on database
-            serialisation to catch conflicts.  The caller should catch
-            ValidationError exceptions and retry in this case.
+        Note that this method has been designed to work even when the database
+        is running with READ COMMITTED isolation. Try to keep it that way.
         """
-        if alloc_type == IPADDRESS_TYPE.USER_RESERVED and user is None:
-            raise AssertionError(
-                "Must provide user for USER_RESERVED alloc_type.")
-        if user is not None and alloc_type != IPADDRESS_TYPE.USER_RESERVED:
-            raise AssertionError(
-                "Must not provide user for USER_RESERVED alloc_type.")
-        # Convert args to strings if they are not already.
-        if isinstance(range_low, IPAddress):
-            range_low = range_low.ipv4().format()
-        if isinstance(range_high, IPAddress):
-            range_high = range_high.ipv4().format()
-        if isinstance(requested_address, IPAddress):
-            requested_address = requested_address.format()
+        # This check for `alloc_type` is important for later on. We rely on
+        # detecting IntegrityError as a sign than an IP address is already
+        # taken, and so we must first eliminate all other possible causes.
+        possible_alloc_types = map_enum_reverse(IPADDRESS_TYPE)
+        if alloc_type not in possible_alloc_types:
+            raise ValueError(
+                "IP address type %r is not a member of "
+                "IPADDRESS_TYPE." % alloc_type)
 
-        static_range = IPRange(range_low, range_high)
-        if (requested_address is not None and
-                IPAddress(requested_address) not in static_range):
-            raise StaticIPAddressOutOfRange(
-                "%s is not inside the range %s to %s" % (
-                    requested_address, range_low, range_high))
-
-        # When we do ipv6, this needs changing.
-        range_list = [ip.ipv4().format() for ip in static_range]
-
-        existing = self.filter(ip__gte=range_low, ip__lte=range_high)
-
-        # Calculate the set of available IPs.  This will be inefficient
-        # with large sets, but it will do for now.
-        available = set(range_list) - set([addr.ip for addr in existing])
-
-        # Try to allocate the IP.
-        if requested_address is not None:
-            self._get_specific_ip_from_set(available, requested_address)
-            ip = requested_address
+        if user is None:
+            if alloc_type == IPADDRESS_TYPE.USER_RESERVED:
+                raise AssertionError(
+                    "Must provide user for USER_RESERVED alloc_type.")
         else:
-            ip = self._get_random_ip_from_set(available)
+            if alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+                raise AssertionError(
+                    "Must not provide user for alloc_type other "
+                    "than USER_RESERVED.")
 
-        # Convert to a StaticIPAddress record and return that.
-        ipaddress = StaticIPAddress(
-            ip=ip.format(), alloc_type=alloc_type, user=user)
-        ipaddress.save()
-        return ipaddress
+        range_low = IPAddress(range_low)
+        range_high = IPAddress(range_high)
+        static_range = IPRange(range_low, range_high)
 
-    def _get_specific_ip_from_set(self, ips, requested_address):
-        try:
-            ips.remove(requested_address)
-        except KeyError:
-            raise StaticIPAddressUnavailable()
-
-    def _get_random_ip_from_set(self, ips):
-        # Return the first one available.  Should there be a period
-        # where old addresses are not reallocated?
-        # Other algorithms could be random, or round robin.
-        try:
-            ip = ips.pop()
-        except KeyError:
-            raise StaticIPAddressExhaustion()
-        return ip
+        if requested_address is None:
+            # The set of _allocated_ addresses in the range is going to be
+            # smaller or at least no bigger than the set of addresses in the
+            # whole range, so we materialise a Python set of only allocated
+            # addreses. We can iterate through `static_range` without
+            # materialising every address within. This is critical for IPv6,
+            # where ranges may contain 2^64 addresses without blinking.
+            existing = self.filter(
+                ip__gte=range_low.format(),
+                ip__lte=range_high.format(),
+            )
+            # We might consider limiting this query, but that's premature. If
+            # MAAS is managing even as many as 10k nodes in a single network
+            # then my hat is most certainly on the menu. However, we do care
+            # only about the IP address field here.
+            existing = existing.values_list("ip", flat=True)
+            # Now materialise the set.
+            existing = {IPAddress(ip) for ip in existing}
+            # Now find the first free address in the range.
+            for requested_address in static_range:
+                if requested_address not in existing:
+                    # Try reserving `requested_address`.
+                    ipaddress = StaticIPAddress(
+                        ip=requested_address.format(), alloc_type=alloc_type)
+                    try:
+                        # Try to save this address to the database. If it
+                        # fails, we need to try again.
+                        ipaddress.save()
+                    except IntegrityError:
+                        # That address has been taken since we obtained the
+                        # list of existing addresses from the database. This
+                        # is a race!
+                        continue
+                    else:
+                        # We deliberately do *not* save the user until now
+                        # because it might result in an IntegrityError, and we
+                        # rely on the latter in the code above to indicate an
+                        # already allocated IP address and nothing else.
+                        ipaddress.user = user
+                        ipaddress.save()
+                        return ipaddress
+            else:
+                raise StaticIPAddressExhaustion()
+        else:
+            requested_address = IPAddress(requested_address)
+            if requested_address not in static_range:
+                raise StaticIPAddressOutOfRange(
+                    "%s is not inside the range %s to %s" % (
+                        requested_address.format(), range_low.format(),
+                        range_high.format()))
+            # Try reserving `requested_address`.
+            ipaddress = StaticIPAddress(
+                ip=requested_address.format(), alloc_type=alloc_type)
+            try:
+                # Try to save this address to the database.
+                ipaddress.save()
+            except IntegrityError:
+                # The address is already taken.
+                raise StaticIPAddressUnavailable()
+            else:
+                # We deliberately do *not* save the user until now because it
+                # might result in an IntegrityError, and we rely on the latter
+                # in the code above to indicate an already allocated IP
+                # address and nothing else.
+                ipaddress.user = user
+                ipaddress.save()
+                return ipaddress
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset
@@ -221,3 +254,19 @@ class StaticIPAddress(CleanSave, TimestampedModel):
         After return, this object is no longer valid.
         """
         self.delete()
+
+    def full_clean(self, exclude=None, validate_unique=False):
+        """Overrides Django's default for validating unique columns.
+
+        Django's ORM has a misfeature: `Model.full_clean` -- which our
+        CleanSave mix-in calls -- checks every unique key against the database
+        before actually saving the row. Django runs READ COMMITTED by default,
+        which means there's a racey period between the uniqueness validation
+        check and the actual insert.
+
+        Here we disable this misfeature so that we will get `IntegrityError`
+        alone from trying to insert a duplicate key. We also save a query or
+        two. We could consider disabling this misfeature globally.
+        """
+        return super(StaticIPAddress, self).full_clean(
+            exclude=exclude, validate_unique=validate_unique)
