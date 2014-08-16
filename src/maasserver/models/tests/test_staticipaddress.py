@@ -42,6 +42,12 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         iprange = IPRange(low, high)
         self.assertIn(IPAddress(ipaddress.ip), iprange)
 
+    def test_allocate_new_allocates_IPv6_address(self):
+        low, high = factory.make_ipv6_range()
+        ipaddress = StaticIPAddress.objects.allocate_new(low, high)
+        self.assertIsInstance(ipaddress, StaticIPAddress)
+        self.assertIn(IPAddress(ipaddress.ip), IPRange(low, high))
+
     def test_allocate_new_raises_when_addresses_exhausted(self):
         low = high = "192.168.230.1"
         StaticIPAddress.objects.allocate_new(low, high)
