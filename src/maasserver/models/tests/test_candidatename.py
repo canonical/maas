@@ -15,14 +15,14 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.models.candidatename import gen_candidate_names
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from testtools.matchers import (
     AllMatch,
     MatchesRegex,
     )
 
 
-class TestGenCandidateName(MAASTestCase):
+class TestGenCandidateName(MAASServerTestCase):
 
     def test__generates_names_containing_two_words(self):
         # Testing all candidate names, even all 1.2 million of them, is
