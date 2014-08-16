@@ -42,8 +42,6 @@ from maasserver.api.api import (
     pxeconfig,
     SSLKeyHandler,
     SSLKeysHandler,
-    UserHandler,
-    UsersHandler,
     VersionHandler,
     )
 from maasserver.api.auth import api_auth
@@ -74,6 +72,10 @@ from maasserver.api.support import (
 from maasserver.api.tags import (
     TagHandler,
     TagsHandler,
+    )
+from maasserver.api.users import (
+    UserHandler,
+    UsersHandler,
     )
 from maasserver.api.zones import (
     ZoneHandler,
