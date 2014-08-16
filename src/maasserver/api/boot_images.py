@@ -1,0 +1,272 @@
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""API handlers: `BootImage`."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = [
+    'BootImageHandler',
+    'BootImagesHandler',
+    ]
+
+from textwrap import dedent
+from xml.sax.saxutils import quoteattr
+
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from maasserver.api.api import check_nodegroup_access
+from maasserver.api.support import (
+    operation,
+    OperationsHandler,
+    )
+from maasserver.api.utils import get_mandatory_param
+from maasserver.components import (
+    discard_persistent_error,
+    register_persistent_error,
+    )
+from maasserver.enum import (
+    COMPONENT,
+    NODEGROUP_STATUS,
+    )
+from maasserver.models import (
+    BootImage,
+    NodeGroup,
+    )
+from maasserver.utils import absolute_reverse
+import simplejson as json
+
+
+DISPLAYED_BOOTIMAGE_FIELDS = (
+    'id',
+    'osystem',
+    'release',
+    'architecture',
+    'subarchitecture',
+    'purpose',
+    'label',
+)
+
+
+def warn_if_missing_boot_images():
+    """Show a UI warning if any nodegroups have no boot images.
+
+    This is a coarse approximation for "have boot images been imported yet?"
+    The warning appears if any nodegroup is still completely without boot
+    images, as is the case when the system starts up initially.
+    """
+    nodegroup_ids_with_images = BootImage.objects.values_list(
+        "nodegroup_id", flat=True)
+    nodegroups_without_images = NodeGroup.objects.exclude(
+        id__in=nodegroup_ids_with_images)
+    nodegroups_without_images = nodegroups_without_images.filter(
+        status=NODEGROUP_STATUS.ACCEPTED)
+    if nodegroups_without_images.exists():
+        accepted_clusters_url = absolute_reverse("cluster-list")
+        warning = dedent("""\
+            Some cluster controllers are missing boot images.  Either the
+            import task has not been initiated (for each cluster, the task
+            must be <a href=%s>initiated by hand</a> the first time), or
+            the import task failed.
+            """ % quoteattr(accepted_clusters_url))
+        register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+    else:
+        discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+
+
+def summarise_boot_image_object(image_object):
+    """Return a tuple representing identifying properties of a `BootImage`.
+
+    This function has a counterpart, `summarise_boot_image_dict`.  The two
+    return the same value for the same boot image.
+
+    :return: A tuple of the image's osystem, architecture, subarchitecture,
+        release, label, and purpose.
+    """
+    return (
+        image_object.osystem,
+        image_object.architecture,
+        image_object.subarchitecture,
+        image_object.release,
+        image_object.label,
+        image_object.purpose,
+        image_object.supported_subarches,
+        image_object.xinstall_path,
+        image_object.xinstall_type,
+        )
+
+
+def summarise_boot_image_dict(image_dict):
+    """Return a tuple representing a reported boot-image dict.
+
+    This is the counterpart to `summarise_boot_image_object`.  The two return
+    the same value for the same boot image.
+
+    :return: A tuple of the image's osystem, architecture, subarchitecture,
+        release, label, and purpose.
+    """
+    return (
+        image_dict['osystem'],
+        image_dict['architecture'],
+        image_dict.get('subarchitecture', 'generic'),
+        image_dict['release'],
+        image_dict.get('label', 'release'),
+        image_dict['purpose'],
+        image_dict.get('supported_subarches', ''),
+        image_dict.get('xinstall_path', None),
+        image_dict.get('xinstall_type', None)
+        )
+
+
+def summarise_reported_images(request):
+    """Return boot images reported by `request`.
+
+    :param request: An http request as received by `report_boot_images`.
+    :return: A set of tuples as produced by `summarise_boot_image_dict`.
+    """
+    return {
+        summarise_boot_image_dict(image)
+        for image in json.loads(get_mandatory_param(request.data, 'images'))
+        }
+
+
+def summarise_stored_images(nodegroup):
+    """Return boot images for `nodegroup` as found in the database.
+
+    :param nodegroup: The nodegroup whose boot images should be queried.
+    :return: A set of tuples as produced by `summarise_boot_image_object`.
+    """
+    return {
+        summarise_boot_image_object(image)
+        for image in BootImage.objects.filter(nodegroup=nodegroup)
+        }
+
+
+def store_boot_images(nodegroup, reported_images, stored_images):
+    """Store newly reported boot images in the database.
+
+    :param nodegroup: The `NodeGroup` whose boot images are being reported.
+    :param reported_images: Images being reported, as generated by
+        `summarise_reported_images`.
+    :param stored_images: Images already in the database, as generated by
+        `summarise_stored_images`.
+    """
+    new_images = reported_images - stored_images
+    for (osystem, arch, subarch, release, label, purpose,
+            supported_subarches, xinstall_path, xinstall_type) in new_images:
+        BootImage.objects.register_image(
+            nodegroup=nodegroup, osystem=osystem, architecture=arch,
+            subarchitecture=subarch, release=release, purpose=purpose,
+            label=label, supported_subarches=supported_subarches,
+            xinstall_path=xinstall_path, xinstall_type=xinstall_type)
+
+
+def prune_boot_images(nodegroup, reported_images, stored_images):
+    """Remove boot images for `nodegroup` which are no longer reported.
+
+    When a nodegroup reports its boot imgaes, it reports all the images it
+    has.  Therefore, any image not being reported is obsolete.  This function
+    removes such images from the database.
+
+    :param nodegroup: The `NodeGroup` whose boot images are being reported.
+    :param reported_images: Images being reported, as generated by
+        `summarise_reported_images`.
+    :param stored_images: Images already in the database, as generated by
+        `summarise_stored_images`.
+    """
+    # supported_subarches is not a key field, so images can still match
+    # even when it differs.
+    reported = set(
+        (osystem, arch, subarch, release, label, purpose)
+        for (osystem, arch, subarch, release, label, purpose, _, _, _)
+        in reported_images)
+    stored = set(
+        (osystem, arch, subarch, release, label, purpose)
+        for (osystem, arch, subarch, release, label, purpose, _, _, _)
+        in stored_images)
+
+    removed_images = stored - reported
+    for osystem, arch, subarch, release, label, purpose in removed_images:
+        db_images = BootImage.objects.filter(
+            osystem=osystem, architecture=arch, subarchitecture=subarch,
+            release=release, label=label, purpose=purpose)
+        db_images.delete()
+
+
+class BootImageHandler(OperationsHandler):
+    """Manage a boot image."""
+    api_doc_section_name = "Boot image"
+    create = replace = update = delete = None
+
+    model = BootImage
+    fields = DISPLAYED_BOOTIMAGE_FIELDS
+
+    def read(self, request, uuid, id):
+        """Read a boot image."""
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return get_object_or_404(
+            BootImage, nodegroup=nodegroup, id=id)
+
+    @classmethod
+    def resource_uri(cls, bootimage=None):
+        if bootimage is None:
+            id = 'id'
+            uuid = 'uuid'
+        else:
+            id = bootimage.id
+            uuid = bootimage.nodegroup.uuid
+        return ('boot_image_handler', (uuid, id))
+
+
+class BootImagesHandler(OperationsHandler):
+    """Manage the collection of boot images."""
+    api_doc_section_name = "Boot images"
+
+    create = replace = update = delete = None
+
+    @classmethod
+    def resource_uri(cls, nodegroup=None):
+        if nodegroup is None:
+            uuid = 'uuid'
+        else:
+            uuid = nodegroup.uuid
+        return ('boot_images_handler', [uuid])
+
+    def read(self, request, uuid):
+        """List boot images.
+
+        Get a listing of a cluster's boot images.
+
+        :param uuid: The UUID of the cluster for which the images
+            should be listed.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return BootImage.objects.filter(nodegroup=nodegroup)
+
+    @operation(idempotent=False)
+    def report_boot_images(self, request, uuid):
+        """Report images available to net-boot nodes from.
+
+        :param uuid: The UUID of the cluster for which the images are
+            being reported.
+        :param images: A list of dicts, each describing a boot image with
+            these properties: `os`, `architecture`, `subarchitecture`,
+            `release`, `purpose`, and optionally, `label` (which defaults
+            to "release"). These should match the code that determines TFTP
+            paths for these images.
+        """
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        check_nodegroup_access(request, nodegroup)
+        reported_images = summarise_reported_images(request)
+        existing_images = summarise_stored_images(nodegroup)
+        store_boot_images(nodegroup, reported_images, existing_images)
+        prune_boot_images(nodegroup, reported_images, existing_images)
+        warn_if_missing_boot_images()
+        return HttpResponse("OK")

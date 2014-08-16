@@ -21,10 +21,11 @@ from apiclient.maas_client import MAASClient
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
-from maasserver.api import api as api_module
-from maasserver.api.api import (
+from maasserver.api import boot_images as boot_images_module
+from maasserver.api.boot_images import (
     summarise_boot_image_dict,
     summarise_boot_image_object,
+    warn_if_missing_boot_images,
     )
 from maasserver.enum import (
     COMPONENT,
@@ -42,6 +43,8 @@ from maasserver.testing.api import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import absolute_reverse
 from maastesting.celery import CeleryFixture
 from maastesting.matchers import MockCalledOnceWith
 from mock import (
@@ -56,6 +59,50 @@ from provisioningserver.boot import tftppath
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
 from testtools.matchers import MatchesStructure
+
+
+class TestWarnIfMissingBootImages(MAASServerTestCase):
+    """Test `warn_if_missing_boot_images`."""
+
+    def test_warns_if_no_images_found(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(boot_images_module, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+        # The persistent error message links to the clusters listing.
+        self.assertIn(
+            absolute_reverse("cluster-list"),
+            recorder.call_args_list[0][0][1])
+
+    def test_warns_if_any_nodegroup_has_no_images(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        recorder = self.patch(boot_images_module, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertIn(
+            COMPONENT.IMPORT_PXE_FILES,
+            [args[0][0] for args in recorder.call_args_list])
+
+    def test_ignores_non_accepted_groups(self):
+        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        recorder = self.patch(boot_images_module, 'register_persistent_error')
+        warn_if_missing_boot_images()
+        self.assertEqual([], recorder.mock_calls)
+
+    def test_removes_warning_if_images_found(self):
+        self.patch(boot_images_module, 'register_persistent_error')
+        self.patch(boot_images_module, 'discard_persistent_error')
+        factory.make_boot_image(
+            nodegroup=factory.make_node_group(
+                status=NODEGROUP_STATUS.ACCEPTED))
+        warn_if_missing_boot_images()
+        self.assertEqual(
+            [], boot_images_module.register_persistent_error.mock_calls)
+        self.assertThat(
+            boot_images_module.discard_persistent_error,
+            MockCalledOnceWith(COMPONENT.IMPORT_PXE_FILES))
 
 
 def get_boot_image_uri(boot_image):
@@ -269,7 +316,8 @@ class TestBootImagesReportImagesAPI(APITestCase):
             (response.status_code, response.content))
 
     def test_report_boot_images_warns_about_missing_boot_images(self):
-        register_error = self.patch(api_module, 'register_persistent_error')
+        register_error = self.patch(
+            boot_images_module, 'register_persistent_error')
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.report_images(
             nodegroup, [], client=make_worker_client(nodegroup))

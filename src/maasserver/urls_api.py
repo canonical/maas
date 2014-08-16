@@ -21,8 +21,6 @@ from django.conf.urls import (
 from maasserver.api.api import (
     AccountHandler,
     api_doc,
-    BootImageHandler,
-    BootImagesHandler,
     BootSourceHandler,
     BootSourceSelectionHandler,
     BootSourceSelectionsHandler,
@@ -55,6 +53,10 @@ from maasserver.api.api import (
     ZonesHandler,
     )
 from maasserver.api.auth import api_auth
+from maasserver.api.boot_images import (
+    BootImageHandler,
+    BootImagesHandler,
+    )
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
