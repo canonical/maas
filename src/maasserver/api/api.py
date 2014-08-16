@@ -75,7 +75,6 @@ __all__ = [
     "NodeMacHandler",
     "NodeMacsHandler",
     "NodesHandler",
-    "SSHKeyHandler",
     "SSLKeyHandler",
     "pxeconfig",
     "render_api_docs",
@@ -165,7 +164,6 @@ from maasserver.forms import (
     NodeGroupEdit,
     NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
-    SSHKeyForm,
     SSLKeyForm,
     )
 from maasserver.forms_settings import (
@@ -185,7 +183,6 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
-    SSHKey,
     SSLKey,
     StaticIPAddress,
     )
@@ -1180,76 +1177,7 @@ class NodeMacHandler(OperationsHandler):
         return ('node_mac_handler', [node_system_id, mac_address])
 
 
-DISPLAY_SSHKEY_FIELDS = ("id", "key")
-
-
-class SSHKeysHandler(OperationsHandler):
-    """Manage the collection of all the SSH keys in this MAAS."""
-    api_doc_section_name = "SSH Keys"
-
-    create = read = update = delete = None
-
-    @operation(idempotent=True)
-    def list(self, request):
-        """List all keys belonging to the requesting user."""
-        return SSHKey.objects.filter(user=request.user)
-
-    @operation(idempotent=False)
-    def new(self, request):
-        """Add a new SSH key to the requesting user's account.
-
-        The request payload should contain the public SSH key data in form
-        data whose name is "key".
-        """
-        form = SSHKeyForm(user=request.user, data=request.data)
-        if form.is_valid():
-            sshkey = form.save()
-            emitter = JSONEmitter(
-                sshkey, typemapper, None, DISPLAY_SSHKEY_FIELDS)
-            stream = emitter.render(request)
-            return HttpResponse(
-                stream, mimetype='application/json; charset=utf-8',
-                status=httplib.CREATED)
-        else:
-            raise ValidationError(form.errors)
-
-    @classmethod
-    def resource_uri(cls, *args, **kwargs):
-        return ('sshkeys_handler', [])
-
-
-class SSHKeyHandler(OperationsHandler):
-    """Manage an SSH key.
-
-    SSH keys can be retrieved or deleted.
-    """
-    api_doc_section_name = "SSH Key"
-
-    fields = DISPLAY_SSHKEY_FIELDS
-    model = SSHKey
-    create = update = None
-
-    def read(self, request, keyid):
-        """GET an SSH key."""
-        key = get_object_or_404(SSHKey, id=keyid)
-        return key
-
-    @operation(idempotent=False)
-    def delete(self, request, keyid):
-        """DELETE an SSH key."""
-        key = get_object_or_404(SSHKey, id=keyid)
-        if key.user != request.user:
-            return HttpResponse(
-                "Can't delete a key you don't own.", status=httplib.FORBIDDEN)
-        key.delete()
-        return rc.DELETED
-
-    @classmethod
-    def resource_uri(cls, sshkey=None):
-        keyid = "keyid"
-        if sshkey is not None:
-            keyid = sshkey.id
-        return ('sshkey_handler', (keyid, ))
+DISPLAY_SSLKEY_FIELDS = ("id", "key")
 
 
 class SSLKeysHandler(OperationsHandler):
@@ -1274,7 +1202,7 @@ class SSLKeysHandler(OperationsHandler):
         if form.is_valid():
             sslkey = form.save()
             emitter = JSONEmitter(
-                sslkey, typemapper, None, DISPLAY_SSHKEY_FIELDS)
+                sslkey, typemapper, None, DISPLAY_SSLKEY_FIELDS)
             stream = emitter.render(request)
             return HttpResponse(
                 stream, mimetype='application/json; charset=utf-8',
@@ -1294,7 +1222,7 @@ class SSLKeyHandler(OperationsHandler):
     """
     api_doc_section_name = "SSL Key"
 
-    fields = DISPLAY_SSHKEY_FIELDS
+    fields = DISPLAY_SSLKEY_FIELDS
     model = SSLKey
     create = update = None
 
