@@ -28,8 +28,6 @@ from maasserver.api.api import (
     CommissioningScriptsHandler,
     describe,
     IPAddressesHandler,
-    LicenseKeyHandler,
-    LicenseKeysHandler,
     MaasHandler,
     NodeGroupHandler,
     NodeGroupsHandler,
@@ -54,6 +52,10 @@ from maasserver.api.boot_sources import (
 from maasserver.api.files import (
     FileHandler,
     FilesHandler,
+    )
+from maasserver.api.license_keys import (
+    LicenseKeyHandler,
+    LicenseKeysHandler,
     )
 from maasserver.api.networks import (
     NetworkHandler,
