@@ -237,7 +237,7 @@ class Factory:
         :return: A pair of `IPAddress`.
         """
         if network is None:
-            network = self.getRandomIPv6Network()
+            network = self.make_ipv6_network()
         return self.make_ip_range(network=network, but_not=but_not)
 
     def getRandomMACAddress(self, delimiter=":"):
