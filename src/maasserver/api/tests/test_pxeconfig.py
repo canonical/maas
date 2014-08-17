@@ -20,8 +20,8 @@ import json
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import server_address
-from maasserver.api import api as api_module
-from maasserver.api.api import (
+from maasserver.api import pxeconfig as pxeconfig_module
+from maasserver.api.pxeconfig import (
     find_nodegroup_for_pxeconfig_request,
     get_boot_purpose,
     )
@@ -344,7 +344,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_uses_boot_purpose(self):
         fake_boot_purpose = factory.make_name("purpose")
         self.patch(
-            api_module, "get_boot_purpose"
+            pxeconfig_module, "get_boot_purpose"
             ).return_value = fake_boot_purpose
         response = self.client.get(reverse('pxeconfig'),
                                    self.get_default_params())
