@@ -21,7 +21,6 @@ from django.conf.urls import (
 from maasserver.api.account import AccountHandler
 from maasserver.api.api import (
     api_doc,
-    CommissioningResultsHandler,
     describe,
     IPAddressesHandler,
     MaasHandler,
@@ -46,6 +45,7 @@ from maasserver.api.boot_sources import (
     BootSourceHandler,
     BootSourcesHandler,
     )
+from maasserver.api.commissioning_results import CommissioningResultsHandler
 from maasserver.api.commissioning_scripts import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
