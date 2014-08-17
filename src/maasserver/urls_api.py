@@ -22,8 +22,6 @@ from maasserver.api.account import AccountHandler
 from maasserver.api.api import (
     api_doc,
     CommissioningResultsHandler,
-    CommissioningScriptHandler,
-    CommissioningScriptsHandler,
     describe,
     IPAddressesHandler,
     MaasHandler,
@@ -48,6 +46,10 @@ from maasserver.api.boot_source_selections import (
 from maasserver.api.boot_sources import (
     BootSourceHandler,
     BootSourcesHandler,
+    )
+from maasserver.api.commissioning_scripts import (
+    CommissioningScriptHandler,
+    CommissioningScriptsHandler,
     )
 from maasserver.api.files import (
     FileHandler,
