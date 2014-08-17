@@ -36,8 +36,6 @@ from maasserver.api.api import (
     NodeMacsHandler,
     NodesHandler,
     pxeconfig,
-    SSLKeyHandler,
-    SSLKeysHandler,
     VersionHandler,
     )
 from maasserver.api.auth import api_auth
@@ -68,6 +66,10 @@ from maasserver.api.node_group_interfaces import (
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,
     SSHKeysHandler,
+    )
+from maasserver.api.ssl_keys import (
+    SSLKeyHandler,
+    SSLKeysHandler,
     )
 from maasserver.api.support import (
     AdminRestrictedResource,
