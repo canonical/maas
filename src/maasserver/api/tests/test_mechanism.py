@@ -16,7 +16,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.api.api import operation
+from maasserver.api.support import operation
 from maasserver.testing.factory import factory
 from maastesting.testcase import MAASTestCase
 

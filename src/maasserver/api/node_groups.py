@@ -30,7 +30,7 @@ from django.core.exceptions import (
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode import validators
-from maasserver.api.api import maaslog
+from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,

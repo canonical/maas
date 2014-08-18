@@ -12,7 +12,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     "AnonNodesHandler",
-    "get_oauth_token",
     "NodeHandler",
     "NodesHandler",
     "store_node_power_parameters",
@@ -28,6 +27,7 @@ from django.core.exceptions import (
     )
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -71,12 +71,8 @@ from maasserver.node_constraint_filter_forms import AcquireNodeForm
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 from piston.utils import rc
-from provisioningserver.logger import get_maas_logger
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 import simplejson as json
-
-
-maaslog = get_maas_logger("api")
 
 # Node's fields exposed on the API.
 DISPLAYED_NODE_FIELDS = (

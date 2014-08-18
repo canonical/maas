@@ -155,7 +155,7 @@ format:
 
 check: clean test
 
-docs/api.rst: bin/maas-region-admin src/maasserver/api/api.py syncdb
+docs/api.rst: bin/maas-region-admin src/maasserver/api/doc_handler.py syncdb
 	bin/maas-region-admin generate_api_doc > $@
 
 sampledata: bin/maas-region-admin bin/database syncdb

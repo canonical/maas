@@ -28,7 +28,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
-from maasserver.api.api import store_node_power_parameters
+from maasserver.api.nodes import store_node_power_parameters
 from maasserver.api.support import (
     operation,
     OperationsHandler,

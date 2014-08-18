@@ -247,7 +247,7 @@ class TestDescribingAPI(MAASServerTestCase):
     def test_describe_handler_with_maas_handler(self):
         # Ensure that describe_handler() yields something sensible with a
         # "real" MAAS API handler.
-        from maasserver.api.api import NodeHandler as handler
+        from maasserver.api.nodes import NodeHandler as handler
         description = describe_handler(handler)
         # The RUD of CRUD actions are still available, but the C(reate) action
         # has been overridden with custom non-ReSTful operations.

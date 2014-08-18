@@ -19,11 +19,11 @@ from itertools import izip
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.api import api as api_module
-from maasserver.api.api import store_node_power_parameters
+from maasserver.api import nodes as nodes_module
 from maasserver.api.node_group_interfaces import (
     DISPLAYED_NODEGROUPINTERFACE_FIELDS,
     )
+from maasserver.api.nodes import store_node_power_parameters
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.forms_settings import INVALID_SETTING_MSG_TEMPLATE
@@ -463,7 +463,7 @@ class APIErrorsTest(TransactionTestCase):
         # Monkey patch api.create_node to have it raise a RuntimeError.
         def raise_exception(*args, **kwargs):
             raise RuntimeError(error_message)
-        self.patch(api_module, 'create_node', raise_exception)
+        self.patch(nodes_module, 'create_node', raise_exception)
         response = self.client.post(reverse('nodes_handler'), {'op': 'new'})
 
         self.assertEqual(
