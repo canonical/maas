@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 import json
 from random import randint
+from StringIO import StringIO
 
 from django.core.urlresolvers import reverse
 from django.db import transaction
@@ -42,6 +43,17 @@ from testtools.matchers import (
     ContainsAll,
     HasLength,
     )
+
+
+def make_boot_resource_file_with_stream():
+    resource = factory.make_usable_boot_resource(
+        rtype=BOOT_RESOURCE_TYPE.SYNCED)
+    rfile = resource.sets.first().files.first()
+    with rfile.largefile.content.open('rb') as stream:
+        content = stream.read()
+    with rfile.largefile.content.open('wb') as stream:
+        stream.truncate()
+    return rfile, StringIO(content), content
 
 
 class TestHelpers(MAASServerTestCase):

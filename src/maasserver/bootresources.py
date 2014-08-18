@@ -39,7 +39,11 @@ from maasserver.models import (
     BootSourceSelection,
     )
 from maasserver.utils import absolute_reverse
+from provisioningserver.logger import get_maas_logger
 from simplestreams import util as sutil
+
+
+maaslog = get_maas_logger("bootresources")
 
 # Used by maasserver.middleware.AccessMiddleware to allow
 # anonymous access to the simplestreams endpoint.

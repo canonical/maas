@@ -59,3 +59,15 @@ class TestGetSigningPolicy(MAASTestCase):
         self.assertThat(
             helpers.policy_read_signed,
             MockCalledOnceWith(mock.ANY, mock.ANY, keyring=keyring))
+
+
+class TestGetOSFromProduct(MAASTestCase):
+    """Tests for `get_os_from_product`."""
+
+    def test_returns_os_from_product(self):
+        os = factory.make_name('os')
+        product = {'os': os}
+        self.assertEqual(os, helpers.get_os_from_product(product))
+
+    def test_returns_ubuntu_if_missing(self):
+        self.assertEqual('ubuntu', helpers.get_os_from_product({}))

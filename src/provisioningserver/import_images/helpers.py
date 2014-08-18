@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'get_os_from_product',
     'get_signing_policy',
     'ImageSpec',
     'maaslog',
@@ -58,6 +59,19 @@ def get_signing_policy(path, keyring=None):
         policy = functools.partial(policy, keyring=keyring)
 
     return policy
+
+
+def get_os_from_product(item):
+    """Returns the operating system that the product is refering to.
+
+    Originally products did not contain the os field. This handles that missing
+    field, by returning "ubuntu" as the operating system. Before the os field
+    was added to the product mapping, only Ubuntu was supported.
+    """
+    try:
+        return item['os']
+    except KeyError:
+        return "ubuntu"
 
 
 maaslog = get_maas_logger("import-images")

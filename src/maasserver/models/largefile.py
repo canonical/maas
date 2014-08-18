@@ -94,6 +94,22 @@ class LargeFile(CleanSave, TimestampedModel):
         """`content` has been completely saved."""
         return (self.total_size == self.size)
 
+    def delete(self, *args, **kwargs):
+        """Delete this object.
+
+        Important: You must remove your reference to this object or
+        it will not delete. Object will only be deleted if no other objects are
+        referencing this object.
+        """
+        links = [
+            rel.get_accessor_name()
+            for rel in self._meta.get_all_related_objects()
+            ]
+        for link in links:
+            if getattr(self, link).exists():
+                return
+        super(LargeFile, self).delete(*args, **kwargs)
+
 
 @receiver(post_delete)
 def delete_large_object(sender, instance, **kwargs):

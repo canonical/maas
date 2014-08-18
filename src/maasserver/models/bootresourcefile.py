@@ -69,4 +69,4 @@ class BootResourceFile(CleanSave, TimestampedModel):
     extra = JSONObjectField(blank=True, default="", editable=False)
 
     def __repr__(self):
-        return "<BootResourceFile %s/%s>" % (self.name, self.type)
+        return "<BootResourceFile %s/%s>" % (self.filename, self.filetype)

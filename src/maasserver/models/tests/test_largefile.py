@@ -90,3 +90,16 @@ class TestLargeFile(MAASServerTestCase):
         unlink_mock = self.patch(content, 'unlink')
         largefile.delete()
         self.assertThat(unlink_mock, MockCalledOnceWith())
+
+    def test_delete_does_nothing_if_linked(self):
+        largefile = factory.make_large_file()
+        resource = factory.make_boot_resource()
+        resource_set = factory.make_boot_resource_set(resource)
+        factory.make_boot_resource_file(resource_set, largefile)
+        largefile.delete()
+        self.assertTrue(LargeFile.objects.filter(id=largefile.id).exists())
+
+    def test_delete_deletes_if_not_linked(self):
+        largefile = factory.make_large_file()
+        largefile.delete()
+        self.assertFalse(LargeFile.objects.filter(id=largefile.id).exists())
