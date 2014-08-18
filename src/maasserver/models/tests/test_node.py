@@ -74,7 +74,10 @@ from mock import sentinel
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.tasks import Omshell
 from provisioningserver.utils.enum import map_enum
-from testtools.matchers import Equals
+from testtools.matchers import (
+    Equals,
+    MatchesStructure,
+    )
 
 
 class TestHostnameValidator(MAASTestCase):
@@ -497,7 +500,7 @@ class NodeTest(MAASServerTestCase):
     def test_get_effective_power_info_is_False_for_unset_power_type(self):
         node = factory.make_node(power_type="")
         self.assertEqual(
-            (False, None, None),
+            (False, False, None, None),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_is_True_for_set_power_type(self):
@@ -505,7 +508,7 @@ class NodeTest(MAASServerTestCase):
         gepp = self.patch(node, "get_effective_power_parameters")
         gepp.return_value = sentinel.power_parameters
         self.assertEqual(
-            (True, node.power_type, sentinel.power_parameters),
+            (True, True, node.power_type, sentinel.power_parameters),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_False_for_ether_wake(self):
@@ -513,22 +516,41 @@ class NodeTest(MAASServerTestCase):
         gepp = self.patch(node, "get_effective_power_parameters")
         # When there's no MAC address in the power parameters,
         # get_effective_power_info() says that this node's power cannot
-        # be controlled. However, it does return the power parameters.
+        # be turned on. However, it does return the power parameters.
+        # For ether_wake the power can never be turned off.
         gepp.return_value = {}
         self.assertEqual(
-            (False, "ether_wake", {}),
+            (False, False, "ether_wake", {}),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_True_for_ether_wake(self):
         node = factory.make_node(power_type="ether_wake")
         gepp = self.patch(node, "get_effective_power_parameters")
         # When the MAC address is supplied it changes its mind: this
-        # node's power can be controlled. Caveat: it's Wake-on-LAN, so
-        # you can't turn it off anyway.
-        gepp.return_value = {"mac_address": sentinel.mac_address}
+        # node's power can be turned on. For ether_wake the power can
+        # never be turned off.
+        gepp.return_value = {"mac_address": sentinel.mac_addr}
         self.assertEqual(
-            (True, "ether_wake", {"mac_address": sentinel.mac_address}),
+            (True, False, "ether_wake", {"mac_address": sentinel.mac_addr}),
             node.get_effective_power_info())
+
+    def test_get_effective_power_info_returns_named_tuple(self):
+        node = factory.make_node(power_type="ether_wake")
+        # Ensure that can_be_started and can_be_stopped have different
+        # values by specifying a MAC address for ether_wake.
+        gepp = self.patch(node, "get_effective_power_parameters")
+        gepp.return_value = {"mac_address": sentinel.mac_addr}
+        self.assertThat(
+            node.get_effective_power_info(),
+            MatchesStructure.byEquality(
+                can_be_started=True,
+                can_be_stopped=False,
+                power_type="ether_wake",
+                power_parameters={
+                    "mac_address": sentinel.mac_addr,
+                },
+            ),
+        )
 
     def test_get_effective_kernel_options_with_nothing_set(self):
         node = factory.make_node()

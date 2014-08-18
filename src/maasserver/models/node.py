@@ -19,6 +19,7 @@ __all__ = [
     "nodegroup_fqdn",
     ]
 
+from collections import namedtuple
 from itertools import chain
 import re
 from string import whitespace
@@ -217,6 +218,11 @@ def validate_hostname(hostname):
         if not label_chars.match(label):
             raise ValidationError(
                 "Name contains disallowed characters: %r." % label)
+
+
+# Return type from `get_effective_power_info`.
+PowerInfo = namedtuple("PowerInfo", (
+    "can_be_started", "can_be_stopped", "power_type", "power_parameters"))
 
 
 class NodeManager(Manager):
@@ -1190,30 +1196,37 @@ class Node(CleanSave, TimestampedModel):
     def get_effective_power_info(self):
         """Get information on how to control this node's power.
 
-        Returns a ``(can-be-controlled, power-type, power-parameters)`` tuple,
-        where ``can-be-controlled`` is a hint, based on the power type and
-        power parameters, whether it's even worth trying to control this
-        node's power.
+        Returns a ``(can-be-started, can-be-stopped, power-type,
+        power-parameters)`` tuple, where ``can-be-started`` and
+        ``can-be-stopped`` are hints, based on the power type and power
+        parameters, whether it's even worth trying to control this node's
+        power.
 
-        Put another way, if ``can-be-controlled`` is `False`, the node almost
-        certainly cannot be started or stopped. If it's `True`, then it may be
-        possible to control this node's power, but there are *no* guarantees.
+        Put another way, if ``can-be-started`` is `False`, the node almost
+        certainly cannot be started. If it's `True`, then it may be possible
+        to control this node's power, but there are *no* guarantees. The same
+        goes for ``can-be-stopped``.
+
+        :returns: :py:class:`PowerInfo` (a `namedtuple`)
         """
         power_params = self.get_effective_power_parameters()
         try:
             power_type = self.get_effective_power_type()
         except UnknownPowerType:
-            maaslog.warning(
-                "Node %s (%s) has an unknown power type.",
-                self.hostname, self.system_id)
-            return False, None, None
+            maaslog.warning("%s: Unrecognised power type.", self.hostname)
+            return PowerInfo(False, False, None, None)
         else:
             if power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
-                can_be_controlled = (mac != '' and mac is not None)
+                can_be_started = (mac != '' and mac is not None)
+                can_be_stopped = False
             else:
-                can_be_controlled = True
-            return can_be_controlled, power_type, power_params
+                can_be_started = True
+                can_be_stopped = True
+            return PowerInfo(
+                can_be_started, can_be_stopped,
+                power_type, power_params,
+            )
 
     def acquire(self, user, token=None, agent_name=''):
         """Mark commissioned node as acquired by the given user and token."""
