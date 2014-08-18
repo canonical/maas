@@ -138,3 +138,60 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
         ip = node.get_primary_mac().cluster_interface.static_ip_range_high
         [allocation] = mac.claim_static_ips(requested_address=ip)
         self.assertEqual(ip, allocation.ip)
+
+    def test_get_cluster_interfaces_returns_nothing_if_none_known(self):
+        self.assertItemsEqual(
+            [],
+            factory.make_mac_address().get_cluster_interfaces())
+
+    def test_get_cluster_interfaces_returns_cluster_interface_if_known(self):
+        cluster = factory.make_node_group()
+        cluster_interface = factory.make_node_group_interface(cluster)
+        mac = factory.make_mac_address(cluster_interface=cluster_interface)
+        self.assertItemsEqual(
+            [cluster_interface],
+            mac.get_cluster_interfaces())
+
+    def test_get_cluster_interfaces_includes_IPv6_cluster_interface(self):
+        # If the MAC is directly attached to an IPv4 cluster interface, but
+        # there's also an IPv6 cluster interface on the same network segment,
+        # both those cluster interfaces are included.
+        # XXX jtv 2014-08-18 bug=1358130: The way we look up the IPv6 interface
+        # from the IPv4 one is set to change.  It may affect this test.
+        cluster = factory.make_node_group()
+        network_interface = factory.make_name('eth', sep='')
+        ipv4_interface = factory.make_node_group_interface(
+            nodegroup=cluster, network=factory.getRandomNetwork(),
+            interface=network_interface)
+        ipv6_interface = factory.make_node_group_interface(
+            nodegroup=cluster, network=factory.make_ipv6_network(),
+            interface=network_interface)
+        mac = factory.make_mac_address(cluster_interface=ipv4_interface)
+        self.assertItemsEqual(
+            [ipv4_interface, ipv6_interface],
+            mac.get_cluster_interfaces())
+
+    def test_get_cluster_interfaces_ignores_other_cluster_interfaces(self):
+        cluster = factory.make_node_group()
+        factory.make_node_group_interface(
+            nodegroup=cluster, network=factory.getRandomNetwork())
+        factory.make_node_group_interface(
+            nodegroup=cluster, network=factory.make_ipv6_network())
+        node = factory.make_node(nodegroup=cluster)
+        self.assertItemsEqual(
+            [],
+            factory.make_mac_address(node=node).get_cluster_interfaces())
+
+    def test_get_cluster_interfaces_ignores_other_clusters(self):
+        my_cluster = factory.make_node_group()
+        unrelated_cluster = factory.make_node_group()
+        my_interface = factory.make_node_group_interface(
+            my_cluster, network=factory.getRandomNetwork(),
+            name='eth0', interface='eth0')
+        factory.make_node_group_interface(
+            unrelated_cluster, network=factory.make_ipv6_network(),
+            name='eth0', interface='eth0')
+        my_node = factory.make_node(nodegroup=my_cluster)
+        my_mac = factory.make_mac_address(
+            node=my_node, cluster_interface=my_interface)
+        self.assertItemsEqual([my_interface], my_mac.get_cluster_interfaces())

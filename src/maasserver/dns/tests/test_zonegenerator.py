@@ -199,7 +199,8 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         nodegroup = factory.make_node_group()
         # Create dynamic mapping for an allocated node.
         node = factory.make_node(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            disable_ipv4=False)
         mac = factory.make_mac_address(node=node)
         factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)

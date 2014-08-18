@@ -32,6 +32,7 @@ from maasserver.fields import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.managers import BulkManager
+from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 
 
@@ -88,6 +89,25 @@ class MACAddress(CleanSave, TimestampedModel):
     def get_networks(self):
         """Return networks to which this MAC is connected, sorted by name."""
         return self.networks.all().order_by('name')
+
+    def get_cluster_interfaces(self):
+        """Return all cluster interfaces to which this MAC connects.
+
+        This is at least its `cluster_interface`, if it is set.  But if so,
+        there may also be an IPv6 cluster interface attached to the same
+        network interface.
+        """
+        # XXX jtv 2014-08-18 bug=1358130: cluster_interface should probably be
+        # an m:n relationship.  Andres came up with a simpler scheme for the
+        # short term: "for IPv6, use whatever network interface on the cluster
+        # also manages the node's IPv4 address."
+        if self.cluster_interface is None:
+            # No known cluster interface.  Nothing we can do.
+            return []
+        else:
+            return NodeGroupInterface.objects.filter(
+                nodegroup=self.cluster_interface.nodegroup,
+                interface=self.cluster_interface.interface)
 
     def claim_static_ips(self, alloc_type=IPADDRESS_TYPE.AUTO,
                          requested_address=None):
