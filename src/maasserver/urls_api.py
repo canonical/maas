@@ -20,7 +20,6 @@ from django.conf.urls import (
     )
 from maasserver.api.account import AccountHandler
 from maasserver.api.api import (
-    IPAddressesHandler,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -53,6 +52,7 @@ from maasserver.api.files import (
     FileHandler,
     FilesHandler,
     )
+from maasserver.api.ip_addresses import IPAddressesHandler
 from maasserver.api.license_keys import (
     LicenseKeyHandler,
     LicenseKeysHandler,
