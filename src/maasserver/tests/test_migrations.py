@@ -27,6 +27,8 @@ EXISTING_DUPES = [
     (2, '0002_macaddress_unique'),
     (39, '0039_add_filestorage_content'),
     (39, '0039_add_nodegroup_to_bootimage'),
+    (100, '0100_remove_cluster_from_bootsrouce'),
+    (100, '0100_remove_duplicate_bootsource_urls'),
     ]
 
 

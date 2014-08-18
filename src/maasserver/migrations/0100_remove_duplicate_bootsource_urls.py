@@ -2,20 +2,24 @@ from django.db import models
 from south.db import db
 # -*- coding: utf-8 -*-
 from south.utils import datetime_utils as datetime
-from south.v2 import SchemaMigration
+from south.v2 import DataMigration
 
 
-class Migration(SchemaMigration):
+class Migration(DataMigration):
 
     def forwards(self, orm):
-        # Adding unique constraint on 'BootSource', fields ['url']
-        db.create_unique(u'maasserver_bootsource', ['url'])
-
+        # Keep only one of each 'BootSouce' with URL. This is done because
+        # of the next migration 101.
+        urls = []
+        for source in orm[u'maasserver.bootsource'].objects.all():
+            if source.url in urls:
+                source.delete()
+            else:
+                urls.append(source.url)
 
     def backwards(self, orm):
-        # Removing unique constraint on 'BootSource', fields ['url']
-        db.delete_unique(u'maasserver_bootsource', ['url'])
-
+        # No way of bring the duplicates back.
+        pass
 
     models = {
         u'auth.group': {
@@ -107,7 +111,7 @@ class Migration(SchemaMigration):
             'keyring_data': ('maasserver.fields.EditableBinaryField', [], {'blank': 'True'}),
             'keyring_filename': ('django.db.models.fields.FilePathField', [], {'max_length': '100', 'blank': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
-            'url': ('django.db.models.fields.URLField', [], {'unique': 'True', 'max_length': '200'})
+            'url': ('django.db.models.fields.URLField', [], {'max_length': '200'})
         },
         u'maasserver.bootsourceselection': {
             'Meta': {'object_name': 'BootSourceSelection'},
@@ -175,7 +179,7 @@ class Migration(SchemaMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'36c26f28-242e-11e4-901f-bcee7b78dc5b'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'd7fc1490-242c-11e4-876d-bcee7b78dc5b'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.largefile': {
@@ -249,7 +253,7 @@ class Migration(SchemaMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-36c1b7ea-242e-11e4-901f-bcee7b78dc5b'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-d8025648-242c-11e4-876d-bcee7b78dc5b'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -355,7 +359,7 @@ class Migration(SchemaMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1408074162L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1408073574L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
@@ -363,3 +367,4 @@ class Migration(SchemaMigration):
     }
 
     complete_apps = ['maasserver']
+    symmetrical = True
