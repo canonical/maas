@@ -21,8 +21,6 @@ from django.conf.urls import (
 from maasserver.api.account import AccountHandler
 from maasserver.api.api import (
     NodeHandler,
-    NodeMacHandler,
-    NodeMacsHandler,
     NodesHandler,
     )
 from maasserver.api.auth import api_auth
@@ -68,6 +66,10 @@ from maasserver.api.node_group_interfaces import (
 from maasserver.api.node_groups import (
     NodeGroupHandler,
     NodeGroupsHandler,
+    )
+from maasserver.api.node_macs import (
+    NodeMacHandler,
+    NodeMacsHandler,
     )
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.ssh_keys import (
