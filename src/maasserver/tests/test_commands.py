@@ -20,7 +20,6 @@ from io import BytesIO
 from apiclient.creds import convert_tuple_to_string
 import django
 from django.contrib.auth.models import User
-from django.core.cache import cache
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from maasserver.management.commands import createadmin
@@ -181,21 +180,6 @@ class TestCommands(DjangoTestCase):
         self.assertRaises(
             createadmin.EmptyEmail,
             createadmin.prompt_for_email)
-
-    def test_clearcache_clears_entire_cache(self):
-        key = factory.make_string()
-        cache.set(key, factory.make_string())
-        call_command('clearcache')
-        self.assertIsNone(cache.get(key, None))
-
-    def test_clearcache_clears_specific_key(self):
-        key = factory.make_string()
-        cache.set(key, factory.make_string())
-        another_key = factory.make_string()
-        cache.set(another_key, factory.make_string())
-        call_command('clearcache', key=key)
-        self.assertIsNone(cache.get(key, None))
-        self.assertIsNotNone(cache.get(another_key, None))
 
 
 class TestApikeyCommand(DjangoTestCase):

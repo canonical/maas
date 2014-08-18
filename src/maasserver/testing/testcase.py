@@ -25,7 +25,6 @@ import wsgiref
 
 import crochet
 import django
-from django.core.cache import cache as django_cache
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.test.client import encode_multipart
@@ -65,7 +64,6 @@ class MAASServerTestCase(DjangoTestCase):
         super(MAASServerTestCase, self).setUp()
         self.useFixture(WorkerCacheFixture())
         self.useFixture(TagCachedKnowledgeFixture())
-        self.addCleanup(django_cache.clear)
         self.celery = self.useFixture(CeleryFixture())
         # This patch prevents communication with a non-existent cluster
         # controller when fetching power types.
@@ -172,7 +170,6 @@ class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
     def tearDown(self):
         super(SeleniumTestCase, self).tearDown()
         cleanup_db(self)
-        django_cache.clear()
 
     @classmethod
     def tearDownClass(cls):
