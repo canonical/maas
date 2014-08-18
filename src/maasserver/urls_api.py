@@ -24,7 +24,6 @@ from maasserver.api.api import (
     NodeMacHandler,
     NodeMacsHandler,
     NodesHandler,
-    VersionHandler,
     )
 from maasserver.api.auth import api_auth
 from maasserver.api.boot_images import (
@@ -91,6 +90,7 @@ from maasserver.api.users import (
     UserHandler,
     UsersHandler,
     )
+from maasserver.api.version import VersionHandler
 from maasserver.api.zones import (
     ZoneHandler,
     ZonesHandler,

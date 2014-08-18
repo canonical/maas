@@ -21,7 +21,6 @@ __all__ = [
     ]
 
 from base64 import b64decode
-import httplib
 
 import bson
 from django.conf import settings
@@ -1034,34 +1033,3 @@ class NodeMacHandler(OperationsHandler):
             node_system_id = mac.node.system_id
             mac_address = mac.mac_address
         return ('node_mac_handler', [node_system_id, mac_address])
-
-
-# MAAS capabilities. See docs/capabilities.rst for documentation.
-CAP_NETWORKS_MANAGEMENT = 'networks-management'
-CAP_STATIC_IPADDRESSES = 'static-ipaddresses'
-
-API_CAPABILITIES_LIST = [
-    CAP_NETWORKS_MANAGEMENT,
-    CAP_STATIC_IPADDRESSES,
-]
-
-
-class VersionHandler(AnonymousOperationsHandler):
-    """Information about this MAAS instance.
-
-    This returns a JSON dictionary with information about this
-    MAAS instance.
-    {
-        'capabilities': ['capability1', 'capability2', ...]
-    }
-    """
-    api_doc_section_name = "MAAS version"
-    create = update = delete = None
-
-    def read(self, request):
-        version_info = {
-            'capabilities': API_CAPABILITIES_LIST,
-        }
-        return HttpResponse(
-            version_info, mimetype='application/json; charset=utf-8',
-            status=httplib.OK)

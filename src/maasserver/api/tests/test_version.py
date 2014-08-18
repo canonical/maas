@@ -19,7 +19,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
-from maasserver.api.api import API_CAPABILITIES_LIST
+from maasserver.api.version import API_CAPABILITIES_LIST
 from maasserver.testing.testcase import MAASServerTestCase
 
 
