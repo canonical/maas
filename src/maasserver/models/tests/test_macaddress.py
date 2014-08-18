@@ -85,55 +85,56 @@ class MACAddressTest(MAASServerTestCase):
 
 class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
 
-    def test_claim_static_ip_returns_none_if_no_cluster_interface(self):
+    def test_claim_statics_ip_returns_empty_if_no_cluster_interface(self):
         # If mac.cluster_interface is None, we can't allocate any IP.
         mac = factory.make_mac_address()
-        self.assertIsNone(mac.claim_static_ip())
+        self.assertEquals([], mac.claim_static_ips())
 
-    def test_claim_static_ip_reserves_an_ip_address(self):
+    def test_claim_static_ips_reserves_an_ip_address(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
-        claimed_ip = mac.claim_static_ip()
+        [claimed_ip] = mac.claim_static_ips()
         self.assertIsInstance(claimed_ip, StaticIPAddress)
         self.assertNotEqual([], list(node.static_ip_addresses()))
         self.assertEqual(
             IPADDRESS_TYPE.AUTO, StaticIPAddress.objects.all()[0].alloc_type)
 
-    def test_claim_static_ip_sets_type_as_required(self):
+    def test_claim_static_ips_sets_type_as_required(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
-        claimed_ip = mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        [claimed_ip] = mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertEqual(IPADDRESS_TYPE.STICKY, claimed_ip.alloc_type)
 
-    def test_claim_static_ip_returns_none_if_no_static_range_defined(self):
+    def test_claim_static_ips_returns_none_if_no_static_range_defined(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         mac.cluster_interface.static_ip_range_low = None
         mac.cluster_interface.static_ip_range_high = None
-        self.assertIsNone(mac.claim_static_ip())
+        self.assertEqual([], mac.claim_static_ips())
 
-    def test_claim_static_ip_raises_if_clashing_type(self):
+    def test_claim_static_ips_raises_if_clashing_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         iptype2 = factory.pick_enum(IPADDRESS_TYPE, but_not=[iptype])
-        mac.claim_static_ip(alloc_type=iptype)
+        mac.claim_static_ips(alloc_type=iptype)
         self.assertRaises(
             StaticIPAddressTypeClash,
-            mac.claim_static_ip, alloc_type=iptype2)
+            mac.claim_static_ips, alloc_type=iptype2)
 
-    def test_claim_static_ip_returns_existing_if_claiming_same_type(self):
+    def test_claim_static_ips_returns_existing_if_claiming_same_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         iptype = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        ip = mac.claim_static_ip(alloc_type=iptype)
+        [ip] = mac.claim_static_ips(alloc_type=iptype)
         self.assertEqual(
-            ip, mac.claim_static_ip(alloc_type=iptype))
+            [ip], mac.claim_static_ips(alloc_type=iptype))
 
     def test_passes_requested_ip(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         ip = node.get_primary_mac().cluster_interface.static_ip_range_high
-        self.assertEqual(ip, mac.claim_static_ip(requested_address=ip).ip)
+        [allocation] = mac.claim_static_ips(requested_address=ip)
+        self.assertEqual(ip, allocation.ip)

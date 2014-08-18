@@ -1011,7 +1011,7 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        existing_ip = node.get_primary_mac().claim_static_ip(
+        [existing_ip] = node.get_primary_mac().claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
@@ -1029,7 +1029,7 @@ class TestStickyIP(APITestCase):
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE,
             but_not=[IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED])
-        node.get_primary_mac().claim_static_ip(alloc_type=random_alloc_type)
+        node.get_primary_mac().claim_static_ips(alloc_type=random_alloc_type)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
@@ -1128,7 +1128,7 @@ class TestStickyIP(APITestCase):
         # Allocate an IP to one of the nodes.
         requested_address = IPAddress(ngi.static_ip_range_low) + 1
         requested_address = requested_address.format()
-        other_node.get_primary_mac().claim_static_ip(
+        other_node.get_primary_mac().claim_static_ips(
             requested_address=requested_address)
 
         # Use the API to try to duplicate the same IP on the other node.

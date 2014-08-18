@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """MACAddress model and friends."""
@@ -89,9 +89,13 @@ class MACAddress(CleanSave, TimestampedModel):
         """Return networks to which this MAC is connected, sorted by name."""
         return self.networks.all().order_by('name')
 
-    def claim_static_ip(self, alloc_type=IPADDRESS_TYPE.AUTO,
-                        requested_address=None):
-        """Assign a static IP to this MAC.
+    def claim_static_ips(self, alloc_type=IPADDRESS_TYPE.AUTO,
+                         requested_address=None):
+        """Assign static IP addresses to this MAC.
+
+        Allocates one address per managed cluster interface connected to this
+        MAC.  Typically this will be either just one IPv4 address, or an IPv4
+        address and an IPv6 address.
 
         It is the caller's responsibility to create a celery Task that will
         write the dhcp host.  It is not done here because celery doesn't
@@ -101,13 +105,14 @@ class MACAddress(CleanSave, TimestampedModel):
         :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
             This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
         :param requested_address: Optional IP address to claim.  Must be in
-            the range defined on the cluster interface to which this MACAddress
-            is related.
-        :return: A :class:`StaticIPAddress` object. Returns None if
+            the range defined on a cluster interface to which this MACAddress
+            is related.  If given, no allocations will be made on any other
+            cluster interfaces the MAC may be connected to.
+        :return: A list of :class:`StaticIPAddress`.  Returns empty if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the
-            cluster_interface. If an IP already exists for this type, it
-            is always returned with no further allocation.
+            cluster_interface.  If an IP address was already allocated, the
+            function will return it rather than allocate a new one.
         :raises: StaticIPAddressExhaustion if there are not enough IPs left.
         :raises: StaticIPAddressTypeClash if an IP already exists with a
             different type.
@@ -129,20 +134,20 @@ class MACAddress(CleanSave, TimestampedModel):
 
         # Check to see if an IP with the same type already exists.
         try:
-            return StaticIPAddress.objects.get(
-                macaddress=self, alloc_type=alloc_type)
+            return [StaticIPAddress.objects.get(
+                macaddress=self, alloc_type=alloc_type)]
         except StaticIPAddress.DoesNotExist:
             pass
 
         if self.cluster_interface is None:
             # We need to know this to allocate an IP, so return nothing.
-            return None
+            return []
 
         low = self.cluster_interface.static_ip_range_low
         high = self.cluster_interface.static_ip_range_high
         if not low or not high:
             # low/high can be None or blank if not defined yet.
-            return None
+            return []
 
         # Avoid circular imports.
         from maasserver.models import (
@@ -152,4 +157,4 @@ class MACAddress(CleanSave, TimestampedModel):
         sip = StaticIPAddress.objects.allocate_new(
             low, high, alloc_type, requested_address=requested_address)
         MACStaticIPAddressLink(mac_address=self, ip_address=sip).save()
-        return sip
+        return [sip]

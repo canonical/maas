@@ -474,7 +474,7 @@ class NodeHandler(OperationsHandler):
             assign the sticky IP address.  If not passed, defaults to the
             primary MAC for the node.
         :param requested_address: Optional IP address to claim.  Must be in
-            the range defined on the cluster interface to which the context
+            the range defined on a cluster interface to which the context
             MAC is related, or 403 Forbidden is returned.  If the requested
             address is unavailable for use, 404 Not Found is returned.
 
@@ -500,11 +500,12 @@ class NodeHandler(OperationsHandler):
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the node" % raw_mac)
         requested_address = request.POST.get('requested_address', None)
-        sticky_ip = mac_address.claim_static_ip(
+        sticky_ips = mac_address.claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY,
             requested_address=requested_address)
         maaslog.info(
-            "%s: Sticky IP address %s allocated", node.hostname, sticky_ip.ip)
+            "%s: Sticky IP address(es) allocated: %s", node.hostname,
+            ', '.join(allocation.ip for allocation in sticky_ips))
         return node
 
     @operation(idempotent=False)
@@ -1966,9 +1967,9 @@ class IPAddressesHandler(OperationsHandler):
     def reserve(self, request):
         """Reserve an IP address for use outside of MAAS.
 
-        Returns an IP adddress for which MAAS will not allow any of its
-        known devices and Nodes to use; it is free for use by the requesting
-        user until released by the user.
+        Returns an IP adddress which MAAS will not allow any of its known
+        devices and Nodes to use; it is free for use by the requesting user
+        until released by the user.
 
         :param network: CIDR representation of the network on which the IP
             reservation is required. e.g. 10.1.2.0/24

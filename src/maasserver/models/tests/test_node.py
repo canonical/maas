@@ -326,7 +326,7 @@ class NodeTest(MAASServerTestCase):
         primary_mac = node.get_primary_mac()
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        primary_mac.claim_static_ip(alloc_type=random_alloc_type)
+        primary_mac.claim_static_ips(alloc_type=random_alloc_type)
         node.delete()
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
@@ -335,7 +335,7 @@ class NodeTest(MAASServerTestCase):
         self.patch(Omshell, 'remove')
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
-        primary_mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
         node.delete()
         self.assertEqual(
             ['provisioningserver.tasks.remove_dhcp_host_map'],
@@ -649,17 +649,17 @@ class NodeTest(MAASServerTestCase):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
-        sip = node.get_primary_mac().claim_static_ip()
+        sips = node.get_primary_mac().claim_static_ips()
         delete_static_host_maps = self.patch(node, 'delete_static_host_maps')
         node.release()
-        expected = [sip.ip.format()]
+        expected = [sip.ip.format() for sip in sips]
         self.assertThat(delete_static_host_maps, MockCalledOnceWith(expected))
 
     def test_delete_static_host_maps(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
-        sip = node.get_primary_mac().claim_static_ip()
+        [sip] = node.get_primary_mac().claim_static_ips()
         self.patch(Omshell, 'remove')
         set_call = self.patch(celery.canvas.Signature, 'set')
         node.delete_static_host_maps([sip.ip.format()])
@@ -1476,7 +1476,7 @@ class NodeManagerTest(MAASServerTestCase):
                 self.celery.tasks[0]['kwargs']['mac_address'],
             ))
 
-    def test_start_nodes_does_not_claim_static_ip_unless_allocated(self):
+    def test_start_nodes_does_not_claim_static_ips_unless_allocated(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, power_type='ether_wake')
@@ -1747,7 +1747,7 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         self.patch(
             MACAddress,
-            'claim_static_ip').side_effect = StaticIPAddressExhaustion
+            'claim_static_ips').side_effect = StaticIPAddressExhaustion
         deallocate_call = self.patch(
             StaticIPAddressManager, 'deallocate_by_node')
         self.assertRaises(StaticIPAddressExhaustion, node.claim_static_ips)
@@ -1772,7 +1772,7 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
     def test_claim_static_ips_creates_no_tasks_if_existing_IP(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
-        primary_mac.claim_static_ip(alloc_type=IPADDRESS_TYPE.STICKY)
+        primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
         ngi = factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         second_mac = factory.make_mac_address(node=node, cluster_interface=ngi)

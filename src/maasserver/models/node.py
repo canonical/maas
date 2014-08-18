@@ -701,7 +701,7 @@ class Node(CleanSave, TimestampedModel):
         macs = self.mac_addresses_on_managed_interfaces()
         for mac in macs:
             try:
-                sip = mac.claim_static_ip()
+                sips = mac.claim_static_ips()
             except StaticIPAddressTypeClash:
                 # There's already a non-AUTO IP, so nothing to do.
                 continue
@@ -709,7 +709,7 @@ class Node(CleanSave, TimestampedModel):
             # defined, which will be the case when migrating from older
             # versions of the code.  If it is None we just ignore this
             # MAC.
-            if sip is not None:
+            for sip in sips:
                 tasks.append(self._create_hostmap_task(mac, sip))
                 maaslog.info(
                     "%s: Claimed static IP %s on %s", self.hostname,
