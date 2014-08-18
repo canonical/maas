@@ -37,7 +37,7 @@ div.power-state {
     }
 
 .power-off {
-    background-color: #D00000;
+    background-color: #000000;
     }
 
 .power-unknown {
@@ -45,5 +45,5 @@ div.power-state {
     }
 
 .power-error {
-    background-color: #000000;
+    background-color: #D00000;
     }
