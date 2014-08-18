@@ -1,51 +1,6 @@
 # Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Restful MAAS API.
-
-This is the documentation for the API that lets you control and query MAAS.
-The API is "Restful", which means that you access it through normal HTTP
-requests.
-
-
-API versions
-------------
-
-At any given time, MAAS may support multiple versions of its API.  The version
-number is included in the API's URL, e.g. /api/1.0/
-
-For now, 1.0 is the only supported version.
-
-
-HTTP methods and parameter-passing
-----------------------------------
-
-The following HTTP methods are available for accessing the API:
- * GET (for information retrieval and queries),
- * POST (for asking the system to do things),
- * PUT (for updating objects), and
- * DELETE (for deleting objects).
-
-All methods except DELETE may take parameters, but they are not all passed in
-the same way.  GET parameters are passed in the URL, as is normal with a GET:
-"/item/?foo=bar" passes parameter "foo" with value "bar".
-
-POST and PUT are different.  Your request should have MIME type
-"multipart/form-data"; each part represents one parameter (for POST) or
-attribute (for PUT).  Each part is named after the parameter or attribute it
-contains, and its contents are the conveyed value.
-
-All parameters are in text form.  If you need to submit binary data to the
-API, don't send it as any MIME binary format; instead, send it as a plain text
-part containing base64-encoded data.
-
-Most resources offer a choice of GET or POST operations.  In those cases these
-methods will take one special parameter, called `op`, to indicate what it is
-you want to do.
-
-For example, to list all nodes, you might GET "/api/1.0/nodes/?op=list".
-"""
-
 from __future__ import (
     absolute_import,
     print_function,
@@ -57,25 +12,17 @@ str = None
 __metaclass__ = type
 __all__ = [
     "AnonNodesHandler",
-    "api_doc",
-    "api_doc_title",
     "get_oauth_token",
     "MaasHandler",
     "NodeHandler",
     "NodeMacHandler",
     "NodeMacsHandler",
     "NodesHandler",
-    "render_api_docs",
     "store_node_power_parameters",
     ]
 
 from base64 import b64decode
-from cStringIO import StringIO
-from functools import partial
 import httplib
-from inspect import getdoc
-import sys
-from textwrap import dedent
 
 import bson
 from django.conf import settings
@@ -84,19 +31,8 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.http import HttpResponse
-from django.shortcuts import (
-    get_object_or_404,
-    render_to_response,
-    )
-from django.template import RequestContext
-from docutils import core
+from django.shortcuts import get_object_or_404
 from formencode import validators
-from maasserver.api.doc import (
-    describe_resource,
-    find_api_resources,
-    generate_api_docs,
-    generate_power_types_doc,
-    )
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -149,10 +85,7 @@ from maasserver.models import (
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
-from maasserver.utils import (
-    build_absolute_uri,
-    find_nodegroup,
-    )
+from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 import netaddr
 from piston.utils import rc
@@ -1196,127 +1129,6 @@ class VersionHandler(AnonymousOperationsHandler):
         return HttpResponse(
             version_info, mimetype='application/json; charset=utf-8',
             status=httplib.OK)
-
-
-# Title section for the API documentation.  Matches in style, format,
-# etc. whatever render_api_docs() produces, so that you can concatenate
-# the two.
-api_doc_title = dedent("""
-    .. _region-controller-api:
-
-    ========
-    MAAS API
-    ========
-    """.lstrip('\n'))
-
-
-def render_api_docs():
-    """Render ReST documentation for the REST API.
-
-    This module's docstring forms the head of the documentation; details of
-    the API methods follow.
-
-    :return: Documentation, in ReST, for the API.
-    :rtype: :class:`unicode`
-    """
-    from maasserver import urls_api as urlconf
-
-    module = sys.modules[__name__]
-    output = StringIO()
-    line = partial(print, file=output)
-
-    line(getdoc(module))
-    line()
-    line()
-    line('Operations')
-    line('----------')
-    line()
-
-    resources = find_api_resources(urlconf)
-    for doc in generate_api_docs(resources):
-        uri_template = doc.resource_uri_template
-        exports = doc.handler.exports.items()
-        # Derive a section title from the name of the handler class.
-        section_name = doc.handler.api_doc_section_name
-        line(section_name)
-        line('=' * len(section_name))
-        line(doc.handler.__doc__)
-        line()
-        line()
-        for (http_method, op), function in sorted(exports):
-            line("``%s %s``" % (http_method, uri_template), end="")
-            if op is not None:
-                line(" ``op=%s``" % op)
-            line()
-            docstring = getdoc(function)
-            if docstring is not None:
-                for docline in docstring.splitlines():
-                    line("  ", docline, sep="")
-                line()
-
-    line()
-    line()
-    line(generate_power_types_doc())
-
-    return output.getvalue()
-
-
-def reST_to_html_fragment(a_str):
-    parts = core.publish_parts(source=a_str, writer_name='html')
-    return parts['body_pre_docinfo'] + parts['fragment']
-
-
-def api_doc(request):
-    """Get ReST documentation for the REST API."""
-    # Generate the documentation and keep it cached.  Note that we can't do
-    # that at the module level because the API doc generation needs Django
-    # fully initialized.
-    return render_to_response(
-        'maasserver/api_doc.html',
-        {'doc': reST_to_html_fragment(render_api_docs())},
-        context_instance=RequestContext(request))
-
-
-def describe(request):
-    """Return a description of the whole MAAS API.
-
-    :param request: The http request for this document.  This is used to
-        derive the URL where the client expects to see the MAAS API.
-    :return: A JSON object describing the whole MAAS API.  Links to the API
-        will use the same scheme and hostname that the client used in
-        `request`.
-    """
-    from maasserver import urls_api as urlconf
-    resources = [
-        describe_resource(resource)
-        for resource in find_api_resources(urlconf)
-        ]
-    # Make all URIs absolute. Clients - and the command-line client in
-    # particular - expect that all handler URIs are absolute, not just paths.
-    # The handler URIs returned by describe_resource() are relative paths.
-    absolute = partial(build_absolute_uri, request)
-    for resource in resources:
-        for handler_type in "anon", "auth":
-            handler = resource[handler_type]
-            if handler is not None:
-                handler["uri"] = absolute(handler["path"])
-    # Package it all up.
-    description = {
-        "doc": "MAAS API",
-        "resources": resources,
-        }
-    # For backward compatibility, add "handlers" as an alias for all not-None
-    # anon and auth handlers in "resources".
-    description["handlers"] = []
-    description["handlers"].extend(
-        resource["anon"] for resource in description["resources"]
-        if resource["anon"] is not None)
-    description["handlers"].extend(
-        resource["auth"] for resource in description["resources"]
-        if resource["auth"] is not None)
-    return HttpResponse(
-        json.dumps(description),
-        content_type="application/json")
 
 
 class IPAddressesHandler(OperationsHandler):

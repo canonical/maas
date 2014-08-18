@@ -17,7 +17,7 @@ __all__ = [
     ]
 
 from django.core.management.base import BaseCommand
-from maasserver.api.api import (
+from maasserver.api.doc_handler import (
     api_doc_title,
     render_api_docs,
     )
