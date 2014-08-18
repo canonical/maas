@@ -24,8 +24,6 @@ from maasserver.api.api import (
     describe,
     IPAddressesHandler,
     MaasHandler,
-    NodeGroupHandler,
-    NodeGroupsHandler,
     NodeHandler,
     NodeMacHandler,
     NodeMacsHandler,
@@ -65,6 +63,10 @@ from maasserver.api.networks import (
 from maasserver.api.node_group_interfaces import (
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
+    )
+from maasserver.api.node_groups import (
+    NodeGroupHandler,
+    NodeGroupsHandler,
     )
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.ssh_keys import (

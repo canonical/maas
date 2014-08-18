@@ -25,8 +25,8 @@ from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
-from maasserver.api import api as api_module
-from maasserver.api.api import update_mac_cluster_interfaces
+from maasserver.api import node_groups as nodegroups_module
+from maasserver.api.node_groups import update_mac_cluster_interfaces
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -225,7 +225,7 @@ class TestNodeGroupAPI(APITestCase):
             parsed_result['name'][0])
 
     def test_update_leases_processes_empty_leases_dict(self):
-        self.patch(api_module, 'update_mac_cluster_interfaces')
+        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         nodegroup = factory.make_node_group()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
@@ -242,7 +242,7 @@ class TestNodeGroupAPI(APITestCase):
             [], DHCPLease.objects.filter(nodegroup=nodegroup))
 
     def test_update_leases_stores_leases(self):
-        self.patch(api_module, 'update_mac_cluster_interfaces')
+        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         lease = factory.make_random_leases()
@@ -264,7 +264,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_update_leases_updates_mac_interface_mappings(self):
         self.patch(
-            api_module, 'update_mac_cluster_interfaces', FakeMethod())
+            nodegroups_module, 'update_mac_cluster_interfaces', FakeMethod())
         self.patch(Omshell, 'create')
         cluster = factory.make_node_group()
         cluster_interface = factory.make_node_group_interface(
@@ -287,10 +287,10 @@ class TestNodeGroupAPI(APITestCase):
             (response.status_code, response.content))
         self.assertEqual(
             [(leases, cluster)],
-            api_module.update_mac_cluster_interfaces.extract_args())
+            nodegroups_module.update_mac_cluster_interfaces.extract_args())
 
     def test_update_leases_does_not_add_old_leases(self):
-        self.patch(api_module, 'update_mac_cluster_interfaces')
+        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)

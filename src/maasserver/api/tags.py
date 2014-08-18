@@ -26,7 +26,7 @@ from django.core.exceptions import (
     )
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
-from maasserver.api.api import check_nodegroup_access
+from maasserver.api.node_groups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,

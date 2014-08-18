@@ -20,7 +20,7 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
-from maasserver.api.api import check_nodegroup_access
+from maasserver.api.node_groups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,

@@ -27,8 +27,8 @@ from django.core.exceptions import (
     )
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
-from maasserver.api import api as api_module
-from maasserver.api.api import (
+from maasserver.api import node_groups as nodegroups_module
+from maasserver.api.node_groups import (
     compose_nodegroup_register_response,
     get_celery_credentials,
     register_nodegroup,
@@ -375,7 +375,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # tells it to return.
         expected_response = factory.make_string()
         self.patch(
-            api_module, 'compose_nodegroup_register_response',
+            nodegroups_module, 'compose_nodegroup_register_response',
             Mock(return_value=expected_response))
 
         response = self.client.post(
@@ -395,7 +395,8 @@ class TestRegisterAPI(MAASServerTestCase):
         create_configured_master()
         name = factory.make_name('cluster')
         uuid = factory.make_UUID()
-        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(
+            nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'name': name, 'uuid': uuid})
@@ -407,7 +408,8 @@ class TestRegisterAPI(MAASServerTestCase):
         # it in the future is updated to the one on which the call was made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(
+            nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -420,7 +422,8 @@ class TestRegisterAPI(MAASServerTestCase):
         # made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(
+            nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -433,7 +436,8 @@ class TestRegisterAPI(MAASServerTestCase):
         # made.
         create_configured_master()
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(
+            nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'uuid': nodegroup.uuid})
@@ -447,7 +451,8 @@ class TestRegisterAPI(MAASServerTestCase):
         name = factory.make_name('cluster')
         uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
-        update_maas_url = self.patch(api_module, "update_nodegroup_maas_url")
+        update_maas_url = self.patch(
+            nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
             reverse('nodegroups_handler'),
             {'op': 'register', 'name': name, 'uuid': uuid})
