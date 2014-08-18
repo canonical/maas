@@ -23,6 +23,8 @@ __all__ = [
     'StaticIPAddress',
     ]
 
+from collections import defaultdict
+
 from django.contrib.auth.models import User
 from django.db import (
     connection,
@@ -190,8 +192,13 @@ class StaticIPAddressManager(Manager):
         return self._deallocate(qs)
 
     def get_hostname_ip_mapping(self, nodegroup):
-        """Return a mapping {hostnames -> ips} for current `StaticIPAddress`es
-        for the nodes in `nodegroup`.
+        """Return hostname mappings for `StaticIPAddress` entries.
+
+        Returns a mapping `{hostnames -> [ips]}` corresponding to current
+        `StaticIPAddress` objects for the nodes in `nodegroup`.
+
+        At most one IPv4 address and one IPv6 address will be returned per
+        node, each the one for whichever `MACAddress` was created first.
 
         Any domain will be stripped from the hostnames.
         """
@@ -200,8 +207,10 @@ class StaticIPAddressManager(Manager):
         # DISTINCT ON returns the first matching row for any given
         # hostname, using the query's ordering.  Here, we're trying to
         # return the IP for the oldest MAC address.
+        #
+        # For nodes that have disable_ipv4 set, leave out any IPv4 address.
         cursor.execute("""
-            SELECT DISTINCT ON (node.hostname)
+            SELECT DISTINCT ON (node.hostname, family(staticip.ip))
                 node.hostname, staticip.ip
             FROM maasserver_macaddress AS mac
             JOIN maasserver_node AS node ON
@@ -210,13 +219,19 @@ class StaticIPAddressManager(Manager):
                 link.mac_address_id = mac.id
             JOIN maasserver_staticipaddress AS staticip ON
                 staticip.id = link.ip_address_id
-            WHERE node.nodegroup_id = %s
-            ORDER BY node.hostname, mac.id
+            WHERE
+                node.nodegroup_id = %s AND
+                (
+                    node.disable_ipv4 IS FALSE OR
+                    family(staticip.ip) <> 4
+                )
+            ORDER BY node.hostname, family(staticip.ip), mac.id
             """, (nodegroup.id,))
-        return {
-            strip_domain(hostname): [ip]
-            for hostname, ip in cursor.fetchall()
-            }
+        mapping = defaultdict(list)
+        for hostname, ip in cursor.fetchall():
+            hostname = strip_domain(hostname)
+            mapping[hostname].append(ip)
+        return mapping
 
 
 class StaticIPAddress(CleanSave, TimestampedModel):

@@ -283,6 +283,50 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
             node.nodegroup)
         self.assertEqual({node.hostname: [ip_for_older_mac.ip]}, mapping)
 
+    def test_get_hostname_ip_mapping_combines_IPv4_and_IPv6_addresses(self):
+        node = factory.make_node(mac=True, disable_ipv4=False)
+        mac = node.get_primary_mac()
+        ipv4_address = factory.make_staticipaddress(
+            mac=mac,
+            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+        ipv6_address = factory.make_staticipaddress(
+            mac=mac,
+            ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertItemsEqual(
+            [ipv4_address.ip, ipv6_address.ip],
+            mapping[node.hostname])
+
+    def test_get_hostname_ip_mapping_combines_MACs_for_same_node(self):
+        # A node's preferred static IPv4 and IPv6 addresses may be on
+        # different MACs.
+        node = factory.make_node(disable_ipv4=False)
+        ipv4_address = factory.make_staticipaddress(
+            mac=factory.make_mac_address(node=node),
+            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+        ipv6_address = factory.make_staticipaddress(
+            mac=factory.make_mac_address(node=node),
+            ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertItemsEqual(
+            [ipv4_address.ip, ipv6_address.ip],
+            mapping[node.hostname])
+
+    def test_get_hostname_ip_mapping_skips_ipv4_if_disable_ipv4_set(self):
+        node = factory.make_node(mac=True, disable_ipv4=True)
+        mac = node.get_primary_mac()
+        factory.make_staticipaddress(
+            mac=mac,
+            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+        ipv6_address = factory.make_staticipaddress(
+            mac=mac,
+            ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
+        mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
+            node.nodegroup)
+        self.assertEqual({node.hostname: [ipv6_address.ip]}, mapping)
+
 
 class StaticIPAddressTest(MAASServerTestCase):
 

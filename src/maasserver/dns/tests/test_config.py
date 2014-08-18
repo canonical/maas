@@ -77,10 +77,6 @@ class TestDNSUtilities(MAASServerTestCase):
             ['%0.10d' % i for i in range(initial + 1, initial + 11)],
             [next_zone_serial() for i in range(initial, initial + 10)])
 
-    def patch_DEFAULT_MAAS_URL(self, hostname=None):
-        self.patch(
-            settings, 'DEFAULT_MAAS_URL', factory.make_url(netloc=hostname))
-
 
 class TestDNSServer(MAASServerTestCase):
     """A base class to perform real-world DNS-related tests.
@@ -124,8 +120,7 @@ class TestDNSServer(MAASServerTestCase):
         if nodegroup is None:
             nodegroup = self.create_managed_nodegroup()
         [interface] = nodegroup.get_managed_interfaces()
-        node = factory.make_node(
-            nodegroup=nodegroup)
+        node = factory.make_node(nodegroup=nodegroup, disable_ipv4=False)
         mac = factory.make_mac_address(node=node, cluster_interface=interface)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
@@ -347,7 +342,8 @@ class TestDNSBackwardCompat(TestDNSServer):
         nodegroup = self.create_managed_nodegroup(network=network)
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_node(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
+            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            disable_ipv4=False)
         mac = factory.make_mac_address(node=node, cluster_interface=interface)
         # Get an IP in the dynamic range.
         ip_range = IPRange(

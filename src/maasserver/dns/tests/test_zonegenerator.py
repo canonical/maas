@@ -210,6 +210,56 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
             {node.hostname: [staticip.ip]},
             get_hostname_ip_mapping(nodegroup))
 
+    def test_get_hostname_ip_mapping_includes_IPv4_and_IPv6_by_default(self):
+        # A node can have static IP addresses for IPv4 and IPv6 both.
+        # (It can't have DHCP leases for IPv6, since we don't parse or use
+        # those.)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            status=NODE_STATUS.ALLOCATED, disable_ipv4=False)
+        mac = node.get_primary_mac()
+        ipv4 = factory.getRandomIPAddress()
+        ipv6 = factory.make_ipv6_address()
+        factory.make_staticipaddress(mac=mac, ip=ipv4)
+        factory.make_staticipaddress(mac=mac, ip=ipv6)
+
+        self.assertItemsEqual(
+            [ipv4, ipv6],
+            get_hostname_ip_mapping(node.nodegroup)[node.hostname])
+
+    def test_get_hostname_ip_mapping_excludes_IPv4_if_disabled_on_node(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            status=NODE_STATUS.ALLOCATED, disable_ipv4=True)
+        mac = node.get_primary_mac()
+        ipv4 = factory.getRandomIPAddress()
+        ipv6 = factory.make_ipv6_address()
+        factory.make_staticipaddress(mac=mac, ip=ipv4)
+        factory.make_staticipaddress(mac=mac, ip=ipv6)
+
+        self.assertItemsEqual(
+            [ipv6],
+            get_hostname_ip_mapping(node.nodegroup)[node.hostname])
+
+    def test_get_hostname_ip_mapping_disables_IPv4_per_individual_node(self):
+        nodegroup = factory.make_node_group()
+        node_with_ipv4 = (
+            factory.make_node_with_mac_attached_to_nodegroupinterface(
+                nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+                disable_ipv4=False))
+        node_without_ipv4 = (
+            factory.make_node_with_mac_attached_to_nodegroupinterface(
+                nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+                disable_ipv4=True))
+        ipv4 = factory.getRandomIPAddress()
+        factory.make_staticipaddress(
+            mac=node_with_ipv4.get_primary_mac(), ip=ipv4)
+        factory.make_staticipaddress(
+            mac=node_without_ipv4.get_primary_mac())
+
+        mappings = get_hostname_ip_mapping(nodegroup)
+        # The node with IPv4 enabled gets its IPv4 address mapped.
+        # The node with IPv4 disabled gets no mapping.
+        self.assertEqual({node_with_ipv4.hostname: [ipv4]}, mappings)
+
 
 def forward_zone(domain):
     """Create a matcher for a :class:`DNSForwardZoneConfig`.
