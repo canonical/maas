@@ -17,15 +17,30 @@ __all__ = []
 from operator import attrgetter
 
 from django.core.exceptions import ValidationError
-from maasserver.enum import IPADDRESS_TYPE
+from maasserver.enum import (
+    IPADDRESS_TYPE,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.exceptions import StaticIPAddressTypeClash
 from maasserver.models import (
     MACAddress,
+    NodeGroupInterface,
     StaticIPAddress,
+    )
+from maasserver.models.macaddress import (
+    find_cluster_interface_responsible_for_ip,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    )
 
 
 class MACAddressTest(MAASServerTestCase):
@@ -83,6 +98,221 @@ class MACAddressTest(MAASServerTestCase):
         self.assertEqual(bytes_mac, mac.__str__())
 
 
+class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
+    """Tests for `find_cluster_interface_responsible_for_ip`."""
+
+    def test__returns_None_if_no_interfaces(self):
+        ip = factory.getRandomIPAddress()
+        self.assertIsNone(find_cluster_interface_responsible_for_ip([], ip))
+
+    def test__finds_responsible_IPv4_interface(self):
+        nodegroup = factory.make_node_group()
+        networks = [
+            IPNetwork('10.1.1.0/24'),
+            IPNetwork('10.2.2.0/24'),
+            IPNetwork('10.3.3.0/24'),
+            ]
+        interfaces = [
+            factory.make_node_group_interface(nodegroup, network=network)
+            for network in networks
+            ]
+        self.assertEqual(
+            interfaces[1],
+            find_cluster_interface_responsible_for_ip(
+                interfaces, IPAddress('10.2.2.100')))
+
+    def test__finds_responsible_IPv6_interface(self):
+        nodegroup = factory.make_node_group()
+        networks = [
+            IPNetwork('2001:1::/64'),
+            IPNetwork('2001:2::/64'),
+            IPNetwork('2001:3::/64'),
+            ]
+        interfaces = [
+            factory.make_node_group_interface(nodegroup, network=network)
+            for network in networks
+            ]
+        self.assertEqual(
+            interfaces[1],
+            find_cluster_interface_responsible_for_ip(
+                interfaces, IPAddress('2001:2::100')))
+
+    def test__returns_None_if_none_match(self):
+        nodegroup = factory.make_node_group()
+        networks = [
+            IPNetwork('10.1.1.0/24'),
+            IPNetwork('10.2.2.0/24'),
+            IPNetwork('10.3.3.0/24'),
+            ]
+        interfaces = [
+            factory.make_node_group_interface(nodegroup, network=network)
+            for network in networks
+            ]
+        self.assertIsNone(
+            find_cluster_interface_responsible_for_ip(
+                interfaces, IPAddress('10.9.9.1')))
+
+    def test__combines_IPv4_and_IPv6(self):
+        nodegroup = factory.make_node_group()
+        networks = [
+            IPNetwork('10.1.1.0/24'),
+            IPNetwork('2001:2::/64'),
+            IPNetwork('10.3.3.0/24'),
+            ]
+        interfaces = [
+            factory.make_node_group_interface(nodegroup, network=network)
+            for network in networks
+            ]
+        self.assertEqual(
+            interfaces[2],
+            find_cluster_interface_responsible_for_ip(
+                interfaces, IPAddress('10.3.3.100')))
+
+
+def find_cluster_interface(cluster, ip_version):
+    """Find cluster interface for `cluster` with the given IP version.
+
+    :param cluster: A `NodeGroup`.
+    :param ip_version: Either 4 or 6 to find IPv4 or IPv6 cluster
+        interfaces, respectively.
+    :return: Either a single matching `NodeGroupInterface`, or `None`.
+    """
+    for interface in cluster.nodegroupinterface_set.all():
+        if IPAddress(interface.ip).version == ip_version:
+            return interface
+    return None
+
+
+def make_node_attached_to_cluster_interfaces(ipv4_network=None,
+                                             ipv6_network=None):
+    """Return a `Node` with a `MACAddress` on IPv4 & IPv6 interfaces."""
+    if ipv4_network is None:
+        ipv4_network = factory.getRandomNetwork()
+    if ipv6_network is None:
+        ipv6_network = factory.make_ipv6_network()
+    node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        network=ipv4_network)
+    # The IPv6 cluster interface must be for the same network interface
+    # as the IPv4 one; that's how we know the MAC is attached to both.
+    ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+    factory.make_node_group_interface(
+        node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+        network=ipv6_network, interface=ipv4_interface.interface)
+    return node
+
+
+class TestMapAllocatedAddresses(MAASServerTestCase):
+    """Tests for `_map_allocated_addresses`."""
+
+    def test__returns_empty_if_no_interfaces_given(self):
+        mac = factory.make_mac_address()
+        self.assertEqual({}, mac._map_allocated_addresses([]))
+
+    def test__maps_interface_without_allocation_to_None(self):
+        cluster = factory.make_node_group()
+        interface = factory.make_node_group_interface(cluster)
+        mac = factory.make_mac_address(cluster_interface=interface)
+        self.assertEqual(
+            {interface: None},
+            mac._map_allocated_addresses([interface]))
+
+    def test__maps_interface_to_allocated_static_IPv4_address(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=factory.getRandomNetwork())
+        interface = find_cluster_interface(node.nodegroup, 4)
+        mac = node.get_primary_mac()
+        sip = factory.make_staticipaddress(
+            mac=mac, ip=interface.static_ip_range_low)
+
+        self.assertEqual(
+            {interface: sip}, mac._map_allocated_addresses([interface]))
+
+    def test__maps_interface_to_allocated_static_IPv6_address(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=factory.make_ipv6_network())
+        interface = find_cluster_interface(node.nodegroup, 6)
+        mac = node.get_primary_mac()
+        sip = factory.make_staticipaddress(
+            mac=mac, ip=interface.static_ip_range_low)
+
+        self.assertEqual(
+            {interface: sip}, mac._map_allocated_addresses([interface]))
+
+    def test__ignores_addresses_for_other_interfaces(self):
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        factory.make_staticipaddress(
+            mac=mac, ip=ipv4_interface.static_ip_range_low)
+        ipv6_sip = factory.make_staticipaddress(
+            mac=mac, ip=ipv6_interface.static_ip_range_low)
+
+        self.assertEqual(
+            {ipv6_interface: ipv6_sip},
+            mac._map_allocated_addresses([ipv6_interface]))
+
+
+class TestAllocateStaticAddress(MAASServerTestCase):
+    """Tests for `_allocate_static_address`."""
+
+    def test__allocates_static_IPv4_address(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=factory.getRandomNetwork())
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        iptype = factory.pick_enum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+        requested_ip = ipv4_interface.static_ip_range_high
+
+        sip = mac._allocate_static_address(
+            ipv4_interface, iptype, requested_address=requested_ip)
+
+        self.expectThat(sip.alloc_type, Equals(iptype))
+        self.expectThat(sip.ip, Equals(requested_ip))
+        self.assertIn(IPAddress(sip.ip), ipv4_interface.get_static_ip_range())
+
+    def test__allocates_static_IPv6_address(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=factory.make_ipv6_network())
+        mac = node.get_primary_mac()
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype = factory.pick_enum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+        requested_ip = ipv6_interface.static_ip_range_high
+
+        sip = mac._allocate_static_address(
+            ipv6_interface, iptype, requested_address=requested_ip)
+
+        self.expectThat(sip.alloc_type, Equals(iptype))
+        self.expectThat(sip.ip, Equals(requested_ip))
+        self.assertIn(IPAddress(sip.ip), ipv6_interface.get_static_ip_range())
+
+    def test__links_static_address_to_MAC(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        interface = find_cluster_interface(node.nodegroup, 4)
+        iptype = factory.pick_enum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+
+        sip = mac._allocate_static_address(interface, iptype)
+
+        self.assertItemsEqual([sip], mac.ip_addresses.all())
+
+
+def pick_two_allocation_types():
+    """Pick two different allocation types other than `USER_RESERVED`.
+
+    The reason not to use `USER_RESERVED` is that an allocation of that
+    type requires a `user` argument, which the other types don't accept.
+    """
+    iptype1 = factory.pick_enum(
+        IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+    iptype2 = factory.pick_enum(
+        IPADDRESS_TYPE, but_not=[iptype1, IPADDRESS_TYPE.USER_RESERVED])
+    return iptype1, iptype2
+
+
 class TestClaimStaticIPs(MAASServerTestCase):
     """Tests for `MACAddress.claim_static_ips`."""
 
@@ -100,29 +330,234 @@ class TestClaimStaticIPs(MAASServerTestCase):
         self.assertEqual(
             IPADDRESS_TYPE.AUTO, StaticIPAddress.objects.all()[0].alloc_type)
 
+    def test__allocates_on_all_relevant_cluster_interfaces(self):
+        ipv4_network = factory.getRandomNetwork()
+        ipv6_network = factory.make_ipv6_network()
+        node = make_node_attached_to_cluster_interfaces(
+            ipv4_network=ipv4_network, ipv6_network=ipv6_network)
+
+        allocation = node.get_primary_mac().claim_static_ips()
+
+        # Allocated one IPv4 address and one IPv6 address.
+        self.assertThat(allocation, HasLength(2))
+        [ipv4_addr, ipv6_addr] = sorted(
+            [IPAddress(sip.ip) for sip in allocation],
+            key=attrgetter('version'))
+        self.assertEqual((4, 6), (ipv4_addr.version, ipv6_addr.version))
+        self.assertIn(ipv4_addr, ipv4_network)
+        self.assertIn(ipv6_addr, ipv6_network)
+
     def test__sets_type_as_required(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         [claimed_ip] = mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertEqual(IPADDRESS_TYPE.STICKY, claimed_ip.alloc_type)
 
-    def test__returns_none_if_no_static_range_defined(self):
+    def test__returns_empty_if_no_static_range_defined(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         mac.cluster_interface.static_ip_range_low = None
         mac.cluster_interface.static_ip_range_high = None
+        mac.cluster_interface.save()
         self.assertEqual([], mac.claim_static_ips())
+
+    def test__returns_only_addresses_for_interfaces_with_static_ranges(self):
+        ipv6_network = factory.make_ipv6_network()
+        node = make_node_attached_to_cluster_interfaces(
+            ipv6_network=ipv6_network)
+        ipv6_interface = NodeGroupInterface.objects.get(
+            nodegroup=node.nodegroup,
+            subnet_mask=unicode(ipv6_network.netmask))
+        ipv6_interface.static_ip_range_low = None
+        ipv6_interface.static_ip_range_high = None
+        ipv6_interface.save()
+
+        allocation = node.get_primary_mac().claim_static_ips()
+        self.assertThat(allocation, HasLength(1))
+        [sip] = allocation
+        self.assertEqual(4, IPAddress(sip.ip).version)
 
     def test__raises_if_clashing_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
-        iptype = factory.pick_enum(
-            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
-        iptype2 = factory.pick_enum(IPADDRESS_TYPE, but_not=[iptype])
+        iptype, iptype2 = pick_two_allocation_types()
         mac.claim_static_ips(alloc_type=iptype)
         self.assertRaises(
             StaticIPAddressTypeClash,
             mac.claim_static_ips, alloc_type=iptype2)
+
+    def test__raises_when_requesting_clashing_IPv4(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces but
+        # you're requesting a specific IPv4 address, then a clash with an
+        # existing IPv4 address results in an error regardless of whether the
+        # MAC would have been able to allocate an IPv6 address if asked.
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        self.assertRaises(
+            StaticIPAddressTypeClash,
+            mac.claim_static_ips, alloc_type=iptype2,
+            requested_address=(
+                IPAddress(ipv4_interface.static_ip_range_low) + 1))
+
+    def test__raises_when_requesting_clashing_IPv6(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces but
+        # you're requesting a specific IPv6 address, then a clash with an
+        # existing IPv6 address results in an error regardless of whether the
+        # MAC would have been able to allocate an IPv4 address if asked.
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv6_interface.static_ip_range_low)
+
+        self.assertRaises(
+            StaticIPAddressTypeClash,
+            mac.claim_static_ips, alloc_type=iptype2,
+            requested_address=(
+                IPAddress(ipv6_interface.static_ip_range_low) + 1))
+
+    def test__skips_clashing_IPv4_if_able_to_allocate_IPv6(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces, a clash
+        # with an existing IPv4 address is ignored as long as an IPv6 address
+        # can still be allocated.  No IPv4 address is returned.
+        ipv6_network = factory.make_ipv6_network()
+        node = make_node_attached_to_cluster_interfaces(
+            ipv6_network=ipv6_network)
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        allocation = mac.claim_static_ips(alloc_type=iptype2)
+
+        self.assertThat(allocation, HasLength(1))
+        [sip] = allocation
+        self.assertIn(IPAddress(sip.ip), ipv6_network)
+
+    def test__skips_clashing_IPv6_if_able_to_allocate_IPv4(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces, a clash
+        # with an existing IPv6 address is ignored as long as an IPv4 address
+        # can still be allocated.  No IPv4 address is returned.
+        ipv4_network = factory.getRandomNetwork()
+        node = make_node_attached_to_cluster_interfaces(
+            ipv4_network=ipv4_network)
+        mac = node.get_primary_mac()
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv6_interface.static_ip_range_low)
+
+        allocation = mac.claim_static_ips(alloc_type=iptype2)
+
+        self.assertThat(allocation, HasLength(1))
+        [sip] = allocation
+        self.assertIn(IPAddress(sip.ip), ipv4_network)
+
+    def test__raises_if_IPv4_and_IPv6_both_clash(self):
+        # A double clash for both IPv4 and IPv6 addresses raises
+        # StaticIPAddressTypeClash.
+        ipv4_network = factory.getRandomNetwork()
+        ipv6_network = factory.getRandomNetwork()
+        node = make_node_attached_to_cluster_interfaces(
+            ipv4_network=ipv4_network, ipv6_network=ipv6_network)
+        mac = node.get_primary_mac()
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(alloc_type=iptype)
+
+        self.assertRaises(
+            StaticIPAddressTypeClash,
+            mac.claim_static_ips, alloc_type=iptype2)
+
+    def test__returns_existing_IPv4_if_IPv6_clashes(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces, there's
+        # a clash on the IPv6 address, and there's a pre-existing IPv4 (which
+        # is not a clash), just the IPv4 address is returned.
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        # Clashing IPv6 address:
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv6_interface.static_ip_range_low)
+        # Pre-existing, but non-clashing, IPv4 address:
+        [ipv4_sip] = mac.claim_static_ips(
+            alloc_type=iptype2,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        self.assertItemsEqual(
+            [ipv4_sip],
+            mac.claim_static_ips(alloc_type=iptype2))
+
+    def test__returns_existing_IPv6_if_IPv4_clashes(self):
+        # If the MAC is attached to IPv4 and IPv6 cluster interfaces, there's
+        # a clash on the IPv4 address, and there's a pre-existing IPv6 (which
+        # is not a clash), just the IPv6 address is returned.
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        # Clashing IPv4 address:
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv4_interface.static_ip_range_low)
+        # Pre-existing, but non-clashing, IPv6 address:
+        [ipv6_sip] = mac.claim_static_ips(
+            alloc_type=iptype2,
+            requested_address=ipv6_interface.static_ip_range_low)
+
+        self.assertItemsEqual(
+            [ipv6_sip],
+            mac.claim_static_ips(alloc_type=iptype2))
+
+    def test__ignores_clashing_IPv4_when_requesting_IPv6(self):
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        allocation = mac.claim_static_ips(
+            alloc_type=iptype2,
+            requested_address=ipv6_interface.static_ip_range_low)
+
+        self.assertThat(allocation, HasLength(1))
+        [ipv6_sip] = allocation
+        self.assertIn(IPAddress(ipv6_sip.ip), ipv6_interface.network)
+
+    def test__ignores_clashing_IPv6_when_requesting_IPv4(self):
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        iptype, iptype2 = pick_two_allocation_types()
+        mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv6_interface.static_ip_range_low)
+
+        allocation = mac.claim_static_ips(
+            alloc_type=iptype2,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        self.assertThat(allocation, HasLength(1))
+        [ipv4_sip] = allocation
+        self.assertIn(IPAddress(ipv4_sip.ip), ipv4_interface.network)
 
     def test__returns_existing_if_claiming_same_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
@@ -133,12 +568,52 @@ class TestClaimStaticIPs(MAASServerTestCase):
         self.assertEqual(
             [ip], mac.claim_static_ips(alloc_type=iptype))
 
+    def test__combines_existing_and_new_addresses(self):
+        node = make_node_attached_to_cluster_interfaces()
+        # node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        iptype = factory.pick_enum(
+            IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
+        [ipv4_sip] = mac.claim_static_ips(
+            alloc_type=iptype,
+            requested_address=ipv4_interface.static_ip_range_low)
+
+        allocation = mac.claim_static_ips(alloc_type=iptype)
+
+        self.assertIn(ipv4_sip, allocation)
+        self.assertThat(allocation, HasLength(2))
+
     def test__passes_requested_ip(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         ip = node.get_primary_mac().cluster_interface.static_ip_range_high
         [allocation] = mac.claim_static_ips(requested_address=ip)
         self.assertEqual(ip, allocation.ip)
+
+    def test__allocates_only_IPv4_if_IPv4_address_requested(self):
+        node = make_node_attached_to_cluster_interfaces()
+        ipv4_interface = find_cluster_interface(node.nodegroup, 4)
+        requested_ip = ipv4_interface.static_ip_range_low
+
+        allocation = node.get_primary_mac().claim_static_ips(
+            requested_address=requested_ip)
+
+        self.assertThat(allocation, HasLength(1))
+        [sip] = allocation
+        self.assertEqual(IPAddress(requested_ip), IPAddress(sip.ip))
+
+    def test__allocates_only_IPv6_if_IPv6_address_requested(self):
+        node = make_node_attached_to_cluster_interfaces()
+        ipv6_interface = find_cluster_interface(node.nodegroup, 6)
+        requested_ip = ipv6_interface.static_ip_range_low
+
+        allocation = node.get_primary_mac().claim_static_ips(
+            requested_address=requested_ip)
+
+        self.assertThat(allocation, HasLength(1))
+        [sip] = allocation
+        self.assertEqual(IPAddress(requested_ip), IPAddress(sip.ip))
 
 
 class TestGetClusterInterfaces(MAASServerTestCase):

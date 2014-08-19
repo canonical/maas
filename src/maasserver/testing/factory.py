@@ -312,16 +312,16 @@ class Factory(maastesting.factory.Factory):
         if broadcast_ip is None:
             broadcast_ip = unicode(network.broadcast)
         if static_ip_range_low is None or static_ip_range_high is None:
-            if static_range is not None:
+            if static_range is None:
+                static_ip_range_low = None
+                static_ip_range_high = None
+            else:
                 static_low = static_range.first
                 static_high = static_range.last
                 if static_ip_range_low is None:
                     static_ip_range_low = unicode(IPAddress(static_low))
                 if static_ip_range_high is None:
                     static_ip_range_high = unicode(IPAddress(static_high))
-            else:
-                static_ip_range_low = None
-                static_ip_range_high = None
         if ip_range_low is None:
             ip_range_low = unicode(IPAddress(dynamic_range.first))
         if ip_range_high is None:
@@ -464,7 +464,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_node_with_mac_attached_to_nodegroupinterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            disable_ipv4=False, **kwargs):
+            network=None, disable_ipv4=False, **kwargs):
         """Create a Node that has a MACAddress which has a
         NodeGroupInterface.
 
@@ -477,7 +477,7 @@ class Factory(maastesting.factory.Factory):
         node = self.make_node(
             mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
         ngi = self.make_node_group_interface(
-            nodegroup, management=management)
+            nodegroup, network=network, management=management)
         mac = node.get_primary_mac()
         mac.cluster_interface = ngi
         mac.save()
