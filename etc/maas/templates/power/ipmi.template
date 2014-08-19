@@ -57,8 +57,11 @@ issue_ipmi_command() {
           driver_option="--driver-type=${power_driver}"
     fi
 
-    echo workaround |\
-    ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
+    if [ "$power_change" != "query" ]
+    then
+        echo workaround |\
+        ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
+    fi
     result=$(echo workaround |\
     ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
     case "$result" in
