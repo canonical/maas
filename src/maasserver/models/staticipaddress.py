@@ -56,6 +56,63 @@ from provisioningserver.utils.enum import map_enum_reverse
 class StaticIPAddressManager(Manager):
     """A utility to manage collections of IPAddresses."""
 
+    def _verify_alloc_type(self, alloc_type, user=None):
+        """Check validity of an `alloc_type` parameter when allocating.
+
+        Also checks consistency with the `user` parameter.  If `user` is not
+        `None`, then the allocation has to be `USER_RESERVED`, and vice versa.
+        """
+        possible_alloc_types = map_enum_reverse(IPADDRESS_TYPE)
+        if alloc_type not in possible_alloc_types:
+            raise ValueError(
+                "IP address type %r is not a member of "
+                "IPADDRESS_TYPE." % alloc_type)
+
+        if user is None:
+            if alloc_type == IPADDRESS_TYPE.USER_RESERVED:
+                raise AssertionError(
+                    "Must provide user for USER_RESERVED alloc_type.")
+        else:
+            if alloc_type != IPADDRESS_TYPE.USER_RESERVED:
+                raise AssertionError(
+                    "Must not provide user for alloc_type other "
+                    "than USER_RESERVED.")
+
+    def _attempt_allocation(self, requested_address, alloc_type, user=None):
+        """Attempt to allocate `requested_address`.
+
+        All parameters must have been checked first.  This method relies on
+        `IntegrityError` to detect addresses that are already in use, so
+        nothing else must cause that error.
+
+        Transaction model and isolation level have changed over time, and may
+        do so again, so relying on database-level uniqueness validation is the
+        most robust way we have of checking for clashes.
+
+        :param requested_address: An `IPAddress` for the address that should
+            be allocated.
+        :param alloc_type: Allocation type.
+        :param user: Optional user.
+        :return: `StaticIPAddress` if successful.
+        :raise StaticIPAddressUnavailable: if the address was already taken.
+        """
+        ipaddress = StaticIPAddress(
+            ip=requested_address.format(), alloc_type=alloc_type)
+        try:
+            # Try to save this address to the database.
+            ipaddress.save()
+        except IntegrityError:
+            # The address is already taken.
+            raise StaticIPAddressUnavailable()
+        else:
+            # We deliberately do *not* save the user until now because it
+            # might result in an IntegrityError, and we rely on the latter
+            # in the code above to indicate an already allocated IP
+            # address and nothing else.
+            ipaddress.user = user
+            ipaddress.save()
+            return ipaddress
+
     def allocate_new(self, range_low, range_high,
                      alloc_type=IPADDRESS_TYPE.AUTO, user=None,
                      requested_address=None):
@@ -80,21 +137,7 @@ class StaticIPAddressManager(Manager):
         # This check for `alloc_type` is important for later on. We rely on
         # detecting IntegrityError as a sign than an IP address is already
         # taken, and so we must first eliminate all other possible causes.
-        possible_alloc_types = map_enum_reverse(IPADDRESS_TYPE)
-        if alloc_type not in possible_alloc_types:
-            raise ValueError(
-                "IP address type %r is not a member of "
-                "IPADDRESS_TYPE." % alloc_type)
-
-        if user is None:
-            if alloc_type == IPADDRESS_TYPE.USER_RESERVED:
-                raise AssertionError(
-                    "Must provide user for USER_RESERVED alloc_type.")
-        else:
-            if alloc_type != IPADDRESS_TYPE.USER_RESERVED:
-                raise AssertionError(
-                    "Must not provide user for alloc_type other "
-                    "than USER_RESERVED.")
+        self._verify_alloc_type(alloc_type, user)
 
         range_low = IPAddress(range_low)
         range_high = IPAddress(range_high)
@@ -121,26 +164,14 @@ class StaticIPAddressManager(Manager):
             # Now find the first free address in the range.
             for requested_address in static_range:
                 if requested_address not in existing:
-                    # Try reserving `requested_address`.
-                    ipaddress = StaticIPAddress(
-                        ip=requested_address.format(), alloc_type=alloc_type)
                     try:
-                        # Try to save this address to the database. If it
-                        # fails, we need to try again.
-                        ipaddress.save()
-                    except IntegrityError:
+                        return self._attempt_allocation(
+                            requested_address, alloc_type, user)
+                    except StaticIPAddressUnavailable:
                         # That address has been taken since we obtained the
                         # list of existing addresses from the database. This
                         # is a race!
                         continue
-                    else:
-                        # We deliberately do *not* save the user until now
-                        # because it might result in an IntegrityError, and we
-                        # rely on the latter in the code above to indicate an
-                        # already allocated IP address and nothing else.
-                        ipaddress.user = user
-                        ipaddress.save()
-                        return ipaddress
             else:
                 raise StaticIPAddressExhaustion()
         else:
@@ -150,23 +181,8 @@ class StaticIPAddressManager(Manager):
                     "%s is not inside the range %s to %s" % (
                         requested_address.format(), range_low.format(),
                         range_high.format()))
-            # Try reserving `requested_address`.
-            ipaddress = StaticIPAddress(
-                ip=requested_address.format(), alloc_type=alloc_type)
-            try:
-                # Try to save this address to the database.
-                ipaddress.save()
-            except IntegrityError:
-                # The address is already taken.
-                raise StaticIPAddressUnavailable()
-            else:
-                # We deliberately do *not* save the user until now because it
-                # might result in an IntegrityError, and we rely on the latter
-                # in the code above to indicate an already allocated IP
-                # address and nothing else.
-                ipaddress.user = user
-                ipaddress.save()
-                return ipaddress
+            return self._attempt_allocation(
+                requested_address, alloc_type, user)
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset
