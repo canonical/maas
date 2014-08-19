@@ -152,14 +152,14 @@ class TestHelpers(MAASServerTestCase):
 
     def test_initialize_node_group_initializes_nodegroup_to_form_value(self):
         node = Node(
-            NODE_STATUS.DECLARED, architecture=make_usable_architecture(self))
+            NODE_STATUS.NEW, architecture=make_usable_architecture(self))
         nodegroup = factory.make_node_group()
         initialize_node_group(node, nodegroup)
         self.assertEqual(nodegroup, node.nodegroup)
 
     def test_initialize_node_group_defaults_to_master(self):
         node = Node(
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             architecture=make_usable_architecture(self))
         initialize_node_group(node)
         self.assertEqual(NodeGroup.objects.ensure_master(), node.nodegroup)
@@ -1720,7 +1720,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [choice for choice in choices if choice[0] == 'set_zone'])
 
     def test_gives_stat_when_not_applicable(self):
-        node1 = factory.make_node(status=NODE_STATUS.DECLARED)
+        node1 = factory.make_node(status=NODE_STATUS.NEW)
         node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
         system_id_for_action = [node1.system_id, node2.system_id]
         form = BulkNodeActionForm(

@@ -48,7 +48,7 @@ class NODE_STATUS:
     DEFAULT = 0
 
     #: The node has been created and has a system ID assigned to it.
-    DECLARED = 0
+    NEW = 0
     #: Testing and other commissioning steps are taking place.
     COMMISSIONING = 1
     #: Smoke or burn-in testing has a found a problem.
@@ -73,7 +73,7 @@ class NODE_STATUS:
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
 # representation).
 NODE_STATUS_CHOICES = (
-    (NODE_STATUS.DECLARED, "Declared"),
+    (NODE_STATUS.NEW, "New"),
     (NODE_STATUS.COMMISSIONING, "Commissioning"),
     (NODE_STATUS.FAILED_TESTS, "Failed tests"),
     (NODE_STATUS.MISSING, "Missing"),

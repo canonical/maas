@@ -319,7 +319,7 @@ module.NodesDashboard = Y.Base.create(
         }
 
         switch (status) {
-        case NODE_STATUS.DECLARED:
+        case NODE_STATUS.NEW:
             // Added nodes
             this.added_nodes += node_counter;
             this.chart.set('added_nodes', this.added_nodes);

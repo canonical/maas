@@ -85,7 +85,7 @@ class TestNodeAction(MAASServerTestCase):
         class MyAction(FakeNodeAction):
             actionable_statuses = (NODE_STATUS.READY, )
 
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         actions = compile_node_actions(
             node, factory.make_admin(), classes=[MyAction])
         self.assertEqual({}, actions)
@@ -211,7 +211,7 @@ class TestCommissionNodeAction(MAASServerTestCase):
 
     def test_Commission_starts_commissioning(self):
         statuses = (
-            NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS,
+            NODE_STATUS.NEW, NODE_STATUS.FAILED_TESTS,
             NODE_STATUS.READY)
         for status in statuses:
             node = factory.make_node(
@@ -234,7 +234,7 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
             power_type='virsh')
         action = AbortCommissioning(node, factory.make_admin())
         action.execute()
-        self.assertEqual(NODE_STATUS.DECLARED, node.status)
+        self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertEqual(
             'provisioningserver.tasks.power_off',
             self.celery.tasks[0]['task'].name)

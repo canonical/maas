@@ -903,11 +903,11 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
 
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
-        # If called on a node in Declared state, accept_enlistment()
+        # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.
         target_state = NODE_STATUS.COMMISSIONING
 
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         return_value = node.accept_enlistment(factory.make_user())
         self.assertEqual((node, target_state), (return_value, node.status))
 
@@ -934,13 +934,13 @@ class NodeTest(MAASServerTestCase):
             {status: node.status for status, node in nodes.items()})
 
     def test_accept_enlistment_rejects_bad_state_change(self):
-        # If a node is neither Declared nor in one of the "accepted"
+        # If a node is neither New nor in one of the "accepted"
         # states where acceptance is a safe no-op, accept_enlistment
         # raises a node state violation and leaves the node's state
         # unchanged.
         all_states = map_enum(NODE_STATUS).values()
         acceptable_states = [
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.READY,
             ]
@@ -964,7 +964,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_node(
-            status=NODE_STATUS.DECLARED, power_type='ether_wake')
+            status=NODE_STATUS.NEW, power_type='ether_wake')
         factory.make_mac_address(node=node)
         node.start_commissioning(factory.make_admin())
 
@@ -978,7 +978,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
         node = factory.make_node(
-            status=NODE_STATUS.DECLARED, power_type='ether_wake')
+            status=NODE_STATUS.NEW, power_type='ether_wake')
         factory.make_mac_address(node=node)
         node.start_commissioning(factory.make_user())
 
@@ -989,7 +989,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual([], self.celery.tasks)
 
     def test_start_commissioning_sets_user_data(self):
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         user_data = factory.make_string().encode('ascii')
         self.patch(
             commissioning.user_data, 'generate_user_data'
@@ -1000,7 +1000,7 @@ class NodeTest(MAASServerTestCase):
             nodegroup=node.nodegroup)
 
     def test_start_commissioning_clears_node_commissioning_results(self):
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
@@ -1017,7 +1017,7 @@ class NodeTest(MAASServerTestCase):
         NodeResult.objects.store_data(
             node, filename, script_result, RESULT_TYPE.COMMISSIONING,
             Bin(data))
-        other_node = factory.make_node(status=NODE_STATUS.DECLARED)
+        other_node = factory.make_node(status=NODE_STATUS.NEW)
         other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
             data, NodeResult.objects.get_data(node, filename))
@@ -1028,7 +1028,7 @@ class NodeTest(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, power_type='virsh')
         node.abort_commissioning(factory.make_admin())
         expected_attrs = {
-            'status': NODE_STATUS.DECLARED,
+            'status': NODE_STATUS.NEW,
         }
         self.assertAttributes(node, expected_attrs)
         self.assertEqual(

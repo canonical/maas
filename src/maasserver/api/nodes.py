@@ -445,7 +445,7 @@ class NodeHandler(OperationsHandler):
 def create_node(request):
     """Service an http request to create a node.
 
-    The node will be in the Declared state.
+    The node will be in the New state.
 
     :param request: The http request for this node to be created.
     :return: A `Node`.
@@ -524,7 +524,7 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         Adding a server to a MAAS puts it on a path that will wipe its disks
         and re-install its operating system.  In anonymous enlistment and when
         the enlistment is done by a non-admin, the node is held in the
-        "Declared" state for approval by a MAAS admin.
+        "New" state for approval by a MAAS admin.
         """
         # XXX 2014-02-11 bug=1278685
         # There's no documentation here on what parameters can be passed!
@@ -607,7 +607,7 @@ class NodesHandler(OperationsHandler):
         """Accept declared nodes into the MAAS.
 
         Nodes can be enlisted in the MAAS anonymously or by non-admin users,
-        as opposed to by an admin.  These nodes are held in the Declared
+        as opposed to by an admin.  These nodes are held in the New
         state; a MAAS admin must first verify the authenticity of these
         enlistments, and accept them.
 
@@ -641,7 +641,7 @@ class NodesHandler(OperationsHandler):
         """Accept all declared nodes into the MAAS.
 
         Nodes can be enlisted in the MAAS anonymously or by non-admin users,
-        as opposed to by an admin.  These nodes are held in the Declared
+        as opposed to by an admin.  These nodes are held in the New
         state; a MAAS admin must first verify the authenticity of these
         enlistments, and accept them.
 
@@ -651,7 +651,7 @@ class NodesHandler(OperationsHandler):
         """
         nodes = Node.objects.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN)
-        nodes = nodes.filter(status=NODE_STATUS.DECLARED)
+        nodes = nodes.filter(status=NODE_STATUS.NEW)
         nodes = [node.accept_enlistment(request.user) for node in nodes]
         return filter(None, nodes)
 

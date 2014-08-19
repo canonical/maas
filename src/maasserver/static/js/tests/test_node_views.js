@@ -66,12 +66,12 @@ suite.add(new Y.maas.testing.TestCase({
             {
                 system_id: 'sys1',
                 hostname: 'host1',
-                status: NODE_STATUS.DECLARED
+                status: NODE_STATUS.NEW
             },
             {
                 system_id: 'sys2',
                 hostname: 'host2',
-                status: NODE_STATUS.DECLARED
+                status: NODE_STATUS.NEW
             },
             {
                 system_id: 'sys3',
@@ -276,7 +276,7 @@ suite.add(new Y.maas.testing.TestCase({
         var node = {
             system_id: 'sys14',
             hostname: 'host14',
-            status: Y.maas.enums.NODE_STATUS.DECLARED
+            status: Y.maas.enums.NODE_STATUS.NEW
         };
         var number_node = view.srcNode.one('#nodes-number');
         Y.Assert.areEqual(

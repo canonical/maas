@@ -158,7 +158,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_new_when_logged_in_creates_node_in_declared_state(self):
-        # When a user enlists a node, it goes into the Declared state.
+        # When a user enlists a node, it goes into the New state.
         # This will change once we start doing proper commissioning.
         response = self.client.post(
             reverse('nodes_handler'),
@@ -172,7 +172,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         system_id = json.loads(response.content)['system_id']
         self.assertEqual(
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             Node.objects.get(system_id=system_id).status)
 
     def test_POST_new_when_no_RPC_to_cluster_defaults_empty_power(self):
@@ -921,7 +921,7 @@ class TestNodesAPI(APITestCase):
         self.become_admin()
         target_state = NODE_STATUS.COMMISSIONING
 
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         response = self.client.post(
             reverse('nodes_handler'),
             {'op': 'accept', 'nodes': [node.system_id]})
@@ -941,7 +941,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_accept_rejects_impossible_state_changes(self):
         self.become_admin()
         acceptable_states = set([
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             NODE_STATUS.COMMISSIONING,
             NODE_STATUS.READY,
             ])
@@ -991,7 +991,7 @@ class TestNodesAPI(APITestCase):
         target_state = NODE_STATUS.COMMISSIONING
 
         nodes = [
-            factory.make_node(status=NODE_STATUS.DECLARED)
+            factory.make_node(status=NODE_STATUS.NEW)
             for counter in range(2)]
         node_ids = [node.system_id for node in nodes]
         response = self.client.post(reverse('nodes_handler'), {
@@ -1006,7 +1006,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_accept_returns_actually_accepted_nodes(self):
         self.become_admin()
         acceptable_nodes = [
-            factory.make_node(status=NODE_STATUS.DECLARED)
+            factory.make_node(status=NODE_STATUS.NEW)
             for counter in range(2)
             ]
         accepted_node = factory.make_node(status=NODE_STATUS.READY)

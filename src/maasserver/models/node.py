@@ -113,11 +113,11 @@ def generate_node_system_id():
 #
 NODE_TRANSITIONS = {
     None: [
-        NODE_STATUS.DECLARED,
+        NODE_STATUS.NEW,
         NODE_STATUS.MISSING,
         NODE_STATUS.RETIRED,
         ],
-    NODE_STATUS.DECLARED: [
+    NODE_STATUS.NEW: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.MISSING,
         NODE_STATUS.READY,
@@ -129,7 +129,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.READY,
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
-        NODE_STATUS.DECLARED,
+        NODE_STATUS.NEW,
         NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.FAILED_TESTS: [
@@ -160,14 +160,14 @@ NODE_TRANSITIONS = {
         NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.MISSING: [
-        NODE_STATUS.DECLARED,
+        NODE_STATUS.NEW,
         NODE_STATUS.READY,
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.BROKEN,
         ],
     NODE_STATUS.RETIRED: [
-        NODE_STATUS.DECLARED,
+        NODE_STATUS.NEW,
         NODE_STATUS.READY,
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
@@ -897,19 +897,19 @@ class Node(CleanSave, TimestampedModel):
     def accept_enlistment(self, user):
         """Accept this node's (anonymous) enlistment.
 
-        This call makes sense only on a node in Declared state, i.e. one that
+        This call makes sense only on a node in New state, i.e. one that
         has been anonymously enlisted and is now waiting for a MAAS user to
         accept that enlistment as authentic.  Calling it on a node that is in
         Ready or Commissioning state, however, is not an error -- it probably
         just means that somebody else has beaten you to it.
 
-        :return: This node if it has made the transition from Declared, or
+        :return: This node if it has made the transition from New, or
             None if it was already in an accepted state.
         """
         accepted_states = [NODE_STATUS.READY, NODE_STATUS.COMMISSIONING]
         if self.status in accepted_states:
             return None
-        if self.status != NODE_STATUS.DECLARED:
+        if self.status != NODE_STATUS.NEW:
             raise NodeStateViolation(
                 "Cannot accept node enlistment: node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
@@ -944,7 +944,7 @@ class Node(CleanSave, TimestampedModel):
             "%s: Aborting commissioning", self.hostname)
         stopped_node = Node.objects.stop_nodes([self.system_id], user)
         if len(stopped_node) == 1:
-            self.status = NODE_STATUS.DECLARED
+            self.status = NODE_STATUS.NEW
             self.save()
 
     def delete(self):

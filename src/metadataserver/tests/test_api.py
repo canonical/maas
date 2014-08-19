@@ -534,13 +534,13 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         client = make_node_client(node=node)
         response = call_signal(client)
         self.assertEqual(
             (
                 httplib.CONFLICT,
-                "Node wasn't commissioning/installing (status is Declared)",
+                "Node wasn't commissioning/installing (status is New)",
             ),
             (response.status_code, response.content))
 

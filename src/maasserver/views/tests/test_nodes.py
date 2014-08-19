@@ -228,7 +228,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         statuses = {
             NODE_STATUS.READY,
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             NODE_STATUS.FAILED_TESTS,
             }
         nodes = [factory.make_node(status=s) for s in statuses]
@@ -808,7 +808,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_has_button_to_accept_enlistment_for_user(self):
         # A simple user can't see the button to enlist a declared node.
         self.client_log_in()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
+        node = factory.make_node(status=NODE_STATUS.NEW)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         doc = fromstring(response.content)

@@ -311,7 +311,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # The following table shows the expected boot "purpose" for each set
         # of node parameters.
         options = [
-            ("poweroff", {"status": NODE_STATUS.DECLARED}),
+            ("poweroff", {"status": NODE_STATUS.NEW}),
             ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
             ("poweroff", {"status": NODE_STATUS.FAILED_TESTS}),
             ("poweroff", {"status": NODE_STATUS.MISSING}),

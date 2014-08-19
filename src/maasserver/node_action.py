@@ -177,7 +177,7 @@ class Commission(NodeAction):
     display = "Commission node"
     display_bulk = "Commission selected nodes"
     actionable_statuses = (
-        NODE_STATUS.DECLARED, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY,
+        NODE_STATUS.NEW, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY,
         NODE_STATUS.BROKEN)
     permission = NODE_PERMISSION.ADMIN
 
@@ -315,7 +315,7 @@ class MarkBroken(NodeAction):
     display = "Mark node as broken"
     display_bulk = "Mark selected nodes as broken"
     actionable_statuses = (
-        NODE_STATUS.DECLARED, NODE_STATUS.COMMISSIONING, NODE_STATUS.ALLOCATED)
+        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):

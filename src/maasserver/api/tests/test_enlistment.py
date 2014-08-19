@@ -452,7 +452,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
         ]
 
     def test_POST_non_admin_creates_node_in_declared_state(self):
-        # Upon non-admin enlistment, a node goes into the Declared
+        # Upon non-admin enlistment, a node goes into the New
         # state.  Deliberate approval is required before we start
         # reinstalling the system, wiping its disks etc.
         response = self.client.post(
@@ -467,7 +467,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.OK, response.status_code)
         system_id = json.loads(response.content)['system_id']
         self.assertEqual(
-            NODE_STATUS.DECLARED,
+            NODE_STATUS.NEW,
             Node.objects.get(system_id=system_id).status)
 
 
@@ -478,7 +478,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
         # An anonymous user is not allowed to accept an anonymously
         # enlisted node.  That would defeat the whole purpose of holding
         # those nodes for approval.
-        node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
+        node_id = factory.make_node(status=NODE_STATUS.NEW).system_id
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
@@ -529,7 +529,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         # enlisted node.  That would defeat the whole purpose of holding
         # those nodes for approval.
         self.client_log_in()
-        node_id = factory.make_node(status=NODE_STATUS.DECLARED).system_id
+        node_id = factory.make_node(status=NODE_STATUS.NEW).system_id
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
         self.assertEqual(
@@ -544,8 +544,8 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
         # admin privs will be accepted, which currently equates to none of
         # them.
         self.client_log_in()
-        factory.make_node(status=NODE_STATUS.DECLARED),
-        factory.make_node(status=NODE_STATUS.DECLARED),
+        factory.make_node(status=NODE_STATUS.NEW),
+        factory.make_node(status=NODE_STATUS.NEW),
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept_all'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -757,8 +757,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         # An admin user can accept all anonymously enlisted nodes.
         self.client_log_in(as_admin=True)
         nodes = [
-            factory.make_node(status=NODE_STATUS.DECLARED),
-            factory.make_node(status=NODE_STATUS.DECLARED),
+            factory.make_node(status=NODE_STATUS.NEW),
+            factory.make_node(status=NODE_STATUS.NEW),
             ]
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'accept_all'})
