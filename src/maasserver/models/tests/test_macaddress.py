@@ -83,14 +83,15 @@ class MACAddressTest(MAASServerTestCase):
         self.assertEqual(bytes_mac, mac.__str__())
 
 
-class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
+class TestClaimStaticIPs(MAASServerTestCase):
+    """Tests for `MACAddress.claim_static_ips`."""
 
-    def test_claim_statics_ip_returns_empty_if_no_cluster_interface(self):
+    def test__returns_empty_if_no_cluster_interface(self):
         # If mac.cluster_interface is None, we can't allocate any IP.
         mac = factory.make_mac_address()
         self.assertEquals([], mac.claim_static_ips())
 
-    def test_claim_static_ips_reserves_an_ip_address(self):
+    def test__reserves_an_ip_address(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         [claimed_ip] = mac.claim_static_ips()
@@ -99,20 +100,20 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
         self.assertEqual(
             IPADDRESS_TYPE.AUTO, StaticIPAddress.objects.all()[0].alloc_type)
 
-    def test_claim_static_ips_sets_type_as_required(self):
+    def test__sets_type_as_required(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         [claimed_ip] = mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
         self.assertEqual(IPADDRESS_TYPE.STICKY, claimed_ip.alloc_type)
 
-    def test_claim_static_ips_returns_none_if_no_static_range_defined(self):
+    def test__returns_none_if_no_static_range_defined(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         mac.cluster_interface.static_ip_range_low = None
         mac.cluster_interface.static_ip_range_high = None
         self.assertEqual([], mac.claim_static_ips())
 
-    def test_claim_static_ips_raises_if_clashing_type(self):
+    def test__raises_if_clashing_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         iptype = factory.pick_enum(
@@ -123,7 +124,7 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
             StaticIPAddressTypeClash,
             mac.claim_static_ips, alloc_type=iptype2)
 
-    def test_claim_static_ips_returns_existing_if_claiming_same_type(self):
+    def test__returns_existing_if_claiming_same_type(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         iptype = factory.pick_enum(
@@ -132,19 +133,23 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
         self.assertEqual(
             [ip], mac.claim_static_ips(alloc_type=iptype))
 
-    def test_passes_requested_ip(self):
+    def test__passes_requested_ip(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.get_primary_mac()
         ip = node.get_primary_mac().cluster_interface.static_ip_range_high
         [allocation] = mac.claim_static_ips(requested_address=ip)
         self.assertEqual(ip, allocation.ip)
 
-    def test_get_cluster_interfaces_returns_nothing_if_none_known(self):
+
+class TestGetClusterInterfaces(MAASServerTestCase):
+    """Tests for `MACAddress.get_cluster_interfaces`."""
+
+    def test__returns_nothing_if_none_known(self):
         self.assertItemsEqual(
             [],
             factory.make_mac_address().get_cluster_interfaces())
 
-    def test_get_cluster_interfaces_returns_cluster_interface_if_known(self):
+    def test__returns_cluster_interface_if_known(self):
         cluster = factory.make_node_group()
         cluster_interface = factory.make_node_group_interface(cluster)
         mac = factory.make_mac_address(cluster_interface=cluster_interface)
@@ -152,7 +157,7 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
             [cluster_interface],
             mac.get_cluster_interfaces())
 
-    def test_get_cluster_interfaces_includes_IPv6_cluster_interface(self):
+    def test__includes_IPv6_cluster_interface(self):
         # If the MAC is directly attached to an IPv4 cluster interface, but
         # there's also an IPv6 cluster interface on the same network segment,
         # both those cluster interfaces are included.
@@ -171,7 +176,7 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
             [ipv4_interface, ipv6_interface],
             mac.get_cluster_interfaces())
 
-    def test_get_cluster_interfaces_ignores_other_cluster_interfaces(self):
+    def test__ignores_other_cluster_interfaces(self):
         cluster = factory.make_node_group()
         factory.make_node_group_interface(
             nodegroup=cluster, network=factory.getRandomNetwork())
@@ -182,7 +187,7 @@ class TestMACAddressForStaticIPClaiming(MAASServerTestCase):
             [],
             factory.make_mac_address(node=node).get_cluster_interfaces())
 
-    def test_get_cluster_interfaces_ignores_other_clusters(self):
+    def test__ignores_other_clusters(self):
         my_cluster = factory.make_node_group()
         unrelated_cluster = factory.make_node_group()
         my_interface = factory.make_node_group_interface(
