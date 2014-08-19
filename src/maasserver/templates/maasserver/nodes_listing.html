@@ -79,10 +79,10 @@
         </td>
         <td>{% if node.power_type == '' %} <img src="{{ STATIC_URL }}img/warning.png" title="No power type defined"/> {% endif %}</td>
         <td>{{ node.display_status }}</td>
-        <th>{{ node.owner|default_if_none:"" }}</th>
-        <th>{{ node.cpu_count }}</th>
-        <th>{{ node.display_memory }}</th>
-        <th>{{ node.display_storage }}</th>
+        <td>{{ node.owner|default_if_none:"" }}</td>
+        <td>{{ node.cpu_count }}</td>
+        <td>{{ node.display_memory }}</td>
+        <td>{{ node.display_storage }}</td>
         <td>
           <span title="{{node.primary_mac_vendor}}">{{node.primary_mac}}</span>
           {% if node.extra_macs %}
