@@ -105,7 +105,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
                 },
             ],
         }
-        for client in getAllClients().wait():
+        for client in getAllClients():
             callRemote = self.patch(client._conn, "callRemote")
             callRemote.return_value = succeed(example)
 
@@ -118,7 +118,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         factory.make_node_group().accept()
         fake_cluster_rpc(self)
 
-        clients = getAllClients().wait()
+        clients = getAllClients()
         for index, client in enumerate(clients):
             callRemote = self.patch(client._conn, "callRemote")
             if index == 0:

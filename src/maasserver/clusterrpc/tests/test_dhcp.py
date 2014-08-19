@@ -207,7 +207,7 @@ class TestUpdateHostMaps(MAASTestCase):
             UpdateSucceeded)
 
         expected_clients = {
-            nodegroup: getClientFor(nodegroup.uuid).wait()
+            nodegroup: getClientFor(nodegroup.uuid)
             for nodegroup in static_mappings
         }
 

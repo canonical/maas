@@ -119,7 +119,7 @@ def update_host_maps(static_mappings, timeout=30):
     :return: A generator of :py:class:`~Failure`s, if any.
     """
     clients = {
-        nodegroup: getClientFor(nodegroup.uuid).wait()
+        nodegroup: getClientFor(nodegroup.uuid)
         for nodegroup in static_mappings
     }
     # Record the number of failures.

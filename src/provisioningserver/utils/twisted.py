@@ -17,6 +17,7 @@ __all__ = [
     'callOut',
     'deferred',
     'deferWithTimeout',
+    'FOREVER',
     'pause',
     'reactor_sync',
     'retries',
@@ -24,7 +25,10 @@ __all__ = [
     ]
 
 from contextlib import contextmanager
-from functools import wraps
+from functools import (
+    partial,
+    wraps,
+    )
 import sys
 import threading
 
@@ -36,6 +40,10 @@ from twisted.internet.defer import (
     )
 from twisted.python import threadable
 from twisted.python.threadable import isInIOThread
+
+
+undefined = object()
+FOREVER = object()
 
 
 def deferred(func):
@@ -50,28 +58,55 @@ def deferred(func):
     return wrapper
 
 
-def asynchronous(func):
+def asynchronous(func=undefined, timeout=undefined):
     """Decorates a function to ensure that it always runs in the reactor.
 
-    If the wrapper is called from the reactor thread, it will call
-    straight through to the wrapped function. It will not be wrapped by
-    `maybeDeferred` for example.
+    If the wrapper is called from the reactor thread, it will call straight
+    through to the wrapped function. It will not be wrapped by `maybeDeferred`
+    for example.
 
     If the wrapper is called from another thread, it will return a
-    :class:`crochet.EventualResult`, as if it had been decorated with
+    :py::class:`crochet.EventualResult`, as if it had been decorated with
     `crochet.run_in_reactor`.
+
+    There's an additional convenience. If `timeout` has been specified, the
+    :py:class:`~crochet.EventualResult` will be waited on for up to `timeout`
+    seconds. This means that callers don't need to remember to wait. If
+    `timeout` is `FOREVER` then it will wait indefinitely, which can be useful
+    where the function itself handles time-outs, or where the called function
+    doesn't actually defer work but just needs to run in the reactor thread.
 
     This also serves a secondary documentation purpose; functions decorated
     with this are readily identifiable as asynchronous.
+
     """
+    if func is undefined:
+        return partial(asynchronous, timeout=timeout)
+
+    if timeout is not undefined:
+        if isinstance(timeout, (int, long, float)):
+            if timeout < 0:
+                raise ValueError(
+                    "timeout must be >= 0, not %d"
+                    % timeout)
+        elif timeout is not FOREVER:
+            raise ValueError(
+                "timeout must an int, float, or undefined, not %r"
+                % (timeout,))
+
     func_in_reactor = run_in_reactor(func)
 
     @wraps(func)
     def wrapper(*args, **kwargs):
         if isInIOThread():
             return func(*args, **kwargs)
-        else:
+        elif timeout is undefined:
             return func_in_reactor(*args, **kwargs)
+        elif timeout is FOREVER:
+            return func_in_reactor(*args, **kwargs).wait()
+        else:
+            return func_in_reactor(*args, **kwargs).wait(timeout)
+
     return wrapper
 
 

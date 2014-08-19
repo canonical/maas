@@ -15,12 +15,18 @@ __metaclass__ = type
 __all__ = []
 
 import operator
-from random import randint
+from random import (
+    randint,
+    random,
+    )
 import re
 import time
 
 from crochet import EventualResult
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    IsCallable,
+    MockCalledOnceWith,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
@@ -31,6 +37,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    FOREVER,
     pause,
     reactor_sync,
     retries,
@@ -66,22 +73,22 @@ from twisted.python import threadable
 from twisted.python.failure import Failure
 
 
+def return_args(*args, **kwargs):
+    return args, kwargs
+
+
 class TestAsynchronousDecorator(MAASTestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
-    @asynchronous
-    def return_args(self, *args, **kwargs):
-        return args, kwargs
-
     def test_in_reactor_thread(self):
-        result = self.return_args(1, 2, three=3)
+        result = asynchronous(return_args)(1, 2, three=3)
         self.assertEqual(((1, 2), {"three": 3}), result)
 
     @inlineCallbacks
     def test_in_other_thread(self):
         def do_stuff_in_thread():
-            result = self.return_args(3, 4, five=5)
+            result = asynchronous(return_args)(3, 4, five=5)
             self.assertThat(result, IsInstance(EventualResult))
             return result.wait()
         # Call do_stuff_in_thread() from another thread.
@@ -90,6 +97,88 @@ class TestAsynchronousDecorator(MAASTestCase):
         # The arguments passed back match those passed in from
         # do_stuff_in_thread().
         self.assertEqual(((3, 4), {"five": 5}), result)
+
+
+noop = lambda: None
+
+
+class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_timeout_cannot_be_None(self):
+        self.assertRaises(ValueError, asynchronous, noop, timeout=None)
+
+    def test_timeout_cannot_be_negative(self):
+        self.assertRaises(ValueError, asynchronous, noop, timeout=-1)
+
+    def test_timeout_can_be_int(self):
+        self.assertThat(asynchronous(noop, timeout=1), IsCallable())
+
+    def test_timeout_can_be_long(self):
+        self.assertThat(asynchronous(noop, timeout=1L), IsCallable())
+
+    def test_timeout_can_be_float(self):
+        self.assertThat(asynchronous(noop, timeout=1.0), IsCallable())
+
+    def test_timeout_can_be_forever(self):
+        self.assertThat(asynchronous(noop, timeout=FOREVER), IsCallable())
+
+
+class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    scenarios = (
+        ("finite", {"timeout": random()}),
+        ("forever", {"timeout": FOREVER}),
+    )
+
+    def test_in_reactor_thread(self):
+        return_args_async = asynchronous(return_args, self.timeout)
+        result = return_args_async(1, 2, three=3)
+        self.assertEqual(((1, 2), {"three": 3}), result)
+
+    @inlineCallbacks
+    def test_in_other_thread(self):
+        return_args_async = asynchronous(return_args, self.timeout)
+        # Call self.return_args from another thread.
+        result = yield deferToThread(return_args_async, 3, 4, five=5)
+        # The arguments passed back match those passed in.
+        self.assertEqual(((3, 4), {"five": 5}), result)
+
+    @inlineCallbacks
+    def test__passes_timeout_to_wait(self):
+        # These mocks are going to help us tell a story of a timeout.
+        run_in_reactor = self.patch(twisted_module, "run_in_reactor")
+        func_in_reactor = run_in_reactor.return_value
+        eventual_result = func_in_reactor.return_value
+        wait = eventual_result.wait
+        wait.return_value = sentinel.result
+
+        # Our placeholder function, and its wrapped version.
+        do_nothing = lambda: None
+        do_nothing_async = asynchronous(do_nothing, timeout=self.timeout)
+
+        # Call our wrapped function in a thread so that the wrapper calls back
+        # into the IO thread, via the time-out logic.
+        result = yield deferToThread(do_nothing_async)
+        self.expectThat(result, Equals(sentinel.result))
+
+        # Here's what happened, or should have:
+        # 1. do_nothing was wrapped by run_in_reactor, producing
+        #    func_in_reactor.
+        self.assertThat(run_in_reactor, MockCalledOnceWith(do_nothing))
+        # 2. func_in_reactor was called with no arguments, because we didn't
+        #    pass any, producing eventual_result.
+        self.assertThat(func_in_reactor, MockCalledOnceWith())
+        # 3. eventual_result.wait was called...
+        if self.timeout is FOREVER:
+            # ...without arguments.
+            self.assertThat(wait, MockCalledOnceWith())
+        else:
+            # ...with the timeout we passed when we wrapped do_nothing.
+            self.assertThat(wait, MockCalledOnceWith(self.timeout))
 
 
 class TestSynchronousDecorator(MAASTestCase):

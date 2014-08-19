@@ -55,7 +55,7 @@ def gen_all_known_operating_systems():
     seen = defaultdict(list)
     responses = async.gather(
         partial(client, ListOperatingSystems)
-        for client in getAllClients().wait())
+        for client in getAllClients())
     for response in suppress_failures(responses):
         for osystem in response["osystems"]:
             name = osystem["name"]
@@ -83,7 +83,7 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
     :raises TimeoutError: If a response has not been received within 30
         seconds.
     """
-    client = getClientFor(node.nodegroup.uuid).wait(5)
+    client = getClientFor(node.nodegroup.uuid)
     call = client(
         GetPreseedData, osystem=node.get_osystem(), preseed_type=preseed_type,
         node_system_id=node.system_id, node_hostname=node.hostname,

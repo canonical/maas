@@ -19,15 +19,20 @@ __all__ = [
 
 from maasserver import eventloop
 from provisioningserver.rpc import exceptions
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    FOREVER,
+    )
 
 
-@asynchronous
-def getClientFor(uuid):
+@asynchronous(timeout=FOREVER)  # getClientFor handles times-out itself.
+def getClientFor(uuid, timeout=30):
     """getClientFor(uuid)
 
     Get a client with which to make RPCs to the specified cluster.
 
+    :param timeout: The number of seconds to wait before giving up
+        getting a connection.
     :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
         are no open connections to the specified cluster controller.
     """
@@ -36,10 +41,10 @@ def getClientFor(uuid):
     except KeyError:
         raise exceptions.NoConnectionsAvailable()
     else:
-        return service.getClientFor(uuid)
+        return service.getClientFor(uuid, timeout=timeout)
 
 
-@asynchronous
+@asynchronous(timeout=FOREVER)  # getAllClients does not defer work.
 def getAllClients():
     """getAllClients()
 
