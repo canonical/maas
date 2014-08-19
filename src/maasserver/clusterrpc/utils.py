@@ -47,7 +47,7 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
         nodegroups = NodeGroup.objects.all()
     for ng in nodegroups:
         try:
-            client = getClientFor(ng.uuid).wait()
+            client = getClientFor(ng.uuid)
         except NoConnectionsAvailable:
             logger.error(
                 "Unable to get RPC connection for cluster '%s'", ng.name)
