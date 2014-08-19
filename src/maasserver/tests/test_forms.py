@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from cStringIO import StringIO
 import json
 import random
 
@@ -23,10 +22,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import (
-    InMemoryUploadedFile,
-    SimpleUploadedFile,
-    )
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
@@ -40,7 +36,6 @@ from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     BLANK_CHOICE,
-    BootSourceForm,
     BootSourceSelectionForm,
     BulkNodeActionForm,
     CommissioningForm,
@@ -112,7 +107,6 @@ from maasserver.testing.osystems import (
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.utils import sample_binary_data
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
@@ -2050,48 +2044,6 @@ class TestInstanceListField(MAASServerTestCase):
             ValidationError,
             field.clean, [node.system_id for node in nodes] + ['unknown'])
         self.assertEquals(['Unknown node(s): unknown.'], error.messages)
-
-
-class TestBootSourceForm(MAASServerTestCase):
-    """Tests for `BootSourceForm`."""
-
-    def test_edits_boot_source_object(self):
-        boot_source = factory.make_boot_source()
-        params = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('keyring_filename'),
-        }
-        form = BootSourceForm(instance=boot_source, data=params)
-        self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        boot_source = reload_object(boot_source)
-        self.assertAttributes(boot_source, params)
-
-    def test_creates_boot_source_object_with_keyring_filename(self):
-        params = {
-            'url': 'http://example.com/',
-            'keyring_filename': factory.make_name('keyring_filename'),
-        }
-        form = BootSourceForm(data=params)
-        self.assertTrue(form.is_valid(), form._errors)
-        boot_source = form.save()
-        self.assertAttributes(boot_source, params)
-
-    def test_creates_boot_source_object_with_keyring_data(self):
-        in_mem_file = InMemoryUploadedFile(
-            StringIO(sample_binary_data), name=factory.make_name('name'),
-            field_name=factory.make_name('field-name'),
-            content_type='application/octet-stream',
-            size=len(sample_binary_data),
-            charset=None)
-        params = {'url': 'http://example.com/'}
-        form = BootSourceForm(
-            data=params,
-            files={'keyring_data': in_mem_file})
-        self.assertTrue(form.is_valid(), form._errors)
-        boot_source = form.save()
-        self.assertEqual(sample_binary_data, bytes(boot_source.keyring_data))
-        self.assertAttributes(boot_source, params)
 
 
 class TestBootSourceSelectionForm(MAASServerTestCase):
