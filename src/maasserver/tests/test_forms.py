@@ -19,14 +19,12 @@ import random
 
 from django import forms
 from django.conf import settings
-from django.contrib import messages
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
-    NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -46,7 +44,6 @@ from maasserver.forms import (
     EditUserForm,
     ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
-    get_action_form,
     get_node_create_form,
     get_node_edit_form,
     initialize_node_group,
@@ -58,7 +55,6 @@ from maasserver.forms import (
     merge_error_messages,
     NewUserCreationForm,
     NO_ARCHITECTURES_AVAILABLE,
-    NodeActionForm,
     NodeForm,
     NodeGroupDefineForm,
     NodeGroupEdit,
@@ -86,12 +82,9 @@ from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import (
-    Commission,
     Delete,
-    MarkBroken,
     StartNode,
     StopNode,
-    UseCurtin,
     )
 from maasserver.testing.architecture import (
     make_usable_architecture,
@@ -609,88 +602,6 @@ class TestAdminNodeForm(MAASServerTestCase):
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
-
-
-class TestNodeActionForm(MAASServerTestCase):
-
-    def test_get_action_form_creates_form_class_with_attributes(self):
-        user = factory.make_admin()
-        form_class = get_action_form(user)
-
-        self.assertEqual(user, form_class.user)
-
-    def test_get_action_form_creates_form_class(self):
-        user = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(user)(node)
-
-        self.assertIsInstance(form, NodeActionForm)
-        self.assertEqual(node, form.node)
-
-    def test_get_action_form_for_admin(self):
-        admin = factory.make_admin()
-        node = factory.make_node(
-            status=NODE_STATUS.DECLARED, boot_type=NODE_BOOT.DEBIAN)
-        form = get_action_form(admin)(node)
-
-        self.assertItemsEqual(
-            [Commission.name, Delete.name, UseCurtin.name, MarkBroken.name],
-            form.actions)
-
-    def test_get_action_form_for_user(self):
-        user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(user)(node)
-
-        self.assertIsInstance(form, NodeActionForm)
-        self.assertEqual(node, form.node)
-        self.assertItemsEqual({}, form.actions)
-
-    def test_save_performs_requested_action(self):
-        admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(admin)(
-            node, {NodeActionForm.input_name: Commission.name})
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-
-    def test_rejects_disallowed_action(self):
-        user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        form = get_action_form(user)(
-            node, {NodeActionForm.input_name: Commission.name})
-        self.assertFalse(form.is_valid())
-        self.assertEquals(
-            {'action': ['Not a permitted action: %s.' % Commission.name]},
-            form._errors)
-
-    def test_rejects_unknown_action(self):
-        user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.DECLARED)
-        action = factory.make_string()
-        form = get_action_form(user)(
-            node, {NodeActionForm.input_name: action})
-        self.assertFalse(form.is_valid())
-        self.assertIn(
-            "is not one of the available choices.", form._errors['action'][0])
-
-    def test_shows_error_message_for_NodeActionError(self):
-        error_text = factory.make_string(prefix="NodeActionError")
-        exc = NodeActionError(error_text)
-        self.patch(StartNode, "execute").side_effect = exc
-        user = factory.make_user()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=user)
-        action = StartNode.name
-        # Required for messages to work:
-        request = factory.make_fake_request("/fake")
-        form = get_action_form(user, request)(
-            node, {NodeActionForm.input_name: action})
-        form.save()
-        [observed] = messages.get_messages(form.request)
-        expected = (messages.ERROR, error_text, '')
-        self.assertEqual(expected, observed)
 
 
 class TestUniqueEmailForms(MAASServerTestCase):
