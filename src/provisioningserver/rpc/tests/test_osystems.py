@@ -155,11 +155,12 @@ class TestGetPreseedData(MAASTestCase):
         # OperatingSystem instances.
         os_specific_compose_preseed = self.patch(
             self.osystem, "compose_preseed")
+        metadata_url = factory.make_parsed_url()
         osystems.get_preseed_data(
             self.osystem.name, sentinel.preseed_type,
             sentinel.node_system_id, sentinel.node_hostname,
             sentinel.consumer_key, sentinel.token_key,
-            sentinel.token_secret, sentinel.metadata_url)
+            sentinel.token_secret, metadata_url)
         self.assertThat(
             os_specific_compose_preseed,
             MockCalledOnceWith(
@@ -167,4 +168,4 @@ class TestGetPreseedData(MAASTestCase):
                 (sentinel.node_system_id, sentinel.node_hostname),
                 (sentinel.consumer_key, sentinel.token_key,
                  sentinel.token_secret),
-                sentinel.metadata_url))
+                metadata_url.geturl()))

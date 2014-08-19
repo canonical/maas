@@ -89,4 +89,4 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
         node_system_id=node.system_id, node_hostname=node.hostname,
         consumer_key=token.consumer.key, token_key=token.key,
         token_secret=token.secret, metadata_url=urlparse(metadata_url))
-    return call.wait(30)
+    return call.wait(30).get("data")

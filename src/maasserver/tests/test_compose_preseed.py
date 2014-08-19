@@ -20,12 +20,17 @@ from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
+from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NoSuchOperatingSystem,
+    )
 from testtools.matchers import (
     KeysEqual,
     StartsWith,
@@ -53,6 +58,8 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_includes_metadata_url(self):
         node = factory.make_node(status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
         self.assertIn(absolute_reverse('metadata'), preseed)
 
@@ -66,6 +73,8 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_includes_node_oauth_token(self):
         node = factory.make_node(status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
         token = NodeKey.objects.get_token_for_node(node)
         self.assertIn('oauth_consumer_key=%s' % token.consumer.key, preseed)
@@ -84,6 +93,8 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_valid_local_cloud_config(self):
         node = factory.make_node(status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
 
         keyname = "cloud-init/local-cloud-config"
@@ -109,6 +120,8 @@ class TestComposePreseed(MAASServerTestCase):
     def test_compose_preseed_with_curtin_installer(self):
         node = factory.make_node(
             status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.CURTIN, node))
 
@@ -124,16 +137,45 @@ class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_with_osystem_compose_preseed(self):
         osystem = make_usable_osystem(self)
-        mock_compose = self.patch(osystem, 'compose_preseed')
+        compose_preseed_orig = osystem.compose_preseed
+        compose_preseed_mock = self.patch(osystem, 'compose_preseed')
+        compose_preseed_mock.side_effect = compose_preseed_orig
+
         node = factory.make_node(
             osystem=osystem.name, status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
         token = NodeKey.objects.get_token_for_node(node)
         url = absolute_reverse('curtin-metadata')
         compose_preseed(PRESEED_TYPE.CURTIN, node)
         self.assertThat(
-            mock_compose,
+            compose_preseed_mock,
             MockCalledOnceWith(
                 PRESEED_TYPE.CURTIN,
                 (node.system_id, node.hostname),
                 (token.consumer.key, token.key, token.secret),
                 url))
+
+    def test_compose_preseed_propagates_NoSuchOperatingSystem(self):
+        # If the cluster controller replies that the node's OS is not known to
+        # it, compose_preseed() simply passes the exception up.
+        osystem = make_usable_osystem(self)
+        compose_preseed_mock = self.patch(osystem, 'compose_preseed')
+        compose_preseed_mock.side_effect = NoSuchOperatingSystem
+        node = factory.make_node(
+            osystem=osystem.name, status=NODE_STATUS.READY)
+        node.nodegroup.accept()
+        self.useFixture(RunningClusterRPCFixture())
+        self.assertRaises(
+            NoSuchOperatingSystem,
+            compose_preseed, PRESEED_TYPE.CURTIN, node)
+
+    def test_compose_preseed_propagates_NoConnectionsAvailable(self):
+        # If the region does not have any connections to the node's cluster
+        # controller, compose_preseed() simply passes the exception up.
+        osystem = make_usable_osystem(self)
+        node = factory.make_node(
+            osystem=osystem.name, status=NODE_STATUS.READY)
+        self.assertRaises(
+            NoConnectionsAvailable,
+            compose_preseed, PRESEED_TYPE.CURTIN, node)

@@ -38,6 +38,7 @@ from maasserver.models import (
     SSHKey,
     Tag,
     )
+from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
@@ -387,11 +388,11 @@ class TestMetadataUserData(DjangoTestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
-class TestCurtinMetadataUserData(DjangoTestCase):
+class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_node()
+        node = factory.make_node(nodegroup=self.rpc_nodegroup)
         factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')

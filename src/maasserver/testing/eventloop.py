@@ -78,11 +78,11 @@ class RunningEventLoopFixture(Fixture):
 
     @wait_for_reactor
     def start(self):
-        eventloop.start()
+        return eventloop.start()
 
     @wait_for_reactor
     def stop(self):
-        eventloop.reset()
+        return eventloop.reset()
 
     def checkEventLoopClean(self):
         # Don't proceed if the event-loop is running.

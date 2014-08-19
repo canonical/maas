@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ClusterRPCFixture",
+    "RunningClusterRPCFixture",
     "MockLiveRegionToClusterRPCFixture",
     "MockRegionToClusterRPCFixture",
 ]
@@ -28,6 +29,10 @@ from maasserver import eventloop
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc.regionservice import RegionServer
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+    )
 from provisioningserver.rpc import (
     cluster,
     clusterservice,
@@ -113,6 +118,19 @@ class ClusterRPCFixture(fixtures.Fixture):
                 fake_connections[connection.ident].add(connection)
         # Patch the fake connections into place for this fixture's lifetime.
         self.addCleanup(patch(rpc_service, "connections", fake_connections))
+
+
+class RunningClusterRPCFixture(fixtures.Fixture):
+    """Set-up the event-loop with only the RPC service running.
+
+    Layer on a fake cluster RPC implementation.
+    """
+
+    def setUp(self):
+        super(RunningClusterRPCFixture, self).setUp()
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        self.useFixture(ClusterRPCFixture())
 
 
 class MockRegionToClusterRPCFixture(fixtures.Fixture):

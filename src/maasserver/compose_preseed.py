@@ -18,12 +18,12 @@ __all__ = [
 
 from urllib import urlencode
 
+from maasserver.clusterrpc.osystems import get_preseed_data
 from maasserver.enum import PRESEED_TYPE
 from maasserver.utils import absolute_reverse
-from provisioningserver.drivers.osystem import (
-    Node as OSystemNode,
-    OperatingSystemRegistry,
-    Token as OSystemToken,
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NoSuchOperatingSystem,
     )
 import yaml
 
@@ -87,6 +87,13 @@ def _compose_cloud_init_preseed(token, metadata_url):
     })
 
 
+def _get_metadata_url(preseed_type, base_url):
+    if preseed_type == PRESEED_TYPE.CURTIN:
+        return absolute_reverse('curtin-metadata', base_url=base_url)
+    else:
+        return absolute_reverse('metadata', base_url=base_url)
+
+
 def compose_preseed(preseed_type, node):
     """Put together preseed data for `node`.
 
@@ -102,27 +109,40 @@ def compose_preseed(preseed_type, node):
     """
     # Circular import.
     from metadataserver.models import NodeKey
+
     token = NodeKey.objects.get_token_for_node(node)
     base_url = node.nodegroup.maas_url
+
     if preseed_type == PRESEED_TYPE.COMMISSIONING:
         return compose_commissioning_preseed(token, base_url)
     else:
-        osystem = OperatingSystemRegistry[node.get_osystem()]
-        metadata_url = absolute_reverse('metadata', base_url=base_url)
-        if preseed_type == PRESEED_TYPE.CURTIN:
-            metadata_url = absolute_reverse(
-                'curtin-metadata', base_url=base_url)
-        node_for_osystem = OSystemNode(
-            node.system_id, node.hostname)
-        token_for_osystem = OSystemToken(
-            token.consumer.key, token.key, token.secret)
-        try:
-            return osystem.compose_preseed(
-                preseed_type, node_for_osystem, token_for_osystem,
-                metadata_url)
-        except NotImplementedError:
-            pass
+        metadata_url = _get_metadata_url(preseed_type, base_url)
 
+        try:
+            return get_preseed_data(preseed_type, node, token, metadata_url)
+        except NotImplementedError:
+            # This is fine; it indicates that the OS does not specify
+            # any special preseed data for this type of preseed.
+            pass
+        except NoSuchOperatingSystem:
+            # Let a caller handle this. If rendered for presentation in the
+            # UI, an explanatory error message could be displayed. If rendered
+            # via the API, in response to cloud-init for example, the prudent
+            # course of action might be to turn the node's power off, mark it
+            # as broken, and notify the user.
+            raise
+        except NoConnectionsAvailable:
+            # This means that the region is not in contact with the node's
+            # cluster controller. In the UI this could be shown as an error
+            # message. This is, however, a show-stopping problem when booting
+            # or installing a node. A caller cannot turn the node's power off
+            # via the usual methods because they rely on a connection to the
+            # cluster. This /could/ generate a preseed that aborts the boot or
+            # installation. The caller /could/ mark the node as broken. For
+            # now, let the caller make the decision, which might be to retry.
+            raise
+
+        # There is no OS-specific preseed data.
         if preseed_type == PRESEED_TYPE.CURTIN:
             return compose_curtin_preseed(token, base_url)
         else:

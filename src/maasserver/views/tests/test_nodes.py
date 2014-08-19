@@ -52,6 +52,7 @@ from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
     )
+from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing import (
     extract_redirect,
     get_content_links,
@@ -1536,11 +1537,12 @@ class NodeEnlistmentPreseedViewTest(MAASServerTestCase):
         self.assertIn(message_chunk, response.content)
 
 
-class NodePreseedViewTest(MAASServerTestCase):
+class NodePreseedViewTest(PreseedRPCMixin, MAASServerTestCase):
 
     def test_preseedview_node_displays_preseed_data(self):
         self.client_log_in()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         escaped = html.escape(get_preseed(node))
@@ -1548,7 +1550,8 @@ class NodePreseedViewTest(MAASServerTestCase):
 
     def test_preseedview_node_catches_template_error(self):
         self.client_log_in()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         path = self.make_file(name="generic", contents="{{invalid}}")
         self.patch(
@@ -1559,7 +1562,8 @@ class NodePreseedViewTest(MAASServerTestCase):
     def test_preseedview_node_displays_message_if_commissioning(self):
         self.client_log_in()
         node = factory.make_node(
-            owner=self.logged_in_user, status=NODE_STATUS.COMMISSIONING,
+            nodegroup=self.rpc_nodegroup, owner=self.logged_in_user,
+            status=NODE_STATUS.COMMISSIONING,
             )
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
@@ -1570,7 +1574,8 @@ class NodePreseedViewTest(MAASServerTestCase):
 
     def test_preseedview_node_displays_link_to_view_node(self):
         self.client_log_in()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_node(
+            nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         node_link = reverse('node-view', args=[node.system_id])

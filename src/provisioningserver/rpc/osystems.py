@@ -85,6 +85,7 @@ def get_preseed_data(
     :param node: The node for which a preseed is being composed.
     :param token: OAuth token for the metadata URL.
     :param metadata_url: The metdata URL for the node.
+    :type metadata_url: :py:class:`urlparse.ParseResult`
     :returns: Preseed data for the given node.
     :raise NotImplementedError: when the specified operating system does
         not require custom preseed data.
@@ -96,4 +97,5 @@ def get_preseed_data(
     else:
         return osystem.compose_preseed(
             preseed_type, Node(node_system_id, node_hostname),
-            Token(consumer_key, token_key, token_secret), metadata_url)
+            Token(consumer_key, token_key, token_secret),
+            metadata_url.geturl())
