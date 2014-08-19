@@ -62,7 +62,7 @@ class IPAddressesHandler(OperationsHandler):
     def reserve(self, request):
         """Reserve an IP address for use outside of MAAS.
 
-        Returns an IP adddress which MAAS will not allow any of its known
+        Returns an IP adddress, which MAAS will not allow any of its known
         devices and Nodes to use; it is free for use by the requesting user
         until released by the user.
 

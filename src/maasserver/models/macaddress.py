@@ -154,8 +154,10 @@ class MACAddress(CleanSave, TimestampedModel):
 
         # Check to see if an IP with the same type already exists.
         try:
-            return [StaticIPAddress.objects.get(
-                macaddress=self, alloc_type=alloc_type)]
+            return [
+                StaticIPAddress.objects.get(
+                    macaddress=self, alloc_type=alloc_type)
+                ]
         except StaticIPAddress.DoesNotExist:
             pass
 
