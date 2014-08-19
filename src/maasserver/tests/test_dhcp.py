@@ -114,6 +114,7 @@ class TestDHCP(MAASServerTestCase):
             )
 
         configure_dhcp(nodegroup)
+
         dhcp_subnets = []
         for interface in nodegroup.get_managed_interfaces():
             dhcp_params = [
@@ -134,6 +135,7 @@ class TestDHCP(MAASServerTestCase):
             dhcp_subnet["subnet"] = unicode(
                 IPAddress(interface.ip_range_low) &
                 IPAddress(interface.subnet_mask))
+            dhcp_subnet["subnet_cidr"] = unicode(interface.network)
             dhcp_subnets.append(dhcp_subnet)
 
         expected_params = {}

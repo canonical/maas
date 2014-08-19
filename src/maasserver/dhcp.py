@@ -77,6 +77,7 @@ def configure_dhcp(nodegroup):
                 IPAddress(interface.ip_range_low) &
                 IPAddress(interface.subnet_mask)),
             subnet_mask=interface.subnet_mask,
+            subnet_cidr=unicode(interface.network),
             broadcast_ip=interface.broadcast_ip,
             interface=interface.interface,
             router_ip=interface.router_ip,
