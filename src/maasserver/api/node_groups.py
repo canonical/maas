@@ -268,9 +268,6 @@ def update_mac_cluster_interfaces(leases, cluster):
                     try:
                         network = Network.objects.get(ip=ipnetwork.ip.format())
                         network.macaddress_set.add(mac_address)
-                        maaslog.info(
-                            "Linking %s to network %s",
-                            mac_address, network.name)
                     except Network.DoesNotExist:
                         pass
 
