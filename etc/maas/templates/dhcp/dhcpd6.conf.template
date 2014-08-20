@@ -12,7 +12,7 @@ subnet6 {{dhcp_subnet['subnet_cidr']}} {
        {{bootloader}}
        interface "{{dhcp_subnet['interface']}}";
        ignore-client-uids true;
-       option domain-name-servers {{dhcp_subnet['dns_servers']}};
+       option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};
        option domain-name "{{dhcp_subnet['domain_name']}}";
        option routers {{dhcp_subnet['router_ip']}};
        {{if dhcp_subnet.get('ntp_server')}}
