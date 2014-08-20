@@ -20,6 +20,7 @@ __all__ = [
 from functools import partial
 
 from maasserver import logger
+from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import NodeGroup
 from maasserver.rpc import getClientFor
@@ -44,7 +45,8 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
     """
     calls = []
     if nodegroups is None:
-        nodegroups = NodeGroup.objects.all()
+        nodegroups = NodeGroup.objects.filter(
+            status=NODEGROUP_STATUS.ACCEPTED)
     for ng in nodegroups:
         try:
             client = getClientFor(ng.uuid)
