@@ -37,6 +37,7 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -77,7 +78,7 @@ FailedWith = MatchesPredicateWithParams(
     "{0} does not represent a {1}", name="FailsWith")
 
 
-class TestUpdateHostMaps(MAASTestCase):
+class TestUpdateHostMaps(MAASServerTestCase):
     """Tests for `update_host_maps`."""
 
     @staticmethod
@@ -321,7 +322,7 @@ class MatchesPartialCall(Matcher):
         return matcher.match(observed)
 
 
-class TestGenCallsToCreateHostMaps(MAASTestCase):
+class TestGenCallsToCreateHostMaps(MAASServerTestCase):
 
     def test__returns_zero_calls_when_there_are_no_static_mappings(self):
         clients = DummyClients()
@@ -375,7 +376,7 @@ class TestGenCallsToCreateHostMaps(MAASTestCase):
         )
 
 
-class TestGenDynamicIPAddressesWithHostMaps(MAASTestCase):
+class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 
     @staticmethod
     def make_leases_in_network(nodegroup, network, count=3):
