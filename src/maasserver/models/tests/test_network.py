@@ -22,12 +22,14 @@ from maasserver.models import Network
 from maasserver.models.network import (
     get_specifier_type,
     IPSpecifier,
+    get_name_and_vlan_from_cluster_interface,
     NameSpecifier,
     parse_network_spec,
     VLANSpecifier,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from mock import sentinel
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -127,6 +129,43 @@ class TestParseNetworkSpec(MAASServerTestCase):
         # If this becomes a stumbling block, it would be possible to accept
         # plain IP addresses as network specifiers.
         self.assertRaises(ValidationError, parse_network_spec, '10.4.4.4')
+
+
+class TestGetNameAndVlanFromClusterInterface(MAASServerTestCase):
+    """Tests for `get_name_and_vlan_from_cluster_interface`."""
+
+    def make_interface_name(self, basename):
+        interface = sentinel.interface
+        interface.nodegroup = sentinel.nodegroup
+        interface.nodegroup.name = factory.make_name('name')
+        interface.interface = basename
+        return interface
+
+    def test_returns_simple_name_unaltered(self):
+        interface = self.make_interface_name(factory.make_name('iface'))
+        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+        expected_name = '%s-%s' % (
+            interface.nodegroup.name, interface.interface)
+        self.assertEqual((expected_name, None), (name, vlan_tag))
+
+    def test_substitutes_colon(self):
+        interface = self.make_interface_name('eth0:0')
+        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+        expected_name = '%s-eth0-0' % interface.nodegroup.name
+        self.assertEqual((expected_name, None), (name, vlan_tag))
+
+    def test_returns_with_vlan_tag(self):
+        interface = self.make_interface_name('eth0.5')
+        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+        expected_name = '%s-eth0-5' % interface.nodegroup.name
+        self.assertEqual((expected_name, '5'), (name, vlan_tag))
+
+    def test_returns_name_with_crazy_colon_and_vlan(self):
+        # For truly twisted network admins.
+        interface = self.make_interface_name('eth0:2.3')
+        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+        expected_name = '%s-eth0-2-3' % interface.nodegroup.name
+        self.assertEqual((expected_name, '3'), (name, vlan_tag))
 
 
 class TestNetworkManager(MAASServerTestCase):

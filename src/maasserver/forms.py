@@ -18,6 +18,7 @@ __all__ = [
     "BootSourceForm",
     "BootSourceSelectionForm",
     "BulkNodeActionForm",
+    "create_Network_from_NodeGroupInterface",
     "CommissioningForm",
     "CommissioningScriptForm",
     "DownloadProgressForm",
@@ -110,6 +111,7 @@ from maasserver.models import (
     Tag,
     Zone,
     )
+from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
 from maasserver.node_action import (
     ACTION_CLASSES,
@@ -1127,6 +1129,33 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
     return True
 
 
+def create_Network_from_NodeGroupInterface(interface):
+    """Given a `NodeGroupInterface`, create its Network counterpart."""
+    # This method cannot use non-orm model properties because it needs
+    # to be used in a data migration, where they won't work.
+    if not interface.subnet_mask:
+        # Can be None or empty string, do nothing if so.
+        return
+
+    name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+    ipnetwork = make_network(interface.ip, interface.subnet_mask)
+    network = Network(
+        name=name,
+        ip=unicode(ipnetwork.network),
+        netmask=unicode(ipnetwork.netmask),
+        vlan_tag=vlan_tag,
+        description=(
+            "Auto created when creating interface %s on cluster "
+            "%s" % (interface.interface, interface.nodegroup.name)),
+        )
+    try:
+        network.save()
+    except ValidationError:
+        # It probably already exists, keep calm and carry on.
+        return
+    return network
+
+
 class NodeGroupInterfaceForm(ModelForm):
 
     management = forms.TypedChoiceField(
@@ -1153,6 +1182,15 @@ class NodeGroupInterfaceForm(ModelForm):
             'static_ip_range_low',
             'static_ip_range_high',
             )
+
+    def save(self, *args, **kwargs):
+        """Override `ModelForm`.save() so that the network data is copied
+        to a `Network` instance."""
+        interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
+        if interface.network is None:
+            return interface
+        create_Network_from_NodeGroupInterface(interface)
+        return interface
 
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()

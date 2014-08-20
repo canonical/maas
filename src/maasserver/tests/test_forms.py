@@ -16,6 +16,7 @@ __all__ = []
 
 from cStringIO import StringIO
 import json
+import random
 
 from django import forms
 from django.conf import settings
@@ -92,6 +93,7 @@ from maasserver.models import (
     Zone,
     )
 from maasserver.models.config import DEFAULT_CONFIG
+from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import (
     Commission,
@@ -1054,10 +1056,24 @@ nullable_fields = [
     ]
 
 
+def make_ngi_instance(nodegroup=None):
+    """Create a `NodeGroupInterface` with nothing set but `nodegroup`.
+
+    This is used by tests to instantiate the cluster interface form for
+    a given cluster.  We create an initial cluster interface object just
+    to tell it which cluster that is.
+    """
+    if nodegroup is None:
+        nodegroup = factory.make_node_group()
+    return NodeGroupInterface(nodegroup=nodegroup)
+
+
 class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test_NodeGroupInterfaceForm_validates_parameters(self):
-        form = NodeGroupInterfaceForm(data={'ip': factory.getRandomString()})
+        form = NodeGroupInterfaceForm(
+            data={'ip': factory.getRandomString()},
+            instance=make_ngi_instance())
         self.assertFalse(form.is_valid())
         self.assertEquals(
             {'ip': ['Enter a valid IPv4 or IPv6 address.']}, form._errors)
@@ -1069,8 +1085,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             del int_settings[field_name]
         nodegroup = factory.make_node_group()
         form = NodeGroupInterfaceForm(
-            data=int_settings,
-            instance=NodeGroupInterface(nodegroup=nodegroup))
+            data=int_settings, instance=make_ngi_instance(nodegroup))
         interface = form.save()
         field_values = [
             getattr(interface, field_name) for field_name in nullable_fields]
@@ -1095,6 +1110,75 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(
             [ERROR_MESSAGE_STATIC_RANGE_IN_USE],
             form._errors['static_ip_range_high'])
+
+
+class TestNodeGroupInterfaceFormNetworkCreation(MAASServerTestCase):
+    """Tests for when NodeGroupInterfaceForm creates a Network."""
+
+    def test_creates_network_name(self):
+        int_settings = factory.get_interface_fields()
+        int_settings['interface'] = 'eth0:1'
+        interface = make_ngi_instance()
+        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+        form.save()
+        [network] = Network.objects.all()
+        expected, _ = get_name_and_vlan_from_cluster_interface(interface)
+        self.assertEqual(expected, network.name)
+
+    def test_sets_vlan_tag(self):
+        int_settings = factory.get_interface_fields()
+        vlan_tag = random.randint(1, 10)
+        int_settings['interface'] = 'eth0.%s' % vlan_tag
+        interface = make_ngi_instance()
+        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+        form.save()
+        [network] = Network.objects.all()
+        self.assertEqual(vlan_tag, network.vlan_tag)
+
+    def test_vlan_tag_is_None_if_no_vlan(self):
+        int_settings = factory.get_interface_fields()
+        int_settings['interface'] = 'eth0:1'
+        interface = make_ngi_instance()
+        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+        form.save()
+        [network] = Network.objects.all()
+        self.assertIs(None, network.vlan_tag)
+
+    def test_sets_network_values(self):
+        int_settings = factory.get_interface_fields()
+        interface = make_ngi_instance()
+        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+        form.save()
+        [network] = Network.objects.all()
+        expected_net_address = unicode(interface.network.network)
+        expected_netmask = unicode(interface.network.netmask)
+        self.assertThat(
+            network, MatchesStructure.byEquality(
+                ip=expected_net_address,
+                netmask=expected_netmask))
+
+    def test_does_not_create_new_network_if_already_exists(self):
+        int_settings = factory.get_interface_fields()
+        interface = make_ngi_instance()
+        form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
+        # The easiest way to pre-create the same network is just to save
+        # the form twice.
+        form.save()
+        [existing_network] = Network.objects.all()
+        form.save()
+        self.assertItemsEqual([existing_network], Network.objects.all())
+
+    def test_creates_many_unique_networks(self):
+        names = ('eth0', 'eth0:1', 'eth0.1', 'eth0:1.2')
+        for name in names:
+            int_settings = factory.get_interface_fields()
+            int_settings['interface'] = name
+            interface = make_ngi_instance()
+            form = NodeGroupInterfaceForm(
+                data=int_settings, instance=interface)
+            form.save()
+
+        self.assertEqual(len(names), len(Network.objects.all()))
 
 
 class TestValidateNewStaticIPRanges(MAASServerTestCase):

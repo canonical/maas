@@ -186,6 +186,22 @@ def parse_network_spec(spec):
     return specifier_class(spec)
 
 
+def get_name_and_vlan_from_cluster_interface(cluster_interface):
+    """Given a `NodeGroupInterface`, return a name suitable for a `Network`.
+
+    :return: a tuple of the new name and vlan tag. vlan tag may be None
+    """
+    name = cluster_interface.interface
+    nodegroup_name = cluster_interface.nodegroup.name
+    vlan_tag = None
+    if '.' in name:
+        _, vlan_tag = name.split('.', 1)
+        name = name.replace('.', '-')
+    name = name.replace(':', '-')
+    network_name = "-".join((nodegroup_name, name))
+    return network_name, vlan_tag
+
+
 class NetworkManager(Manager):
     """Manager for :class:`Network` model class.
 
