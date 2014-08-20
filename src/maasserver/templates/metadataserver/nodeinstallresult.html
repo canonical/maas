@@ -1,0 +1,35 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Installing result for node {{ object.node.hostname }}, script {{ object.name }}{% endblock %}
+{% block page-title %}Installing result for node: {{ object.node.hostname }}{% endblock %}
+
+{% block content %}
+  <ul class="data-list">
+    <li class="block size7 first" id="name">
+      <h4>Output file</h4>
+      <span>{{ object.name }}</span>
+    </li>
+    <li class="block size8" id="node">
+      <h4>Node</h4>
+      <span>
+        <a href="{% url 'node-view' object.node.system_id %}">
+          {{ object.node.hostname }}
+        </a>
+      </span>
+    </li>
+    <li class="block size7 first" id="time">
+      <h4>Result registered at</h4>
+      <span>{{ object.created }}</span>
+    </li>
+    <li class="block first separate" id="output">
+      {% if object.data %}
+      <h2>Output</h2>
+<pre>
+{{ object.get_data_as_html }}
+</pre>
+      {% endif %}
+    </li>
+  </ul>
+
+{% endblock %}

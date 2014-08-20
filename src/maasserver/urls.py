@@ -48,9 +48,10 @@ from maasserver.views.networks import (
     NetworkListView,
     NetworkView,
     )
-from maasserver.views.nodecommissionresult import (
+from maasserver.views.noderesult import (
     NodeCommissionResultListView,
     NodeCommissionResultView,
+    NodeInstallResultView,
     )
 from maasserver.views.nodes import (
     enlist_preseed_view,
@@ -137,6 +138,14 @@ urlpatterns += patterns(
     url(
         r'^account/prefs/sslkey/delete/(?P<keyid>\d*)/$',
         SSLKeyDeleteView.as_view(), name='prefs-delete-sslkey'),
+    url(
+        r'^commissioning-results/(?P<id>[0-9]+)/$',
+        NodeCommissionResultView.as_view(),
+        name='nodecommissionresult-view'),
+    url(
+        r'^installation-results/(?P<id>[0-9]+)/$',
+        NodeInstallResultView.as_view(),
+        name='nodeinstallresult-view'),
     )
 # Logout view.
 urlpatterns += patterns(
@@ -248,10 +257,6 @@ urlpatterns += patterns(
         r'^commissioning-results/$',
         NodeCommissionResultListView.as_view(),
         name='nodecommissionresult-list'),
-    adminurl(
-        r'^commissioning-results/(?P<id>[0-9]+)/$',
-        NodeCommissionResultView.as_view(),
-        name='nodecommissionresult-view'),
 )
 
 # Tag views.

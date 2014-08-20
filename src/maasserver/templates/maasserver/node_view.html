@@ -211,16 +211,34 @@
         <span>{{ node.routers|join:", " }}</span>
       </li>
     {% endif %}
-    {% if user.is_superuser and nodecommissionresults > 0 %}
-      <li class="block first size5 separate" id="nodecommissionresults">
-        <h4>Commissioning output</h4>
-        <span>
-          <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
-            {{ nodecommissionresults }}
-            output file{{ nodecommissionresults|pluralize }}
-          </a>
-        </span>
-      </li>
+    {% if can_edit %}
+      {% if nodeinstallresults != None %}
+        <li class="block first size5 separate" id="nodeinstallresults">
+          <h4>Installation output</h4>
+  	<ul>
+  	{% for install_result in nodeinstallresults %}
+  	  <li>
+              <span>
+                <a href="{% url 'nodeinstallresult-view' install_result.id %}">
+  		{{ install_result.name }}
+                </a>
+              </span>
+  	  </li>
+  	{% endfor %}
+  	</ul>
+        </li>
+      {% endif %}
+      {% if nodecommissionresults > 0 %}
+        <li class="block first size5 separate" id="nodecommissionresults">
+          <h4>Commissioning output</h4>
+          <span>
+            <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
+              {{ nodecommissionresults }}
+              output file{{ nodecommissionresults|pluralize }}
+            </a>
+          </span>
+        </li>
+      {% endif %}
     {% endif %}
     <li class="block first separate">
       <h2>Latest node events</h2>

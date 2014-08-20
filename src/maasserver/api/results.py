@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'CommissioningResultsHandler',
+    'NodeResultsHandler',
     ]
 
 from maasserver.api.support import (
@@ -29,7 +29,7 @@ from maasserver.models import Node
 from metadataserver.models import NodeResult
 
 
-class CommissioningResultsHandler(OperationsHandler):
+class NodeResultsHandler(OperationsHandler):
     """Read the collection of NodeResult in the MAAS."""
     api_doc_section_name = "Commissioning results"
     create = read = update = delete = None
@@ -69,4 +69,4 @@ class CommissioningResultsHandler(OperationsHandler):
 
     @classmethod
     def resource_uri(cls, result=None):
-        return ('commissioning_results_handler', [])
+        return ('node_results_handler', [])

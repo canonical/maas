@@ -76,6 +76,7 @@ from maasserver.views.nodes import (
     NodeView,
     )
 from maastesting.djangotestcase import count_queries
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.models.commissioningscript import (
     LIST_MODALIASES_OUTPUT_NAME,
     LLDP_OUTPUT_NAME,
@@ -1264,10 +1265,12 @@ class ConstructThirdPartyDriversNoticeTest(MAASServerTestCase):
             nodes_views.construct_third_party_drivers_notice(True).strip())
 
 
-class NodeCommissionResultsDisplayTest(MAASServerTestCase):
-    """Tests for the link to node commissioning results on the Node page."""
+class NodeResultsDisplayTest(MAASServerTestCase):
+    """Tests for the link to node commissioning/installing
+    results on the Node page.
+    """
 
-    def request_results_display(self, node):
+    def request_results_display(self, node, result_type):
         """Request the page for `node`, and extract the results display.
 
         Fails if generating, loading or parsing the page failed; or if
@@ -1281,7 +1284,10 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
         response = self.client.get(node_link)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         doc = fromstring(response.content)
-        results_display = doc.cssselect('#nodecommissionresults')
+        if result_type == RESULT_TYPE.COMMISSIONING:
+            results_display = doc.cssselect('#nodecommissionresults')
+        elif result_type == RESULT_TYPE.INSTALLING:
+            results_display = doc.cssselect('#nodeinstallresults')
         if len(results_display) == 0:
             return None
         elif len(results_display) == 1:
@@ -1313,7 +1319,8 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
     def test_view_node_links_to_commissioning_results_if_appropriate(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result()
-        section = self.request_results_display(result.node)
+        section = self.request_results_display(
+            result.node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
         results_list = reverse('nodecommissionresult-list')
         self.assertEqual(
@@ -1323,17 +1330,39 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
     def test_view_node_shows_commissioning_results_only_if_present(self):
         self.client_log_in(as_admin=True)
         node = factory.make_node()
-        self.assertIsNone(self.request_results_display(node))
+        self.assertIsNone(
+            self.request_results_display(node, RESULT_TYPE.COMMISSIONING))
 
-    def test_view_node_shows_commissioning_results_only_to_superuser(self):
-        self.client_log_in(as_admin=False)
-        result = factory.make_node_commission_result()
-        self.assertIsNone(self.request_results_display(result.node))
+    def test_view_node_shows_commissioning_results_with_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node(owner=user)
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_commission_result(node=node)
+        section = self.request_results_display(
+            result.node, RESULT_TYPE.COMMISSIONING)
+        link = self.get_results_link(section)
+        self.assertEqual(
+            "1 output file",
+            self.normalise_whitespace(link.text_content()))
+
+    def test_view_node_shows_commissioning_results_requires_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node()
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_commission_result(node=node)
+        self.assertIsNone(
+            self.request_results_display(
+                result.node, RESULT_TYPE.COMMISSIONING))
 
     def test_view_node_shows_single_commissioning_result(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result()
-        section = self.request_results_display(result.node)
+        section = self.request_results_display(
+            result.node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
         self.assertEqual(
             "1 output file",
@@ -1345,11 +1374,42 @@ class NodeCommissionResultsDisplayTest(MAASServerTestCase):
         num_results = randint(2, 5)
         for _ in range(num_results):
             factory.make_node_commission_result(node=node)
-        section = self.request_results_display(node)
+        section = self.request_results_display(
+            node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
         self.assertEqual(
             "%d output files" % num_results,
             self.normalise_whitespace(link.text_content()))
+
+    def test_view_node_shows_installing_results_only_if_present(self):
+        self.client_log_in(as_admin=True)
+        node = factory.make_node()
+        self.assertIsNone(
+            self.request_results_display(node, RESULT_TYPE.INSTALLING))
+
+    def test_view_node_shows_installing_results_with_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node(owner=user)
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_install_result(node=node)
+        section = self.request_results_display(
+            result.node, RESULT_TYPE.INSTALLING)
+        link = self.get_results_link(section)
+        self.assertIsNotNone(
+            self.normalise_whitespace(link.text_content()))
+
+    def test_view_node_shows_installing_results_requires_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node()
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_install_result(node=node)
+        self.assertIsNone(
+            self.request_results_display(
+                result.node, RESULT_TYPE.INSTALLING))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):

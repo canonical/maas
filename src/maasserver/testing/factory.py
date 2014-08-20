@@ -445,6 +445,22 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
+    def make_node_install_result(self, node=None, name=None,
+                                 script_result=None, data=None):
+        if node is None:
+            node = self.make_node()
+        if name is None:
+            name = "ncrname-" + self.make_string(92)
+        if data is None:
+            data = b"ncrdata-" + self.make_bytes()
+        if script_result is None:
+            script_result = random.randint(0, 10)
+        ncr = NodeResult(
+            node=node, name=name, script_result=script_result,
+            result_type=RESULT_TYPE.INSTALLING, data=Bin(data))
+        ncr.save()
+        return ncr
+
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.getRandomMACAddress())

@@ -25,7 +25,7 @@ from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maasserver.views.nodecommissionresult import NodeCommissionResultListView
+from maasserver.views.noderesult import NodeCommissionResultListView
 from mock import Mock
 from testtools.matchers import HasLength
 
@@ -33,6 +33,73 @@ from testtools.matchers import HasLength
 def normalise_whitespace(text):
     """Replace any whitespace sequence with just a single space."""
     return ' '.join(text.split())
+
+
+def extract_field(doc, field_name, containing_tag='span'):
+    """Get the content text from one of the <li> fields on the page.
+
+    This works on the basis that each of the fields has an `id` attribute
+    which is unique on the page, and contains exactly one tag of the type
+    given as `containing_tag`, which holds the field value.
+    """
+    field = get_one(doc.cssselect('#' + field_name))
+    value = get_one(field.cssselect(containing_tag))
+    return value.text_content().strip()
+
+
+class TestNodeInstallResultView(MAASServerTestCase):
+
+    def request_page(self, result):
+        """Request and parse the  page for the given `NodeResult`.
+
+        :return: The page's main content as an `lxml.html.HtmlElement`.
+        """
+        link = reverse('nodeinstallresult-view', args=[result.id])
+        response = self.client.get(link)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        doc = html.fromstring(response.content)
+        return get_one(doc.cssselect('#content'))
+
+    def test_installing_forbidden_without_edit_perm(self):
+        self.client_log_in(as_admin=False)
+        result = factory.make_node_install_result()
+        response = self.client.get(
+            reverse('nodeinstallresult-view', args=[result.id]))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_installing_allowed_with_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node(owner=user)
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_install_result(node=node)
+        response = self.client.get(
+            reverse('nodeinstallresult-view', args=[result.id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_installing_escapes_html_in_output(self):
+        self.client_log_in(as_admin=True)
+        # It's actually surprisingly hard to test for this, because lxml
+        # un-escapes on parsing, and is very tolerant of malformed input.
+        # Parsing an un-escaped A<B>C, however, would produce text "AC"
+        # (because the <B> looks like a tag).
+        result = factory.make_node_install_result(data=b'A<B>C')
+        doc = self.request_page(result)
+        self.assertEqual('A<B>C', extract_field(doc, 'output', 'pre'))
+
+    def test_installing_escapes_binary_in_output(self):
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_install_result(data=b'A\xffB')
+        doc = self.request_page(result)
+        self.assertEqual('A\ufffdB', extract_field(doc, 'output', 'pre'))
+
+    def test_installing_hides_output_if_empty(self):
+        self.client_log_in(as_admin=True)
+        result = factory.make_node_install_result(data=b'')
+        doc = self.request_page(result)
+        field = get_one(doc.cssselect('#output'))
+        self.assertEqual('', field.text_content().strip())
 
 
 class TestNodeCommissionResultView(MAASServerTestCase):
@@ -48,40 +115,40 @@ class TestNodeCommissionResultView(MAASServerTestCase):
         doc = html.fromstring(response.content)
         return get_one(doc.cssselect('#content'))
 
-    def extract_field(self, doc, field_name, containing_tag='span'):
-        """Get the content text from one of the <li> fields on the page.
-
-        This works on the basis that each of the fields has an `id` attribute
-        which is unique on the page, and contains exactly one tag of the type
-        given as `containing_tag`, which holds the field value.
-        """
-        field = get_one(doc.cssselect('#' + field_name))
-        value = get_one(field.cssselect(containing_tag))
-        return value.text_content().strip()
-
-    def test_requires_admin(self):
+    def test_commissioning_forbidden_without_edit_perm(self):
         self.client_log_in(as_admin=False)
         result = factory.make_node_commission_result()
         response = self.client.get(
             reverse('nodecommissionresult-view', args=[result.id]))
-        self.assertEqual(reverse('login'), extract_redirect(response))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_displays_result(self):
+    def test_commissioning_allowed_with_edit_perm(self):
+        password = 'test'
+        user = factory.make_user(password=password)
+        node = factory.make_node(owner=user)
+        self.client.login(username=user.username, password=password)
+        self.logged_in_user = user
+        result = factory.make_node_commission_result(node=node)
+        response = self.client.get(
+            reverse('nodecommissionresult-view', args=[result.id]))
+        self.assertEqual(httplib.OK, response.status_code)
+
+    def test_commissioning_displays_result(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result(
             data=factory.make_string().encode('ascii'))
         doc = self.request_page(result)
 
-        self.assertEqual(result.name, self.extract_field(doc, 'name'))
+        self.assertEqual(result.name, extract_field(doc, 'name'))
         self.assertEqual(
             result.node.hostname,
-            self.extract_field(doc, 'node'))
+            extract_field(doc, 'node'))
         self.assertEqual(
             "%d" % result.script_result,
-            self.extract_field(doc, 'script-result'))
-        self.assertEqual(result.data, self.extract_field(doc, 'output', 'pre'))
+            extract_field(doc, 'script-result'))
+        self.assertEqual(result.data, extract_field(doc, 'output', 'pre'))
 
-    def test_escapes_html_in_output(self):
+    def test_commissioning_escapes_html_in_output(self):
         self.client_log_in(as_admin=True)
         # It's actually surprisingly hard to test for this, because lxml
         # un-escapes on parsing, and is very tolerant of malformed input.
@@ -89,15 +156,15 @@ class TestNodeCommissionResultView(MAASServerTestCase):
         # (because the <B> looks like a tag).
         result = factory.make_node_commission_result(data=b'A<B>C')
         doc = self.request_page(result)
-        self.assertEqual('A<B>C', self.extract_field(doc, 'output', 'pre'))
+        self.assertEqual('A<B>C', extract_field(doc, 'output', 'pre'))
 
-    def test_escapes_binary_in_output(self):
+    def test_commissioning_escapes_binary_in_output(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result(data=b'A\xffB')
         doc = self.request_page(result)
-        self.assertEqual('A\ufffdB', self.extract_field(doc, 'output', 'pre'))
+        self.assertEqual('A\ufffdB', extract_field(doc, 'output', 'pre'))
 
-    def test_hides_output_if_empty(self):
+    def test_commissioning_hides_output_if_empty(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result(data=b'')
         doc = self.request_page(result)

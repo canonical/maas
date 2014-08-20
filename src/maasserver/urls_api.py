@@ -32,7 +32,6 @@ from maasserver.api.boot_sources import (
     BootSourceHandler,
     BootSourcesHandler,
     )
-from maasserver.api.commissioning_results import CommissioningResultsHandler
 from maasserver.api.commissioning_scripts import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
@@ -72,6 +71,7 @@ from maasserver.api.nodes import (
     NodesHandler,
     )
 from maasserver.api.pxeconfig import pxeconfig
+from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
     SSHKeyHandler,
     SSHKeysHandler,
@@ -126,8 +126,8 @@ boot_image_handler = RestrictedResource(
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 version_handler = RestrictedResource(VersionHandler)
-commissioning_results_handler = RestrictedResource(
-    CommissioningResultsHandler, authentication=api_auth)
+node_results_handler = RestrictedResource(
+    NodeResultsHandler, authentication=api_auth)
 sshkey_handler = RestrictedResource(SSHKeyHandler, authentication=api_auth)
 sshkeys_handler = RestrictedResource(SSHKeysHandler, authentication=api_auth)
 sslkey_handler = RestrictedResource(SSLKeyHandler, authentication=api_auth)
@@ -216,7 +216,10 @@ urlpatterns += patterns(
     url(r'^tags/$', tags_handler, name='tags_handler'),
     url(
         r'^commissioning-results/$',
-        commissioning_results_handler, name='commissioning_results_handler'),
+        node_results_handler, name='node_results_handler'),
+    url(
+        r'^installation-results/$',
+        node_results_handler, name='node_results_handler'),
     url(r'^users/$', users_handler, name='users_handler'),
     url(r'^users/(?P<username>[^/]+)/$', user_handler, name='user_handler'),
     url(r'^zones/(?P<name>[^/]+)/$', zone_handler, name='zone_handler'),

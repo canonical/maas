@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Views for node commissioning results."""
+"""Views for node commissioning/installing results."""
 
 from __future__ import (
     absolute_import,
@@ -16,6 +16,7 @@ __all__ = [
     'NodeCommissionResultListView',
     ]
 
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView
 from maasserver.models import Node
@@ -25,7 +26,7 @@ from metadataserver.models import NodeResult
 
 class NodeCommissionResultListView(PaginatedListView):
 
-    template_name = 'maasserver/nodecommissionresult-list.html'
+    template_name = 'metadataserver/nodecommissionresult_list.html'
     context_object_name = 'results_list'
 
     def get_filter_system_ids(self):
@@ -52,8 +53,25 @@ class NodeCommissionResultListView(PaginatedListView):
 
 class NodeCommissionResultView(DetailView):
 
-    template_name = 'metadataserver/noderesult.html'
+    template_name = 'metadataserver/nodecommissionresult.html'
 
     def get_object(self):
         result_id = self.kwargs.get('id')
-        return get_object_or_404(NodeResult, id=result_id)
+        result = get_object_or_404(NodeResult, id=result_id)
+        if not self.request.user.is_superuser and \
+           self.request.user != result.node.owner:
+            raise PermissionDenied
+        return result
+
+
+class NodeInstallResultView(DetailView):
+
+    template_name = 'metadataserver/nodeinstallresult.html'
+
+    def get_object(self):
+        result_id = self.kwargs.get('id')
+        result = get_object_or_404(NodeResult, id=result_id)
+        if not self.request.user.is_superuser and \
+           self.request.user != result.node.owner:
+            raise PermissionDenied
+        return result

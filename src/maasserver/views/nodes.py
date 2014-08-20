@@ -91,6 +91,7 @@ from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
     )
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import (
     EUI,
@@ -554,13 +555,19 @@ class NodeView(NodeViewMixin, UpdateView):
         # the call to get_single_probed_details() because here the
         # details will be guaranteed well-formed.
         if len(probed_details.xpath('/*/*')) == 0:
-            context["probed_details"] = None
+            context['probed_details'] = None
         else:
-            context["probed_details"] = etree.tostring(
+            context['probed_details'] = etree.tostring(
                 probed_details, encoding=unicode, pretty_print=True)
 
-        results = NodeResult.objects.filter(node=node).count()
-        context['nodecommissionresults'] = results
+        commissioning_results = NodeResult.objects.filter(
+            node=node, result_type=RESULT_TYPE.COMMISSIONING).count()
+        context['nodecommissionresults'] = commissioning_results
+
+        installation_results = NodeResult.objects.filter(
+            node=node, result_type=RESULT_TYPE.INSTALLING)
+        if len(installation_results) > 0:
+            context['nodeinstallresults'] = installation_results
 
         context['third_party_drivers_enabled'] = Config.objects.get_config(
             'enable_third_party_drivers')
