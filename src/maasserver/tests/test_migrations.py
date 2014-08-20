@@ -27,6 +27,8 @@ EXISTING_DUPES = [
     (2, '0002_macaddress_unique'),
     (39, '0039_add_filestorage_content'),
     (39, '0039_add_nodegroup_to_bootimage'),
+    (88, '0088_ip_to_custom_field'),
+    (88, '0088_z_backport_trunk_0099'),
     ]
 
 
