@@ -2,6 +2,18 @@
 Changelog
 =========
 
+1.6.1
+=====
+
+Bug fix update
+--------------
+
+- Auto-link node MACs to Networks (LP: #1341619)
+  MAAS will now auto-create a Network from a cluster interface, and
+  if an active lease exists for a node's MAC then it will be linked to
+  that Network.
+
+
 1.6.0
 =====
 
