@@ -140,6 +140,7 @@ from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.utils.network import make_network
 
 
@@ -289,6 +290,16 @@ class NodeForm(ModelForm):
                 required=False, empty_label="Default (master)")
         self.set_up_architecture_field()
         self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
+
+        if not REVEAL_IPv6:
+            # Hide the disable_ipv4 field until support works properly.  The
+            # API will still support the field, but it won't be visible.
+            # This hidden field absolutely needs an empty label, because its
+            # input widget may be hidden but its label is not!
+            #
+            # To enable the field, just remove this clause.
+            self.fields['disable_ipv4'] = forms.BooleanField(
+                label="", required=False, widget=forms.HiddenInput())
 
     def set_up_architecture_field(self):
         """Create the `architecture` field.
