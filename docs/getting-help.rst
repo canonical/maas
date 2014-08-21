@@ -45,5 +45,5 @@ Alternatively, if your MAAS server is running a previous Ubuntu release, you'll 
 
 This will create a tarball containing MAAS' log files, MAAS' configuration files and a dump of MAAS' database.  By default, the tarball will end up in /tmp but you can change the location, see sosreport's manpage for details.  If there are things you do not wish to share publicly, feel free to edit the tarball.
 
-Now, the last step is to make this file available by any means at your disposal (openly accessible FTP server, Ubuntu One, Dropbox, etc.) in order for the people who will help you to be able to get their hands on it.
+Now, the last step is to make this file available by any means at your disposal (openly accessible FTP server, Dropbox, etc.) in order for the people who will help you to be able to get their hands on it.
 
