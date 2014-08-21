@@ -1,4 +1,5 @@
 apache2
+authbind
 bind9
 bind9utils
 daemontools
