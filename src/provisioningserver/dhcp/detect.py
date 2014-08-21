@@ -359,7 +359,7 @@ def periodic_probe_task():
         try:
             servers = probe_interface(interface, ip)
         except socket.error:
-            maaslog.exception(
+            maaslog.error(
                 "Failed to probe sockets; did you configure authbind as per "
                 "HACKING.txt?")
             return

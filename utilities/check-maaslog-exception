@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+# Check for use of "maaslog.exception" in the source tree.  Code should use
+# "maaslog.error" instead.
+#
+# Usage: check-maaslog-exception [branch]
+#
+# Where branch is an optional branch; defaults to the current directory.
+
+# Exit immediately if a command exits with a non-zero status.
+set -o errexit
+# Treat unset variables as an error when substituting.
+set -o nounset
+
+
+# Look for use of maaslog.exception in the source tree.  Not tests, since
+# they may also look for this mistake.
+find_incorrect_usage() {
+    # Find all Python files in src, except tests,
+    # which have "maaslog.exception(" on a line that isn't a comment.
+    find $1/src -name \*.py ! -path '*/tests/*' -print0 |
+        xargs -r0 grep -n '^[^#]*\<maaslog\.exception('
+}
+
+
+main() {
+    local branch="${1:-.}"
+    local bad_calls="$(find_incorrect_usage "$branch")"
+    if test -n "${bad_calls}"
+    then
+        cat >&2 <<EOF
+Code appears to call maaslog.exception:
+
+${bad_calls}
+
+Use maaslog.error instead.
+EOF
+        exit 1
+    fi
+}
+
+
+main
