@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from cStringIO import StringIO
 from random import randint
 
 from maasserver.models.largefile import LargeFile
@@ -32,6 +33,22 @@ class TestLargeFileManager(MAASServerTestCase):
         largefile = factory.make_large_file()
         obj = LargeFile.objects.get_file(largefile.sha256)
         self.assertEqual(largefile, obj)
+
+    def test_get_or_create_file_from_content_returns_same_largefile(self):
+        largefile = factory.make_large_file()
+        stream = largefile.content.open('rb')
+        self.addCleanup(stream.close)
+        self.assertEqual(
+            largefile,
+            LargeFile.objects.get_or_create_file_from_content(stream))
+
+    def test_get_or_create_file_from_content_returns_new_largefile(self):
+        content = factory.make_string(1024)
+        largefile = LargeFile.objects.get_or_create_file_from_content(
+            StringIO(content))
+        with largefile.content.open('rb') as stream:
+            written_content = stream.read()
+        self.assertEqual(content, written_content)
 
 
 class TestLargeFile(MAASServerTestCase):

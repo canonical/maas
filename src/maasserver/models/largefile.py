@@ -16,6 +16,7 @@ __all__ = [
     'LargeFile',
     ]
 
+import hashlib
 import os
 
 from django.db.models import (
@@ -26,7 +27,10 @@ from django.db.models import (
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 from maasserver import DefaultMeta
-from maasserver.fields import LargeObjectField
+from maasserver.fields import (
+    LargeObjectField,
+    LargeObjectFile,
+    )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import get_one
@@ -42,6 +46,34 @@ class FileStorageManager(Manager):
     def get_file(self, sha256):
         """Return file based on SHA256 value."""
         return get_one(self.filter(sha256=sha256))
+
+    def get_or_create_file_from_content(self, content):
+        """Return file based on the content.
+
+        Reads the data from content calculating the sha256. If largefile with
+        that sha256 already exists then it is returned instead of a new one
+        being created.
+
+        :param content: File-like object.
+        :returns: `LargeFile`.
+        """
+        sha256 = hashlib.sha256()
+        for data in content:
+            sha256.update(data)
+        hexdigest = sha256.hexdigest()
+        largefile = self.get_file(hexdigest)
+        if largefile is not None:
+            return largefile
+
+        length = 0
+        content.seek(0)
+        objfile = LargeObjectFile()
+        with objfile.open('wb') as objstream:
+            for data in content:
+                objstream.write(data)
+                length += len(data)
+        return self.create(
+            sha256=hexdigest, total_size=length, content=objfile)
 
 
 class LargeFile(CleanSave, TimestampedModel):

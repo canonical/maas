@@ -77,6 +77,9 @@ from maasserver.clusterrpc.power_parameters import (
     )
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
+    BOOT_RESOURCE_FILE_TYPE,
+    BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD,
+    BOOT_RESOURCE_TYPE,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
@@ -97,10 +100,14 @@ from maasserver.forms_settings import (
     )
 from maasserver.models import (
     BootImage,
+    BootResource,
+    BootResourceFile,
+    BootResourceSet,
     BootSource,
     BootSourceSelection,
     Config,
     DownloadProgress,
+    LargeFile,
     LicenseKey,
     MACAddress,
     Network,
@@ -118,6 +125,7 @@ from maasserver.models.node import (
     nodegroup_fqdn,
     )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
+from maasserver.models.timestampedmodel import now
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
@@ -2164,3 +2172,95 @@ class LicenseKeyForm(ModelForm):
                 "Failed to retrieve %s from os registry." % cleaned_osystem)
         elif not os_obj.validate_license_key(cleaned_series, cleaned_key):
             raise ValidationError("Invalid license key.")
+
+
+class BootResourceForm(ModelForm):
+    """Form for uploading boot resources."""
+
+    class Meta:
+        model = BootResource
+        fields = (
+            'name',
+            'title',
+            'architecture',
+            'filetype',
+            'content',
+            )
+
+    title = forms.CharField(label="Title", required=False)
+
+    filetype = forms.ChoiceField(
+        label="Filetype",
+        choices=BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD,
+        required=True, initial=BOOT_RESOURCE_FILE_TYPE.TGZ)
+
+    content = forms.FileField(
+        label="File", allow_empty_file=False)
+
+    def __init__(self, *args, **kwargs):
+        super(BootResourceForm, self).__init__(*args, **kwargs)
+        self.set_up_architecture_field()
+
+    def set_up_architecture_field(self):
+        """Create the `architecture` field.
+
+        This needs to be done on the fly so that we can pass a dynamic list of
+        usable architectures.
+        """
+        architectures = list_all_usable_architectures()
+        default_arch = pick_default_architecture(architectures)
+        if len(architectures) == 0:
+            choices = [BLANK_CHOICE]
+        else:
+            choices = list_architecture_choices(architectures)
+        invalid_arch_message = compose_invalid_choice_text(
+            'architecture', choices)
+        self.fields['architecture'] = forms.ChoiceField(
+            choices=choices, required=True, initial=default_arch,
+            error_messages={'invalid_choice': invalid_arch_message})
+
+    def get_existing_resource(self, resource):
+        """Return existing resource if avaliable.
+
+        If the passed resource already has a match in the database then that
+        resource is returned. If not then the passed resource is returned.
+        """
+        existing_resource = get_one(
+            BootResource.objects.filter(
+                rtype=resource.rtype,
+                name=resource.name, architecture=resource.architecture))
+        if existing_resource is not None:
+            return existing_resource
+        return resource
+
+    def create_resource_set(self, resource, label):
+        """Creates a new `BootResourceSet` on the given resource."""
+        version_name = now().strftime('%Y%m%d%H%M%S')
+        return BootResourceSet.objects.create(
+            resource=resource, version=version_name, label=label)
+
+    def create_resource_file(self, resource_set, filetype, content):
+        """Creates a new `BootResourceFile` on the given resource set."""
+        filetype = self.cleaned_data['filetype']
+        content = self.cleaned_data['content']
+        largefile = LargeFile.objects.get_or_create_file_from_content(content)
+        return BootResourceFile.objects.create(
+            resource_set=resource_set, largefile=largefile,
+            filename=filetype, filetype=filetype)
+
+    def save(self):
+        """Persist the boot resource into the database.
+
+        This implementation of `save` does not support the `commit` argument.
+        """
+        resource = super(BootResourceForm, self).save(commit=False)
+        resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
+        resource = self.get_existing_resource(resource)
+        if 'title' in self.cleaned_data:
+            resource.extra = {'title': self.cleaned_data['title']}
+        resource.save()
+        resource_set = self.create_resource_set(resource, 'uploaded')
+        self.create_resource_file(
+            resource_set, self.cleaned_data['filetype'],
+            self.cleaned_data['content'])
+        return resource
