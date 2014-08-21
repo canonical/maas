@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.utils import IntegrityError
 from netaddr import IPNetwork
 from south.db import db
 # -*- coding: utf-8 -*-
@@ -44,7 +46,7 @@ class Migration(SchemaMigration):
                 )
             try:
                 network.save()
-            except ValidationError as e:
+            except (ValidationError, IntegrityError):
                 # It probably already exists, keep calm and carry on.
                 continue
 
