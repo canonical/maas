@@ -118,7 +118,7 @@ nodes.  The URL for these calls is ``/2013-03-01/``, and the operation name is
 passed as a multipart form item called "op".  Other parameters are passed in
 the same way.
 
-The ``signal`` call notifies the region controler of the state of a
+The ``signal`` call notifies the region controller of the state of a
 commissioning node.  The node sends running updates, as well as output produced
 by the commissioning scripts, and finally completion information through this
 call.

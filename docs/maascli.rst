@@ -290,7 +290,7 @@ acquire | list | accept | accept-all | new | check-commissioning
    provided. Other parameters may also be supplied::
 
      architecture="<value>" - The architecture of the node, must be
-     one of the recognised architecture strings (e.g. "i386/generic")
+     one of the recognized architecture strings (e.g. "i386/generic")
      hostname="<value>" - a name for this node. If not supplied a name
      will be generated.
      mac_addresses="<value>" - The mac address(es)
@@ -475,7 +475,7 @@ Usage: maas *<profile>* node-group-interfaces [-d --debug] [-h
 :samp:`new <label> ip=<value> interface=<if_device> [parameters...]`
 
    Creates a new interface group. The required parameters are the IP
-   address and the network interface this appies to (e.g. eth0). In
+   address and the network interface this applies to (e.g. eth0). In
    order to do anything useful, further parameters are required::
 
       management= 0 | 1 | 2

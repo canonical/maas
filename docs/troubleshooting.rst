@@ -35,7 +35,7 @@ booting the received image. This is sometimes the case when no open source
 drivers are available for the network hardware.
 
 **SOLUTION:** The best fix for this problem is to install a Linux-friendly
-network adaptor. It *is* theoretically possible to modify the boot image to
+network adapter. It *is* theoretically possible to modify the boot image to
 include proprietary drivers, but it is not a straightforward task.
 
 

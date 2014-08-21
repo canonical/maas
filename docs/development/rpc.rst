@@ -55,7 +55,7 @@ functions. However:
   names used in the command's ``arguments`` declaration.
 
 * They *must* return a dict that matches the command's ``response``
-  declararation.
+  declaration.
 
 * If the ``response`` declaration is empty they *must* still return an
   empty dict.

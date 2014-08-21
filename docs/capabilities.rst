@@ -26,6 +26,6 @@ the version when creating a client application.
 .. _cap-networks-management:
 
 ``networks-management``
-  Passive modelling of the network environment that cluster controllers
+  Passive modeling of the network environment that cluster controllers
   nodes are in, including network interfaces, subnets, VLAN tags, and
   connectivity between them. See :ref:`networks` for more information.

@@ -205,7 +205,7 @@ For full details see https://launchpad.net/maas/+milestone/14.04
 
 #1237197    No scheduled job for images download
 
-#1238284    mutiple ip address displayed for a node
+#1238284    multiple ip address displayed for a node
 
 #1243917    'maas createsuperuser' errors out if no email address is entered.
 
@@ -233,7 +233,7 @@ For full details see https://launchpad.net/maas/+milestone/14.04
 
 #1274465    Network identity shows broadcast address instead of the network's address
 
-#1274499    dhcp lease rollover causes loss of access to managment IP
+#1274499    dhcp lease rollover causes loss of access to management IP
 
 #1275643    When both IPMI 1.5 and 2.0 are available, MAAS should use 2.0
 
@@ -292,7 +292,7 @@ New faster installer for nodes.
 
 More extensible templates for DHCP, power control, PXE and DNS.
   Templates supplied for these activities are now all in their own template
-  file that is customisable by the user.  The files now generally live under
+  file that is customizable by the user.  The files now generally live under
   /etc/maas/ rather than embedded in the code tree itself.
 
 Minor feature changes
@@ -302,7 +302,7 @@ Reworked ephemeral downloading
   While there is no end-user visible change, the ephemeral image download
   process is now driven by a data stream published by Canonical at
   http://maas.ubuntu.com/images/streams. In the future this will allow end
-  users to use their own customised images by creating their own stream.
+  users to use their own customized images by creating their own stream.
   The configuration for this is now also part of ``pserv.yaml``, obsoleting
   the maas_import_ephemerals configuration file.  The config will be auto-
   migrated on the first run of the ``maas-import-ephemerals`` script.

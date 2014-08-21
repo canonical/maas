@@ -25,7 +25,7 @@ MAAS server and shut down.
 During this process, the MAAS server will be passed information about
 the node, including the architecture, MAC address and other details
 which will be stored in the database of nodes. You can accept and
-comission the nodes via the web interface.  When the nodes have been
+commission the nodes via the web interface.  When the nodes have been
 accepted the selected series of Ubuntu will be installed.
 
 To save time, you can also accept and commission all nodes from the

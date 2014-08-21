@@ -17,7 +17,7 @@ What are hardware-enablement kernels?
 -------------------------------------
 
 Brand new hardware gets released all the time. We want that hardware to
-work well wih Ubuntu and MAAS, even if it was released after the latest
+work well with Ubuntu and MAAS, even if it was released after the latest
 release of MAAS or Ubuntu. Hardware Enablement (HWE) is all about keeping
 pace with the new hardware.
 

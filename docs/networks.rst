@@ -85,7 +85,7 @@ still come out as ``10.122.1.0``.
 
 MAAS also supports virtual networks, or VLANs.  Multiple VLANs can share the
 same underlying physical network.  A "tag" on each network packet tells the
-infrastructure on which of the VLANs the packet is travelling.  Each VLAN is
+infrastructure on which of the VLANs the packet is traveling.  Each VLAN is
 effectively a separate network.
 
 The VLAN tag is a number between 1 and 4094 inclusive, as dictated by the
