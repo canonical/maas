@@ -14,9 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-
+from itertools import izip
+import logging
 import random
 
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -33,6 +35,7 @@ import provisioningserver
 from provisioningserver.events import EVENT_TYPES
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import (
+    exceptions,
     power,
     region,
     )
@@ -41,7 +44,12 @@ from testtools.deferredruntest import (
     assert_fails_with,
     AsynchronousDeferredRunTest,
     )
-from twisted.internet.defer import maybeDeferred
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    fail,
+    inlineCallbacks,
+    maybeDeferred,
+    )
 from twisted.internet.task import Clock
 
 
@@ -588,24 +596,28 @@ class TestPowerQuery(MAASTestCase):
             clock.advance(waiting_time)
         return d
 
-    def make_nodes(self):
-        nodes = []
-        for node in nodes:
-            system_id = factory.make_name('system_id')
-            hostname = factory.make_name('hostname')
-            power_type = random.choice(power.QUERY_POWER_TYPES)
-            state = random.choice(['on', 'off', 'unknown', 'error'])
-            context = {
-                factory.make_name(
-                    'context-key'): factory.make_name('context-val')
-            }
-            nodes.append({
-                'system_id': system_id,
-                'hostname': hostname,
-                'power_type': power_type,
-                'context': context,
-                'state': state,
-                })
+    def make_node(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        state = random.choice(['on', 'off', 'unknown', 'error'])
+        context = {
+            factory.make_name('context-key'): (
+                factory.make_name('context-val'))
+        }
+        return {
+            'system_id': system_id,
+            'hostname': hostname,
+            'power_type': power_type,
+            'context': context,
+            'state': state,
+        }
+
+    def make_nodes(self, count=3):
+        nodes = [self.make_node() for _ in xrange(count)]
+        # Sanity check that these nodes are something that can emerge
+        # from a call to ListNodePowerParameters.
+        region.ListNodePowerParameters.makeResponse({"nodes": nodes}, None)
         return nodes
 
     def pick_alternate_state(self, state):
@@ -613,34 +625,69 @@ class TestPowerQuery(MAASTestCase):
             value for value in ['on', 'off', 'unknown', 'error']
             if value != state])
 
+    @inlineCallbacks
     def test_query_all_nodes_calls_get_power_state(self):
         nodes = self.make_nodes()
-        states = [node['state'] for node in nodes]
-        get_state = self.patch(power, 'get_power_state')
-        get_state.side_effect = states
+        # Report back that all nodes' power states are as recorded.
+        power_states = [node['state'] for node in nodes]
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = power_states
 
-        calls = []
-        for node in nodes:
-            calls.append(
-                call(
-                    node['system_id'], node['hostname'],
-                    node['power_type'], node['context']))
+        yield power.query_all_nodes(nodes)
 
-        self.assertThat(get_state, MockCallsMatch(*calls))
+        self.assertThat(get_power_state, MockCallsMatch(*(
+            call(
+                node['system_id'], node['hostname'],
+                node['power_type'], node['context'],
+                clock=reactor)
+            for node in nodes
+        )))
 
+    @inlineCallbacks
     def test_query_all_nodes_calls_power_state_update(self):
         nodes = self.make_nodes()
-        states = [self.pick_alternate_state(node['state']) for node in nodes]
-        get_state = self.patch(power, 'get_power_state')
-        get_state.side_effect = states
-        update_state = self.patch(power, 'power_state_update')
+        # Report back that all nodes' power states have changed from recorded.
+        power_states = [
+            self.pick_alternate_state(node['state'])
+            for node in nodes
+        ]
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = power_states
+        # Capture calls to power_state_update.
+        power_state_update = self.patch(power, 'power_state_update')
 
-        calls = []
-        for i in range(len(nodes)):
-            node = nodes[i]
-            new_state = states[i]
-            calls.append(
-                call(
-                    node['system_id'], new_state))
+        yield power.query_all_nodes(nodes)
 
-        self.assertThat(update_state, MockCallsMatch(*calls))
+        self.assertThat(power_state_update, MockCallsMatch(*(
+            call(node['system_id'], state)
+            for node, state in izip(nodes, power_states)
+        )))
+
+    @inlineCallbacks
+    def test_query_all_nodes_suppresses_NoSuchNode_when_rpting_status(self):
+        nodes = self.make_nodes(1)
+        # Report back that all nodes' power states have changed from recorded.
+        power_states = [
+            self.pick_alternate_state(node['state'])
+            for node in nodes
+        ]
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = power_states
+        # Capture calls to power_state_update, and return with errors.
+        power_state_update = self.patch(power, 'power_state_update')
+        power_state_update.side_effect = lambda system_id, state: fail(
+            exceptions.NoSuchNode().from_system_id(system_id))
+
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query_all_nodes(nodes)
+
+        self.assertThat(power_state_update, MockCallsMatch(*(
+            call(node['system_id'], state)
+            for node, state in izip(nodes, power_states)
+        )))
+        self.assertDocTestMatches(
+            """\
+            hostname-...: Power state has changed from ... to ...
+            hostname-...: Could not update power status; no such node.
+            """,
+            maaslog.output)

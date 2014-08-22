@@ -27,7 +27,10 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     )
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NoSuchNode,
+    )
 from provisioningserver.rpc.region import (
     ListNodePowerParameters,
     MarkNodeBroken,
@@ -239,15 +242,20 @@ def query_all_nodes(nodes, clock=reactor):
     for node in nodes:
         system_id = node['system_id']
         hostname = node['hostname']
-        state = yield get_power_state(
-            system_id, hostname,
-            node['power_type'], node['context'], clock=clock)
-        if state != node['state']:
+        power_state_recorded = node['state']
+        power_state_observed = yield get_power_state(
+            system_id, hostname, node['power_type'], node['context'],
+            clock=clock)
+        if power_state_observed != power_state_recorded:
             maaslog.info(
-                "Observed power state change for node: %s (%s) changed from "
-                "%s -> %s",
-                hostname, system_id, node['state'], state)
-            power_state_update(system_id, state)
+                "%s: Power state has changed from %s to %s.", hostname,
+                power_state_recorded, power_state_observed)
+            try:
+                yield power_state_update(system_id, power_state_observed)
+            except NoSuchNode:
+                maaslog.debug(
+                    "%s: Could not update power status; "
+                    "no such node.", hostname)
 
 
 class NodePowerMonitorService(TimerService, object):
