@@ -233,6 +233,9 @@ BOOT_RESOURCE_TYPE_CHOICES = (
     )
 
 
+BOOT_RESOURCE_TYPE_CHOICES_DICT = OrderedDict(BOOT_RESOURCE_TYPE_CHOICES)
+
+
 class BOOT_RESOURCE_FILE_TYPE:
     """The vocabulary of possible file types for `BootResource`."""
     #: Tarball of root image.

@@ -24,6 +24,10 @@ from maasserver.api.boot_images import (
     BootImageHandler,
     BootImagesHandler,
     )
+from maasserver.api.boot_resources import (
+    BootResourceHandler,
+    BootResourcesHandler,
+    )
 from maasserver.api.boot_source_selections import (
     BootSourceSelectionHandler,
     BootSourceSelectionsHandler,
@@ -100,6 +104,10 @@ from maasserver.api.zones import (
 
 
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)
+boot_resource_handler = RestrictedResource(
+    BootResourceHandler, authentication=api_auth)
+boot_resources_handler = RestrictedResource(
+    BootResourcesHandler, authentication=api_auth)
 files_handler = RestrictedResource(FilesHandler, authentication=api_auth)
 file_handler = RestrictedResource(FileHandler, authentication=api_auth)
 ipaddresses_handler = RestrictedResource(
@@ -225,6 +233,12 @@ urlpatterns += patterns(
     url(r'^zones/(?P<name>[^/]+)/$', zone_handler, name='zone_handler'),
     url(r'^zones/$', zones_handler, name='zones_handler'),
     url(r'^ipaddresses/$', ipaddresses_handler, name='ipaddresses_handler'),
+    url(
+        r'^boot-resources/$',
+        boot_resources_handler, name='boot_resources_handler'),
+    url(
+        r'^boot-resources/(?P<id>[^/]+)/$',
+        boot_resource_handler, name='boot_resource_handler'),
 )
 
 
