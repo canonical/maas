@@ -26,13 +26,13 @@ from provisioningserver.utils.twisted import (
 
 
 @asynchronous(timeout=FOREVER)  # getClientFor handles times-out itself.
-def getClientFor(uuid, timeout=30):
+def getClientFor(uuid, timeout=0):
     """getClientFor(uuid)
 
     Get a client with which to make RPCs to the specified cluster.
 
     :param timeout: The number of seconds to wait before giving up
-        getting a connection.
+        getting a connection. By default, `timeout` is 0.
     :raises: :py:class:`~.exceptions.NoConnectionsAvailable` when there
         are no open connections to the specified cluster controller.
     """
