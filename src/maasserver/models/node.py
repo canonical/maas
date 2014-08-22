@@ -31,6 +31,7 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
+from django.db import transaction
 from django.db.models import (
     BooleanField,
     CharField,
@@ -90,6 +91,7 @@ from provisioningserver.tasks import (
     power_on,
     remove_dhcp_host_map,
     )
+from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.enum import map_enum_reverse
 
 
@@ -673,6 +675,8 @@ class Node(CleanSave, TimestampedModel):
         then none of the MACs will get an IP and StaticIPAddressExhaustion
         is raised.
         """
+        warn_deprecated("Celery is going away.")
+
         try:
             tasks = self._create_tasks_for_static_ips()
         except StaticIPAddressExhaustion:
@@ -692,6 +696,8 @@ class Node(CleanSave, TimestampedModel):
         # "immutable", and this is done with the "si()" call on the
         # task, which produces an immutable Signature.
         # See docs.celeryproject.org/en/latest/userguide/canvas.html
+        warn_deprecated("Celery is going away.")
+
         dhcp_key = self.nodegroup.dhcp_key
         mapping = {sip.ip: mac.mac_address.get_raw()}
         # XXX See bug 1039362 regarding server_address.
@@ -702,6 +708,8 @@ class Node(CleanSave, TimestampedModel):
         return dhcp_task
 
     def _create_tasks_for_static_ips(self):
+        warn_deprecated("Celery is going away.")
+
         tasks = []
         # Get a new AUTO static IP for each MAC on a managed interface.
         macs = self.mac_addresses_on_managed_interfaces()
@@ -975,6 +983,8 @@ class Node(CleanSave, TimestampedModel):
 
         :param for_ips: Delete the maps for these IP addresses only.
         """
+        warn_deprecated("Celery is going away.")
+
         tasks = []
         for ip in for_ips:
             task = remove_dhcp_host_map.si(
@@ -998,6 +1008,8 @@ class Node(CleanSave, TimestampedModel):
 
         Return None if there is nothing to delete.
         """
+        warn_deprecated("Celery is going away.")
+
         nodegroup = self.nodegroup
         if len(nodegroup.get_managed_interfaces()) == 0:
             return None
@@ -1310,3 +1322,34 @@ class Node(CleanSave, TimestampedModel):
         """Update a node's power state """
         self.power_state = power_state
         self.save()
+
+    def claim_static_ip_addresses(self):
+        """Assign static IPs to all managed interfaces.
+
+        In the case where there are multuple interfaces, if there's a problem
+        assigning an address to any of them, none of them will be assigned an
+        address. It's all or nothing.
+
+        :returns: A list of ``(ip-address, mac-address)`` tuples.
+        :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
+        """
+        with transaction.atomic():
+            mappings = []
+            for mac in self.mac_addresses_on_managed_interfaces():
+                try:
+                    static_ips = mac.claim_static_ips()
+                except StaticIPAddressTypeClash:
+                    # There's already a non-AUTO IP.
+                    pass
+                except StaticIPAddressExhaustion:
+                    # XXX 2014-06-17 bigjools bug=1330762
+                    # We /could/ continue and provision those nodes that have
+                    # obtained static addresses, but we choose to abandon the
+                    # attempt to start nodes entirely.
+                    raise
+                else:
+                    for static_ip in static_ips:
+                        mappings.append((static_ip.ip, unicode(mac)))
+            # Return a list instead of yielding mappings as they're ready
+            # because it's all-or-nothing (hence the atomic context).
+            return mappings

@@ -35,6 +35,7 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     NodeStateViolation,
     StaticIPAddressExhaustion,
+    StaticIPAddressTypeClash,
     )
 from maasserver.fields import MAC
 from maasserver.models import (
@@ -75,6 +76,7 @@ from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.tasks import Omshell
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
+    AfterPreprocessing,
     Equals,
     MatchesStructure,
     )
@@ -1810,6 +1812,82 @@ class NodeStaticIPClaimingTest(MAASServerTestCase):
         task_mapping_arg = observed_tasks[0].kwargs["mappings"]
         [observed_mac] = task_mapping_arg.values()
         self.assertEqual(second_mac.mac_address.get_raw(), observed_mac)
+
+
+class TestClaimStaticIPAddresses(MAASTestCase):
+    """Tests for `Node.claim_static_ip_addresses`."""
+
+    def test__returns_empty_list_if_no_iface(self):
+        node = factory.make_node()
+        self.assertEqual([], node.claim_static_ip_addresses())
+
+    def test__returns_empty_list_if_no_iface_on_managed_network(self):
+        node = factory.make_node()
+        factory.make_mac_address(node=node)
+        self.assertEqual([], node.claim_static_ip_addresses())
+
+    def test__returns_mapping_for_iface_on_managed_network(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        static_mappings = node.claim_static_ip_addresses()
+        [static_ip] = node.static_ip_addresses()
+        [mac_address] = node.macaddress_set.all()
+        self.assertEqual(
+            [(static_ip, unicode(mac_address))],
+            static_mappings)
+
+    def test__returns_mappings_for_ifaces_on_managed_network(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac_address2 = factory.make_mac_address(node=node)
+        [managed_interface] = node.nodegroup.get_managed_interfaces()
+        mac_address2.cluster_interface = managed_interface
+        mac_address2.save()
+        static_mappings = node.claim_static_ip_addresses()
+        self.assertItemsEqual(
+            [(mac_address.ip_addresses.first().ip, unicode(mac_address))
+             for mac_address in node.macaddress_set.all()],
+            static_mappings)
+
+    def test__ignores_mac_addresses_with_non_auto_addresses(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac_address1 = node.macaddress_set.first()
+        mac_address2 = factory.make_mac_address(node=node)
+        [managed_interface] = node.nodegroup.get_managed_interfaces()
+        mac_address2.cluster_interface = managed_interface
+        mac_address2.claim_static_ips(IPADDRESS_TYPE.STICKY)
+        mac_address2.save()
+
+        self.assertRaises(
+            StaticIPAddressTypeClash, mac_address2.claim_static_ips)
+
+        static_mappings = node.claim_static_ip_addresses()
+        self.assertItemsEqual(
+            [(mac_address1.ip_addresses.first().ip, unicode(mac_address1))],
+            static_mappings)
+
+    def test__allocates_all_addresses_or_none_at_all(self):
+        node = factory.make_node()
+        nodegroupinterface = factory.make_node_group_interface(
+            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac_address1 = factory.make_mac_address(node=node)
+        mac_address2 = factory.make_mac_address(node=node)
+        mac_address1.cluster_interface = nodegroupinterface
+        mac_address2.cluster_interface = nodegroupinterface
+        mac_address1.save()
+        mac_address2.save()
+
+        # Narrow the static range to only one address.
+        nodegroupinterface.static_ip_range_high = (
+            nodegroupinterface.static_ip_range_low)
+        nodegroupinterface.save()
+
+        self.assertRaises(
+            StaticIPAddressExhaustion, node.claim_static_ip_addresses)
+
+        count_mac_ips = lambda mac: mac.ip_addresses.count()
+        has_no_ip_addresses = AfterPreprocessing(count_mac_ips, Equals(0))
+
+        self.expectThat(mac_address1, has_no_ip_addresses)
+        self.expectThat(mac_address2, has_no_ip_addresses)
 
 
 class TestDeploymentStatus(MAASServerTestCase):
