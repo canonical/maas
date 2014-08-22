@@ -72,7 +72,8 @@ def make_sample_params():
         )
 
 
-class TestDHCPConfig(PservTestCase):
+class TestGetConfig(PservTestCase):
+    """Tests for `get_config`."""
 
     def patch_template(self, name=None, template_content=sample_template):
         """Patch the DHCP config template with the given contents.
@@ -92,7 +93,7 @@ class TestDHCPConfig(PservTestCase):
             template_dir, name, contents=template_content)
         return tempita.Template(template_content, name=template)
 
-    def test_uses_branch_template_by_default(self):
+    def test__uses_branch_template_by_default(self):
         # Since the branch comes with dhcp templates in etc/maas, we can
         # instantiate those templates without any hackery.
         self.assertIsNotNone(
@@ -100,7 +101,7 @@ class TestDHCPConfig(PservTestCase):
         self.assertIsNotNone(
             config.get_config('dhcpd6.conf.template', **make_sample_params()))
 
-    def test_param_substitution(self):
+    def test__substitutes_parameters(self):
         template_name = factory.make_name('template')
         template = self.patch_template(name=template_name)
         params = make_sample_params()
@@ -108,7 +109,7 @@ class TestDHCPConfig(PservTestCase):
             template.substitute(params),
             config.get_config(template_name, **params))
 
-    def test_quotes_interface(self):
+    def test__quotes_interface(self):
         # The interface name doesn't normally need to be quoted, but the
         # template does quote it, in case it contains dots or other weird
         # but legal characters (bug 1306335).
@@ -117,7 +118,7 @@ class TestDHCPConfig(PservTestCase):
             'interface "%s";' % params['dhcp_subnets'][0]['interface'],
             config.get_config('dhcpd.conf.template', **params))
 
-    def test_get_config_with_too_few_parameters(self):
+    def test__complains_if_too_few_parameters(self):
         template = self.patch_template()
         params = make_sample_params()
         del params['dhcp_subnets'][0]['subnet']
@@ -131,24 +132,14 @@ class TestDHCPConfig(PservTestCase):
                 "subnet at line \d+ column \d+ "
                 "in file %s" % template.name))
 
-    def test_compose_conditional_bootloader(self):
-        output = config.compose_conditional_bootloader()
-        for name, method in BootMethodRegistry:
-            if name == "pxe":
-                self.assertThat(output, Contains("else"))
-                self.assertThat(output, Contains(method.bootloader_path))
-            elif method.arch_octet is not None:
-                self.assertThat(output, Contains(method.arch_octet))
-                self.assertThat(output, Contains(method.bootloader_path))
-
-    def test_config_contains_compose_conditional_bootloader(self):
+    def test__includes_compose_conditional_bootloader(self):
         params = make_sample_params()
         bootloader = config.compose_conditional_bootloader()
         self.assertThat(
             config.get_config('dhcpd.conf.template', **params),
             Contains(bootloader))
 
-    def test_renders_without_ntp_servers_set(self):
+    def test__renders_without_ntp_servers_set(self):
         params = make_sample_params()
         del params['dhcp_subnets'][0]['ntp_server']
         template = self.patch_template()
@@ -157,3 +148,17 @@ class TestDHCPConfig(PservTestCase):
             rendered,
             config.get_config('dhcpd.conf.template', **params))
         self.assertNotIn("ntp-servers", rendered)
+
+
+class TestComposeConditionalBootloader(PservTestCase):
+    """Tests for `compose_conditional_bootloader`."""
+
+    def test__composes_bootloader_section(self):
+        output = config.compose_conditional_bootloader()
+        for name, method in BootMethodRegistry:
+            if name == "pxe":
+                self.assertThat(output, Contains("else"))
+                self.assertThat(output, Contains(method.bootloader_path))
+            elif method.arch_octet is not None:
+                self.assertThat(output, Contains(method.arch_octet))
+                self.assertThat(output, Contains(method.bootloader_path))
