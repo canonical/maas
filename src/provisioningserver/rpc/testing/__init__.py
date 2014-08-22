@@ -15,18 +15,25 @@ __metaclass__ = type
 __all__ = [
     "are_valid_tls_parameters",
     "call_responder",
-    "MockClusterToRegionRPCFixture",
     "make_amp_protocol_factory",
+    "MockClusterToRegionRPCFixture",
+    "MockLiveClusterToRegionRPCFixture",
     "TwistedLoggerFixture",
 ]
 
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    )
 import collections
 import itertools
 import operator
+from os import path
 
 import fixtures
 from fixtures import Fixture
 from maastesting.factory import factory
+from maastesting.fixtures import TempDirectory
 from mock import (
     Mock,
     sentinel,
@@ -36,14 +43,27 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClient,
     ClusterClientService,
     )
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    )
 from testtools.matchers import (
     AllMatch,
     IsInstance,
     MatchesAll,
     MatchesDict,
     )
-from testtools.monkey import MonkeyPatcher
-from twisted.internet import ssl
+from twisted.internet import (
+    defer,
+    endpoints,
+    reactor,
+    ssl,
+    )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
+from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
 from twisted.python import log
@@ -107,27 +127,19 @@ are_valid_tls_parameters = MatchesDict({
 })
 
 
-class MockClusterToRegionRPCFixture(fixtures.Fixture):
+class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
     """Patch in a stub region RPC implementation to enable end-to-end testing.
 
-    Use this in *cluster* tests.
-
-    Example usage::
-
-      fixture = self.useFixture(MockClusterToRegionRPCFixture())
-      protocol, io = fixture.makeEventLoop(region.Identify)
-      protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
-
-      client = getRegionClient()
-      result = client(region.Identify)
-      io.flush()  # Call this in the reactor thread.
-
-      self.assertThat(result, ...)
-
+    This is an abstract base class. Derive concrete fixtures from this by
+    implementing the `connect` method.
     """
 
-    def setUp(self):
-        super(MockClusterToRegionRPCFixture, self).setUp()
+    __metaclass__ = ABCMeta
+
+    starting = None
+    stopping = None
+
+    def checkServicesClean(self):
         # If services are running, what do we do with any existing RPC
         # service? Do we shut it down and patch in? Do we just patch in and
         # move the running service aside? If it's not running, do we patch
@@ -142,33 +154,58 @@ class MockClusterToRegionRPCFixture(fixtures.Fixture):
             raise AssertionError(
                 "Please ensure that no RPC service is registered globally "
                 "before using this fixture.")
-        # We're going to be monkeying with a few things.
-        patcher = MonkeyPatcher()
-        add_patch = patcher.add_patch
-        # Use an inert clock with ClusterClientService so it doesn't update
-        # itself except when we ask it to.
-        service = ClusterClientService(Clock())
+
+    def asyncStart(self):
+        # Check that no cluster services are running and that there's no RPC
+        # service already registered.
+        self.checkServicesClean()
         # Patch it into the global services object.
-        service.setName("rpc")
-        service.setServiceParent(provisioningserver.services)
-        self.addCleanup(service.disownServiceParent)
-        # Keep a reference to the RPC service here.
-        add_patch(self, "service", service)
+        self.rpc_service.setName("rpc")
+        self.rpc_service.setServiceParent(provisioningserver.services)
         # Pretend event-loops only exist for those connections that already
         # exist. The chicken-and-egg will be resolved by injecting a
         # connection later on.
-        add_patch(service, "_get_rpc_info_url", self._get_rpc_info_url)
-        add_patch(service, "_fetch_rpc_info", self._fetch_rpc_info)
-        # Execute those patches, but add the restore first; if it crashes
-        # mid-way this will ensure that things are still put straight.
-        self.addCleanup(patcher.restore)
-        patcher.patch()
+        self.rpc_service._get_rpc_info_url = self._get_rpc_info_url
+        self.rpc_service._fetch_rpc_info = self._fetch_rpc_info
         # Finally, start the service. If the clock is advanced, this will do
         # its usual update() calls, but we've patched out _get_rpc_info_url
         # and _fetch_rpc_info so no traffic will result.
-        service.startService()
-        self.addCleanup(service.stopService)
+        self.starting = defer.maybeDeferred(self.rpc_service.startService)
 
+    def asyncStop(self):
+        if self.starting is None:
+            # Nothing to do; it never started.
+            self.stopping = defer.succeed(None)
+        else:
+            self.starting.cancel()
+            self.stopping = defer.maybeDeferred(
+                self.rpc_service.disownServiceParent)
+        # Ensure the cluster's services will be left in a consistent state.
+        self.stopping.addCallback(callOut(self.checkServicesClean))
+
+    @asynchronous(timeout=15)
+    def setUp(self):
+        super(MockClusterToRegionRPCFixtureBase, self).setUp()
+        # Use an inert clock with ClusterClientService so it doesn't update
+        # itself except when we ask it to.
+        self.rpc_service = ClusterClientService(Clock())
+        # Start up, but schedule stop first.
+        self.addCleanup(self.asyncStop)
+        self.asyncStart()
+        # Return the Deferred so that callers from threads outside of the
+        # reactor will block. In the reactor thread, a supporting test
+        # framework may know how to handle this sanely.
+        return self.starting
+
+    @asynchronous(timeout=15)
+    def cleanUp(self):
+        super(MockClusterToRegionRPCFixtureBase, self).cleanUp()
+        # Return the Deferred so that callers from threads outside of the
+        # reactor will block. In the reactor thread, a supporting test
+        # framework may know how to handle this sanely.
+        return self.stopping
+
+    @asynchronous(timeout=5)
     def addEventLoop(self, protocol):
         """Add a new stub event-loop using the given `protocol`.
 
@@ -178,12 +215,8 @@ class MockClusterToRegionRPCFixture(fixtures.Fixture):
         """
         eventloop = factory.make_name("eventloop")
         address = factory.getRandomIPAddress(), factory.pick_port()
-        client = ClusterClient(address, eventloop, self.service)
-        return iosim.connect(
-            protocol, iosim.makeFakeServer(protocol),
-            client, iosim.makeFakeClient(client),
-            debug=False,  # Debugging is useful, but too noisy by default.
-        )
+        client = ClusterClient(address, eventloop, self.rpc_service)
+        return self.connect(client, protocol)
 
     def makeEventLoop(self, *commands):
         """Make and add a new stub event-loop for the given `commands`.
@@ -193,6 +226,15 @@ class MockClusterToRegionRPCFixture(fixtures.Fixture):
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         return protocol, self.addEventLoop(protocol)
+
+    @abstractmethod
+    def connect(self, cluster, region):
+        """Wire up a connection between cluster and region.
+
+        :type cluster: `twisted.internet.interfaces.IProtocol`
+        :type region: `twisted.internet.interfaces.IProtocol`
+        :returns: ...
+        """
 
     def _get_rpc_info_url(self):
         """Patch-in for `ClusterClientService._get_rpc_info_url`.
@@ -207,13 +249,144 @@ class MockClusterToRegionRPCFixture(fixtures.Fixture):
         Describes event-loops only for those event-loops already known to the
         service, thus new connections must be injected into the service.
         """
-        connections = self.service.connections.viewitems()
+        connections = self.rpc_service.connections.viewitems()
         return {
             "eventloops": {
                 eventloop: [client.address]
                 for eventloop, client in connections
             },
         }
+
+
+class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
+    """Patch in a stub region RPC implementation to enable end-to-end testing.
+
+    Use this in *cluster* tests when you're not running with a reactor, or
+    when you need fine-grained control over IO. This has low overhead and is
+    useful for writing tests where there are obvious points where you can pump
+    IO "by hand".
+
+    Example usage (assuming `inlineCallbacks`)::
+
+      fixture = self.useFixture(MockClusterToRegionRPCFixture())
+      yield fixture.starting  # Wait for the fixture to start.
+
+      protocol, io = fixture.makeEventLoop(region.Identify)
+      protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
+
+      client = getRegionClient()
+      result = client(region.Identify)
+      io.flush()  # Call this in the reactor thread.
+
+      self.assertThat(result, ...)
+
+    """
+
+    def connect(self, cluster, region):
+        """Wire up a connection between cluster and region.
+
+        :type cluster: `twisted.internet.interfaces.IProtocol`
+        :type region: `twisted.internet.interfaces.IProtocol`
+        :returns: py:class:`twisted.test.iosim.IOPump`
+        """
+        return iosim.connect(
+            region, iosim.makeFakeServer(region),
+            cluster, iosim.makeFakeClient(cluster),
+            debug=False,  # Debugging is useful, but too noisy by default.
+        )
+
+
+class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
+    """Patch in a stub region RPC implementation to enable end-to-end testing.
+
+    This differs from `MockClusterToRegionRPCFixture` in that the connections
+    between the region and the cluster are _live_, by which I mean that
+    they're connected by reactor-managed IO, rather than by an `IOPump`. This
+    means that the reactor must be running in order to use this fixture.
+
+    Use this in *cluster* tests where the reactor is running, for example when
+    using `AsynchronousDeferredRunTest` or its siblings. There's a slightly
+    greater overhead than when using `MockClusterToRegionRPCFixture`, but it's
+    not huge. You must be careful to follow the usage instructions otherwise
+    you'll be plagued by dirty reactor errors.
+
+    Example usage (assuming `inlineCallbacks`)::
+
+      fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+      protocol, connecting = fixture.makeEventLoop(region.Identify)
+      protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
+
+      # This allows the connections to get established via IO through the
+      # reactor. The result of `connecting` is a callable that arranges for
+      # the correct shutdown of the connections being established.
+      self.addCleanup((yield connecting))
+
+      client = getRegionClient()
+      result = yield client(region.Identify)
+      self.assertThat(result, ...)
+
+    """
+
+    def setUp(self):
+        self.sockdir = TempDirectory()  # Place for UNIX sockets.
+        self.socknames = itertools.imap(unicode, itertools.count(1))
+        return super(MockLiveClusterToRegionRPCFixture, self).setUp()
+
+    def asyncStart(self):
+        super(MockLiveClusterToRegionRPCFixture, self).asyncStart()
+
+        def started(result):
+            self.sockdir.setUp()
+            return result
+
+        self.starting.addCallback(started)
+
+    def asyncStop(self):
+        super(MockLiveClusterToRegionRPCFixture, self).asyncStop()
+
+        def stopped(result):
+            self.sockdir.cleanUp()
+            return result
+
+        self.stopping.addCallback(stopped)
+
+    @inlineCallbacks
+    def connect(self, cluster, region):
+        """Wire up a connection between cluster and region.
+
+        Uses a UNIX socket to very rapidly connect the two ends.
+
+        :type cluster: `twisted.internet.interfaces.IProtocol`
+        :type region: `twisted.internet.interfaces.IProtocol`
+        """
+        # Wire up the region and cluster protocols via the sockfile.
+        sockfile = path.join(self.sockdir.path, next(self.socknames))
+
+        class RegionFactory(Factory):
+            def buildProtocol(self, addr):
+                return region
+
+        endpoint_region = endpoints.UNIXServerEndpoint(reactor, sockfile)
+        port = yield endpoint_region.listen(RegionFactory())
+
+        endpoint_cluster = endpoints.UNIXClientEndpoint(reactor, sockfile)
+        client = yield endpoints.connectProtocol(endpoint_cluster, cluster)
+
+        @inlineCallbacks
+        def shutdown():
+            yield port.loseConnection()
+            yield port.deferred
+            if region.transport is not None:
+                yield region.transport.loseConnection()
+            if client.transport is not None:
+                yield client.transport.loseConnection()
+
+        # Fixtures don't wait for deferred work in clean-up tasks (or anywhere
+        # else), so we can't use `self.addCleanup(shutdown)` here. We need to
+        # get the user to add `shutdown` to the clean-up tasks for the *test*,
+        # on the assumption they're using a test framework that accommodates
+        # deferred work (like testtools with `AsynchronousDeferredRunTest`).
+        returnValue(shutdown)
 
 
 # An iterable of names for new dynamically-created AMP protocol factories.
