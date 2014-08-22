@@ -26,6 +26,7 @@ from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES,
+    BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
@@ -33,6 +34,14 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.orm import (
     get_first,
     get_one,
+    )
+
+# Names on boot resources have a specific meaning depending on the type
+# of boot resource. If its a synced or generated image then the name must
+# be in the format os/series.
+RTYPE_REQUIRING_OS_SERIES_NAME = (
+    BOOT_RESOURCE_TYPE.SYNCED,
+    BOOT_RESOURCE_TYPE.GENERATED,
     )
 
 
@@ -174,7 +183,7 @@ class BootResource(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         unique_together = (
-            ('rtype', 'name', 'architecture'),
+            ('name', 'architecture'),
             )
 
     objects = BootResourceManager()
@@ -192,11 +201,32 @@ class BootResource(CleanSave, TimestampedModel):
     def __repr__(self):
         return "<BootResource %s>" % self.name
 
+    @property
+    def display_rtype(self):
+        """Return rtype text as displayed to the user."""
+        return BOOT_RESOURCE_TYPE_CHOICES_DICT[self.rtype]
+
+    def clean(self):
+        """Validate the model.
+
+        Checks that the name is in a valid format, for its type.
+        """
+        if self.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            if '/' in self.name:
+                raise ValidationError(
+                    "%s boot resource cannot contain a '/' in it's name." % (
+                        self.display_rtype))
+        elif self.rtype in RTYPE_REQUIRING_OS_SERIES_NAME:
+            if '/' not in self.name:
+                raise ValidationError(
+                    "%s boot resource must contain a '/' in it's name." % (
+                        self.display_rtype))
+
     def unique_error_message(self, model_class, unique_check):
         if unique_check == (
-                'rtype', 'name', 'architecture'):
+                'name', 'architecture'):
             return (
-                "Boot resource of type, name, and architecture already "
+                "Boot resource of name, and architecture already "
                 "exists.")
         return super(
             BootResource, self).unique_error_message(model_class, unique_check)

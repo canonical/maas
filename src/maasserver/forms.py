@@ -2248,6 +2248,14 @@ class BootResourceForm(ModelForm):
             resource_set=resource_set, largefile=largefile,
             filename=filetype, filetype=filetype)
 
+    def validate_unique(self):
+        """Override to allow the same `BootResource` to already exist.
+
+        This is done because the existing `BootResource` will be used, and a
+        new set will be added to that resource.
+        """
+        # Do nothing, as we do not want to report a uniqueness error.
+
     def save(self):
         """Persist the boot resource into the database.
 

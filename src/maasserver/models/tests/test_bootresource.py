@@ -20,6 +20,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
 from maasserver.models.bootresource import BootResource
 from maasserver.testing.factory import factory
@@ -160,7 +161,8 @@ class TestBootResourceManager(MAASServerTestCase):
         os = factory.make_name('os')
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
-        factory.make_usable_boot_resource(name=name)
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
         self.assertIsInstance(commissionables, Iterable)
@@ -169,8 +171,10 @@ class TestBootResourceManager(MAASServerTestCase):
         os = factory.make_name('os')
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
-        resource = factory.make_usable_boot_resource(name=name)
-        not_commissionable = factory.make_boot_resource(name=name)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        not_commissionable = factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         factory.make_boot_resource_set(not_commissionable)
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
@@ -180,7 +184,8 @@ class TestBootResourceManager(MAASServerTestCase):
         os = factory.make_name('os')
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
-        resource = factory.make_usable_boot_resource(name=name)
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         factory.make_usable_boot_resource()
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
@@ -191,10 +196,13 @@ class TestBootResourceManager(MAASServerTestCase):
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
         resource_b = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture='b/generic')
         resource_a = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture='a/generic')
         resource_c = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture='c/generic')
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
@@ -207,7 +215,9 @@ class TestBootResourceManager(MAASServerTestCase):
         name = '%s/%s' % (os, series)
         arches = ['i386/generic', 'amd64/generic', 'arm64/generic']
         for arch in arches:
-            factory.make_usable_boot_resource(name=name, architecture=arch)
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture=arch)
         self.assertEqual(
             'i386/generic',
             BootResource.objects.get_default_commissioning_resource(
@@ -219,7 +229,9 @@ class TestBootResourceManager(MAASServerTestCase):
         name = '%s/%s' % (os, series)
         arches = ['amd64/generic', 'arm64/generic']
         for arch in arches:
-            factory.make_usable_boot_resource(name=name, architecture=arch)
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture=arch)
         self.assertEqual(
             'amd64/generic',
             BootResource.objects.get_default_commissioning_resource(
@@ -231,7 +243,9 @@ class TestBootResourceManager(MAASServerTestCase):
         name = '%s/%s' % (os, series)
         arches = ['ppc64el/generic', 'arm64/generic']
         for arch in arches:
-            factory.make_usable_boot_resource(name=name, architecture=arch)
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture=arch)
         self.assertEqual(
             'arm64/generic',
             BootResource.objects.get_default_commissioning_resource(
@@ -255,16 +269,51 @@ class TestBootResource(MAASServerTestCase):
         self.assertRaises(
             ValidationError, factory.make_boot_resource, architecture=arch)
 
-    def test_create_raises_error_on_not_unique(self):
-        rtype = factory.pick_enum(BOOT_RESOURCE_TYPE)
+    def test_validation_raises_error_on_invalid_name_for_synced(self):
         name = factory.make_name('name')
         arch = '%s/%s' % (
             factory.make_name('arch'), factory.make_name('subarch'))
-        factory.make_boot_resource(rtype=rtype, name=name, architecture=arch)
+        resource = BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name, architecture=arch)
+        self.assertRaises(
+            ValidationError, resource.save)
+
+    def test_validation_raises_error_on_invalid_name_for_generated(self):
+        name = factory.make_name('name')
+        arch = '%s/%s' % (
+            factory.make_name('arch'), factory.make_name('subarch'))
+        resource = BootResource(
+            rtype=BOOT_RESOURCE_TYPE.GENERATED, name=name, architecture=arch)
+        self.assertRaises(
+            ValidationError, resource.save)
+
+    def test_validation_raises_error_on_invalid_name_for_uploaded(self):
+        name = '%s/%s' % (
+            factory.make_name('os'), factory.make_name('series'))
+        arch = '%s/%s' % (
+            factory.make_name('arch'), factory.make_name('subarch'))
+        resource = BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=name, architecture=arch)
+        self.assertRaises(
+            ValidationError, resource.save)
+
+    def test_create_raises_error_on_not_unique(self):
+        name = '%s/%s' % (
+            factory.make_name('os'), factory.make_name('series'))
+        arch = '%s/%s' % (
+            factory.make_name('arch'), factory.make_name('subarch'))
+        factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name, architecture=arch)
         self.assertRaises(
             ValidationError,
             factory.make_boot_resource,
-            rtype=rtype, name=name, architecture=arch)
+            rtype=BOOT_RESOURCE_TYPE.GENERATED, name=name, architecture=arch)
+
+    def test_display_rtype(self):
+        for key, value in BOOT_RESOURCE_TYPE_CHOICES_DICT.items():
+            resource = BootResource(rtype=key)
+            self.assertEqual(value, resource.display_rtype)
 
     def test_split_arch(self):
         arch = factory.make_name('arch')
