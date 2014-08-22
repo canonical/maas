@@ -19,6 +19,20 @@ __all__ = [
 import json
 
 from provisioningserver.import_images.helpers import ImageSpec
+from provisioningserver.utils import dict_depth
+
+
+def gen_image_spec_with_resource(os, data):
+    """Generate image and resource for given operating system and data."""
+    for arch in data:
+        for subarch in data[arch]:
+            for release in data[arch][subarch]:
+                for label in data[arch][subarch][release]:
+                    image = ImageSpec(
+                        os=os, arch=arch, subarch=subarch,
+                        release=release, label=label)
+                    resource = data[arch][subarch][release][label]
+                    yield image, resource
 
 
 class BootImageMapping:
@@ -57,11 +71,12 @@ class BootImageMapping:
         # Keep that format.
         data = {}
         for image, resource in self.items():
-            arch, subarch, release, label = image
-            data.setdefault(arch, {})
-            data[arch].setdefault(subarch, {})
-            data[arch][subarch].setdefault(release, {})
-            data[arch][subarch][release][label] = resource
+            os, arch, subarch, release, label = image
+            data.setdefault(os, {})
+            data[os].setdefault(arch, {})
+            data[os][arch].setdefault(subarch, {})
+            data[os][arch][subarch].setdefault(release, {})
+            data[os][arch][subarch][release][label] = resource
         return json.dumps(data, sort_keys=True)
 
     @staticmethod
@@ -79,14 +94,16 @@ class BootImageMapping:
         except ValueError:
             return mapping
 
-        for arch in data:
-            for subarch in data[arch]:
-                for release in data[arch][subarch]:
-                    for label in data[arch][subarch][release]:
-                        image = ImageSpec(
-                            arch=arch, subarch=subarch, release=release,
-                            label=label)
-                        resource = data[arch][subarch][release][label]
-                        mapping.setdefault(image, resource)
-
+        depth = dict_depth(data)
+        if depth == 5:
+            # Support for older data. This has no operating system, then
+            # it is ubuntu.
+            for image, resource in gen_image_spec_with_resource(
+                    "ubuntu", data):
+                mapping.setdefault(image, resource)
+        elif depth == 6:
+            for os in data:
+                for image, resource in gen_image_spec_with_resource(
+                        os, data[os]):
+                    mapping.setdefault(image, resource)
         return mapping

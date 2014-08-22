@@ -132,6 +132,7 @@ def extract_metadata(metadata, params):
     mapping = BootImageMapping.load_json(metadata)
 
     image = ImageSpec(
+        os=params["osystem"],
         arch=params["architecture"],
         subarch=params["subarchitecture"],
         release=params["release"],

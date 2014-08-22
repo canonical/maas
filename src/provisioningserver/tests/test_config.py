@@ -437,6 +437,7 @@ class TestBootSources(MAASTestCase):
         'keyring_data': None,
         'selections': [
             {
+                'os': '*',
                 'release': '*',
                 'labels': ['*'],
                 'arches': ['*'],
@@ -452,6 +453,7 @@ class TestBootSources(MAASTestCase):
             'keyring': factory.make_name('keyring'),
             'keyring_data': factory.make_string(),
             'selections': [{
+                'os': factory.make_name('os'),
                 'release': factory.make_name('release'),
                 'labels': [factory.make_name('label')],
                 'arches': [factory.make_name('arch')],

@@ -21,6 +21,7 @@ from gzip import GzipFile
 import os.path
 
 from provisioningserver.import_images.helpers import (
+    get_os_from_product,
     get_signing_policy,
     maaslog,
     )
@@ -121,7 +122,8 @@ def insert_root_image(store, tag, checksums, size, content_source):
     return [(root_image_path, 'root-image'), (root_tgz_path, 'root-tgz')]
 
 
-def link_resources(snapshot_path, links, arch, release, label, subarches):
+def link_resources(snapshot_path, links, osystem, arch, release, label,
+                   subarches):
     """Hardlink entries in the snapshot directory to resources in the cache.
 
     This creates file entries in the snapshot directory for boot resources
@@ -132,6 +134,7 @@ def link_resources(snapshot_path, links, arch, release, label, subarches):
         the cache.  Each link is described as a tuple of (path, logical
         name).  The path points to a file in the cache directory.  The logical
         name will be link's filename, without path.
+    :param osystem: Operating system with this boot image supports.
     :param arch: Architecture which this boot image supports.
     :param release: OS release of which this boot image is a part.
     :param label: OS release label of which this boot image is a part, e.g.
@@ -143,7 +146,8 @@ def link_resources(snapshot_path, links, arch, release, label, subarches):
         for older Ubuntu releases.
     """
     for subarch in subarches:
-        directory = os.path.join(snapshot_path, arch, subarch, release, label)
+        directory = os.path.join(
+            snapshot_path, osystem, arch, subarch, release, label)
         if not os.path.exists(directory):
             os.makedirs(directory)
         for cached_file, logical_name in links:
@@ -194,11 +198,12 @@ class RepoWriter(BasicMirrorWriter):
             links = insert_file(
                 self.store, ftype, tag, checksums, size, contentsource)
 
+        os = get_os_from_product(item)
         subarches = self.product_mapping.get(item)
         link_resources(
             snapshot_path=self.root_path, links=links,
-            arch=item['arch'], release=item['release'], label=item['label'],
-            subarches=subarches)
+            osystem=os, arch=item['arch'], release=item['release'],
+            label=item['label'], subarches=subarches)
 
 
 def download_boot_resources(path, store, snapshot_path, product_mapping,
@@ -262,7 +267,6 @@ def download_all_boot_resources(
     """
     storage_path = os.path.abspath(storage_path)
     snapshot_path = compose_snapshot_path(storage_path)
-    ubuntu_path = os.path.join(snapshot_path, 'ubuntu')
     # Use a FileStore as our ObjectStore implementation.  It will write to the
     # cache directory.
     if store is None:
@@ -273,7 +277,7 @@ def download_all_boot_resources(
 
     for source in sources:
         download_boot_resources(
-            source['url'], store, ubuntu_path, product_mapping,
+            source['url'], store, snapshot_path, product_mapping,
             keyring_file=source.get('keyring')),
 
     return snapshot_path

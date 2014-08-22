@@ -114,7 +114,8 @@ class TestMain(MAASTestCase):
         self.patch(
             provisioningserver.config, 'BOOT_RESOURCES_STORAGE', self.storage)
         self.image = make_image_spec()
-        self.arch, self.subarch, self.release, self.label = self.image
+        self.os, self.arch, self.subarch, \
+            self.release, self.label = self.image
         self.repo = self.make_simplestreams_repo(self.image)
 
     def patch_maaslog(self):
@@ -212,6 +213,7 @@ class TestMain(MAASTestCase):
                     'subarches': [image_spec.subarch],
                     'release': image_spec.release,
                     'arch': image_spec.arch,
+                    'os': image_spec.os,
                 },
             },
         }
@@ -255,6 +257,7 @@ class TestMain(MAASTestCase):
                 'url': self.repo,
                 'selections': [
                     {
+                        'os': self.os,
                         'release': self.release,
                         'arches': [self.arch],
                         'subarches': [self.subarch],
@@ -287,6 +290,7 @@ class TestMain(MAASTestCase):
                 self.patch(boot_method, 'install_bootloader')
 
         args = self.make_working_args()
+        osystem = self.os
         arch = self.arch
         subarch = self.subarch
         release = self.release
@@ -305,16 +309,18 @@ class TestMain(MAASTestCase):
         self.assertThat(os.path.join(current, 'maas.tgt'), FileExists())
         self.assertThat(
             os.path.join(
-                current, 'ubuntu', arch, subarch, self.release, self.label),
+                current, osystem, arch, subarch, self.release, self.label),
             DirExists())
 
         # Verify the contents of the "meta" file.
         with open(os.path.join(current, 'maas.meta'), 'rb') as meta_file:
             meta_data = json.load(meta_file)
-        self.assertEqual([arch], meta_data.keys())
-        self.assertEqual([subarch], meta_data[arch].keys())
-        self.assertEqual([release], meta_data[arch][subarch].keys())
-        self.assertEqual([label], meta_data[arch][subarch][release].keys())
+        self.assertEqual([osystem], meta_data.keys())
+        self.assertEqual([arch], meta_data[osystem].keys())
+        self.assertEqual([subarch], meta_data[osystem][arch].keys())
+        self.assertEqual([release], meta_data[osystem][arch][subarch].keys())
+        self.assertEqual(
+            [label], meta_data[osystem][arch][subarch][release].keys())
         self.assertItemsEqual(
             [
                 'content_id',
@@ -323,7 +329,7 @@ class TestMain(MAASTestCase):
                 'version_name',
                 'subarches',
             ],
-            meta_data[arch][subarch][release][label].keys())
+            meta_data[osystem][arch][subarch][release][label].keys())
 
     def test_warns_if_no_sources_selected(self):
         self.patch_maaslog()
@@ -442,6 +448,7 @@ class TestParseSources(MAASTestCase):
                 'url': factory.make_name("something"),
                 'selections': [
                     {
+                        'os': factory.make_name("os"),
                         'release': factory.make_name("release"),
                         'arches': [factory.make_name("arch")],
                         'subarches': [factory.make_name("subarch")],
@@ -477,6 +484,7 @@ class TestImportImages(MAASTestCase):
                 'url': factory.make_name("something"),
                 'selections': [
                     {
+                        'os': factory.make_name("os"),
                         'release': factory.make_name("release"),
                         'arches': [factory.make_name("arch")],
                         'subarches': [factory.make_name("subarch")],

@@ -27,6 +27,7 @@ from simplestreams.util import policy_read_signed
 
 # A tuple of the items that together select a boot image.
 ImageSpec = namedtuple(b'ImageSpec', [
+    'os',
     'arch',
     'subarch',
     'release',

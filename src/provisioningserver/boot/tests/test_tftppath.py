@@ -122,6 +122,7 @@ class TestTFTPPath(MAASTestCase):
 
     def make_meta_file(self, image_params, image_resource, tftproot):
         image = ImageSpec(
+            os=image_params["osystem"],
             arch=image_params["architecture"],
             subarch=image_params["subarchitecture"],
             release=image_params["release"], label=image_params["label"])
@@ -349,6 +350,7 @@ class TestTFTPPath(MAASTestCase):
         # and subarch vs subarchitecture means I can't just do a simple
         # dict parameter expansion here.
         params = {
+            "osystem": image.os,
             "architecture": image.arch,
             "subarchitecture": image.subarch,
             "release": image.release,
@@ -372,6 +374,7 @@ class TestTFTPPath(MAASTestCase):
         # and subarch vs subarchitecture means I can't just do a simple
         # dict parameter expansion here.
         params = {
+            "osystem": image.os,
             "architecture": image.arch,
             "subarchitecture": image.subarch,
             "release": image.release,
@@ -459,7 +462,8 @@ class TestTFTPPath(MAASTestCase):
 
         # Create some maas.meta content.
         image = ImageSpec(
-            arch=arch, subarch=subarch, release=release, label=label)
+            os=osystem, arch=arch, subarch=subarch, release=release,
+            label=label)
         image_resource = dict(subarches=factory.make_name("subarches"))
         mapping = BootImageMapping()
         mapping.setdefault(image, image_resource)

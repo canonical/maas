@@ -24,6 +24,7 @@ from provisioningserver.import_images.boot_image_mapping import (
 from provisioningserver.import_images.testing.factory import (
     make_image_spec,
     make_maas_meta,
+    make_maas_meta_without_os,
     set_resource,
     )
 
@@ -78,9 +79,11 @@ class TestBootImageMapping(MAASTestCase):
         image_dict = set_resource(image_spec=image, resource=resource)
         self.assertEqual(
             {
-                image.arch: {
-                    image.subarch: {
-                        image.release: {image.label: resource},
+                image.os: {
+                    image.arch: {
+                        image.subarch: {
+                            image.release: {image.label: resource},
+                        },
                     },
                 },
             },
@@ -97,10 +100,12 @@ class TestBootImageMapping(MAASTestCase):
             image_dict, image._replace(release=other_release), resource2)
         self.assertEqual(
             {
-                image.arch: {
-                    image.subarch: {
-                        image.release: {image.label: resource1},
-                        other_release: {image.label: resource2},
+                image.os: {
+                    image.arch: {
+                        image.subarch: {
+                            image.release: {image.label: resource1},
+                            other_release: {image.label: resource2},
+                        },
                     },
                 },
             },
@@ -113,6 +118,12 @@ class TestBootImageMapping(MAASTestCase):
         mapping = BootImageMapping.load_json(test_meta_file_content)
         dumped = mapping.dump_json()
         self.assertEqual(test_meta_file_content, dumped)
+
+    def test_load_json_result_of_old_data_uses_ubuntu_as_os(self):
+        test_meta_file_content = make_maas_meta_without_os()
+        mapping = BootImageMapping.load_json(test_meta_file_content)
+        os = {image.os for image, _ in mapping.items()}.pop()
+        self.assertEqual('ubuntu', os)
 
     def test_load_json_returns_empty_mapping_for_invalid_json(self):
         bad_json = ""

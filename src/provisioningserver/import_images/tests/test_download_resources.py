@@ -55,7 +55,6 @@ class TestDownloadAllBootResources(MAASTestCase):
         storage_path = self.make_dir()
         snapshot_path = download_resources.compose_snapshot_path(
             storage_path)
-        ubuntu_path = os.path.join(snapshot_path, 'ubuntu')
         cache_path = os.path.join(storage_path, 'cache')
         file_store = FileStore(cache_path)
         source = {
@@ -70,7 +69,7 @@ class TestDownloadAllBootResources(MAASTestCase):
         self.assertThat(
             fake,
             MockCalledWith(
-                source['url'], file_store, ubuntu_path, product_mapping,
+                source['url'], file_store, snapshot_path, product_mapping,
                 keyring_file=source['keyring']))
 
 

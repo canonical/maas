@@ -26,6 +26,7 @@ from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.helpers import (
+    get_os_from_product,
     get_signing_policy,
     ImageSpec,
     maaslog,
@@ -77,10 +78,11 @@ class RepoDumper(BasicMirrorWriter):
     def insert_item(self, data, src, target, pedigree, contentsource):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
+        os = get_os_from_product(item)
         arch, subarches = item['arch'], item['subarches']
         release = item['release']
         label = item['label']
-        base_image = ImageSpec(arch, None, release, label)
+        base_image = ImageSpec(os, arch, None, release, label)
         compact_item = clean_up_repo_item(item)
         for subarch in subarches.split(','):
             self.boot_images_dict.setdefault(
@@ -105,13 +107,14 @@ def value_passes_filter(filter_value, property_value):
     return filter_value in ('*', property_value)
 
 
-def image_passes_filter(filters, arch, subarch, release, label):
+def image_passes_filter(filters, os, arch, subarch, release, label):
     """Filter a boot image against configured import filters.
 
     :param filters: A list of dicts describing the filters, as in `boot_merge`.
         If the list is empty, or `None`, any image matches.  Any entry in a
         filter may be a string containing just an asterisk (`*`) to denote that
         the entry will match any value.
+    :param os: The given boot image's operating system.
     :param arch: The given boot image's architecture.
     :param subarch: The given boot image's subarchitecture.
     :param release: The given boot image's OS release.
@@ -122,6 +125,7 @@ def image_passes_filter(filters, arch, subarch, release, label):
         return True
     for filter_dict in filters:
         item_matches = (
+            value_passes_filter(filter_dict['os'], os) and
             value_passes_filter(filter_dict['release'], release) and
             value_passes_filter_list(filter_dict['arches'], arch) and
             value_passes_filter_list(filter_dict['subarches'], subarch) and
@@ -143,21 +147,22 @@ def boot_merge(destination, additions, filters=None):
         in-place.
     :param additions: A second `BootImageMapping`, which will be used as a
         source of additional entries.
-    :param filters: List of dicts, each of which contains 'arch', 'subarch',
-        and 'release' keys.  If given, entries are only considered for copying
-        from `additions` to `destination` if they match at least one of the
-        filters.  Entries in the filter may be the string `*` (or for entries
-        that are lists, may contain the string `*`) to make them match any
-        value.
+    :param filters: List of dicts, each of which contains 'os', arch',
+        'subarch', 'release', and 'label' keys.  If given, entries are only
+        considered for copying from `additions` to `destination` if they match
+        at least one of the filters.  Entries in the filter may be the string
+        `*` (or for entries that are lists, may contain the string `*`) to make
+        them match any value.
     """
     for image, resource in additions.items():
-        arch, subarch, release, label = image
-        if image_passes_filter(filters, arch, subarch, release, label):
+        os, arch, subarch, release, label = image
+        if image_passes_filter(
+                filters, os, arch, subarch, release, label):
             maaslog.debug(
                 "Merging boot resource for %s/%s/%s/%s.",
                 arch, subarch, release, label)
             # Do not override an existing entry with the same
-            # arch/subarch/release/label: the first entry found takes
+            # os/arch/subarch/release/label: the first entry found takes
             # precedence.
             destination.setdefault(image, resource)
 
@@ -188,6 +193,6 @@ def download_all_image_descriptions(sources):
     boot = BootImageMapping()
     for source in sources:
         repo_boot = download_image_descriptions(
-            source['url'], keyring=source['keyring'])
+            source['url'], keyring=source.get('keyring', None))
         boot_merge(boot, repo_boot, source['selections'])
     return boot

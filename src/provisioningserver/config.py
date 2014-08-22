@@ -174,6 +174,7 @@ class BootSourceSelection(Schema):
 
     if_key_missing = None
 
+    os = String(if_missing="*")
     release = String(if_missing="*")
     arches = Set(if_missing=["*"])
     subarches = Set(if_missing=['*'])

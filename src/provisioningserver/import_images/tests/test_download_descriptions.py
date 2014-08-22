@@ -92,6 +92,7 @@ class TestImagePassesFilter(MAASTestCase):
         if image_spec is None:
             image_spec = make_image_spec()
         return {
+            'os': image_spec.os,
             'arches': [image_spec.arch],
             'subarches': [image_spec.subarch],
             'release': image_spec.release,
@@ -99,30 +100,32 @@ class TestImagePassesFilter(MAASTestCase):
             }
 
     def test_any_image_passes_none_filter(self):
-        arch, subarch, release, label = make_image_spec()
+        os, arch, subarch, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
-                None, arch, subarch, release, label))
+                None, os, arch, subarch, release, label))
 
     def test_any_image_passes_empty_filter(self):
-        arch, subarch, release, label = make_image_spec()
+        os, arch, subarch, release, label = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
-                [], arch, subarch, release, label))
+                [], os, arch, subarch, release, label))
 
     def test_image_passes_matching_filter(self):
         image = make_image_spec()
         self.assertTrue(
             download_descriptions.image_passes_filter(
                 [self.make_filter_from_image(image)],
-                image.arch, image.subarch, image.release, image.label))
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_image_does_not_pass_nonmatching_filter(self):
         image = make_image_spec()
         self.assertFalse(
             download_descriptions.image_passes_filter(
                 [self.make_filter_from_image()],
-                image.arch, image.subarch, image.release, image.label))
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_image_passes_if_one_filter_matches(self):
         image = make_image_spec()
@@ -132,7 +135,9 @@ class TestImagePassesFilter(MAASTestCase):
                     self.make_filter_from_image(),
                     self.make_filter_from_image(image),
                     self.make_filter_from_image(),
-                ], image.arch, image.subarch, image.release, image.label))
+                ],
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_filter_checks_release(self):
         image = make_image_spec()
@@ -141,7 +146,9 @@ class TestImagePassesFilter(MAASTestCase):
                 [
                     self.make_filter_from_image(image._replace(
                         release=factory.make_name('other-release')))
-                ], image.arch, image.subarch, image.release, image.label))
+                ],
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_filter_checks_arches(self):
         image = make_image_spec()
@@ -150,7 +157,9 @@ class TestImagePassesFilter(MAASTestCase):
                 [
                     self.make_filter_from_image(image._replace(
                         arch=factory.make_name('other-arch')))
-                ], image.arch, image.subarch, image.release, image.label))
+                ],
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_filter_checks_subarches(self):
         image = make_image_spec()
@@ -159,7 +168,9 @@ class TestImagePassesFilter(MAASTestCase):
                 [
                     self.make_filter_from_image(image._replace(
                         subarch=factory.make_name('other-subarch')))
-                ], image.arch, image.subarch, image.release, image.label))
+                ],
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
     def test_filter_checks_labels(self):
         image = make_image_spec()
@@ -168,7 +179,9 @@ class TestImagePassesFilter(MAASTestCase):
                 [
                     self.make_filter_from_image(image._replace(
                         label=factory.make_name('other-label')))
-                ], image.arch, image.subarch, image.release, image.label))
+                ],
+                image.os, image.arch, image.subarch,
+                image.release, image.label))
 
 
 class TestBootMerge(MAASTestCase):
@@ -187,6 +200,7 @@ class TestBootMerge(MAASTestCase):
     def test_obeys_filters(self):
         filters = [
             {
+                'os': factory.make_name('os'),
                 'arches': [factory.make_name('other-arch')],
                 'subarches': [factory.make_name('other-subarch')],
                 'release': factory.make_name('other-release'),

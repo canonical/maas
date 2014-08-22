@@ -143,6 +143,13 @@ def filter_dict(dictionary, desired_keys):
     }
 
 
+def dict_depth(d, depth=0):
+    """Returns the max depth of a dictionary."""
+    if not isinstance(d, dict) or not d:
+        return depth
+    return max(dict_depth(v, depth + 1) for _, v in d.iteritems())
+
+
 def split_lines(input, separator):
     """Split each item from `input` into a key/value pair."""
     return (line.split(separator, 1) for line in input if line.strip() != '')
