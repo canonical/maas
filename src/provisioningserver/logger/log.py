@@ -16,7 +16,6 @@ __all__ = [
     "get_maas_logger",
     ]
 
-
 import logging
 from logging.handlers import SysLogHandler
 
@@ -51,16 +50,22 @@ def get_maas_logger(syslog_tag=None):
     # other loggers to be the domain of the logging package.
     maaslog.__class__ = MAASLogger
 
-    # If the logger already has handlers, it's already been
-    # instantiated, so we don't need to go through the setup dance
-    # again.
-    if len(maaslog.handlers) > 0:
-        return maaslog
-
-    maaslog.setLevel(logging.INFO)
-    handler = SysLogHandler("/dev/log")
-    maaslog.addHandler(handler)
-    formatter = logging.Formatter(
-        fmt=maaslog.name + ": [%(levelname)s] %(message)s")
-    handler.setFormatter(formatter)
     return maaslog
+
+
+def configure_root_logger():
+    # Configure the "root" handler. This is the only place where we need to
+    # add the syslog handler and configure levels and formatting; sub-handlers
+    # propagate up to this handler.
+    root = get_maas_logger()
+    if len(root.handlers) == 0:
+        # It has not yet been configured.
+        handler = SysLogHandler("/dev/log")
+        handler.setFormatter(logging.Formatter(
+            "%(name)s: [%(levelname)s] %(message)s"))
+        root.addHandler(handler)
+        root.setLevel(logging.INFO)
+    return root
+
+
+configure_root_logger()
