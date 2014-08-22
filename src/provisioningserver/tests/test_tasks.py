@@ -54,6 +54,7 @@ from provisioningserver.dhcp import (
     config,
     leases,
     )
+from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.dns.config import (
     celery_conf,
     MAAS_NAMED_CONF_NAME,
@@ -189,23 +190,10 @@ class TestDHCPTasks(PservTestCase):
 
     def make_dhcp_config_params(self):
         """Fake up a dict of dhcp configuration parameters."""
-        param_names = [
-            'interface',
-            'subnet',
-            'subnet_mask',
-            'broadcast_ip',
-            'dns_servers',
-            'domain_name',
-            'router_ip',
-            'ip_range_low',
-            'ip_range_high',
-        ]
         return {
-            'dhcp_subnets': [
-                {param: factory.make_string() for param in param_names}
-            ],
-            'omapi_key': factory.make_string(),
-        }
+            'omapi_key': factory.make_name('key'),
+            'dhcp_subnets': [make_subnet_config()],
+            }
 
     def test_upload_dhcp_leases(self):
         self.patch(

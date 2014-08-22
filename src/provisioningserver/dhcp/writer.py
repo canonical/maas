@@ -74,7 +74,7 @@ def add_arguments(parser):
 
 def run(args):
     """Generate a DHCP server configuration, and write it to stdout."""
-    params = vars(args)
+    params = vars(args).copy()
     omapi_key = params.pop('omapi_key')
     outfile = params.pop('outfile')
     kwargs = {

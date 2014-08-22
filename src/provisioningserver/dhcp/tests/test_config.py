@@ -24,6 +24,7 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.dhcp import config
+from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.testing.testcase import PservTestCase
 import tempita
 from testtools.matchers import (
@@ -50,26 +51,15 @@ sample_template = dedent("""\
 
 
 def make_sample_params():
-    """Produce a dict of sample parameters.
-
-    The sample provides all parameters used by the DHCP template.
-    """
-    return dict(
-        omapi_key="random",
-        dhcp_subnets=[dict(
-            subnet="10.0.0.0",
-            interface="eth0",
-            subnet_mask="255.0.0.0",
-            subnet_cidr="10.0.0.0/8",
-            broadcast_ip="10.255.255.255",
-            dns_servers="10.1.0.1 10.1.0.2",
-            ntp_server="8.8.8.8",
-            domain_name="example.com",
-            router_ip="10.0.0.2",
-            ip_range_low="10.0.0.3",
-            ip_range_high="10.0.0.254",
-            )]
-        )
+    """Return a dict of arbitrary DHCP configuration parameters."""
+    if factory.pick_bool():
+        network = factory.getRandomNetwork()
+    else:
+        network = factory.make_ipv6_network()
+    return {
+        'omapi_key': factory.make_name('key'),
+        'dhcp_subnets': [make_subnet_config(network)],
+        }
 
 
 class TestGetConfig(PservTestCase):
