@@ -13,7 +13,9 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "configure_dhcpv6",
     "create_host_maps",
+    "remove_host_maps",
 ]
 
 from provisioningserver.logger import get_maas_logger
@@ -26,6 +28,16 @@ from provisioningserver.utils.shell import ExternalProcessError
 
 
 maaslog = get_maas_logger("dhcp")
+
+
+def configure_dhcpv6(omapi_key, subnet_configs):
+    """Configure the DHCPv6 server, and restart it.
+
+    :param omapi_key: OMAPI secret key.
+    :param subnet_configs: List of dicts with subnet parameters for each
+        subnet for which the DHCP server should serve DHCPv6.
+    """
+    # TODO: Implement.
 
 
 def create_host_maps(mappings, shared_key):

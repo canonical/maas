@@ -37,6 +37,7 @@ from mock import (
     )
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
+from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
@@ -929,6 +930,30 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         def check(failure):
             failure.trap(PowerActionFail)
         return d.addErrback(check)
+
+
+class TestClusterProtocol_ConfigureDHCPv6(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test__is_registered(self):
+        self.assertIsNotNone(
+            Cluster().locateResponder(cluster.ConfigureDHCPv6.commandName))
+
+    @inlineCallbacks
+    def test__executes_configure_dhcpv6(self):
+        configure_dhcpv6 = self.patch(clusterservice, 'configure_dhcpv6')
+        omapi_key = factory.make_name('key')
+        subnet_configs = [make_subnet_config()]
+
+        yield call_responder(Cluster(), cluster.ConfigureDHCPv6, {
+            'omapi_key': omapi_key,
+            'subnet_configs': subnet_configs,
+            })
+
+        self.assertThat(
+            configure_dhcpv6,
+            MockCalledOnceWith(omapi_key, subnet_configs))
 
 
 class TestClusterProtocol_CreateHostMaps(MAASTestCase):

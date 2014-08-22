@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ConfigureDHCPv6",
     "CreateHostMaps",
     "DescribePowerTypes",
     "GetPreseedData",
@@ -208,6 +209,30 @@ class PowerQuery(_Power):
     response = [
         (b"state", amp.Unicode()),
     ]
+
+
+class ConfigureDHCPv6(amp.Command):
+    """Configure the DHCPv6 server, and restart it.
+
+    :since: 1.7
+    """
+    arguments = [
+        (b"omapi_key", amp.Unicode()),
+        (b"subnet_configs", amp.AmpList([
+            (b"subnet", amp.Unicode()),
+            (b"subnet_mask", amp.Unicode()),
+            (b"subnet_cidr", amp.Unicode()),
+            (b"broadcast_ip", amp.Unicode()),
+            (b"interface", amp.Unicode()),
+            (b"router_ip", amp.Unicode()),
+            (b"dns_servers", amp.Unicode()),
+            (b"ntp_server", amp.Unicode()),
+            (b"domain_name", amp.Unicode()),
+            (b"ip_range_low", amp.Unicode()),
+            (b"ip_range_high", amp.Unicode()),
+            ])),
+        ]
+    response = []
 
 
 class CreateHostMaps(amp.Command):

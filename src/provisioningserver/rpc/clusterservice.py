@@ -39,6 +39,7 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.dhcp import (
+    configure_dhcpv6,
     create_host_maps,
     remove_host_maps,
     )
@@ -176,6 +177,11 @@ class Cluster(amp.AMP, object):
             system_id, hostname, power_type, power_change='query',
             context=context)
         return {'state': state}
+
+    @cluster.ConfigureDHCPv6.responder
+    def configure_dhcpv6(self, omapi_key, subnet_configs):
+        configure_dhcpv6(omapi_key, subnet_configs)
+        return {}
 
     @cluster.CreateHostMaps.responder
     def create_host_maps(self, mappings, shared_key):
