@@ -4,13 +4,13 @@ Physical Zones
 .. note::
   This feature is only available in MAAS versions 1.5 and above.
 
-To help you maximize fault-tolerance and performance of the services you
+To help you maximise fault-tolerance and performance of the services you
 deploy, MAAS administrators can define *physical zones* (or just *zones*
 for short), and assign nodes to them.  When a user requests a node, they can
 ask for one that is in a specific zone, or one that is not in a specific zone.
 
 It's up to you as an administrator to decide what a physical zone should
-represent: it could be a server rack, a room, a data center, machines attached
+represent: it could be a server rack, a room, a data centre, machines attached
 to the same UPS, or a portion of your network.  Zones are most useful when they
 represent portions of your infrastructure.  But you could also use them simply
 to keep track of where your systems are located.
@@ -34,7 +34,7 @@ Using Zones for Fault Tolerance
 
 If you are concerned about availability of services you deploy through MAAS, a
 physical zone could be on one power supply, or it could be an entire data
-center location, or an area of your network that is unlikely to suffer problems
+centre location, or an area of your network that is unlikely to suffer problems
 when another zone experiences an outage.
 
 For example, you might roll out separate instances of the same web application
@@ -67,7 +67,7 @@ when communicating with specific other nodes.
 
 In another example, your application may rely on a third-party service
 available on the internet.  If your MAAS is spread out across multiple data
-center locations, you may want the application to be deployed in the location
+centre locations, you may want the application to be deployed in the location
 with the best access to that service.
 
 

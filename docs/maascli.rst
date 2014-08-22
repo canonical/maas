@@ -290,7 +290,7 @@ acquire | list | accept | accept-all | new | check-commissioning
    provided. Other parameters may also be supplied::
 
      architecture="<value>" - The architecture of the node, must be
-     one of the recognized architecture strings (e.g. "i386/generic")
+     one of the recognised architecture strings (e.g. "i386/generic")
      hostname="<value>" - a name for this node. If not supplied a name
      will be generated.
      mac_addresses="<value>" - The mac address(es)

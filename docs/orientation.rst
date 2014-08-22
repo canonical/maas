@@ -66,7 +66,7 @@ a handful to many thousands of systems.
 For small (in terms of number of nodes) setups, you will probably just
 install the Region controller and a cluster controller on the same
 server - it is only worth having multiple region controllers if you
-need to organize your nodes into different subnets (e.g. if you have a
+need to organise your nodes into different subnets (e.g. if you have a
 lot of nodes).  If you install the ``maas`` package, it will include both a
 region controller and a cluster controller, and they will be automatically
 set up to work together.

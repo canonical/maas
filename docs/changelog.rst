@@ -139,7 +139,7 @@ For full details see https://launchpad.net/maas/+milestone/14.04
 
 #1255479    MaaS Internal Server Error 500 while parsing tags with namespaces in definition upon commissioning
 
-#1269648    OAuth unauthorized errors mask the actual error text
+#1269648    OAuth unauthorised errors mask the actual error text
 
 #1270052    Adding an SSH key fails due to a UnicodeDecodeError
 
@@ -292,7 +292,7 @@ New faster installer for nodes.
 
 More extensible templates for DHCP, power control, PXE and DNS.
   Templates supplied for these activities are now all in their own template
-  file that is customizable by the user.  The files now generally live under
+  file that is customisable by the user.  The files now generally live under
   /etc/maas/ rather than embedded in the code tree itself.
 
 Minor feature changes
@@ -302,7 +302,7 @@ Reworked ephemeral downloading
   While there is no end-user visible change, the ephemeral image download
   process is now driven by a data stream published by Canonical at
   http://maas.ubuntu.com/images/streams. In the future this will allow end
-  users to use their own customized images by creating their own stream.
+  users to use their own customised images by creating their own stream.
   The configuration for this is now also part of ``pserv.yaml``, obsoleting
   the maas_import_ephemerals configuration file.  The config will be auto-
   migrated on the first run of the ``maas-import-ephemerals`` script.

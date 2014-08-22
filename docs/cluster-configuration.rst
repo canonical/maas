@@ -75,7 +75,7 @@ explains how to do this and what choices are to be made.
 Cluster interface management
 ----------------------------
 
-MAAS automatically recognizes the network interfaces on each cluster
+MAAS automatically recognises the network interfaces on each cluster
 controller.  Some (though not necessarily all) of these will be connected to
 networks where you want to manage nodes.  A connection between a cluster
 controller and a network is called a `cluster interface`.  Each cluster

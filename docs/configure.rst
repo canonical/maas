@@ -203,7 +203,7 @@ Installing additional clusters
 ------------------------------
 
 In an environment comprising large numbers of nodes, it is likely that you will
-want to organize the nodes on a more distributed basis. The standard install of
+want to organise the nodes on a more distributed basis. The standard install of
 the MAAS region controller includes a cluster controller, but it is
 possible to add additional cluster controllers to the configuration, as
 shown in the diagram below:

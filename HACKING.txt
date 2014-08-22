@@ -170,7 +170,7 @@ and sets up some useful commands in ``bin/``::
 
     $ make
 
-Create the database cluster and initialize the development database::
+Create the database cluster and initialise the development database::
 
     $ make syncdb
 
