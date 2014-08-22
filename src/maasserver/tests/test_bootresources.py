@@ -24,6 +24,7 @@ from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.test.client import Client
 from maasserver.bootresources import (
+    BootResourceStore,
     ensure_boot_source_definition,
     get_simplestream_endpoint,
     )
@@ -32,13 +33,25 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     )
 from maasserver.models import (
+    BootResource,
+    BootResourceFile,
+    BootResourceSet,
     BootSource,
     BootSourceSelection,
+    LargeFile,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
+from maasserver.utils.orm import get_one
+from maastesting.djangotestcase import TransactionTestCase
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from testtools.matchers import (
     ContainsAll,
     HasLength,
@@ -476,3 +489,406 @@ class TestTransactionWrapper(MAASTestCase):
         # thrown. If it works then content will match.
         self.assertEqual(content, b''.join(response.streaming_content))
         self.assertTrue(largefile.content.closed)
+
+
+def make_product():
+    """Make product dictionary that is just like the one provided
+    from simplsetreams."""
+    subarch = factory.make_name('subarch')
+    subarches = [factory.make_name('subarch') for _ in range(3)]
+    subarches.insert(0, subarch)
+    subarches = ','.join(subarches)
+    product = {
+        'os': factory.make_name('os'),
+        'arch': factory.make_name('arch'),
+        'subarch': subarch,
+        'release': factory.make_name('release'),
+        'kflavor': factory.make_name('kflavor'),
+        'subarches': subarches,
+        'version_name': factory.make_name('version'),
+        'label': factory.make_name('label'),
+        'ftype': factory.pick_enum(BOOT_RESOURCE_FILE_TYPE),
+        'kpackage': factory.make_name('kpackage'),
+        'di_version': factory.make_name('di_version'),
+        }
+    name = '%s/%s' % (product['os'], product['release'])
+    architecture = '%s/%s' % (product['arch'], product['subarch'])
+    return name, architecture, product
+
+
+def make_boot_resource_group(
+        rtype=None, name=None, architecture=None,
+        version=None, filename=None, filetype=None):
+    """Make boot resource that contains one set and one file."""
+    resource = factory.make_boot_resource(
+        rtype=rtype, name=name, architecture=architecture)
+    resource_set = factory.make_boot_resource_set(resource, version=version)
+    rfile = factory.make_boot_resource_file_with_content(
+        resource_set, filename=filename, filetype=filetype)
+    return resource, resource_set, rfile
+
+
+def make_boot_resource_group_from_product(product):
+    """Make boot resource that contains one set and one file, using the
+    information from the given product.
+
+    The product dictionary is also updated to include the sha256 and size
+    for the created largefile. The calling function should use the returned
+    product in place of the passed product.
+    """
+    name = '%s/%s' % (product['os'], product['release'])
+    architecture = '%s/%s' % (product['arch'], product['subarch'])
+    resource = factory.make_boot_resource(
+        rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+        architecture=architecture)
+    resource_set = factory.make_boot_resource_set(
+        resource, version=product['version_name'])
+    rfile = factory.make_boot_resource_file_with_content(
+        resource_set, filename=product['ftype'],
+        filetype=product['ftype'])
+    product['sha256'] = rfile.largefile.sha256
+    product['size'] = rfile.largefile.total_size
+    return product, resource
+
+
+class TestBootResourceStore(MAASServerTestCase):
+
+    def make_boot_resources(self):
+        resources = [
+            factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            for _ in range(3)
+            ]
+        resource_names = []
+        for resource in resources:
+            os, series = resource.name.split('/')
+            arch, subarch = resource.split_arch()
+            name = '%s/%s/%s/%s' % (os, arch, subarch, series)
+            resource_names.append(name)
+        return resources, resource_names
+
+    def test_init_initializes_variables(self):
+        _, resource_names = self.make_boot_resources()
+        store = BootResourceStore()
+        self.assertItemsEqual(resource_names, store._resources_to_delete)
+        self.assertEqual({}, store._content_to_finalize)
+
+    def test_prevent_resource_deletion_removes_resource(self):
+        resources, resource_names = self.make_boot_resources()
+        store = BootResourceStore()
+        resource = resources.pop()
+        resource_names.pop()
+        store.prevent_resource_deletion(resource)
+        self.assertItemsEqual(resource_names, store._resources_to_delete)
+
+    def test_prevent_resource_deletion_doesnt_remove_unknown_resource(self):
+        resources, resource_names = self.make_boot_resources()
+        store = BootResourceStore()
+        resource = factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store.prevent_resource_deletion(resource)
+        self.assertItemsEqual(resource_names, store._resources_to_delete)
+
+    def test_save_content_later_adds_to__content_to_finalize_var(self):
+        _, _, rfile = make_boot_resource_group()
+        store = BootResourceStore()
+        store.save_content_later(rfile, sentinel.reader)
+        self.assertEqual(
+            {rfile.id: sentinel.reader},
+            store._content_to_finalize)
+
+    def test_get_or_create_boot_resource_creates_resource(self):
+        name, architecture, product = make_product()
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        self.assertEqual(BOOT_RESOURCE_TYPE.SYNCED, resource.rtype)
+        self.assertEqual(name, resource.name)
+        self.assertEqual(architecture, resource.architecture)
+        self.assertEqual(product['kflavor'], resource.extra['kflavor'])
+        self.assertEqual(product['subarches'], resource.extra['subarches'])
+
+    def test_get_or_create_boot_resource_gets_resource(self):
+        name, architecture, product = make_product()
+        expected = factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+            architecture=architecture)
+        store = BootResourceStore()
+        resource = store.get_or_create_boot_resource(product)
+        self.assertEqual(expected, resource)
+        self.assertEqual(product['kflavor'], resource.extra['kflavor'])
+        self.assertEqual(product['subarches'], resource.extra['subarches'])
+
+    def test_get_or_create_boot_resource_calls_prevent_resource_deletion(self):
+        name, architecture, product = make_product()
+        resource = factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name, architecture=architecture)
+        store = BootResourceStore()
+        mock_prevent = self.patch(store, 'prevent_resource_deletion')
+        store.get_or_create_boot_resource(product)
+        self.assertThat(
+            mock_prevent, MockCalledOnceWith(resource))
+
+    def test_get_or_create_boot_resource_set_creates_resource_set(self):
+        name, architecture, product = make_product()
+        product, resource = make_boot_resource_group_from_product(product)
+        resource.sets.all().delete()
+        store = BootResourceStore()
+        resource_set = store.get_or_create_boot_resource_set(resource, product)
+        self.assertEqual(product['version_name'], resource_set.version)
+        self.assertEqual(product['label'], resource_set.label)
+
+    def test_get_or_create_boot_resource_set_gets_resource_set(self):
+        name, architecture, product = make_product()
+        product, resource = make_boot_resource_group_from_product(product)
+        expected = resource.sets.first()
+        store = BootResourceStore()
+        resource_set = store.get_or_create_boot_resource_set(resource, product)
+        self.assertEqual(expected, resource_set)
+        self.assertEqual(product['label'], resource_set.label)
+
+    def test_get_or_create_boot_resource_file_creates_resource_file(self):
+        name, architecture, product = make_product()
+        product, resource = make_boot_resource_group_from_product(product)
+        resource_set = resource.sets.first()
+        resource_set.files.all().delete()
+        store = BootResourceStore()
+        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        self.assertEqual(product['ftype'], rfile.filename)
+        self.assertEqual(product['ftype'], rfile.filetype)
+        self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
+        self.assertEqual(product['di_version'], rfile.extra['di_version'])
+
+    def test_get_or_create_boot_resource_file_gets_resource_file(self):
+        name, architecture, product = make_product()
+        product, resource = make_boot_resource_group_from_product(product)
+        resource_set = resource.sets.first()
+        expected = resource_set.files.first()
+        store = BootResourceStore()
+        rfile = store.get_or_create_boot_resource_file(resource_set, product)
+        self.assertEqual(expected, rfile)
+        self.assertEqual(product['ftype'], rfile.filetype)
+        self.assertEqual(product['kpackage'], rfile.extra['kpackage'])
+        self.assertEqual(product['di_version'], rfile.extra['di_version'])
+
+    def test_get_resource_file_log_identifier_returns_valid_ident(self):
+        os = factory.make_name('os')
+        series = factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        version = factory.make_name('version')
+        filename = factory.make_name('filename')
+        name = '%s/%s' % (os, series)
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+            architecture=architecture)
+        resource_set = factory.make_boot_resource_set(
+            resource, version=version)
+        rfile = factory.make_boot_resource_file_with_content(
+            resource_set, filename=filename)
+        store = BootResourceStore()
+        self.assertEqual(
+            '%s/%s/%s/%s/%s/%s' % (
+                os, arch, subarch, series, version, filename),
+            store.get_resource_file_log_identifier(rfile))
+        self.assertEqual(
+            '%s/%s/%s/%s/%s/%s' % (
+                os, arch, subarch, series, version, filename),
+            store.get_resource_file_log_identifier(
+                rfile, resource_set, resource))
+
+    def test_write_content_saves_data(self):
+        rfile, reader, content = make_boot_resource_file_with_stream()
+        store = BootResourceStore()
+        store.write_content(rfile, reader)
+        self.assertTrue(BootResourceFile.objects.filter(id=rfile.id).exists())
+        with rfile.largefile.content.open('rb') as stream:
+            written_data = stream.read()
+        self.assertEqual(content, written_data)
+
+    def test_write_content_deletes_file_on_bad_checksum(self):
+        rfile, _, _ = make_boot_resource_file_with_stream()
+        reader = StringIO(factory.make_string())
+        store = BootResourceStore()
+        store.write_content(rfile, reader)
+        self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
+
+    def test_finalize_calls_methods(self):
+        store = BootResourceStore()
+        mock_resource_cleaner = self.patch(store, 'resource_cleaner')
+        mock_perform_write = self.patch(store, 'perform_write')
+        mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
+        store.finalize()
+        self.assertTrue(mock_resource_cleaner, MockCalledOnceWith())
+        self.assertTrue(mock_perform_write, MockCalledOnceWith())
+        self.assertTrue(mock_resource_set_cleaner, MockCalledOnceWith())
+
+
+class TestBootResourceTransactional(TransactionTestCase):
+    """Test methods on `BootResourceStore` that manage their own transactions.
+
+    This is done using TransactionTestCase so the database is flushed after
+    each test run.
+    """
+
+    def test_insert_does_nothing_if_file_already_exists(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            product, resource = make_boot_resource_group_from_product(product)
+            rfile = resource.sets.first().files.first()
+        largefile = rfile.largefile
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        self.assertEqual(largefile, reload_object(rfile).largefile)
+        self.assertThat(mock_save_later, MockNotCalled())
+
+    def test_insert_uses_already_existing_largefile(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            product, resource = make_boot_resource_group_from_product(product)
+            resource_set = resource.sets.first()
+            resource_set.files.all().delete()
+            largefile = factory.make_large_file()
+        product['sha256'] = largefile.sha256
+        product['size'] = largefile.total_size
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        self.assertEqual(
+            largefile,
+            get_one(reload_object(resource_set).files.all()).largefile)
+        self.assertThat(mock_save_later, MockNotCalled())
+
+    def test_insert_deletes_mismatch_largefile(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            product, resource = make_boot_resource_group_from_product(product)
+            rfile = resource.sets.first().files.first()
+            delete_largefile = rfile.largefile
+            largefile = factory.make_large_file()
+        product['sha256'] = largefile.sha256
+        product['size'] = largefile.total_size
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        self.assertFalse(
+            LargeFile.objects.filter(id=delete_largefile.id).exists())
+        self.assertEqual(largefile, reload_object(rfile).largefile)
+        self.assertThat(mock_save_later, MockNotCalled())
+
+    def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            resource = factory.make_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+                architecture=architecture)
+            resource_set = factory.make_boot_resource_set(
+                resource, version=product['version_name'])
+            other_type = factory.pick_enum(
+                BOOT_RESOURCE_FILE_TYPE, but_not=product['ftype'])
+            other_file = factory.make_boot_resource_file_with_content(
+                resource_set, filename=other_type, filetype=other_type)
+            rfile = factory.make_boot_resource_file(
+                resource_set, other_file.largefile,
+                filename=product['ftype'], filetype=product['ftype'])
+            largefile = factory.make_large_file()
+        product['sha256'] = largefile.sha256
+        product['size'] = largefile.total_size
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        self.assertEqual(largefile, reload_object(rfile).largefile)
+        self.assertTrue(
+            LargeFile.objects.filter(id=other_file.largefile.id).exists())
+        self.assertTrue(
+            BootResourceFile.objects.filter(id=other_file.id).exists())
+        self.assertEqual(
+            other_file.largefile, reload_object(other_file).largefile)
+        self.assertThat(mock_save_later, MockNotCalled())
+
+    def test_insert_creates_new_largefile(self):
+        name, architecture, product = make_product()
+        with transaction.atomic():
+            resource = factory.make_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
+                architecture=architecture)
+            resource_set = factory.make_boot_resource_set(
+                resource, version=product['version_name'])
+        product['sha256'] = factory.make_string(size=64)
+        product['size'] = randint(1024, 2048)
+        store = BootResourceStore()
+        mock_save_later = self.patch(store, 'save_content_later')
+        store.insert(product, sentinel.reader)
+        rfile = get_one(reload_object(resource_set).files.all())
+        self.assertEqual(product['sha256'], rfile.largefile.sha256)
+        self.assertEqual(product['size'], rfile.largefile.total_size)
+        self.assertThat(
+            mock_save_later,
+            MockCalledOnceWith(rfile, sentinel.reader))
+
+    def test_resource_cleaner_removes_old_boot_resources(self):
+        with transaction.atomic():
+            resources = [
+                factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                for _ in range(3)
+                ]
+        store = BootResourceStore()
+        store.resource_cleaner()
+        for resource in resources:
+            os, series = resource.name.split('/')
+            arch, subarch = resource.split_arch()
+            self.assertFalse(
+                BootResource.objects.has_synced_resource(
+                    os, arch, subarch, series))
+
+    def test_resource_set_cleaner_removes_incomplete_set(self):
+        with transaction.atomic():
+            resource = factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            incomplete_set = factory.make_boot_resource_set(resource)
+        store = BootResourceStore()
+        store.resource_set_cleaner()
+        self.assertFalse(
+            BootResourceSet.objects.filter(id=incomplete_set.id).exists())
+
+    def test_resource_set_cleaner_keeps_only_newest_completed_set(self):
+        with transaction.atomic():
+            resource = factory.make_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            old_complete_sets = []
+            for _ in range(3):
+                resource_set = factory.make_boot_resource_set(resource)
+                factory.make_boot_resource_file_with_content(resource_set)
+                old_complete_sets.append(resource_set)
+            newest_set = factory.make_boot_resource_set(resource)
+            factory.make_boot_resource_file_with_content(newest_set)
+        store = BootResourceStore()
+        store.resource_set_cleaner()
+        self.assertItemsEqual([newest_set], resource.sets.all())
+        for resource_set in old_complete_sets:
+            self.assertFalse(
+                BootResourceSet.objects.filter(id=resource_set.id).exists())
+
+    def test_resource_set_cleaner_removes_resources_with_empty_sets(self):
+        with transaction.atomic():
+            resource = factory.make_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store = BootResourceStore()
+        store.resource_set_cleaner()
+        self.assertFalse(
+            BootResource.objects.filter(id=resource.id).exists())
+
+    def test_perform_writes_writes_all_content(self):
+        with transaction.atomic():
+            files = [make_boot_resource_file_with_stream() for _ in range(3)]
+            store = BootResourceStore()
+            for rfile, reader, content in files:
+                store.save_content_later(rfile, reader)
+        store.perform_write()
+        with transaction.atomic():
+            for rfile, reader, content in files:
+                self.assertTrue(
+                    BootResourceFile.objects.filter(id=rfile.id).exists())
+                with rfile.largefile.content.open('rb') as stream:
+                    written_data = stream.read()
+                self.assertEqual(content, written_data)
