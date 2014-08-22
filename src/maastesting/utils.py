@@ -18,7 +18,6 @@ __all__ = [
     "extract_word_list",
     "get_write_time",
     "preexec_fn",
-    "retries",
     "run_isolated",
     "sample_binary_data",
     ]
@@ -30,10 +29,6 @@ import signal
 from sys import (
     stderr,
     stdout,
-    )
-from time import (
-    sleep,
-    time,
     )
 from traceback import print_exc
 
@@ -83,24 +78,6 @@ def preexec_fn():
     # Revert Python's handling of SIGPIPE. See
     # http://bugs.python.org/issue1652 for more info.
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-
-
-def retries(timeout=30, delay=1):
-    """Helper for retrying something, sleeping between attempts.
-
-    Yields ``(elapsed, remaining)`` tuples, giving times in seconds.
-
-    @param timeout: From now, how long to keep iterating, in seconds.
-    @param delay: The sleep between each iteration, in seconds.
-    """
-    start = time()
-    end = start + timeout
-    for now in iter(time, None):
-        if now < end:
-            yield now - start, end - now
-            sleep(min(delay, end - now))
-        else:
-            break
 
 
 def run_isolated(cls, self, result):

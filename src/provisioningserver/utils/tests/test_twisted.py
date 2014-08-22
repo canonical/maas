@@ -336,7 +336,7 @@ class TestRetries(MAASTestCase):
             Equals(expected_wait),  # wait
         ]))
 
-    def test_yields_elapsed_remaining_and_sleeper(self):
+    def test_yields_elapsed_remaining_and_wait(self):
         # Take control of time.
         clock = Clock()
 
@@ -356,6 +356,8 @@ class TestRetries(MAASTestCase):
         self.assertRetry(clock, next(gen_retries), 4, 1, 1)
         # Mimic sleeping for the suggested sleep time.
         clock.advance(1)
+        # There's always a final chance to try something.
+        self.assertRetry(clock, next(gen_retries), 5, 0, 0)
         # All done.
         self.assertRaises(StopIteration, next, gen_retries)
 
@@ -376,6 +378,10 @@ class TestRetries(MAASTestCase):
         self.assertRetry(clock, next(gen_retries), 4, 1, 1)
         # Mimic sleeping for 100 seconds, much more than the suggested.
         clock.advance(100)
+        # There's always a final chance to try something, but the elapsed and
+        # remaining figures are still calculated with reference to the current
+        # time. The wait time never goes below zero.
+        self.assertRetry(clock, next(gen_retries), 104, -99, 0)
         # All done.
         self.assertRaises(StopIteration, next, gen_retries)
 

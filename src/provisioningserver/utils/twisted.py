@@ -227,6 +227,7 @@ def retries(timeout=30, interval=1, clock=reactor):
             wait = min(interval, end - now)
             yield now - start, end - now, wait
         else:
+            yield now - start, end - now, 0
             break
 
 
