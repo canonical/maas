@@ -281,7 +281,9 @@ class TestDHCPTasks(PservTestCase):
              celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE))
 
         # It should then pass the content to communicate().
-        content = config.get_config(**config_params).encode("ascii")
+        content = config.get_config(
+            'dhcpd.conf.template', **config_params
+            ).encode("ascii")
         self.assertThat(mocked_proc.communicate, MockAnyCall(content))
 
         # Similarly, it also writes the DHCPD interfaces to

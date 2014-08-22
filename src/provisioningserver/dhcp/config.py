@@ -83,9 +83,15 @@ def compose_conditional_bootloader():
     return output.strip()
 
 
-def get_config(**params):
-    """Return a DHCP config file based on the supplied parameters."""
-    template_file = locate_config(TEMPLATES_DIR, 'dhcpd.conf.template')
+def get_config(template_name, **params):
+    """Return a DHCP config file based on the supplied parameters.
+
+    :param template_name: Template file name: `dhcpd.conf.template` for the
+        IPv4 template, `dhcpd6.conf.template` for the IPv6 template.
+    :param **params: Variables to be substituted into the template.
+    :return: A full configuration, as unicode text.
+    """
+    template_file = locate_config(TEMPLATES_DIR, template_name)
     params['bootloader'] = compose_conditional_bootloader()
     params['platform_codename'] = linux_distribution()[2]
     params.setdefault("ntp_server")

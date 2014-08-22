@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Generate a DHCP server configuration."""
@@ -81,7 +81,8 @@ def run(args):
         'dhcp_subnets': [params],
         'omapi_key': omapi_key,
     }
-    output = config.get_config(**kwargs).encode("ascii")
+    template = 'dhcpd.conf.template'
+    output = config.get_config(template, **kwargs).encode("ascii")
     if outfile is None:
         sys.stdout.write(output)
     else:

@@ -394,7 +394,8 @@ def write_dhcp_config(callback=None, **kwargs):
     :param **kwargs: Keyword args passed to dhcp.config.get_config()
     """
     sudo_write_file(
-        celery_config.DHCP_CONFIG_FILE, config.get_config(**kwargs))
+        celery_config.DHCP_CONFIG_FILE,
+        config.get_config('dhcpd.conf.template', **kwargs))
     sudo_write_file(
         celery_config.DHCP_INTERFACES_FILE, kwargs.get('dhcp_interfaces', ''))
     if callback is not None:

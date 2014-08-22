@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test cases for dhcp.config"""
@@ -60,6 +60,7 @@ def make_sample_params():
             subnet="10.0.0.0",
             interface="eth0",
             subnet_mask="255.0.0.0",
+            subnet_cidr="10.0.0.0/8",
             broadcast_ip="10.255.255.255",
             dns_servers="10.1.0.1 10.1.0.2",
             ntp_server="8.8.8.8",
@@ -73,33 +74,39 @@ def make_sample_params():
 
 class TestDHCPConfig(PservTestCase):
 
-    def patch_template(self, template_content=sample_template):
+    def patch_template(self, name=None, template_content=sample_template):
         """Patch the DHCP config template with the given contents.
 
         Returns a `tempita.Template` of the given template, so that a test
         can make its own substitutions and compare to those made by the
         code being tested.
         """
+        if name is None:
+            name = 'dhcpd.conf.template'
         fake_etc_maas = self.make_dir()
         self.useFixture(EnvironmentVariableFixture(
             'MAAS_CONFIG_DIR', fake_etc_maas))
         template_dir = path.join(fake_etc_maas, 'templates', 'dhcp')
         makedirs(template_dir)
         template = factory.make_file(
-            template_dir, 'dhcpd.conf.template', contents=template_content)
+            template_dir, name, contents=template_content)
         return tempita.Template(template_content, name=template)
 
     def test_uses_branch_template_by_default(self):
-        # Since the branch comes with a dhcp template in etc/maas, we can
-        # instantiate that template without any hackery.
-        self.assertIsNotNone(config.get_config(**make_sample_params()))
+        # Since the branch comes with dhcp templates in etc/maas, we can
+        # instantiate those templates without any hackery.
+        self.assertIsNotNone(
+            config.get_config('dhcpd.conf.template', **make_sample_params()))
+        self.assertIsNotNone(
+            config.get_config('dhcpd6.conf.template', **make_sample_params()))
 
     def test_param_substitution(self):
-        template = self.patch_template()
+        template_name = factory.make_name('template')
+        template = self.patch_template(name=template_name)
         params = make_sample_params()
         self.assertEqual(
             template.substitute(params),
-            config.get_config(**params))
+            config.get_config(template_name, **params))
 
     def test_quotes_interface(self):
         # The interface name doesn't normally need to be quoted, but the
@@ -108,7 +115,7 @@ class TestDHCPConfig(PservTestCase):
         params = make_sample_params()
         self.assertIn(
             'interface "%s";' % params['dhcp_subnets'][0]['interface'],
-            config.get_config(**params))
+            config.get_config('dhcpd.conf.template', **params))
 
     def test_get_config_with_too_few_parameters(self):
         template = self.patch_template()
@@ -116,7 +123,8 @@ class TestDHCPConfig(PservTestCase):
         del params['dhcp_subnets'][0]['subnet']
 
         e = self.assertRaises(
-            config.DHCPConfigError, config.get_config, **params)
+            config.DHCPConfigError,
+            config.get_config, 'dhcpd.conf.template', **params)
 
         self.assertThat(
             unicode(e), MatchesRegex(
@@ -136,12 +144,16 @@ class TestDHCPConfig(PservTestCase):
     def test_config_contains_compose_conditional_bootloader(self):
         params = make_sample_params()
         bootloader = config.compose_conditional_bootloader()
-        self.assertThat(config.get_config(**params), Contains(bootloader))
+        self.assertThat(
+            config.get_config('dhcpd.conf.template', **params),
+            Contains(bootloader))
 
     def test_renders_without_ntp_servers_set(self):
         params = make_sample_params()
         del params['dhcp_subnets'][0]['ntp_server']
         template = self.patch_template()
         rendered = template.substitute(params)
-        self.assertEqual(rendered, config.get_config(**params))
+        self.assertEqual(
+            rendered,
+            config.get_config('dhcpd.conf.template', **params))
         self.assertNotIn("ntp-servers", rendered)
