@@ -37,6 +37,8 @@ class BOOT_IMAGE_PURPOSE:
     INSTALL = 'install'
     #: Usable for fast-path install
     XINSTALL = 'xinstall'
+    #: Usable for diskless boot
+    DISKLESS = 'diskless'
 
 
 # A cluster-side representation of a Node, relevant to the osystem code,

@@ -44,7 +44,8 @@ class TestUbuntuOS(MAASTestCase):
             self.assertEqual(expected, [
                 BOOT_IMAGE_PURPOSE.COMMISSIONING,
                 BOOT_IMAGE_PURPOSE.INSTALL,
-                BOOT_IMAGE_PURPOSE.XINSTALL
+                BOOT_IMAGE_PURPOSE.XINSTALL,
+                BOOT_IMAGE_PURPOSE.DISKLESS,
                 ])
 
     def test_get_supported_releases(self):

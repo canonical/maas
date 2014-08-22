@@ -49,7 +49,8 @@ class UbuntuOS(OperatingSystem):
         return [
             BOOT_IMAGE_PURPOSE.COMMISSIONING,
             BOOT_IMAGE_PURPOSE.INSTALL,
-            BOOT_IMAGE_PURPOSE.XINSTALL
+            BOOT_IMAGE_PURPOSE.XINSTALL,
+            BOOT_IMAGE_PURPOSE.DISKLESS,
             ]
 
     def get_supported_releases(self):
