@@ -23,8 +23,11 @@ from django.core.urlresolvers import reverse
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.test.client import Client
+from maasserver import bootresources
 from maasserver.bootresources import (
     BootResourceStore,
+    download_all_boot_resources,
+    download_boot_resources,
     ensure_boot_source_definition,
     get_simplestream_endpoint,
     )
@@ -51,7 +54,11 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    Mock,
+    sentinel,
+    )
+from provisioningserver.import_images.product_mapping import ProductMapping
 from testtools.matchers import (
     ContainsAll,
     HasLength,
@@ -892,3 +899,100 @@ class TestBootResourceTransactional(TransactionTestCase):
                 with rfile.largefile.content.open('rb') as stream:
                     written_data = stream.read()
                 self.assertEqual(content, written_data)
+
+
+class TestImportImages(MAASTestCase):
+
+    def test_download_boot_resources_syncs_repo(self):
+        fake_sync = self.patch(bootresources.BootResourceRepoWriter, 'sync')
+        store = BootResourceStore()
+        source_url = factory.make_url()
+        download_boot_resources(
+            source_url, store, None, None)
+        self.assertEqual(1, len(fake_sync.mock_calls))
+
+    def test_download_all_boot_resources_calls_download_boot_resources(self):
+        source = {
+            'url': factory.make_url(),
+            'keyring': self.make_file("keyring"),
+            }
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        fake_download = self.patch(bootresources, 'download_boot_resources')
+        download_all_boot_resources(
+            sources=[source], product_mapping=product_mapping, store=store)
+        self.assertThat(
+            fake_download,
+            MockCalledOnceWith(
+                source['url'], store, product_mapping,
+                keyring_file=source['keyring']))
+
+    def test_download_all_boot_resources_calls_finalize_on_store(self):
+        product_mapping = ProductMapping()
+        store = BootResourceStore()
+        fake_finalize = self.patch(store, 'finalize')
+        download_all_boot_resources(
+            sources=[], product_mapping=product_mapping, store=store)
+        self.assertThat(
+            fake_finalize,
+            MockCalledOnceWith())
+
+    def test_has_synced_resources_returns_true(self):
+        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        self.assertTrue(bootresources.has_synced_resources())
+
+    def test_has_synced_resources_returns_false(self):
+        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        self.assertFalse(bootresources.has_synced_resources())
+
+    def test__import_resources_exists_early_without_force(self):
+        fake_lock = self.patch(bootresources.locks, 'import_images')
+        bootresources._import_resources(force=False)
+        self.assertThat(fake_lock.is_locked, MockNotCalled())
+
+    def test__import_resources_continues_with_force(self):
+        fake_lock = self.patch(bootresources.locks, 'import_images')
+        bootresources._import_resources(force=True)
+        self.assertThat(fake_lock.is_locked, MockCalledOnceWith())
+
+    def test__import_resources_holds_lock(self):
+        fake_write_all_keyrings = self.patch(
+            bootresources, 'write_all_keyrings')
+
+        def test_for_held_lock(sources):
+            self.assertTrue(bootresources.locks.import_images.is_locked())
+            return []
+        fake_write_all_keyrings.side_effect = test_for_held_lock
+
+        bootresources._import_resources(force=True)
+        self.assertFalse(bootresources.locks.import_images.is_locked())
+
+    def test__import_resources_calls_functions_with_correct_parameters(self):
+        fake_write_all_keyrings = self.patch(
+            bootresources, 'write_all_keyrings')
+        fake_write_all_keyrings.return_value = sentinel.sources
+        fake_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        fake_image_descriptions.return_value = descriptions
+        fake_map_products = self.patch(
+            bootresources, 'map_products')
+        fake_map_products.return_value = sentinel.mapping
+        fake_download_all_boot_resources = self.patch(
+            bootresources, 'download_all_boot_resources')
+
+        bootresources._import_resources(force=True)
+
+        self.assertThat(
+            fake_write_all_keyrings,
+            MockCalledOnceWith([]))
+        self.assertThat(
+            fake_image_descriptions,
+            MockCalledOnceWith(sentinel.sources))
+        self.assertThat(
+            fake_map_products,
+            MockCalledOnceWith(descriptions))
+        self.assertThat(
+            fake_download_all_boot_resources,
+            MockCalledOnceWith(sentinel.sources, sentinel.mapping))

@@ -17,6 +17,7 @@ __all__ = []
 from crochet import wait_for_reactor
 from django.db import connections
 from maasserver import (
+    bootresources,
     eventloop,
     nonces_cleanup,
     )
@@ -134,6 +135,15 @@ class TestFactories(MAASTestCase):
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_NonceCleanupService,
+            {factory for _, factory in eventloop.loop.factories})
+
+    def test_make_ImportResourcesService(self):
+        service = eventloop.make_ImportResourcesService()
+        self.assertThat(service, IsInstance(
+            bootresources.ImportResourcesService))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_ImportResourcesService,
             {factory for _, factory in eventloop.loop.factories})
 
 

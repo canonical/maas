@@ -159,6 +159,11 @@ def make_NonceCleanupService():
     return nonces_cleanup.NonceCleanupService()
 
 
+def make_ImportResourcesService():
+    from maasserver import bootresources
+    return bootresources.ImportResourcesService()
+
+
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
@@ -183,6 +188,7 @@ class RegionEventLoop:
         ("rpc", make_RegionService),
         ("rpc-advertise", make_RegionAdvertisingService),
         ("nonce-cleanup", make_NonceCleanupService),
+        ("import-resources", make_ImportResourcesService),
     )
 
     def __init__(self):

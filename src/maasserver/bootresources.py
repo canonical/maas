@@ -23,6 +23,7 @@ __all__ = [
 import threading
 import time
 
+from crochet import run_in_reactor
 from django.db import (
     close_old_connections,
     transaction,
@@ -33,6 +34,7 @@ from django.http import (
     StreamingHttpResponse,
     )
 from django.shortcuts import get_object_or_404
+from maasserver import locks
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
@@ -46,10 +48,25 @@ from maasserver.models import (
 from maasserver.utils import absolute_reverse
 from maasserver.utils.async import transactional
 from maasserver.utils.orm import get_one
-from provisioningserver.import_images.helpers import get_os_from_product
+from provisioningserver.import_images.download_descriptions import (
+    download_all_image_descriptions,
+    )
+from provisioningserver.import_images.helpers import (
+    get_os_from_product,
+    get_signing_policy,
+    )
+from provisioningserver.import_images.keyrings import write_all_keyrings
+from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.twisted import synchronous
 from simplestreams import util as sutil
+from simplestreams.mirrors import (
+    BasicMirrorWriter,
+    UrlMirrorReader,
+    )
 from simplestreams.objectstores import ObjectStore
+from twisted.application.internet import TimerService
+from twisted.internet.threads import deferToThread
 
 
 maaslog = get_maas_logger("bootresources")
@@ -677,3 +694,183 @@ class BootResourceStore(ObjectStore):
         self.perform_write()
         self.resource_set_cleaner()
         close_old_connections()
+
+
+class BootResourceRepoWriter(BasicMirrorWriter):
+    """Download boot resources from an upstream Simplestreams repo.
+
+    :ivar store: A `ObjectStore` to store the data. This writer only supports
+        the `BootResourceStore`.
+    :ivar product_mapping: A `ProductMapping` describing the desired boot
+        resources.
+    """
+
+    def __init__(self, store, product_mapping):
+        assert isinstance(store, BootResourceStore)
+        self.store = store
+        self.product_mapping = product_mapping
+        super(BootResourceRepoWriter, self).__init__()
+
+    def load_products(self, path=None, content_id=None):
+        """Overridable from `BasicMirrorWriter`."""
+        # It looks as if this method only makes sense for MirrorReaders, not
+        # for MirrorWriters.  The default MirrorWriter implementation just
+        # raises NotImplementedError.  Stop it from doing that.
+        return
+
+    def filter_version(self, data, src, target, pedigree):
+        """Overridable from `BasicMirrorWriter`."""
+        return self.product_mapping.contains(
+            sutil.products_exdata(src, pedigree))
+
+    def insert_item(self, data, src, target, pedigree, contentsource):
+        """Overridable from `BasicMirrorWriter`."""
+        item = sutil.products_exdata(src, pedigree)
+        self.store.insert(item, contentsource)
+
+
+def download_boot_resources(path, store, product_mapping,
+                            keyring_file=None):
+    """Download boot resources for one simplestreams source.
+
+    :param path: The Simplestreams URL for this source.
+    :param store: A simplestreams `ObjectStore` where downloaded resources
+        should be stored.
+    :param product_mapping: A `ProductMapping` describing the resources to be
+        downloaded.
+    :param keyring_file: Optional path to a keyring file for verifying
+        signatures.
+    """
+    writer = BootResourceRepoWriter(store, product_mapping)
+    (mirror, rpath) = sutil.path_from_mirror_url(path, None)
+    policy = get_signing_policy(rpath, keyring_file)
+    reader = UrlMirrorReader(mirror, policy=policy)
+    writer.sync(reader, rpath)
+
+
+def download_all_boot_resources(sources, product_mapping, store=None):
+    """Downloads all of the boot resources from the sources.
+
+    Boot resources are stored into the `BootResource` model.
+
+    :param sources: List of dicts describing the Simplestreams sources from
+        which we should download.
+    :param product_mapping: A `ProductMapping` describing the resources to be
+        downloaded.
+    """
+    if store is None:
+        store = BootResourceStore()
+    assert isinstance(store, BootResourceStore)
+    for source in sources:
+        download_boot_resources(
+            source['url'], store, product_mapping,
+            keyring_file=source.get('keyring'))
+    store.finalize()
+
+
+def has_synced_resources():
+    """Return true if SYNCED `BootResource` exist."""
+    return BootResource.objects.filter(
+        rtype=BOOT_RESOURCE_TYPE.SYNCED).exists()
+
+
+def hold_lock_thread(kill_event, run_event):
+    """Hold the import images database lock inside of this running thread.
+
+    This is needed because throughout the whole process multiple transactions
+    are used. The lock needs to be held and released in one transaction.
+
+    The `kill_event` should be set when the lock should be released. The
+    `run_event` will be set once the lock is held. No database operations
+    should occur until the `run_event` is set.
+    """
+    try:
+        with transaction.atomic():
+            with locks.import_images:
+                run_event.set()
+                kill_event.wait()
+    finally:
+        close_old_connections()
+
+
+@synchronous
+def _import_resources(force=False):
+    """Import boot resources.
+
+    Pulls the sources from `BootSource`. This only starts the process if
+    some SYNCED `BootResource` already exist.
+
+    :param force: True will force the import, even if no SYNCED `BootResource`
+        exist. This is used because we want the user to start the first import
+        action, not let it run automatically.
+    """
+    with transaction.atomic():
+        if not has_synced_resources() and not force:
+            return
+        if locks.import_images.is_locked():
+            return
+
+    # Event will be triggered when the lock thread should exit,
+    # causing the lock to be released.
+    kill_event = threading.Event()
+
+    # Event will be triggered once the thread is running and the
+    # lock is now held.
+    run_event = threading.Event()
+
+    # Start the thread to hold the lock.
+    lock_thread = threading.Thread(
+        target=hold_lock_thread,
+        args=(kill_event, run_event))
+    lock_thread.start()
+
+    # Wait unti the thread says that the lock is held.
+    if not run_event.wait(15):
+        # Timeout occurred, kill the thread and exit.
+        kill_event.set()
+        lock_thread.join()
+        maaslog.error("Failed to grab import images database lock.")
+        return
+
+    try:
+        maaslog.info("Started importing of boot resources.")
+        sources = [source.to_dict() for source in BootSource.objects.all()]
+        sources = write_all_keyrings(sources)
+
+        image_descriptions = download_all_image_descriptions(sources)
+        if image_descriptions.is_empty():
+            maaslog.warn(
+                "Unable to import boot resources, no image "
+                "descriptions avaliable.")
+            return
+        product_mapping = map_products(image_descriptions)
+
+        download_all_boot_resources(sources, product_mapping)
+        maaslog.info("Finished importing of boot resources.")
+    finally:
+        kill_event.set()
+        lock_thread.join()
+        close_old_connections()
+
+
+@run_in_reactor
+def import_resources():
+    """Starts the importing of boot resources.
+
+    Note: This function returns immediately. It only starts the process, it
+    doesn't wait for it to be finished, as it can take several minutes to
+    complete.
+    """
+    deferToThread(_import_resources, force=True)
+
+
+class ImportResourcesService(TimerService, object):
+    """Service to periodically import boot resources.
+
+    This will run immediately when it's started, then once again every hour,
+    though the interval can be overridden by passing it to the constructor.
+    """
+
+    def __init__(self, interval=(60 * 60)):
+        super(ImportResourcesService, self).__init__(
+            interval, deferToThread, _import_resources)
