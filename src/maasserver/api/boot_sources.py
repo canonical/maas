@@ -112,6 +112,35 @@ class BootSourceHandler(OperationsHandler):
         return ('boot_source_handler', (id, ))
 
 
+class BootSourceBackwardHandler(BootSourceHandler):
+    """Manage a boot source.
+
+    It used to be that boot-sources could be set per cluster. Now it can only
+    be set globally for the whole region and clusters. This api is now
+    deprecated, and only exists for backwards compatibility.
+    """
+    deprecated = True
+
+    def read(self, request, uuid, id):
+        """Read a boot source."""
+        return super(BootSourceBackwardHandler, self).read(request, id)
+
+    def update(self, request, uuid, id):
+        """Update a specific boot source.
+
+        :param url: The URL of the BootSource.
+        :param keyring_filename: The path to the keyring file for this
+            BootSource.
+        :param keyring_filename: The GPG keyring for this BootSource,
+            base64-encoded data.
+        """
+        return super(BootSourceBackwardHandler, self).update(request, id)
+
+    def delete(self, request, uuid, id):
+        """Delete a specific boot source."""
+        return super(BootSourceBackwardHandler, self).delete(request, id)
+
+
 class BootSourcesHandler(OperationsHandler):
     """Manage the collection of boot sources."""
     api_doc_section_name = "Boot sources"
@@ -148,3 +177,34 @@ class BootSourcesHandler(OperationsHandler):
                 status=httplib.CREATED)
         else:
             raise ValidationError(form.errors)
+
+
+class BootSourcesBackwardHandler(BootSourcesHandler):
+    """Manage the collection of boot sources.
+
+    It used to be that boot-sources could be set per cluster. Now it can only
+    be set globally for the whole region and clusters. This api is now
+    deprecated, and only exists for backwards compatibility.
+    """
+    deprecated = True
+
+    def read(self, request, uuid):
+        """List boot sources.
+
+        Get a listing of a cluster's boot sources.
+
+        :param uuid: This is deprecated, only exists for backwards
+            compatibility. Boot sources are now global for all of MAAS.
+        """
+        return super(BootSourcesBackwardHandler, self).read(request)
+
+    def create(self, request, uuid):
+        """Create a new boot source.
+
+        :param url: The URL of the BootSource.
+        :param keyring_filename: The path to the keyring file for
+            this BootSource.
+        :param keyring_data: The GPG keyring for this BootSource,
+            base64-encoded.
+        """
+        return super(BootSourcesBackwardHandler, self).create(request)

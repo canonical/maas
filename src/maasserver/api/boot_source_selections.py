@@ -94,6 +94,38 @@ class BootSourceSelectionHandler(OperationsHandler):
         return ('boot_source_selection_handler', (boot_source_id, id))
 
 
+class BootSourceSelectionBackwardHandler(BootSourceSelectionHandler):
+    """Manage a boot source selection.
+
+    It used to be that boot-sources could be set per cluster. Now it can only
+    be set globally for the whole region and clusters. This api is now
+    deprecated, and only exists for backwards compatibility.
+    """
+    deprecated = True
+
+    def read(self, request, uuid, boot_source_id, id):
+        """Read a boot source selection."""
+        return super(BootSourceSelectionBackwardHandler, self).read(
+            request, boot_source_id, id)
+
+    def update(self, request, uuid, boot_source_id, id):
+        """Update a specific boot source selection.
+
+        :param release: The release for which to import resources.
+        :param arches: The list of architectures for which to import resources.
+        :param subarches: The list of subarchitectures for which to import
+            resources.
+        :param labels: The list of labels for which to import resources.
+        """
+        return super(BootSourceSelectionBackwardHandler, self).update(
+            request, boot_source_id, id)
+
+    def delete(self, request, uuid, boot_source_id, id):
+        """Delete a specific boot source."""
+        return super(BootSourceSelectionBackwardHandler, self).delete(
+            request, boot_source_id, id)
+
+
 class BootSourceSelectionsHandler(OperationsHandler):
     """Manage the collection of boot source selections."""
     api_doc_section_name = "Boot source selections"
@@ -134,3 +166,33 @@ class BootSourceSelectionsHandler(OperationsHandler):
             return form.save()
         else:
             raise ValidationError(form.errors)
+
+
+class BootSourceSelectionsBackwardHandler(BootSourceSelectionsHandler):
+    """Manage a boot source selection.
+
+    It used to be that boot-sources could be set per cluster. Now it can only
+    be set globally for the whole region and clusters. This api is now
+    deprecated, and only exists for backwards compatibility.
+    """
+    deprecated = True
+
+    def read(self, request, uuid, boot_source_id):
+        """List boot source selections.
+
+        Get a listing of a boot source's selections.
+        """
+        return super(BootSourceSelectionsBackwardHandler, self).read(
+            request, boot_source_id)
+
+    def create(self, request, uuid, boot_source_id):
+        """Create a new boot source selection.
+
+        :param release: The release for which to import resources.
+        :param arches: The architecture list for which to import resources.
+        :param subarches: The subarchitecture list for which to import
+            resources.
+        :param labels: The label lists for which to import resources.
+        """
+        return super(BootSourceSelectionsBackwardHandler, self).create(
+            request, boot_source_id)

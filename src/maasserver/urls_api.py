@@ -29,11 +29,15 @@ from maasserver.api.boot_resources import (
     BootResourcesHandler,
     )
 from maasserver.api.boot_source_selections import (
+    BootSourceSelectionBackwardHandler,
     BootSourceSelectionHandler,
+    BootSourceSelectionsBackwardHandler,
     BootSourceSelectionsHandler,
     )
 from maasserver.api.boot_sources import (
+    BootSourceBackwardHandler,
     BootSourceHandler,
+    BootSourcesBackwardHandler,
     BootSourcesHandler,
     )
 from maasserver.api.commissioning_scripts import (
@@ -160,6 +164,14 @@ boot_source_selection_handler = AdminRestrictedResource(
     BootSourceSelectionHandler, authentication=api_auth)
 boot_source_selections_handler = AdminRestrictedResource(
     BootSourceSelectionsHandler, authentication=api_auth)
+boot_source_backward_handler = AdminRestrictedResource(
+    BootSourceBackwardHandler, authentication=api_auth)
+boot_sources_backward_handler = AdminRestrictedResource(
+    BootSourcesBackwardHandler, authentication=api_auth)
+boot_source_selection_backward_handler = AdminRestrictedResource(
+    BootSourceSelectionBackwardHandler, authentication=api_auth)
+boot_source_selections_backward_handler = AdminRestrictedResource(
+    BootSourceSelectionsBackwardHandler, authentication=api_auth)
 license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
@@ -267,4 +279,16 @@ urlpatterns += patterns(
     url(r'^boot-sources/(?P<boot_source_id>[^/]+)/selections/(?P<id>[^/]+)/$',
         boot_source_selection_handler,
         name='boot_source_selection_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/$',
+        boot_sources_backward_handler, name='boot_sources_backward_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<id>[^/]+)/$',
+        boot_source_backward_handler, name='boot_source_backward_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
+        'selections/$',
+        boot_source_selections_backward_handler,
+        name='boot_source_selections_backward_handler'),
+    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-sources/(?P<boot_source_id>[^/]+)/'
+        'selections/(?P<id>[^/]+)/$',
+        boot_source_selection_backward_handler,
+        name='boot_source_selection_backward_handler'),
 )
