@@ -171,7 +171,11 @@ class RepoWriter(BasicMirrorWriter):
         self.root_path = root_path
         self.store = store
         self.product_mapping = product_mapping
-        super(RepoWriter, self).__init__()
+        super(RepoWriter, self).__init__(config={
+            # Only download the latest version. Without this all versions
+            # will be downloaded from simplestreams.
+            'max_items': 1,
+            })
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""

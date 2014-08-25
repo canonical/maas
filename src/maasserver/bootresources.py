@@ -401,19 +401,32 @@ class BootResourceStore(ObjectStore):
         subarch = product['subarch']
         name = '%s/%s' % (os, series)
         architecture = '%s/%s' % (arch, subarch)
+
+        # Allow a generated resource to be replaced by a sycned resource. This
+        # gives the ability for maas.ubuntu.com to start providing images that
+        # MAAS used to generate itself.
+        supported_rtypes = [
+            BOOT_RESOURCE_TYPE.SYNCED,
+            BOOT_RESOURCE_TYPE.GENERATED,
+            ]
         resource = get_one(
             BootResource.objects.filter(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
-                architecture=architecture))
+                rtype__in=supported_rtypes,
+                name=name, architecture=architecture))
         if resource is None:
             # No resource currently exists for this product.
             resource = BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
         else:
-            # Resource already exists and was in the simplestream content,
-            # so we do not want it removed.
-            self.prevent_resource_deletion(resource)
+            if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
+                # Resource already exists and was in the simplestream content,
+                # so we do not want it removed.
+                self.prevent_resource_deletion(resource)
+            else:
+                # Resource was previously a generated image. This is being
+                # replaced with this synced image.
+                resource.rtype = BOOT_RESOURCE_TYPE.SYNCED
 
         # Simplestreams content from maas.ubuntu.com includes the following
         # extra fields. Looping through the extra product data and adding it to
@@ -709,7 +722,11 @@ class BootResourceRepoWriter(BasicMirrorWriter):
         assert isinstance(store, BootResourceStore)
         self.store = store
         self.product_mapping = product_mapping
-        super(BootResourceRepoWriter, self).__init__()
+        super(BootResourceRepoWriter, self).__init__(config={
+            # Only download the latest version. Without this all versions
+            # will be downloaded from simplestreams.
+            'max_items': 1,
+            })
 
     def load_products(self, path=None, content_id=None):
         """Overridable from `BasicMirrorWriter`."""

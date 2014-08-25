@@ -15,6 +15,8 @@ __metaclass__ = type
 __all__ = []
 
 from collections import Iterable
+from datetime import datetime
+import random
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
@@ -22,6 +24,7 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
+from maasserver.models import bootresource
 from maasserver.models.bootresource import BootResource
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -335,3 +338,31 @@ class TestBootResource(MAASServerTestCase):
         latest_complete = self.make_complete_boot_resource_set(resource)
         factory.make_boot_resource_set(resource)
         self.assertEqual(latest_complete, resource.get_latest_complete_set())
+
+    def configure_now(self):
+        now = datetime.now()
+        self.patch(bootresource, 'now').return_value = now
+        return now.strftime('%Y%m%d')
+
+    def test_get_next_version_name_returns_current_date(self):
+        expected_version = self.configure_now()
+        resource = factory.make_boot_resource()
+        self.assertEqual(expected_version, resource.get_next_version_name())
+
+    def test_get_next_version_name_returns_first_revision(self):
+        expected_version = '%s.1' % self.configure_now()
+        resource = factory.make_boot_resource()
+        factory.make_boot_resource_set(
+            resource, version=resource.get_next_version_name())
+        self.assertEqual(expected_version, resource.get_next_version_name())
+
+    def test_get_next_version_name_returns_later_revision(self):
+        expected_version = self.configure_now()
+        set_count = random.randint(2, 4)
+        resource = factory.make_boot_resource()
+        for _ in range(set_count):
+            factory.make_boot_resource_set(
+                resource, version=resource.get_next_version_name())
+        self.assertEqual(
+            '%s.%d' % (expected_version, set_count),
+            resource.get_next_version_name())

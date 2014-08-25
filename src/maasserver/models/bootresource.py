@@ -30,7 +30,10 @@ from maasserver.enum import (
     )
 from maasserver.fields import JSONObjectField
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.timestampedmodel import (
+    now,
+    TimestampedModel,
+    )
 from maasserver.utils.orm import (
     get_first,
     get_one,
@@ -245,3 +248,33 @@ class BootResource(CleanSave, TimestampedModel):
 
     def split_arch(self):
         return self.architecture.split('/')
+
+    def get_next_version_name(self):
+        """Return the version a `BootResourceSet` should use when adding to
+        this resource.
+
+        The version naming is specific to how the resource sets will be sorted
+        by simplestreams. The version name is YYYYmmdd, with an optional
+        revision index. (e.g. 20140822.1)
+
+        This method gets the current date, and checks if a revision already
+        exists in the database. If it doesn't then just the current date is
+        returned. If it does exists then the next revision in the set for that
+        date will be returned.
+
+        :return: Name of version to use for a new set on this `BootResource`.
+        :rtype: string
+        """
+        version_name = now().strftime('%Y%m%d')
+        sets = self.sets.filter(
+            version__startswith=version_name).order_by('version')
+        if not sets.exists():
+            return version_name
+        max_idx = 0
+        for resource_set in sets:
+            if '.' in resource_set.version:
+                _, set_idx = resource_set.version.split('.')
+                set_idx = int(set_idx)
+                if set_idx > max_idx:
+                    max_idx = set_idx
+        return '%s.%d' % (version_name, max_idx + 1)

@@ -126,7 +126,6 @@ from maasserver.models.node import (
     nodegroup_fqdn,
     )
 from maasserver.models.nodegroup import NODEGROUP_CLUSTER_NAME_TEMPLATE
-from maasserver.models.timestampedmodel import now
 from maasserver.node_action import (
     ACTION_CLASSES,
     ACTIONS_DICT,
@@ -2237,9 +2236,9 @@ class BootResourceForm(ModelForm):
 
     def create_resource_set(self, resource, label):
         """Creates a new `BootResourceSet` on the given resource."""
-        version_name = now().strftime('%Y%m%d%H%M%S')
         return BootResourceSet.objects.create(
-            resource=resource, version=version_name, label=label)
+            resource=resource,
+            version=resource.get_next_version_name(), label=label)
 
     def create_resource_file(self, resource_set, filetype, content):
         """Creates a new `BootResourceFile` on the given resource set."""
@@ -2264,12 +2263,22 @@ class BootResourceForm(ModelForm):
         This implementation of `save` does not support the `commit` argument.
         """
         resource = super(BootResourceForm, self).save(commit=False)
-        resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
+
+        # XXX blake_r 2014-09-22 bug=1361370: Temporarily support the ability
+        # to upload a generated image. This should only exist while CentOS and
+        # Windows images need to be uploaded, rather than synced or generated.
+        if '/' not in resource.name:
+            label = 'uploaded'
+            resource.rtype = BOOT_RESOURCE_TYPE.UPLOADED
+        else:
+            label = 'generated'
+            resource.rtype = BOOT_RESOURCE_TYPE.GENERATED
+
         resource = self.get_existing_resource(resource)
         if 'title' in self.cleaned_data:
             resource.extra = {'title': self.cleaned_data['title']}
         resource.save()
-        resource_set = self.create_resource_set(resource, 'uploaded')
+        resource_set = self.create_resource_set(resource, label)
         self.create_resource_file(
             resource_set, self.cleaned_data['filetype'],
             self.cleaned_data['content'])

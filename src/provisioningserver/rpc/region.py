@@ -58,6 +58,7 @@ class GetBootSources(amp.Command):
     """Report boot sources and selections for the given cluster.
 
     :since: 1.6
+    :deprecated: 1.7
     """
 
     arguments = [
