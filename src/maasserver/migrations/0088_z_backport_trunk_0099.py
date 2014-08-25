@@ -1,5 +1,5 @@
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.utils import IntegrityError
 from netaddr import IPNetwork
 from south.db import db
@@ -44,10 +44,13 @@ class Migration(SchemaMigration):
                     "Auto created when creating interface %s on cluster "
                     "%s" % (interface.interface, interface.nodegroup.name)),
                 )
+            sid = transaction.savepoint()
             try:
                 network.save()
+                transaction.savepoint_commit(sid)
             except (ValidationError, IntegrityError):
                 # It probably already exists, keep calm and carry on.
+                transaction.savepoint_rollback(sid)
                 continue
 
     def backwards(self, orm):
