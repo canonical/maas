@@ -20,6 +20,7 @@ __all__ = [
 
 from celery.app import app_or_default
 from provisioningserver.dhcp.config import get_config
+from provisioningserver.dhcp.control import restart_dhcpv6
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.omshell import Omshell
 from provisioningserver.rpc.exceptions import (
@@ -28,10 +29,7 @@ from provisioningserver.rpc.exceptions import (
     CannotRemoveHostMap,
     )
 from provisioningserver.utils.fs import sudo_write_file
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-    )
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 maaslog = get_maas_logger("dhcp")
@@ -66,8 +64,7 @@ def configure_dhcpv6(omapi_key, subnet_configs):
             % e.output_as_unicode)
 
     try:
-        call_and_check(
-            ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'restart'])
+        restart_dhcpv6()
     except ExternalProcessError as e:
         maaslog.error(
             "DHCPv6 server failed to restart (for network interfaces %s): %s",

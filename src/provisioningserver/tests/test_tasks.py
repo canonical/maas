@@ -284,18 +284,15 @@ class TestDHCPTasks(PservTestCase):
             stdin=PIPE))
 
     def test_restart_dhcp_server_sends_command(self):
-        self.patch(tasks, 'call_and_check')
+        self.patch(tasks, 'restart_dhcpv4')
         restart_dhcp_server()
-        self.assertThat(tasks.call_and_check, MockCalledOnceWith(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart']))
+        self.assertThat(tasks.restart_dhcpv4, MockCalledOnceWith())
 
     def test_stop_dhcp_server_sends_command_and_writes_empty_config(self):
-        self.patch(tasks, 'call_and_check')
+        self.patch(tasks, 'stop_dhcpv4')
         self.patch(tasks, 'sudo_write_file')
         stop_dhcp_server()
-        self.assertThat(tasks.call_and_check, MockCalledOnceWith(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
-            env={'LC_ALL': 'C'}))
+        self.assertThat(tasks.stop_dhcpv4, MockCalledOnceWith())
         self.assertThat(tasks.sudo_write_file, MockCalledOnceWith(
             celery_config.DHCP_CONFIG_FILE, tasks.DISABLED_DHCP_SERVER))
 
@@ -305,7 +302,7 @@ class TestDHCPTasks(PservTestCase):
         output = ' ' + ALREADY_STOPPED_MESSAGE + '\n'
         exception = ExternalProcessError(
             ALREADY_STOPPED_RETURNCODE, [], output=output)
-        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'stop_dhcpv4', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
         self.assertIsNone(stop_dhcp_server())
 
@@ -314,7 +311,7 @@ class TestDHCPTasks(PservTestCase):
         returncode = ALREADY_STOPPED_RETURNCODE + 1
         exception = ExternalProcessError(
             returncode, [], output=ALREADY_STOPPED_MESSAGE)
-        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'stop_dhcpv4', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
         self.assertRaises(ExternalProcessError, stop_dhcp_server)
 
@@ -323,7 +320,7 @@ class TestDHCPTasks(PservTestCase):
         output = factory.make_string()
         exception = ExternalProcessError(
             ALREADY_STOPPED_RETURNCODE, [], output=output)
-        self.patch(tasks, 'call_and_check', Mock(side_effect=exception))
+        self.patch(tasks, 'stop_dhcpv4', Mock(side_effect=exception))
         self.patch(tasks, 'sudo_write_file')
         self.assertRaises(ExternalProcessError, stop_dhcp_server)
 

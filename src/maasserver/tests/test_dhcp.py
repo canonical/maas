@@ -32,6 +32,7 @@ from maasserver.models.config import get_default_config
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
+from maastesting.matchers import MockCalledOnceWith
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -172,15 +173,13 @@ class TestDHCP(MAASServerTestCase):
 
     def test_configure_dhcp_restarts_dhcp_server(self):
         self.patch(tasks, "sudo_write_file")
-        mocked_check_call = self.patch(tasks, "call_and_check")
+        restart_dhcpv4 = self.patch(tasks, "restart_dhcpv4")
         self.patch(settings, "DHCP_CONNECT", True)
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         configure_dhcp(nodegroup)
-        self.assertEqual(
-            mocked_check_call.call_args[0][0],
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+        self.assertThat(restart_dhcpv4, MockCalledOnceWith())
 
     def test_configure_dhcp_is_called_with_valid_dhcp_key(self):
         self.patch(dhcp, 'write_dhcp_config')

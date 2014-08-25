@@ -42,15 +42,15 @@ class TestConfigureDHCPv6(MAASTestCase):
     def patch_sudo_write_file(self):
         return self.patch(dhcp, 'sudo_write_file')
 
-    def patch_call_and_check(self):
-        return self.patch(dhcp, 'call_and_check')
+    def patch_restart_dhcpv6(self):
+        return self.patch(dhcp, 'restart_dhcpv6')
 
     def patch_get_config(self):
         return self.patch(dhcp, 'get_config')
 
     def test__extracts_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
         subnets = [make_subnet_config() for _ in range(3)]
         dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
         self.assertThat(
@@ -61,7 +61,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__eliminates_duplicate_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
         interface = factory.make_name('interface')
         subnets = [make_subnet_config() for _ in range(2)]
         for subnet in subnets:
@@ -71,7 +71,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__composees_dhcpv6_config(self):
         self.patch_sudo_write_file()
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
         get_config = self.patch_get_config()
         omapi_key = factory.make_name('key')
         subnet = make_subnet_config()
@@ -84,7 +84,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__writes_dhcpv6_config(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
 
         subnet = make_subnet_config()
         expected_config = factory.make_name('config')
@@ -99,7 +99,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
         dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
         self.assertThat(
             write_file,
@@ -107,17 +107,14 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__restarts_dhcpv6_server(self):
         self.patch_sudo_write_file()
-        call_and_check = self.patch_call_and_check()
+        call_and_check = self.patch_restart_dhcpv6()
         dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
-        self.assertThat(
-            call_and_check,
-            MockCalledWith(
-                ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'restart']))
+        self.assertThat(call_and_check, MockCalledWith())
 
     def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file().side_effect = (
             ExternalProcessError(1, "sudo something"))
-        self.patch_call_and_check()
+        self.patch_restart_dhcpv6()
         self.assertRaises(
             exceptions.CannotConfigureDHCP,
             dhcp.configure_dhcpv6,
@@ -125,7 +122,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
-        self.patch_call_and_check().side_effect = (
+        self.patch_restart_dhcpv6().side_effect = (
             ExternalProcessError(1, "sudo something"))
         self.assertRaises(
             exceptions.CannotConfigureDHCP,

@@ -47,6 +47,10 @@ from provisioningserver.dhcp import (
     config,
     detect,
     )
+from provisioningserver.dhcp.control import (
+    restart_dhcpv4,
+    stop_dhcpv4,
+    )
 from provisioningserver.dhcp.leases import upload_leases
 from provisioningserver.dns.config import (
     DNSConfig,
@@ -68,10 +72,7 @@ from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.network import find_ip_via_arp
-from provisioningserver.utils.shell import (
-    call_and_check,
-    ExternalProcessError,
-    )
+from provisioningserver.utils.shell import ExternalProcessError
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -407,7 +408,7 @@ def write_dhcp_config(callback=None, **kwargs):
 @log_exception_text
 def restart_dhcp_server():
     """Restart the DHCP server."""
-    call_and_check(['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'])
+    restart_dhcpv4()
 
 
 # Message to put in the DHCP config file when the DHCP server gets stopped.
@@ -432,12 +433,9 @@ def stop_dhcp_server():
     sudo_write_file(
         celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
     try:
-        # Use LC_ALL=C because we use the returned error message when
-        # errors occur.
-        call_and_check(
-            ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
-            env={'LC_ALL': 'C'}
-        )
+        # This relies on stop_dhcpv4 running in the "C" locale: if it fails,
+        # we need to parse its error output.
+        stop_dhcpv4()
     except ExternalProcessError as error:
         # Upstart issues an "Unknown instance"-type error when trying to
         # stop an already-stopped service.  Ignore this error.
