@@ -95,7 +95,7 @@ def ensure_boot_source_definition():
         # Default is to import newest Ubuntu LTS releases, for only amd64
         # release versions only.
         BootSourceSelection.objects.create(
-            boot_source=source, release='trusty',
+            boot_source=source, os='ubuntu', release='trusty',
             arches=['amd64'], subarches=['*'], labels=['release'])
 
 

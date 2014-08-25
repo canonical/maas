@@ -2038,6 +2038,7 @@ class BootSourceSelectionForm(ModelForm):
     class Meta:
         model = BootSourceSelection
         fields = (
+            'os',
             'release',
             'arches',
             'subarches',

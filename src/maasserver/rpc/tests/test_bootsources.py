@@ -33,3 +33,18 @@ class TestGetBootSources(MAASServerTestCase):
         expected["keyring_data"] = keyring
 
         self.assertEqual([expected], get_boot_sources(nodegroup.uuid))
+
+    def test_removes_os_from_boot_source_selections(self):
+        keyring = factory.make_bytes()
+        nodegroup = factory.make_node_group()
+        source = factory.make_boot_source(keyring_data=keyring)
+        factory.make_boot_source_selection(source)
+
+        expected = source.to_dict()
+        # keyring_data contains the b64decoded representation since AMP
+        # is fine with bytes.
+        expected["keyring_data"] = keyring
+        del expected['selections'][0]['os']
+
+        self.assertEqual(
+            [expected], get_boot_sources(nodegroup.uuid, remove_os=True))

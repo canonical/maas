@@ -122,6 +122,19 @@ class Region(amp.AMP):
     def get_boot_sources(self, uuid):
         """get_boot_sources()
 
+        Deprecated: get_boot_sources_v2() should be used instead.
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetBootSources`.
+        """
+        d = deferToThread(bootsources.get_boot_sources, uuid, remove_os=True)
+        d.addCallback(lambda sources: {b"sources": sources})
+        return d
+
+    @region.GetBootSourcesV2.responder
+    def get_boot_sources_v2(self, uuid):
+        """get_boot_sources_v2()
+
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """

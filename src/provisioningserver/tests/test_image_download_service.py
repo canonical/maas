@@ -21,9 +21,11 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
     )
 from mock import (
+    call,
     Mock,
     sentinel,
     )
@@ -35,6 +37,10 @@ from provisioningserver.image_download_service import (
     )
 from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.region import (
+    GetBootSources,
+    GetBootSourcesV2,
+    )
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils import filter_dict
@@ -43,6 +49,7 @@ from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
+from twisted.spread.pb import NoSuchMethod
 
 
 class TestPeriodicImageDownloadService(PservTestCase):
@@ -204,6 +211,79 @@ class TestPeriodicImageDownloadService(PservTestCase):
         clock.advance(1)
         self.assertFalse(service_lock.locked)
 
+    @defer.inlineCallbacks
+    def test__get_boot_sources_calls_get_boot_sources_v2_before_v1(self):
+        clock = Clock()
+        client_call = Mock()
+        client_call.side_effect = [
+            defer.succeed(dict(sources=sentinel.sources)),
+            ]
+
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, clock, sentinel.uuid)
+        sources = yield service._get_boot_sources(client_call)
+        self.assertEqual(sources.get('sources'), sentinel.sources)
+        self.assertThat(
+            client_call,
+            MockCalledOnceWith(GetBootSourcesV2, uuid=sentinel.uuid))
+
+    @defer.inlineCallbacks
+    def test__get_boot_sources_calls_get_boot_sources_v1_on_v2_missing(self):
+        clock = Clock()
+        client_call = Mock()
+        client_call.side_effect = [
+            defer.fail(NoSuchMethod()),
+            defer.succeed(dict(sources=[])),
+            ]
+
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, clock, sentinel.uuid)
+        yield service._get_boot_sources(client_call)
+        self.assertThat(
+            client_call,
+            MockCallsMatch(
+                call(GetBootSourcesV2, uuid=sentinel.uuid),
+                call(GetBootSources, uuid=sentinel.uuid)))
+
+    @defer.inlineCallbacks
+    def test__get_boot_sources_v1_sets_os_to_wildcard(self):
+        sources = [
+            {
+                'path': factory.make_url(),
+                'selections': [
+                    {
+                        'release': "trusty",
+                        'arches': ["amd64"],
+                        'subarches': ["generic"],
+                        'labels': ["release"],
+                    },
+                    {
+                        'release': "precise",
+                        'arches': ["amd64"],
+                        'subarches': ["generic"],
+                        'labels': ["release"],
+                    },
+                ],
+            },
+        ]
+
+        clock = Clock()
+        client_call = Mock()
+        client_call.side_effect = [
+            defer.fail(NoSuchMethod()),
+            defer.succeed(dict(sources=sources)),
+            ]
+
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, clock, sentinel.uuid)
+        sources = yield service._get_boot_sources(client_call)
+        os_selections = [
+            selection.get('os')
+            for source in sources['sources']
+            for selection in source['selections']
+            ]
+        self.assertEqual(['*', '*'], os_selections)
+
 
 class TestImportBootImages(PservTestCase):
 
@@ -273,6 +353,7 @@ class TestImportBootImages(PservTestCase):
                 'path': "http://example.com",
                 'selections': [
                     {
+                        'os': "ubuntu",
                         'release': "trusty",
                         'arches': ["amd64"],
                         'subarches': ["generic"],

@@ -42,9 +42,13 @@ class BootSourceSelection(CleanSave, TimestampedModel):
 
     boot_source = ForeignKey('maasserver.BootSource', blank=False)
 
+    os = CharField(
+        max_length=20, blank=True, default='',
+        help_text="The operating system for which to import resources.")
+
     release = CharField(
         max_length=20, blank=True, default='',
-        help_text="The Ubuntu release for which to import resources.")
+        help_text="The OS release for which to import resources.")
 
     arches = djorm_pgarray.fields.ArrayField(dbtype="text")
 
@@ -55,6 +59,7 @@ class BootSourceSelection(CleanSave, TimestampedModel):
     def to_dict(self):
         """Return the current `BootSourceSelection` as a dict."""
         return {
+            "os": self.os,
             "release": self.release,
             "arches": self.arches,
             "subarches": self.subarches,

@@ -25,11 +25,15 @@ from provisioningserver.utils.twisted import synchronous
 
 @synchronous
 @transactional
-def get_boot_sources(uuid):
+def get_boot_sources(uuid, remove_os=False):
     """Obtain boot sources and selections from the database.
 
     Returns them as a structure suitable for returning in the response
     for :py:class:`~provisioningserver.rpc.region.GetBootSources`.
+
+    :param remove_os: Remove the os field from selections. This is
+        used for v1 of get_boot_sources, as it should not include the os field.
+        For v2 of get_boot_sources, the os field is included.
     """
     # No longer is uuid used for this, as its now global. The uuid is just
     # ignored.
@@ -42,4 +46,7 @@ def get_boot_sources(uuid):
     for source in sources:
         keyring_data = source.pop("keyring_data")
         source["keyring_data"] = b64decode(keyring_data)
+        if remove_os:
+            for selection in source['selections']:
+                del selection['os']
     return sources

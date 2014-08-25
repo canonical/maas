@@ -77,6 +77,32 @@ class GetBootSources(amp.Command):
     errors = []
 
 
+class GetBootSourcesV2(amp.Command):
+    """Report boot sources and selections for the given cluster.
+
+    Includes the new os field for the selections.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        # The cluster UUID.
+        (b"uuid", amp.Unicode()),
+    ]
+    response = [
+        (b"sources", amp.AmpList(
+            [(b"url", amp.Unicode()),
+             (b"keyring_data", Bytes()),
+             (b"selections", amp.AmpList(
+                 [(b"os", amp.Unicode()),
+                  (b"release", amp.Unicode()),
+                  (b"arches", amp.ListOf(amp.Unicode())),
+                  (b"subarches", amp.ListOf(amp.Unicode())),
+                  (b"labels", amp.ListOf(amp.Unicode()))]))])),
+    ]
+    errors = []
+
+
 class GetProxies(amp.Command):
     """Return the HTTP and HTTPS proxies to use.
 

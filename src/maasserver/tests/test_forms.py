@@ -103,7 +103,6 @@ from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.enum import map_enum
 from testtools import TestCase
 from testtools.matchers import (
@@ -1962,10 +1961,9 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
 
     def test_edits_boot_source_selection_object(self):
         boot_source_selection = factory.make_boot_source_selection()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
         params = {
-            'release': new_release,
+            'os': factory.make_name('os'),
+            'release': factory.make_name('release'),
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
             'subarches': [
                 factory.make_name('subarch'), factory.make_name('subarch')],
@@ -1980,10 +1978,9 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
 
     def test_creates_boot_source_selection_object(self):
         boot_source = factory.make_boot_source()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
         params = {
-            'release': new_release,
+            'os': factory.make_name('os'),
+            'release': factory.make_name('release'),
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
             'subarches': [
                 factory.make_name('subarch'), factory.make_name('subarch')],

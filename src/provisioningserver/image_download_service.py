@@ -28,6 +28,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
+    GetBootSourcesV2,
     GetProxies,
     )
 from provisioningserver.utils.env import environment_variables
@@ -36,8 +37,10 @@ from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredLock,
     inlineCallbacks,
+    returnValue,
     )
 from twisted.internet.threads import deferToThread
+from twisted.spread.pb import NoSuchMethod
 
 
 maaslog = get_maas_logger("image_download_service")
@@ -80,6 +83,22 @@ class PeriodicImageDownloadService(TimerService, object):
         self.uuid = cluster_uuid
 
     @inlineCallbacks
+    def _get_boot_sources(self, client):
+        """Gets the boot sources from the region."""
+        try:
+            sources = yield client(GetBootSourcesV2, uuid=self.uuid)
+        except NoSuchMethod:
+            # Region has not been upgraded to support the new call, use the
+            # old call. The old call did not provide the new os selection
+            # parameter. Region does not support boot source selection by os,
+            # so its set too allow all operating systems.
+            sources = yield client(GetBootSources, uuid=self.uuid)
+            for source in sources['sources']:
+                for selection in source['selections']:
+                    selection['os'] = '*'
+        returnValue(sources)
+
+    @inlineCallbacks
     def _start_download(self):
         client = None
         # Retry a few times, since this service usually comes up before
@@ -96,7 +115,7 @@ class PeriodicImageDownloadService(TimerService, object):
             return
 
         # Get sources from region
-        sources = yield client(GetBootSources, uuid=self.uuid)
+        sources = yield self._get_boot_sources(client)
         # Get http proxy from region
         proxies = yield client(GetProxies)
         yield deferToThread(

@@ -72,6 +72,7 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     GetBootSources,
+    GetBootSourcesV2,
     GetProxies,
     Identify,
     ListNodePowerParameters,
@@ -269,9 +270,53 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
         # keyring_data contains the b64decoded representation since AMP
         # is fine with bytes.
         boot_source["keyring_data"] = keyring
+        del boot_source['selections'][0]['os']
 
         response = yield call_responder(
             Region(), GetBootSources, {b"uuid": uuid})
+
+        self.assertEqual({b"sources": [boot_source]}, response)
+
+
+class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
+
+    def test_get_boot_sources_v2_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetBootSourcesV2.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    def test_get_boot_sources_v2_can_be_called(self):
+        uuid = factory.make_name("uuid")
+
+        d = call_responder(Region(), GetBootSourcesV2, {b"uuid": uuid})
+
+        def check(response):
+            self.assertEqual({b"sources": []}, response)
+
+        return d.addCallback(check)
+
+    @transactional
+    def make_boot_source_selection(self, keyring):
+        nodegroup = factory.make_node_group()
+        boot_source = factory.make_boot_source(keyring_data=keyring)
+        factory.make_boot_source_selection(boot_source)
+        return nodegroup.uuid, boot_source.to_dict()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_boot_sources_v2_with_real_cluster(self):
+        keyring = factory.make_bytes()
+
+        uuid, boot_source = yield deferToThread(
+            self.make_boot_source_selection, keyring)
+
+        # keyring_data contains the b64decoded representation since AMP
+        # is fine with bytes.
+        boot_source["keyring_data"] = keyring
+
+        response = yield call_responder(
+            Region(), GetBootSourcesV2, {b"uuid": uuid})
 
         self.assertEqual({b"sources": [boot_source]}, response)
 

@@ -88,7 +88,6 @@ from netaddr import (
 # XXX 2014-05-13 blake-rouse bug=1319143
 # Need to not import directly, use RPC to info from cluster.
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.utils.enum import map_enum
 
 # We have a limited number of public keys:
@@ -927,14 +926,16 @@ class Factory(maastesting.factory.Factory):
         boot_source.save()
         return boot_source
 
-    def make_boot_source_selection(self, boot_source=None, release=None,
-                                   arches=None, subarches=None, labels=None):
+    def make_boot_source_selection(self, boot_source=None, os=None,
+                                   release=None, arches=None, subarches=None,
+                                   labels=None):
         """Create a `BootSourceSelection`."""
         if boot_source is None:
             boot_source = self.make_boot_source()
+        if os is None:
+            os = self.make_name('os')
         if release is None:
-            ubuntu_os = UbuntuOS()
-            release = self.pick_release(ubuntu_os)
+            release = self.make_name('release')
         if arches is None:
             arch_count = random.randint(1, 10)
             arches = [self.make_name("arch") for i in range(arch_count)]

@@ -32,17 +32,20 @@ class TestBootSourceSelection(MAASServerTestCase):
         boot_source.save()
         selection = BootSourceSelection(
             boot_source=boot_source,
+            os="ubuntu",
             release="trusty", arches=["i386"], subarches=["generic"],
             labels=["release"])
         selection.save()
         self.assertEqual(
             (
+                "ubuntu",
                 "trusty",
                 ["i386"],
                 ["generic"],
                 ["release"]
             ),
             (
+                selection.os,
                 selection.release,
                 selection.arches,
                 selection.subarches,
@@ -64,6 +67,7 @@ class TestBootSourceSelection(MAASServerTestCase):
     def test_to_dict_returns_dict(self):
         boot_source_selection = factory.make_boot_source_selection()
         expected = {
+            "os": boot_source_selection.os,
             "release": boot_source_selection.release,
             "arches": boot_source_selection.arches,
             "subarches": boot_source_selection.subarches,
