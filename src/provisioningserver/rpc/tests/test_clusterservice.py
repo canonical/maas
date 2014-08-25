@@ -955,6 +955,21 @@ class TestClusterProtocol_ConfigureDHCPv6(MAASTestCase):
             configure_dhcpv6,
             MockCalledOnceWith(omapi_key, subnet_configs))
 
+    @inlineCallbacks
+    def test__propagates_CannotConfigureDHCP(self):
+        self.patch(clusterservice, 'configure_dhcpv6').side_effect = (
+            exceptions.CannotConfigureDHCP("Deliberate failure"))
+        omapi_key = factory.make_name('key')
+        network = factory.make_ipv6_network()
+        ip_low, ip_high = factory.make_ip_range(network)
+        subnet_configs = [make_subnet_config()]
+
+        with ExpectedException(exceptions.CannotConfigureDHCP):
+            yield call_responder(Cluster(), cluster.ConfigureDHCPv6, {
+                'omapi_key': omapi_key,
+                'subnet_configs': subnet_configs,
+                })
+
 
 class TestClusterProtocol_CreateHostMaps(MAASTestCase):
 

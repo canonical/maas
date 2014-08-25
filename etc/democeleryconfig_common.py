@@ -1,4 +1,4 @@
-# Copyright 2012-2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Celery demo settings for the maas project: common settings."""
@@ -37,6 +37,8 @@ DNS_DEFAULT_CONTROLS = False
 
 DHCP_CONFIG_FILE = os.path.join(
     DEV_ROOT_DIRECTORY, 'run/dhcpd.conf')
+DHCPv6_CONFIG_FILE = os.path.join(
+    DEV_ROOT_DIRECTORY, 'run/dhcpd6.conf')
 
 
 DHCP_LEASES_FILE = os.path.join(

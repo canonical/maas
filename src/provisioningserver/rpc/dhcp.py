@@ -18,16 +18,26 @@ __all__ = [
     "remove_host_maps",
 ]
 
+from celery.app import app_or_default
+from provisioningserver.dhcp.config import get_config
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.omshell import Omshell
 from provisioningserver.rpc.exceptions import (
+    CannotConfigureDHCP,
     CannotCreateHostMap,
     CannotRemoveHostMap,
     )
-from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.fs import sudo_write_file
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+    )
 
 
 maaslog = get_maas_logger("dhcp")
+
+
+celery_config = app_or_default().conf
 
 
 def configure_dhcpv6(omapi_key, subnet_configs):
@@ -37,7 +47,33 @@ def configure_dhcpv6(omapi_key, subnet_configs):
     :param subnet_configs: List of dicts with subnet parameters for each
         subnet for which the DHCP server should serve DHCPv6.
     """
-    # TODO: Implement.
+
+    interfaces = ' '.join(
+        sorted({subnet['interface'] for subnet in subnet_configs}))
+    dhcpd_config = get_config(
+        'dhcpd6.conf.template',
+        omapi_key=omapi_key, dhcp_subnets=subnet_configs)
+    try:
+        sudo_write_file(celery_config.DHCPv6_CONFIG_FILE, dhcpd_config)
+        sudo_write_file(celery_config.DHCPv6_INTERFACES_FILE, interfaces)
+    except ExternalProcessError as e:
+        maaslog.error(
+            "Could not rewrite DHCPv6 server configuration "
+            "(for network interfaces %s): %s",
+            ', '.join(interfaces), unicode(e))
+        raise CannotConfigureDHCP(
+            "Could not rewrite DHCPv6 server configuration: %s"
+            % e.output_as_unicode)
+
+    try:
+        call_and_check(
+            ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'restart'])
+    except ExternalProcessError as e:
+        maaslog.error(
+            "DHCPv6 server failed to restart (for network interfaces %s): %s",
+            ', '.join(interfaces), unicode(e))
+        raise CannotConfigureDHCP(
+            "DHCPv6 server failed to restart: %s" % e.output_as_unicode)
 
 
 def create_host_maps(mappings, shared_key):

@@ -16,19 +16,121 @@ __all__ = []
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+    MockCalledWith,
+    MockCallsMatch,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
     call,
     sentinel,
     )
+from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.omshell import Omshell
 from provisioningserver.rpc import (
     dhcp,
     exceptions,
     )
 from provisioningserver.utils.shell import ExternalProcessError
+
+
+class TestConfigureDHCPv6(MAASTestCase):
+
+    def patch_sudo_write_file(self):
+        return self.patch(dhcp, 'sudo_write_file')
+
+    def patch_call_and_check(self):
+        return self.patch(dhcp, 'call_and_check')
+
+    def patch_get_config(self):
+        return self.patch(dhcp, 'get_config')
+
+    def test__extracts_interfaces(self):
+        write_file = self.patch_sudo_write_file()
+        self.patch_call_and_check()
+        subnets = [make_subnet_config() for _ in range(3)]
+        dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
+        self.assertThat(
+            write_file,
+            MockCalledWith(
+                ANY,
+                ' '.join(sorted(subnet['interface'] for subnet in subnets))))
+
+    def test__eliminates_duplicate_interfaces(self):
+        write_file = self.patch_sudo_write_file()
+        self.patch_call_and_check()
+        interface = factory.make_name('interface')
+        subnets = [make_subnet_config() for _ in range(2)]
+        for subnet in subnets:
+            subnet['interface'] = interface
+        dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
+        self.assertThat(write_file, MockCalledWith(ANY, interface))
+
+    def test__composees_dhcpv6_config(self):
+        self.patch_sudo_write_file()
+        self.patch_call_and_check()
+        get_config = self.patch_get_config()
+        omapi_key = factory.make_name('key')
+        subnet = make_subnet_config()
+        dhcp.configure_dhcpv6(omapi_key, [subnet])
+        self.assertThat(
+            get_config,
+            MockCalledOnceWith(
+                'dhcpd6.conf.template', omapi_key=omapi_key,
+                dhcp_subnets=[subnet]))
+
+    def test__writes_dhcpv6_config(self):
+        write_file = self.patch_sudo_write_file()
+        self.patch_call_and_check()
+
+        subnet = make_subnet_config()
+        expected_config = factory.make_name('config')
+        self.patch_get_config().return_value = expected_config
+
+        dhcp.configure_dhcpv6(factory.make_name('key'), [subnet])
+
+        self.assertThat(
+            write_file,
+            MockAnyCall(
+                dhcp.celery_config.DHCPv6_CONFIG_FILE, expected_config))
+
+    def test__writes_interfaces_file(self):
+        write_file = self.patch_sudo_write_file()
+        self.patch_call_and_check()
+        dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
+        self.assertThat(
+            write_file,
+            MockCalledWith(dhcp.celery_config.DHCPv6_INTERFACES_FILE, ANY))
+
+    def test__restarts_dhcpv6_server(self):
+        self.patch_sudo_write_file()
+        call_and_check = self.patch_call_and_check()
+        dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
+        self.assertThat(
+            call_and_check,
+            MockCalledWith(
+                ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'restart']))
+
+    def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
+        self.patch_sudo_write_file().side_effect = (
+            ExternalProcessError(1, "sudo something"))
+        self.patch_call_and_check()
+        self.assertRaises(
+            exceptions.CannotConfigureDHCP,
+            dhcp.configure_dhcpv6,
+            factory.make_name('key'), [make_subnet_config()])
+
+    def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
+        self.patch_sudo_write_file()
+        self.patch_call_and_check().side_effect = (
+            ExternalProcessError(1, "sudo something"))
+        self.assertRaises(
+            exceptions.CannotConfigureDHCP,
+            dhcp.configure_dhcpv6,
+            factory.make_name('key'), [make_subnet_config()])
 
 
 class TestCreateHostMaps(MAASTestCase):

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Celery settings common to the region and the cluster controllers."""
@@ -27,11 +27,13 @@ DNS_DEFAULT_CONTROLS = True
 # DHCP leases file, as maintained by ISC dhcpd.
 DHCP_LEASES_FILE = '/var/lib/maas/dhcp/dhcpd.leases'
 
-# ISC dhcpd configuration file.
+# ISC dhcpd configuration files.
 DHCP_CONFIG_FILE = '/etc/maas/dhcpd.conf'
+DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
 
 # List of interfaces that the dhcpd should service (if managed by MAAS).
 DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
+DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
 
 # Broker connection information.  This is read by the region controller
 # and sent to connecting cluster controllers.

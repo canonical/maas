@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CannotConfigureDHCP",
     "CannotCreateHostMap",
     "CannotRemoveHostMap",
     "NoConnectionsAvailable",
@@ -48,6 +49,10 @@ class NoSuchNode(Exception):
 
 class NoSuchOperatingSystem(Exception):
     """The specified OS was not found."""
+
+
+class CannotConfigureDHCP(Exception):
+    """Failure while configuring a DHCP server."""
 
 
 class CannotCreateHostMap(Exception):

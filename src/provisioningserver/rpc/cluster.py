@@ -233,6 +233,7 @@ class ConfigureDHCPv6(amp.Command):
             ])),
         ]
     response = []
+    errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
 
 
 class CreateHostMaps(amp.Command):
