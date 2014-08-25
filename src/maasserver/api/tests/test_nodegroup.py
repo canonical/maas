@@ -38,6 +38,7 @@ from maasserver.models import (
     DHCPLease,
     DownloadProgress,
     MACAddress,
+    Network,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
@@ -889,6 +890,17 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         for net, mac in expected_relations:
             [observed_macddress] = net.macaddress_set.all()
             self.expectThat(mac, Equals(observed_macddress))
+
+    def test_does_not_overwrite_network_with_same_name(self):
+        cluster = factory.make_node_group()
+        ngi = factory.make_node_group_interface(nodegroup=cluster)
+        net1 = create_Network_from_NodeGroupInterface(ngi)
+
+        other_ngi = factory.make_node_group_interface(nodegroup=cluster)
+        other_ngi.interface = ngi.interface
+        net2 = create_Network_from_NodeGroupInterface(ngi)
+        self.assertEqual(None, net2)
+        self.assertItemsEqual([net1], Network.objects.all())
 
     def test_ignores_mac_not_attached_to_cluster(self):
         cluster = factory.make_node_group()

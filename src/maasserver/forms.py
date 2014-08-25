@@ -63,6 +63,7 @@ from django.contrib.auth.models import (
     )
 from django.core.exceptions import ValidationError
 from django.db import connection
+from django.db.utils import IntegrityError
 from django.forms import (
     Form,
     MultipleChoiceField,
@@ -1193,7 +1194,7 @@ def create_Network_from_NodeGroupInterface(interface):
         )
     try:
         network.save()
-    except ValidationError as e:
+    except (IntegrityError, ValidationError) as e:
         # It probably already exists, keep calm and carry on.
         maaslog.warning(
             "Failed to create Network when adding/editing cluster "

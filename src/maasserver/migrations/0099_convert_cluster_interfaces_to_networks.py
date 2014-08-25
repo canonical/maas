@@ -1,19 +1,60 @@
 # -*- coding: utf-8 -*-
-from django.db import models
-from maasserver.forms import create_Network_from_NodeGroupInterface
+from django.core.exceptions import ValidationError
+from django.db import (
+    models,
+    transaction,
+    )
+from django.db.utils import IntegrityError
+from netaddr import IPNetwork
 from south.db import db
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
 
 
+def get_name_and_vlan_from_cluster_interface(cluster_interface):
+    """Given a `NodeGroupInterface`, return a name suitable for a `Network`.
+
+    :return: a tuple of the new name and vlan tag. vlan tag may be None
+    """
+    name = cluster_interface.interface
+    nodegroup_name = cluster_interface.nodegroup.name
+    vlan_tag = None
+    if '.' in name:
+        _, vlan_tag = name.split('.', 1)
+        name = name.replace('.', '-')
+    name = name.replace(':', '-')
+    network_name = "-".join((nodegroup_name, name))
+    return network_name, vlan_tag
+
+
 class Migration(DataMigration):
 
     def forwards(self, orm):
-        "Write your forwards methods here."
-        # Note: Remember to use orm['appname.ModelName'] rather than "from appname.models..."
         interfaces = orm['maasserver.NodeGroupInterface'].objects.all()
         for interface in interfaces:
-            create_Network_from_NodeGroupInterface(interface)
+            if not interface.subnet_mask:
+                # Can be None or empty string, do nothing if so.
+                continue
+
+            name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+            ipnetwork = IPNetwork("%s/%s" % (interface.ip, interface.subnet_mask))
+            network = orm['maasserver.Network'](
+                name=name,
+                ip=unicode(ipnetwork.network),
+                netmask=unicode(ipnetwork.netmask),
+                vlan_tag=vlan_tag,
+                description=(
+                    "Auto created when creating interface %s on cluster "
+                    "%s" % (interface.interface, interface.nodegroup.name)),
+                )
+            sid = transaction.savepoint()
+            try:
+                network.save()
+                transaction.savepoint_commit(sid)
+            except (ValidationError, IntegrityError):
+                # It probably already exists, keep calm and carry on.
+                transaction.savepoint_rollback(sid)
+                continue
 
     def backwards(self, orm):
         "Write your backwards methods here."
