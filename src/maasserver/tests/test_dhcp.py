@@ -40,14 +40,14 @@ from netaddr import (
 from provisioningserver import tasks
 from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
-from testtools.matchers import EndsWith
+from testtools.matchers import (
+    EndsWith,
+    HasLength,
+    )
 
 
-class TestDHCP(MAASServerTestCase):
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
+class TestGetInterfacesManagedBy(MAASServerTestCase):
+    """Tests for `get_interfaces_managed_by`."""
 
     def test_get_interfaces_managed_by_returns_managed_interfaces(self):
         self.patch(settings, "DHCP_CONNECT", False)
@@ -56,10 +56,9 @@ class TestDHCP(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
         managed_interfaces = get_interfaces_managed_by(nodegroup)
-        self.assertNotEqual([], managed_interfaces)
-        self.assertEqual(1, len(managed_interfaces))
-        self.assertEqual(
-            list(nodegroup.nodegroupinterface_set.all()),
+        self.assertThat(managed_interfaces, HasLength(1))
+        self.assertItemsEqual(
+            nodegroup.nodegroupinterface_set.all(),
             managed_interfaces)
 
     def test_get_interfaces_managed_by_returns_None_if_not_accepted(self):
@@ -75,6 +74,14 @@ class TestDHCP(MAASServerTestCase):
         self.assertEqual(
             {status: None for status in unaccepted_statuses},
             managed_interfaces)
+
+
+class TestConfigureDHCP(MAASServerTestCase):
+    """Tests for `configure_dhcp`."""
+
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
 
     def test_configure_dhcp_stops_server_if_no_managed_interface(self):
         self.patch(settings, "DHCP_CONNECT", True)
@@ -191,6 +198,35 @@ class TestDHCP(MAASServerTestCase):
         args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
         self.assertThat(kwargs['kwargs']['omapi_key'], EndsWith('=='))
 
+    def test_write_dhcp_config_task_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.PENDING,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(dhcp, 'write_dhcp_config')
+        nodegroup.accept()
+        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['queue'])
+
+    def test_write_dhcp_config_restart_task_routed_to_nodegroup_worker(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.PENDING,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.patch(settings, "DHCP_CONNECT", True)
+        self.patch(tasks, 'sudo_write_file')
+        task = self.patch(dhcp, 'restart_dhcp_server')
+        nodegroup.accept()
+        args, kwargs = task.subtask.call_args
+        self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
+
+
+class TestDHCPConnect(MAASServerTestCase):
+    """Tests for DHCP signals triggered when saving a cluster interface."""
+
+    resources = (
+        ('celery', FixtureResource(CeleryFixture())),
+        )
+
     def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.PENDING,
@@ -212,27 +248,6 @@ class TestDHCP(MAASServerTestCase):
         nodegroup.save()
 
         self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
-
-    def test_write_dhcp_config_task_routed_to_nodegroup_worker(self):
-        nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.PENDING,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
-        nodegroup.accept()
-        args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
-        self.assertEqual(nodegroup.work_queue, kwargs['queue'])
-
-    def test_write_dhcp_config_restart_task_routed_to_nodegroup_worker(self):
-        nodegroup = factory.make_node_group(
-            status=NODEGROUP_STATUS.PENDING,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(tasks, 'sudo_write_file')
-        task = self.patch(dhcp, 'restart_dhcp_server')
-        nodegroup.accept()
-        args, kwargs = task.subtask.call_args
-        self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
 
     def test_dhcp_config_gets_written_when_interface_IP_changes(self):
         nodegroup = factory.make_node_group(
