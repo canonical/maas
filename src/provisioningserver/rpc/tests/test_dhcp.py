@@ -21,6 +21,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
+    MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
@@ -69,7 +70,7 @@ class TestConfigureDHCPv6(MAASTestCase):
         dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
         self.assertThat(write_file, MockCalledWith(ANY, interface))
 
-    def test__composees_dhcpv6_config(self):
+    def test__composes_dhcpv6_config(self):
         self.patch_sudo_write_file()
         self.patch_restart_dhcpv6()
         get_config = self.patch_get_config()
@@ -105,11 +106,19 @@ class TestConfigureDHCPv6(MAASTestCase):
             write_file,
             MockCalledWith(dhcp.celery_config.DHCPv6_INTERFACES_FILE, ANY))
 
-    def test__restarts_dhcpv6_server(self):
+    def test__restarts_dhcpv6_server_if_subnets_defined(self):
         self.patch_sudo_write_file()
-        call_and_check = self.patch_restart_dhcpv6()
+        restart_dhcpv6 = self.patch_restart_dhcpv6()
         dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
-        self.assertThat(call_and_check, MockCalledWith())
+        self.assertThat(restart_dhcpv6, MockCalledWith())
+
+    def test__stops_dhcpv6_server_if_no_subnets_defined(self):
+        self.patch_sudo_write_file()
+        restart_dhcpv6 = self.patch_restart_dhcpv6()
+        stop_dhcpv6 = self.patch(dhcp, 'stop_dhcpv6')
+        dhcp.configure_dhcpv6(factory.make_name('key'), [])
+        self.assertThat(stop_dhcpv6, MockCalledWith())
+        self.assertThat(restart_dhcpv6, MockNotCalled())
 
     def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file().side_effect = (

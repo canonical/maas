@@ -20,7 +20,10 @@ __all__ = [
 
 from celery.app import app_or_default
 from provisioningserver.dhcp.config import get_config
-from provisioningserver.dhcp.control import restart_dhcpv6
+from provisioningserver.dhcp.control import (
+    restart_dhcpv6,
+    stop_dhcpv6,
+    )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.omshell import Omshell
 from provisioningserver.rpc.exceptions import (
@@ -39,11 +42,12 @@ celery_config = app_or_default().conf
 
 
 def configure_dhcpv6(omapi_key, subnet_configs):
-    """Configure the DHCPv6 server, and restart it.
+    """Configure the DHCPv6 server, and restart it as appropriate.
 
     :param omapi_key: OMAPI secret key.
     :param subnet_configs: List of dicts with subnet parameters for each
-        subnet for which the DHCP server should serve DHCPv6.
+        subnet for which the DHCP server should serve DHCPv6.  If no subnets
+        are defined, the DHCP server will be stopped.
     """
 
     interfaces = ' '.join(
@@ -55,6 +59,12 @@ def configure_dhcpv6(omapi_key, subnet_configs):
         sudo_write_file(celery_config.DHCPv6_CONFIG_FILE, dhcpd_config)
         sudo_write_file(celery_config.DHCPv6_INTERFACES_FILE, interfaces)
     except ExternalProcessError as e:
+        # ExternalProcessError.__unicode__ contains a generic failure message
+        # as well as the command and its error output.  On the other hand,
+        # ExternalProcessError.output_as_unicode contains just the error
+        # output which is probably the best information on what went wrong.
+        # Log the full error information, but keep the exception message short
+        # and to the point.
         maaslog.error(
             "Could not rewrite DHCPv6 server configuration "
             "(for network interfaces %s): %s",
@@ -63,14 +73,23 @@ def configure_dhcpv6(omapi_key, subnet_configs):
             "Could not rewrite DHCPv6 server configuration: %s"
             % e.output_as_unicode)
 
-    try:
-        restart_dhcpv6()
-    except ExternalProcessError as e:
-        maaslog.error(
-            "DHCPv6 server failed to restart (for network interfaces %s): %s",
-            ', '.join(interfaces), unicode(e))
-        raise CannotConfigureDHCP(
-            "DHCPv6 server failed to restart: %s" % e.output_as_unicode)
+    if len(subnet_configs) == 0:
+        try:
+            stop_dhcpv6()
+        except ExternalProcessError as e:
+            maaslog.error("DHCPv6 server failed to stop: %s", unicode(e))
+            raise CannotConfigureDHCP(
+                "DHCPv6 server failed to stop: %s" % e.output_as_unicode)
+    else:
+        try:
+            restart_dhcpv6()
+        except ExternalProcessError as e:
+            maaslog.error(
+                "DHCPv6 server failed to restart "
+                "(for network interfaces %s): %s",
+                ', '.join(interfaces), unicode(e))
+            raise CannotConfigureDHCP(
+                "DHCPv6 server failed to restart: %s" % e.output_as_unicode)
 
 
 def create_host_maps(mappings, shared_key):
