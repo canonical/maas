@@ -19,8 +19,6 @@ import random
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.core.validators import validate_email
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.enum import (
     NODE_STATUS,
@@ -31,8 +29,6 @@ from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     BLANK_CHOICE,
-    CommissioningForm,
-    CommissioningScriptForm,
     ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     get_node_create_form,
@@ -52,10 +48,8 @@ from maasserver.forms import (
     NodeWithMACAddressesForm,
     pick_default_architecture,
     remove_None_values,
-    UnconstrainedMultipleChoiceField,
     validate_new_static_ip_ranges,
     validate_nonoverlapping_networks,
-    ValidatorMultipleChoiceField,
     )
 from maasserver.models import (
     MACAddress,
@@ -78,9 +72,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
     )
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.forms import compose_invalid_choice_text
 from maastesting.matchers import MockCalledOnceWith
-from metadataserver.models import CommissioningScript
 from netaddr import IPNetwork
 from provisioningserver import tasks
 from provisioningserver.utils.enum import map_enum
@@ -1386,81 +1378,3 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         form.save()
         self.assertEqual(data['name'], reload_object(nodegroup).name)
-
-
-class TestCommissioningFormForm(MAASServerTestCase):
-
-    def test_commissioningform_error_msg_lists_series_choices(self):
-        form = CommissioningForm()
-        field = form.fields['commissioning_distro_series']
-        self.assertEqual(
-            compose_invalid_choice_text(
-                'commissioning_distro_series', field.choices),
-            field.error_messages['invalid_choice'])
-
-
-class TestCommissioningScriptForm(MAASServerTestCase):
-
-    def test_creates_commissioning_script(self):
-        content = factory.make_string().encode('ascii')
-        name = factory.make_name('filename')
-        uploaded_file = SimpleUploadedFile(content=content, name=name)
-        form = CommissioningScriptForm(files={'content': uploaded_file})
-        self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        new_script = CommissioningScript.objects.get(name=name)
-        self.assertThat(
-            new_script,
-            MatchesStructure.byEquality(name=name, content=content))
-
-    def test_raises_if_duplicated_name(self):
-        content = factory.make_string().encode('ascii')
-        name = factory.make_name('filename')
-        factory.make_commissioning_script(name=name)
-        uploaded_file = SimpleUploadedFile(content=content, name=name)
-        form = CommissioningScriptForm(files={'content': uploaded_file})
-        self.assertEqual(
-            (False, {'content': ["A script with that name already exists."]}),
-            (form.is_valid(), form._errors))
-
-    def test_rejects_whitespace_in_name(self):
-        name = factory.make_name('with space')
-        content = factory.make_string().encode('ascii')
-        uploaded_file = SimpleUploadedFile(content=content, name=name)
-        form = CommissioningScriptForm(files={'content': uploaded_file})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            ["Name contains disallowed characters (e.g. space or quotes)."],
-            form._errors['content'])
-
-    def test_rejects_quotes_in_name(self):
-        name = factory.make_name("l'horreur")
-        content = factory.make_string().encode('ascii')
-        uploaded_file = SimpleUploadedFile(content=content, name=name)
-        form = CommissioningScriptForm(files={'content': uploaded_file})
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            ["Name contains disallowed characters (e.g. space or quotes)."],
-            form._errors['content'])
-
-
-class TestUnconstrainedMultipleChoiceField(MAASServerTestCase):
-
-    def test_accepts_list(self):
-        value = ['a', 'b']
-        instance = UnconstrainedMultipleChoiceField()
-        self.assertEqual(value, instance.clean(value))
-
-
-class TestValidatorMultipleChoiceField(MAASServerTestCase):
-
-    def test_field_validates_valid_data(self):
-        value = ['test@example.com', 'me@example.com']
-        field = ValidatorMultipleChoiceField(validator=validate_email)
-        self.assertEqual(value, field.clean(value))
-
-    def test_field_uses_validator(self):
-        value = ['test@example.com', 'invalid-email']
-        field = ValidatorMultipleChoiceField(validator=validate_email)
-        error = self.assertRaises(ValidationError, field.clean, value)
-        self.assertEquals(['Enter a valid email address.'], error.messages)
