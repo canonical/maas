@@ -16,6 +16,8 @@ __all__ = [
     'configure_dhcp',
     ]
 
+from collections import defaultdict
+
 from django.conf import settings
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Config
@@ -38,6 +40,40 @@ def get_interfaces_managed_by(nodegroup):
         return nodegroup.get_managed_interfaces()
 
     return None
+
+
+def split_ipv4_ipv6_interfaces(interfaces):
+    """Divide `interfaces` into IPv4 ones and IPv6 ones.
+
+    :param interfaces: An iterable of cluster interfaces.
+    :return: A tuple of two separate iterables: IPv4 cluster interfaces for
+        `nodegroup`, and its IPv6 cluster interfaces.
+    """
+    split = defaultdict(list)
+    for interface in interfaces:
+        split[interface.network.version].append(interface)
+    assert len(split.keys()) <= 2, (
+        "Unexpected IP version(s): %s" % ', '.join(split.keys()))
+    return split[4], split[6]
+
+
+def make_subnet_config(interface, dns_servers, ntp_server):
+    """Return DHCP subnet configuration dict for a cluster interface."""
+    return {
+        'subnet': unicode(
+            IPAddress(interface.ip_range_low) &
+            IPAddress(interface.subnet_mask)),
+        'subnet_mask': interface.subnet_mask,
+        'subnet_cidr': unicode(interface.network.cidr),
+        'broadcast_ip': interface.broadcast_ip,
+        'interface': interface.interface,
+        'router_ip': unicode(interface.router_ip),
+        'dns_servers': dns_servers,
+        'ntp_server': ntp_server,
+        'domain_name': interface.nodegroup.name,
+        'ip_range_low': interface.ip_range_low,
+        'ip_range_high': interface.ip_range_high,
+        }
 
 
 def configure_dhcp(nodegroup):
@@ -70,24 +106,10 @@ def configure_dhcp(nodegroup):
 
     dns_server = get_dns_server_address(nodegroup)
     ntp_server = Config.objects.get_config("ntp_server")
-    dhcp_subnet_configs = []
     dhcp_subnet_configs = [
-        dict(
-            subnet=unicode(
-                IPAddress(interface.ip_range_low) &
-                IPAddress(interface.subnet_mask)),
-            subnet_mask=interface.subnet_mask,
-            subnet_cidr=unicode(interface.network),
-            broadcast_ip=interface.broadcast_ip,
-            interface=interface.interface,
-            router_ip=interface.router_ip,
-            dns_servers=dns_server,
-            ntp_server=ntp_server,
-            domain_name=nodegroup.name,
-            ip_range_low=interface.ip_range_low,
-            ip_range_high=interface.ip_range_high,
-        )
-        for interface in interfaces]
+        make_subnet_config(interface, dns_server, ntp_server)
+        for interface in interfaces
+        ]
 
     reload_dhcp_server_subtask = restart_dhcp_server.subtask(
         options={'queue': nodegroup.work_queue})

@@ -21,6 +21,8 @@ from maasserver import dhcp
 from maasserver.dhcp import (
     configure_dhcp,
     get_interfaces_managed_by,
+    make_subnet_config,
+    split_ipv4_ipv6_interfaces,
     )
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
@@ -41,9 +43,148 @@ from provisioningserver import tasks
 from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
 from testtools.matchers import (
+    ContainsAll,
     EndsWith,
+    Equals,
     HasLength,
+    IsInstance,
+    Not,
     )
+
+
+class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
+    """Tests for `split_ipv4_ipv6_interfaces`."""
+
+    def make_ipv4_interface(self, nodegroup):
+        return factory.make_node_group_interface(
+            nodegroup, network=factory.getRandomNetwork())
+
+    def make_ipv6_interface(self, nodegroup):
+        return factory.make_node_group_interface(
+            nodegroup, network=factory.make_ipv6_network())
+
+    def test__separates_IPv4_from_IPv6_interfaces(self):
+        nodegroup = factory.make_node_group()
+        # Create 0-2 IPv4 cluster interfaces and 0-2 IPv6 cluster interfaces.
+        ipv4_interfaces = [
+            self.make_ipv4_interface(nodegroup)
+            for _ in range(random.randint(0, 2))
+            ]
+        ipv6_interfaces = [
+            self.make_ipv6_interface(nodegroup)
+            for _ in range(random.randint(0, 2))
+            ]
+        interfaces = sorted(
+            ipv4_interfaces + ipv6_interfaces,
+            key=lambda *args: random.randint(0, 10))
+
+        ipv4_result, ipv6_result = split_ipv4_ipv6_interfaces(interfaces)
+
+        self.assertItemsEqual(ipv4_interfaces, ipv4_result)
+        self.assertItemsEqual(ipv6_interfaces, ipv6_result)
+
+
+class TestMakeSubnetConfig(MAASServerTestCase):
+    """Tests for `make_subnet_config`."""
+
+    def test__includes_all_parameters(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group())
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.assertIsInstance(config, dict)
+        self.assertThat(
+            config.keys(),
+            ContainsAll([
+                'subnet',
+                'subnet_mask',
+                'subnet_cidr',
+                'broadcast_ip',
+                'interface',
+                'router_ip',
+                'dns_servers',
+                'ntp_server',
+                'domain_name',
+                'ip_range_low',
+                'ip_range_high',
+                ]))
+
+    def test__sets_dns_and_ntp_from_arguments(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group())
+        dns = '%s %s' % (
+            factory.getRandomIPAddress(),
+            factory.make_ipv6_address(),
+            )
+        ntp = factory.make_name('ntp')
+        config = make_subnet_config(interface, dns_servers=dns, ntp_server=ntp)
+        self.expectThat(config['dns_servers'], Equals(dns))
+        self.expectThat(config['ntp_server'], Equals(ntp))
+
+    def test__sets_domain_name_from_cluster(self):
+        nodegroup = factory.make_node_group()
+        interface = factory.make_node_group_interface(nodegroup)
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.expectThat(config['domain_name'], Equals(nodegroup.name))
+
+    def test__sets_other_items_from_interface(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group())
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.expectThat(config['broadcast_ip'], Equals(interface.broadcast_ip))
+        self.expectThat(config['interface'], Equals(interface.interface))
+        self.expectThat(config['router_ip'], Equals(interface.router_ip))
+
+    def test__passes_IP_addresses_as_strings(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group())
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.expectThat(config['subnet'], IsInstance(unicode))
+        self.expectThat(config['subnet_mask'], IsInstance(unicode))
+        self.expectThat(config['subnet_cidr'], IsInstance(unicode))
+        self.expectThat(config['broadcast_ip'], IsInstance(unicode))
+        self.expectThat(config['router_ip'], IsInstance(unicode))
+        self.expectThat(config['ip_range_low'], IsInstance(unicode))
+        self.expectThat(config['ip_range_high'], IsInstance(unicode))
+
+    def test__defines_IPv4_subnet(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group(), network=IPNetwork('10.9.8.7/24'))
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.expectThat(config['subnet'], Equals('10.9.8.0'))
+        self.expectThat(config['subnet_mask'], Equals('255.255.255.0'))
+        self.expectThat(config['subnet_cidr'], Equals('10.9.8.0/24'))
+
+    def test__defines_IPv6_subnet(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group(),
+            network=IPNetwork('fd38:c341:27da:c831::/64'))
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        # Don't expect a specific literal value, like we do for IPv4; there
+        # are different spellings.
+        self.expectThat(
+            IPAddress(config['subnet']),
+            Equals(IPAddress('fd38:c341:27da:c831::')))
+        # (Netmask is not used for the IPv6 config, so ignore it.)
+        self.expectThat(
+            IPNetwork(config['subnet_cidr']),
+            Equals(IPNetwork('fd38:c341:27da:c831::/64')))
+
+    def test__passes_dynamic_range(self):
+        interface = factory.make_node_group_interface(
+            factory.make_node_group())
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.expectThat(
+            (config['ip_range_low'], config['ip_range_high']),
+            Equals((interface.ip_range_low, interface.ip_range_high)))
+        self.expectThat(
+            config['ip_range_low'], Not(Equals(interface.static_ip_range_low)))
 
 
 class TestGetInterfacesManagedBy(MAASServerTestCase):
@@ -123,35 +264,19 @@ class TestConfigureDHCP(MAASServerTestCase):
 
         configure_dhcp(nodegroup)
 
-        dhcp_subnets = []
-        for interface in nodegroup.get_managed_interfaces():
-            dhcp_params = [
-                'interface',
-                'subnet_mask',
-                'broadcast_ip',
-                'router_ip',
-                'ip_range_low',
-                'ip_range_high',
-                ]
-
-            dhcp_subnet = {
-                param: getattr(interface, param)
-                for param in dhcp_params}
-            dhcp_subnet["dns_servers"] = get_dns_server_address()
-            dhcp_subnet["ntp_server"] = get_default_config()['ntp_server']
-            dhcp_subnet["domain_name"] = nodegroup.name
-            dhcp_subnet["subnet"] = unicode(
-                IPAddress(interface.ip_range_low) &
-                IPAddress(interface.subnet_mask))
-            dhcp_subnet["subnet_cidr"] = unicode(interface.network)
-            dhcp_subnets.append(dhcp_subnet)
-
-        expected_params = {}
-        expected_params["omapi_key"] = nodegroup.dhcp_key
-        expected_params["dhcp_interfaces"] = ' '.join([
-            interface.interface
-            for interface in nodegroup.get_managed_interfaces()])
-        expected_params["dhcp_subnets"] = dhcp_subnets
+        expected_params = {
+            'omapi_key': nodegroup.dhcp_key,
+            'dhcp_interfaces': ' '.join([
+                interface.interface
+                for interface in nodegroup.get_managed_interfaces()
+                ]),
+            'dhcp_subnets': [
+                make_subnet_config(
+                    interface, get_dns_server_address(),
+                    get_default_config()['ntp_server'])
+                for interface in nodegroup.get_managed_interfaces()
+                ],
+            }
 
         args, kwargs = mocked_task.apply_async.call_args
         result_params = kwargs['kwargs']
