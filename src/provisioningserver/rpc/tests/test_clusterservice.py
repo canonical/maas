@@ -221,6 +221,51 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         self.assertItemsEqual(expected_images, response["images"])
 
 
+class TestClusterProtocol_ImportBootImages(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    def test_import_boot_images_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.ImportBootImages.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_import_boot_images_can_be_called(self):
+        self.patch(clusterservice, "import_boot_images")
+        response = yield call_responder(
+            Cluster(), cluster.ImportBootImages, {'sources': []})
+        self.assertEqual({}, response)
+
+    @inlineCallbacks
+    def test_import_boot_images_calls_import_boot_images_with_sources(self):
+        import_boot_images = self.patch(clusterservice, "import_boot_images")
+
+        sources = [
+            {
+                'url': factory.make_url(),
+                'keyring_data': b'',
+                'selections': [
+                    {
+                        'os': 'ubuntu',
+                        'release': "trusty",
+                        'arches': ["amd64"],
+                        'subarches': ["generic"],
+                        'labels': ["release"],
+                    },
+                ],
+            },
+        ]
+
+        yield call_responder(
+            Cluster(), cluster.ImportBootImages, {'sources': sources})
+
+        self.assertThat(
+            import_boot_images,
+            MockCalledOnceWith(sources))
+
+
 class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
 
     run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)

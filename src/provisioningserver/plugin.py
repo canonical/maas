@@ -34,9 +34,7 @@ from provisioningserver.config import Config
 from provisioningserver.dhcp.dhcp_probe_service import (
     PeriodicDHCPProbeService,
     )
-from provisioningserver.image_download_service import (
-    PeriodicImageDownloadService,
-    )
+from provisioningserver.rpc.boot_images import PeriodicImageDownloadService
 from provisioningserver.rpc.clusterservice import ClusterClientService
 from provisioningserver.rpc.power import NodePowerMonitorService
 from provisioningserver.tftp import TFTPService

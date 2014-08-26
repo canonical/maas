@@ -36,6 +36,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.rpc import exceptions
 from provisioningserver.rpc.arguments import (
+    Bytes,
     ParsedURL,
     StructureAsJSON,
     )
@@ -271,3 +272,25 @@ class RemoveHostMaps(amp.Command):
         exceptions.CannotRemoveHostMap: (
             "CannotRemoveHostMap"),
     }
+
+
+class ImportBootImages(amp.Command):
+    """Imports the boot images and reports the final
+    boot images that exist on the cluster.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"sources", amp.AmpList(
+            [(b"url", amp.Unicode()),
+             (b"keyring_data", Bytes()),
+             (b"selections", amp.AmpList(
+                 [(b"os", amp.Unicode()),
+                  (b"release", amp.Unicode()),
+                  (b"arches", amp.ListOf(amp.Unicode())),
+                  (b"subarches", amp.ListOf(amp.Unicode())),
+                  (b"labels", amp.ListOf(amp.Unicode()))]))])),
+    ]
+    response = []
+    errors = []

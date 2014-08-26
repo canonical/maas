@@ -1,9 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Twisted service that periodically checks to see whether a routine download
-of ephemeral images is required, and kicks off a thread to do so if needed.
-"""
+"""RPC relating to boot images."""
 
 from __future__ import (
     absolute_import,
@@ -15,6 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "import_boot_images",
+    "list_boot_images",
     "PeriodicImageDownloadService",
     ]
 
@@ -22,17 +22,20 @@ __all__ = [
 from datetime import timedelta
 
 from provisioningserver.auth import MAAS_USER_GPGHOME
-from provisioningserver.boot.tftppath import maas_meta_last_modified
+from provisioningserver.boot import tftppath
+from provisioningserver.config import Config
 from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
-    GetProxies,
     )
 from provisioningserver.utils.env import environment_variables
-from provisioningserver.utils.twisted import pause
+from provisioningserver.utils.twisted import (
+    pause,
+    synchronous,
+    )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredLock,
@@ -43,25 +46,33 @@ from twisted.internet.threads import deferToThread
 from twisted.spread.pb import NoSuchMethod
 
 
-maaslog = get_maas_logger("image_download_service")
+maaslog = get_maas_logger("boot_images")
 service_lock = DeferredLock()
 
 
-def import_boot_images(sources, http_proxy=None, https_proxy=None):
-    """Set up environment and run an import."""
-    # Note that this is cargo-culted from provisioningserver.tasks. That
-    # code cannot be imported because it is decorated with celery.task,
-    # which pulls in celery config that doesn't exist in the pserv
-    # environment.
+def list_boot_images():
+    """List the boot images that exist on the cluster."""
+    return tftppath.list_boot_images(
+        Config.load_from_cache()['tftp']['resource_root'])
+
+
+@synchronous
+def _run_import(sources):
+    """Run the import.
+
+    This is function is synchronous so it must be called with deferToThread.
+    """
     variables = {
         'GNUPGHOME': MAAS_USER_GPGHOME,
         }
-    if http_proxy is not None:
-        variables['http_proxy'] = http_proxy
-    if https_proxy is not None:
-        variables['https_proxy'] = https_proxy
     with environment_variables(variables):
         boot_resources.import_images(sources)
+
+
+@inlineCallbacks
+def import_boot_images(sources):
+    """Imports the boot images from the given sources."""
+    yield deferToThread(_run_import, sources)
 
 
 class PeriodicImageDownloadService(TimerService, object):
@@ -72,7 +83,7 @@ class PeriodicImageDownloadService(TimerService, object):
     :param reactor: An `IReactor` instance.
     """
 
-    check_interval = 3600  # In seconds, 1 hour.
+    check_interval = timedelta(minutes=5).total_seconds()
 
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.check() every self.check_interval.
@@ -116,16 +127,12 @@ class PeriodicImageDownloadService(TimerService, object):
 
         # Get sources from region
         sources = yield self._get_boot_sources(client)
-        # Get http proxy from region
-        proxies = yield client(GetProxies)
-        yield deferToThread(
-            import_boot_images, sources.get("sources"),
-            proxies.get('http_proxy'), proxies.get('https_proxy'))
+        yield import_boot_images(sources.get("sources"))
 
     @inlineCallbacks
     def maybe_start_download(self):
         """Check the time the last image refresh happened and initiate a new
-        one if older than a week.
+        one if older than 15 minutes.
         """
         # Use a DeferredLock to prevent simultaneous downloads.
         if service_lock.locked:
@@ -133,14 +140,14 @@ class PeriodicImageDownloadService(TimerService, object):
             return
         yield service_lock.acquire()
         try:
-            last_modified = maas_meta_last_modified()
+            last_modified = tftppath.maas_meta_last_modified()
             if last_modified is None:
                 # Don't auto-refresh if the user has never manually initiated
                 # a download.
                 return
 
             age_in_seconds = self.clock.seconds() - last_modified
-            if age_in_seconds >= timedelta(weeks=1).total_seconds():
+            if age_in_seconds >= timedelta(minutes=15).total_seconds():
                 yield self._start_download()
 
         finally:

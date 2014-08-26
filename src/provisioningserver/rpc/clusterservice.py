@@ -22,12 +22,10 @@ import random
 from urlparse import urlparse
 
 from apiclient.utils import ascii_url
-from provisioningserver.boot import tftppath
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
     )
-from provisioningserver.config import Config
 from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
@@ -37,6 +35,10 @@ from provisioningserver.rpc import (
     common,
     exceptions,
     region,
+    )
+from provisioningserver.rpc.boot_images import (
+    import_boot_images,
+    list_boot_images,
     )
 from provisioningserver.rpc.dhcp import (
     configure_dhcpv6,
@@ -98,9 +100,17 @@ class Cluster(amp.AMP, object):
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.ListBootImages`.
         """
-        images = tftppath.list_boot_images(
-            Config.load_from_cache()['tftp']['resource_root'])
-        return {"images": images}
+        return {"images": list_boot_images()}
+
+    @cluster.ImportBootImages.responder
+    def import_boot_images(self, sources):
+        """import_boot_images()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.ImportBootImages`.
+        """
+        import_boot_images(sources)
+        return {}
 
     @cluster.DescribePowerTypes.responder
     def describe_power_types(self):
