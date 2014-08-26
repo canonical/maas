@@ -768,6 +768,23 @@ class TestRegionService(MAASTestCase):
         return service.starting
 
     @wait_for_reactor
+    def test_startService_returns_Deferred(self):
+        service = RegionService()
+
+        # Don't configure any endpoints.
+        self.patch(service, "endpoints", [])
+
+        d = service.startService()
+        self.assertThat(d, IsInstance(Deferred))
+        # It's actually the `starting` Deferred.
+        self.assertIs(service.starting, d)
+
+        def started(_):
+            return service.stopService()
+
+        return d.addCallback(started)
+
+    @wait_for_reactor
     def test_start_up_can_be_cancelled(self):
         service = RegionService()
 
@@ -788,6 +805,7 @@ class TestRegionService(MAASTestCase):
         return service.starting.addCallback(check)
 
     @wait_for_reactor
+    @inlineCallbacks
     def test_start_up_errors_are_logged(self):
         service = RegionService()
 
@@ -805,7 +823,7 @@ class TestRegionService(MAASTestCase):
                 Is(exception)),
         ]
 
-        service.startService()
+        yield service.startService()
         self.assertThat(err_calls, MatchesListwise(err_calls_expected))
 
     @wait_for_reactor

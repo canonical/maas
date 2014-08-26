@@ -334,6 +334,11 @@ class RegionService(service.Service, object):
             for endpoint in self.endpoints)
         self.starting.addCallback(self._savePorts)
         self.starting.addErrback(log.err)
+        # Twisted's service framework does not track start-up progress, i.e.
+        # it does not check for Deferreds returned by startService(). Here we
+        # return a Deferred anyway so that direct callers (esp. those from
+        # tests) can easily wait for start-up.
+        return self.starting
 
     @asynchronous
     @inlineCallbacks
