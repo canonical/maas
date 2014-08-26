@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from base64 import b64encode
 import os
 
 from django.core.exceptions import ValidationError
@@ -75,7 +74,7 @@ class TestBootSource(MAASServerTestCase):
         source = boot_source.to_dict()
         self.assertEqual(
             source['keyring_data'],
-            b64encode(keyring_data))
+            keyring_data)
 
     def test_to_dict_handles_keyring_data(self):
         keyring_data = b"Some Keyring Data"
@@ -84,4 +83,4 @@ class TestBootSource(MAASServerTestCase):
         source = boot_source.to_dict()
         self.assertEqual(
             source['keyring_data'],
-            b64encode(keyring_data))
+            keyring_data)

@@ -17,8 +17,6 @@ __all__ = [
     ]
 
 
-from base64 import b64encode
-
 from django.core.exceptions import ValidationError
 from django.db.models import (
     FilePathField,
@@ -80,9 +78,7 @@ class BootSource(CleanSave, TimestampedModel):
                 keyring_data = keyring_file.read()
         return {
             "url": self.url,
-            # TODO: Don't encode once this no longer needs to be
-            # transmitted to a Celery task.
-            "keyring_data": b64encode(keyring_data),
+            "keyring_data": bytes(keyring_data),
             "selections": [
                 selection.to_dict()
                 for selection in self.bootsourceselection_set.all()],

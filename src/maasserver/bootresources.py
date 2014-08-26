@@ -81,6 +81,7 @@ def get_simplestream_endpoint():
     return {
         'url': absolute_reverse(
             'simplestreams_stream_handler', kwargs={'filename': 'index.json'}),
+        'keyring_data': b'',
         'selections': [],
         }
 

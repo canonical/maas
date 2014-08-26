@@ -266,10 +266,6 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
 
         uuid, boot_source = yield deferToThread(
             self.make_boot_source_selection, keyring)
-
-        # keyring_data contains the b64decoded representation since AMP
-        # is fine with bytes.
-        boot_source["keyring_data"] = keyring
         del boot_source['selections'][0]['os']
 
         response = yield call_responder(

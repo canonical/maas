@@ -16,8 +16,6 @@ __all__ = [
     "get_boot_sources",
 ]
 
-from base64 import b64decode
-
 from maasserver.models import BootSource
 from maasserver.utils.async import transactional
 from provisioningserver.utils.twisted import synchronous
@@ -41,11 +39,7 @@ def get_boot_sources(uuid, remove_os=False):
         source.to_dict()
         for source in BootSource.objects.all()
     ]
-    # Replace the keyring_data value (base-64 encoded keyring) with
-    # the raw bytes; AMP is fine with bytes.
     for source in sources:
-        keyring_data = source.pop("keyring_data")
-        source["keyring_data"] = b64decode(keyring_data)
         if remove_os:
             for selection in source['selections']:
                 del selection['os']
