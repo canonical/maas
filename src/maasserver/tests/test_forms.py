@@ -32,18 +32,14 @@ from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     BLANK_CHOICE,
-    BootSourceSelectionForm,
     BulkNodeActionForm,
     CommissioningForm,
     CommissioningScriptForm,
-    DeployForm,
-    DownloadProgressForm,
     ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     get_node_create_form,
     get_node_edit_form,
     initialize_node_group,
-    InstanceListField,
     INTERFACES_VALIDATION_ERROR_MESSAGE,
     list_all_usable_architectures,
     MACAddressForm,
@@ -1695,154 +1691,3 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         self.assertEqual((1, 0, 0), form.save())
         unselected_node = reload_object(unselected_node)
         self.assertEqual(original_zone, unselected_node.zone)
-
-
-class TestDownloadProgressForm(MAASServerTestCase):
-
-    def test_updates_instance(self):
-        progress = factory.make_download_progress_incomplete(size=None)
-        new_bytes_downloaded = progress.bytes_downloaded + 1
-        size = progress.bytes_downloaded + 2
-        error = factory.make_string()
-
-        form = DownloadProgressForm(
-            data={
-                'size': size,
-                'bytes_downloaded': new_bytes_downloaded,
-                'error': error,
-            },
-            instance=progress)
-        new_progress = form.save()
-
-        progress = reload_object(progress)
-        self.assertEqual(progress, new_progress)
-        self.assertEqual(size, progress.size)
-        self.assertEqual(new_bytes_downloaded, progress.bytes_downloaded)
-        self.assertEqual(error, progress.error)
-
-    def test_rejects_unknown_ongoing_download(self):
-        form = DownloadProgressForm(
-            data={'bytes_downloaded': 1}, instance=None)
-
-        self.assertFalse(form.is_valid())
-
-    def test_get_download_returns_ongoing_download(self):
-        progress = factory.make_download_progress_incomplete()
-
-        self.assertEqual(
-            progress,
-            DownloadProgressForm.get_download(
-                progress.nodegroup, progress.filename,
-                progress.bytes_downloaded + 1))
-
-    def test_get_download_recognises_start_of_new_download(self):
-        nodegroup = factory.make_node_group()
-        filename = factory.make_string()
-        progress = DownloadProgressForm.get_download(nodegroup, filename, None)
-        self.assertIsNotNone(progress)
-        self.assertEqual(nodegroup, progress.nodegroup)
-        self.assertEqual(filename, progress.filename)
-        self.assertIsNone(progress.bytes_downloaded)
-
-    def test_get_download_returns_none_for_unknown_ongoing_download(self):
-        self.assertIsNone(
-            DownloadProgressForm.get_download(
-                factory.make_node_group(), factory.make_string(), 1))
-
-
-class TestInstanceListField(MAASServerTestCase):
-    """Tests for `InstanceListingField`."""
-
-    def test_field_validates_valid_data(self):
-        nodes = [factory.make_node() for i in range(3)]
-        # Create other nodes.
-        [factory.make_node() for i in range(3)]
-        field = InstanceListField(model_class=Node, field_name='system_id')
-        input_data = [node.system_id for node in nodes]
-        self.assertItemsEqual(
-            input_data,
-            [node.system_id for node in field.clean(input_data)])
-
-    def test_field_ignores_duplicates(self):
-        nodes = [factory.make_node() for i in range(2)]
-        # Create other nodes.
-        [factory.make_node() for i in range(3)]
-        field = InstanceListField(model_class=Node, field_name='system_id')
-        input_data = [node.system_id for node in nodes] * 2
-        self.assertItemsEqual(
-            set(input_data),
-            [node.system_id for node in field.clean(input_data)])
-
-    def test_field_rejects_invalid_data(self):
-        nodes = [factory.make_node() for i in range(3)]
-        field = InstanceListField(model_class=Node, field_name='system_id')
-        error = self.assertRaises(
-            ValidationError,
-            field.clean, [node.system_id for node in nodes] + ['unknown'])
-        self.assertEquals(['Unknown node(s): unknown.'], error.messages)
-
-
-class TestBootSourceSelectionForm(MAASServerTestCase):
-    """Tests for `BootSourceSelectionForm`."""
-
-    def test_edits_boot_source_selection_object(self):
-        boot_source_selection = factory.make_boot_source_selection()
-        params = {
-            'os': factory.make_name('os'),
-            'release': factory.make_name('release'),
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
-            'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label'), factory.make_name('label')],
-        }
-        form = BootSourceSelectionForm(
-            instance=boot_source_selection, data=params)
-        self.assertTrue(form.is_valid(), form._errors)
-        form.save()
-        boot_source_selection = reload_object(boot_source_selection)
-        self.assertAttributes(boot_source_selection, params)
-
-    def test_creates_boot_source_selection_object(self):
-        boot_source = factory.make_boot_source()
-        params = {
-            'os': factory.make_name('os'),
-            'release': factory.make_name('release'),
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
-            'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label'), factory.make_name('label')],
-        }
-        form = BootSourceSelectionForm(boot_source=boot_source, data=params)
-        self.assertTrue(form.is_valid(), form._errors)
-        boot_source_selection = form.save()
-        self.assertAttributes(boot_source_selection, params)
-
-
-class TestDeployForm(MAASServerTestCase):
-    """Tests for `DeployForm`."""
-
-    def test_uses_live_data(self):
-        # The DeployForm uses the database rather than just relying on
-        # hard-coded stuff.
-        osystem = make_usable_osystem(self)
-        os_name = osystem.name
-        release_name = factory.pick_release(osystem)
-        release_name = "%s/%s" % (os_name, release_name)
-        deploy_form = DeployForm()
-        os_choices = deploy_form.fields['default_osystem'].choices
-        os_names = [name for name, title in os_choices]
-        release_choices = deploy_form.fields['default_distro_series'].choices
-        release_names = [name for name, title in release_choices]
-        self.assertIn(os_name, os_names)
-        self.assertIn(release_name, release_names)
-
-    def test_accepts_new_values(self):
-        osystem = make_usable_osystem(self)
-        os_name = osystem.name
-        release_name = factory.pick_release(osystem)
-        params = {
-            'default_osystem': os_name,
-            'default_distro_series': "%s/%s" % (os_name, release_name),
-            }
-        form = DeployForm(data=params)
-        self.assertTrue(form.is_valid())
