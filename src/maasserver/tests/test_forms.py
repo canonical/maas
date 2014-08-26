@@ -17,9 +17,7 @@ __all__ = []
 import json
 import random
 
-from django import forms
 from django.conf import settings
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.validators import validate_email
@@ -38,10 +36,8 @@ from maasserver.forms import (
     BulkNodeActionForm,
     CommissioningForm,
     CommissioningScriptForm,
-    ConfigForm,
     DeployForm,
     DownloadProgressForm,
-    EditUserForm,
     ERROR_MESSAGE_STATIC_IPS_OUTSIDE_RANGE,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     get_node_create_form,
@@ -53,7 +49,6 @@ from maasserver.forms import (
     MACAddressForm,
     MAX_MESSAGES,
     merge_error_messages,
-    NewUserCreationForm,
     NO_ARCHITECTURES_AVAILABLE,
     NodeForm,
     NodeGroupDefineForm,
@@ -62,7 +57,6 @@ from maasserver.forms import (
     NodeGroupInterfaceForm,
     NodeWithMACAddressesForm,
     pick_default_architecture,
-    ProfileForm,
     remove_None_values,
     SetZoneBulkAction,
     UnconstrainedMultipleChoiceField,
@@ -71,14 +65,12 @@ from maasserver.forms import (
     ValidatorMultipleChoiceField,
     )
 from maasserver.models import (
-    Config,
     MACAddress,
     Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
     )
-from maasserver.models.config import DEFAULT_CONFIG
 from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.node_action import (
@@ -233,62 +225,6 @@ class TestHelpers(MAASServerTestCase):
         admin = factory.make_admin()
         self.assertEqual(
             AdminNodeWithMACAddressesForm, get_node_create_form(admin))
-
-
-class TestOptionForm(ConfigForm):
-    field1 = forms.CharField(label="Field 1", max_length=10)
-    field2 = forms.BooleanField(label="Field 2", required=False)
-
-
-class TestValidOptionForm(ConfigForm):
-    maas_name = forms.CharField(label="Field 1", max_length=10)
-
-
-class ConfigFormTest(MAASServerTestCase):
-
-    def test_form_valid_saves_into_db(self):
-        value = factory.make_string(10)
-        form = TestValidOptionForm({'maas_name': value})
-        result = form.save()
-
-        self.assertTrue(result)
-        self.assertEqual(value, Config.objects.get_config('maas_name'))
-
-    def test_form_rejects_unknown_settings(self):
-        value = factory.make_string(10)
-        value2 = factory.make_string(10)
-        form = TestOptionForm({'field1': value, 'field2': value2})
-        valid = form.is_valid()
-
-        self.assertFalse(valid)
-        self.assertIn('field1', form._errors)
-        self.assertIn('field2', form._errors)
-
-    def test_form_invalid_does_not_save_into_db(self):
-        value_too_long = factory.make_string(20)
-        form = TestOptionForm({'field1': value_too_long, 'field2': False})
-        result = form.save()
-
-        self.assertFalse(result)
-        self.assertIn('field1', form._errors)
-        self.assertIsNone(Config.objects.get_config('field1'))
-        self.assertIsNone(Config.objects.get_config('field2'))
-
-    def test_form_loads_initial_values(self):
-        value = factory.make_string()
-        Config.objects.set_config('field1', value)
-        form = TestOptionForm()
-
-        self.assertItemsEqual(['field1'], form.initial)
-        self.assertEqual(value, form.initial['field1'])
-
-    def test_form_loads_initial_values_from_default_value(self):
-        value = factory.make_string()
-        DEFAULT_CONFIG['field1'] = value
-        form = TestOptionForm()
-
-        self.assertItemsEqual(['field1'], form.initial)
-        self.assertEqual(value, form.initial['field1'])
 
 
 class TestNodeForm(MAASServerTestCase):
@@ -601,116 +537,6 @@ class TestAdminNodeForm(MAASServerTestCase):
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)
-
-
-class TestUniqueEmailForms(MAASServerTestCase):
-
-    def assertFormFailsValidationBecauseEmailNotUnique(self, form):
-        self.assertFalse(form.is_valid())
-        self.assertIn('email', form._errors)
-        self.assertEquals(1, len(form._errors['email']))
-        # Cope with 'Email' and 'E-mail' in error message.
-        self.assertThat(
-            form._errors['email'][0],
-            MatchesRegex(
-                r'User with this E-{0,1}mail address already exists.'))
-
-    def test_ProfileForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.make_string()
-        factory.make_user(email=another_email)
-        email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
-        form = ProfileForm(instance=user, data={'email': another_email})
-        self.assertFormFailsValidationBecauseEmailNotUnique(form)
-
-    def test_ProfileForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
-        form = ProfileForm(instance=user, data={'email': email})
-        self.assertTrue(form.is_valid())
-
-    def test_NewUserCreationForm_fails_validation_if_email_taken(self):
-        email = '%s@example.com' % factory.make_string()
-        username = factory.make_string()
-        password = factory.make_string()
-        factory.make_user(email=email)
-        form = NewUserCreationForm(
-            {
-                'email': email,
-                'username': username,
-                'password1': password,
-                'password2': password,
-            })
-        self.assertFormFailsValidationBecauseEmailNotUnique(form)
-
-    def test_EditUserForm_fails_validation_if_email_taken(self):
-        another_email = '%s@example.com' % factory.make_string()
-        factory.make_user(email=another_email)
-        email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
-        form = EditUserForm(instance=user, data={'email': another_email})
-        self.assertFormFailsValidationBecauseEmailNotUnique(form)
-
-    def test_EditUserForm_validates_if_email_unchanged(self):
-        email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
-        form = EditUserForm(
-            instance=user,
-            data={
-                'email': email,
-                'username': factory.make_string(),
-            })
-        self.assertTrue(form.is_valid())
-
-
-class TestNewUserCreationForm(MAASServerTestCase):
-
-    def test_saves_to_db_by_default(self):
-        password = factory.make_name('password')
-        params = {
-            'email': '%s@example.com' % factory.make_string(),
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
-        }
-        form = NewUserCreationForm(params)
-        form.save()
-        self.assertIsNotNone(User.objects.get(username=params['username']))
-
-    def test_email_is_required(self):
-        password = factory.make_name('password')
-        params = {
-            'email': '',
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
-        }
-        form = NewUserCreationForm(params)
-        self.assertFalse(form.is_valid())
-        self.assertEquals(
-            {'email': ['This field is required.']},
-            form._errors)
-
-    def test_does_not_save_to_db_if_commit_is_False(self):
-        password = factory.make_name('password')
-        params = {
-            'email': '%s@example.com' % factory.make_string(),
-            'username': factory.make_name('user'),
-            'password1': password,
-            'password2': password,
-        }
-        form = NewUserCreationForm(params)
-        form.save(commit=False)
-        self.assertItemsEqual(
-            [], User.objects.filter(username=params['username']))
-
-    def test_fields_order(self):
-        form = NewUserCreationForm()
-
-        self.assertEqual(
-            ['username', 'last_name', 'email', 'password1', 'password2',
-                'is_superuser'],
-            list(form.fields))
 
 
 class TestMergeErrorMessages(MAASServerTestCase):
