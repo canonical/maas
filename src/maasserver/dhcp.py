@@ -29,19 +29,6 @@ from provisioningserver.tasks import (
     )
 
 
-def get_interfaces_managed_by(nodegroup):
-    """Return `NodeGroupInterface` objects for which `nodegroup` manages DHCP.
-
-    Returns only interfaces for which MAAS is supposed to serve DHCP.
-    If the node group is not accepted, an empty list will be returned.
-    Interfaces whose DHCP is not managed are not returned in any case.
-    """
-    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-        return nodegroup.get_managed_interfaces()
-
-    return None
-
-
 def split_ipv4_ipv6_interfaces(interfaces):
     """Divide `interfaces` into IPv4 ones and IPv6 ones.
 
@@ -76,36 +63,18 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         }
 
 
-def configure_dhcp(nodegroup):
-    """Write the DHCP configuration file and restart the DHCP server."""
-    # Let's get this out of the way first up shall we?
-    if not settings.DHCP_CONNECT:
-        # For the uninitiated, DHCP_CONNECT is set, by default, to False
-        # in all tests and True in non-tests.  This avoids unnecessary
-        # calls to async tasks.
-        return
-
-    # Circular imports.
-    from maasserver.dns.zonegenerator import get_dns_server_address
-
-    interfaces = get_interfaces_managed_by(nodegroup)
-    if interfaces in [None, []]:
-        # interfaces being None means the cluster isn't accepted: stop
-        # the DHCP server in case it case started.
-        # interfaces being [] means there is no interface configured: stop
-        # the DHCP server;  Note that a config generated with this setup
-        # would not be valid and would result in the DHCP
-        # server failing with the error: "Not configured to listen on any
-        # interfaces!."
+def configure_dhcpv4(nodegroup, interfaces, dns_server, ntp_server):
+    """Write DHCPv4 configuration and restart the DHCPv4 server."""
+    if len(interfaces) == 0:
+        # No IPv4 interfaces are configured as being managed by this cluster.
+        # Stop the DHCP server.
+        #
+        # A config generated for this setup would not be valid.  It results in
+        # the DHCP server failing with the error: "Not configured to listen on
+        # any interfaces!"
         stop_dhcp_server.apply_async(queue=nodegroup.work_queue)
         return
 
-    # Make sure this nodegroup has a key to communicate with the dhcp
-    # server.
-    nodegroup.ensure_dhcp_key()
-
-    dns_server = get_dns_server_address(nodegroup)
-    ntp_server = Config.objects.get_config("ntp_server")
     dhcp_subnet_configs = [
         make_subnet_config(interface, dns_server, ntp_server)
         for interface in interfaces
@@ -122,3 +91,40 @@ def configure_dhcp(nodegroup):
     )
     write_dhcp_config.apply_async(
         queue=nodegroup.work_queue, kwargs=task_kwargs)
+
+
+def configure_dhcpv6(nodegroup, interfaces, dns_server, ntp_server):
+    """Write DHCPv6 configuration and restart the DHCPv6 server."""
+    # TODO: Implement.
+
+
+def configure_dhcp(nodegroup):
+    """Write the DHCP configuration files and restart the DHCP servers."""
+    # Let's get this out of the way first up shall we?
+    if not settings.DHCP_CONNECT:
+        # For the uninitiated, DHCP_CONNECT is set, by default, to False
+        # in all tests and True in non-tests.  This avoids unnecessary
+        # calls to async tasks.
+        return
+
+    # Circular imports.
+    from maasserver.dns.zonegenerator import get_dns_server_address
+
+    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
+        # Cluster is an accepted one.  Control DHCP for its managed interfaces.
+        interfaces = nodegroup.get_managed_interfaces()
+    else:
+        # Cluster isn't accepted.  Effectively, it manages no interfaces.
+        interfaces = []
+
+    # Make sure this nodegroup has a key to communicate with the dhcp
+    # server.
+    nodegroup.ensure_dhcp_key()
+
+    dns_server = get_dns_server_address(nodegroup)
+    ntp_server = Config.objects.get_config("ntp_server")
+
+    ipv4_interfaces, ipv6_interfaces = split_ipv4_ipv6_interfaces(interfaces)
+
+    configure_dhcpv4(nodegroup, ipv4_interfaces, dns_server, ntp_server)
+    configure_dhcpv6(nodegroup, ipv6_interfaces, dns_server, ntp_server)
