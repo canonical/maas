@@ -1,0 +1,250 @@
+# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# GNU Affero General Public License version 3 (see the file LICENSE).
+
+"""Tests for `BulkNodeActionForm`."""
+
+from __future__ import (
+    absolute_import,
+    print_function,
+    unicode_literals,
+    )
+
+str = None
+
+__metaclass__ = type
+__all__ = []
+
+from maasserver.enum import NODE_STATUS
+from maasserver.exceptions import NodeActionError
+from maasserver.forms import (
+    BulkNodeActionForm,
+    SetZoneBulkAction,
+    )
+from maasserver.models import Node
+from maasserver.node_action import (
+    Delete,
+    StartNode,
+    StopNode,
+    )
+from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
+from maasserver.testing.testcase import MAASServerTestCase
+
+
+class TestBulkNodeActionForm(MAASServerTestCase):
+
+    def test_performs_action(self):
+        node1 = factory.make_node()
+        node2 = factory.make_node()
+        node3 = factory.make_node()
+        system_id_to_delete = [node1.system_id, node2.system_id]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=system_id_to_delete))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        existing_nodes = list(Node.objects.filter(
+            system_id__in=system_id_to_delete))
+        node3_system_id = reload_object(node3).system_id
+        self.assertEqual(
+            [2, 0, 0],
+            [done, not_actionable, not_permitted])
+        self.assertEqual(
+            [[], node3.system_id],
+            [existing_nodes, node3_system_id])
+
+    def test_perform_action_catches_start_action_errors(self):
+        error_text = factory.make_string(prefix="NodeActionError")
+        exc = NodeActionError(error_text)
+        self.patch(StartNode, "execute").side_effect = exc
+        user = factory.make_user()
+        factory.make_sshkey(user)
+        node = factory.make_node(status=NODE_STATUS.READY, owner=user)
+        form = BulkNodeActionForm(
+            user=user,
+            data=dict(
+                action=StartNode.name,
+                system_id=[node.system_id]))
+
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 1, 0],
+            [done, not_actionable, not_permitted])
+
+    def test_first_action_is_empty(self):
+        form = BulkNodeActionForm(user=factory.make_admin())
+        action = form.fields['action']
+        default_action = action.choices[0][0]
+        required = action.required
+        # The default action is the empty string (i.e. no action)
+        # and it's a required field.
+        self.assertEqual(('', True), (default_action, required))
+
+    def test_admin_is_offered_bulk_node_change(self):
+        form = BulkNodeActionForm(user=factory.make_admin())
+        choices = form.fields['action'].choices
+        self.assertNotEqual(
+            [],
+            [choice for choice in choices if choice[0] == 'set_zone'])
+
+    def test_nonadmin_is_not_offered_bulk_node_change(self):
+        form = BulkNodeActionForm(user=factory.make_user())
+        choices = form.fields['action'].choices
+        self.assertEqual(
+            [],
+            [choice for choice in choices if choice[0] == 'set_zone'])
+
+    def test_gives_stat_when_not_applicable(self):
+        node1 = factory.make_node(status=NODE_STATUS.NEW)
+        node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        system_id_for_action = [node1.system_id, node2.system_id]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=StartNode.name,
+                system_id=system_id_for_action))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 2, 0],
+            [done, not_actionable, not_permitted])
+
+    def test_gives_stat_when_no_permission(self):
+        user = factory.make_user()
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        system_id_for_action = [node.system_id]
+        form = BulkNodeActionForm(
+            user=user,
+            data=dict(
+                action=StopNode.name,
+                system_id=system_id_for_action))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 0, 1],
+            [done, not_actionable, not_permitted])
+
+    def test_gives_stat_when_action_is_inhibited(self):
+        node = factory.make_node(
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=[node.system_id]))
+        self.assertTrue(form.is_valid(), form._errors)
+        done, not_actionable, not_permitted = form.save()
+        self.assertEqual(
+            [0, 1, 0],
+            [done, not_actionable, not_permitted])
+
+    def test_rejects_empty_system_ids(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(action=Delete.name, system_id=[]))
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["No node selected."],
+            form._errors['system_id'])
+
+    def test_rejects_invalid_system_ids(self):
+        node = factory.make_node()
+        system_id_to_delete = [node.system_id, "wrong-system_id"]
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action=Delete.name,
+                system_id=system_id_to_delete))
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["Some of the given system ids are invalid system ids."],
+            form._errors['system_id'])
+
+    def test_rejects_if_no_action(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(system_id=[factory.make_node().system_id]))
+        self.assertFalse(form.is_valid(), form._errors)
+
+    def test_rejects_if_invalid_action(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data=dict(
+                action="invalid-action",
+                system_id=[factory.make_node().system_id]))
+        self.assertFalse(form.is_valid(), form._errors)
+
+    def test_set_zone_sets_zone_on_node(self):
+        node = factory.make_node()
+        zone = factory.make_zone()
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': 'set_zone',
+                'zone': zone.name,
+                'system_id': [node.system_id],
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertEqual((1, 0, 0), form.save())
+        node = reload_object(node)
+        self.assertEqual(zone, node.zone)
+
+    def test_set_zone_does_not_work_if_not_admin(self):
+        node = factory.make_node()
+        form = BulkNodeActionForm(
+            user=factory.make_user(),
+            data={
+                'action': SetZoneBulkAction.name,
+                'zone': factory.make_zone().name,
+                'system_id': [node.system_id],
+            })
+        self.assertFalse(form.is_valid())
+        self.assertIn(
+            "Select a valid choice. "
+            "set_zone is not one of the available choices.",
+            form._errors['action'])
+
+    def test_zone_field_rejects_empty_zone(self):
+        # If the field is present, the zone name has to be valid
+        # and the empty string is not a valid zone name.
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': SetZoneBulkAction.name,
+                'zone': '',
+            })
+        self.assertFalse(form.is_valid(), form._errors)
+        self.assertEqual(
+            ["This field is required."],
+            form._errors['zone'])
+
+    def test_zone_field_present_if_data_is_empty(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={})
+        self.assertIn('zone', form.fields)
+
+    def test_zone_field_not_present_action_is_not_SetZoneBulkAction(self):
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={'action': factory.make_name('action')})
+        self.assertNotIn('zone', form.fields)
+
+    def test_set_zone_leaves_unselected_nodes_alone(self):
+        unselected_node = factory.make_node()
+        original_zone = unselected_node.zone
+        form = BulkNodeActionForm(
+            user=factory.make_admin(),
+            data={
+                'action': SetZoneBulkAction.name,
+                'zone': factory.make_zone().name,
+                'system_id': [factory.make_node().system_id],
+            })
+        self.assertTrue(form.is_valid(), form._errors)
+        self.assertEqual((1, 0, 0), form.save())
+        unselected_node = reload_object(unselected_node)
+        self.assertEqual(original_zone, unselected_node.zone)
