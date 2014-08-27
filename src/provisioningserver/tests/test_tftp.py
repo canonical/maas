@@ -37,17 +37,17 @@ from netaddr.ip import (
     IPV4_LINK_LOCAL,
     IPV6_LINK_LOCAL,
     )
-from provisioningserver import tftp as tftp_module
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
-from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.tftp import (
+from provisioningserver.pserv_services import tftp as tftp_module
+from provisioningserver.pserv_services.tftp import (
     Port,
     TFTPBackend,
     TFTPService,
     UDPServer,
     )
+from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     AfterPreprocessing,

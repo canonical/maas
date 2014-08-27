@@ -31,10 +31,14 @@ from oops_twisted import (
 import provisioningserver
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
-from provisioningserver.rpc.boot_images import PeriodicImageDownloadService
+from provisioningserver.pserv_services.image_download_service import (
+    PeriodicImageDownloadService,
+    )
+from provisioningserver.pserv_services.node_power_monitor_service import (
+    NodePowerMonitorService,
+    )
+from provisioningserver.pserv_services.tftp import TFTPService
 from provisioningserver.rpc.clusterservice import ClusterClientService
-from provisioningserver.rpc.power import NodePowerMonitorService
-from provisioningserver.tftp import TFTPService
 from twisted.application.internet import TCPServer
 from twisted.application.service import (
     IServiceMaker,

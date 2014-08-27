@@ -27,9 +27,13 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
-from provisioningserver.rpc.boot_images import PeriodicImageDownloadService
-from provisioningserver.rpc.power import NodePowerMonitorService
-from provisioningserver.tftp import (
+from provisioningserver.pserv_services.image_download_service import (
+    PeriodicImageDownloadService,
+    )
+from provisioningserver.pserv_services.node_power_monitor_service import (
+    NodePowerMonitorService,
+    )
+from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
     )

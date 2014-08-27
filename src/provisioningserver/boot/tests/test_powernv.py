@@ -31,9 +31,9 @@ from provisioningserver.boot.powernv import (
     )
 from provisioningserver.boot.tests.test_pxe import parse_pxe_config
 from provisioningserver.boot.tftppath import compose_image_path
+from provisioningserver.pserv_services.tftp import TFTPBackend
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from provisioningserver.tftp import TFTPBackend
 from testtools.matchers import (
     IsInstance,
     MatchesAll,

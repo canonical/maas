@@ -13,7 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "get_power_state"
+    "get_power_state",
+    "query_all_nodes",
 ]
 
 
@@ -27,17 +28,12 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     )
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import (
-    NoConnectionsAvailable,
-    NoSuchNode,
-    )
+from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import (
-    ListNodePowerParameters,
     MarkNodeBroken,
     UpdateNodePowerState,
     )
 from provisioningserver.utils.twisted import pause
-from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -256,45 +252,3 @@ def query_all_nodes(nodes, clock=reactor):
                 maaslog.debug(
                     "%s: Could not update power status; "
                     "no such node.", hostname)
-
-
-class NodePowerMonitorService(TimerService, object):
-    """Twisted service to monitor the status of all nodes
-    controlled by this cluster.
-
-    :param client_service: A `ClusterClientService` instance for talking
-        to the region controller.
-    :param reactor: An `IReactor` instance.
-    """
-
-    check_interval = 600  # 5 minutes.
-
-    def __init__(self, client_service, reactor, cluster_uuid):
-        # Call self.check() every self.check_interval.
-        super(NodePowerMonitorService, self).__init__(
-            self.check_interval, self.query_nodes)
-        self.clock = reactor
-        self.client_service = client_service
-        self.uuid = cluster_uuid
-
-    @inlineCallbacks
-    def query_nodes(self):
-        client = None
-        # Retry a few times, since this service usually comes up before
-        # the RPC service.
-        for _ in range(3):
-            try:
-                client = self.client_service.getClient()
-                break
-            except NoConnectionsAvailable:
-                yield pause(5)
-        if client is None:
-            maaslog.error(
-                "Can't query nodes's BMC for power state, no RPC connection "
-                "to region.")
-            return
-
-        # Get the nodes from the Region
-        response = yield client(ListNodePowerParameters, uuid=self.uuid)
-        nodes = response['nodes']
-        yield query_all_nodes(nodes)
