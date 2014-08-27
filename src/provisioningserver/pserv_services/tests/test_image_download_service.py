@@ -17,6 +17,7 @@ __all__ = []
 
 from datetime import timedelta
 
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
     get_mock_calls,
@@ -41,9 +42,13 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
     )
+from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
-from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.deferredruntest import (
+    AsynchronousDeferredRunTest,
+    extract_result,
+    )
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
@@ -204,6 +209,28 @@ class TestPeriodicImageDownloadService(PservTestCase):
         # Lock is released once the download is done.
         clock.advance(1)
         self.assertFalse(service_lock.locked)
+
+    def test_logs_other_errors(self):
+        service = PeriodicImageDownloadService(
+            sentinel.rpc, Clock(), sentinel.uuid)
+
+        maybe_start_download = self.patch(service, "maybe_start_download")
+        maybe_start_download.return_value = defer.fail(
+            ZeroDivisionError("Such a shame I can't divide by zero"))
+
+        with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
+            d = service.try_download()
+
+        self.assertEqual(None, extract_result(d))
+        self.assertDocTestMatches(
+            "Failed to download images: "
+            "Such a shame I can't divide by zero",
+            maaslog.output)
+
+
+class TestGetBootSources(PservTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
     def test__get_boot_sources_calls_get_boot_sources_v2_before_v1(self):

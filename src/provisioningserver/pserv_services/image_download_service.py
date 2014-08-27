@@ -27,13 +27,17 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
     )
-from provisioningserver.utils.twisted import pause
+from provisioningserver.utils.twisted import (
+    pause,
+    retries,
+    )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
     DeferredLock,
     inlineCallbacks,
     returnValue,
     )
+from twisted.python import log
 from twisted.spread.pb import NoSuchMethod
 
 
@@ -54,10 +58,23 @@ class PeriodicImageDownloadService(TimerService, object):
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.check() every self.check_interval.
         super(PeriodicImageDownloadService, self).__init__(
-            self.check_interval, self.maybe_start_download)
+            self.check_interval, self.try_download)
         self.clock = reactor
         self.client_service = client_service
         self.uuid = cluster_uuid
+
+    def try_download(self):
+        """Wrap download attempts in something that catches Failures.
+
+        Log the full error to the Twisted log, and a concise error to
+        the maas log.
+        """
+        def download_failure(failure):
+            log.err(failure)
+            maaslog.error(
+                "Failed to download images: %s", failure.getErrorMessage())
+
+        return self.maybe_start_download().addErrback(download_failure)
 
     @inlineCallbacks
     def _get_boot_sources(self, client):
@@ -80,13 +97,13 @@ class PeriodicImageDownloadService(TimerService, object):
         client = None
         # Retry a few times, since this service usually comes up before
         # the RPC service.
-        for _ in range(3):
+        for elapsed, remaining, wait in retries(15, 5, self.clock):
             try:
                 client = self.client_service.getClient()
                 break
             except NoConnectionsAvailable:
-                yield pause(5)
-        if client is None:
+                yield pause(wait, self.clock)
+        else:
             maaslog.error(
                 "Can't initiate image download, no RPC connection to region.")
             return
