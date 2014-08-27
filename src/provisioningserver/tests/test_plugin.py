@@ -21,9 +21,6 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver
 from provisioningserver import plugin as plugin_module
-from provisioningserver.dhcp.dhcp_probe_service import (
-    PeriodicDHCPProbeService,
-    )
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
@@ -112,11 +109,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        expected_services = [
-            "dhcp_probe", "image_download", "log", "node_monitor",
-            "oops", "rpc", "tftp",
-            ]
-        self.assertItemsEqual(expected_services, service.namedServices)
+        self.assertSequenceEqual(
+            ["image_download", "log", "node_monitor", "oops", "rpc", "tftp"],
+            sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
@@ -137,14 +132,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         node_monitor = service.getServiceNamed("node_monitor")
         self.assertIsInstance(node_monitor, NodePowerMonitorService)
-
-    def test_dhcp_probe_service(self):
-        options = Options()
-        options["config-file"] = self.write_config({})
-        service_maker = ProvisioningServiceMaker("Spike", "Milligan")
-        service = service_maker.makeService(options)
-        dhcp_probe = service.getServiceNamed("dhcp_probe")
-        self.assertIsInstance(dhcp_probe, PeriodicDHCPProbeService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

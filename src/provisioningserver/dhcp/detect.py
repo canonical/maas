@@ -33,6 +33,11 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
+from provisioningserver.auth import (
+    get_recorded_api_credentials,
+    get_recorded_nodegroup_uuid,
+    )
+from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.logger import get_maas_logger
 
 
@@ -316,7 +321,7 @@ def update_region_controller(knowledge, interface, server):
         client.post, api_path, 'report_foreign_dhcp', foreign_dhcp_ip=server)
 
 
-def periodic_probe_task(api_knowledge):
+def periodic_probe_task():
     """Probe for DHCP servers and set NodeGroupInterface.foriegn_dhcp.
 
     This should be run periodically so that the database has an up-to-date
@@ -325,12 +330,26 @@ def periodic_probe_task(api_knowledge):
     NOTE: This uses blocking I/O with sequential polling of interfaces, and
     hence doesn't scale well.  It's a future improvement to make
     to throw it in parallel threads or async I/O.
-
-    :param api_knowledge: A dict of the information needed to be able to
-        make requests to the region's REST API.
     """
+    # Items that the server must have sent us before we can do this.
+    knowledge = {
+        'maas_url': get_maas_url(),
+        'api_credentials': get_recorded_api_credentials(),
+        'nodegroup_uuid': get_recorded_nodegroup_uuid(),
+    }
+
+    if None in knowledge.values():
+        # The MAAS server hasn't sent us enough information for us to do
+        # this yet.  Leave it for another time.
+        maaslog.info(
+            "Not probing for rogue DHCP servers; not all required knowledge "
+            "received from server yet.  "
+            "Missing: %s" % ', '.join(sorted(
+                name for name, value in knowledge.items() if value is None)))
+        return
+
     # Determine all the active interfaces on this cluster (nodegroup).
-    interfaces = determine_cluster_interfaces(api_knowledge)
+    interfaces = determine_cluster_interfaces(knowledge)
     if interfaces is None:
         maaslog.info("No interfaces on cluster, not probing DHCP.")
         return
@@ -349,7 +368,6 @@ def periodic_probe_task(api_knowledge):
                 # Only send one, if it gets cleared out then the
                 # next detection pass will send a different one, if it
                 # still exists.
-                update_region_controller(
-                    api_knowledge, interface, servers.pop())
+                update_region_controller(knowledge, interface, servers.pop())
             else:
-                update_region_controller(api_knowledge, interface, None)
+                update_region_controller(knowledge, interface, None)
