@@ -14,7 +14,13 @@ subnet6 {{dhcp_subnet['subnet_cidr']}} {
        ignore-client-uids true;
        option dhcp6.name-servers {{dhcp_subnet['dns_servers']}};
        option domain-name "{{dhcp_subnet['domain_name']}}";
-       option routers {{dhcp_subnet['router_ip']}};
+       # DHCPv6 does not have a router option (although there has been a
+       # draft proposal for one).  Clients should get their routes from route
+       # advertisements, or use custom options configured into both the server
+       # and the client:
+       # http://www.isc.org/blogs/routing-configuration-over-dhcpv6-2/
+       #
+       #option routers {{dhcp_subnet['router_ip']}};
        {{if dhcp_subnet.get('ntp_server')}}
        option ntp-servers {{dhcp_subnet['ntp_server']}};
        {{endif}}
