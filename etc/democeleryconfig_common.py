@@ -37,8 +37,6 @@ DNS_DEFAULT_CONTROLS = False
 
 DHCP_CONFIG_FILE = os.path.join(
     DEV_ROOT_DIRECTORY, 'run/dhcpd.conf')
-DHCPv6_CONFIG_FILE = os.path.join(
-    DEV_ROOT_DIRECTORY, 'run/dhcpd6.conf')
 
 
 DHCP_LEASES_FILE = os.path.join(

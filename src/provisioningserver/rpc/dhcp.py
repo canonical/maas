@@ -18,7 +18,6 @@ __all__ = [
     "remove_host_maps",
 ]
 
-from celery.app import app_or_default
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.control import (
     restart_dhcpv6,
@@ -37,8 +36,11 @@ from provisioningserver.utils.shell import ExternalProcessError
 
 maaslog = get_maas_logger("dhcp")
 
+# Location of the DHCPv6 configuration file.
+DHCPv6_CONFIG_FILE = '/etc/maas/dhcp6.conf'
 
-celery_config = app_or_default().conf
+# Location of the DHCPv6 interfaces file.
+DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
 
 
 def configure_dhcpv6(omapi_key, subnet_configs):
@@ -56,8 +58,8 @@ def configure_dhcpv6(omapi_key, subnet_configs):
         'dhcpd6.conf.template',
         omapi_key=omapi_key, dhcp_subnets=subnet_configs)
     try:
-        sudo_write_file(celery_config.DHCPv6_CONFIG_FILE, dhcpd_config)
-        sudo_write_file(celery_config.DHCPv6_INTERFACES_FILE, interfaces)
+        sudo_write_file(DHCPv6_CONFIG_FILE, dhcpd_config)
+        sudo_write_file(DHCPv6_INTERFACES_FILE, interfaces)
     except ExternalProcessError as e:
         # ExternalProcessError.__unicode__ contains a generic failure message
         # as well as the command and its error output.  On the other hand,

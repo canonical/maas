@@ -95,8 +95,7 @@ class TestConfigureDHCPv6(MAASTestCase):
 
         self.assertThat(
             write_file,
-            MockAnyCall(
-                dhcp.celery_config.DHCPv6_CONFIG_FILE, expected_config))
+            MockAnyCall(dhcp.DHCPv6_CONFIG_FILE, expected_config))
 
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
@@ -104,7 +103,7 @@ class TestConfigureDHCPv6(MAASTestCase):
         dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
         self.assertThat(
             write_file,
-            MockCalledWith(dhcp.celery_config.DHCPv6_INTERFACES_FILE, ANY))
+            MockCalledWith(dhcp.DHCPv6_INTERFACES_FILE, ANY))
 
     def test__restarts_dhcpv6_server_if_subnets_defined(self):
         self.patch_sudo_write_file()

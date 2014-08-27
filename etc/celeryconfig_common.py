@@ -29,11 +29,9 @@ DHCP_LEASES_FILE = '/var/lib/maas/dhcp/dhcpd.leases'
 
 # ISC dhcpd configuration files.
 DHCP_CONFIG_FILE = '/etc/maas/dhcpd.conf'
-DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
 
 # List of interfaces that the dhcpd should service (if managed by MAAS).
 DHCP_INTERFACES_FILE = '/var/lib/maas/dhcpd-interfaces'
-DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
 
 # Broker connection information.  This is read by the region controller
 # and sent to connecting cluster controllers.
