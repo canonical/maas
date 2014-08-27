@@ -48,6 +48,7 @@ from maasserver.models import (
 from maasserver.utils import absolute_reverse
 from maasserver.utils.async import transactional
 from maasserver.utils.orm import get_one
+from provisioningserver.auth import MAAS_USER_GPGHOME
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
@@ -58,6 +59,7 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
 from simplestreams import util as sutil
 from simplestreams.mirrors import (
@@ -851,20 +853,24 @@ def _import_resources(force=False):
         return
 
     try:
-        maaslog.info("Started importing of boot resources.")
-        sources = [source.to_dict() for source in BootSource.objects.all()]
-        sources = write_all_keyrings(sources)
+        variables = {
+            'GNUPGHOME': MAAS_USER_GPGHOME,
+            }
+        with environment_variables(variables):
+            maaslog.info("Started importing of boot resources.")
+            sources = [source.to_dict() for source in BootSource.objects.all()]
+            sources = write_all_keyrings(sources)
 
-        image_descriptions = download_all_image_descriptions(sources)
-        if image_descriptions.is_empty():
-            maaslog.warn(
-                "Unable to import boot resources, no image "
-                "descriptions avaliable.")
-            return
-        product_mapping = map_products(image_descriptions)
+            image_descriptions = download_all_image_descriptions(sources)
+            if image_descriptions.is_empty():
+                maaslog.warn(
+                    "Unable to import boot resources, no image "
+                    "descriptions avaliable.")
+                return
+            product_mapping = map_products(image_descriptions)
 
-        download_all_boot_resources(sources, product_mapping)
-        maaslog.info("Finished importing of boot resources.")
+            download_all_boot_resources(sources, product_mapping)
+            maaslog.info("Finished importing of boot resources.")
     finally:
         kill_event.set()
         lock_thread.join()

@@ -66,6 +66,7 @@ class TestStartUp(MAASServerTestCase):
     def setUp(self):
         super(TestStartUp, self).setUp()
         self.useFixture(RegionEventLoopFixture())
+        self.patch(start_up, 'create_gnupg_home')
 
     def tearDown(self):
         super(TestStartUp, self).tearDown()
@@ -93,6 +94,11 @@ class TestInnerStartUp(MAASServerTestCase):
         ('celery', FixtureResource(CeleryFixture())),
         )
 
+    def setUp(self):
+        super(TestInnerStartUp, self).setUp()
+        self.mock_create_gnupg_home = self.patch(
+            start_up, 'create_gnupg_home')
+
     def test__calls_write_full_dns_config(self):
         recorder = FakeMethod()
         self.patch(start_up, 'write_full_dns_config', recorder)
@@ -106,6 +112,10 @@ class TestInnerStartUp(MAASServerTestCase):
         clusters = NodeGroup.objects.all()
         self.assertThat(clusters, HasLength(1))
         self.assertItemsEqual([NodeGroup.objects.ensure_master()], clusters)
+
+    def test__calls_create_gnupg_home(self):
+        start_up.inner_start_up()
+        self.assertThat(self.mock_create_gnupg_home, MockCalledOnceWith())
 
     def test__initialises_boot_source_config(self):
         self.assertItemsEqual([], BootSource.objects.all())

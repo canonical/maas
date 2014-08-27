@@ -38,6 +38,7 @@ from maasserver.models import (
     BootImage,
     NodeGroup,
     )
+from provisioningserver.upgrade_cluster import create_gnupg_home
 
 
 def start_up():
@@ -87,6 +88,11 @@ def inner_start_up():
     # Make sure that the master nodegroup is created.
     # This must be serialized or we may initialize the master more than once.
     NodeGroup.objects.ensure_master()
+
+    # Make sure that maas user's GNUPG home directory exists. This is needed
+    # for importing of boot resources, that now occurs on the region as well
+    # as the clusters.
+    create_gnupg_home()
 
     # If no boot-source definitions yet, create the default definition.
     ensure_boot_source_definition()

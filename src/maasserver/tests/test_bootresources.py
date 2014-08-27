@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+from os import environ
 from random import randint
 from StringIO import StringIO
 
@@ -1010,3 +1011,26 @@ class TestImportImages(MAASTestCase):
         self.assertThat(
             fake_download_all_boot_resources,
             MockCalledOnceWith(sentinel.sources, sentinel.mapping))
+
+    def test__import_resources_has_env_GNUPGHOME_set(self):
+        fake_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        fake_image_descriptions.return_value = descriptions
+        self.patch(bootresources, 'map_products')
+
+        class CaptureEnv:
+            """Fake function; records a copy of the environment."""
+
+            def __call__(self, *args, **kwargs):
+                self.args = args
+                self.env = environ.copy()
+
+        fake_download = self.patch(
+            bootresources, 'download_all_boot_resources', CaptureEnv())
+
+        bootresources._import_resources(force=True)
+        self.assertEqual(
+            bootresources.MAAS_USER_GPGHOME,
+            fake_download.env['GNUPGHOME'])
