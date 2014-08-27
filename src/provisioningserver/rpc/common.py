@@ -52,6 +52,17 @@ class Client:
 
     @asynchronous
     def __call__(self, cmd, **kwargs):
+        """Call a remote RPC method.
+
+        This is how the client is normally used.
+
+        :param cmd: The `amp.Command` child class representing the remote
+            method to be invoked.
+        :param kwargs: Any parameters to the remote method.  Only keyword
+            arguments are accepted.
+        :return: A deferred result.  Call its `wait` method (with a timeout
+            in seconds) to block on the call's completion.
+        """
         return self._conn.callRemote(cmd, **kwargs)
 
     @asynchronous

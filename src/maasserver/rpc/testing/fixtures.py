@@ -138,7 +138,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
     Use this in *region* tests.
 
-    Example usage::
+    Example usage (in this case, for stubbing the `Identify` RPC method)::
 
       nodegroup = factory.make_node_group()
       fixture = self.useFixture(MockRegionToClusterRPCFixture())
