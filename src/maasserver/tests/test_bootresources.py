@@ -21,7 +21,10 @@ from random import randint
 from StringIO import StringIO
 
 from django.core.urlresolvers import reverse
-from django.db import transaction
+from django.db import (
+    connections,
+    transaction,
+    )
 from django.http import StreamingHttpResponse
 from django.test.client import Client
 from maasserver import bootresources
@@ -435,25 +438,23 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         version = resource_set.version
         resource_file = resource_set.files.order_by('?')[0]
         filename = resource_file.filename
-        with resource_file.largefile.content.open('rb') as stream:
-            content = stream.read()
         response = self.get_file_client(
             os, arch, subarch, series, version, filename)
         self.assertIsInstance(response, StreamingHttpResponse)
-        self.assertEqual(content, b''.join(response.streaming_content))
 
 
-class TestTransactionWrapper(MAASTestCase):
-    """Tests the use of StreamingHttpResponse(TransactionWrapper(stream)).
+class TestConnectionWrapper(TransactionTestCase):
+    """Tests the use of StreamingHttpResponse(ConnectionWrapper(stream)).
 
     We do not run this inside of `MAASServerTestCase` as that wraps a
-    transaction around each test. This removes that behavior so we can
-    test that the transaction is remaining open for all of the content.
+    transaction around each test. Since a new connection is created to return
+    the actual content, the transaction to create the data needs be committed.
     """
 
-    def test_download(self):
-        # Do the setup inside of a transaction, as we are running in a test
-        # that doesn't enable transactions per test.
+    def make_file_for_client(self):
+        # Set up the database information inside of a transaction. This is
+        # done so the information is committed. As the new connection needs
+        # to be able to access the data.
         with transaction.atomic():
             os = factory.make_name('os')
             series = factory.make_name('series')
@@ -477,26 +478,81 @@ class TestTransactionWrapper(MAASTestCase):
             largefile = factory.make_large_file(content=content, size=size)
             factory.make_boot_resource_file(
                 resource_set, largefile, filename=filename, filetype=filetype)
+        return content, reverse(
+            'simplestreams_file_handler', kwargs={
+                'os': os,
+                'arch': arch,
+                'subarch': subarch,
+                'series': series,
+                'version': version,
+                'filename': filename,
+                })
 
-        # Outside of the transaction, we run the actual test. The client will
-        # run inside of its own transaction, but once the streaming response
-        # is returned that transaction will be closed.
+    def read_response(self, response):
+        """Read the streaming_content from the response.
+
+        :rtype: bytes
+        """
+        return b''.join(response.streaming_content)
+
+    def test_download_calls__get_new_connection(self):
+        content, url = self.make_file_for_client()
+        mock_get_new_connection = self.patch(
+            bootresources.ConnectionWrapper, '_get_new_connection')
+
         client = Client()
-        response = client.get(
-            reverse(
-                'simplestreams_file_handler', kwargs={
-                    'os': os,
-                    'arch': arch,
-                    'subarch': subarch,
-                    'series': series,
-                    'version': version,
-                    'filename': filename,
-                    }))
+        response = client.get(url)
+        self.read_response(response)
+        self.assertThat(mock_get_new_connection, MockCalledOnceWith())
 
-        # If TransactionWrapper does not work, then a ProgramError will be
-        # thrown. If it works then content will match.
-        self.assertEqual(content, b''.join(response.streaming_content))
-        self.assertTrue(largefile.content.closed)
+    def test_download_connection_is_not_same_as_django_connections(self):
+        content, url = self.make_file_for_client()
+
+        class AssertConnectionWrapper(bootresources.ConnectionWrapper):
+
+            def _set_up(self):
+                super(AssertConnectionWrapper, self)._set_up()
+                # Capture the created connection
+                AssertConnectionWrapper.connection = self._connection
+
+            def close(self):
+                # Close the stream, but we don't want to close the
+                # connection as the test is testing that the connection is
+                # not the same as the connection django is using for other
+                # webrequests.
+                if self._stream is not None:
+                    self._stream.close()
+                    self._stream = None
+                self._connection = None
+
+        self.patch(
+            bootresources, 'ConnectionWrapper', AssertConnectionWrapper)
+
+        client = Client()
+        response = client.get(url)
+        self.read_response(response)
+
+        # Add cleanup to close the connection, since this was removed from
+        # AssertConnectionWrapper.close method.
+        def close():
+            conn = AssertConnectionWrapper.connection
+            conn.commit()
+            conn.leave_transaction_management()
+            conn.close()
+        self.addCleanup(close)
+
+        # The connection that is used by the wrapper cannot be the same as the
+        # connection be using for all other webrequests. Without this
+        # seperate the transactional middleware will fail to initialize,
+        # because the the connection will already be in a transaction.
+        #
+        # Note: cannot test if DatabaseWrapper != DatabaseWrapper, as it will
+        # report true, because the __eq__ operator only checks if the aliases
+        # are the same. This is checking the underlying connection is
+        # different, which is the important part.
+        self.assertNotEqual(
+            connections["default"].connection,
+            AssertConnectionWrapper.connection.connection)
 
 
 def make_product():

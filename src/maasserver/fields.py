@@ -444,9 +444,11 @@ class LargeObjectFile(object):
     def __iter__(self):
         return self
 
-    def open(self, mode="rwb", new_file=None, using="default"):
+    def open(self, mode="rwb", new_file=None, using="default",
+             connection=None):
         """Opens the internal large object instance."""
-        connection = connections[using]
+        if connection is None:
+            connection = connections[using]
         self._lobject = connection.connection.lobject(
             self.oid, mode, 0, new_file)
         self.oid = self._lobject.oid

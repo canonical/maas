@@ -26,8 +26,10 @@ import time
 from crochet import run_in_reactor
 from django.db import (
     close_old_connections,
+    connections,
     transaction,
     )
+from django.db.utils import load_backend
 from django.http import (
     Http404,
     HttpResponse,
@@ -102,39 +104,63 @@ def ensure_boot_source_definition():
             arches=['amd64'], subarches=['*'], labels=['release'])
 
 
-class TransactionWrapper:
-    """Wraps `LargeObjectFile` in transaction, so `StreamingHttpResponse`
-    can be used. Once the stream is done, then the transaction is
-    closed.
+class ConnectionWrapper:
+    """Wraps `LargeObjectFile` in a new database connection.
+
+    `StreamingHttpResponse` runs outside of django context, so connection
+    that is not shared by django is needed.
+
+    A new database connection is made at the start of the interation and is
+    closed upon close of wrapper.
     """
 
-    def __init__(self, largeobject):
+    def __init__(self, largeobject, alias="default"):
         self.largeobject = largeobject
-        self._atomic = None
+        self.alias = alias
+        self._connection = None
         self._stream = None
+
+    def _get_new_connection(self):
+        """Create new database connection."""
+        db = connections.databases[self.alias]
+        backend = load_backend(db['ENGINE'])
+        return backend.DatabaseWrapper(db, self.alias)
+
+    def _set_up(self):
+        """Sets up the connection and stream.
+
+        This uses lazy initialisation because it is called each time
+        `next` is called.
+        """
+        if self._connection is None:
+            self._connection = self._get_new_connection()
+            self._connection.connect()
+            self._connection.enter_transaction_management()
+            self._connection.set_autocommit(False)
+        if self._stream is None:
+            self._stream = self.largeobject.open(
+                'rb', connection=self._connection)
 
     def __iter__(self):
         return self
 
     def next(self):
-        if self._atomic is None:
-            self._atomic = transaction.atomic()
-            self._atomic.__enter__()
-        if self._stream is None:
-            self._stream = self.largeobject.open('rb')
+        self._set_up()
         data = self._stream.read(self.largeobject.block_size)
         if len(data) == 0:
             raise StopIteration
         return data
 
     def close(self):
+        """Close the connection and stream."""
         if self._stream is not None:
             self._stream.close()
             self._stream = None
-        if self._atomic is not None:
-            self._atomic.__exit__()
-            self._atomic = None
-        close_old_connections()
+        if self._connection is not None:
+            self._connection.commit()
+            self._connection.leave_transaction_management()
+            self._connection.close()
+            self._connection = None
 
 
 class SimpleStreamsHandler:
@@ -297,7 +323,7 @@ class SimpleStreamsHandler:
         except BootResourceFile.DoesNotExist:
             raise Http404()
         response = StreamingHttpResponse(
-            TransactionWrapper(rfile.largefile.content),
+            ConnectionWrapper(rfile.largefile.content),
             content_type='application/octet-stream')
         response['Content-Length'] = rfile.largefile.total_size
         return response
