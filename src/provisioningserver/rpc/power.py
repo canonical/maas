@@ -17,7 +17,6 @@ __all__ = [
     "query_all_nodes",
 ]
 
-
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
@@ -238,7 +237,7 @@ def query_all_nodes(nodes, clock=reactor):
     for node in nodes:
         system_id = node['system_id']
         hostname = node['hostname']
-        power_state_recorded = node['state']
+        power_state_recorded = node['power_state']
         power_state_observed = yield get_power_state(
             system_id, hostname, node['power_type'], node['context'],
             clock=clock)

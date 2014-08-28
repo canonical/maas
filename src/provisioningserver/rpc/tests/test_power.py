@@ -606,11 +606,11 @@ class TestPowerQuery(MAASTestCase):
                 factory.make_name('context-val'))
         }
         return {
-            'system_id': system_id,
-            'hostname': hostname,
-            'power_type': power_type,
             'context': context,
-            'state': state,
+            'hostname': hostname,
+            'power_state': state,
+            'power_type': power_type,
+            'system_id': system_id,
         }
 
     def make_nodes(self, count=3):
@@ -629,7 +629,7 @@ class TestPowerQuery(MAASTestCase):
     def test_query_all_nodes_calls_get_power_state(self):
         nodes = self.make_nodes()
         # Report back that all nodes' power states are as recorded.
-        power_states = [node['state'] for node in nodes]
+        power_states = [node['power_state'] for node in nodes]
         get_power_state = self.patch(power, 'get_power_state')
         get_power_state.side_effect = power_states
 
@@ -648,7 +648,7 @@ class TestPowerQuery(MAASTestCase):
         nodes = self.make_nodes()
         # Report back that all nodes' power states have changed from recorded.
         power_states = [
-            self.pick_alternate_state(node['state'])
+            self.pick_alternate_state(node['power_state'])
             for node in nodes
         ]
         get_power_state = self.patch(power, 'get_power_state')
@@ -668,7 +668,7 @@ class TestPowerQuery(MAASTestCase):
         nodes = self.make_nodes(1)
         # Report back that all nodes' power states have changed from recorded.
         power_states = [
-            self.pick_alternate_state(node['state'])
+            self.pick_alternate_state(node['power_state'])
             for node in nodes
         ]
         get_power_state = self.patch(power, 'get_power_state')

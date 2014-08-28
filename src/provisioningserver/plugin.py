@@ -241,9 +241,8 @@ class ProvisioningServiceMaker(object):
         lease_upload_service.setName("lease_upload")
         return lease_upload_service
 
-    def _makeNodePowerMonitorService(self, rpc_service):
-        node_monitor = NodePowerMonitorService(
-            rpc_service, reactor, get_cluster_uuid())
+    def _makeNodePowerMonitorService(self):
+        node_monitor = NodePowerMonitorService(get_cluster_uuid(), reactor)
         node_monitor.setName("node_monitor")
         return node_monitor
 
@@ -269,7 +268,7 @@ class ProvisioningServiceMaker(object):
         rpc_service = self._makeRPCService(config["rpc"])
         rpc_service.setServiceParent(services)
 
-        node_monitor = self._makeNodePowerMonitorService(rpc_service)
+        node_monitor = self._makeNodePowerMonitorService()
         node_monitor.setServiceParent(services)
 
         image_download_service = self._makePeriodicImageDownloadService(

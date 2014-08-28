@@ -66,7 +66,10 @@ from twisted.internet.defer import (
 from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
-from twisted.python import log
+from twisted.python import (
+    log,
+    reflect,
+    )
 from twisted.python.failure import Failure
 from twisted.test import iosim
 
@@ -82,12 +85,20 @@ def call_responder(protocol, command, arguments):
     d.addCallback(command.parseResponse, protocol)
 
     def eb_massage_error(error):
-        # Convert remote errors back into local errors using the
-        # command's error map if possible.
-        error.trap(amp.RemoteAmpError)
-        error_type = command.reverseErrors.get(
-            error.value.errorCode, amp.UnknownRemoteError)
-        return Failure(error_type(error.value.description))
+        if error.check(amp.RemoteAmpError):
+            # Convert remote errors back into local errors using the
+            # command's error map if possible.
+            error_type = command.reverseErrors.get(
+                error.value.errorCode, amp.UnknownRemoteError)
+            return Failure(error_type(error.value.description))
+        else:
+            # Exceptions raised in responders that aren't declared in that
+            # responder's schema can get through to here without being wrapped
+            # in RemoteAmpError. This is because call_responder() bypasses the
+            # network marshall/unmarshall steps, where these exceptions would
+            # ordinarily get squashed.
+            return Failure(amp.UnknownRemoteError("%s: %s" % (
+                reflect.qual(error.type), reflect.safe_str(error.value))))
     d.addErrback(eb_massage_error)
 
     return d

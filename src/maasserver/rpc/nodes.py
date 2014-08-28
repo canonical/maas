@@ -23,7 +23,10 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.utils.async import transactional
-from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.exceptions import (
+    NoSuchCluster,
+    NoSuchNode,
+    )
 from provisioningserver.utils.twisted import synchronous
 
 
@@ -52,17 +55,23 @@ def list_cluster_nodes_power_parameters(uuid):
     try:
         nodegroup = NodeGroup.objects.get_by_natural_key(uuid)
     except NodeGroup.DoesNotExist:
-        nodes = []
+        raise NoSuchCluster.from_uuid(uuid)
     else:
-        nodes = [{
-            'system_id': node.system_id,
-            'hostname': node.hostname,
-            'state': node.power_state,
-            'power_type': node.get_effective_power_type(),
-            'context': node.get_effective_power_parameters()}
+        power_info_by_node = (
+            (node, node.get_effective_power_info())
             for node in nodegroup.node_set.all()
+        )
+        return [
+            {
+                'system_id': node.system_id,
+                'hostname': node.hostname,
+                'power_state': node.power_state,
+                'power_type': power_info.power_type,
+                'context': power_info.power_parameters,
+            }
+            for node, power_info in power_info_by_node
+            if power_info.power_type is not None
         ]
-    return nodes
 
 
 @synchronous

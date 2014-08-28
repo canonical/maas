@@ -29,6 +29,7 @@ from provisioningserver.rpc.arguments import (
     )
 from provisioningserver.rpc.common import Identify
 from provisioningserver.rpc.exceptions import (
+    NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
     )
@@ -168,13 +169,15 @@ class ListNodePowerParameters(amp.Command):
         (b"nodes", amp.AmpList(
             [(b"system_id", amp.Unicode()),
              (b"hostname", amp.Unicode()),
-             (b"state", amp.Unicode()),
+             (b"power_state", amp.Unicode()),
              (b"power_type", amp.Unicode()),
              # We can't define a tighter schema here because this is a highly
              # variable bag of arguments from a variety of sources.
              (b"context", StructureAsJSON())])),
     ]
-    errors = []
+    errors = {
+        NoSuchCluster: b"NoSuchCluster",
+    }
 
 
 class UpdateNodePowerState(amp.Command):

@@ -17,6 +17,7 @@ __all__ = [
     "CannotCreateHostMap",
     "CannotRemoveHostMap",
     "NoConnectionsAvailable",
+    "NoSuchCluster",
     "NoSuchEventType",
     "NoSuchNode",
     "NoSuchOperatingSystem",
@@ -44,6 +45,17 @@ class NoSuchNode(Exception):
     def from_system_id(cls, system_id):
         return cls(
             "Node with system_id=%s could not be found." % system_id
+        )
+
+
+class NoSuchCluster(Exception):
+    """The specified cluster (a.k.a. node-group) was not found."""
+
+    @classmethod
+    def from_uuid(cls, uuid):
+        return cls(
+            "The cluster (a.k.a. node-group) with UUID %s could not "
+            "be found." % uuid
         )
 
 

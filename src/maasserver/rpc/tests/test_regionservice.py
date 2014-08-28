@@ -67,6 +67,7 @@ from provisioningserver.rpc import (
     exceptions,
     )
 from provisioningserver.rpc.exceptions import (
+    NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
     )
@@ -484,10 +485,14 @@ class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
             nodes.append({
                 'system_id': node.system_id,
                 'hostname': node.hostname,
-                'state': node.power_state,
+                'power_state': node.power_state,
                 'power_type': node.get_effective_power_type(),
                 'context': power_params,
                 })
+
+        # Create a node with an invalid power type (i.e. the empty string).
+        # This will not be reported by the call to ListNodePowerParameters.
+        yield deferToThread(self.create_node, nodegroup, power_type="")
 
         response = yield call_responder(
             Region(), ListNodePowerParameters,
@@ -496,14 +501,14 @@ class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
         self.assertItemsEqual(nodes, response['nodes'])
 
     @wait_for_reactor
-    def test__returns_empty_if_nodegroup_doesnt_exist(self):
+    def test__raises_exception_if_nodegroup_doesnt_exist(self):
         uuid = factory.make_UUID()
 
-        response = yield call_responder(
+        d = call_responder(
             Region(), ListNodePowerParameters,
             {b'uuid': uuid})
 
-        self.assertEquals([], response['nodes'])
+        return assert_fails_with(d, NoSuchCluster)
 
 
 class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
