@@ -104,6 +104,22 @@ class GetBootSourcesV2(amp.Command):
     errors = []
 
 
+class UpdateLeases(amp.Command):
+    """Report DHCP leases on the invoking cluster controller.
+
+    :since: 1.7
+    """
+    arguments = [
+        # The cluster UUID.
+        (b"uuid", amp.Unicode()),
+        (b"mappings", amp.AmpList(
+            [(b"ip", amp.Unicode()),
+             (b"mac", amp.Unicode())]))
+    ]
+    response = []
+    errors = []
+
+
 class GetProxies(amp.Command):
     """Return the HTTP and HTTPS proxies to use.
 

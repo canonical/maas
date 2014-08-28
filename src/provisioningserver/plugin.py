@@ -34,6 +34,9 @@ from provisioningserver.config import Config
 from provisioningserver.pserv_services.image_download_service import (
     PeriodicImageDownloadService,
     )
+from provisioningserver.pserv_services.lease_upload_service import (
+    PeriodicLeaseUploadService,
+    )
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
     )
@@ -232,6 +235,12 @@ class ProvisioningServiceMaker(object):
         image_download_service.setName("image_download")
         return image_download_service
 
+    def _makePeriodicLeaseUploadService(self, rpc_service):
+        lease_upload_service = PeriodicLeaseUploadService(
+            rpc_service, reactor, get_cluster_uuid())
+        lease_upload_service.setName("lease_upload")
+        return lease_upload_service
+
     def _makeNodePowerMonitorService(self, rpc_service):
         node_monitor = NodePowerMonitorService(
             rpc_service, reactor, get_cluster_uuid())
@@ -266,5 +275,9 @@ class ProvisioningServiceMaker(object):
         image_download_service = self._makePeriodicImageDownloadService(
             rpc_service)
         image_download_service.setServiceParent(services)
+
+        lease_upload_service = self._makePeriodicLeaseUploadService(
+            rpc_service)
+        lease_upload_service.setServiceParent(services)
 
         return services

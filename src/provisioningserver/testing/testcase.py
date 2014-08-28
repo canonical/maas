@@ -25,6 +25,8 @@ from provisioningserver.auth import (
     record_nodegroup_uuid,
     )
 from provisioningserver.testing.worker_cache import WorkerCacheFixture
+from twisted.internet import reactor
+from twisted.python import threadable
 
 
 class PservTestCase(testcase.MAASTestCase):
@@ -52,3 +54,19 @@ class PservTestCase(testcase.MAASTestCase):
         self.set_maas_url()
         self.set_api_credentials()
         self.set_node_group_uuid()
+
+    def register_as_io_thread(self):
+        """Make the current thread the IO thread.
+
+        When pretending to be the reactor, by using clocks and suchlike,
+        register the current thread as the reactor thread, a.k.a. the IO
+        thread, to ensure correct operation from things like the `synchronous`
+        and `asynchronous` decorators.
+
+        Do not use this when the reactor is running.
+        """
+        self.assertFalse(
+            reactor.running, "Do not use this to change the IO thread "
+            "while the reactor is running.")
+        self.addCleanup(setattr, threadable, "ioThread", threadable.ioThread)
+        threadable.ioThread = threadable.getThreadID()

@@ -114,7 +114,8 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
         self.assertSequenceEqual(
-            ["image_download", "log", "node_monitor", "oops", "rpc", "tftp"],
+            ["image_download", "lease_upload", "log", "node_monitor", "oops",
+             "rpc", "tftp"],
             sorted(service.namedServices))
         self.assertEqual(
             len(service.namedServices), len(service.services),

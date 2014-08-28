@@ -20,16 +20,10 @@ Leases scanning
 ===============
 
 MAAS will periodically scan the DHCP leases file using the
-``upload_dhcp_leases()`` celery task, which originates via celerybeat.
+``PeriodicLeaseUploadService()`` pserv service.
 
-As leases are discovered, it calls the api function ``update_leases()`` which
-will subsequently generate a new task called ``add_new_dhcp_host_map()`` that
-will use omshell to write a permanent mapping from MAC to IP in the DHCP
-server.
-
-That host map remains until the node is deleted, at which point the
-``remove_dhcp_host_map()`` task is invoked which uses omshell to remove the
-map.
+As leases are discovered, it calls the RPC function ``UpdateLeases`` which
+stores the active leases in the DHCPLease table.
 
 
 Updating the DNS zone file

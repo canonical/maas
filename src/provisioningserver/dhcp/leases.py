@@ -34,6 +34,7 @@ __all__ = [
     ]
 
 
+from collections import defaultdict
 import errno
 import json
 from os import (
@@ -46,8 +47,6 @@ from apiclient.maas_client import (
     MAASDispatcher,
     MAASOAuth,
     )
-from celery.app import app_or_default
-from provisioningserver import cache
 from provisioningserver.auth import (
     get_recorded_api_credentials,
     get_recorded_nodegroup_uuid,
@@ -59,6 +58,12 @@ from provisioningserver.logger import get_maas_logger
 
 maaslog = get_maas_logger("dhcp.leases")
 
+# This used to be the cache in provisioningserver.cache, but that
+# unfortunately makes Twisted fail in ways we can't work out, probably
+# because of its use of multiprocessing.  Instead it's now using a
+# simple dict, because there are no plans to make pserv multi-process.
+cache = defaultdict()
+
 
 # Cache key for the modification time on last-processed leases file.
 LEASES_TIME_CACHE_KEY = 'leases_time'
@@ -69,8 +74,13 @@ LEASES_CACHE_KEY = 'recorded_leases'
 
 
 def get_leases_file():
-    """Get the location of the DHCP leases file from the config."""
-    return app_or_default().conf.DHCP_LEASES_FILE
+    """Return the location of the DHCP leases file."""
+    # This used to be celery config-based so that the development env could
+    # have a different location.  However, nobody seems to be
+    # provisioning from a dev environment so it's hard-coded until that
+    # need arises, as converting to the pserv config would be wasted
+    # work right now.
+    return "/var/lib/maas/dhcp/dhcpd.leases"
 
 
 def get_leases_timestamp():
@@ -115,8 +125,8 @@ def check_lease_changes():
     # These variables are shared between worker threads/processes.
     # A bit of inconsistency due to concurrent updates is not a problem,
     # but read them both at once here to reduce the scope for trouble.
-    previous_leases = cache.cache.get(LEASES_CACHE_KEY)
-    previous_leases_time = cache.cache.get(LEASES_TIME_CACHE_KEY)
+    previous_leases = cache.get(LEASES_CACHE_KEY)
+    previous_leases_time = cache.get(LEASES_TIME_CACHE_KEY)
 
     if get_leases_timestamp() == previous_leases_time:
         return None
@@ -139,8 +149,8 @@ def record_lease_state(last_change, leases):
     :param leases: A dict mapping each leased IP address to the MAC address
         that it has been assigned to.
     """
-    cache.cache.set(LEASES_TIME_CACHE_KEY, last_change)
-    cache.cache.set(LEASES_CACHE_KEY, leases)
+    cache[LEASES_TIME_CACHE_KEY] = last_change
+    cache[LEASES_CACHE_KEY] = leases
 
 
 def list_missing_items(knowledge):

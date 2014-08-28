@@ -34,6 +34,7 @@ from maasserver.enum import (
     POWER_STATE,
     )
 from maasserver.models.config import Config
+from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
@@ -80,6 +81,7 @@ from provisioningserver.rpc.region import (
     RegisterEventType,
     ReportBootImages,
     SendEvent,
+    UpdateLeases,
     UpdateNodePowerState,
     )
 from provisioningserver.rpc.testing import (
@@ -232,6 +234,44 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
             self.assertEqual({}, response)
 
         return d.addCallback(check)
+
+
+class TestRegionProtocol_UpdateLeases(TransactionTestCase):
+
+    def test_update_leases_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(UpdateLeases.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def make_node_group(self, uuid):
+        return factory.make_node_group(uuid=uuid)
+
+    @transactional
+    def get_leases_for(self, nodegroup):
+        return [
+            (ng.ip, ng.mac)
+            for ng in DHCPLease.objects.filter(nodegroup=nodegroup)]
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__stores_leases(self):
+        uuid = factory.make_name("uuid")
+        nodegroup = yield deferToThread(self.make_node_group, uuid)
+        mapping = {
+            "ip": factory.getRandomIPAddress(),
+            "mac": factory.getRandomMACAddress()
+        }
+
+        response = yield call_responder(Region(), UpdateLeases, {
+            b"uuid": uuid, b"mappings": [mapping]})
+
+        self.assertThat(response, Equals({}))
+
+        [(ip, mac)] = yield deferToThread(
+            self.get_leases_for, nodegroup=nodegroup)
+        self.expectThat(ip, Equals(mapping["ip"]))
+        self.expectThat(mac, Equals(mapping["mac"]))
 
 
 class TestRegionProtocol_GetBootSources(TransactionTestCase):

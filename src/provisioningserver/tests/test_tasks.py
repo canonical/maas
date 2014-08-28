@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from datetime import datetime
 import json
 import os
 import random
@@ -50,10 +49,7 @@ from provisioningserver import (
     tasks,
     )
 from provisioningserver.boot import tftppath
-from provisioningserver.dhcp import (
-    config,
-    leases,
-    )
+from provisioningserver.dhcp import config
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.dns.config import (
     celery_conf,
@@ -194,14 +190,6 @@ class TestDHCPTasks(PservTestCase):
             'omapi_key': factory.make_name('key'),
             'dhcp_subnets': [make_subnet_config()],
             }
-
-    def test_upload_dhcp_leases(self):
-        self.patch(
-            leases, 'parse_leases_file',
-            Mock(return_value=(datetime.utcnow(), {})))
-        self.patch(leases, 'process_leases', Mock())
-        tasks.upload_dhcp_leases.delay()
-        self.assertEqual(1, leases.process_leases.call_count)
 
     def test_add_new_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub

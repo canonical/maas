@@ -40,14 +40,6 @@ REPORT_BOOT_IMAGES_SCHEDULE = timedelta(minutes=5)
 PROBE_DHCP_SERVERS_SCHEDULE = timedelta(minutes=1)
 
 CELERYBEAT_SCHEDULE = {
-    'unconditional-dhcp-lease-upload': {
-        'task': 'provisioningserver.tasks.upload_dhcp_leases',
-        'schedule': DHCP_LEASE_UPLOAD_SCHEDULE,
-        'options': {
-            'queue': CLUSTER_UUID,
-            'expires': int(DHCP_LEASE_UPLOAD_SCHEDULE.total_seconds()),
-        },
-    },
     'report-boot-images': {
         'task': 'provisioningserver.tasks.report_boot_images',
         'schedule': REPORT_BOOT_IMAGES_SCHEDULE,

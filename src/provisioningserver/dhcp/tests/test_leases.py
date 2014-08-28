@@ -30,10 +30,10 @@ from maastesting.utils import (
     get_write_time,
     )
 from mock import Mock
-from provisioningserver import cache
 from provisioningserver.auth import NODEGROUP_UUID_CACHE_KEY
 from provisioningserver.dhcp import leases as leases_module
 from provisioningserver.dhcp.leases import (
+    cache,
     check_lease_changes,
     LEASES_CACHE_KEY,
     LEASES_TIME_CACHE_KEY,
@@ -56,8 +56,8 @@ class TestHelpers(PservTestCase):
         record_lease_state(time, leases)
         self.assertEqual(
             (time, leases), (
-                cache.cache.get(LEASES_TIME_CACHE_KEY),
-                cache.cache.get(LEASES_CACHE_KEY),
+                cache.get(LEASES_TIME_CACHE_KEY),
+                cache.get(LEASES_CACHE_KEY),
                 ))
 
 
@@ -115,12 +115,12 @@ class TestUpdateLeases(PservTestCase):
     def set_nodegroup_uuid(self):
         """Set the recorded nodegroup uuid for the duration of this test."""
         uuid = factory.make_UUID()
-        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, uuid)
+        cache[NODEGROUP_UUID_CACHE_KEY] = uuid
         return uuid
 
     def clear_nodegroup_uuid(self):
         """Clear the recorded nodegroup uuid."""
-        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, None)
+        cache[NODEGROUP_UUID_CACHE_KEY] = None
 
     def set_maas_url(self):
         """Set the recorded MAAS URL for the duration of this test."""
@@ -138,11 +138,11 @@ class TestUpdateLeases(PservTestCase):
         """Set recorded API credentials for the duration of this test."""
         creds_string = ':'.join(
             factory.make_string() for counter in range(3))
-        cache.cache.set('api_credentials', creds_string)
+        cache['api_credentials'] = creds_string
 
     def clear_api_credentials(self):
         """Clear recorded API credentials."""
-        cache.cache.set('api_credentials', None)
+        cache['api_credentials'] = None
 
     def set_items_needed_for_lease_update(self):
         """Set the recorded items required by `update_leases`."""
@@ -157,8 +157,8 @@ class TestUpdateLeases(PservTestCase):
         state so that it gets reset at the end of the test.  Using this will
         prevent recorded lease state from leaking into other tests.
         """
-        cache.cache.set(LEASES_TIME_CACHE_KEY, time)
-        cache.cache.set(LEASES_CACHE_KEY, leases)
+        cache[LEASES_TIME_CACHE_KEY] = time
+        cache[LEASES_CACHE_KEY] = leases
 
     def test_record_lease_state_sets_leases_and_timestamp(self):
         time = datetime.utcnow()
@@ -167,8 +167,8 @@ class TestUpdateLeases(PservTestCase):
         record_lease_state(time, leases)
         self.assertEqual(
             (time, leases), (
-                cache.cache.get(LEASES_TIME_CACHE_KEY),
-                cache.cache.get(LEASES_CACHE_KEY),
+                cache.get(LEASES_TIME_CACHE_KEY),
+                cache.get(LEASES_CACHE_KEY),
                 ))
 
     def test_check_lease_changes_returns_tuple_if_no_state_cached(self):

@@ -34,6 +34,7 @@ from maasserver.rpc import (
     bootsources,
     configuration,
     events,
+    leases,
     nodes,
     )
 from maasserver.utils import synchronised
@@ -98,6 +99,15 @@ class Region(amp.AMP):
         :py:class:`~provisioningserver.rpc.region.ReportBootImages`.
         """
         return {}
+
+    @region.UpdateLeases.responder
+    def update_leases(self, uuid, mappings):
+        """update_leases(uuid, mappings)
+
+        Implementation of
+        :py:class`~provisioningserver.rpc.region.UpdateLeases`.
+        """
+        return deferToThread(leases.update_leases, uuid, mappings)
 
     @amp.StartTLS.responder
     def get_tls_parameters(self):
