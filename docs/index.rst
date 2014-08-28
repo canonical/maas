@@ -54,6 +54,7 @@ Setting up a MAAS server
    install
    configure
    cluster-configuration
+   bootsources
    nodes
    hardware-enablement-kernels
    networks

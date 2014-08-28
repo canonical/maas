@@ -38,9 +38,9 @@ just select and copy the key (it's quite long!) and then paste it into the
 command line.
 
 To obtain the key through the command line, run this command on the region
-controller::
+controller (it requires root access)::
 
- $ maas-region-admin apikey my-username
+ $ sudo maas-region-admin apikey my-username
 
 (Substitute your MAAS user name for my-username).
 

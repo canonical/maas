@@ -94,7 +94,7 @@ command, e.g.::
 
 Bootstrap::
 
-  $ juju --sync-tools
+  $ juju sync-tools
   $ juju bootstrap
 
 If bootstrapping on a version of juju older than 1.14.0 then use::
