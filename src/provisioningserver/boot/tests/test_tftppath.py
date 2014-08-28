@@ -73,6 +73,9 @@ def make_image(params, purpose, metadata=None, xinstall_path=None,
             xinstall_type = 'tgz'
         image['xinstall_path'] = xinstall_path
         image['xinstall_type'] = xinstall_type
+    else:
+        image['xinstall_path'] = ''
+        image['xinstall_type'] = ''
     return image
 
 
@@ -424,6 +427,8 @@ class TestTFTPPath(MAASTestCase):
                     "release": release,
                     "label": label,
                     "purpose": purpose1,
+                    "xinstall_path": '',
+                    "xinstall_type": '',
                 },
                 {
                     "osystem": osystem,
@@ -432,6 +437,8 @@ class TestTFTPPath(MAASTestCase):
                     "release": release,
                     "label": label,
                     "purpose": purpose2,
+                    "xinstall_path": '',
+                    "xinstall_type": '',
                 },
                 {
                     "osystem": osystem,
@@ -480,6 +487,8 @@ class TestTFTPPath(MAASTestCase):
                     "release": release,
                     "label": label,
                     "purpose": purpose1,
+                    "xinstall_path": '',
+                    "xinstall_type": '',
                     "supported_subarches": image_resource["subarches"],
                 },
                 {
@@ -489,6 +498,8 @@ class TestTFTPPath(MAASTestCase):
                     "release": release,
                     "label": label,
                     "purpose": purpose2,
+                    "xinstall_path": '',
+                    "xinstall_type": '',
                     "supported_subarches": image_resource["subarches"],
                 },
                 {

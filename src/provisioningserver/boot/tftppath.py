@@ -181,6 +181,9 @@ def extract_image_params(path, maas_meta):
                 arch, subarch, release, label)
             image['xinstall_path'] = xinstall_path
             image['xinstall_type'] = xinstall_type
+        else:
+            image['xinstall_path'] = ''
+            image['xinstall_type'] = ''
         params.append(image)
 
     # Merge in the meta-data.

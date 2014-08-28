@@ -214,6 +214,13 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
             for osystem, arch, subarch, release, label, purpose in product(
                 osystems, archs, subarchs, releases, labels, purposes)
             ]
+        for expected_image in expected_images:
+            if expected_image['purpose'] == 'xinstall':
+                expected_image['xinstall_path'] = 'root-tgz'
+                expected_image['xinstall_type'] = 'tgz'
+            else:
+                expected_image['xinstall_path'] = ''
+                expected_image['xinstall_type'] = ''
 
         response = yield call_responder(Cluster(), cluster.ListBootImages, {})
 

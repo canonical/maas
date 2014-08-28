@@ -58,7 +58,9 @@ class ListBootImages(amp.Command):
              (b"subarchitecture", amp.Unicode()),
              (b"release", amp.Unicode()),
              (b"label", amp.Unicode()),
-             (b"purpose", amp.Unicode())]))
+             (b"purpose", amp.Unicode()),
+             (b"xinstall_type", amp.Unicode()),
+             (b"xinstall_path", amp.Unicode())]))
     ]
     errors = []
 
