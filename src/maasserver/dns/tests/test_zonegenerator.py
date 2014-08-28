@@ -38,6 +38,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
+    MockAnyCall,
     MockCalledOnceWith,
     MockNotCalled,
     )
@@ -55,6 +56,7 @@ from provisioningserver.dns.zoneconfig import (
 from provisioningserver.utils.enum import map_enum
 from testtools import TestCase
 from testtools.matchers import (
+    Equals,
     IsInstance,
     MatchesAll,
     MatchesSetwise,
@@ -71,15 +73,14 @@ class TestDNSUtilities(MAASServerTestCase):
 
     def test_get_dns_server_address_resolves_hostname(self):
         ip = factory.getRandomIPAddress()
-        addr_info_result = [(
-            server_address.AF_INET, None, None, None, (ip, None))]
-        resolver = FakeMethod(result=addr_info_result)
-        self.patch(server_address, 'getaddrinfo', resolver)
+        resolver = self.patch(server_address, 'resolve_hostname')
+        resolver.return_value = {ip}
         hostname = factory.make_hostname()
         self.patch_DEFAULT_MAAS_URL(hostname=hostname)
-        self.assertEqual(
-            (ip, [(hostname, server_address.PORT)]),
-            (get_dns_server_address(), resolver.extract_args()))
+        result = get_dns_server_address()
+        self.assertEqual(ip, result)
+        self.expectThat(resolver, MockAnyCall(hostname, 4))
+        self.expectThat(resolver, MockAnyCall(hostname, 6))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
         self.patch(
@@ -100,16 +101,15 @@ class TestDNSUtilities(MAASServerTestCase):
 
     def test_get_dns_server_address_uses_nodegroup_maas_url(self):
         ip = factory.getRandomIPAddress()
-        addr_info_result = [(
-            server_address.AF_INET, None, None, None, (ip, None))]
-        resolver = FakeMethod(result=addr_info_result)
-        self.patch(server_address, 'getaddrinfo', resolver)
+        resolver = self.patch(server_address, 'resolve_hostname')
+        resolver.return_value = {ip}
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
         nodegroup = factory.make_node_group(maas_url=maas_url)
-        self.assertEqual(
-            (ip, [(hostname, server_address.PORT)]),
-            (get_dns_server_address(nodegroup), resolver.extract_args()))
+        result = get_dns_server_address(nodegroup)
+        self.expectThat(ip, Equals(result))
+        self.expectThat(resolver, MockAnyCall(hostname, 4))
+        self.expectThat(resolver, MockAnyCall(hostname, 6))
 
     def test_warn_loopback_warns_about_IPv4_loopback(self):
         logger = self.patch(zonegenerator, 'logger')

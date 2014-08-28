@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Exceptions."""
@@ -24,6 +24,7 @@ __all__ = [
     "IteratorReusedError",
     "StaticIPAddressExhaustion",
     "StaticIPAddressTypeClash",
+    "UnresolvableHost",
     ]
 
 
@@ -140,10 +141,6 @@ class StaticIPAddressTypeClash(MAASAPIException):
 
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
-
-
-class NoAddressFoundForHost(MAASException):
-    """Raised when no maas-facing address is found for a host."""
 
 
 class UnresolvableHost(MAASException):

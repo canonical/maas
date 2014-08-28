@@ -43,7 +43,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
-from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
@@ -217,11 +216,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        addr_info_result = [(
-            server_address.AF_INET, None, None, None, (ip, None))]
-        self.patch(
-            server_address, 'getaddrinfo',
-            Mock(return_value=addr_info_result))
+        self.patch(server_address, 'resolve_hostname').return_value = {ip}
         factory.make_node_group(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -241,11 +236,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % hostname
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        addr_info_result = [(
-            server_address.AF_INET, None, None, None, (ip, None))]
-        mock = self.patch(
-            server_address, 'getaddrinfo',
-            Mock(return_value=addr_info_result))
+        mock = self.patch(server_address, 'resolve_hostname')
+        mock.return_value = {ip}
         factory.make_node_group(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -284,10 +276,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        addr_info_result = [(
-            server_address.AF_INET, None, None, None, (ip, None))]
-        self.patch(server_address, 'getaddrinfo').return_value = (
-            addr_info_result)
+        self.patch(server_address, 'resolve_hostname').return_value = {ip}
         nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
