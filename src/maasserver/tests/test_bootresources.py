@@ -59,6 +59,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    MagicMock,
     Mock,
     sentinel,
     )
@@ -1090,3 +1091,20 @@ class TestImportImages(MAASTestCase):
         self.assertEqual(
             bootresources.MAAS_USER_GPGHOME,
             fake_download.env['GNUPGHOME'])
+
+    def test__import_resources_calls_import_boot_images_on_clusters(self):
+        nodegroup = MagicMock()
+        self.patch(bootresources, 'NodeGroup', nodegroup)
+
+        fake_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        fake_image_descriptions.return_value = descriptions
+        self.patch(bootresources, 'map_products')
+        self.patch(bootresources, 'download_all_boot_resources')
+
+        bootresources._import_resources(force=True)
+        self.assertThat(
+            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            MockCalledOnceWith())

@@ -19,6 +19,7 @@ import json
 import random
 
 from django.core.urlresolvers import reverse
+from maasserver.api import boot_resources
 from maasserver.api.boot_resources import (
     boot_resource_file_to_dict,
     boot_resource_set_to_dict,
@@ -35,7 +36,9 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.utils import sample_binary_data
+from mock import MagicMock
 from testtools.matchers import ContainsAll
 
 
@@ -269,6 +272,32 @@ class TestBootSourcesAPI(APITestCase):
         response = self.client.post(
             reverse('boot_resources_handler'), params)
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
+    def test_POST_calls_import_boot_images_on_all_clusters(self):
+        self.become_admin()
+
+        nodegroup = MagicMock()
+        self.patch(boot_resources, 'NodeGroup', nodegroup)
+
+        name = factory.make_name('name')
+        architecture = make_usable_architecture(self)
+        params = {
+            'name': name,
+            'architecture': architecture,
+            'content': (
+                factory.make_file_upload(content=sample_binary_data)),
+        }
+        response = self.client.post(
+            reverse('boot_resources_handler'), params)
+        self.assertEqual(httplib.CREATED, response.status_code)
+        self.assertThat(
+            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            MockCalledOnceWith())
+
+    def test_import_requires_admin(self):
+        response = self.client.post(
+            reverse('boot_resources_handler'), {'op': 'import'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 
 class TestBootResourceAPI(APITestCase):

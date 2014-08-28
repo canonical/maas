@@ -25,7 +25,6 @@ from maasserver.enum import (
     )
 from maasserver.models import (
     NodeGroup,
-    nodegroup as nodegroup_module,
     NodeGroupInterface,
     )
 from maasserver.testing import (
@@ -35,11 +34,9 @@ from maasserver.testing import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.views import clusters
 from maasserver.views.clusters import ClusterListView
-from mock import (
-    ANY,
-    call,
-    )
+from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
@@ -209,21 +206,14 @@ class ClusterPendingListingTest(MAASServerTestCase):
 
 class ClusterAcceptedListingTest(MAASServerTestCase):
 
-    def test_accepted_listing_import_boot_images_calls_tasks(self):
+    def test_accepted_listing_import_boot_images_calls_import_resources(self):
         self.client_log_in(as_admin=True)
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        accepted_nodegroups = [
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-        ]
+        fake_import = self.patch(clusters, 'import_resources')
+        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
         response = self.client.post(
             reverse('cluster-list'), {'import_all_boot_images': 1})
         self.assertEqual(httplib.FOUND, response.status_code)
-        calls = [
-            call(queue=nodegroup.work_queue, kwargs=ANY)
-            for nodegroup in accepted_nodegroups
-        ]
-        self.assertItemsEqual(calls, recorder.apply_async.call_args_list)
+        self.assertThat(fake_import, MockCalledOnceWith())
 
     def test_a_warning_is_displayed_if_the_cluster_has_no_boot_images(self):
         self.client_log_in(as_admin=True)

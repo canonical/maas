@@ -17,31 +17,44 @@ __all__ = []
 
 from django.db.models.signals import post_save
 import django.dispatch
+from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
-    Config,
     NodeGroup,
     nodegroup as nodegroup_module,
+    )
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
 from maastesting.celery import CeleryFixture
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from mock import (
+    ANY,
     call,
     Mock,
     )
 from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.rpc.cluster import ImportBootImages
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
     GreaterThan,
     )
+from twisted.internet import defer
 
 
 class TestNodeGroupManager(MAASServerTestCase):
@@ -191,24 +204,24 @@ class TestNodeGroupManager(MAASServerTestCase):
             (unaffected_status, 0),
             (reload_object(nodegroup).status, changed_count))
 
-    def test_import_boot_images_accepted_clusters_calls_tasks(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        proxy = factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
+    def test_import_boot_images_on_accepted_clusters_calls_getClientFor(self):
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
         ]
         factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        NodeGroup.objects.import_boot_images_accepted_clusters()
-        expected_queues = [
-            nodegroup.work_queue
-            for nodegroup in accepted_nodegroups]
-        actual_queues = [
-            kwargs['queue']
-            for args, kwargs in recorder.apply_async.call_args_list]
-        self.assertItemsEqual(expected_queues, actual_queues)
+        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        expected_uuids = [
+            nodegroup.uuid
+            for nodegroup in accepted_nodegroups
+            ]
+        called_uuids = [
+            client_call[0][0]
+            for client_call in mock_getClientFor.call_args_list
+            ]
+        self.assertItemsEqual(expected_uuids, called_uuids)
 
     def test_refresh_workers_refreshes_accepted_cluster_controllers(self):
         self.patch(nodegroup_module, 'refresh_worker')
@@ -359,54 +372,44 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
 
-    def test_import_boot_images_calls_import_code_with_proxy(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        self.patch(nodegroup_module, 'report_boot_images', Mock())
-        proxy = factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
+    def test_import_boot_images_calls_getClientFor_with_uuid(self):
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         nodegroup = factory.make_node_group()
         nodegroup.import_boot_images()
-        [call] = recorder.mock_calls
-        _, _, kwargs = call
-        self.assertEqual(proxy, kwargs['kwargs'].get('http_proxy'))
+        self.assertThat(
+            mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=1))
 
-    def test_import_boot_images_sent_to_nodegroup_queue(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        nodegroup = factory.make_node_group()
-        proxy = factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
-        nodegroup.import_boot_images()
-        args, kwargs = recorder.apply_async.call_args
-        self.assertEqual(nodegroup.uuid, kwargs['queue'])
-
-    def test_import_boot_images_reports_boot_images(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        report_recorder = self.patch(
-            nodegroup_module, 'report_boot_images')
+    def test_import_boot_images_calls_client_with_resource_endpoint(self):
+        sources = [get_simplestream_endpoint()]
+        fake_client = Mock()
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        mock_getClientFor.return_value = fake_client
         nodegroup = factory.make_node_group()
         nodegroup.import_boot_images()
+        self.assertThat(
+            fake_client,
+            MockCalledOnceWith(ImportBootImages, sources=sources))
 
-        # The 'import_boot_images' subtask is called with queue=nodegroup's
-        # UUID.  This means the task will be executed by the cluster's celery.
-        self.assertEqual(
-            dict(options={'queue': nodegroup.uuid}),
-            report_recorder.subtask.call_args[1],
-        )
-        self.assertEqual(
-            report_recorder.subtask(),
-            recorder.apply_async.call_args[1]['kwargs']['callback'],
-        )
-
-    def test_import_boot_images_passes_sources_list(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        self.patch(nodegroup_module, 'report_boot_images', Mock())
+    def test_import_boot_images_does_nothing_if_no_connection_to_cluster(self):
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        mock_getClientFor.side_effect = NoConnectionsAvailable()
+        mock_get_simplestreams_endpoint = self.patch(
+            nodegroup_module, 'get_simplestream_endpoint')
         nodegroup = factory.make_node_group()
-        sources = [
-            factory.make_boot_source(
-                keyring_data=b"123445").to_dict()
-            for _ in range(3)
-            ]
         nodegroup.import_boot_images()
-        [call] = recorder.mock_calls
-        _, _, kwargs = call
-        self.assertEqual(sources, kwargs['kwargs'].get('sources'))
+        self.assertThat(mock_get_simplestreams_endpoint, MockNotCalled())
+
+    def test_import_boot_images_end_to_end(self):
+        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, ImportBootImages)
+        protocol.ImportBootImages.return_value = defer.succeed({})
+
+        nodegroup.import_boot_images().wait(10)
+
+        self.assertThat(
+            protocol.ImportBootImages,
+            MockCalledOnceWith(ANY, sources=[get_simplestream_endpoint()]))

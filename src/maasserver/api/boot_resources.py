@@ -26,9 +26,11 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
+    operation,
     OperationsHandler,
     )
 from maasserver.api.utils import get_mandatory_param
+from maasserver.bootresources import import_resources
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -36,7 +38,10 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import MAASAPIBadRequest
 from maasserver.forms import BootResourceForm
-from maasserver.models import BootResource
+from maasserver.models import (
+    BootResource,
+    NodeGroup,
+    )
 from piston.emitters import JSONEmitter
 from piston.handler import typemapper
 from piston.utils import rc
@@ -171,11 +176,24 @@ class BootResourcesHandler(OperationsHandler):
         if not form.is_valid():
             raise ValidationError(form.errors)
         resource = form.save()
+
+        # Boot resource is now available. Have the clusters sync boot images.
+        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
         return HttpResponse(
             stream, mimetype='application/json; charset=utf-8',
             status=httplib.CREATED)
+
+    @admin_method
+    @operation(idempotent=False, exported_as='import')
+    def import_resources(self, request):
+        """Import the boot resources."""
+        import_resources()
+        return HttpResponse(
+            "Import of boot resources started",
+            status=httplib.OK)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):
@@ -188,12 +206,7 @@ class BootResourceHandler(OperationsHandler):
     This functionality is only available to administrators.
     """
     api_doc_section_name = "Boot resource"
-
     model = BootResource
-    fields = (
-        'osystem', 'distro_series',
-        'architecture', 'filetype',
-        )
 
     create = update = None
 

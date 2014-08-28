@@ -46,6 +46,7 @@ from maasserver.models import (
     BootSource,
     BootSourceSelection,
     LargeFile,
+    NodeGroup,
     )
 from maasserver.utils import absolute_reverse
 from maasserver.utils.async import transactional
@@ -897,6 +898,9 @@ def _import_resources(force=False):
 
             download_all_boot_resources(sources, product_mapping)
             maaslog.info("Finished importing of boot resources.")
+
+        # Tell the clusters to download the data from the region.
+        NodeGroup.objects.import_boot_images_on_accepted_clusters()
     finally:
         kill_event.set()
         lock_thread.join()

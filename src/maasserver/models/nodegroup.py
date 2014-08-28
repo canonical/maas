@@ -30,21 +30,21 @@ from maasserver.enum import (
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.models.bootsource import BootSource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.refresh_worker import refresh_worker
+from maasserver.rpc import getClientFor
 from piston.models import (
     KEY_SIZE,
     Token,
     )
 from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.rpc.cluster import ImportBootImages
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tasks import (
     add_seamicro15k,
     add_virsh,
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
-    import_boot_images,
-    report_boot_images,
     )
 
 
@@ -120,7 +120,7 @@ class NodeGroupManager(Manager):
         return self._mass_change_status(
             NODEGROUP_STATUS.PENDING, NODEGROUP_STATUS.ACCEPTED)
 
-    def import_boot_images_accepted_clusters(self):
+    def import_boot_images_on_accepted_clusters(self):
         """Import the boot images on all the accepted cluster controllers."""
         accepted_nodegroups = NodeGroup.objects.filter(
             status=NODEGROUP_STATUS.ACCEPTED)
@@ -237,22 +237,19 @@ class NodeGroup(TimestampedModel):
     def import_boot_images(self):
         """Import the pxe files on this cluster controller.
 
-        The files are downloaded through the proxy defined in the config
-        setting 'http_proxy' if defined.
+        This will cause the cluster to connect to the region to download
+        the images that are exposed there.
         """
-        # Avoid circular imports.
-        from maasserver.models import Config
-        sources = [
-            source.to_dict() for source in BootSource.objects.all()]
-        task_kwargs = {
-            'callback': report_boot_images.subtask(
-                options={'queue': self.uuid}),
-            'sources': sources,
-            }
-        http_proxy = Config.objects.get_config('http_proxy')
-        if http_proxy is not None:
-            task_kwargs['http_proxy'] = http_proxy
-        import_boot_images.apply_async(queue=self.uuid, kwargs=task_kwargs)
+        # Avoid circular imports
+        from maasserver.bootresources import get_simplestream_endpoint
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so the import cannot start. If
+            # the cluster is down, it will do an import on start up.
+            return
+        sources = [get_simplestream_endpoint()]
+        return client(ImportBootImages, sources=sources)
 
     def add_seamicro15k(self, mac, username, password, power_control=None):
         """ Add all of the specified cards the Seamicro SM15000 chassis at the

@@ -38,6 +38,7 @@ from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
     )
+from maasserver.bootresources import import_resources
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -131,12 +132,14 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
             return HttpResponseRedirect(reverse('cluster-list'))
 
         elif 'import_all_boot_images' in request.POST:
-            # Import PXE files for all the accepted clusters.
-            NodeGroup.objects.import_boot_images_accepted_clusters()
+            # Import boot resources on the region. The completed import
+            # process will tell the clusters to sync.
+            import_resources()
             message = (
-                "Import of boot images started on all cluster controllers.  "
-                "Importing the boot images can take a long time depending on "
-                "the available bandwidth.")
+                "Import of boot images started. Importing the boot "
+                "images can take a long time depending on the available "
+                "bandwidth. Once complete the all clusters will download the "
+                "boot resources from the region.")
             messages.info(request, message)
             return HttpResponseRedirect(reverse('cluster-list'))
 

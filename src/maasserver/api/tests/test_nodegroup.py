@@ -27,6 +27,7 @@ from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
 from maasserver.api import node_groups as nodegroups_module
 from maasserver.api.node_groups import update_mac_cluster_interfaces
+from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -34,7 +35,6 @@ from maasserver.enum import (
     )
 from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
-    Config,
     DHCPLease,
     DownloadProgress,
     MACAddress,
@@ -72,11 +72,11 @@ from provisioningserver import tasks
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.dhcp.leases import send_leases
 from provisioningserver.omshell import Omshell
+from provisioningserver.rpc.cluster import ImportBootImages
 from testresources import FixtureResource
 from testtools.matchers import (
     AllMatch,
     Equals,
-    HasLength,
     )
 
 
@@ -378,29 +378,29 @@ class TestNodeGroupAPI(APITestCase):
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_import_boot_images_calls_script_for_all_accepted_clusters(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        proxy = factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy)
+    def test_import_boot_images_for_all_accepted_clusters(self):
+        self.become_admin()
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
         ]
         factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
         factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        admin = factory.make_admin()
-        client = OAuthAuthenticatedClient(admin)
-        response = client.post(
+        response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        queues = [
-            kwargs['queue']
-            for args, kwargs in recorder.apply_async.call_args_list]
-        self.assertItemsEqual(
-            [nodegroup.work_queue for nodegroup in accepted_nodegroups],
-            queues)
+        expected_uuids = [
+            nodegroup.uuid
+            for nodegroup in accepted_nodegroups
+            ]
+        called_uuids = [
+            client_call[0][0]
+            for client_call in mock_getClientFor.call_args_list
+            ]
+        self.assertItemsEqual(expected_uuids, called_uuids)
 
     def test_import_boot_images_denied_if_not_admin(self):
         user = factory.make_user()
@@ -638,23 +638,24 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         parsed_result = json.loads(response.content)
         self.assertItemsEqual([node.system_id], parsed_result)
 
-    def test_nodegroup_import_boot_images_calls_importer(self):
-        recorder = self.patch(nodegroup_module, 'import_boot_images')
-        self.patch(nodegroup_module, 'report_boot_images')
-        proxy = factory.make_string()
-        Config.objects.set_config('http_proxy', proxy)
+    def test_nodegroup_import_boot_images_calls_ImportBootImages(self):
+        sources = [get_simplestream_endpoint()]
+        fake_client = Mock()
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        mock_getClientFor.return_value = fake_client
         nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)
-
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'import_boot_images'})
-
         self.assertEqual(
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
-        self.assertThat(recorder.apply_async.mock_calls, HasLength(1))
+        self.assertThat(
+            fake_client,
+            MockCalledOnceWith(ImportBootImages, sources=sources))
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_node_group()
