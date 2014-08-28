@@ -14,7 +14,9 @@ subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
        ignore-client-uids true;
        option subnet-mask {{dhcp_subnet['subnet_mask']}};
        option broadcast-address {{dhcp_subnet['broadcast_ip']}};
+       {{if dhcp_subnet.get('dns_servers')}}
        option domain-name-servers {{dhcp_subnet['dns_servers']}};
+       {{endif}}
        option domain-name "{{dhcp_subnet['domain_name']}}";
        option routers {{dhcp_subnet['router_ip']}};
        {{if dhcp_subnet.get('ntp_server')}}
