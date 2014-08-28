@@ -71,7 +71,6 @@ from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.network import find_ip_via_arp
-from provisioningserver.utils.shell import ExternalProcessError
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -402,37 +401,15 @@ def restart_dhcp_server():
 DISABLED_DHCP_SERVER = "# DHCP server stopped."
 
 
-# Upstart issues an "Unknown instance"-type error when trying to stop an
-# already-stopped service.
-# A bit weird that the error message ends with colon but that's the
-# error Upstart spits out.
-ALREADY_STOPPED_MESSAGE = 'stop: Unknown instance:'
-ALREADY_STOPPED_RETURNCODE = 1
-
-
 @task
 @log_task_events()
 @log_exception_text
 def stop_dhcp_server():
     """Write a blank config file and stop a DHCP server."""
-    # Write an empty config file to avoid having an outdated config laying
+    # Write an empty config file to avoid having an outdated config lying
     # around.
-    sudo_write_file(
-        celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
-    try:
-        # This relies on stop_dhcpv4 running in the "C" locale: if it fails,
-        # we need to parse its error output.
-        stop_dhcpv4()
-    except ExternalProcessError as error:
-        # Upstart issues an "Unknown instance"-type error when trying to
-        # stop an already-stopped service.  Ignore this error.
-        is_already_stopped_error = (
-            error.returncode == ALREADY_STOPPED_RETURNCODE and
-            error.output.strip() == ALREADY_STOPPED_MESSAGE
-        )
-        if is_already_stopped_error:
-            return
-        raise
+    sudo_write_file(celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
+    stop_dhcpv4()
 
 
 @task

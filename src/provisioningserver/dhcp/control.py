@@ -19,7 +19,10 @@ __all__ = [
     'stop_dhcpv6',
     ]
 
-from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.shell import (
+    call_and_check,
+    ExternalProcessError,
+    )
 
 
 def call_service_script(ip_version, subcommand):
@@ -59,6 +62,25 @@ def restart_dhcpv6():
     call_service_script(6, 'restart')
 
 
+def stop_dhcp_server(ip_version):
+    """Stop a DHCP daemon, but treat "not running" as success.
+
+    Upstart reports an attempt to stop a service while it isn't running as an
+    error.  We don't want that.  Other errors are still propagated as normal.
+    """
+    # This relies on the C locale being used: it looks for the specific error
+    # message we get in the situation where the DHCP server was not running.
+    try:
+        call_service_script(ip_version, 'stop')
+    except ExternalProcessError as e:
+        if e.returncode == 1 and e.output.strip() == "stop: Unknown instance:":
+            # The server wasn't running.  This is success.
+            pass
+        else:
+            # Other error.  This is still failure.
+            raise
+
+
 def stop_dhcpv4():
     """Stop the (IPv4) DHCP daemon.
 
@@ -66,7 +88,7 @@ def stop_dhcpv4():
 
     :raise ExternalProcessError: if the restart command fails.
     """
-    call_service_script(4, 'stop')
+    stop_dhcp_server(4)
 
 
 def stop_dhcpv6():
@@ -76,4 +98,4 @@ def stop_dhcpv6():
 
     :raise ExternalProcessError: if the restart command fails.
     """
-    call_service_script(6, 'stop')
+    stop_dhcp_server(6)
