@@ -19,8 +19,18 @@ __all__ = [
     'get_all_addresses_for_interface',
     'get_all_interface_addresses',
     'make_network',
+    'resolve_hostname',
     ]
 
+
+from socket import (
+    AF_INET,
+    AF_INET6,
+    EAI_NODATA,
+    EAI_NONAME,
+    gaierror,
+    getaddrinfo,
+    )
 
 from netaddr import (
     IPAddress,
@@ -152,3 +162,37 @@ def get_all_interface_addresses():
     for interface in netifaces.interfaces():
         for address in get_all_addresses_for_interface(interface):
             yield address
+
+
+def resolve_hostname(hostname, ip_version=4):
+    """Wrapper around `getaddrinfo`: return addresses for `hostname`.
+
+    :param hostname: Host name (or IP address).
+    :param ip_version: Look for addresses of this IP version only: 4 for IPv4,
+        or 6 for IPv6.
+    :return: A set of `IPAddress`.  Empty if `hostname` does not resolve for
+        the requested IP version.
+    """
+    addr_families = {
+        4: AF_INET,
+        6: AF_INET6,
+        }
+    assert ip_version in addr_families
+    # Arbitrary non-privileged port, on which we can call getaddrinfo.
+    port = 33360
+    try:
+        address_info = getaddrinfo(hostname, port, addr_families[ip_version])
+    except gaierror as e:
+        if e.errno in (EAI_NONAME, EAI_NODATA):
+            # Name does not resolve.
+            address_info = []
+        else:
+            raise
+
+    # The contents of sockaddr differ for IPv6 and IPv4, but the
+    # first element is always the address, and that's all we care
+    # about.
+    return {
+        IPAddress(sockaddr[0])
+        for family, socktype, proto, canonname, sockaddr in address_info
+        }

@@ -14,11 +14,21 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from socket import (
+    EAI_BADFLAGS,
+    EAI_NODATA,
+    EAI_NONAME,
+    gaierror,
+    )
+
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 import netifaces
 from netifaces import (
     AF_LINK,
@@ -34,6 +44,7 @@ from provisioningserver.utils.network import (
     get_all_addresses_for_interface,
     get_all_interface_addresses,
     make_network,
+    resolve_hostname,
     )
 
 
@@ -345,3 +356,72 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
         self.assertEqual(
             ip,
             clean_up_netifaces_address('%s%%%s' % (ip, interface), interface))
+
+
+class TestResolveHostname(MAASTestCase):
+    """Tests for `resolve_hostname`."""
+
+    def patch_getaddrinfo(self, *addrs):
+        fake = self.patch(network_module, 'getaddrinfo')
+        fake.return_value = [
+            (None, None, None, None, (unicode(address), None))
+            for address in addrs
+            ]
+        return fake
+
+    def patch_getaddrinfo_fail(self, exception):
+        fake = self.patch(network_module, 'getaddrinfo')
+        fake.side_effect = exception
+        return fake
+
+    def test__rejects_weird_IP_version(self):
+        self.assertRaises(
+            AssertionError,
+            resolve_hostname, factory.make_hostname(), ip_version=5)
+
+    def test__integrates_with_getaddrinfo(self):
+        result = resolve_hostname('localhost', 4)
+        self.assertIsInstance(result, set)
+        [localhost] = result
+        self.assertIsInstance(localhost, IPAddress)
+        self.assertIn(localhost, IPNetwork('127.0.0.0/8'))
+
+    def test__resolves_IPv4_address(self):
+        ip = factory.getRandomIPAddress()
+        fake = self.patch_getaddrinfo(ip)
+        hostname = factory.make_hostname()
+        result = resolve_hostname(hostname, 4)
+        self.assertIsInstance(result, set)
+        self.assertEqual({IPAddress(ip)}, result)
+        self.assertThat(fake, MockCalledOnceWith(hostname, mock.ANY, AF_INET))
+
+    def test__resolves_IPv6_address(self):
+        ip = factory.make_ipv6_address()
+        fake = self.patch_getaddrinfo(ip)
+        hostname = factory.make_hostname()
+        result = resolve_hostname(hostname, 6)
+        self.assertIsInstance(result, set)
+        self.assertEqual({IPAddress(ip)}, result)
+        self.assertThat(fake, MockCalledOnceWith(hostname, mock.ANY, AF_INET6))
+
+    def test__returns_empty_if_address_does_not_resolve(self):
+        self.patch_getaddrinfo_fail(
+            gaierror(EAI_NONAME, "Name or service not known"))
+        self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
+
+    def test__returns_empty_if_address_resolves_to_no_data(self):
+        self.patch_getaddrinfo_fail(
+            gaierror(EAI_NODATA, "No data returned"))
+        self.assertEqual(set(), resolve_hostname(factory.make_hostname(), 4))
+
+    def test__propagates_other_gaierrors(self):
+        self.patch_getaddrinfo_fail(gaierror(EAI_BADFLAGS, "Bad parameters"))
+        self.assertRaises(
+            gaierror,
+            resolve_hostname, factory.make_hostname(), 4)
+
+    def test__propagates_unexpected_errors(self):
+        self.patch_getaddrinfo_fail(KeyError("Huh what?"))
+        self.assertRaises(
+            KeyError,
+            resolve_hostname, factory.make_hostname(), 4)
