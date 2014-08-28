@@ -80,6 +80,13 @@ class TestAbsoluteReverse(MAASServerTestCase):
         expected_url = reverse('node-view', args=[node.system_id])
         self.assertEqual(expected_url, absolute_url)
 
+    def test_absolute_reverse_appends_ending_slash_given_base_url(self):
+        maas_url = 'http://%s/%s' % (
+            factory.make_string(), factory.make_string())
+        absolute_url = absolute_reverse('settings', base_url=maas_url)
+        expected_url = maas_url + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
 
 class GetDbStateTest(MAASServerTestCase):
     """Testing for the method `get_db_state`."""
