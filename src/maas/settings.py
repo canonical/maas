@@ -20,6 +20,7 @@ from urlparse import urljoin
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
 from maas import import_local_settings
+from maas.monkey import patch_get_script_prefix
 from metadataserver.address import guess_server_host
 from provisioningserver.utils import compose_URL
 from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
@@ -324,3 +325,6 @@ SERIALIZATION_MODULES = {
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
+
+# Patch the get_script_prefix method to allow twisted to work with django.
+patch_get_script_prefix()

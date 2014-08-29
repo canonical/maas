@@ -27,6 +27,7 @@ import errno
 from functools import wraps
 import re
 from urllib import urlencode
+from urlparse import urljoin
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -77,9 +78,7 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
     """
     if not base_url:
         base_url = settings.DEFAULT_MAAS_URL
-    base_url = base_url.rstrip('/')
-    path_url = reverse(view_name, *args, **kwargs).lstrip('/')
-    url = '%s/%s' % (base_url, path_url)
+    url = urljoin(base_url, reverse(view_name, *args, **kwargs))
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url
