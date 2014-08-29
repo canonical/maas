@@ -7,3 +7,11 @@ zone "{{zone.zone_name}}" {
     file "{{zone.target_path}}";
 };
 {{endfor}}
+
+# Access control for recursive queries.  See named.conf.options.inside.maas
+# for the directives used on this ACL.
+acl "trusted" {
+    {{trusted_networks}}
+    localnets;
+    localhost;
+};

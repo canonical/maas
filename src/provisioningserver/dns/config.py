@@ -245,10 +245,12 @@ class DNSConfig:
         :raises DNSConfigDirectoryMissing: if the DNS configuration directory
             does not exist.
         """
+        trusted_networks = kwargs.pop("trusted_networks", "")
         context = {
             'zones': self.zones,
             'DNS_CONFIG_DIR': celery_conf.DNS_CONFIG_DIR,
             'named_rndc_conf_path': get_named_rndc_conf_path(),
+            'trusted_networks': trusted_networks,
             'modified': unicode(datetime.today()),
         }
         content = render_dns_template(self.template_file_name, kwargs, context)

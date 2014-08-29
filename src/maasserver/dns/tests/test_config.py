@@ -21,9 +21,11 @@ import random
 from celery.task import task
 from django.conf import settings
 from django.core.management import call_command
+from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
     add_zone,
     change_dns_zones,
+    get_trusted_networks,
     is_dns_enabled,
     is_dns_in_use,
     next_zone_serial,
@@ -51,12 +53,20 @@ from netaddr import (
     IPRange,
     )
 from provisioningserver import tasks
-from provisioningserver.dns.config import celery_conf
+from provisioningserver.dns.config import (
+    celery_conf,
+    compose_config_path,
+    DNSConfig,
+    )
 from provisioningserver.dns.zoneconfig import DNSZoneConfigBase
 from provisioningserver.testing.bindfixture import BINDServer
 from provisioningserver.testing.tests.test_bindfixture import dig_call
 from rabbitfixture.server import allocate_ports
-from testtools.matchers import MatchesStructure
+from testtools.matchers import (
+    Contains,
+    FileContains,
+    MatchesStructure,
+    )
 
 
 class TestDNSUtilities(MAASServerTestCase):
@@ -171,6 +181,18 @@ class TestDNSConfigModifications(TestDNSServer):
         add_zone(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
+    def test_add_zone_preserves_trusted_networks(self):
+        nodegroup, node, static = self.create_nodegroup_with_static_ip()
+        trusted_network = factory.getRandomIPAddress()
+        get_trusted_networks_patch = self.patch(
+            dns_config_module, 'get_trusted_networks')
+        get_trusted_networks_patch.return_value = trusted_network + ';'
+        self.patch(settings, 'DNS_CONNECT', True)
+        add_zone(nodegroup)
+        self.assertThat(
+            compose_config_path(DNSConfig.target_file_name),
+            FileContains(matcher=Contains(trusted_network)))
+
     def test_change_dns_zone_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
@@ -223,7 +245,20 @@ class TestDNSConfigModifications(TestDNSServer):
         patched_task = self.patch(dns_tasks.write_full_dns_config, "delay")
         write_full_dns_config()
         self.assertThat(patched_task, MockCalledOnceWith(
-            zones=ANY, callback=ANY, upstream_dns=random_ip))
+            zones=ANY, callback=ANY, trusted_networks=ANY,
+            upstream_dns=random_ip))
+
+    def test_write_full_dns_writes_trusted_networks_parameter(self):
+        self.patch(settings, 'DNS_CONNECT', True)
+        self.create_managed_nodegroup()
+        trusted_network = factory.getRandomIPAddress()
+        get_trusted_networks_patch = self.patch(
+            dns_config_module, 'get_trusted_networks')
+        get_trusted_networks_patch.return_value = trusted_network + ';'
+        write_full_dns_config()
+        self.assertThat(
+            compose_config_path(DNSConfig.target_file_name),
+            FileContains(matcher=Contains(trusted_network)))
 
     def test_write_full_dns_doesnt_call_task_it_no_interface_configured(self):
         self.patch(settings, 'DNS_CONNECT', True)
@@ -365,3 +400,21 @@ class TestIPv6DNS(TestDNSServer):
             nodegroup=nodegroup)
         self.assertDNSMatches(
             node.hostname, nodegroup.name, static.ip, version=6)
+
+
+class TestGetTrustedNetworks(MAASServerTestCase):
+    """Test for maasserver/dns/config.py:get_trusted_networks()"""
+
+    def test__returns_empty_string_if_no_networks(self):
+        self.assertEqual("", get_trusted_networks())
+
+    def test__returns_single_network(self):
+        net = factory.make_network()
+        expected = unicode(net.get_network().cidr) + ';'
+        self.assertEqual(expected, get_trusted_networks())
+
+    def test__returns_many_networks(self):
+        nets = [factory.make_network() for _ in xrange(random.randint(1, 5))]
+        expected = "; ".join(unicode(net.get_network().cidr) for net in nets)
+        expected += ';'
+        self.assertEqual(expected, get_trusted_networks())

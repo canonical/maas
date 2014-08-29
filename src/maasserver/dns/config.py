@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     'add_zone',
     'change_dns_zones',
+    'get_trusted_networks',
     'is_dns_enabled',
     'next_zone_serial',
     'write_full_dns_config',
@@ -25,6 +26,7 @@ from django.conf import settings
 from maasserver.dns.zonegenerator import ZoneGenerator
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
+from maasserver.models.network import Network
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.sequence import (
@@ -102,7 +104,9 @@ def add_zone(nodegroup):
     zones = ZoneGenerator(NodeGroup.objects.all(), serial).as_list()
     reconfig_subtask = tasks.rndc_command.subtask(args=[['reconfig']])
     write_dns_config_subtask = tasks.write_dns_config.subtask(
-        kwargs={'zones': zones, 'callback': reconfig_subtask})
+        kwargs={
+            'zones': zones, 'callback': reconfig_subtask,
+            'trusted_networks': get_trusted_networks()})
     tasks.write_dns_zone_config.delay(
         zones=zones_to_write, callback=write_dns_config_subtask)
 
@@ -129,4 +133,17 @@ def write_full_dns_config(reload_retry=False, force=False):
         zones=zones,
         callback=tasks.rndc_command.subtask(
             args=[['reload'], reload_retry]),
-        upstream_dns=upstream_dns)
+        upstream_dns=upstream_dns,
+        trusted_networks=get_trusted_networks())
+
+
+def get_trusted_networks():
+    """Return the CIDR representation of all the Networks we know about.
+
+    This must be a whitespace separated list, where each item ends in a
+    semicolon, or blank if there's no networks.
+    """
+    networks = " ".join(
+        "%s;" % net.get_network().cidr
+        for net in Network.objects.all())
+    return networks
