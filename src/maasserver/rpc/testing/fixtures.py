@@ -28,6 +28,7 @@ import fixtures
 from maasserver import eventloop
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.rpc import getClientFor
 from maasserver.rpc.regionservice import RegionServer
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -317,4 +318,9 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         ident_response = {"ident": nodegroup.uuid.decode("ascii")}
         protocol.Identify.side_effect = (
             lambda protocol: defer.succeed(ident_response.copy()))
-        return self.addCluster(protocol).wait(10)
+        self.addCluster(protocol).wait(10)
+        # The connection is now established, but there is a brief handshake
+        # that takes place immediately upon connection.  We wait for that to
+        # finish before returning.
+        getClientFor(nodegroup.uuid, timeout=5)
+        return protocol

@@ -20,13 +20,17 @@ from collections import defaultdict
 
 from django.conf import settings
 from maasserver.enum import NODEGROUP_STATUS
+from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config
+from maasserver.rpc import getClientFor
 from netaddr import IPAddress
+from provisioningserver.rpc.cluster import ConfigureDHCPv6
 from provisioningserver.tasks import (
     restart_dhcp_server,
     stop_dhcp_server,
     write_dhcp_config,
     )
+from provisioningserver.utils.twisted import synchronous
 
 
 def split_ipv4_ipv6_interfaces(interfaces):
@@ -63,8 +67,11 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         }
 
 
-def configure_dhcpv4(nodegroup, interfaces, dns_server, ntp_server):
+def configure_dhcpv4(nodegroup, interfaces, ntp_server):
     """Write DHCPv4 configuration and restart the DHCPv4 server."""
+    # Circular imports.
+    from maasserver.dns.zonegenerator import get_dns_server_address
+
     if len(interfaces) == 0:
         # No IPv4 interfaces are configured as being managed by this cluster.
         # Stop the DHCP server.
@@ -75,8 +82,15 @@ def configure_dhcpv4(nodegroup, interfaces, dns_server, ntp_server):
         stop_dhcp_server.apply_async(queue=nodegroup.work_queue)
         return
 
+    try:
+        dns_servers = get_dns_server_address(nodegroup, ipv4=True, ipv6=False)
+    except UnresolvableHost:
+        # No IPv4 DNS server addresses found.  As a space-separated string,
+        # that becomes the empty string.
+        dns_servers = ''
+
     dhcp_subnet_configs = [
-        make_subnet_config(interface, dns_server, ntp_server)
+        make_subnet_config(interface, dns_servers, ntp_server)
         for interface in interfaces
         ]
 
@@ -93,9 +107,43 @@ def configure_dhcpv4(nodegroup, interfaces, dns_server, ntp_server):
         queue=nodegroup.work_queue, kwargs=task_kwargs)
 
 
-def configure_dhcpv6(nodegroup, interfaces, dns_server, ntp_server):
-    """Write DHCPv6 configuration and restart the DHCPv6 server."""
-    # TODO: Implement.
+@synchronous
+def configure_dhcpv6(nodegroup, interfaces, ntp_server):
+    """Write DHCPv6 configuration and restart the DHCPv6 server.
+
+    Delegates the work to the cluster controller, and waits for it
+    to complete.
+
+    :raise NoConnectionsAvailable: if the region controller could not get
+        an RPC connection to the cluster controller.
+    :raise CannotConfigureDHCP: if configuration could not be written, or
+        restart of the DHCP server fails.
+    """
+    # XXX jtv 2014-08-26 bug=1361590: UI/API requests to update cluster
+    # interfaces will block on this.  We may need an asynchronous error
+    # backchannel.
+
+    # Circular imports.
+    from maasserver.dns.zonegenerator import get_dns_server_address
+
+    try:
+        dns_servers = get_dns_server_address(nodegroup, ipv4=False, ipv6=True)
+    except UnresolvableHost:
+        # No IPv6 DNS server addresses found.  As a space-separated string,
+        # that becomes the empty string.
+        dns_servers = ''
+
+    subnets = [
+        make_subnet_config(interface, dns_servers, ntp_server)
+        for interface in interfaces
+        ]
+    client = getClientFor(nodegroup.uuid)
+    # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
+    # needs to be reported gracefully to the caller.
+    call = client(
+        ConfigureDHCPv6, omapi_key=nodegroup.dhcp_key, subnet_configs=subnets)
+    # Keep the timeout short: the UI may be waiting for completion.
+    call.wait(5)
 
 
 def configure_dhcp(nodegroup):
@@ -106,9 +154,6 @@ def configure_dhcp(nodegroup):
         # in all tests and True in non-tests.  This avoids unnecessary
         # calls to async tasks.
         return
-
-    # Circular imports.
-    from maasserver.dns.zonegenerator import get_dns_server_address
 
     if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
         # Cluster is an accepted one.  Control DHCP for its managed interfaces.
@@ -121,10 +166,9 @@ def configure_dhcp(nodegroup):
     # server.
     nodegroup.ensure_dhcp_key()
 
-    dns_server = get_dns_server_address(nodegroup)
     ntp_server = Config.objects.get_config("ntp_server")
 
     ipv4_interfaces, ipv6_interfaces = split_ipv4_ipv6_interfaces(interfaces)
 
-    configure_dhcpv4(nodegroup, ipv4_interfaces, dns_server, ntp_server)
-    configure_dhcpv6(nodegroup, ipv6_interfaces, dns_server, ntp_server)
+    configure_dhcpv4(nodegroup, ipv4_interfaces, ntp_server)
+    configure_dhcpv6(nodegroup, ipv6_interfaces, ntp_server)

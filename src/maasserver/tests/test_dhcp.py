@@ -21,15 +21,20 @@ from maasserver import dhcp
 from maasserver.dhcp import (
     configure_dhcp,
     configure_dhcpv4,
+    configure_dhcpv6,
     make_subnet_config,
     split_ipv4_ipv6_interfaces,
     )
-from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import Config
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
@@ -43,6 +48,7 @@ from netaddr import (
     IPNetwork,
     )
 from provisioningserver import tasks
+from provisioningserver.rpc.cluster import ConfigureDHCPv6
 from testresources import FixtureResource
 from testtools.matchers import (
     ContainsAll,
@@ -201,8 +207,7 @@ class TestConfigureDHCPv4(MAASServerTestCase):
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
             )
-        configure_dhcpv4(
-            nodegroup, [], factory.make_name('dns'), factory.make_name('ntp'))
+        configure_dhcpv4(nodegroup, [], factory.make_name('ntp'))
         self.assertEqual(1, dhcp.stop_dhcp_server.apply_async.call_count)
 
     def test__writes_dhcp_config(self):
@@ -210,12 +215,14 @@ class TestConfigureDHCPv4(MAASServerTestCase):
         self.patch(
             settings, 'DEFAULT_MAAS_URL',
             'http://%s/' % factory.getRandomIPAddress())
+        dns_server = factory.getRandomIPAddress()
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             dhcp_key=factory.make_string(),
             interface=factory.make_name('eth'),
-            network=IPNetwork("192.168.102.0/22"))
+            network=IPNetwork("192.168.102.0/22"),
+            maas_url='http://%s' % dns_server)
         # Create a second DHCP-managed interface.
         factory.make_node_group_interface(
             nodegroup=nodegroup,
@@ -223,12 +230,10 @@ class TestConfigureDHCPv4(MAASServerTestCase):
             network=IPNetwork("10.1.1/24"),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             )
-        dns_server = factory.make_name('dns')
         ntp_server = factory.make_name('ntp')
 
         configure_dhcpv4(
-            nodegroup, nodegroup.get_managed_interfaces(),
-            dns_server, ntp_server)
+            nodegroup, nodegroup.get_managed_interfaces(), ntp_server)
 
         expected_params = {
             'omapi_key': nodegroup.dhcp_key,
@@ -258,7 +263,7 @@ class TestConfigureDHCPv4(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         configure_dhcpv4(
             nodegroup, nodegroup.get_managed_interfaces(),
-            factory.make_name('dns'), factory.make_name('ntp'))
+            factory.make_name('ntp'))
         self.assertThat(restart_dhcpv4, MockCalledOnceWith())
 
     def test__passes_valid_dhcp_key(self):
@@ -269,7 +274,7 @@ class TestConfigureDHCPv4(MAASServerTestCase):
         nodegroup.ensure_dhcp_key()
         configure_dhcpv4(
             nodegroup, nodegroup.get_managed_interfaces(),
-            factory.make_name('dns'), factory.make_name('ntp'))
+            factory.make_name('ntp'))
         args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
         self.assertThat(kwargs['kwargs']['omapi_key'], EndsWith('=='))
 
@@ -280,7 +285,7 @@ class TestConfigureDHCPv4(MAASServerTestCase):
         self.patch(dhcp, 'write_dhcp_config')
         configure_dhcpv4(
             nodegroup, nodegroup.get_managed_interfaces(),
-            factory.make_name('dns'), factory.make_name('ntp'))
+            factory.make_name('ntp'))
         args, kwargs = dhcp.write_dhcp_config.apply_async.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
@@ -292,9 +297,39 @@ class TestConfigureDHCPv4(MAASServerTestCase):
         task = self.patch(dhcp, 'restart_dhcp_server')
         configure_dhcpv4(
             nodegroup, nodegroup.get_managed_interfaces(),
-            factory.make_name('dns'), factory.make_name('ntp'))
+            factory.make_name('ntp'))
         args, kwargs = task.subtask.call_args
         self.assertEqual(nodegroup.work_queue, kwargs['options']['queue'])
+
+
+class TestConfigureDHCPv6(MAASServerTestCase):
+    """Tests for `configure_dhcpv6`."""
+
+    def prepare_rpc(self, nodegroup):
+        """Set up test case for speaking RPC to `nodegroup`.
+
+        :param nodegroup: A cluster.  It will "run" a mock RPC service.
+        :return: Protocol.
+        """
+        self.useFixture(RegionEventLoopFixture('rpc'))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        return fixture.makeCluster(nodegroup, ConfigureDHCPv6)
+
+    def test__configures_dhcpv6(self):
+        nodegroup = factory.make_node_group(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            dhcp_key=factory.make_name('key'),
+            network=factory.make_ipv6_network())
+        protocol = self.prepare_rpc(nodegroup)
+
+        configure_dhcpv6(nodegroup, [], factory.make_name('ntp'))
+
+        self.assertThat(
+            protocol.ConfigureDHCPv6,
+            MockCalledOnceWith(
+                ANY, omapi_key=nodegroup.dhcp_key, subnet_configs=[]))
 
 
 class TestConfigureDHCP(MAASServerTestCase):
@@ -369,12 +404,8 @@ class TestConfigureDHCP(MAASServerTestCase):
 
         configure_dhcp(cluster)
 
-        self.expectThat(
-            configure_dhcpv4,
-            MockCalledOnceWith(cluster, [], ANY, ANY))
-        self.expectThat(
-            configure_dhcpv6,
-            MockCalledOnceWith(cluster, [], ANY, ANY))
+        self.expectThat(configure_dhcpv4, MockCalledOnceWith(cluster, [], ANY))
+        self.expectThat(configure_dhcpv6, MockCalledOnceWith(cluster, [], ANY))
 
     def test__configures_dhcpv4(self):
         self.patch(dhcp, 'configure_dhcpv6')
@@ -400,7 +431,7 @@ class TestConfigureDHCP(MAASServerTestCase):
 
         self.assertThat(
             configure_dhcpv4,
-            MockCalledOnceWith(cluster, [ipv4_interface], ANY, ANY))
+            MockCalledOnceWith(cluster, [ipv4_interface], ANY))
 
     def test__passes_only_IPv6_interfaces_to_DHCPv6(self):
         configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
@@ -413,22 +444,7 @@ class TestConfigureDHCP(MAASServerTestCase):
 
         self.assertThat(
             configure_dhcpv6,
-            MockCalledOnceWith(cluster, [ipv6_interface], ANY, ANY))
-
-    def test__uses_dns_server_from_cluster_controller(self):
-        configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
-        cluster = self.make_cluster()
-        self.make_ipv4_interface(cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        configure_dhcp(cluster)
-
-        self.assertThat(
-            configure_dhcpv4,
-            MockCalledOnceWith(ANY, ANY, get_dns_server_address(cluster), ANY))
-        self.assertThat(
-            configure_dhcpv6,
-            MockCalledOnceWith(ANY, ANY, get_dns_server_address(cluster), ANY))
+            MockCalledOnceWith(cluster, [ipv6_interface], ANY))
 
     def test__uses_ntp_server_from_config(self):
         configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
@@ -441,10 +457,10 @@ class TestConfigureDHCP(MAASServerTestCase):
         ntp_server = Config.objects.get_config('ntp_server')
         self.assertThat(
             configure_dhcpv4,
-            MockCalledOnceWith(ANY, ANY, ANY, ntp_server))
+            MockCalledOnceWith(ANY, ANY, ntp_server))
         self.assertThat(
             configure_dhcpv6,
-            MockCalledOnceWith(ANY, ANY, ANY, ntp_server))
+            MockCalledOnceWith(ANY, ANY, ntp_server))
 
 
 class TestDHCPConnect(MAASServerTestCase):
@@ -455,103 +471,116 @@ class TestDHCPConnect(MAASServerTestCase):
         )
 
     def test_dhcp_config_gets_written_when_nodegroup_becomes_active(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.PENDING,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
         nodegroup.accept()
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_nodegroup_name_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
-        new_name = factory.make_name('dns name'),
 
-        nodegroup.name = new_name
+        nodegroup.name = factory.make_name('domain')
         nodegroup.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_interface_IP_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.nodegroupinterface_set.all()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
 
         interface.ip = factory.pick_ip_in_network(
             interface.network, but_not=[interface.ip])
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_interface_management_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         [interface] = nodegroup.nodegroupinterface_set.all()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
 
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_interface_name_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
 
         interface.interface = factory.make_name('itf')
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_netmask_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         network = factory.getRandomNetwork(slash='255.255.255.0')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
 
         interface.subnet_mask = '255.255.0.0'
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_interface_router_ip_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
-        new_router_ip = factory.pick_ip_in_network(
-            interface.network, but_not=[interface.router_ip])
 
-        interface.router_ip = new_router_ip
+        interface.router_ip = factory.pick_ip_in_network(
+            interface.network, but_not=[interface.router_ip])
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_gets_written_when_ip_range_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
         self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(dhcp, 'write_dhcp_config')
 
         interface.ip_range_low = unicode(
             IPAddress(interface.ip_range_low) + 1)
@@ -559,25 +588,26 @@ class TestDHCPConnect(MAASServerTestCase):
             IPAddress(interface.ip_range_high) - 1)
         interface.save()
 
-        self.assertEqual(1, dhcp.write_dhcp_config.apply_async.call_count)
+        self.assertThat(
+            configure_dhcpv4, MockCalledOnceWith(nodegroup, ANY, ANY))
 
     def test_dhcp_config_is_not_written_when_foreign_dhcp_changes(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
         nodegroup = factory.make_node_group(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
-        self.patch(dhcp, 'write_dhcp_config')
         self.patch(settings, "DHCP_CONNECT", True)
 
-        interface.foreign_dhcp = factory.pick_ip_in_network(
-            interface.network)
+        interface.foreign_dhcp = factory.pick_ip_in_network(interface.network)
         interface.save()
 
-        self.assertEqual([], dhcp.write_dhcp_config.apply_async.mock_calls)
+        self.assertThat(configure_dhcpv4, MockNotCalled())
 
     def test_dhcp_config_gets_written_when_ntp_server_changes(self):
         # When the "ntp_server" Config item is changed, check that all
         # nodegroups get their DHCP config re-written.
+        self.patch(dhcp, 'configure_dhcpv6')
         num_active_nodegroups = random.randint(1, 10)
         num_inactive_nodegroups = random.randint(1, 10)
         for x in range(num_active_nodegroups):

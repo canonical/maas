@@ -109,13 +109,20 @@ def warn_loopback(ip):
         logger.warn(WARNING_MESSAGE % ip)
 
 
-def get_dns_server_address(nodegroup=None):
+def get_dns_server_address(nodegroup=None, ipv4=True, ipv6=True):
     """Return the DNS server's IP address.
 
     That address is derived from DEFAULT_MAAS_URL or nodegroup.maas_url.
+
+    :param nodegroup: Optional cluster to which the DNS server should be
+        accessible.  If given, the server address will be taken from the
+        cluster's `maas_url` setting.  Otherwise, it will be taken from the
+        globally configured default maas URL.
+    :param ipv4: Include IPv4 server addresses?
+    :param ipv6: Include IPv6 server addresses?
     """
     try:
-        ip = get_maas_facing_server_address(nodegroup)
+        ip = get_maas_facing_server_address(nodegroup, ipv4=ipv4, ipv6=ipv6)
     except socket.error as e:
         raise DNSException(
             "Unable to find MAAS server IP address: %s.  "

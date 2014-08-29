@@ -64,7 +64,7 @@ from testtools.matchers import (
     )
 
 
-class TestDNSUtilities(MAASServerTestCase):
+class TestGetDNSServerAddress(MAASServerTestCase):
 
     def patch_DEFAULT_MAAS_URL(self, hostname=None):
         """Replace `DEFAULT_MAAS_URL` with a randomised URL."""
@@ -81,6 +81,16 @@ class TestDNSUtilities(MAASServerTestCase):
         self.assertEqual(ip, result)
         self.expectThat(resolver, MockAnyCall(hostname, 4))
         self.expectThat(resolver, MockAnyCall(hostname, 6))
+
+    def test_get_dns_server_address_passes_on_IPv4_IPv6_selection(self):
+        ipv4 = factory.pick_bool()
+        ipv6 = factory.pick_bool()
+        patch = self.patch(zonegenerator, 'get_maas_facing_server_address')
+        patch.return_value = factory.getRandomIPAddress()
+
+        get_dns_server_address(ipv4=ipv4, ipv6=ipv6)
+
+        self.assertThat(patch, MockCalledOnceWith(ANY, ipv4=ipv4, ipv6=ipv6))
 
     def test_get_dns_server_address_raises_if_hostname_doesnt_resolve(self):
         self.patch(
@@ -111,6 +121,8 @@ class TestDNSUtilities(MAASServerTestCase):
         self.expectThat(resolver, MockAnyCall(hostname, 4))
         self.expectThat(resolver, MockAnyCall(hostname, 6))
 
+
+class TestWarnLoopback(MAASServerTestCase):
     def test_warn_loopback_warns_about_IPv4_loopback(self):
         logger = self.patch(zonegenerator, 'logger')
         loopback = '127.0.0.1'
