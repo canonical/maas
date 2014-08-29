@@ -576,8 +576,6 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
 
 class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
-    # The nodegroup worker must have access to report_foreign_dhcp.
-    # Normal users do not have access.
 
     def test_read_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -694,36 +692,3 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         self.assertFalse(
             NodeGroupInterface.objects.filter(
                 name=interface.name, nodegroup=nodegroup).exists())
-
-    def test_report_foreign_dhcp_sets_value(self):
-        self.become_admin()
-        nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
-        ip = factory.getRandomIPAddress()
-        response = self.client.post(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]),
-            {
-                'op': 'report_foreign_dhcp',
-                'foreign_dhcp_ip': ip,
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(ip, reload_object(interface).foreign_dhcp_ip)
-
-    def test_report_foreign_dhcp_unsets_value(self):
-        self.become_admin()
-        nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
-        interface.foreign_dhcp_ip = factory.getRandomIPAddress()
-        interface.save()
-        response = self.client.post(
-            reverse(
-                'nodegroupinterface_handler',
-                args=[nodegroup.uuid, interface.name]),
-            {
-                'op': 'report_foreign_dhcp',
-                'foreign_dhcp_ip': '',
-            })
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(None, reload_object(interface).foreign_dhcp_ip)

@@ -30,10 +30,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
 from provisioningserver import cache
-from provisioningserver.auth import (
-    NODEGROUP_UUID_CACHE_KEY,
-    record_api_credentials,
-    )
+from provisioningserver.auth import NODEGROUP_UUID_CACHE_KEY
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,
@@ -513,17 +510,11 @@ class TestPeriodicTask(PservTestCase):
             "Failed talking to region controller, it returned:",
             self.maaslog.output)
 
-    def test_periodic_probe_task_exits_with_not_enough_knowledge(self):
-        mocked = self.patch(detect_module, 'determine_cluster_interfaces')
-        record_api_credentials(None)
-        periodic_probe_task()
-        self.assertFalse(mocked.called)
-
     def test_periodic_probe_task_exits_if_no_interfaces(self):
         mocked = self.patch(detect_module, 'probe_interface')
         self.patch(
             detect_module, 'determine_cluster_interfaces').return_value = None
-        periodic_probe_task()
+        periodic_probe_task(self.knowledge)
         self.assertFalse(mocked.called)
 
     def test_periodic_probe_task_updates_region_with_detected_server(self):
@@ -535,7 +526,7 @@ class TestPeriodicTask(PservTestCase):
         self.patch(
             detect_module, 'probe_dhcp').return_value = {detected_server}
         mocked_update = self.patch(detect_module, 'update_region_controller')
-        periodic_probe_task()
+        periodic_probe_task(self.knowledge)
         calls = [
             mock.call(self.knowledge, 'eth0', detected_server),
             mock.call(self.knowledge, 'wlan0', detected_server),
@@ -550,7 +541,7 @@ class TestPeriodicTask(PservTestCase):
         self.patch(
             detect_module, 'probe_dhcp').return_value = set()
         mocked_update = self.patch(detect_module, 'update_region_controller')
-        periodic_probe_task()
+        periodic_probe_task(self.knowledge)
         calls = [
             mock.call(self.knowledge, 'eth0', None),
             mock.call(self.knowledge, 'wlan0', None),

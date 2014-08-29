@@ -25,11 +25,7 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api.utils import get_mandatory_param
-from maasserver.forms import (
-    NodeGroupInterfaceForeignDHCPForm,
-    NodeGroupInterfaceForm,
-    )
+from maasserver.forms import NodeGroupInterfaceForm
 from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
@@ -187,26 +183,6 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         nodegroupinterface = self.get_interface(request, uuid, name)
         nodegroupinterface.delete()
         return rc.DELETED
-
-    @operation(idempotent=False)
-    def report_foreign_dhcp(self, request, uuid, name):
-        """Report the result of a probe for foreign DHCP servers.
-
-        Cluster controllers probe for DHCP servers not managed by MAAS, and
-        call this method to report their findings.
-
-        :param foreign_dhcp_ip: New value for the foreign DHCP server found
-            during the last probe.  Leave blank if none were found.
-        """
-        foreign_dhcp_ip = get_mandatory_param(request.data, 'foreign_dhcp_ip')
-        nodegroupinterface = self.get_interface(request, uuid, name)
-
-        form = NodeGroupInterfaceForeignDHCPForm(
-            {'foreign_dhcp_ip': foreign_dhcp_ip}, instance=nodegroupinterface)
-        if not form.is_valid():
-            raise ValidationError(form.errors)
-        else:
-            return form.save()
 
     @classmethod
     def resource_uri(cls, nodegroup=None, interface=None):

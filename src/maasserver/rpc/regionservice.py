@@ -37,6 +37,10 @@ from maasserver.rpc import (
     leases,
     nodes,
     )
+from maasserver.rpc.nodegroupinterface import (
+    get_cluster_interfaces_as_dicts,
+    update_foreign_dhcp_ip,
+    )
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
 from netaddr import IPAddress
@@ -220,6 +224,32 @@ class Region(amp.AMP):
         d = deferToThread(
             events.send_event, system_id, type_name, description)
         d.addCallback(lambda args: {})
+        return d
+
+    @region.ReportForeignDHCPServer.responder
+    def report_foreign_dhcp_server(self, cluster_uuid, interface_name,
+                                   foreign_dhcp_ip):
+        """report_foreign_dhcp_server()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.SendEvent`.
+        """
+        d = deferToThread(
+            update_foreign_dhcp_ip, cluster_uuid, interface_name,
+            foreign_dhcp_ip)
+        d.addCallback(lambda _: {})
+        return d
+
+    @region.GetClusterInterfaces.responder
+    def get_cluster_interfaces(self, cluster_uuid):
+        """get_cluster_interfaces()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetClusterInterfaces`.
+        """
+        d = deferToThread(
+            get_cluster_interfaces_as_dicts, cluster_uuid)
+        d.addCallback(lambda interfaces: {b'interfaces': interfaces})
         return d
 
 

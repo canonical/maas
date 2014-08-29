@@ -31,6 +31,9 @@ from oops_twisted import (
 import provisioningserver
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
+from provisioningserver.pserv_services.dhcp_probe_service import (
+    PeriodicDHCPProbeService,
+    )
 from provisioningserver.pserv_services.image_download_service import (
     PeriodicImageDownloadService,
     )
@@ -251,6 +254,12 @@ class ProvisioningServiceMaker(object):
         rpc_service.setName("rpc")
         return rpc_service
 
+    def _makePeriodicDHCPProbeService(self, rpc_service):
+        dhcp_probe_service = PeriodicDHCPProbeService(
+            rpc_service, reactor, get_cluster_uuid())
+        dhcp_probe_service.setName("dhcp_probe")
+        return dhcp_probe_service
+
     def makeService(self, options):
         """Construct a service."""
         services = provisioningserver.services
@@ -275,6 +284,8 @@ class ProvisioningServiceMaker(object):
             rpc_service)
         image_download_service.setServiceParent(services)
 
+        dhcp_probe_service = self._makePeriodicDHCPProbeService(rpc_service)
+        dhcp_probe_service.setServiceParent(services)
         lease_upload_service = self._makePeriodicLeaseUploadService(
             rpc_service)
         lease_upload_service.setServiceParent(services)

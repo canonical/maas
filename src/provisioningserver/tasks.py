@@ -43,10 +43,7 @@ from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
     )
-from provisioningserver.dhcp import (
-    config,
-    detect,
-    )
+from provisioningserver.dhcp import config
 from provisioningserver.dhcp.control import (
     restart_dhcpv4,
     stop_dhcpv4,
@@ -410,14 +407,6 @@ def stop_dhcp_server():
     # around.
     sudo_write_file(celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
     stop_dhcpv4()
-
-
-@task
-@log_task_events(level=logging.DEBUG)
-@log_exception_text
-def periodic_probe_dhcp():
-    """Probe for foreign DHCP servers."""
-    detect.periodic_probe_task()
 
 
 # =====================================================================

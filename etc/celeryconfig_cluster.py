@@ -48,12 +48,4 @@ CELERYBEAT_SCHEDULE = {
             'expires': int(REPORT_BOOT_IMAGES_SCHEDULE.total_seconds()),
         },
     },
-    'probe-dhcp-servers': {
-        'task': 'provisioningserver.tasks.periodic_probe_dhcp',
-        'schedule': PROBE_DHCP_SERVERS_SCHEDULE,
-        'options': {
-            'queue': CLUSTER_UUID,
-            'expires': int(PROBE_DHCP_SERVERS_SCHEDULE.total_seconds()),
-        },
-    },
 }

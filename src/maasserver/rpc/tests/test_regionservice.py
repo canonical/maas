@@ -47,12 +47,14 @@ from maasserver.rpc.regionservice import (
     )
 from maasserver.rpc.testing.doubles import IdentifyingRegionServer
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.async import transactional
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
     Provides,
     )
 from maastesting.testcase import MAASTestCase
@@ -61,6 +63,7 @@ from mock import (
     Mock,
     )
 import netaddr
+from provisioningserver import tasks
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -75,12 +78,14 @@ from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
+    GetClusterInterfaces,
     GetProxies,
     Identify,
     ListNodePowerParameters,
     MarkNodeBroken,
     RegisterEventType,
     ReportBootImages,
+    ReportForeignDHCPServer,
     SendEvent,
     UpdateLeases,
     UpdateNodePowerState,
@@ -124,6 +129,11 @@ from twisted.protocols import amp
 from twisted.python import log
 from twisted.python.failure import Failure
 from zope.interface.verify import verifyObject
+
+
+@transactional
+def transactional_reload_object(obj):
+    return reload_object(obj)
 
 
 class TestRegionProtocol_Identify(MAASTestCase):
@@ -425,7 +435,7 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
             Region(), MarkNodeBroken,
             {b'system_id': system_id, b'error_description': error_description})
 
-        self.assertIsNone(None, response)
+        self.assertEqual({}, response)
         new_status = yield deferToThread(self.get_node_status, system_id)
         new_error_description = yield deferToThread(
             self.get_node_error_description, system_id)
@@ -582,7 +592,7 @@ class TestRegionProtocol_RegisterEventType(MAASTestCase):
             Region(), RegisterEventType,
             {b'name': name, b'description': description, b'level': level})
 
-        self.assertIsNone(None, response)
+        self.assertEqual({}, response)
         event_type = yield deferToThread(self.get_event_type, name)
         self.assertThat(
             event_type,
@@ -637,7 +647,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
             }
         )
 
-        self.assertIsNone(None, response)
+        self.assertEqual({}, response)
         event = yield deferToThread(self.get_event, system_id, name)
         self.assertEquals(
             (system_id, event_description, name),
@@ -1465,3 +1475,91 @@ class TestRegionAdvertisingService(MAASTestCase):
 
         # If the RPC service is down, _get_addresses() returns nothing.
         self.assertItemsEqual([], service._get_addresses())
+
+
+class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
+
+    def test_send_event_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            ReportForeignDHCPServer.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def create_cluster_interface(self):
+        cluster = factory.make_node_group()
+        return factory.make_node_group_interface(cluster)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_sets_foreign_dhcp_value(self):
+        foreign_dhcp_ip = factory.getRandomIPAddress()
+        cluster_interface = yield deferToThread(
+            self.create_cluster_interface)
+        cluster = cluster_interface.nodegroup
+
+        response = yield call_responder(
+            Region(), ReportForeignDHCPServer,
+            {
+                b'cluster_uuid': cluster.uuid,
+                b'interface_name': cluster_interface.name,
+                b'foreign_dhcp_ip': foreign_dhcp_ip,
+            })
+
+        self.assertEqual({}, response)
+        cluster_interface = yield deferToThread(
+            transactional_reload_object, cluster_interface)
+
+        self.assertEqual(
+            foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
+
+    def test_does_not_trigger_update_signal(self):
+        foreign_dhcp_ip = factory.getRandomIPAddress()
+        cluster_interface = yield deferToThread(
+            self.create_cluster_interface)
+        cluster = cluster_interface.nodegroup
+
+        response = yield call_responder(
+            Region(), ReportForeignDHCPServer,
+            {
+                b'cluster_uuid': cluster.uuid,
+                b'interface_name': cluster_interface.name,
+                b'foreign_dhcp_ip': foreign_dhcp_ip,
+            })
+
+        self.assertEqual({}, response)
+        self.assertThat(
+            tasks.write_dhcp_config.apply_async, MockNotCalled())
+
+
+class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
+
+    def test_send_event_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            GetClusterInterfaces.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def create_cluster_and_interfaces(self):
+        cluster = factory.make_node_group()
+        for i in range(3):
+            factory.make_node_group_interface(cluster)
+        interfaces = [
+            {'name': interface.name, 'ip': interface.ip}
+            for interface in cluster.nodegroupinterface_set.all()]
+        return cluster, interfaces
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_returns_all_cluster_interfaces(self):
+        cluster, expected_interfaces = yield deferToThread(
+            self.create_cluster_and_interfaces)
+
+        response = yield call_responder(
+            Region(), GetClusterInterfaces,
+            {b'cluster_uuid': cluster.uuid})
+
+        self.assertIsNot(None, response)
+        self.assertItemsEqual(
+            expected_interfaces, response["interfaces"])

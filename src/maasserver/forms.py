@@ -33,7 +33,6 @@ __all__ = [
     "NetworkForm",
     "NetworksListingForm",
     "NodeGroupEdit",
-    "NodeGroupInterfaceForeignDHCPForm",
     "NodeGroupInterfaceForm",
     "NodeGroupDefineForm",
     "NodeWithMACAddressesForm",
@@ -1334,34 +1333,6 @@ class NodeGroupInterfaceForm(ModelForm):
             set_form_error(self, 'static_ip_range_low', exception.message)
             set_form_error(self, 'static_ip_range_high', exception.message)
         return cleaned_data
-
-
-class NodeGroupInterfaceForeignDHCPForm(ModelForm):
-    """A form to update a nodegroupinterface's foreign_dhcp_ip field."""
-
-    class Meta:
-        model = NodeGroupInterface
-        fields = (
-            'foreign_dhcp_ip',
-        )
-
-    def save(self):
-        foreign_dhcp_ip = self.cleaned_data['foreign_dhcp_ip']
-        # Do this through an update, not a read/modify/write.  Updating
-        # NodeGroupInterface client-side may inadvertently trigger Django
-        # signals that cause a rewrite of the DHCP config, plus restart of
-        # the DHCP server.
-        # The inadvertent triggering has been known to happen because of race
-        # conditions between read/modify/write transactions that were enabled
-        # by Django defaulting to, and being designed for, the READ COMMITTED
-        # isolation level; the ORM writing back even unmodified fields; and
-        # GenericIPAddressField's default value being prone to problems where
-        # NULL is sometimes represented as None, sometimes as an empty string,
-        # and the difference being enough to convince the signal machinery
-        # that these fields have changed when in fact they have not.
-        query = NodeGroupInterface.objects.filter(id=self.instance.id)
-        query.update(foreign_dhcp_ip=foreign_dhcp_ip)
-        return NodeGroupInterface.objects.get(id=self.instance.id)
 
 
 INTERFACES_VALIDATION_ERROR_MESSAGE = (

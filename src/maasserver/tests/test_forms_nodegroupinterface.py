@@ -16,14 +16,12 @@ __all__ = []
 
 import random
 
-from django.conf import settings
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.forms import (
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
-    NodeGroupInterfaceForeignDHCPForm,
     NodeGroupInterfaceForm,
     )
 from maasserver.models import (
@@ -33,11 +31,9 @@ from maasserver.models import (
 from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
-from provisioningserver import tasks
 from testtools.matchers import (
     AllMatch,
     Equals,
@@ -307,45 +303,3 @@ class TestNodeGroupInterfaceFormNetworkCreation(MAASServerTestCase):
             form.save()
 
         self.assertEqual(len(names), len(Network.objects.all()))
-
-
-class TestNodeGroupInterfaceForeignDHCPForm(MAASServerTestCase):
-
-    def test_forms_saves_foreign_dhcp_ip(self):
-        nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
-        foreign_dhcp_ip = factory.getRandomIPAddress()
-        form = NodeGroupInterfaceForeignDHCPForm(
-            data={'foreign_dhcp_ip': foreign_dhcp_ip},
-            instance=interface)
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertEqual(
-            foreign_dhcp_ip, reload_object(interface).foreign_dhcp_ip)
-
-    def test_forms_validates_foreign_dhcp_ip(self):
-        nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
-        form = NodeGroupInterfaceForeignDHCPForm(
-            data={'foreign_dhcp_ip': 'invalid-ip'}, instance=interface)
-        self.assertFalse(form.is_valid())
-
-    def test_report_foreign_dhcp_does_not_trigger_update_signal(self):
-        self.patch(settings, "DHCP_CONNECT", False)
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
-        interface = factory.make_node_group_interface(
-            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-
-        self.patch(settings, "DHCP_CONNECT", True)
-        self.patch(tasks, 'write_dhcp_config')
-
-        foreign_dhcp_ip = factory.getRandomIPAddress()
-        form = NodeGroupInterfaceForeignDHCPForm(
-            data={'foreign_dhcp_ip': foreign_dhcp_ip},
-            instance=interface)
-
-        self.assertTrue(form.is_valid())
-        form.save()
-        self.assertEqual(
-            foreign_dhcp_ip, reload_object(interface).foreign_dhcp_ip)
-        tasks.write_dhcp_config.apply_async.assert_has_calls([])

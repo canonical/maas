@@ -27,6 +27,9 @@ from provisioningserver.plugin import (
     ProvisioningServiceMaker,
     SingleUsernamePasswordChecker,
     )
+from provisioningserver.pserv_services.dhcp_probe_service import (
+    PeriodicDHCPProbeService,
+    )
 from provisioningserver.pserv_services.image_download_service import (
     PeriodicImageDownloadService,
     )
@@ -113,10 +116,11 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         self.assertIsInstance(service, MultiService)
-        self.assertSequenceEqual(
-            ["image_download", "lease_upload", "log", "node_monitor", "oops",
-             "rpc", "tftp"],
-            sorted(service.namedServices))
+        expected_services = [
+            "dhcp_probe", "image_download", "lease_upload", "log",
+            "node_monitor", "oops", "rpc", "tftp",
+            ]
+        self.assertItemsEqual(expected_services, service.namedServices)
         self.assertEqual(
             len(service.namedServices), len(service.services),
             "Not all services are named.")
@@ -137,6 +141,14 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service = service_maker.makeService(options)
         node_monitor = service.getServiceNamed("node_monitor")
         self.assertIsInstance(node_monitor, NodePowerMonitorService)
+
+    def test_dhcp_probe_service(self):
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Spike", "Milligan")
+        service = service_maker.makeService(options)
+        dhcp_probe = service.getServiceNamed("dhcp_probe")
+        self.assertIsInstance(dhcp_probe, PeriodicDHCPProbeService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

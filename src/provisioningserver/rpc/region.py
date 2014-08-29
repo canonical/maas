@@ -227,3 +227,35 @@ class SendEvent(amp.Command):
         NoSuchNode: b"NoSuchNode",
         NoSuchEventType: b"NoSuchEventType"
     }
+
+
+class ReportForeignDHCPServer(amp.Command):
+    """Report a foreign DHCP server on the cluster's network.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"cluster_uuid", amp.Unicode()),
+        (b"interface_name", amp.Unicode()),
+        (b"foreign_dhcp_ip", amp.Unicode()),
+    ]
+    response = []
+    errors = []
+
+
+class GetClusterInterfaces(amp.Command):
+    """Fetch the known interfaces for a cluster from the region.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"cluster_uuid", amp.Unicode()),
+    ]
+    response = [
+        (b"interfaces", amp.AmpList(
+            [(b"name", amp.Unicode()),
+             (b"ip", amp.Unicode())]))
+    ]
+    errors = []
