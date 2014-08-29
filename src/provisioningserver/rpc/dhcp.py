@@ -37,7 +37,7 @@ from provisioningserver.utils.shell import ExternalProcessError
 maaslog = get_maas_logger("dhcp")
 
 # Location of the DHCPv6 configuration file.
-DHCPv6_CONFIG_FILE = '/etc/maas/dhcp6.conf'
+DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
 
 # Location of the DHCPv6 interfaces file.
 DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
