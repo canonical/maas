@@ -40,6 +40,7 @@ class TestBootResourceForm(MAASServerTestCase):
         name = factory.make_name('name')
         title = factory.make_name('title')
         architecture = make_usable_architecture(self)
+        subarch = architecture.split('/')[1]
         filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
@@ -60,6 +61,7 @@ class TestBootResourceForm(MAASServerTestCase):
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
         self.assertEqual(title, resource.extra['title'])
+        self.assertEqual(subarch, resource.extra['subarches'])
         self.assertTrue(filetype, rfile.filetype)
         self.assertTrue(filetype, rfile.filename)
         self.assertTrue(size, rfile.largefile.total_size)

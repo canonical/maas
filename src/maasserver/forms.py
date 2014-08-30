@@ -2246,8 +2246,10 @@ class BootResourceForm(ModelForm):
             resource.rtype = BOOT_RESOURCE_TYPE.GENERATED
 
         resource = self.get_existing_resource(resource)
+        resource.extra = {'subarches': resource.architecture.split('/')[1]}
         if 'title' in self.cleaned_data:
-            resource.extra = {'title': self.cleaned_data['title']}
+            resource.extra['title'] = self.cleaned_data['title']
+
         resource.save()
         resource_set = self.create_resource_set(resource, label)
         self.create_resource_file(
