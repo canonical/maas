@@ -239,10 +239,10 @@ BOOT_RESOURCE_TYPE_CHOICES_DICT = OrderedDict(BOOT_RESOURCE_TYPE_CHOICES)
 class BOOT_RESOURCE_FILE_TYPE:
     """The vocabulary of possible file types for `BootResource`."""
     #: Tarball of root image.
-    TGZ = 'tgz'
+    ROOT_TGZ = 'root-tgz'
 
     #: Tarball of dd image.
-    DDTGZ = 'dd-tgz'
+    ROOT_DD = 'root-dd'
 
     # Following are not allowed on user upload. Only used for syncing
     # from another simplestreams source. (Most likely maas.ubuntu.com)
@@ -266,19 +266,11 @@ class BOOT_RESOURCE_FILE_TYPE:
 # Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
 # representation).
 BOOT_RESOURCE_FILE_TYPE_CHOICES = (
-    (BOOT_RESOURCE_FILE_TYPE.TGZ, "Root Image (tar.gz)"),
-    (BOOT_RESOURCE_FILE_TYPE.DDTGZ, "Root Compreseed DD (dd -> tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, "Root Image (tar.gz)"),
+    (BOOT_RESOURCE_FILE_TYPE.ROOT_DD, "Root Compressed DD (dd -> tar.gz)"),
     (BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE, "Compressed Root Image"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, "Initial ISCSI Ramdisk"),
     (BOOT_RESOURCE_FILE_TYPE.DI_KERNEL, "Linux DI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.DI_INITRD, "Initial DI Ramdisk"),
-    )
-
-
-# Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
-# representation). (Choices allowed for user uploading.)
-BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
-    (BOOT_RESOURCE_FILE_TYPE.TGZ, "Root Image (tar.gz)"),
-    (BOOT_RESOURCE_FILE_TYPE.DDTGZ, "Root Compreseed DD (dd -> tar.gz)"),
     )

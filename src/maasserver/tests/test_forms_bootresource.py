@@ -32,16 +32,20 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestBootResourceForm(MAASServerTestCase):
 
     def pick_filetype(self):
-        return random.choice([
-            BOOT_RESOURCE_FILE_TYPE.TGZ,
-            BOOT_RESOURCE_FILE_TYPE.DDTGZ])
+        upload_type = random.choice([
+            'tgz', 'ddtgz'])
+        if upload_type == 'tgz':
+            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
+        elif upload_type == 'ddtgz':
+            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_DD
+        return upload_type, filetype
 
     def test_creates_boot_resource(self):
         name = factory.make_name('name')
         title = factory.make_name('title')
         architecture = make_usable_architecture(self)
         subarch = architecture.split('/')[1]
-        filetype = self.pick_filetype()
+        upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
         upload_name = factory.make_name('filename')
@@ -50,7 +54,7 @@ class TestBootResourceForm(MAASServerTestCase):
             'name': name,
             'title': title,
             'architecture': architecture,
-            'filetype': filetype,
+            'filetype': upload_type,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -75,7 +79,7 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED,
             name=name, architecture=architecture)
-        filetype = self.pick_filetype()
+        upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
         upload_name = factory.make_name('filename')
@@ -83,7 +87,7 @@ class TestBootResourceForm(MAASServerTestCase):
         data = {
             'name': name,
             'architecture': architecture,
-            'filetype': filetype,
+            'filetype': upload_type,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -103,7 +107,7 @@ class TestBootResourceForm(MAASServerTestCase):
         series = factory.make_name('series')
         name = '%s/%s' % (os, series)
         architecture = make_usable_architecture(self)
-        filetype = self.pick_filetype()
+        upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
         upload_name = factory.make_name('filename')
@@ -111,7 +115,7 @@ class TestBootResourceForm(MAASServerTestCase):
         data = {
             'name': name,
             'architecture': architecture,
-            'filetype': filetype,
+            'filetype': upload_type,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)
@@ -136,7 +140,7 @@ class TestBootResourceForm(MAASServerTestCase):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED,
             name=name, architecture=architecture)
-        filetype = self.pick_filetype()
+        upload_type, filetype = self.pick_filetype()
         size = random.randint(1024, 2048)
         content = factory.make_string(size).encode('utf-8')
         upload_name = factory.make_name('filename')
@@ -144,7 +148,7 @@ class TestBootResourceForm(MAASServerTestCase):
         data = {
             'name': name,
             'architecture': architecture,
-            'filetype': filetype,
+            'filetype': upload_type,
             }
         form = BootResourceForm(data=data, files={'content': uploaded_file})
         self.assertTrue(form.is_valid(), form._errors)

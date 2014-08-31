@@ -32,7 +32,6 @@ from maasserver.api.support import (
 from maasserver.api.utils import get_mandatory_param
 from maasserver.bootresources import import_resources
 from maasserver.enum import (
-    BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
@@ -171,7 +170,7 @@ class BootResourcesHandler(OperationsHandler):
             content=get_content_parameter(request),
             name='file', content_type='application/octet-stream')
         if 'filetype' not in data:
-            data['filetype'] = BOOT_RESOURCE_FILE_TYPE.TGZ
+            data['filetype'] = 'tgz'
         form = BootResourceForm(data=data, files={'content': content})
         if not form.is_valid():
             raise ValidationError(form.errors)

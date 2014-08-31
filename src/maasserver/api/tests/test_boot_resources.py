@@ -194,17 +194,25 @@ class TestBootSourcesAPI(APITestCase):
             reverse('boot_resources_handler'), params)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
+    def pick_filetype(self):
+        upload_type = random.choice([
+            'tgz', 'ddtgz'])
+        if upload_type == 'tgz':
+            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
+        elif upload_type == 'ddtgz':
+            filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_DD
+        return upload_type, filetype
+
     def test_POST_creates_boot_resource(self):
         self.become_admin()
 
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
-        filetype = random.choice([
-            BOOT_RESOURCE_FILE_TYPE.TGZ, BOOT_RESOURCE_FILE_TYPE.DDTGZ])
+        upload_type, filetype = self.pick_filetype()
         params = {
             'name': name,
             'architecture': architecture,
-            'filetype': filetype,
+            'filetype': upload_type,
             'content': (
                 factory.make_file_upload(content=sample_binary_data)),
         }
@@ -244,7 +252,7 @@ class TestBootSourcesAPI(APITestCase):
         resource = BootResource.objects.get(id=parsed_result['id'])
         resource_set = resource.sets.first()
         rfile = resource_set.files.first()
-        self.assertEqual(BOOT_RESOURCE_FILE_TYPE.TGZ, rfile.filetype)
+        self.assertEqual(BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, rfile.filetype)
 
     def test_POST_returns_full_definition_of_boot_resource(self):
         self.become_admin()

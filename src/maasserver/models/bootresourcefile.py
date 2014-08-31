@@ -64,7 +64,7 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     filetype = CharField(
         max_length=20, choices=BOOT_RESOURCE_FILE_TYPE_CHOICES,
-        default=BOOT_RESOURCE_FILE_TYPE.TGZ, editable=False)
+        default=BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, editable=False)
 
     extra = JSONObjectField(blank=True, default="", editable=False)
 

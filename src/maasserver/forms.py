@@ -78,7 +78,6 @@ from maasserver.clusterrpc.power_parameters import (
 from maasserver.config_forms import SKIP_CHECK_NAME
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
-    BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD,
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -2146,6 +2145,12 @@ class LicenseKeyForm(ModelForm):
             raise ValidationError("Invalid license key.")
 
 
+BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
+    ('tgz', "Root Image (tar.gz)"),
+    ('ddtgz', "Root Compressed DD (dd -> tar.gz)"),
+    )
+
+
 class BootResourceForm(ModelForm):
     """Form for uploading boot resources."""
 
@@ -2164,7 +2169,7 @@ class BootResourceForm(ModelForm):
     filetype = forms.ChoiceField(
         label="Filetype",
         choices=BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD,
-        required=True, initial=BOOT_RESOURCE_FILE_TYPE.TGZ)
+        required=True, initial='tgz')
 
     content = forms.FileField(
         label="File", allow_empty_file=False)
@@ -2211,10 +2216,16 @@ class BootResourceForm(ModelForm):
             resource=resource,
             version=resource.get_next_version_name(), label=label)
 
+    def get_resource_filetype(self, value):
+        """Convert the upload filetype to the filetype for `BootResource`."""
+        if value == 'tgz':
+            return BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ
+        elif value == 'ddtgz':
+            return BOOT_RESOURCE_FILE_TYPE.ROOT_DD
+
     def create_resource_file(self, resource_set, filetype, content):
         """Creates a new `BootResourceFile` on the given resource set."""
-        filetype = self.cleaned_data['filetype']
-        content = self.cleaned_data['content']
+        filetype = self.get_resource_filetype(filetype)
         largefile = LargeFile.objects.get_or_create_file_from_content(content)
         return BootResourceFile.objects.create(
             resource_set=resource_set, largefile=largefile,
