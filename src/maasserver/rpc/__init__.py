@@ -21,11 +21,13 @@ from maasserver import eventloop
 from provisioningserver.rpc import exceptions
 from provisioningserver.utils.twisted import (
     asynchronous,
+    deferred,
     FOREVER,
     )
 
 
 @asynchronous(timeout=FOREVER)  # getClientFor handles times-out itself.
+@deferred  # Always return a Deferred, no matter what.
 def getClientFor(uuid, timeout=0):
     """Get a client with which to make RPCs to the specified cluster.
 

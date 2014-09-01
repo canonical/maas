@@ -23,6 +23,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.rpc import exceptions
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     Equals,
     Is,
@@ -33,9 +34,9 @@ class TestFunctions(MAASTestCase):
 
     @wait_for_reactor
     def test_getClientFor_service_not_running(self):
-        self.assertRaises(
-            exceptions.NoConnectionsAvailable,
-            rpc.getClientFor, sentinel.uuid)
+        return assert_fails_with(
+            rpc.getClientFor(sentinel.uuid),
+            exceptions.NoConnectionsAvailable)
 
     @wait_for_reactor
     def test_getClientFor(self):
