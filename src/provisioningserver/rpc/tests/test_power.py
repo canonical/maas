@@ -25,7 +25,10 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     ANY,
     call,
@@ -40,10 +43,7 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from testtools.deferredruntest import (
-    assert_fails_with,
-    AsynchronousDeferredRunTest,
-    )
+from testtools.deferredruntest import assert_fails_with
 from twisted.internet import reactor
 from twisted.internet.defer import (
     fail,
@@ -55,7 +55,7 @@ from twisted.internet.task import Clock
 
 class TestPowerHelpers(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
@@ -184,7 +184,7 @@ class TestPowerHelpers(MAASTestCase):
 
 class TestChangePowerChange(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestChangePowerChange, self).setUp()
@@ -413,7 +413,7 @@ class TestChangePowerChange(MAASTestCase):
 
 class TestPowerQuery(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestPowerQuery, self).setUp()

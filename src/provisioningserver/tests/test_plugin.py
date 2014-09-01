@@ -18,7 +18,10 @@ from functools import partial
 import os
 
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 import provisioningserver
 from provisioningserver import plugin as plugin_module
 from provisioningserver.plugin import (
@@ -40,10 +43,7 @@ from provisioningserver.pserv_services.tftp import (
     TFTPBackend,
     TFTPService,
     )
-from testtools.deferredruntest import (
-    assert_fails_with,
-    AsynchronousDeferredRunTest,
-    )
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -86,7 +86,7 @@ class TestOptions(MAASTestCase):
 class TestProvisioningServiceMaker(MAASTestCase):
     """Tests for `provisioningserver.plugin.ProvisioningServiceMaker`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestProvisioningServiceMaker, self).setUp()
@@ -185,7 +185,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
 class TestSingleUsernamePasswordChecker(MAASTestCase):
     """Tests for `SingleUsernamePasswordChecker`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
     def test_requestAvatarId_okay(self):

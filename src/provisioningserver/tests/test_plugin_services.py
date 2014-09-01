@@ -19,14 +19,16 @@ import signal
 import sys
 
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from oops_twisted import OOPSObserver
 from provisioningserver.plugin import (
     LogService,
     OOPSService,
     )
 from testtools.content import content_from_file
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.application.service import MultiService
 from twisted.python.log import (
     FileLogObserver,
@@ -37,7 +39,7 @@ from twisted.python.logfile import LogFile
 
 class TestServicesBase:
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestServicesBase, self).setUp()

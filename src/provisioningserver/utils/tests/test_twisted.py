@@ -27,7 +27,10 @@ from maastesting.matchers import (
     IsCallable,
     MockCalledOnceWith,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     Mock,
     sentinel,
@@ -43,10 +46,7 @@ from provisioningserver.utils.twisted import (
     retries,
     synchronous,
     )
-from testtools.deferredruntest import (
-    AsynchronousDeferredRunTest,
-    extract_result,
-    )
+from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
@@ -79,7 +79,7 @@ def return_args(*args, **kwargs):
 
 class TestAsynchronousDecorator(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_in_reactor_thread(self):
         result = asynchronous(return_args)(1, 2, three=3)
@@ -104,7 +104,7 @@ noop = lambda: None
 
 class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_timeout_cannot_be_None(self):
         self.assertRaises(ValueError, asynchronous, noop, timeout=None)
@@ -127,7 +127,7 @@ class TestAsynchronousDecoratorWithTimeout(MAASTestCase):
 
 class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     scenarios = (
         ("finite", {"timeout": random()}),
@@ -183,7 +183,7 @@ class TestAsynchronousDecoratorWithTimeoutDefined(MAASTestCase):
 
 class TestSynchronousDecorator(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @synchronous
     def return_args(self, *args, **kwargs):
@@ -215,7 +215,7 @@ class TestSynchronousDecorator(MAASTestCase):
 class TestReactorSync(MAASTestCase):
     """Tests for `reactor_sync`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__does_what_it_claims(self):
         whence = []

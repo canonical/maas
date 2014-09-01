@@ -316,9 +316,9 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
     means that the reactor must be running in order to use this fixture.
 
     Use this in *cluster* tests where the reactor is running, for example when
-    using `AsynchronousDeferredRunTest` or its siblings. There's a slightly
-    greater overhead than when using `MockClusterToRegionRPCFixture`, but it's
-    not huge. You must be careful to follow the usage instructions otherwise
+    using `MAASTwistedRunTest` or its siblings. There's a slightly greater
+    overhead than when using `MockClusterToRegionRPCFixture`, but it's not
+    huge. You must be careful to follow the usage instructions otherwise
     you'll be plagued by dirty reactor errors.
 
     Example usage (assuming `inlineCallbacks`)::
@@ -396,7 +396,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         # else), so we can't use `self.addCleanup(shutdown)` here. We need to
         # get the user to add `shutdown` to the clean-up tasks for the *test*,
         # on the assumption they're using a test framework that accommodates
-        # deferred work (like testtools with `AsynchronousDeferredRunTest`).
+        # deferred work (like testtools with `MAASTwistedRunTest`).
         returnValue(shutdown)
 
 

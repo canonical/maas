@@ -25,6 +25,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
     )
+from maastesting.testcase import MAASTwistedRunTest
 from mock import (
     call,
     Mock,
@@ -45,10 +46,7 @@ from provisioningserver.rpc.region import (
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
-from testtools.deferredruntest import (
-    AsynchronousDeferredRunTest,
-    extract_result,
-    )
+from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
 from twisted.internet.task import Clock
@@ -57,7 +55,7 @@ from twisted.spread.pb import NoSuchMethod
 
 class TestPeriodicImageDownloadService(PservTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_init(self):
         service = PeriodicImageDownloadService(
@@ -230,7 +228,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
 class TestGetBootSources(PservTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
     def test__get_boot_sources_calls_get_boot_sources_v2_before_v1(self):

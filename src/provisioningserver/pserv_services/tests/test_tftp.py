@@ -29,7 +29,10 @@ from urlparse import (
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 import mock
 from mock import sentinel
 from netaddr import IPNetwork
@@ -48,7 +51,6 @@ from provisioningserver.pserv_services.tftp import (
     UDPServer,
     )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -100,7 +102,7 @@ class TestBytesReader(MAASTestCase):
 class TestTFTPBackend(MAASTestCase):
     """Tests for `provisioningserver.tftp.TFTPBackend`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_init(self):
         temp_dir = self.make_dir()
@@ -382,7 +384,7 @@ class DummyProtocol(Protocol):
 class TestPort(MAASTestCase):
     """Tests for :py:class:`Port`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_getHost_works_with_IPv4_address(self):
         port = Port(0, DummyProtocol(), "127.0.0.1")
@@ -405,7 +407,7 @@ class TestPort(MAASTestCase):
 
 class TestUDPServer(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__getPort_calls__listenUDP_with_args_from_constructor(self):
         server = UDPServer(sentinel.foo, bar=sentinel.bar)

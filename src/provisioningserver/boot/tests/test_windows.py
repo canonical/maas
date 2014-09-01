@@ -23,7 +23,10 @@ import urllib2
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 import mock
 from provisioningserver.boot import (
     BootMethodError,
@@ -36,7 +39,6 @@ from provisioningserver.boot.windows import (
     )
 from provisioningserver.config import Config
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import context
@@ -149,7 +151,7 @@ class TestBcd(MAASTestCase):
 
 class TestWindowsPXEBootMethod(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         self.patch(Config, 'load_from_cache')

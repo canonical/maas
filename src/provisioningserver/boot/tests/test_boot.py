@@ -20,7 +20,10 @@ import os
 from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 import mock
 from provisioningserver import (
     boot,
@@ -35,7 +38,6 @@ from provisioningserver.boot import (
     )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 import tempita
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import context
 
@@ -60,7 +62,7 @@ class FakeBootMethod(BootMethod):
 class TestBootMethod(MAASTestCase):
     """Test for `BootMethod` in `provisioningserver.boot`."""
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @inlineCallbacks
     def test_get_remote_mac(self):

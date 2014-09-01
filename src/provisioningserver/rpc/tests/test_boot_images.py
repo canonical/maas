@@ -18,6 +18,7 @@ import os
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import MAASTwistedRunTest
 from mock import sentinel
 from provisioningserver.boot import tftppath
 from provisioningserver.config import Config
@@ -30,7 +31,6 @@ from provisioningserver.rpc.boot_images import (
     )
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from twisted.internet import defer
 
 
@@ -114,7 +114,7 @@ class TestRunImport(PservTestCase):
 
 class TestImportBootImages(PservTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
     def test__calls__run_import_using_deferToThread(self):

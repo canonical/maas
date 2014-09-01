@@ -18,7 +18,10 @@ __all__ = [
 import random
 
 from maastesting.factory import factory
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     ANY,
     call,
@@ -33,7 +36,6 @@ from provisioningserver.rpc import region
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.utils.enum import map_enum
-from testtools.deferredruntest import AsynchronousDeferredRunTest
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -52,7 +54,7 @@ class TestEvents(MAASTestCase):
 
 class TestSendEvent(MAASTestCase):
 
-    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self, side_effect=None):
         fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
@@ -81,6 +83,7 @@ class TestSendEvent(MAASTestCase):
             protocol.SendEvent.call_args_list,
         )
 
+    @inlineCallbacks
     def test_send_node_event_registers_event_type(self):
         protocol, connecting = self.patch_rpc_methods(
             side_effect=[NoSuchEventType, {}])
