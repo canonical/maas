@@ -4,7 +4,7 @@
 # Control a system via amttool
 #
 # Parameters.  Don't quote these: the templating system will quote as needed,
-# so adding quotes of our own might cause double-quoating.
+# so adding quotes of our own might cause double-quoting.
 power_address={{power_address}}
 power_change={{power_change}}
 power_pass={{power_pass}}
