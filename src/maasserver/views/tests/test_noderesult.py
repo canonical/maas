@@ -27,12 +27,8 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
 from maasserver.views.noderesult import NodeCommissionResultListView
 from mock import Mock
+from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import HasLength
-
-
-def normalise_whitespace(text):
-    """Replace any whitespace sequence with just a single space."""
-    return ' '.join(text.split())
 
 
 def extract_field(doc, field_name, containing_tag='span'):

@@ -82,6 +82,7 @@ from metadataserver.models.commissioningscript import (
     LLDP_OUTPUT_NAME,
     )
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import ContainsAll
 
 
@@ -592,7 +593,7 @@ class NodeViewsTest(MAASServerTestCase):
         [interface] = interfaces_list.cssselect('li')
         self.assertEqual(
             "%s (on %s)" % (mac.mac_address, network.name),
-            ' '.join(interface.text_content().split()))
+            normalise_whitespace(interface.text_content()))
         [link] = interface.cssselect('a')
         self.assertEqual(network.name, link.text_content().strip())
         self.assertEqual(
@@ -615,7 +616,7 @@ class NodeViewsTest(MAASServerTestCase):
         [interface] = interfaces_list.cssselect('li')
         self.assertEqual(
             "%s (on %s)" % (mac.mac_address, ', '.join(sorted_names)),
-            ' '.join(interface.text_content().split()))
+            normalise_whitespace(interface.text_content()))
 
     def test_view_node_displays_link_to_edit_if_user_owns_node(self):
         self.client_log_in()
@@ -1340,10 +1341,6 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         else:
             self.fail("Found more than one link: %s" % links)
 
-    def normalise_whitespace(self, text):
-        """Return a version of `text` where all whitespace is single spaces."""
-        return ' '.join(text.split())
-
     def test_view_node_links_to_commissioning_results_if_appropriate(self):
         self.client_log_in(as_admin=True)
         result = factory.make_node_commission_result()
@@ -1373,7 +1370,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         link = self.get_results_link(section)
         self.assertEqual(
             "1 output file",
-            self.normalise_whitespace(link.text_content()))
+            normalise_whitespace(link.text_content()))
 
     def test_view_node_shows_commissioning_results_requires_edit_perm(self):
         password = 'test'
@@ -1394,7 +1391,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         link = self.get_results_link(section)
         self.assertEqual(
             "1 output file",
-            self.normalise_whitespace(link.text_content()))
+            normalise_whitespace(link.text_content()))
 
     def test_view_node_shows_multiple_commissioning_results(self):
         self.client_log_in(as_admin=True)
@@ -1407,7 +1404,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         link = self.get_results_link(section)
         self.assertEqual(
             "%d output files" % num_results,
-            self.normalise_whitespace(link.text_content()))
+            normalise_whitespace(link.text_content()))
 
     def test_view_node_shows_installing_results_only_if_present(self):
         self.client_log_in(as_admin=True)
@@ -1425,8 +1422,9 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         section = self.request_results_display(
             result.node, RESULT_TYPE.INSTALLING)
         link = self.get_results_link(section)
-        self.assertIsNotNone(
-            self.normalise_whitespace(link.text_content()))
+        self.assertNotIn(
+            normalise_whitespace(link.text_content()),
+            ('', None))
 
     def test_view_node_shows_installing_results_requires_edit_perm(self):
         password = 'test'
