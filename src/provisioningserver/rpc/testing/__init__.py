@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "always_succeed_with",
     "are_valid_tls_parameters",
     "call_responder",
     "make_amp_protocol_factory",
@@ -26,6 +27,7 @@ from abc import (
     abstractmethod,
     )
 import collections
+from copy import copy
 import itertools
 import operator
 from os import path
@@ -121,8 +123,6 @@ class TwistedLoggerFixture(Fixture):
 
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
-        self.addCleanup(
-            operator.setitem, self.logs, slice(None), [])
         self.addCleanup(
             operator.setitem, log.theLogPublisher.observers,
             slice(None), log.theLogPublisher.observers[:])
@@ -427,3 +427,14 @@ def make_amp_protocol_factory(*commands):
     cls = type(name, (amp.AMP,), {"__init__": __init__})
 
     return cls
+
+
+def always_succeed_with(result):
+    """Return a callable that always returns a successful Deferred.
+
+    The callable allows (and ignores) all arguments, and returns a shallow
+    `copy` of `result`.
+    """
+    def always_succeed(*args, **kwargs):
+        return defer.succeed(copy(result))
+    return always_succeed
