@@ -209,20 +209,23 @@ class TestDeleteNodeAction(MAASServerTestCase):
 
 class TestCommissionNodeAction(MAASServerTestCase):
 
+    scenarios = (
+        ("NEW", {"status": NODE_STATUS.NEW}),
+        ("FAILED_TESTS", {"status": NODE_STATUS.FAILED_TESTS}),
+        ("READY", {"status": NODE_STATUS.READY}),
+    )
+
     def test_Commission_starts_commissioning(self):
-        statuses = (
-            NODE_STATUS.NEW, NODE_STATUS.FAILED_TESTS,
-            NODE_STATUS.READY)
-        for status in statuses:
-            node = factory.make_node(
-                mac=True, status=status,
-                power_type='ether_wake')
-            action = Commission(node, factory.make_admin())
-            action.execute()
-            self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-            self.assertEqual(
-                'provisioningserver.tasks.power_on',
-                self.celery.tasks[0]['task'].name)
+        node = factory.make_node(
+            mac=True, status=self.status,
+            power_type='ether_wake')
+        admin = factory.make_admin()
+        action = Commission(node, admin)
+        action.execute()
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+        self.assertEqual(
+            'provisioningserver.tasks.power_on',
+            self.celery.tasks[0]['task'].name)
 
 
 class TestAbortCommissioningNodeAction(MAASServerTestCase):
