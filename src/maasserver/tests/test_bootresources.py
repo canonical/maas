@@ -1018,14 +1018,20 @@ class TestImportImages(MAASTestCase):
         self.assertFalse(bootresources.has_synced_resources())
 
     def test__import_resources_exists_early_without_force(self):
-        fake_lock = self.patch(bootresources.locks, 'import_images')
+        has_synced_resources = self.patch(
+            bootresources, "has_synced_resources")
         bootresources._import_resources(force=False)
-        self.assertThat(fake_lock.is_locked, MockNotCalled())
+        # The test for already-synced resources is not performed if we're
+        # forcing a sync.
+        self.assertThat(has_synced_resources, MockCalledOnceWith())
 
     def test__import_resources_continues_with_force(self):
-        fake_lock = self.patch(bootresources.locks, 'import_images')
+        has_synced_resources = self.patch(
+            bootresources, "has_synced_resources")
         bootresources._import_resources(force=True)
-        self.assertThat(fake_lock.is_locked, MockCalledOnceWith())
+        # The test for already-synced resources is performed if we're not
+        # forcing a sync.
+        self.assertThat(has_synced_resources, MockNotCalled())
 
     def test__import_resources_holds_lock(self):
         fake_write_all_keyrings = self.patch(

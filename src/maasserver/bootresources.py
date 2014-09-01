@@ -23,11 +23,9 @@ __all__ = [
 import threading
 import time
 
-from crochet import run_in_reactor
 from django.db import (
     close_old_connections,
     connections,
-    transaction,
     )
 from django.db.utils import load_backend
 from django.http import (
@@ -71,6 +69,7 @@ from simplestreams.mirrors import (
     )
 from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
+from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
 
 
@@ -815,12 +814,14 @@ def download_all_boot_resources(sources, product_mapping, store=None):
     store.finalize()
 
 
+@transactional
 def has_synced_resources():
     """Return true if SYNCED `BootResource` exist."""
     return BootResource.objects.filter(
         rtype=BOOT_RESOURCE_TYPE.SYNCED).exists()
 
 
+@transactional
 def hold_lock_thread(kill_event, run_event):
     """Hold the import images database lock inside of this running thread.
 
@@ -831,13 +832,9 @@ def hold_lock_thread(kill_event, run_event):
     `run_event` will be set once the lock is held. No database operations
     should occur until the `run_event` is set.
     """
-    try:
-        with transaction.atomic():
-            with locks.import_images:
-                run_event.set()
-                kill_event.wait()
-    finally:
-        close_old_connections()
+    with locks.import_images:
+        run_event.set()
+        kill_event.wait()
 
 
 @synchronous
@@ -851,11 +848,10 @@ def _import_resources(force=False):
         exist. This is used because we want the user to start the first import
         action, not let it run automatically.
     """
-    with transaction.atomic():
-        if not has_synced_resources() and not force:
-            return
-        if locks.import_images.is_locked():
-            return
+    # If we're not being forced, don't sync unless we've already done it once
+    # before, i.e. we've been asked to explicitly sync by a user.
+    if not force and not has_synced_resources():
+        return
 
     # Event will be triggered when the lock thread should exit,
     # causing the lock to be released.
@@ -869,6 +865,7 @@ def _import_resources(force=False):
     lock_thread = threading.Thread(
         target=hold_lock_thread,
         args=(kill_event, run_event))
+    lock_thread.daemon = True
     lock_thread.start()
 
     # Wait unti the thread says that the lock is held.
@@ -904,10 +901,8 @@ def _import_resources(force=False):
     finally:
         kill_event.set()
         lock_thread.join()
-        close_old_connections()
 
 
-@run_in_reactor
 def import_resources():
     """Starts the importing of boot resources.
 
@@ -915,7 +910,7 @@ def import_resources():
     doesn't wait for it to be finished, as it can take several minutes to
     complete.
     """
-    deferToThread(_import_resources, force=True)
+    reactor.callFromThread(deferToThread, _import_resources, force=True)
 
 
 class ImportResourcesService(TimerService, object):
