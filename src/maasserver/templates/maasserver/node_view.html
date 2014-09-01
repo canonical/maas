@@ -240,11 +240,14 @@
         </li>
       {% endif %}
     {% endif %}
-    <li class="block first separate">
+    <li class="block first separate" id="node-events">
       <h2>Latest node events</h2>
       {% include "maasserver/node_event_list_snippet.html" %}
       {% if event_count != 0 %}
-        <a href="{% url 'node-event-list-view' object.system_id %}">Full node event log ({{ event_count }} events).</a>
+        <a href="{% url 'node-event-list-view' object.system_id %}">
+          Full node event log
+          ({{ event_count }} event{{ event_count|pluralize }}).
+        </a>
       {% endif %}
     </li>
     {% if probed_details %}

@@ -1197,6 +1197,34 @@ class NodeViewsTest(MAASServerTestCase):
             events_displayed[0].text_content().strip(),
         )
 
+    def test_node_view_links_to_node_event_log(self):
+        self.client_log_in()
+        node = factory.make_node()
+        factory.make_event(node=node)
+        response = self.client.get(
+            reverse('node-view', args=[node.system_id]))
+        self.assertIn("Latest node events", response.content)
+        document = fromstring(response.content)
+        [events_section] = document.xpath("//li[@id='node-events']")
+        self.assertIn(
+            "Full node event log (1 event).",
+            ' '.join(events_section.text_content().split()))
+
+    def test_node_view_pluralises_link_to_node_event_log(self):
+        self.client_log_in()
+        node = factory.make_node()
+        num_events = randint(2, 3)
+        for _ in range(num_events):
+            factory.make_event(node=node)
+        response = self.client.get(
+            reverse('node-view', args=[node.system_id]))
+        self.assertIn("Latest node events", response.content)
+        document = fromstring(response.content)
+        [events_section] = document.xpath("//li[@id='node-events']")
+        self.assertIn(
+            "Full node event log (%d events)." % num_events,
+            ' '.join(events_section.text_content().split()))
+
     def test_node_view_contains_link_to_node_event_log(self):
         self.client_log_in()
         node = factory.make_node()
