@@ -1184,6 +1184,7 @@ def create_Network_from_NodeGroupInterface(interface):
         name=name,
         ip=unicode(ipnetwork.network),
         netmask=unicode(ipnetwork.netmask),
+        default_gateway=interface.router_ip,
         vlan_tag=vlan_tag,
         description=(
             "Auto created when creating interface %s on cluster "

@@ -77,6 +77,7 @@ from testresources import FixtureResource
 from testtools.matchers import (
     AllMatch,
     Equals,
+    MatchesStructure,
     )
 
 
@@ -891,6 +892,12 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         for net, mac in expected_relations:
             [observed_macddress] = net.macaddress_set.all()
             self.expectThat(mac, Equals(observed_macddress))
+            interface = mac_addresses[mac]
+            self.expectThat(
+                net, MatchesStructure.byEquality(
+                    default_gateway=interface.router_ip,
+                    netmask=interface.subnet_mask,
+                ))
 
     def test_does_not_overwrite_network_with_same_name(self):
         cluster = factory.make_node_group()

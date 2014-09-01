@@ -244,6 +244,10 @@ class Network(CleanSave, Model):
         blank=False, editable=True, null=False,
         help_text="Network mask (e.g. 255.255.255.0).")
 
+    default_gateway = MAASIPAddressField(
+        blank=True, editable=True, null=True,
+        help_text="Default gateway for this network (e.g. 192.168.1.1).")
+
     vlan_tag = PositiveSmallIntegerField(
         editable=True, null=True, blank=True, unique=True,
         help_text="A 12-bit field specifying the VLAN to which the frame "
