@@ -37,7 +37,7 @@ from twisted.internet.defer import (
     returnValue,
     )
 from twisted.internet.threads import deferToThread
-from twisted.spread.pb import NoSuchMethod
+from twisted.protocols.amp import UnhandledCommand
 
 
 maaslog = get_maas_logger("dhcp.probe")
@@ -68,7 +68,7 @@ class PeriodicDHCPProbeService(TimerService, object):
         try:
             response = yield client(
                 GetClusterInterfaces, cluster_uuid=self.uuid)
-        except NoSuchMethod:
+        except UnhandledCommand:
             # The region hasn't been upgraded to support this method
             # yet, so give up. Returning an empty dict means that this
             # run will end, since there are no interfaces to check.
@@ -92,9 +92,8 @@ class PeriodicDHCPProbeService(TimerService, object):
         try:
             yield client(
                 ReportForeignDHCPServer, cluster_uuid=self.uuid,
-                name=name,
-                foreign_dhcp_ip=foreign_dhcp_ip)
-        except NoSuchMethod:
+                interface_name=name, foreign_dhcp_ip=foreign_dhcp_ip)
+        except UnhandledCommand:
             # Not a lot we can do here... The region doesn't support
             # this method yet.
             maaslog.error(
@@ -135,10 +134,10 @@ class PeriodicDHCPProbeService(TimerService, object):
                     # next detection pass will send a different one, if it
                     # still exists.
                     yield self._inform_region_of_foreign_dhcp(
-                        client, interface, servers.pop())
+                        client, interface['name'], servers.pop())
                 else:
                     yield self._inform_region_of_foreign_dhcp(
-                        client, interface, None)
+                        client, interface['name'], None)
 
     @inlineCallbacks
     def try_probe_dhcp(self):

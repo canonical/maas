@@ -238,7 +238,7 @@ class ReportForeignDHCPServer(amp.Command):
     arguments = [
         (b"cluster_uuid", amp.Unicode()),
         (b"interface_name", amp.Unicode()),
-        (b"foreign_dhcp_ip", amp.Unicode()),
+        (b"foreign_dhcp_ip", amp.Unicode(optional=True)),
     ]
     response = []
     errors = []
