@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maasserver.dns import config as dns_config_module
 from maasserver.forms import NetworkForm
 from maasserver.models import (
     MACAddress,
@@ -22,6 +23,7 @@ from maasserver.models import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
 
 
@@ -140,3 +142,26 @@ class TestNetworkForm(MAASServerTestCase):
                 'netmask': [message],
             },
             form.errors)
+
+    def test_writes_dns_when_network_edited(self):
+        write_full_dns_config = self.patch(
+            dns_config_module, "write_full_dns_config")
+        network = factory.getRandomNetwork()
+        name = factory.make_name('network')
+        definition = {
+            'name': name,
+            'description': factory.make_string(),
+            'ip': "%s" % network.cidr.ip,
+            'netmask': "%s" % network.netmask,
+            'vlan_tag': factory.make_vlan_tag(),
+        }
+        form = NetworkForm(data=definition)
+        form.save()
+        self.assertThat(write_full_dns_config, MockCalledOnceWith())
+
+    def test_writes_dns_when_network_deleted(self):
+        network = factory.make_network()
+        write_full_dns_config = self.patch(
+            dns_config_module, "write_full_dns_config")
+        network.delete()
+        self.assertThat(write_full_dns_config, MockCalledOnceWith())

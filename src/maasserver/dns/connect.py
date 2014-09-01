@@ -24,6 +24,7 @@ from django.dispatch import receiver
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models import (
     Config,
+    Network,
     Node,
     NodeGroup,
     NodeGroupInterface,
@@ -99,6 +100,19 @@ connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
+    from maasserver.dns.config import write_full_dns_config
+    write_full_dns_config()
+
+
+@receiver(post_save, sender=Network)
+def dns_post_save_Network(sender, instance, **kwargs):
+    """When a network is added/changed, put it in the DNS trusted networks."""
+    from maasserver.dns.config import write_full_dns_config
+    write_full_dns_config()
+
+
+@receiver(post_delete, sender=Network)
+def dns_post_delete_Network(sender, instance, **kwargs):
     from maasserver.dns.config import write_full_dns_config
     write_full_dns_config()
 
