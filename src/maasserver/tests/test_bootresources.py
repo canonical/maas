@@ -45,6 +45,7 @@ from maasserver.models import (
     BootResourceSet,
     BootSource,
     BootSourceSelection,
+    Config,
     LargeFile,
     )
 from maasserver.testing.factory import factory
@@ -975,6 +976,18 @@ class TestBootResourceTransactional(TransactionTestCase):
 
 class TestImportImages(MAASTestCase):
 
+    def patch_and_capture_env_for_download_all_boot_resources(self):
+        class CaptureEnv:
+            """Fake function; records a copy of the environment."""
+
+            def __call__(self, *args, **kwargs):
+                self.args = args
+                self.env = environ.copy()
+
+        capture = self.patch(
+            bootresources, 'download_all_boot_resources', CaptureEnv())
+        return capture
+
     def test_download_boot_resources_syncs_repo(self):
         fake_sync = self.patch(bootresources.BootResourceRepoWriter, 'sync')
         store = BootResourceStore()
@@ -1082,21 +1095,29 @@ class TestImportImages(MAASTestCase):
         descriptions.is_empty.return_value = False
         fake_image_descriptions.return_value = descriptions
         self.patch(bootresources, 'map_products')
-
-        class CaptureEnv:
-            """Fake function; records a copy of the environment."""
-
-            def __call__(self, *args, **kwargs):
-                self.args = args
-                self.env = environ.copy()
-
-        fake_download = self.patch(
-            bootresources, 'download_all_boot_resources', CaptureEnv())
+        capture = self.patch_and_capture_env_for_download_all_boot_resources()
 
         bootresources._import_resources(force=True)
         self.assertEqual(
             bootresources.get_maas_user_gpghome(),
-            fake_download.env['GNUPGHOME'])
+            capture.env['GNUPGHOME'])
+
+    def test__import_resources_has_env_http_and_https_proxy_set(self):
+        proxy_address = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy_address)
+
+        fake_image_descriptions = self.patch(
+            bootresources, 'download_all_image_descriptions')
+        descriptions = Mock()
+        descriptions.is_empty.return_value = False
+        fake_image_descriptions.return_value = descriptions
+        self.patch(bootresources, 'map_products')
+        capture = self.patch_and_capture_env_for_download_all_boot_resources()
+
+        bootresources._import_resources(force=True)
+        self.assertEqual(
+            (proxy_address, proxy_address),
+            (capture.env['http_proxy'], capture.env['http_proxy']))
 
     def test__import_resources_calls_import_boot_images_on_clusters(self):
         nodegroup = MagicMock()

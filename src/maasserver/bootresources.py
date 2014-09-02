@@ -43,6 +43,7 @@ from maasserver.models import (
     BootResourceSet,
     BootSource,
     BootSourceSelection,
+    Config,
     LargeFile,
     NodeGroup,
     )
@@ -880,6 +881,10 @@ def _import_resources(force=False):
         variables = {
             'GNUPGHOME': get_maas_user_gpghome(),
             }
+        http_proxy = Config.objects.get_config('http_proxy')
+        if http_proxy is not None:
+            variables['http_proxy'] = http_proxy
+            variables['https_proxy'] = http_proxy
         with environment_variables(variables):
             maaslog.info("Started importing of boot resources.")
             sources = [source.to_dict() for source in BootSource.objects.all()]
