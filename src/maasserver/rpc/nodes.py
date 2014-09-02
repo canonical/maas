@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "mark_node_broken",
+    "mark_node_failed",
     "update_node_power_state",
 ]
 
@@ -32,8 +32,8 @@ from provisioningserver.utils.twisted import synchronous
 
 @synchronous
 @transactional
-def mark_node_broken(system_id, error_description):
-    """Mark a node as broken.
+def mark_node_failed(system_id, error_description):
+    """Mark a node as failed.
 
     for :py:class:`~provisioningserver.rpc.region.MarkBroken`.
     """
@@ -41,7 +41,7 @@ def mark_node_broken(system_id, error_description):
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
-    node.mark_broken(error_description)
+    node.mark_failed(error_description)
 
 
 @synchronous

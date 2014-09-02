@@ -659,16 +659,6 @@ class NodeTest(MAASServerTestCase):
             (NODE_STATUS.READY, None, node.agent_name),
             (node.status, node.owner, ''))
 
-    def test_release_does_not_mark_broken_node_ready(self):
-        agent_name = factory.make_name('agent-name')
-        node = factory.make_node(
-            status=NODE_STATUS.BROKEN, owner=factory.make_user(),
-            agent_name=agent_name)
-        node.release()
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, None, node.agent_name),
-            (node.status, node.owner, ''))
-
     def test_release_deletes_static_ip_host_maps(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
@@ -1159,16 +1149,41 @@ class NodeTest(MAASServerTestCase):
         observed = node.mac_addresses_on_managed_interfaces()
         self.assertItemsEqual([], observed)
 
-    def test_mark_broken_changes_status(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
-        node.mark_broken(factory.make_name('error-description'))
-        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
+    failed_statuses_mapping = {
+        NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
+    }
 
-    def test_mark_broken_updates_error_description(self):
+    def test_mark_failed_updates_status(self):
+        nodes_mapping = {
+            status: factory.make_node(status=status)
+            for status in self.failed_statuses_mapping
+        }
+        for node in nodes_mapping.values():
+            node.mark_failed(factory.make_name('error-description'))
+        self.assertEqual(
+            self.failed_statuses_mapping,
+            {status: node.status for status, node in nodes_mapping.items()})
+
+    def test_mark_failed_updates_error_description(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
         description = factory.make_name('error-description')
-        node.mark_broken(description)
+        node.mark_failed(description)
         self.assertEqual(description, reload_object(node).error_description)
+
+    def test_mark_failed_raises_for_unauthorized_node_status(self):
+        status = factory.pick_choice(
+            NODE_STATUS_CHOICES,
+            but_not=self.failed_statuses_mapping.keys())
+        node = factory.make_node(status=status)
+        description = factory.make_name('error-description')
+        self.assertRaises(NodeStateViolation, node.mark_failed, description)
+
+    def test_mark_broken_changes_status_to_broken(self):
+        node = factory.make_node(
+            status=NODE_STATUS.NEW, owner=factory.make_user())
+        node.mark_broken(factory.make_name('error-description'))
+        self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_mark_broken_releases_allocated_node(self):
         node = factory.make_node(

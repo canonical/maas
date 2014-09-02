@@ -407,9 +407,6 @@ class NodeHandler(OperationsHandler):
         error_description = get_optional_param(
             request.POST, 'error_description', '')
         node.mark_broken(error_description)
-        maaslog.info(
-            "%s: User %s marked node as broken", node.hostname,
-            request.user.username)
         return node
 
     @operation(idempotent=False)

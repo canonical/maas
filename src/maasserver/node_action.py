@@ -316,7 +316,7 @@ class ReleaseNode(NodeAction):
     display_bulk = "Release selected nodes"
     actionable_statuses = (
         NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
-        NODE_STATUS.DEPLOYING)
+        NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT)
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):
@@ -333,7 +333,8 @@ class MarkBroken(NodeAction):
     display = "Mark node as broken"
     display_bulk = "Mark selected nodes as broken"
     actionable_statuses = (
-        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING, NODE_STATUS.ALLOCATED)
+        NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.ALLOCATED, NODE_STATUS.FAILED_DEPLOYMENT)
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):

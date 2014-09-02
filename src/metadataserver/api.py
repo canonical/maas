@@ -174,13 +174,14 @@ class VersionIndexHandler(MetadataViewHandler):
 
     # States in which a node is allowed to signal
     # commissioning/installing status.
-    # (Only in Commissioning/Allocated state, however,
+    # (Only in Commissioning/Deploying state, however,
     # will it have any effect.)
     signalable_states = [
-        NODE_STATUS.ALLOCATED,
         NODE_STATUS.BROKEN,
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.READY,
         ]
 
@@ -258,19 +259,19 @@ class VersionIndexHandler(MetadataViewHandler):
                 "Unknown commissioning/installing status: '%s'" % status)
 
         if node.status != NODE_STATUS.COMMISSIONING and \
-           node.status != NODE_STATUS.ALLOCATED:
+           node.status != NODE_STATUS.DEPLOYING:
             # If commissioning, it is already registered.  Nothing to be done.
-            # If it is installing, should be in allocated state.
+            # If it is installing, should be in deploying state.
             return rc.ALL_OK
 
         if node.status == NODE_STATUS.COMMISSIONING:
             self._store_commissioning_results(node, request)
             store_node_power_parameters(node, request)
             target_status = self.signaling_statuses.get(status)
-        elif node.status == NODE_STATUS.ALLOCATED:
+        elif node.status == NODE_STATUS.DEPLOYING:
             self._store_installing_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
-                node.mark_broken("Failed to get installation result.")
+                node.mark_failed("Failed to get installation result.")
             target_status = None
 
         if target_status in (None, node.status):

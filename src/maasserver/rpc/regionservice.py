@@ -166,15 +166,15 @@ class Region(amp.AMP):
         d = deferToThread(configuration.get_proxies)
         return d
 
-    @region.MarkNodeBroken.responder
-    def mark_node_broken(self, system_id, error_description):
-        """mark_node_broken()
+    @region.MarkNodeFailed.responder
+    def mark_node_failed(self, system_id, error_description):
+        """mark_node_failed()
 
         Implementation of
-        :py:class:`~provisioningserver.rpc.region.MarkNodeBroken`.
+        :py:class:`~provisioningserver.rpc.region.MarkNodeFailed`.
         """
         d = deferToThread(
-            nodes.mark_node_broken, system_id, error_description)
+            nodes.mark_node_failed, system_id, error_description)
         d.addCallback(lambda args: {})
         return d
 

@@ -382,16 +382,17 @@ class TestNodeAPI(APITestCase):
             [NODE_STATUS.READY] * len(owned_nodes),
             [node.status for node in reload_objects(Node, owned_nodes)])
 
-    def test_POST_release_releases_broken_node(self):
+    def test_POST_release_releases_failed_node(self):
         owned_node = factory.make_node(
-            owner=self.logged_in_user, status=NODE_STATUS.BROKEN)
+            owner=self.logged_in_user,
+            status=NODE_STATUS.FAILED_DEPLOYMENT)
         response = self.client.post(
             self.get_node_uri(owned_node), {'op': 'release'})
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         owned_node = Node.objects.get(id=owned_node.id)
         self.assertEqual(
-            (NODE_STATUS.BROKEN, None),
+            (NODE_STATUS.READY, None),
             (owned_node.status, owned_node.owner))
 
     def test_POST_release_turns_on_netboot(self):
@@ -467,7 +468,6 @@ class TestNodeAPI(APITestCase):
             for status in map_enum(NODE_STATUS).values()
             if status not in releasable_statuses
         ]
-
         nodes = [
             factory.make_node(status=status, owner=self.logged_in_user)
             for status in unreleasable_statuses]

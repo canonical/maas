@@ -29,7 +29,7 @@ from provisioningserver.power.poweraction import (
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import (
-    MarkNodeBroken,
+    MarkNodeFailed,
     UpdateNodePowerState,
     )
 from provisioningserver.utils.twisted import pause
@@ -61,7 +61,7 @@ def power_change_failure(system_id, hostname, power_change, message):
         power_change, hostname, system_id)
     client = getRegionClient()
     yield client(
-        MarkNodeBroken,
+        MarkNodeFailed,
         system_id=system_id,
         error_description=message,
     )
@@ -180,7 +180,7 @@ def power_query_failure(system_id, hostname, message):
     maaslog.error(message)
     client = getRegionClient()
     yield client(
-        MarkNodeBroken,
+        MarkNodeFailed,
         system_id=system_id,
         error_description=message,
     )

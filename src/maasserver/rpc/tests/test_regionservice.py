@@ -82,7 +82,7 @@ from provisioningserver.rpc.region import (
     GetProxies,
     Identify,
     ListNodePowerParameters,
-    MarkNodeBroken,
+    MarkNodeFailed,
     RegisterEventType,
     ReportBootImages,
     ReportForeignDHCPServer,
@@ -436,16 +436,16 @@ class TestRegionProtocol_GetProxies(MAASTestCase):
             response)
 
 
-class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
+class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
 
-    def test_mark_broken_is_registered(self):
+    def test_mark_failed_is_registered(self):
         protocol = Region()
-        responder = protocol.locateResponder(MarkNodeBroken.commandName)
+        responder = protocol.locateResponder(MarkNodeFailed.commandName)
         self.assertIsNot(responder, None)
 
     @transactional
-    def create_broken_node(self):
-        node = factory.make_node(status=NODE_STATUS.BROKEN)
+    def create_deploying_node(self):
+        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
         return node.system_id
 
     @transactional
@@ -460,12 +460,12 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_mark_node_broken_changes_status_and_updates_error_msg(self):
-        system_id = yield deferToThread(self.create_broken_node)
+    def test_mark_node_failed_changes_status_and_updates_error_msg(self):
+        system_id = yield deferToThread(self.create_deploying_node)
 
         error_description = factory.make_name('error-description')
         response = yield call_responder(
-            Region(), MarkNodeBroken,
+            Region(), MarkNodeFailed,
             {b'system_id': system_id, b'error_description': error_description})
 
         self.assertEqual({}, response)
@@ -473,16 +473,16 @@ class TestRegionProtocol_MarkNodeBroken(MAASTestCase):
         new_error_description = yield deferToThread(
             self.get_node_error_description, system_id)
         self.assertEqual(
-            (NODE_STATUS.BROKEN, error_description),
+            (NODE_STATUS.FAILED_DEPLOYMENT, error_description),
             (new_status, new_error_description))
 
     @wait_for_reactor
-    def test_mark_node_broken_errors_if_node_cannot_be_found(self):
+    def test_mark_node_failed_errors_if_node_cannot_be_found(self):
         system_id = factory.make_name('unknown-system-id')
         error_description = factory.make_name('error-description')
 
         d = call_responder(
-            Region(), MarkNodeBroken,
+            Region(), MarkNodeFailed,
             {b'system_id': system_id, b'error_description': error_description})
 
         def check(error):

@@ -170,6 +170,12 @@ NODE_TRANSITIONS = {
         NODE_STATUS.DEPLOYED,
         NODE_STATUS.READY,
     ],
+    NODE_STATUS.FAILED_DEPLOYMENT: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.READY,
+    ],
     NODE_STATUS.DEPLOYED: [
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.MISSING,
@@ -548,6 +554,7 @@ RELEASABLE_STATUSES = [
     NODE_STATUS.BROKEN,
     NODE_STATUS.DEPLOYING,
     NODE_STATUS.DEPLOYED,
+    NODE_STATUS.FAILED_DEPLOYMENT,
     ]
 
 
@@ -1298,13 +1305,7 @@ class Node(CleanSave, TimestampedModel):
         self.delete_static_host_maps(deallocated_ips)
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
-        # Belt-and-braces: we should never reach a point where the node
-        # is BROKEN and still allocated, since mark_broken() releases
-        # the node anyway, but bug 1351451 seemed to suggest that it was
-        # possible. This can be removed if that proves not to be the
-        # case.
-        if self.status != NODE_STATUS.BROKEN:
-            self.status = NODE_STATUS.READY
+        self.status = NODE_STATUS.READY
         self.owner = None
         self.token = None
         self.agent_name = ''
@@ -1335,13 +1336,33 @@ class Node(CleanSave, TimestampedModel):
         arch, subarch = self.architecture.split('/')
         return (arch, subarch)
 
+    def mark_failed(self, error_description):
+        """Mark this node as failed.
+
+        The actual 'failed' state depends on the current status of the
+        node.
+        """
+        # Mapping: status -> corresponding failed status.
+        failed_statuses_mapping = {
+            NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
+            NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
+        }
+        if self.status in failed_statuses_mapping:
+            self.status = failed_statuses_mapping[self.status]
+            self.error_description = error_description
+            self.save()
+        else:
+            raise NodeStateViolation(
+                "The status of the node is %s; this status cannot "
+                "be transitioned to a corresponding failed status." %
+                self.status)
+
     def mark_broken(self, error_description):
         """Mark this node as 'BROKEN'.
 
         If the node is allocated, release it first.
         """
-        maaslog.info("%s: Marking node broken", self.hostname)
-        if self.status == NODE_STATUS.ALLOCATED:
+        if self.status in RELEASABLE_STATUSES:
             self.release()
         self.status = NODE_STATUS.BROKEN
         self.error_description = error_description

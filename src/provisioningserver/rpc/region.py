@@ -17,7 +17,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "Identify",
-    "MarkNodeBroken",
+    "MarkNodeFailed",
     "ReportBootImages",
     "UpdateNodePowerState",
 ]
@@ -135,7 +135,7 @@ class GetProxies(amp.Command):
     errors = []
 
 
-class MarkNodeBroken(amp.Command):
+class MarkNodeFailed(amp.Command):
     """Mark a node as 'broken'.
 
     :since: 1.7

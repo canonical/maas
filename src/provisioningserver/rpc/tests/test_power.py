@@ -60,7 +60,7 @@ class TestPowerHelpers(MAASTestCase):
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
-            region.MarkNodeBroken, region.UpdateNodePowerState,
+            region.MarkNodeFailed, region.UpdateNodePowerState,
             region.SendEvent)
         return protocol, io
 
@@ -155,7 +155,7 @@ class TestPowerHelpers(MAASTestCase):
         io.flush()
         self.assertTrue(d.called)
         self.assertThat(
-            protocol.MarkNodeBroken,
+            protocol.MarkNodeFailed,
             MockCalledOnceWith(
                 ANY,
                 system_id=system_id,
@@ -215,11 +215,11 @@ class TestChangePowerChange(MAASTestCase):
     def patch_rpc_methods(self, return_value={}, side_effect=None):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
-            region.MarkNodeBroken, region.UpdateNodePowerState,
+            region.MarkNodeFailed, region.UpdateNodePowerState,
             region.SendEvent)
-        protocol.MarkNodeBroken.return_value = return_value
-        protocol.MarkNodeBroken.side_effect = side_effect
-        return protocol.MarkNodeBroken, io
+        protocol.MarkNodeFailed.return_value = return_value
+        protocol.MarkNodeFailed.side_effect = side_effect
+        return protocol.MarkNodeFailed, io
 
     def test_change_power_state_changes_power_state(self):
         system_id = factory.make_name('system_id')
@@ -444,10 +444,10 @@ class TestPowerQuery(MAASTestCase):
     def patch_rpc_methods(self, return_value={}, side_effect=None):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
         protocol, io = fixture.makeEventLoop(
-            region.MarkNodeBroken, region.SendEvent)
-        protocol.MarkNodeBroken.return_value = return_value
-        protocol.MarkNodeBroken.side_effect = side_effect
-        return protocol.SendEvent, protocol.MarkNodeBroken, io
+            region.MarkNodeFailed, region.SendEvent)
+        protocol.MarkNodeFailed.return_value = return_value
+        protocol.MarkNodeFailed.side_effect = side_effect
+        return protocol.SendEvent, protocol.MarkNodeFailed, io
 
     def test_get_power_state_querys_node(self):
         system_id = factory.make_name('system_id')
