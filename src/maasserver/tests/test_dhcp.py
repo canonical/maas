@@ -630,3 +630,17 @@ class TestDHCPConnect(MAASServerTestCase):
         self.assertEqual(
             num_active_nodegroups,
             dhcp.write_dhcp_config.apply_async.call_count)
+
+    def test_dhcp_config_gets_written_when_managed_interface_is_deleted(self):
+        configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
+        self.patch(dhcp, 'configure_dhcpv6')
+        interface = factory.make_node_group_interface(
+            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.patch(settings, "DHCP_CONNECT", True)
+
+        interface.delete()
+
+        self.assertThat(
+            configure_dhcpv4,
+            MockCalledOnceWith(interface.nodegroup, ANY, ANY))

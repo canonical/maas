@@ -16,6 +16,11 @@ __all__ = [
     ]
 
 
+from django.db.models.signals import post_delete
+from maasserver.enum import (
+    NODEGROUP_STATUS,
+    NODEGROUPINTERFACE_MANAGEMENT,
+    )
 from maasserver.models import (
     Config,
     NodeGroup,
@@ -75,3 +80,19 @@ def ntp_server_changed(sender, instance, created, **kwargs):
 
 
 Config.objects.config_changed_connect("ntp_server", ntp_server_changed)
+
+
+def dhcp_post_delete_NodeGroupInterface(sender, instance, using, **kwargs):
+    """A cluster interface has been deleted."""
+    from maasserver.dhcp import configure_dhcp
+    if instance.nodegroup.status != NODEGROUP_STATUS.ACCEPTED:
+        # Not an accepted cluster.  No point reconfiguring.
+        return
+    if instance.management == NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+        # Not a managed interface.  No point reconfiguring.
+        return
+    configure_dhcp(instance.nodegroup)
+
+
+post_delete.connect(
+    dhcp_post_delete_NodeGroupInterface, sender=NodeGroupInterface)
