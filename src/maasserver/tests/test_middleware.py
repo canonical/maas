@@ -36,7 +36,6 @@ from maasserver.middleware import (
     APIErrorsMiddleware,
     DebuggingLoggerMiddleware,
     ErrorsMiddleware,
-    ExceptionLoggerMiddleware,
     ExceptionMiddleware,
     )
 from maasserver.testing import extract_redirect
@@ -132,6 +131,18 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
             (httplib.FORBIDDEN, error_message),
             (response.status_code, response.content))
 
+    def test_api_500_error_is_logged(self):
+        logger = self.useFixture(FakeLogger('maasserver'))
+        error_text = factory.make_string()
+        self.process_exception(MAASAPIException(error_text))
+        self.assertThat(logger.output, Contains(error_text))
+
+    def test_generic_500_error_is_logged(self):
+        logger = self.useFixture(FakeLogger('maasserver'))
+        error_text = factory.make_string()
+        self.process_exception(Exception(error_text))
+        self.assertThat(logger.output, Contains(error_text))
+
 
 class APIErrorsMiddlewareTest(MAASServerTestCase):
 
@@ -151,17 +162,6 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
         exception = MAASAPINotFound(factory.make_string())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
-
-
-class ExceptionLoggerMiddlewareTest(MAASServerTestCase):
-
-    def test_exception_logger_logs_error(self):
-        logger = self.useFixture(FakeLogger('maasserver'))
-        error_text = factory.make_string()
-        ExceptionLoggerMiddleware().process_exception(
-            factory.make_fake_request('/middleware/api/hello'),
-            ValueError(error_text))
-        self.assertThat(logger.output, Contains(error_text))
 
 
 class DebuggingLoggerMiddlewareTest(MAASServerTestCase):

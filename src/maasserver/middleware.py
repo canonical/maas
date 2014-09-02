@@ -27,6 +27,8 @@ import httplib
 import json
 import logging
 import re
+import sys
+import traceback
 
 from django.conf import settings
 from django.contrib import messages
@@ -170,6 +172,9 @@ class ExceptionMiddleware:
 
         encoding = b'utf-8'
         if isinstance(exception, MAASAPIException):
+            # Print a traceback if this is a 500 error.
+            if exception.api_error == httplib.INTERNAL_SERVER_ERROR:
+                self.log_exception(exception)
             # This type of exception knows how to translate itself into
             # an http response.
             return exception.make_http_response()
@@ -190,11 +195,18 @@ class ExceptionMiddleware:
                 content=unicode(exception).encode(encoding),
                 mimetype=b"text/plain; charset=%s" % encoding)
         else:
+            # Print a traceback.
+            self.log_exception(exception)
             # Return an API-readable "Internal Server Error" response.
             return HttpResponse(
                 content=unicode(exception).encode(encoding),
                 status=httplib.INTERNAL_SERVER_ERROR,
                 mimetype=b"text/plain; charset=%s" % encoding)
+
+    def log_exception(self, exception):
+        exc_info = sys.exc_info()
+        logger.error(" Exception: %s ".center(79, "#") % unicode(exception))
+        logger.error(''.join(traceback.format_exception(*exc_info)))
 
 
 class APIErrorsMiddleware(ExceptionMiddleware):
@@ -219,16 +231,6 @@ class ErrorsMiddleware:
             # Not an ExternalComponentException or not a POST request: do not
             # handle it.
             return None
-
-
-class ExceptionLoggerMiddleware:
-
-    def process_exception(self, request, exception):
-        import traceback
-        import sys
-        exc_info = sys.exc_info()
-        logger.error(" Exception: %s ".center(79, "#") % unicode(exception))
-        logger.error(''.join(traceback.format_exception(*exc_info)))
 
 
 class DebuggingLoggerMiddleware:
