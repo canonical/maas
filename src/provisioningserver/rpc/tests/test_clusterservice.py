@@ -27,7 +27,6 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     MockNotCalled,
-    Provides,
     )
 from maastesting.testcase import (
     MAASTestCase,
@@ -62,7 +61,6 @@ from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
-    ClusterService,
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.osystems import gen_operating_systems
@@ -87,21 +85,13 @@ from testtools.matchers import (
     MatchesListwise,
     MatchesStructure,
     )
-from twisted.application.internet import (
-    StreamServerEndpointService,
-    TimerService,
-    )
-from twisted.internet import (
-    error,
-    reactor,
-    )
+from twisted.application.internet import TimerService
+from twisted.internet import error
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
     )
 from twisted.internet.endpoints import TCP4ClientEndpoint
-from twisted.internet.interfaces import IStreamServerEndpoint
-from twisted.internet.protocol import Factory
 from twisted.internet.task import Clock
 from twisted.protocols import amp
 from twisted.test.proto_helpers import StringTransportWithDisconnection
@@ -294,19 +284,6 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         self.assertThat(response, KeysEqual("power_types"))
         self.assertItemsEqual(
             JSON_POWER_TYPE_PARAMETERS, response["power_types"])
-
-
-class TestClusterService(MAASTestCase):
-
-    def test_init_sets_appropriate_instance_attributes(self):
-        # ClusterService is a convenience wrapper around
-        # StreamServerEndpointService. There's not much to demonstrate
-        # other than it has been initialised correctly.
-        service = ClusterService(reactor, 0)
-        self.assertThat(service, IsInstance(StreamServerEndpointService))
-        self.assertThat(service.endpoint, Provides(IStreamServerEndpoint))
-        self.assertThat(service.factory, IsInstance(Factory))
-        self.assertThat(service.factory.protocol, Equals(Cluster))
 
 
 class TestClusterClientService(MAASTestCase):

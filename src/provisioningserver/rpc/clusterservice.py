@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ClusterClientService",
-    "ClusterService",
 ]
 
 import json
@@ -55,19 +54,14 @@ from provisioningserver.rpc.power import (
     change_power_state,
     get_power_state,
     )
-from twisted.application.internet import (
-    StreamServerEndpointService,
-    TimerService,
-    )
+from twisted.application.internet import TimerService
 from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import (
     connectProtocol,
     TCP4ClientEndpoint,
-    TCP4ServerEndpoint,
     )
 from twisted.internet.error import ConnectError
-from twisted.internet.protocol import Factory
 from twisted.protocols import amp
 from twisted.python import (
     filepath,
@@ -221,19 +215,6 @@ class Cluster(amp.AMP, object):
             "tls_localCertificate": tls_localCertificate,
             "tls_verifyAuthorities": tls_verifyAuthorities,
         }
-
-
-class ClusterService(StreamServerEndpointService):
-    """A cluster controller RPC service.
-
-    This is a service - in the Twisted sense - that exposes the
-    ``Cluster`` protocol on the given port.
-    """
-
-    def __init__(self, reactor, port):
-        super(ClusterService, self).__init__(
-            TCP4ServerEndpoint(reactor, port),
-            Factory.forProtocol(Cluster))
 
 
 @implementer(IConnection)
