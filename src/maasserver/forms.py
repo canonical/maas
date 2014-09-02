@@ -144,6 +144,7 @@ from maasserver.utils.osystems import (
     )
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
+from netaddr import IPAddress
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.network import REVEAL_IPv6
@@ -1324,6 +1325,17 @@ class NodeGroupInterfaceForm(ModelForm):
     def clean(self):
         cleaned_data = super(NodeGroupInterfaceForm, self).clean()
         cleaned_data['name'] = self.compute_name()
+
+        ip_addr = cleaned_data.get('ip')
+        if ip_addr and IPAddress(ip_addr).version == 6:
+            netmask = cleaned_data.get('subnet_mask')
+            ipv6_netmask = IPAddress('ffff:ffff:ffff:ffff::')
+            if netmask and IPAddress(netmask) != ipv6_netmask:
+                set_form_error(
+                    self, 'subnet_mask',
+                    "IPv6 netmask is always 64 bits wide.  Leave it blank.")
+            cleaned_data['subnet_mask'] = unicode(ipv6_netmask)
+
         static_ip_range_low = cleaned_data.get('static_ip_range_low')
         static_ip_range_high = cleaned_data.get('static_ip_range_high')
         try:

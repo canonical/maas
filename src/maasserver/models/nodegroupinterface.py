@@ -42,6 +42,7 @@ from netaddr import (
     IPRange,
     )
 from netaddr.core import AddrFormatError
+from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.utils.network import make_network
 
 # The minimum number of leading bits of the routing prefix for a
@@ -50,6 +51,18 @@ from provisioningserver.utils.network import make_network
 # machinery.
 # For instance, if MINIMUM_NETMASK_BITS is 9, a /8 will be rejected.
 MINIMUM_NETMASK_BITS = 16
+
+
+# UI explanation for subnet_mask field.
+SUBNET_MASK_HELP = "e.g. 255.255.255.0"
+if REVEAL_IPv6:
+    SUBNET_MASK_HELP += " (for IPv4 networks only)."
+
+
+# UI explanation for broadcast_ip field.
+BROADCAST_IP_HELP = "e.g. 192.168.1.255"
+if REVEAL_IPv6:
+    BROADCAST_IP_HELP += " (for IPv4 networks only)."
 
 
 class NodeGroupInterface(CleanSave, TimestampedModel):
@@ -100,11 +113,11 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         help_text="Network interface (e.g. 'eth1').")
     subnet_mask = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
-        help_text="e.g. 255.255.255.0")
+        help_text=SUBNET_MASK_HELP)
     broadcast_ip = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Broadcast IP",
-        help_text="e.g. 192.168.1.255")
+        help_text=BROADCAST_IP_HELP)
     router_ip = MAASIPAddressField(
         editable=True, unique=False, blank=True, null=True, default=None,
         verbose_name="Router IP",

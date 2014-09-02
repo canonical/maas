@@ -33,7 +33,10 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPNetwork
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from testtools.matchers import (
     AllMatch,
     Equals,
@@ -135,6 +138,37 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         interface = form.save()
         self.assertThat(interface.name, StartsWith(int_settings['interface']))
         self.assertNotEqual(int_settings['interface'], interface.name)
+
+    def test__requires_netmask_on_managed_IPv4_interface(self):
+        network = factory.getRandomNetwork()
+        int_settings = factory.get_interface_fields(
+            network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        del int_settings['subnet_mask']
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance())
+        self.assertFalse(form.is_valid())
+
+    def test__lets_netmask_default_to_64_bits_on_IPv6(self):
+        network = factory.make_ipv6_network()
+        int_settings = factory.get_interface_fields(
+            network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        del int_settings['subnet_mask']
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance())
+        self.assertTrue(form.is_valid())
+        interface = form.save()
+        self.assertEqual(
+            IPAddress('ffff:ffff:ffff:ffff::'),
+            IPAddress(interface.subnet_mask))
+
+    def test__rejects_netmasks_other_than_64_bits_on_IPv6(self):
+        network = factory.make_ipv6_network()
+        int_settings = factory.get_interface_fields(
+            network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            netmask='ffff:ffff::')
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance())
+        self.assertFalse(form.is_valid())
 
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")
