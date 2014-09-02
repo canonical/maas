@@ -92,7 +92,7 @@ def get_boot_purpose(node):
     elif node.status == NODE_STATUS.COMMISSIONING:
         # It is commissioning.
         return "commissioning"
-    elif node.status == NODE_STATUS.ALLOCATED:
+    elif node.status == NODE_STATUS.DEPLOYING:
         # Install the node if netboot is enabled, otherwise boot locally.
         if node.netboot:
             preseed_type = get_preseed_type_for(node)
@@ -102,6 +102,8 @@ def get_boot_purpose(node):
                 return "install"
         else:
             return "local"  # TODO: Investigate.
+    elif node.status == NODE_STATUS.DEPLOYED:
+        return "local"
     else:
         # Just poweroff? TODO: Investigate. Perhaps even send an IPMI signal
         # to turn off power.

@@ -388,6 +388,28 @@ class TestMetadataUserData(DjangoTestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
+class TestMetadataUserDataStateChanges(DjangoTestCase):
+    """Tests for the metadata user-data API endpoint."""
+
+    def test_request_does_not_cause_status_change_if_not_deploying(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[NODE_STATUS.DEPLOYING])
+        node = factory.make_node(status=status)
+        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        client = make_node_client(node)
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(status, reload_object(node).status)
+
+    def test_request_causes_status_change_if_deploying(self):
+        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        client = make_node_client(node)
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+
 class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 

@@ -349,7 +349,9 @@ module.NodesDashboard = Y.Base.create(
                 );
             break;
         case NODE_STATUS.ALLOCATED:
-            // Allocated nodes
+        case NODE_STATUS.DEPLOYING:
+        case NODE_STATUS.DEPLOYED:
+            // Allocated/Deploying/Deployed nodes
             this.allocated_nodes += node_counter;
             this.chart.set('allocated_nodes', this.allocated_nodes);
             update_chart = true;

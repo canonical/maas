@@ -160,7 +160,22 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
+        NODE_STATUS.DEPLOYING,
         ],
+    NODE_STATUS.DEPLOYING: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.READY,
+    ],
+    NODE_STATUS.DEPLOYED: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.READY,
+    ],
     NODE_STATUS.MISSING: [
         NODE_STATUS.NEW,
         NODE_STATUS.READY,
@@ -426,6 +441,10 @@ class NodeManager(Manager):
             NodeUserData.objects.set_user_data(node, user_data)
         processed_nodes = []
         for node in nodes:
+            # Backward-compatibility step: starting an allocated node
+            # means deploying it first.
+            if node.status == NODE_STATUS.ALLOCATED:
+                node.start_deployment()
             maaslog.info("%s: Attempting start up", node.hostname)
             power_params = node.get_effective_power_parameters()
             try:
@@ -445,7 +464,7 @@ class NodeManager(Manager):
             if do_start:
                 tasks = []
                 try:
-                    if node.status == NODE_STATUS.ALLOCATED:
+                    if node.status == NODE_STATUS.DEPLOYING:
                         tasks.extend(node.claim_static_ips())
                 except StaticIPAddressExhaustion:
                     maaslog.error(
@@ -520,6 +539,16 @@ def fqdn_is_duplicate(node, fqdn):
             return True
 
     return False
+
+
+# List of statuses for which it makes sense to release a node.
+RELEASABLE_STATUSES = [
+    NODE_STATUS.ALLOCATED,
+    NODE_STATUS.RESERVED,
+    NODE_STATUS.BROKEN,
+    NODE_STATUS.DEPLOYING,
+    NODE_STATUS.DEPLOYED,
+    ]
 
 
 class Node(CleanSave, TimestampedModel):
@@ -687,6 +716,16 @@ class Node(CleanSave, TimestampedModel):
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
         return tasks
+
+    def start_deployment(self):
+        """Mark a node as being deployed."""
+        self.status = NODE_STATUS.DEPLOYING
+        self.save()
+
+    def end_deployment(self):
+        """Mark a node as successfully deployed."""
+        self.status = NODE_STATUS.DEPLOYED
+        self.save()
 
     def _create_hostmap_task(self, mac, sip):
         # This is creating a list of celery 'Signatures' which will be

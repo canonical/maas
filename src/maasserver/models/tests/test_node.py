@@ -1202,6 +1202,16 @@ class NodeTest(MAASServerTestCase):
         node.update_power_state(state)
         self.assertEqual(state, reload_object(node).power_state)
 
+    def test_end_deployment_changes_state(self):
+        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node.end_deployment()
+        self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+    def test_start_deployment_changes_state(self):
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        node.start_deployment()
+        self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
+
 
 class NodeRoutersTest(MAASServerTestCase):
 
@@ -1499,6 +1509,28 @@ class NodeManagerTest(MAASServerTestCase):
                 self.celery.tasks[0]['task'].name,
                 self.celery.tasks[0]['kwargs']['mac_address'],
             ))
+
+    def test_start_allocated_node_marks_node_as_deploying(self):
+        user = factory.make_user()
+        allocated_node, _ = self.make_node_with_mac(
+            user, power_type='ether_wake')
+        output = Node.objects.start_nodes([allocated_node.system_id], user)
+
+        self.assertItemsEqual([allocated_node], output)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYING, reload_object(allocated_node).status)
+
+    def test_start_deployed_node_doesnt_change_its_state(self):
+        user = factory.make_user()
+        deployed_node = factory.make_node(
+            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
+            owner=user)
+        factory.make_mac_address(node=deployed_node)
+        output = Node.objects.start_nodes([deployed_node.system_id], user)
+
+        self.assertItemsEqual([deployed_node], output)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYED, reload_object(deployed_node).status)
 
     def test_start_nodes_does_not_claim_static_ips_unless_allocated(self):
         user = factory.make_user()

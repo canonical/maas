@@ -306,9 +306,10 @@ class TestPXEConfigAPI(MAASServerTestCase):
             ("poweroff", {"status": NODE_STATUS.MISSING}),
             ("poweroff", {"status": NODE_STATUS.READY}),
             ("poweroff", {"status": NODE_STATUS.RESERVED}),
-            ("install", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
-            ("xinstall", {"status": NODE_STATUS.ALLOCATED, "netboot": True}),
-            ("local", {"status": NODE_STATUS.ALLOCATED, "netboot": False}),
+            ("install", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
+            ("xinstall", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
+            ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
+            ("local", {"status": NODE_STATUS.DEPLOYED}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
             ]
         node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
@@ -325,7 +326,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
         release = factory.pick_release(osystem)
         node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, netboot=True,
+            status=NODE_STATUS.DEPLOYING, netboot=True,
             osystem=osystem.name, distro_series=release,
             boot_type=NODE_BOOT.FASTPATH)
         self.assertEqual('install', get_boot_purpose(node))
@@ -393,7 +394,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             supported_subarches="hwe-s", release=release, nodegroup=nodegroup,
             purpose="install")
         node = factory.make_node(
-            mac=True, nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             architecture="amd64/hwe-s")
         params = self.get_default_params()
         params['cluster_uuid'] = nodegroup.uuid

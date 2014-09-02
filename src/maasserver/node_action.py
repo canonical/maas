@@ -264,7 +264,8 @@ class StartNode(NodeAction):
     name = "start"
     display = "Start node"
     display_bulk = "Start selected nodes"
-    actionable_statuses = (NODE_STATUS.ALLOCATED, )
+    actionable_statuses = (
+        NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED)
     permission = NODE_PERMISSION.EDIT
 
     def inhibit(self):
@@ -293,11 +294,29 @@ class StartNode(NodeAction):
 
 
 class StopNode(NodeAction):
-    """Stop and release a node."""
+    """Stop a node."""
     name = "stop"
     display = "Stop node"
     display_bulk = "Stop selected nodes"
-    actionable_statuses = (NODE_STATUS.ALLOCATED, )
+    actionable_statuses = (NODE_STATUS.DEPLOYED, )
+    permission = NODE_PERMISSION.EDIT
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        Node.objects.stop_nodes([self.node.system_id], self.user)
+        return dedent("""\
+            This node has been asked to shut down.
+            """)
+
+
+class ReleaseNode(NodeAction):
+    """Release a node."""
+    name = "release"
+    display = "Release node"
+    display_bulk = "Release selected nodes"
+    actionable_statuses = (
+        NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
+        NODE_STATUS.DEPLOYING)
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):
@@ -305,7 +324,6 @@ class StopNode(NodeAction):
         self.node.release()
         return dedent("""\
             This node is no longer allocated to you.
-            It has been asked to shut down.
             """)
 
 
@@ -346,6 +364,7 @@ ACTION_CLASSES = (
     Commission,
     MarkBroken,
     MarkFixed,
+    ReleaseNode,
     StartNode,
     StopNode,
     UseCurtin,

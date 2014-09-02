@@ -65,6 +65,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
+from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
@@ -289,16 +290,11 @@ class NodeHandler(OperationsHandler):
         """Release a node.  Opposite of `NodesHandler.acquire`."""
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        releasable_statuses = [
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.RESERVED,
-            NODE_STATUS.BROKEN,
-            ]
         if node.status == NODE_STATUS.READY:
             # Nothing to do.  This may be a redundant retry, and the
             # postcondition is achieved, so call this success.
             pass
-        elif node.status in releasable_statuses:
+        elif node.status in RELEASABLE_STATUSES:
             node.release()
         else:
             raise NodeStateViolation(
@@ -726,7 +722,7 @@ class NodesHandler(OperationsHandler):
             if node.status == NODE_STATUS.READY:
                 # Nothing to do.
                 pass
-            elif node.status in [NODE_STATUS.ALLOCATED, NODE_STATUS.RESERVED]:
+            elif node.status in RELEASABLE_STATUSES:
                 node.release()
                 released_ids.append(node.system_id)
             else:

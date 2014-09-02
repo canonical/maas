@@ -863,7 +863,7 @@ class NodeViewsTest(MAASServerTestCase):
         response = self.client.post(
             node_link, data={NodeActionForm.input_name: StartNode.name})
         self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
+        self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_view_node_skips_probed_details_output_if_none_set(self):
         self.client_log_in()

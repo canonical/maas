@@ -38,6 +38,7 @@ from maasserver.node_action import (
     MarkBroken,
     MarkFixed,
     NodeAction,
+    ReleaseNode,
     StartNode,
     StopNode,
     UseCurtin,
@@ -245,14 +246,6 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
 
 class TestAcquireNodeNodeAction(MAASServerTestCase):
 
-    def test_AcquireNode_inhibit_disallows_user_without_SSH_key(self):
-        user_without_key = factory.make_user()
-        self.assertItemsEqual([], user_without_key.sshkey_set.all())
-        action = StartNode(factory.make_node(), user_without_key)
-        inhibition = action.inhibit()
-        self.assertIsNotNone(inhibition)
-        self.assertIn("SSH key", inhibition)
-
     def test_AcquireNode_acquires_node(self):
         node = factory.make_node(
             mac=True, status=NODE_STATUS.READY,
@@ -291,7 +284,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user)
+            status=NODE_STATUS.DEPLOYING, power_type='ether_wake', owner=user)
         ngi = node.get_primary_mac().cluster_interface
 
         # Narrow the available IP range and pre-claim the only address.
@@ -316,7 +309,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 
 class TestStopNodeNodeAction(MAASServerTestCase):
 
-    def test_StopNode_stops_and_releases_node(self):
+    def test_StopNode_stops_node(self):
         self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         user = factory.make_user()
         params = dict(
@@ -324,10 +317,30 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_node(
-            mac=True, status=NODE_STATUS.ALLOCATED,
+            mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
         StopNode(node, user).execute()
+
+        self.assertEqual(
+            'provisioningserver.tasks.power_off',
+            self.celery.tasks[0]['task'].name)
+
+
+class TestReleaseNodeNodeAction(MAASServerTestCase):
+
+    def test_ReleaseNode_stops_and_releases_node(self):
+        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
+        user = factory.make_user()
+        params = dict(
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        node = factory.make_node(
+            mac=True, status=NODE_STATUS.DEPLOYED,
+            power_type='ipmi',
+            owner=user, power_parameters=params)
+        ReleaseNode(node, user).execute()
 
         self.assertEqual(NODE_STATUS.READY, node.status)
         self.assertIsNone(node.owner)

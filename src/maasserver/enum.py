@@ -59,8 +59,7 @@ class NODE_STATUS:
     READY = 4
     #: The node is ready for named deployment.
     RESERVED = 5
-    #: The node is powering a service from a charm or is ready for use with
-    #: a fresh Ubuntu install.
+    #: The node has been allocated to a user and is ready for deployment.
     ALLOCATED = 6
     #: The node has been removed from service manually until an admin
     #: overrides the retirement.
@@ -68,6 +67,13 @@ class NODE_STATUS:
     #: The node is broken: a step in the node lifecyle failed.
     #: More details can be found in the node's event log.
     BROKEN = 8
+    #: The node is being installed.
+    DEPLOYING = 9
+    #: The node is powering a service from a charm or is ready for use with
+    #: a fresh Ubuntu install.
+    DEPLOYED = 10
+    #: The deployment of the node failed.
+    FAILED_DEPLOYMENT = 11
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -80,8 +86,11 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.READY, "Ready"),
     (NODE_STATUS.RESERVED, "Reserved"),
     (NODE_STATUS.ALLOCATED, "Allocated"),
+    (NODE_STATUS.DEPLOYING, "Deploying"),
+    (NODE_STATUS.DEPLOYED, "Deployed"),
     (NODE_STATUS.RETIRED, "Retired"),
     (NODE_STATUS.BROKEN, "Broken"),
+    (NODE_STATUS.FAILED_DEPLOYMENT, "Failed deployment"),
 )
 
 

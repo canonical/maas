@@ -112,7 +112,7 @@ class DHCPLeaseManager(Manager):
 
     def get_hostname_ip_mapping(self, nodegroup):
         """Return a mapping {hostnames -> ips} for the currently leased
-        IP addresses for the allocated nodes in `nodegroup`.
+        IP addresses for the deploying/deployed nodes in `nodegroup`.
 
         For each node, this will consider only the oldest `MACAddress` that
         has a `DHCPLease`.
@@ -138,9 +138,9 @@ class DHCPLeaseManager(Manager):
             JOIN maasserver_node AS node ON node.id = mac.node_id
             JOIN maasserver_dhcplease AS lease ON lease.mac = mac.mac_address
             WHERE lease.nodegroup_id = %s
-            AND node.status = %s
+            AND (node.status = %s OR node.status = %s)
             ORDER BY node.hostname, mac.id
-            """, (nodegroup.id, NODE_STATUS.ALLOCATED))
+            """, (nodegroup.id, NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED))
         return {
             strip_domain(hostname): [ip]
             for hostname, ip in cursor.fetchall()

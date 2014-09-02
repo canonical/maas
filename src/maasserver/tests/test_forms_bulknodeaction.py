@@ -115,7 +115,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
     def test_gives_stat_when_no_permission(self):
         user = factory.make_user()
         node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
         system_id_for_action = [node.system_id]
         form = BulkNodeActionForm(
             user=user,

@@ -293,7 +293,7 @@ class VersionIndexHandler(MetadataViewHandler):
     def netboot_off(self, request, version=None, mac=None):
         """Turn off netboot on the node.
 
-        A commissioning node can call this to turn off netbooting when
+        A deploying node can call this to turn off netbooting when
         it finishes installing itself.
         """
         node = get_queried_node(request, for_mac=mac)
@@ -381,6 +381,11 @@ class UserDataHandler(MetadataViewHandler):
         check_version(version)
         node = get_queried_node(request, for_mac=mac)
         try:
+            # When a node is deploying, cloud-init's request
+            # for user-data is when MAAS hands the node
+            # off to a user.
+            if node.status == NODE_STATUS.DEPLOYING:
+                node.end_deployment()
             return HttpResponse(
                 NodeUserData.objects.get_user_data(node),
                 mimetype='application/octet-stream')

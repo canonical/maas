@@ -371,13 +371,13 @@ class TestDNSBackwardCompat(TestDNSServer):
     record.
     """
 
-    def test_bind_configuration_includes_dynamic_ips_of_allocated_nodes(self):
+    def test_bind_configuration_includes_dynamic_ips_of_deployed_nodes(self):
         self.patch(settings, "DNS_CONNECT", True)
         network = IPNetwork('192.168.7.1/24')
         nodegroup = self.create_managed_nodegroup(network=network)
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_node(
-            nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
+            nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
             disable_ipv4=False)
         mac = factory.make_mac_address(node=node, cluster_interface=interface)
         # Get an IP in the dynamic range.

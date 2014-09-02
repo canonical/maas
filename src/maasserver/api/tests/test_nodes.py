@@ -29,6 +29,7 @@ from maasserver.enum import (
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MAC
 from maasserver.models import Node
+from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
@@ -1078,11 +1079,8 @@ class TestNodesAPI(APITestCase):
             (response.status_code, response.content))
 
     def test_POST_release_rejects_impossible_state_changes(self):
-        acceptable_states = {
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.RESERVED,
-            NODE_STATUS.READY,
-            }
+        acceptable_states = set(
+            RELEASABLE_STATUSES + [NODE_STATUS.READY])
         unacceptable_states = (
             set(map_enum(NODE_STATUS).values()) - acceptable_states)
         owner = self.logged_in_user
@@ -1109,11 +1107,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_release_returns_modified_nodes(self):
         owner = self.logged_in_user
-        acceptable_states = {
-            NODE_STATUS.READY,
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.RESERVED,
-            }
+        acceptable_states = [NODE_STATUS.READY] + RELEASABLE_STATUSES
         nodes = [
             factory.make_node(status=status, owner=owner)
             for status in acceptable_states
@@ -1125,9 +1119,9 @@ class TestNodesAPI(APITestCase):
                 })
         parsed_result = json.loads(response.content)
         self.assertEqual(httplib.OK, response.status_code)
-        # The first node is READY, so shouldn't be touched
+        # The first node is READY, so shouldn't be touched.
         self.assertItemsEqual(
-            [nodes[1].system_id, nodes[2].system_id],
+            [node.system_id for node in nodes[1:]],
             parsed_result)
 
     def test_handle_when_URL_is_repeated(self):

@@ -35,6 +35,7 @@ from maasserver.models import (
     Node,
     StaticIPAddress,
     )
+from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -459,17 +460,14 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_release_fails_for_other_node_states(self):
-        releasable_statuses = [
-            NODE_STATUS.BROKEN,
-            NODE_STATUS.RESERVED,
-            NODE_STATUS.ALLOCATED,
-            NODE_STATUS.READY,
-            ]
+        releasable_statuses = (
+            RELEASABLE_STATUSES + [NODE_STATUS.READY])
         unreleasable_statuses = [
             status
             for status in map_enum(NODE_STATUS).values()
             if status not in releasable_statuses
         ]
+
         nodes = [
             factory.make_node(status=status, owner=self.logged_in_user)
             for status in unreleasable_statuses]
