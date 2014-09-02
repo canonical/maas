@@ -13,22 +13,29 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'get_maas_user_gpghome',
     'get_recorded_api_credentials',
     'get_recorded_nodegroup_uuid',
-    'MAAS_USER_GPGHOME',
     'record_api_credentials',
     'record_nodegroup_uuid',
     ]
 
 from apiclient.creds import convert_string_to_tuple
 from provisioningserver import cache
+from provisioningserver.path import get_path
+
+
+def get_maas_user_gpghome():
+    """Return the GPG directory for the `maas` user.
+
+    Set $GPGHOME to this value ad-hoc when needed.
+    """
+    return get_path('/var/lib/maas/gnupg')
+
 
 # Cache key for the API credentials as last sent by the server.
 API_CREDENTIALS_CACHE_KEY = 'api_credentials'
 
-# GPG directory for the "maas" user.  Set $GPGHOME to this value ad-hoc when
-# needed.
-MAAS_USER_GPGHOME = '/var/lib/maas/gnupg'
 
 # Cache key for the uuid of the nodegroup that this worker manages.
 NODEGROUP_UUID_CACHE_KEY = 'nodegroup_uuid'

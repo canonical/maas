@@ -598,8 +598,8 @@ class TestImportBootImages(PservTestCase):
         self.assertIsInstance(import_boot_images, Task)
 
     def test_import_boot_images_sets_GPGHOME(self):
-        home = factory.make_name('home')
-        self.patch(tasks, 'MAAS_USER_GPGHOME', home)
+        home = self.make_dir()
+        self.patch(tasks, 'get_maas_user_gpghome').return_value = home
         fake = self.patch_boot_resources_function()
         import_boot_images(sources=[])
         self.assertEqual(home, fake.env['GNUPGHOME'])

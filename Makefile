@@ -265,17 +265,17 @@ $(eval $(call service_template,supervise))
 
 # The `run` targets do not fit into the mould of the others.
 run-region:
-	@services/run $(service_names_region)
+	@env MAAS_ROOT=./run services/run $(service_names_region)
 run-cluster:
-	@services/run $(service_names_cluster)
+	@env MAAS_ROOT=./run services/run $(service_names_cluster)
 run:
-	@services/run $(service_names_all)
+	@env MAAS_ROOT=./run services/run $(service_names_all)
 
 phony_services_targets += run-region run-cluster run
 
 # This one's for the rapper, yo.
 run+webapp:
-	@services/run $(service_names_region) +webapp
+	@env MAAS_ROOT=./run services/run $(service_names_region) +webapp
 
 phony_services_targets += run+webapp
 

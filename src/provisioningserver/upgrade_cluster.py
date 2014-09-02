@@ -39,7 +39,7 @@ from subprocess import check_call
 from textwrap import dedent
 
 from provisioningserver import config
-from provisioningserver.auth import MAAS_USER_GPGHOME
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot.tftppath import (
     drill_down,
     list_subdirs,
@@ -63,9 +63,14 @@ def make_maas_own_boot_resources():
 
 def create_gnupg_home():
     """Upgrade hook: create maas user's GNUPG home directory."""
-    if not os.path.isdir(MAAS_USER_GPGHOME):
-        makedirs(MAAS_USER_GPGHOME)
-        check_call(['chown', 'maas:maas', MAAS_USER_GPGHOME])
+    gpghome = get_maas_user_gpghome()
+    if not os.path.isdir(gpghome):
+        makedirs(gpghome)
+        if os.geteuid() == 0:
+            # Make the maas user the owner of its GPG home.  Do this only if
+            # running as root; otherwise it would probably fail.  We want to
+            # be able to start a development instance without triggering that.
+            check_call(['chown', 'maas:maas', gpghome])
 
 
 # Path to obsolete boot-resources configuration.

@@ -18,7 +18,7 @@ __all__ = [
     ]
 
 
-from provisioningserver.auth import MAAS_USER_GPGHOME
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
 from provisioningserver.config import Config
 from provisioningserver.import_images import boot_resources
@@ -41,7 +41,7 @@ def _run_import(sources):
     This is function is synchronous so it must be called with deferToThread.
     """
     variables = {
-        'GNUPGHOME': MAAS_USER_GPGHOME,
+        'GNUPGHOME': get_maas_user_gpghome(),
         }
     with environment_variables(variables):
         boot_resources.import_images(sources)

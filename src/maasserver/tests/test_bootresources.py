@@ -1095,7 +1095,7 @@ class TestImportImages(MAASTestCase):
 
         bootresources._import_resources(force=True)
         self.assertEqual(
-            bootresources.MAAS_USER_GPGHOME,
+            bootresources.get_maas_user_gpghome(),
             fake_download.env['GNUPGHOME'])
 
     def test__import_resources_calls_import_boot_images_on_clusters(self):

@@ -16,7 +16,7 @@ __all__ = []
 
 from argparse import ArgumentParser
 from itertools import product
-from os import listdir
+import os
 import os.path
 
 from maastesting.factory import factory
@@ -115,7 +115,8 @@ class TestCreateGNUPGHome(MAASTestCase):
         return os.path.join(parent_dir, factory.make_name('gpghome'))
 
     def patch_gnupg_home(self, gpghome):
-        self.patch(upgrade_cluster, 'MAAS_USER_GPGHOME', gpghome)
+        self.patch(upgrade_cluster, 'get_maas_user_gpghome').return_value = (
+            gpghome)
 
     def patch_call(self):
         return self.patch(upgrade_cluster, 'check_call')
@@ -125,7 +126,7 @@ class TestCreateGNUPGHome(MAASTestCase):
         self.patch_gnupg_home(existing_home)
         self.patch_call()
         upgrade_cluster.create_gnupg_home()
-        self.assertEqual([], listdir(existing_home))
+        self.assertEqual([], os.listdir(existing_home))
 
     def test__creates_directory(self):
         parent = self.make_dir()
@@ -135,14 +136,24 @@ class TestCreateGNUPGHome(MAASTestCase):
         upgrade_cluster.create_gnupg_home()
         self.assertThat(new_home, DirExists())
 
-    def test__sets_ownership_to_maas(self):
+    def test__sets_ownership_to_maas_if_running_as_root(self):
         parent = self.make_dir()
         new_home = self.make_nonexistent_path(parent)
         self.patch_gnupg_home(new_home)
         call = self.patch_call()
+        self.patch(os, 'geteuid').return_value = 0
         upgrade_cluster.create_gnupg_home()
         self.assertThat(
             call, MockCalledOnceWith(['chown', 'maas:maas', new_home]))
+
+    def test__does_not_set_ownership_if_not_running_as_root(self):
+        parent = self.make_dir()
+        new_home = self.make_nonexistent_path(parent)
+        self.patch_gnupg_home(new_home)
+        call = self.patch_call()
+        self.patch(os, 'geteuid').return_value = 101
+        upgrade_cluster.create_gnupg_home()
+        self.assertThat(call, MockNotCalled())
 
 
 class TestRetireBootResourcesYAML(MAASTestCase):

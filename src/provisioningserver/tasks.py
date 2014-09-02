@@ -39,7 +39,7 @@ from provisioningserver import (
     tags,
     )
 from provisioningserver.auth import (
-    MAAS_USER_GPGHOME,
+    get_maas_user_gpghome,
     record_api_credentials,
     record_nodegroup_uuid,
     )
@@ -468,7 +468,7 @@ def import_boot_images(sources, http_proxy=None, callback=None):
         if data is not None:
             source["keyring_data"] = b64decode(data)
     variables = {
-        'GNUPGHOME': MAAS_USER_GPGHOME,
+        'GNUPGHOME': get_maas_user_gpghome(),
         }
     if http_proxy is not None:
         variables['http_proxy'] = http_proxy

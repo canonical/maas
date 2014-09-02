@@ -49,7 +49,7 @@ from maasserver.models import (
 from maasserver.utils import absolute_reverse
 from maasserver.utils.async import transactional
 from maasserver.utils.orm import get_one
-from provisioningserver.auth import MAAS_USER_GPGHOME
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
@@ -878,7 +878,7 @@ def _import_resources(force=False):
 
     try:
         variables = {
-            'GNUPGHOME': MAAS_USER_GPGHOME,
+            'GNUPGHOME': get_maas_user_gpghome(),
             }
         with environment_variables(variables):
             maaslog.info("Started importing of boot resources.")

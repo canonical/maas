@@ -87,7 +87,7 @@ class TestRunImport(PservTestCase):
 
     def test__run_import_sets_GPGHOME(self):
         home = factory.make_name('home')
-        self.patch(boot_images, 'MAAS_USER_GPGHOME', home)
+        self.patch(boot_images, 'get_maas_user_gpghome').return_value = home
         fake = self.patch_boot_resources_function()
         _run_import(sources=[])
         self.assertEqual(home, fake.env['GNUPGHOME'])
