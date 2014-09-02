@@ -28,7 +28,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     )
 from maasserver.models import (
-    BootImage,
     BootSource,
     NodeGroup,
     )
@@ -37,11 +36,20 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
-from mock import Mock
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCalledWith,
+    )
+from mock import (
+    ANY,
+    Mock,
+    )
 from provisioningserver import tasks
 from testresources import FixtureResource
-from testtools.matchers import HasLength
+from testtools.matchers import (
+    HasLength,
+    Not,
+    )
 
 
 class LockChecker:
@@ -122,48 +130,41 @@ class TestInnerStartUp(MAASServerTestCase):
         start_up.inner_start_up()
         self.assertThat(BootSource.objects.all(), HasLength(1))
 
-    def test__warns_about_missing_boot_images(self):
-        # If no boot images have been registered yet, that may mean that
-        # the import script has not been successfully run yet, or that
-        # the master worker is having trouble reporting its images.  And
-        # so start_up registers a persistent warning about this.
-        BootImage.objects.all().delete()
+    def test__warns_about_missing_boot_resources(self):
+        # If no boot resources have been created, then the user has not
+        # performed the import process.
         discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.inner_start_up()
 
-        self.assertIn(
-            COMPONENT.IMPORT_PXE_FILES,
-            [args[0][0] for args in recorder.call_args_list])
+        self.assertThat(
+            recorder,
+            MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY))
 
-    def test__does_not_warn_if_boot_images_are_known(self):
-        # If boot images are known, there is no warning about the import
-        # script.
-        factory.make_boot_image()
+    def test__does_not_warn_if_boot_resources_are_known(self):
+        # If boot resources are known, there is no warning.
+        factory.make_boot_resource()
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.inner_start_up()
 
-        self.assertNotIn(
-            COMPONENT.IMPORT_PXE_FILES,
-            [args[0][0] for args in recorder.call_args_list])
+        self.assertThat(
+            recorder,
+            Not(MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY)))
 
     def test__does_not_warn_if_already_warning(self):
-        # If there already is a warning about missing boot images, it is
-        # based on more precise knowledge of whether we ever heard from
-        # the region worker at all.  It will not be replaced by a less
-        # knowledgeable warning.
-        BootImage.objects.all().delete()
+        # If there already is a warning about missing boot resources, it will
+        # not be replaced.
         register_persistent_error(
             COMPONENT.IMPORT_PXE_FILES, factory.make_string())
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.inner_start_up()
 
-        self.assertNotIn(
-            COMPONENT.IMPORT_PXE_FILES,
-            [args[0][0] for args in recorder.call_args_list])
+        self.assertThat(
+            recorder,
+            Not(MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY)))
 
 
 class TestPostStartUp(MAASServerTestCase):
