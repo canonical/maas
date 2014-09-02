@@ -31,7 +31,12 @@ class OAuthUnauthorized(Unauthorized):
     def __init__(self, error):
         super(OAuthUnauthorized, self).__init__()
         self.error = error
-        self.error.message = "Authorization Error: %r" % error.message
+        # When the error is an authentication error, use a more
+        # user-friendly error message.
+        if error.message == "Invalid consumer.":
+            self.error.message = "Authorization Error: Invalid API key."
+        else:
+            self.error.message = "Authorization Error: %r" % error.message
 
     def make_http_response(self):
         return send_oauth_error(self.error)

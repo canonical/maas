@@ -23,10 +23,19 @@ from testtools.matchers import Contains
 
 class TestOAuthUnauthorized(MAASTestCase):
 
-    def test_OAuthUnauthorized_repr_include_original_failure_message(self):
+    def test_exception_unicode_includes_original_failure_message(self):
         error_msg = factory.make_name('error-message')
         original_exception = oauth.OAuthError(error_msg)
         maas_exception = OAuthUnauthorized(original_exception)
         self.assertThat(
             unicode(maas_exception),
             Contains("Authorization Error: %r" % error_msg))
+
+    def test_exception_unicode_includes_user_friendly_message(self):
+        # When the error is an authentication error, the message is more
+        # user-friendly than the default 'Invalid consumer.'.
+        original_exception = oauth.OAuthError('Invalid consumer.')
+        maas_exception = OAuthUnauthorized(original_exception)
+        self.assertThat(
+            unicode(maas_exception),
+            Contains("Authorization Error: Invalid API key."))

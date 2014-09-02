@@ -241,6 +241,8 @@ TEMPLATE_CONTEXT_PROCESSORS = (
 MIDDLEWARE_CLASSES = (
     'django.middleware.common.CommonMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    # Log exceptions not handled by the previous middleware classes.
+    'maasserver.middleware.ExceptionLoggerMiddleware',
     # ErrorsMiddleware catches ExternalComponentException and redirects.
     # Specialised error handling middleware (like APIErrorsMiddleware)
     # should be placed after it.
@@ -251,7 +253,6 @@ MIDDLEWARE_CLASSES = (
     'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'maasserver.middleware.ExceptionLoggerMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'maasserver.middleware.AccessMiddleware',
