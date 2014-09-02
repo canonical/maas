@@ -259,6 +259,14 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         return factory.make_node_group(uuid=uuid)
 
     @transactional
+    def make_node_group_interface(self, nodegroup):
+        return factory.make_node_group_interface(nodegroup=nodegroup)
+
+    @transactional
+    def make_mac_address(self):
+        return factory.make_mac_address()
+
+    @transactional
     def get_leases_for(self, nodegroup):
         return [
             (ng.ip, ng.mac)
@@ -283,6 +291,31 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
             self.get_leases_for, nodegroup=nodegroup)
         self.expectThat(ip, Equals(mapping["ip"]))
         self.expectThat(mac, Equals(mapping["mac"]))
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__updates_mac_to_cluster_links(self):
+        uuid = factory.make_name("uuid")
+        nodegroup = yield deferToThread(self.make_node_group, uuid)
+        cluster_interface = yield deferToThread(
+            self.make_node_group_interface, nodegroup)
+        mac_address = yield deferToThread(self.make_mac_address)
+
+        mapping = {
+            "ip": cluster_interface.ip_range_low,
+            "mac": mac_address.mac_address.get_raw(),
+        }
+
+        response = yield call_responder(Region(), UpdateLeases, {
+            b"uuid": uuid, b"mappings": [mapping]})
+        self.assertThat(response, Equals({}))
+
+        @transactional
+        def get_cluster_interface():
+            return reload_object(mac_address).cluster_interface
+
+        observed = yield deferToThread(get_cluster_interface)
+        self.assertThat(observed, Equals(cluster_interface))
 
 
 class TestRegionProtocol_GetBootSources(TransactionTestCase):

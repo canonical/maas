@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 from django.shortcuts import get_object_or_404
+from maasserver.api.node_groups import update_mac_cluster_interfaces
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.async import transactional
@@ -42,4 +43,5 @@ def update_leases(uuid, mappings):
     nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
     leases = convert_mappings_to_leases(mappings)
     DHCPLease.objects.update_leases(nodegroup, leases)
+    update_mac_cluster_interfaces(leases, nodegroup)
     return {}
