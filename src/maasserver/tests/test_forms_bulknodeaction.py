@@ -99,7 +99,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
 
     def test_gives_stat_when_not_applicable(self):
         node1 = factory.make_node(status=NODE_STATUS.NEW)
-        node2 = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        node2 = factory.make_node(status=NODE_STATUS.FAILED_COMMISSIONING)
         system_id_for_action = [node1.system_id, node2.system_id]
         form = BulkNodeActionForm(
             user=factory.make_admin(),

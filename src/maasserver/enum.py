@@ -51,8 +51,8 @@ class NODE_STATUS:
     NEW = 0
     #: Testing and other commissioning steps are taking place.
     COMMISSIONING = 1
-    #: Smoke or burn-in testing has a found a problem.
-    FAILED_TESTS = 2
+    #: The commissioning step failed.
+    FAILED_COMMISSIONING = 2
     #: The node can't be contacted.
     MISSING = 3
     #: The node is in the general pool ready to be deployed.
@@ -81,7 +81,7 @@ class NODE_STATUS:
 NODE_STATUS_CHOICES = (
     (NODE_STATUS.NEW, "New"),
     (NODE_STATUS.COMMISSIONING, "Commissioning"),
-    (NODE_STATUS.FAILED_TESTS, "Failed tests"),
+    (NODE_STATUS.FAILED_COMMISSIONING, "Failed commissioning"),
     (NODE_STATUS.MISSING, "Missing"),
     (NODE_STATUS.READY, "Ready"),
     (NODE_STATUS.RESERVED, "Reserved"),

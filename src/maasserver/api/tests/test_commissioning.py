@@ -78,7 +78,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
         self.assertEqual(
             (
                 httplib.OK,
-                NODE_STATUS.FAILED_TESTS,
+                NODE_STATUS.FAILED_COMMISSIONING,
                 [node.system_id]
             ),
             (
@@ -112,7 +112,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
                 ],
             ))
         self.assertEqual(
-            NODE_STATUS.FAILED_TESTS,
+            NODE_STATUS.FAILED_COMMISSIONING,
             reload_object(late_node).status)
         self.assertEqual(
             NODE_STATUS.COMMISSIONING,

@@ -231,7 +231,7 @@ class NodeViewsTest(MAASServerTestCase):
         statuses = {
             NODE_STATUS.READY,
             NODE_STATUS.NEW,
-            NODE_STATUS.FAILED_TESTS,
+            NODE_STATUS.FAILED_COMMISSIONING,
             }
         nodes = [factory.make_node(status=s) for s in statuses]
 
@@ -837,7 +837,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_node(
             owner=self.logged_in_user, error=factory.make_string(),
-            status=NODE_STATUS.FAILED_TESTS)
+            status=NODE_STATUS.FAILED_COMMISSIONING)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         error_output = fromstring(response.content).xpath(

@@ -635,7 +635,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
@@ -643,7 +644,8 @@ class TestCommissioningAPI(MAASServerTestCase):
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.FAILED_TESTS, reload_object(node).status)
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_failure_sets_node_error(self):
         node = factory.make_node(status=NODE_STATUS.COMMISSIONING)

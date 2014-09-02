@@ -302,7 +302,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         options = [
             ("poweroff", {"status": NODE_STATUS.NEW}),
             ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
-            ("poweroff", {"status": NODE_STATUS.FAILED_TESTS}),
+            ("poweroff", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
             ("poweroff", {"status": NODE_STATUS.MISSING}),
             ("poweroff", {"status": NODE_STATUS.READY}),
             ("poweroff", {"status": NODE_STATUS.RESERVED}),

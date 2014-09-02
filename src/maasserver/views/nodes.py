@@ -538,9 +538,11 @@ class NodeView(NodeViewMixin, UpdateView):
         if node.power_type == '':
             messages.error(self.request, NO_POWER_SET)
         context['error_text'] = (
-            node.error if node.status == NODE_STATUS.FAILED_TESTS else None)
+            node.error if node.status == NODE_STATUS.FAILED_COMMISSIONING
+            else None)
         context['status_text'] = (
-            node.error if node.status != NODE_STATUS.FAILED_TESTS else None)
+            node.error if node.status != NODE_STATUS.FAILED_COMMISSIONING
+            else None)
         kernel_opts = node.get_effective_kernel_options()
         context['kernel_opts'] = {
             'is_global': kernel_opts[0] is None,

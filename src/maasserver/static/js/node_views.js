@@ -326,7 +326,7 @@ module.NodesDashboard = Y.Base.create(
             update_chart = true;
             break;
         case NODE_STATUS.COMMISSIONING:
-        case NODE_STATUS.FAILED_TESTS:
+        case NODE_STATUS.FAILED_COMMISSIONING:
         case NODE_STATUS.MISSING:
             // Offline nodes
             this.offline_nodes += node_counter;

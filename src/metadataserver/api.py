@@ -180,7 +180,7 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.BROKEN,
         NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.FAILED_TESTS,
+        NODE_STATUS.FAILED_COMMISSIONING,
         NODE_STATUS.READY,
         ]
 
@@ -188,7 +188,7 @@ class VersionIndexHandler(MetadataViewHandler):
     # state transitions that they trigger on the node.
     signaling_statuses = {
         SIGNAL_STATUS.OK: NODE_STATUS.READY,
-        SIGNAL_STATUS.FAILED: NODE_STATUS.FAILED_TESTS,
+        SIGNAL_STATUS.FAILED: NODE_STATUS.FAILED_COMMISSIONING,
         SIGNAL_STATUS.WORKING: None,
     }
 

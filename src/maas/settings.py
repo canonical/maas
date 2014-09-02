@@ -296,7 +296,7 @@ LOGGING = {
 }
 
 # The duration, in minutes, after which we consider a commissioning node
-# to have failed and mark it as FAILED_TESTS.
+# to have failed and mark it as FAILED_COMMISSIONING.
 COMMISSIONING_TIMEOUT = 60
 
 # Allow anonymous access to the metadata for a node, keyed by its MAC

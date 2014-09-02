@@ -191,7 +191,7 @@ class TestDeleteNodeAction(MAASServerTestCase):
             "You cannot delete this node because it's in use.", inhibition)
 
     def test_Delete_does_not_inhibit_otherwise(self):
-        node = factory.make_node(status=NODE_STATUS.FAILED_TESTS)
+        node = factory.make_node(status=NODE_STATUS.FAILED_COMMISSIONING)
         action = Delete(node, factory.make_admin())
         inhibition = action.inhibit()
         self.assertIsNone(inhibition)
@@ -212,7 +212,8 @@ class TestCommissionNodeAction(MAASServerTestCase):
 
     scenarios = (
         ("NEW", {"status": NODE_STATUS.NEW}),
-        ("FAILED_TESTS", {"status": NODE_STATUS.FAILED_TESTS}),
+        ("FAILED_COMMISSIONING", {
+            "status": NODE_STATUS.FAILED_COMMISSIONING}),
         ("READY", {"status": NODE_STATUS.READY}),
     )
 

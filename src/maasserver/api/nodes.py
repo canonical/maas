@@ -656,7 +656,8 @@ class NodesHandler(OperationsHandler):
         """Check all commissioning nodes to see if they are taking too long.
 
         Anything that has been commissioning for longer than
-        settings.COMMISSIONING_TIMEOUT is moved into the FAILED_TESTS status.
+        settings.COMMISSIONING_TIMEOUT is moved into the
+        FAILED_COMMISSIONING status.
         """
         # Compute the cutoff time on the database, using the database's
         # clock to compare to the "updated" timestamp, also set from the
@@ -673,7 +674,7 @@ class NodesHandler(OperationsHandler):
         # code associated with saving the nodes.
         params = {
             'commissioning': NODE_STATUS.COMMISSIONING,
-            'failed_tests': NODE_STATUS.FAILED_TESTS,
+            'failed_tests': NODE_STATUS.FAILED_COMMISSIONING,
             'minutes': settings.COMMISSIONING_TIMEOUT
             }
         query = Node.objects.raw("""

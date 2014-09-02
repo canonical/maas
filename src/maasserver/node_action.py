@@ -177,7 +177,7 @@ class Commission(NodeAction):
     display = "Commission node"
     display_bulk = "Commission selected nodes"
     actionable_statuses = (
-        NODE_STATUS.NEW, NODE_STATUS.FAILED_TESTS, NODE_STATUS.READY,
+        NODE_STATUS.NEW, NODE_STATUS.FAILED_COMMISSIONING, NODE_STATUS.READY,
         NODE_STATUS.BROKEN)
     permission = NODE_PERMISSION.ADMIN
 

@@ -81,12 +81,12 @@ suite.add(new Y.maas.testing.TestCase({
             {
                 system_id: 'sys4',
                 hostname: 'host4',
-                status: NODE_STATUS.FAILED_TESTS
+                status: NODE_STATUS.FAILED_COMMISSIONING
             },
             {
                 system_id: 'sys5',
                 hostname: 'host5',
-                status: NODE_STATUS.FAILED_TESTS
+                status: NODE_STATUS.FAILED_COMMISSIONING
             },
             {
                 system_id: 'sys6',
