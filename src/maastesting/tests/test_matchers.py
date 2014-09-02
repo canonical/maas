@@ -15,8 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting import matchers
+from maastesting.factory import factory
 from maastesting.matchers import (
+    HasAttribute,
     IsCallable,
+    IsCallableMock,
     MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
@@ -26,7 +29,9 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
+    create_autospec,
     Mock,
+    NonCallableMock,
     sentinel,
     )
 from testtools.matchers import (
@@ -222,3 +227,55 @@ class TestMockNotCalled(MAASTestCase, MockTestMixin):
     def test_has_useful_string_representation(self):
         matcher = MockNotCalled()
         self.assertEqual("MockNotCalled", matcher.__str__())
+
+
+class TestHasAttribute(MAASTestCase, MockTestMixin):
+
+    def test__returns_none_if_attribute_exists(self):
+        attribute = factory.make_string(3, prefix="attr")
+        setattr(self, attribute, factory.make_name("value"))
+        matcher = HasAttribute(attribute)
+        result = matcher.match(self)
+        self.assertIsNone(result)
+
+    def test__returns_mismatch_if_attribute_does_not_exist(self):
+        attribute = factory.make_string(3, prefix="attr")
+        matcher = HasAttribute(attribute)
+        result = matcher.match(self)
+        self.assertMismatch(
+            result, " does not have a %r attribute" % attribute)
+
+
+class TestIsCallableMock(MAASTestCase, MockTestMixin):
+
+    def test__returns_none_when_its_a_callable_mock(self):
+        mock = Mock()
+        matcher = IsCallableMock()
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test__returns_none_when_its_a_callable_autospec(self):
+        mock = create_autospec(lambda: None)
+        matcher = IsCallableMock()
+        result = matcher.match(mock)
+        self.assertIsNone(result)
+
+    def test__returns_mismatch_when_its_a_non_callable_mock(self):
+        mock = NonCallableMock()
+        matcher = IsCallableMock()
+        result = matcher.match(mock)
+        self.assertMismatch(
+            result, " is not callable")
+
+    def test__returns_mismatch_when_its_a_non_callable_autospec(self):
+        mock = create_autospec(None)
+        matcher = IsCallableMock()
+        result = matcher.match(mock)
+        self.assertMismatch(
+            result, " is not callable")
+
+    def test__returns_mismatch_when_its_a_non_callable_object(self):
+        matcher = IsCallableMock()
+        result = matcher.match(object())
+        self.assertMismatch(
+            result, " is not callable")

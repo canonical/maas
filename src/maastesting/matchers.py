@@ -13,7 +13,9 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'HasAttribute',
     'IsCallable',
+    'IsCallableMock',
     'MockAnyCall',
     'MockCalledOnceWith',
     'MockCalledWith',
@@ -22,13 +24,11 @@ __all__ = [
     'Provides',
     ]
 
-from mock import Mock
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
     Equals,
     HasLength,
-    IsInstance,
     Matcher,
     MatchesAll,
     MatchesPredicate,
@@ -53,6 +53,46 @@ class Provides(MatchesPredicate):
     def __init__(self, iface):
         super(Provides, self).__init__(
             iface.providedBy, "%%r does not provide %s" % iface.getName())
+
+
+class HasAttribute(Matcher):
+    """Match if the given attribute is available."""
+
+    def __init__(self, attribute):
+        super(HasAttribute, self).__init__()
+        self.attribute = attribute
+
+    def match(self, something):
+        try:
+            getattr(something, self.attribute)
+        except AttributeError:
+            return Mismatch(
+                "%r does not have a %r attribute" % (
+                    something, self.attribute))
+
+    def __str__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.attribute)
+
+
+class IsCallableMock(Matcher):
+    """Match if the subject looks like a mock that's callable.
+
+    `mock.create_autospec` can return objects like functions and modules that
+    are also callable mocks, but we can't use a simple ``isinstance`` test to
+    ascertain that. Here we assume the presence of ``return_value`` and
+    ``side_effect`` attributes means that we've found a callable mock. These
+    attributes are defined in `mock.CallableMixin`.
+    """
+
+    def match(self, something):
+        return MatchesAll(
+            HasAttribute("return_value"),
+            HasAttribute("side_effect"),
+            IsCallable(),
+        ).match(something)
+
+    def __str__(self):
+        return self.__class__.__name__
 
 
 def get_mock_calls(mock):
@@ -141,7 +181,7 @@ class MockCallsMatch(Matcher):
     def match(self, mock):
 
         matcher = MatchesAll(
-            IsInstance(Mock),
+            IsCallableMock(),
             Annotate(
                 "calls do not match",
                 AfterPreprocessing(
@@ -164,7 +204,7 @@ class MockNotCalled(Matcher):
 
     def match(self, mock):
         matcher = MatchesAll(
-            IsInstance(Mock),
+            IsCallableMock(),
             Annotate(
                 "mock has been called",
                 AfterPreprocessing(
