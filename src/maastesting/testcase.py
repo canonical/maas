@@ -173,6 +173,18 @@ class MAASTestCase(
         super(MAASTestCase, self).patch(obj, attribute, value)
         return value
 
+    def patch_autospec(self, obj, attribute, spec_set=False, instance=False):
+        """Patch `obj.attribute` with an auto-spec of itself.
+
+        See `mock.create_autospec` and `patch`.
+
+        :return: The patched-in object.
+        """
+        spec = getattr(obj, attribute)
+        value = mock.create_autospec(spec, spec_set, instance)
+        super(MAASTestCase, self).patch(obj, attribute, value)
+        return value
+
 
 class InvalidTest(Exception):
     """Signifies that the test is invalid; it's not a good test."""

@@ -19,8 +19,18 @@ from shutil import rmtree
 from tempfile import mkdtemp
 
 from maastesting.factory import factory
+from maastesting.matchers import (
+    IsCallableMock,
+    MockCalledOnceWith,
+    MockCallsMatch,
+    )
 from maastesting.testcase import MAASTestCase
-from mock import MagicMock
+from mock import (
+    call,
+    MagicMock,
+    sentinel,
+    )
+import mock as mock_module
 from testtools.matchers import (
     DirExists,
     FileExists,
@@ -61,3 +71,43 @@ class TestTestCase(MAASTestCase):
         attribute = self.patch(self, attribute_name)
         self.assertIs(getattr(self, attribute_name), attribute)
         self.assertIsInstance(attribute, MagicMock)
+
+    def method_to_be_patched(self, a, b):
+        return sentinel.method_to_be_patched
+
+    def test_patch_autospec_creates_autospec_from_target(self):
+        # Grab a reference to this now.
+        method_to_be_patched = self.method_to_be_patched
+
+        # It's simpler to test that create_autospec has been called than it is
+        # to test the result of calling it; mock does some clever things to do
+        # what it does that make comparisons hard.
+        create_autospec = self.patch(mock_module, "create_autospec")
+        create_autospec.return_value = sentinel.autospec
+
+        method_to_be_patched_autospec = self.patch_autospec(
+            self, "method_to_be_patched", spec_set=sentinel.spec_set,
+            instance=sentinel.instance)
+
+        self.assertIs(sentinel.autospec, method_to_be_patched_autospec)
+        self.assertIs(sentinel.autospec, self.method_to_be_patched)
+        self.assertThat(
+            create_autospec, MockCalledOnceWith(
+                method_to_be_patched, sentinel.spec_set, sentinel.instance))
+
+    def test_patch_autospec_really_leaves_an_autospec_behind(self):
+        self.patch_autospec(self, "method_to_be_patched")
+        # The patched method is now a callable mock.
+        self.assertThat(self.method_to_be_patched, IsCallableMock())
+        # The patched method can be called with positional or keyword
+        # arguments.
+        self.method_to_be_patched(1, 2)
+        self.method_to_be_patched(3, b=4)
+        self.method_to_be_patched(a=5, b=6)
+        self.assertThat(self.method_to_be_patched, MockCallsMatch(
+            call(1, 2), call(3, b=4), call(a=5, b=6)))
+        # Calling the patched method with unrecognised arguments or not
+        # enough arguments results in an exception.
+        self.assertRaises(TypeError, self.method_to_be_patched, c=7)
+        self.assertRaises(TypeError, self.method_to_be_patched, 8)
+        self.assertRaises(TypeError, self.method_to_be_patched, b=9)
