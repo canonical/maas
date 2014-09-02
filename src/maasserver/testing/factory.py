@@ -485,9 +485,8 @@ class Factory(maastesting.factory.Factory):
 
         :param **kwargs: Additional parameters to pass to make_node.
         """
-        if "nodegroup" in kwargs:
-            nodegroup = kwargs.pop("nodegroup")
-        else:
+        nodegroup = kwargs.pop("nodegroup", None)
+        if nodegroup is None:
             nodegroup = self.make_node_group()
         node = self.make_node(
             mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)

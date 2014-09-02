@@ -41,6 +41,7 @@ from maasserver.models import (
     Config,
     MACAddress,
     Node,
+    node as node_module,
     )
 from maasserver.node_action import (
     AcquireNode,
@@ -854,11 +855,15 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertNotIn("Error output", content_text)
 
     def test_view_node_POST_performs_action(self):
+        # Stub-out real-world RPC calls.
+        self.patch(node_module, "update_host_maps").return_value = []
+
         self.client_log_in()
         factory.make_sshkey(self.logged_in_user)
         self.set_up_oauth_token()
-        node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            status=NODE_STATUS.ALLOCATED, power_type='ether_wake',
+            owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
             node_link, data={NodeActionForm.input_name: StartNode.name})

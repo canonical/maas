@@ -19,7 +19,10 @@ __all__ = [
     "nodegroup_fqdn",
     ]
 
-from collections import namedtuple
+from collections import (
+    defaultdict,
+    namedtuple,
+    )
 from itertools import chain
 import re
 from string import whitespace
@@ -46,6 +49,8 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
+from maasserver.clusterrpc.dhcp import update_host_maps
+from maasserver.clusterrpc.power import power_on_nodes
 from maasserver.enum import (
     NODE_BOOT,
     NODE_BOOT_CHOICES,
@@ -85,14 +90,16 @@ from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.tasks import (
     add_new_dhcp_host_map,
     power_off,
-    power_on,
     remove_dhcp_host_map,
     )
 from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.enum import map_enum_reverse
+from provisioningserver.utils.twisted import reactor_sync
+import twisted.python.log
 
 
 maaslog = get_maas_logger("node")
@@ -437,65 +444,79 @@ class NodeManager(Manager):
         :type user_data: unicode
         :return: Those Nodes for which power-on was actually requested.
         :rtype: list
+
+        :raises MultipleFailures: When there are multiple failures
+            originating from a remote source.
         """
-        maaslog.debug("Starting nodes: %s", ids)
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
 
+        # Obtain node model objects for each node specified.
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-        for node in nodes:
-            NodeUserData.objects.set_user_data(node, user_data)
-        processed_nodes = []
-        for node in nodes:
-            # Backward-compatibility step: starting an allocated node
-            # means deploying it first.
-            if node.status == NODE_STATUS.ALLOCATED:
-                node.start_deployment()
-            maaslog.info("%s: Attempting start up", node.hostname)
-            power_params = node.get_effective_power_parameters()
-            try:
-                node_power_type = node.get_effective_power_type()
-            except UnknownPowerType:
-                # Skip the rest of the loop to avoid creating a power
-                # event for a node that we can't power up.
-                maaslog.warning(
-                    "%s: Node has an unknown power type. Not creating "
-                    "power up event.", node.hostname)
-                continue
-            if node_power_type == 'ether_wake':
-                mac = power_params.get('mac_address')
-                do_start = (mac != '' and mac is not None)
-            else:
-                do_start = True
-            if do_start:
-                tasks = []
-                try:
-                    if node.status == NODE_STATUS.DEPLOYING:
-                        tasks.extend(node.claim_static_ips())
-                except StaticIPAddressExhaustion:
-                    maaslog.error(
-                        "%s: Unable to allocate static IP due to "
-                        "address exhaustion.", node.hostname)
-                    # XXX 2014-06-17 bigjools bug=1330762
-                    # This function is supposed to start all the nodes
-                    # it can, but gives no way to return errors about
-                    # the ones it can't.  So just fail the lot for now,
-                    # pending a redesign of the API.
-                    #
-                    # XXX 2014-06-17 bigjools bug=1330765
-                    # If any of this fails it needs to release the
-                    # static IPs back to the pool.  As part of the robustness
-                    # work coming up, it also needs to inform the user.
-                    raise
 
-                task = power_on.si(node_power_type, **power_params)
-                task.set(queue=node.work_queue)
-                tasks.append(task)
-                chained_tasks = celery.chain(tasks)
-                maaslog.debug("%s: Asking cluster to power on", node.hostname)
-                chained_tasks.apply_async()
-                processed_nodes.append(node)
-        return processed_nodes
+        # Eliminate nodes that don't have a related MAC address.
+        nodes = nodes.prefetch_related("macaddress_set")
+        nodes = list(node for node in nodes if node.macaddress_set.exists())
+
+        # Record the same user data for all nodes we've been *requested* to
+        # start, regardless of whether or not we actually can; the user may
+        # choose to manually start them.
+        NodeUserData.objects.bulk_set_user_data(nodes, user_data)
+
+        # Claim static IP addresses for all nodes we've been *requested* to
+        # start, such that they're recorded in the database. This results in a
+        # mapping of nodegroups to (ips, macs).
+        static_mappings = defaultdict(dict)
+        for node in nodes:
+            if node.status == NODE_STATUS.ALLOCATED:
+                claims = node.claim_static_ip_addresses()
+                static_mappings[node.nodegroup].update(claims)
+                node.start_deployment()
+
+        # XXX 2014-06-17 bigjools bug=1330765
+        # If the above fails it needs to release the static IPs back to the
+        # pool. An enclosing transaction or savepoint from the caller may take
+        # care of this, given that a serious problem above will result in an
+        # exception. If we're being belt-n-braces though it ought to clear up
+        # before returning too. As part of the robustness work coming up, it
+        # also needs to inform the user.
+
+        # Update host maps and wait for them so that we can report failures
+        # directly to the caller.
+        update_host_maps_failures = list(update_host_maps(static_mappings))
+        if len(update_host_maps_failures) != 0:
+            raise MultipleFailures(*update_host_maps_failures)
+
+        # Update the DNS zone with the new static IP info as necessary. This
+        # is the last part of start_nodes() that still uses Celery.
+        from maasserver.dns.config import change_dns_zones
+        change_dns_zones({node.nodegroup for node in nodes})
+
+        # Helper function to whittle the list of nodes down to those that we
+        # can actually start, and keep hold of their power control info.
+        def gen_power_info(nodes):
+            for node in nodes:
+                power_info = node.get_effective_power_info()
+                if power_info.can_be_started:
+                    yield node, power_info
+
+        # Create info that we can pass into the reactor (no model objects)
+        nodes_start_info = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            for node, power_info in gen_power_info(nodes)
+        ]
+
+        # Request that these nodes be powered on.
+        deferreds = power_on_nodes(nodes_start_info)
+
+        # Cap these Deferreds off so that Twisted does not complain about
+        # unhandled errors. We just log errors for now; there are other
+        # channels that will report failures in more detail.
+        with reactor_sync():
+            for system_id, d in deferreds.viewitems():
+                d.addErrback(twisted.python.log.err)
+
+        return list(nodes)
 
 
 def patch_pgarray_types():

@@ -29,6 +29,7 @@ from maasserver.exceptions import (
     Redirect,
     )
 from maasserver.models import StaticIPAddress
+from maasserver.models.node import Node
 from maasserver.node_action import (
     AbortCommissioning,
     AcquireNode,
@@ -47,6 +48,8 @@ from maasserver.node_action import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from mock import ANY
 from provisioningserver.power.poweraction import PowerAction
 
 
@@ -218,6 +221,7 @@ class TestCommissionNodeAction(MAASServerTestCase):
     )
 
     def test_Commission_starts_commissioning(self):
+        start_nodes = self.patch(Node.objects, "start_nodes")
         node = factory.make_node(
             mac=True, status=self.status,
             power_type='ether_wake')
@@ -225,9 +229,9 @@ class TestCommissionNodeAction(MAASServerTestCase):
         action = Commission(node, admin)
         action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
-        self.assertEqual(
-            'provisioningserver.tasks.power_on',
-            self.celery.tasks[0]['task'].name)
+        self.assertThat(
+            start_nodes, MockCalledOnceWith(
+                [node.system_id], admin, user_data=ANY))
 
 
 class TestAbortCommissioningNodeAction(MAASServerTestCase):
@@ -273,19 +277,19 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertIn("SSH key", inhibition)
 
     def test_StartNode_starts_node(self):
+        start_nodes = self.patch(Node.objects, "start_nodes")
         user = factory.make_user()
         node = factory.make_node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         StartNode(node, user).execute()
-        self.assertEqual(
-            'provisioningserver.tasks.power_on',
-            self.celery.tasks[0]['task'].name)
+        self.assertThat(
+            start_nodes, MockCalledOnceWith([node.system_id], user))
 
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
         user = factory.make_user()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            status=NODE_STATUS.DEPLOYING, power_type='ether_wake', owner=user)
+            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user)
         ngi = node.get_primary_mac().cluster_interface
 
         # Narrow the available IP range and pre-claim the only address.

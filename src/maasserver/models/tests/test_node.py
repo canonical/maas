@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from datetime import timedelta
+from itertools import izip
 import random
 
 import celery
@@ -54,6 +55,11 @@ from maasserver.models.staticipaddress import (
     StaticIPAddressManager,
     )
 from maasserver.models.user import create_auth_token
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -71,15 +77,27 @@ from metadataserver.models import (
     NodeResult,
     NodeUserData,
     )
-from mock import sentinel
+from mock import (
+    ANY,
+    sentinel,
+    )
 from provisioningserver.power.poweraction import PowerAction
+from provisioningserver.rpc import cluster
+from provisioningserver.rpc.exceptions import MultipleFailures
+from provisioningserver.rpc.testing import (
+    always_succeed_with,
+    TwistedLoggerFixture,
+    )
 from provisioningserver.tasks import Omshell
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
+    HasLength,
     MatchesStructure,
     )
+from twisted.internet import defer
+from twisted.python.failure import Failure
 
 
 class TestHostnameValidator(MAASTestCase):
@@ -461,32 +479,6 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node()
         params = node.get_effective_power_parameters()
         self.assertEqual("", params["power_off_mode"])
-
-    def test_get_effective_power_parameters_provides_usable_defaults(self):
-        # For some power types at least, the defaults provided by
-        # get_effective_power_parameters are enough to get a basic setup
-        # working.
-        configless_power_types = [
-            'ether_wake',
-            'virsh',
-            ]
-        # We don't actually want to fire off power events, but we'll go
-        # through the motions right up to the point where we'd normally
-        # run shell commands.
-        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
-        user = factory.make_admin()
-        nodes = [
-            factory.make_node(power_type=power_type)
-            for power_type in configless_power_types]
-        for node in nodes:
-            node.add_mac_address(factory.getRandomMACAddress())
-        node_power_types = {
-            node: node.get_effective_power_type()
-            for node in nodes}
-        started_nodes = Node.objects.start_nodes(
-            [node.system_id for node in list(node_power_types.keys())], user)
-        successful_types = [node_power_types[node] for node in started_nodes]
-        self.assertItemsEqual(configless_power_types, successful_types)
 
     def test_get_effective_power_type_no_default_power_address_if_not_virsh(
             self):
@@ -955,18 +947,20 @@ class NodeTest(MAASServerTestCase):
             {status: node.status for status, node in nodes.items()})
 
     def test_start_commissioning_changes_status_and_starts_node(self):
+        start_nodes = self.patch(Node.objects, "start_nodes")
+
         node = factory.make_node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
         factory.make_mac_address(node=node)
-        node.start_commissioning(factory.make_admin())
+        admin = factory.make_admin()
+        node.start_commissioning(admin)
 
         expected_attrs = {
             'status': NODE_STATUS.COMMISSIONING,
         }
         self.assertAttributes(node, expected_attrs)
-        self.assertEqual(
-            ['provisioningserver.tasks.power_on'],
-            [task['task'].name for task in self.celery.tasks])
+        self.assertThat(start_nodes, MockCalledOnceWith(
+            [node.system_id], admin, user_data=ANY))
 
     def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
         node = factory.make_node(
@@ -981,15 +975,17 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual([], self.celery.tasks)
 
     def test_start_commissioning_sets_user_data(self):
+        start_nodes = self.patch(Node.objects, "start_nodes")
+
         node = factory.make_node(status=NODE_STATUS.NEW)
         user_data = factory.make_string().encode('ascii')
-        self.patch(
-            commissioning.user_data, 'generate_user_data'
-            ).return_value = user_data
-        node.start_commissioning(factory.make_admin())
-        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
-        commissioning.user_data.generate_user_data.assert_called_with(
-            nodegroup=node.nodegroup)
+        generate_user_data = self.patch(
+            commissioning.user_data, 'generate_user_data')
+        generate_user_data.return_value = user_data
+        admin = factory.make_admin()
+        node.start_commissioning(admin)
+        self.assertThat(start_nodes, MockCalledOnceWith(
+            [node.system_id], admin, user_data=user_data))
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_node(status=NODE_STATUS.NEW)
@@ -1510,236 +1506,6 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertItemsEqual([], output)
         self.assertEqual(0, len(self.celery.tasks))
 
-    def test_start_nodes_starts_nodes(self):
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(
-            user, power_type='ether_wake')
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_on', mac.mac_address),
-            (
-                len(self.celery.tasks),
-                self.celery.tasks[0]['task'].name,
-                self.celery.tasks[0]['kwargs']['mac_address'],
-            ))
-
-    def test_start_allocated_node_marks_node_as_deploying(self):
-        user = factory.make_user()
-        allocated_node, _ = self.make_node_with_mac(
-            user, power_type='ether_wake')
-        output = Node.objects.start_nodes([allocated_node.system_id], user)
-
-        self.assertItemsEqual([allocated_node], output)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYING, reload_object(allocated_node).status)
-
-    def test_start_deployed_node_doesnt_change_its_state(self):
-        user = factory.make_user()
-        deployed_node = factory.make_node(
-            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
-            owner=user)
-        factory.make_mac_address(node=deployed_node)
-        output = Node.objects.start_nodes([deployed_node.system_id], user)
-
-        self.assertItemsEqual([deployed_node], output)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYED, reload_object(deployed_node).status)
-
-    def test_start_nodes_does_not_claim_static_ips_unless_allocated(self):
-        user = factory.make_user()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, power_type='ether_wake')
-        output = Node.objects.start_nodes([node.system_id], user)
-        # Check that the single node was started, and that only a
-        # power_on task was issued.
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            [
-                'provisioningserver.tasks.power_on',
-            ],
-            [
-                task['task'].name for task in self.celery.tasks
-            ])
-
-        # No static IPs should have been allocated.
-        self.assertItemsEqual([], StaticIPAddress.objects.all())
-
-    def test_start_nodes_issues_dhcp_host_task(self):
-        user = factory.make_user()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, power_type='ether_wake', status=NODE_STATUS.ALLOCATED)
-        omshell_create = self.patch(Omshell, 'create')
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        # Check that the single node was started, and that the tasks
-        # issued are all there and in the right order.
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            [
-                'provisioningserver.tasks.add_new_dhcp_host_map',
-                'provisioningserver.tasks.power_on',
-            ],
-            [
-                task['task'].name for task in self.celery.tasks
-            ])
-
-        # Also check that Omshell.create() was called with the right
-        # parameters.
-        mac = node.get_primary_mac()
-        [ip] = mac.ip_addresses.all()
-        expected_ip = ip.ip
-        expected_mac = mac.mac_address
-        args, kwargs = omshell_create.call_args
-        self.assertEqual((expected_ip, expected_mac), args)
-
-    def test_start_nodes_clears_existing_dynamic_maps(self):
-        user = factory.make_user()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, power_type='ether_wake', status=NODE_STATUS.ALLOCATED)
-        factory.make_dhcp_lease(
-            nodegroup=node.nodegroup, mac=node.get_primary_mac().mac_address)
-        self.patch(Omshell, 'create')
-        self.patch(Omshell, 'remove')
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        # Check that the single node was started, and that the tasks
-        # issued are all there and in the right order.
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            [
-                'provisioningserver.tasks.remove_dhcp_host_map',
-                'provisioningserver.tasks.add_new_dhcp_host_map',
-                'provisioningserver.tasks.power_on',
-            ],
-            [
-                task['task'].name for task in self.celery.tasks
-            ])
-
-    def test_start_nodes_task_routed_to_nodegroup_worker(self):
-        # Startup jobs are chained, so the normal way of inspecting a
-        # task directly for routing options doesn't work here, because
-        # in EAGER mode that we use in the test suite, the options are
-        # not passed all the way down to the tasks.  Instead, we patch
-        # some celery code to inspect the options that were passed.
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(
-            user, power_type='ether_wake')
-        option_call = self.patch(celery.canvas.Signature, 'set')
-        Node.objects.start_nodes([node.system_id], user)
-        args, kwargs = option_call.call_args
-        self.assertEqual(node.work_queue, kwargs['queue'])
-
-    def test_start_nodes_does_not_attempt_power_task_if_no_power_type(self):
-        # If the node has a power_type set to DEFAULT_POWER_TYPE
-        # NodeManager.start_node(this_node) should use the default
-        # power_type.
-        user = factory.make_user()
-        node, unused = self.make_node_with_mac(
-            user, power_type='')
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([], output)
-        self.assertEqual(0, len(self.celery.tasks))
-
-    def test_start_nodes_wakeonlan_prefers_power_parameters(self):
-        # If power_parameters is set we should prefer it to sifting
-        # through related MAC addresses.
-        user = factory.make_user()
-        preferred_mac = factory.getRandomMACAddress()
-        node, mac = self.make_node_with_mac(
-            user, power_type='ether_wake',
-            power_parameters=dict(mac_address=preferred_mac))
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_on', preferred_mac),
-            (
-                len(self.celery.tasks),
-                self.celery.tasks[0]['task'].name,
-                self.celery.tasks[0]['kwargs']['mac_address'],
-            ))
-
-    def test_start_nodes_wakeonlan_falls_back_to_primary_mac(self):
-        # If node.power_params is set but doesn't have "mac_address" in it,
-        # then use the node's primary MAC.
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(
-            user, power_type='ether_wake',
-            power_parameters=dict(jarjar="binks"))
-        output = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            node.get_primary_mac().mac_address.get_raw(),
-            self.celery.tasks[0]['kwargs']['mac_address'])
-        self.assertIsInstance(
-            self.celery.tasks[0]['kwargs']['mac_address'],
-            unicode)
-
-    def test_start_nodes_wakeonlan_ignores_empty_mac_address_parameter(self):
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(
-            user, power_type='ether_wake',
-            power_parameters=dict(mac_address=""))
-        output = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([], output)
-        self.assertEqual([], self.celery.tasks)
-
-    def test_start_nodes_ignores_nodes_without_mac(self):
-        user = factory.make_user()
-        node = self.make_node(user)
-        output = Node.objects.start_nodes([node.system_id], user)
-
-        self.assertItemsEqual([], output)
-
-    def test_start_nodes_ignores_uneditable_nodes(self):
-        nodes = [
-            self.make_node_with_mac(
-                factory.make_user(), power_type='ether_wake')[0]
-            for counter in range(3)
-        ]
-        ids = [node.system_id for node in nodes]
-        startable_node = nodes[0]
-        self.assertItemsEqual(
-            [startable_node],
-            Node.objects.start_nodes(ids, startable_node.owner))
-
-    def test_start_nodes_stores_user_data(self):
-        node = factory.make_node(owner=factory.make_user())
-        user_data = self.make_user_data()
-        Node.objects.start_nodes(
-            [node.system_id], node.owner, user_data=user_data)
-        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
-
-    def test_start_nodes_does_not_store_user_data_for_uneditable_nodes(self):
-        node = factory.make_node(owner=factory.make_user())
-        original_user_data = self.make_user_data()
-        NodeUserData.objects.set_user_data(node, original_user_data)
-        Node.objects.start_nodes(
-            [node.system_id], factory.make_user(),
-            user_data=self.make_user_data())
-        self.assertEqual(
-            original_user_data, NodeUserData.objects.get_user_data(node))
-
-    def test_start_nodes_without_user_data_clears_existing_data(self):
-        node = factory.make_node(owner=factory.make_user())
-        user_data = self.make_user_data()
-        NodeUserData.objects.set_user_data(node, user_data)
-        Node.objects.start_nodes([node.system_id], node.owner, user_data=None)
-        self.assertRaises(
-            NodeUserData.DoesNotExist,
-            NodeUserData.objects.get_user_data, node)
-
-    def test_start_nodes_with_user_data_overwrites_existing_data(self):
-        node = factory.make_node(owner=factory.make_user())
-        NodeUserData.objects.set_user_data(node, self.make_user_data())
-        user_data = self.make_user_data()
-        Node.objects.start_nodes(
-            [node.system_id], node.owner, user_data=user_data)
-        self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
-
     def test_netboot_on(self):
         node = factory.make_node(netboot=False)
         node.set_netboot(True)
@@ -1749,6 +1515,256 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
+
+
+class NodeManagerTest_StartNodes(MAASServerTestCase):
+
+    def setUp(self):
+        super(NodeManagerTest_StartNodes, self).setUp()
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def prepare_rpc_to_cluster(self, nodegroup):
+        protocol = self.rpc_fixture.makeCluster(
+            nodegroup, cluster.CreateHostMaps, cluster.PowerOn)
+        protocol.CreateHostMaps.side_effect = always_succeed_with({})
+        protocol.PowerOn.side_effect = always_succeed_with({})
+        return protocol
+
+    def make_acquired_nodes_with_macs(self, user, nodegroup=None, count=3):
+        nodes = []
+        for _ in xrange(count):
+            node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+                nodegroup=nodegroup, status=NODE_STATUS.READY)
+            self.prepare_rpc_to_cluster(node.nodegroup)
+            node.acquire(user)
+            nodes.append(node)
+        return nodes
+
+    def test__sets_user_data(self):
+        user = factory.make_user()
+        nodegroup = factory.make_node_group()
+        self.prepare_rpc_to_cluster(nodegroup)
+        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
+        user_data = factory.make_bytes()
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes),
+                user, user_data=user_data)
+
+        # All three nodes have been given the same user data.
+        nuds = NodeUserData.objects.filter(
+            node_id__in=(node.id for node in nodes))
+        self.assertEqual({user_data}, {nud.data for nud in nuds})
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__resets_user_data(self):
+        user = factory.make_user()
+        nodegroup = factory.make_node_group()
+        self.prepare_rpc_to_cluster(nodegroup)
+        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes),
+                user, user_data=None)
+
+        # All three nodes have been given the same user data.
+        nuds = NodeUserData.objects.filter(
+            node_id__in=(node.id for node in nodes))
+        self.assertThat(list(nuds), HasLength(0))
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__claims_static_ip_addresses(self):
+        user = factory.make_user()
+        nodegroup = factory.make_node_group()
+        self.prepare_rpc_to_cluster(nodegroup)
+        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
+
+        from maastesting.matchers import MockAnyCall
+
+        claim_static_ip_addresses = self.patch_autospec(
+            Node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes), user)
+
+        for node in nodes:
+            self.expectThat(claim_static_ip_addresses, MockAnyCall(node))
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__claims_static_ip_addresses_for_allocated_nodes_only(self):
+        user = factory.make_user()
+        nodegroup = factory.make_node_group()
+        self.prepare_rpc_to_cluster(nodegroup)
+        nodes = self.make_acquired_nodes_with_macs(user, nodegroup, count=2)
+
+        # Change the status of the first node to something other than
+        # allocated.
+        broken_node, allocated_node = nodes
+        broken_node.status = NODE_STATUS.BROKEN
+        broken_node.save()
+
+        claim_static_ip_addresses = self.patch_autospec(
+            Node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes), user)
+
+        # Only one call is made to claim_static_ip_addresses(), for the
+        # still-allocated node.
+        self.assertThat(
+            claim_static_ip_addresses,
+            MockCalledOnceWith(allocated_node))
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__updates_host_maps(self):
+        user = factory.make_user()
+        nodes = self.make_acquired_nodes_with_macs(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes), user)
+
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                node.nodegroup: {
+                    ip_address.ip: mac.mac_address
+                    for ip_address in mac.ip_addresses.all()
+                }
+                for node in nodes
+                for mac in node.mac_addresses_on_managed_interfaces()
+            }))
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__propagates_errors_when_updating_host_maps(self):
+        user = factory.make_user()
+        nodes = self.make_acquired_nodes_with_macs(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = [
+            Failure(AssertionError("That is so not true")),
+            Failure(ZeroDivisionError("I cannot defy mathematics")),
+        ]
+
+        with TwistedLoggerFixture() as twisted_log:
+            error = self.assertRaises(
+                MultipleFailures, Node.objects.start_nodes,
+                list(node.system_id for node in nodes), user)
+
+        self.assertSequenceEqual(
+            update_host_maps.return_value, error.args)
+
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__updates_dns(self):
+        user = factory.make_user()
+        nodes = self.make_acquired_nodes_with_macs(user)
+
+        change_dns_zones = self.patch(dns_config, "change_dns_zones")
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes), user)
+
+        self.assertThat(
+            change_dns_zones, MockCalledOnceWith(
+                {node.nodegroup for node in nodes}))
+
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__starts_nodes(self):
+        user = factory.make_user()
+        nodes = self.make_acquired_nodes_with_macs(user)
+        power_infos = list(
+            node.get_effective_power_info()
+            for node in nodes)
+
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {}
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes(
+                list(node.system_id for node in nodes), user)
+
+        self.assertThat(power_on_nodes, MockCalledOnceWith(ANY))
+
+        nodes_start_info_observed = power_on_nodes.call_args[0][0]
+        nodes_start_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            for node, power_info in izip(nodes, power_infos)
+        ]
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_start_info_expected,
+            nodes_start_info_observed)
+
+        # No complaints are made to the Twisted log.
+        self.assertEqual("", twisted_log.dump())
+
+    def test__logs_errors_to_twisted_log_when_starting_nodes(self):
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                ZeroDivisionError("Defiance is futile"))
+        }
+
+        with TwistedLoggerFixture() as twisted_log:
+            Node.objects.start_nodes([], factory.make_user())
+
+        # Complaints go only to the Twisted log.
+        self.assertDocTestMatches(
+            """\
+            Unhandled Error
+            Traceback (...
+            Failure: exceptions.ZeroDivisionError: Defiance is futile
+            """,
+            twisted_log.dump())
+
+    def test__ignores_nodes_without_mac(self):
+        user = factory.make_user()
+        node = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user)
+        nodes_started = Node.objects.start_nodes([node.system_id], user)
+        self.assertItemsEqual([], nodes_started)
+
+    def test__marks_allocated_node_as_deploying(self):
+        user = factory.make_user()
+        [node] = self.make_acquired_nodes_with_macs(user, count=1)
+        nodes_started = Node.objects.start_nodes([node.system_id], user)
+        self.assertItemsEqual([node], nodes_started)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYING, reload_object(node).status)
+
+    def test__does_not_change_state_of_deployed_node(self):
+        user = factory.make_user()
+        node = factory.make_node(
+            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
+            owner=user)
+        factory.make_mac_address(node=node)
+        nodes_started = Node.objects.start_nodes([node.system_id], user)
+        self.assertItemsEqual([node], nodes_started)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYED, reload_object(node).status)
 
 
 class NodeStaticIPClaimingTest(MAASServerTestCase):
