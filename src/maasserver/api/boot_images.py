@@ -13,13 +13,13 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'BootImageHandler',
     'BootImagesHandler',
     ]
 
 from textwrap import dedent
 from xml.sax.saxutils import quoteattr
 
+from crochet import TimeoutError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.node_groups import check_nodegroup_access
@@ -28,6 +28,7 @@ from maasserver.api.support import (
     OperationsHandler,
     )
 from maasserver.api.utils import get_mandatory_param
+from maasserver.clusterrpc.boot_images import get_boot_images
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -36,23 +37,14 @@ from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
     )
+from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import (
     BootImage,
     NodeGroup,
     )
 from maasserver.utils import absolute_reverse
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
-
-
-DISPLAYED_BOOTIMAGE_FIELDS = (
-    'id',
-    'osystem',
-    'release',
-    'architecture',
-    'subarchitecture',
-    'purpose',
-    'label',
-)
 
 
 def warn_if_missing_boot_images():
@@ -200,31 +192,6 @@ def prune_boot_images(nodegroup, reported_images, stored_images):
         db_images.delete()
 
 
-class BootImageHandler(OperationsHandler):
-    """Manage a boot image."""
-    api_doc_section_name = "Boot image"
-    create = replace = update = delete = None
-
-    model = BootImage
-    fields = DISPLAYED_BOOTIMAGE_FIELDS
-
-    def read(self, request, uuid, id):
-        """Read a boot image."""
-        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        return get_object_or_404(
-            BootImage, nodegroup=nodegroup, id=id)
-
-    @classmethod
-    def resource_uri(cls, bootimage=None):
-        if bootimage is None:
-            id = 'id'
-            uuid = 'uuid'
-        else:
-            id = bootimage.id
-            uuid = bootimage.nodegroup.uuid
-        return ('boot_image_handler', (uuid, id))
-
-
 class BootImagesHandler(OperationsHandler):
     """Manage the collection of boot images."""
     api_doc_section_name = "Boot images"
@@ -248,7 +215,16 @@ class BootImagesHandler(OperationsHandler):
             should be listed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        return BootImage.objects.filter(nodegroup=nodegroup)
+        try:
+            images = get_boot_images(nodegroup)
+        except (NoConnectionsAvailable, TimeoutError):
+            raise ClusterUnavailable()
+        # Remove xinstall_type and xinstall_path as they are only
+        # used internally.
+        for image in images:
+            del image['xinstall_path']
+            del image['xinstall_type']
+        return images
 
     @operation(idempotent=False)
     def report_boot_images(self, request, uuid):

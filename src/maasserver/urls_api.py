@@ -20,10 +20,7 @@ from django.conf.urls import (
     )
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
-from maasserver.api.boot_images import (
-    BootImageHandler,
-    BootImagesHandler,
-    )
+from maasserver.api.boot_images import BootImagesHandler
 from maasserver.api.boot_resources import (
     BootResourceHandler,
     BootResourcesHandler,
@@ -133,8 +130,6 @@ nodegroupinterfaces_handler = RestrictedResource(
     NodeGroupInterfacesHandler, authentication=api_auth)
 boot_images_handler = RestrictedResource(
     BootImagesHandler, authentication=api_auth)
-boot_image_handler = RestrictedResource(
-    BootImageHandler, authentication=api_auth)
 tag_handler = RestrictedResource(TagHandler, authentication=api_auth)
 tags_handler = RestrictedResource(TagsHandler, authentication=api_auth)
 version_handler = RestrictedResource(VersionHandler)
@@ -215,8 +210,6 @@ urlpatterns += patterns(
         nodegroupinterface_handler, name='nodegroupinterface_handler'),
     url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/$',
         boot_images_handler, name='boot_images_handler'),
-    url(r'^nodegroups/(?P<uuid>[^/]+)/boot-images/(?P<id>[^/]+)/$',
-        boot_image_handler, name='boot_image_handler'),
     url(
         r'^networks/(?P<name>[\w\-]+)/$',
         network_handler, name='network_handler'),

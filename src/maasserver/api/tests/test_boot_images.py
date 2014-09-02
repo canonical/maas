@@ -18,6 +18,7 @@ import httplib
 import json
 
 from apiclient.maas_client import MAASClient
+from crochet import TimeoutError
 from django.conf import settings
 from django.core.urlresolvers import reverse
 from fixtures import EnvironmentVariableFixture
@@ -56,9 +57,9 @@ from provisioningserver import (
     tasks,
     )
 from provisioningserver.boot import tftppath
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.testing.boot_images import make_boot_image_params
 from testresources import FixtureResource
-from testtools.matchers import MatchesStructure
 
 
 class TestWarnIfMissingBootImages(MAASServerTestCase):
@@ -105,39 +106,6 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
             MockCalledOnceWith(COMPONENT.IMPORT_PXE_FILES))
 
 
-def get_boot_image_uri(boot_image):
-    """Return a boot image's URI on the API."""
-    return reverse(
-        'boot_image_handler',
-        args=[boot_image.nodegroup.uuid, boot_image.id])
-
-
-class TestBootImageAPI(APITestCase):
-
-    def test_handler_path(self):
-        self.assertEqual(
-            '/api/1.0/nodegroups/uuid/boot-images/3/',
-            reverse('boot_image_handler', args=['uuid', '3']))
-
-    def test_GET_returns_boot_image(self):
-        boot_image = factory.make_boot_image()
-        response = self.client.get(get_boot_image_uri(boot_image))
-        self.assertEqual(httplib.OK, response.status_code)
-        returned_boot_image = json.loads(response.content)
-        # The returned object contains a 'resource_uri' field.
-        self.assertEqual(
-            reverse(
-                'boot_image_handler',
-                args=[boot_image.nodegroup.uuid, boot_image.id]
-            ),
-            returned_boot_image['resource_uri'])
-        # The other fields are the boot image's fields.
-        del returned_boot_image['resource_uri']
-        self.assertThat(
-            boot_image,
-            MatchesStructure.byEquality(**returned_boot_image))
-
-
 class TestBootImagesAPI(APITestCase):
     """Test the the boot images API."""
 
@@ -146,19 +114,69 @@ class TestBootImagesAPI(APITestCase):
             '/api/1.0/nodegroups/uuid/boot-images/',
             reverse('boot_images_handler', args=['uuid']))
 
+    def make_boot_image(self):
+        rpc_image = {
+            'osystem': factory.make_name('osystem'),
+            'release': factory.make_name('release'),
+            'architecture': factory.make_name('arch'),
+            'subarchitecture': factory.make_name('subarch'),
+            'label': factory.make_name('label'),
+            'purpose': factory.make_name('purpose'),
+            'xinstall_type': factory.make_name('xi_type'),
+            'xinstall_path': factory.make_name('xi_path'),
+            }
+        api_image = rpc_image.copy()
+        del api_image['xinstall_type']
+        del api_image['xinstall_path']
+        return rpc_image, api_image
+
     def test_GET_returns_boot_image_list(self):
         nodegroup = factory.make_node_group()
-        images = [
-            factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
-        # Create images in another nodegroup.
-        [factory.make_boot_image() for _ in range(3)]
+        rpc_images = []
+        api_images = []
+        for _ in range(3):
+            rpc_image, api_image = self.make_boot_image()
+            rpc_images.append(rpc_image)
+            api_images.append(api_image)
+        self.patch(
+            boot_images_module, 'get_boot_images').return_value = rpc_images
+
         response = self.client.get(
             reverse('boot_images_handler', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
-        self.assertItemsEqual(
-            [boot_image.id for boot_image in images],
-            [boot_image.get('id') for boot_image in parsed_result])
+        self.assertItemsEqual(api_images, parsed_result)
+
+    def test_GET_returns_404_when_invalid_nodegroup(self):
+        uuid = factory.make_UUID()
+        response = self.client.get(
+            reverse('boot_images_handler', args=[uuid]))
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_GET_returns_503_when_no_connection_avaliable(self):
+        nodegroup = factory.make_node_group()
+        mock_get_boot_images = self.patch(
+            boot_images_module, 'get_boot_images')
+        mock_get_boot_images.side_effect = NoConnectionsAvailable
+
+        response = self.client.get(
+            reverse('boot_images_handler', args=[nodegroup.uuid]))
+        self.assertEqual(
+            httplib.SERVICE_UNAVAILABLE,
+            response.status_code, response.content)
+
+    def test_GET_returns_503_when_timeout_error(self):
+        nodegroup = factory.make_node_group()
+        mock_get_boot_images = self.patch(
+            boot_images_module, 'get_boot_images')
+        mock_get_boot_images.side_effect = TimeoutError
+
+        response = self.client.get(
+            reverse('boot_images_handler', args=[nodegroup.uuid]))
+        self.assertEqual(
+            httplib.SERVICE_UNAVAILABLE,
+            response.status_code, response.content)
 
 
 class TestBootImagesReportImagesAPI(APITestCase):
