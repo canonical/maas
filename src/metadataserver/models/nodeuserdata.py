@@ -70,10 +70,11 @@ class NodeUserDataManager(Manager):
         This is more efficient than calling `set_user_data` on each node.
         """
         self.filter(node__in=nodes).delete()
-        self.bulk_create((
-            self.model(node=node, data=Bin(data))
-            for node in nodes
-        ))
+        if data is not None:
+            self.bulk_create((
+                self.model(node=node, data=Bin(data))
+                for node in nodes
+            ))
 
 
 class NodeUserData(CleanSave, Model):

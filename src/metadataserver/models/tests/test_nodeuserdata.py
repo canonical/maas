@@ -87,6 +87,14 @@ class TestNodeUserDataManager(DjangoTestCase):
         for node in nodes:
             self.assertEqual(data, NodeUserData.objects.get_user_data(node))
 
+    def test_bulk_set_user_data_only_deletes_when_data_is_None(self):
+        nodes = [factory.make_node() for _ in xrange(5)]
+        NodeUserData.objects.bulk_set_user_data(nodes, None)
+        for node in nodes:
+            self.assertRaises(
+                NodeUserData.DoesNotExist,
+                NodeUserData.objects.get_user_data, node)
+
     def test_bulk_set_user_data_with_preexisting_data(self):
         nodes = [factory.make_node() for _ in xrange(2)]
         data1 = factory.make_bytes()
