@@ -45,14 +45,6 @@ from netaddr.core import AddrFormatError
 from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.utils.network import make_network
 
-# The minimum number of leading bits of the routing prefix for a
-# network.  A smaller number will be rejected as it creates a huge
-# address space that is currently not well supported by the DNS
-# machinery.
-# For instance, if MINIMUM_NETMASK_BITS is 9, a /8 will be rejected.
-MINIMUM_NETMASK_BITS = 16
-
-
 # UI explanation for subnet_mask field.
 SUBNET_MASK_HELP = "e.g. 255.255.255.0"
 if REVEAL_IPv6:
@@ -210,18 +202,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             # the failure is due to an invalid netmask.
             raise ValidationError({'subnet_mask': [e.message]})
 
-    def clean_network_not_too_big(self):
-        # If management is not 'UNMANAGED', refuse huge networks.
-        if self.is_managed:
-            network = self.network
-            if network is not None:
-                if network.prefixlen < MINIMUM_NETMASK_BITS:
-                    message = (
-                        "Cannot create an address space bigger than "
-                        "a /%d network.  This network is a /%d network." % (
-                            MINIMUM_NETMASK_BITS, network.prefixlen))
-                    raise ValidationError({'subnet_mask': [message]})
-
     def clean_network_config_if_managed(self):
         # If management is not 'UNMANAGED', all the network information
         # should be provided.
@@ -362,7 +342,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
         self.clean_network_valid()
-        self.clean_network_not_too_big()
         self.clean_ips_in_network()
         self.clean_network_config_if_managed()
         self.clean_ip_range_bounds()
