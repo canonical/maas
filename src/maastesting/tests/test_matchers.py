@@ -20,6 +20,8 @@ from maastesting.matchers import (
     HasAttribute,
     IsCallable,
     IsCallableMock,
+    IsFiredDeferred,
+    IsUnfiredDeferred,
     MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
@@ -38,6 +40,7 @@ from testtools.matchers import (
     MatchesStructure,
     Mismatch,
     )
+from twisted.internet import defer
 
 
 class TestIsCallable(MAASTestCase):
@@ -279,3 +282,41 @@ class TestIsCallableMock(MAASTestCase, MockTestMixin):
         result = matcher.match(object())
         self.assertMismatch(
             result, " is not callable")
+
+
+class TestIsFiredDeferred(MAASTestCase, MockTestMixin):
+
+    def test__matches_fired_deferred(self):
+        d = defer.Deferred()
+        d.callback(None)
+        self.assertThat(d, IsFiredDeferred())
+
+    def test__does_not_match_unfired_deferred(self):
+        d = defer.Deferred()
+        self.assertMismatch(
+            IsFiredDeferred().match(d),
+            " has not been called")
+
+    def test__does_not_match_non_deferred(self):
+        self.assertMismatch(
+            IsFiredDeferred().match(object()),
+            " is not a Deferred")
+
+
+class TestIsUnfiredDeferred(MAASTestCase, MockTestMixin):
+
+    def test__matches_unfired_deferred(self):
+        d = defer.Deferred()
+        self.assertThat(d, IsUnfiredDeferred())
+
+    def test__does_not_match_fired_deferred(self):
+        d = defer.Deferred()
+        d.callback(None)
+        self.assertMismatch(
+            IsUnfiredDeferred().match(d),
+            " has been called (result=None)")
+
+    def test__does_not_match_non_deferred(self):
+        self.assertMismatch(
+            IsUnfiredDeferred().match(object()),
+            " is not a Deferred")

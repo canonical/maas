@@ -16,6 +16,8 @@ __all__ = [
     'HasAttribute',
     'IsCallable',
     'IsCallableMock',
+    'IsFiredDeferred',
+    'IsUnfiredDeferred',
     'MockAnyCall',
     'MockCalledOnceWith',
     'MockCalledWith',
@@ -34,6 +36,7 @@ from testtools.matchers import (
     MatchesPredicate,
     Mismatch,
     )
+from twisted.internet import defer
 
 
 class IsCallable(Matcher):
@@ -214,3 +217,32 @@ class MockNotCalled(Matcher):
             first_only=True,
         )
         return matcher.match(mock)
+
+
+class IsFiredDeferred(Matcher):
+    """Matches if the subject is a fired `Deferred`."""
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def match(self, thing):
+        if not isinstance(thing, defer.Deferred):
+            return Mismatch("%r is not a Deferred" % (thing,))
+        if not thing.called:
+            return Mismatch("%r has not been called" % (thing,))
+        return None
+
+
+class IsUnfiredDeferred(Matcher):
+    """Matches if the subject is an unfired `Deferred`."""
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def match(self, thing):
+        if not isinstance(thing, defer.Deferred):
+            return Mismatch("%r is not a Deferred" % (thing,))
+        if thing.called:
+            return Mismatch(
+                "%r has been called (result=%r)" % (thing, thing.result))
+        return None
