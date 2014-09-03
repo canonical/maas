@@ -158,7 +158,12 @@ def get_curtin_context(node):
     """
     token = NodeKey.objects.get_token_for_node(node)
     base_url = node.nodegroup.maas_url
+    version = 'latest'
     return {
+        'reporter_token': token,
+        'reporter_url': absolute_reverse(
+            'curtin-metadata-version', args=[version],
+            query={'op': 'signal'}, base_url=base_url),
         'curtin_preseed': compose_cloud_init_preseed(token, base_url)
     }
 

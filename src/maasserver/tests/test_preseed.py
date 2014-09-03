@@ -752,7 +752,8 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         context = get_curtin_context(node)
-        self.assertItemsEqual(['curtin_preseed'], context)
+        self.assertItemsEqual(
+            ['reporter_token', 'reporter_url', 'curtin_preseed'], context)
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_installer_url_returns_url(self):

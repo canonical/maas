@@ -43,3 +43,10 @@ apt_proxy: {{http_proxy}}
 {{else}}
 apt_proxy: http://{{server_host}}:8000/
 {{endif}}
+
+reporter:
+ maas:
+  url: {{ reporter_url }}
+  consumer_key: {{ reporter_token.consumer.key }}
+  token_key: {{ reporter_token.key }}
+  token_secret: {{ reporter_token.secret }}
