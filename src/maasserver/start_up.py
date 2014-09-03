@@ -35,7 +35,7 @@ from maasserver.dns.config import write_full_dns_config
 from maasserver.enum import COMPONENT
 from maasserver.fields import register_mac_type
 from maasserver.models import (
-    BootResource,
+    BootImage,
     NodeGroup,
     )
 from provisioningserver.upgrade_cluster import create_gnupg_home
@@ -65,14 +65,17 @@ def start_up():
     post_start_up()
 
 
-def update_boot_resource_error():
+def update_import_script_error():
     import_script = COMPONENT.IMPORT_PXE_FILES
-    have_resources = BootResource.objects.all().exists()
-    if not have_resources and get_persistent_error(import_script) is None:
+    have_boot_images = BootImage.objects.all().exists()
+    if not have_boot_images and get_persistent_error(import_script) is None:
         warning = dedent("""\
-            The region controller does not have any boot images available.
-            Nodes will not be able to provision without boot images. Start
-            the boot images import process to resolve this issue.
+            The region controller does not know whether any boot images have
+            been imported yet.  If this message does not disappear in 5
+            minutes, there may be a communication problem between the region
+            worker process and the region controller.  Check the region
+            worker's logs for signs that it was unable to report to the MAAS
+            API.
             """)
         register_persistent_error(import_script, warning)
 
@@ -98,7 +101,7 @@ def inner_start_up():
     write_full_dns_config(reload_retry=True)
 
     # Check whether we have boot images yet.
-    update_boot_resource_error()
+    update_import_script_error()
 
 
 def post_start_up():

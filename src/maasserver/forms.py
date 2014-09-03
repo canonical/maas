@@ -98,6 +98,7 @@ from maasserver.forms_settings import (
     list_commisioning_choices,
     )
 from maasserver.models import (
+    BootImage,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -211,11 +212,19 @@ class ModelForm(APIEditMixin, forms.ModelForm):
 def list_all_usable_architectures():
     """Return all architectures that can be used for nodes.
 
-    These are the architectures for which any boot resource exists. Now that
-    all clusters sync from the region, all cluster support the same
-    architectures.
+    These are the architectures for which any nodegroup has the boot images
+    required to commission and install nodes.
     """
-    return sorted(BootResource.objects.get_usable_architectures())
+    # The Node edit form offers all usable architectures as options for the
+    # architecture field.  Not all of these may be available in the node's
+    # nodegroup, but to represent that accurately in the UI would depend on
+    # the currently selected nodegroup.  Narrowing the options down further
+    # would have to happen browser-side.
+    architectures = set()
+    for nodegroup in NodeGroup.objects.all():
+        architectures = architectures.union(
+            BootImage.objects.get_usable_architectures(nodegroup))
+    return sorted(architectures)
 
 
 def list_architecture_choices(architectures):

@@ -14,10 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maasserver.enum import (
-    BOOT_RESOURCE_TYPE,
-    NODE_STATUS,
-    )
+from maasserver.enum import NODE_STATUS
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
@@ -41,22 +38,30 @@ from maasserver.testing.testcase import MAASServerTestCase
 
 class TestHelpers(MAASServerTestCase):
 
-    def make_usable_boot_resource(self, arch=None, subarch=None):
-        """Create a set of boot resources, so the architecture becomes usable.
+    def make_usable_boot_images(self, nodegroup=None, osystem=None,
+                                arch=None, subarchitecture=None, release=None):
+        """Create a set of boot images, so the architecture becomes "usable".
 
-        This will make the resources' architecture show up in the list of
-        usable architecture.
+        This will make the images' architecture show up in the list of usable
+        architecture.
 
         Nothing is returned.
         """
+        if nodegroup is None:
+            nodegroup = factory.make_node_group()
+        if osystem is None:
+            osystem = factory.make_name('os')
         if arch is None:
             arch = factory.make_name('arch')
-        if subarch is None:
-            subarch = factory.make_name('subarch')
+        if subarchitecture is None:
+            subarchitecture = factory.make_name('subarch')
+        if release is None:
+            release = factory.make_name('release')
         for purpose in ['install', 'commissioning']:
-            architecture = '%s/%s' % (arch, subarch)
-            factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED, architecture=architecture)
+            factory.make_boot_image(
+                nodegroup=nodegroup, osystem=osystem, architecture=arch,
+                subarchitecture=subarchitecture, release=release,
+                purpose=purpose)
 
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
         preselected_nodegroup = factory.make_node_group()
@@ -83,7 +88,7 @@ class TestHelpers(MAASServerTestCase):
             (factory.make_name('arch'), factory.make_name('subarch'))
             for _ in range(3)]
         for arch, subarch in arches:
-            self.make_usable_boot_resource(arch=arch, subarch=subarch)
+            self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
         expected = [
             "%s/%s" % (arch, subarch) for arch, subarch in arches]
         self.assertItemsEqual(expected, list_all_usable_architectures())
@@ -93,7 +98,7 @@ class TestHelpers(MAASServerTestCase):
             (factory.make_name('arch'), factory.make_name('subarch'))
             for _ in range(3)]
         for arch, subarch in arches:
-            self.make_usable_boot_resource(arch=arch, subarch=subarch)
+            self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
         expected = [
             "%s/%s" % (arch, subarch) for arch, subarch in arches]
         self.assertEqual(sorted(expected), list_all_usable_architectures())
@@ -101,8 +106,8 @@ class TestHelpers(MAASServerTestCase):
     def test_list_all_usable_architectures_returns_no_duplicates(self):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
-        self.make_usable_boot_resource(arch=arch, subarch=subarch)
-        self.make_usable_boot_resource(arch=arch, subarch=subarch)
+        self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
+        self.make_usable_boot_images(arch=arch, subarchitecture=subarch)
         self.assertEqual(
             ["%s/%s" % (arch, subarch)], list_all_usable_architectures())
 
