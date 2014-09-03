@@ -68,7 +68,6 @@ from metadataserver.models import (
     )
 from mock import Mock
 import netaddr
-from provisioningserver import tasks
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.dhcp.leases import send_leases
 from provisioningserver.omshell import Omshell
@@ -296,7 +295,6 @@ class TestNodeGroupAPI(APITestCase):
         self.patch(Omshell, 'create')
         nodegroup = factory.make_node_group()
         client = make_worker_client(nodegroup)
-        self.patch(tasks, 'add_new_dhcp_host_map', FakeMethod())
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
@@ -306,7 +304,6 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(
             (httplib.OK, "Leases updated."),
             (response.status_code, response.content))
-        self.assertEqual([], tasks.add_new_dhcp_host_map.calls)
 
     def test_worker_calls_update_leases(self):
         # In bug 1041158, the worker's upload_leases task tried to call

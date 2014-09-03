@@ -318,33 +318,6 @@ def setup_rndc_configuration(callback=None):
 @task
 @log_task_events()
 @log_exception_text
-def add_new_dhcp_host_map(mappings, server_address, shared_key):
-    """Add address mappings to the DHCP server.
-
-    Do not invoke this when DHCP is set to be managed manually.
-
-    :param mappings: A dict of new IP addresses, and the MAC addresses they
-        translate to.
-    :param server_address: IP or hostname for the DHCP server
-    :param shared_key: The HMAC-MD5 key that the DHCP server uses for access
-        control.
-    """
-    omshell = Omshell(server_address, shared_key)
-    try:
-        for ip_address, mac_address in mappings.items():
-            omshell.create(ip_address, mac_address)
-    except CalledProcessError as e:
-        # TODO signal to webapp that the job failed.
-
-        # Re-raise, so the job is marked as failed.  Only currently
-        # useful for tests.
-        maaslog.error("add_new_dhcp_host_map failed: %s", unicode(e))
-        raise
-
-
-@task
-@log_task_events()
-@log_exception_text
 def remove_dhcp_host_map(ip_address, server_address, omapi_key):
     """Remove an IP to MAC mapping in the DHCP server.
 

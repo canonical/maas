@@ -66,7 +66,6 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
-    add_new_dhcp_host_map,
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
     import_boot_images,
@@ -188,32 +187,6 @@ class TestDHCPTasks(PservTestCase):
             'omapi_key': factory.make_name('key'),
             'dhcp_subnets': [make_subnet_config()],
             }
-
-    def test_add_new_dhcp_host_map(self):
-        # We don't want to actually run omshell in the task, so we stub
-        # out the wrapper class's _run method and record what it would
-        # do.
-        mac = factory.getRandomMACAddress()
-        ip = factory.getRandomIPAddress()
-        server_address = factory.make_string()
-        key = factory.make_string()
-        recorder = FakeMethod(result=(0, "hardware-type"))
-        self.patch(Omshell, '_run', recorder)
-        add_new_dhcp_host_map.delay({ip: mac}, server_address, key)
-
-        self.assertRecordedStdin(recorder, ip, mac, server_address, key)
-
-    def test_add_new_dhcp_host_map_failure(self):
-        # Check that task failures are caught.  Nothing much happens in
-        # the Task code right now though.
-        mac = factory.getRandomMACAddress()
-        ip = factory.getRandomIPAddress()
-        server_address = factory.make_string()
-        key = factory.make_string()
-        self.patch(Omshell, '_run', FakeMethod(result=(0, "this_will_fail")))
-        self.assertRaises(
-            CalledProcessError, add_new_dhcp_host_map.delay,
-            {mac: ip}, server_address, key)
 
     def test_remove_dhcp_host_map(self):
         # We don't want to actually run omshell in the task, so we stub

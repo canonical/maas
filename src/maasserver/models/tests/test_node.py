@@ -65,10 +65,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
-    )
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.enum import RESULT_TYPE
@@ -1765,116 +1762,6 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertItemsEqual([node], nodes_started)
         self.assertEqual(
             NODE_STATUS.DEPLOYED, reload_object(node).status)
-
-
-class NodeStaticIPClaimingTest(MAASServerTestCase):
-
-    def test_claim_static_ips_ignores_unmanaged_macs(self):
-        node = factory.make_node()
-        factory.make_mac_address(node=node)
-        observed = node.claim_static_ips()
-        self.assertItemsEqual([], observed)
-
-    def test_claim_static_ips_creates_task_for_each_managed_mac(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
-
-        # Add some MACs attached to managed interfaces.
-        number_of_macs = 2
-        for _ in range(0, number_of_macs):
-            ngi = factory.make_node_group_interface(
-                nodegroup,
-                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-            factory.make_mac_address(node=node, cluster_interface=ngi)
-
-        observed = node.claim_static_ips()
-        expected = [
-            'provisioningserver.tasks.add_new_dhcp_host_map'] * number_of_macs
-
-        self.assertEqual(
-            expected,
-            [task.task for task in observed]
-            )
-
-    def test_claim_static_ips_creates_deletion_task(self):
-        # If dhcp leases exist before creating a static IP, the code
-        # should attempt to remove their host maps.
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        factory.make_dhcp_lease(
-            nodegroup=node.nodegroup, mac=node.get_primary_mac().mac_address)
-
-        observed = node.claim_static_ips()
-
-        self.assertEqual(
-            [
-                'celery.chain',
-                'provisioningserver.tasks.add_new_dhcp_host_map',
-            ],
-            [
-                task.task for task in observed
-            ])
-
-        # Probe the chain to make sure it has the deletion task.
-        self.assertEqual(
-            'provisioningserver.tasks.remove_dhcp_host_map',
-            observed[0].tasks[0].task,
-            )
-
-    def test_claim_static_ips_ignores_interface_with_no_static_range(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        ngi = node.get_primary_mac().cluster_interface
-        ngi.static_ip_range_low = None
-        ngi.static_ip_range_high = None
-        ngi.save()
-
-        observed = node.claim_static_ips()
-        self.assertItemsEqual([], observed)
-
-    def test_claim_static_ips_deallocates_if_cant_complete_all_macs(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        self.patch(
-            MACAddress,
-            'claim_static_ips').side_effect = StaticIPAddressExhaustion
-        deallocate_call = self.patch(
-            StaticIPAddressManager, 'deallocate_by_node')
-        self.assertRaises(StaticIPAddressExhaustion, node.claim_static_ips)
-        self.assertThat(deallocate_call, MockCalledOnceWith(node))
-
-    def test_claim_static_ips_does_not_deallocate_if_completes_all_macs(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        deallocate_call = self.patch(
-            StaticIPAddressManager, 'deallocate_by_node')
-        node.claim_static_ips()
-
-        self.assertThat(deallocate_call, MockNotCalled())
-
-    def test_claim_static_ips_updates_dns(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node.nodegroup.status = NODEGROUP_STATUS.ACCEPTED
-        change_dns_zones = self.patch(dns_config, 'change_dns_zones')
-        node.claim_static_ips()
-        self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
-
-    def test_claim_static_ips_creates_no_tasks_if_existing_IP(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        primary_mac = node.get_primary_mac()
-        primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
-        ngi = factory.make_node_group_interface(
-            node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        second_mac = factory.make_mac_address(node=node, cluster_interface=ngi)
-        observed_tasks = node.claim_static_ips()
-
-        # We expect only a single task for the one MAC which did not
-        # already have any IP.
-        expected = ['provisioningserver.tasks.add_new_dhcp_host_map']
-        self.assertEqual(
-            expected,
-            [task.task for task in observed_tasks]
-            )
-        task_mapping_arg = observed_tasks[0].kwargs["mappings"]
-        [observed_mac] = task_mapping_arg.values()
-        self.assertEqual(second_mac.mac_address.get_raw(), observed_mac)
 
 
 class TestClaimStaticIPAddresses(MAASTestCase):

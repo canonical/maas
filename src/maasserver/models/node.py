@@ -92,7 +92,6 @@ from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.tasks import (
-    add_new_dhcp_host_map,
     power_off,
     remove_dhcp_host_map,
     )
@@ -720,31 +719,6 @@ class Node(CleanSave, TimestampedModel):
             return nodegroup_fqdn(self.hostname, self.nodegroup.name)
         return self.hostname
 
-    def claim_static_ips(self):
-        """Assign AUTO static IPs for our MACs and return a list of
-        Celery tasks that need executing.  If nothing needs executing,
-        the empty list is returned.
-
-        Each MAC on the node that is connected to a managed cluster
-        interface will get an IP.
-
-        This operation is atomic; if claiming an IP on a particular MAC fails
-        then none of the MACs will get an IP and StaticIPAddressExhaustion
-        is raised.
-        """
-        warn_deprecated("Celery is going away.")
-
-        try:
-            tasks = self._create_tasks_for_static_ips()
-        except StaticIPAddressExhaustion:
-            StaticIPAddress.objects.deallocate_by_node(self)
-            raise
-
-        # Update the DNS zone with the new static IP info as necessary.
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones([self.nodegroup])
-        return tasks
-
     def start_deployment(self):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
@@ -754,57 +728,6 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
-
-    def _create_hostmap_task(self, mac, sip):
-        # This is creating a list of celery 'Signatures' which will be
-        # chained together later.  Normally the result of each
-        # chained task is passed to the next, but we don't want that
-        # here.  We can avoid it by making the Signatures
-        # "immutable", and this is done with the "si()" call on the
-        # task, which produces an immutable Signature.
-        # See docs.celeryproject.org/en/latest/userguide/canvas.html
-        warn_deprecated("Celery is going away.")
-
-        dhcp_key = self.nodegroup.dhcp_key
-        mapping = {sip.ip: mac.mac_address.get_raw()}
-        # XXX See bug 1039362 regarding server_address.
-        dhcp_task = add_new_dhcp_host_map.si(
-            mappings=mapping, server_address='127.0.0.1',
-            shared_key=dhcp_key)
-        dhcp_task.set(queue=self.work_queue)
-        return dhcp_task
-
-    def _create_tasks_for_static_ips(self):
-        warn_deprecated("Celery is going away.")
-
-        tasks = []
-        # Get a new AUTO static IP for each MAC on a managed interface.
-        macs = self.mac_addresses_on_managed_interfaces()
-        for mac in macs:
-            try:
-                sips = mac.claim_static_ips()
-            except StaticIPAddressTypeClash:
-                # There's already a non-AUTO IP, so nothing to do.
-                continue
-            # "sip" may be None if the static range is not yet
-            # defined, which will be the case when migrating from older
-            # versions of the code.  If it is None we just ignore this
-            # MAC.
-            for sip in sips:
-                tasks.append(self._create_hostmap_task(mac, sip))
-                maaslog.info(
-                    "%s: Claimed static IP %s on %s", self.hostname,
-                    sip.ip, mac.mac_address.get_raw())
-        if len(tasks) > 0:
-            # Delete any existing dynamic maps as the first task.  This
-            # is a belt and braces approach to deal with legacy code
-            # that previously used dynamic IPs for hosts.
-            del_existing = self._build_dynamic_host_map_deletion_task()
-            if del_existing is not None:
-                # del_existing is a chain so does not need an explicit
-                # queue to be set as each subtask will have one.
-                tasks.insert(0, del_existing)
-        return tasks
 
     def ip_addresses(self):
         """IP addresses allocated to this node.
