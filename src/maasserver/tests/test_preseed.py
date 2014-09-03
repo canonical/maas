@@ -38,7 +38,7 @@ from maasserver.preseed import (
     get_curtin_installer_url,
     get_curtin_userdata,
     get_enlist_preseed,
-    get_hostname_and_path,
+    get_netloc_and_path,
     get_node_preseed_context,
     get_preseed,
     get_preseed_context,
@@ -83,19 +83,22 @@ class TestSplitSubArch(MAASServerTestCase):
         self.assertEqual(['amd64', 'test'], split_subarch('amd64/test'))
 
 
-class TestGetHostnameAndPath(MAASServerTestCase):
-    """Tests for `get_hostname_and_path`."""
+class TestGetNetlocAndPath(MAASServerTestCase):
+    """Tests for `get_netloc_and_path`."""
 
-    def test_get_hostname_and_path(self):
+    def test_get_netloc_and_path(self):
         input_and_results = [
+            ('http://name.domain:66/my/path', ('name.domain:66', '/my/path')),
+            ('http://name.domain:80/my/path', ('name.domain:80', '/my/path')),
             ('http://name.domain/my/path', ('name.domain', '/my/path')),
             ('https://domain/path', ('domain', '/path')),
+            ('http://domain:12', ('domain:12', '')),
             ('http://domain/', ('domain', '/')),
             ('http://domain', ('domain', '')),
             ]
         inputs = [input for input, _ in input_and_results]
         results = [result for _, result in input_and_results]
-        self.assertEqual(results, map(get_hostname_and_path, inputs))
+        self.assertEqual(results, map(get_netloc_and_path, inputs))
 
 
 class TestGetPreseedFilenames(MAASServerTestCase):

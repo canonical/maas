@@ -354,10 +354,14 @@ def load_preseed_template(node, prefix, osystem='', release=''):
     return get_template(prefix, None, default=True)
 
 
-def get_hostname_and_path(url):
-    """Return a tuple of the hostname and the hierarchical path from a url."""
+def get_netloc_and_path(url):
+    """Return a tuple of the netloc and the hierarchical path from a url.
+
+    The netloc, the "Network location part", is composed of the hostname
+    and, optionally, the port.
+    """
     parsed_url = urlparse(url)
-    return parsed_url.hostname, parsed_url.path
+    return parsed_url.netloc, parsed_url.path
 
 
 def pick_cluster_controller_address(node):
@@ -408,9 +412,9 @@ def get_preseed_context(osystem='', release='', nodegroup=None):
     :rtype: dict.
     """
     server_host = get_maas_facing_server_host(nodegroup=nodegroup)
-    main_archive_hostname, main_archive_directory = get_hostname_and_path(
+    main_archive_hostname, main_archive_directory = get_netloc_and_path(
         Config.objects.get_config('main_archive'))
-    ports_archive_hostname, ports_archive_directory = get_hostname_and_path(
+    ports_archive_hostname, ports_archive_directory = get_netloc_and_path(
         Config.objects.get_config('ports_archive'))
     if nodegroup is None:
         base_url = None
