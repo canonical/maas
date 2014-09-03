@@ -126,6 +126,22 @@ class LargeFile(CleanSave, TimestampedModel):
         """`content` has been completely saved."""
         return (self.total_size == self.size)
 
+    @property
+    def valid(self):
+        """All content has been written and stored SHA256 value is the same
+        as the calculated SHA256 value stored in the database.
+
+        Note: Depending on the size of the file, this can take some time.
+        """
+        if not self.complete:
+            return False
+        sha256 = hashlib.sha256()
+        with self.content.open('rb') as stream:
+            for data in stream:
+                sha256.update(data)
+        hexdigest = sha256.hexdigest()
+        return hexdigest == self.sha256
+
     def delete(self, *args, **kwargs):
         """Delete this object.
 

@@ -88,6 +88,7 @@ from maasserver.exceptions import (
     NodeActionError,
     )
 from maasserver.fields import (
+    LargeObjectFile,
     MACAddressFormField,
     NodeGroupFormField,
     )
@@ -2236,10 +2237,11 @@ class BootResourceForm(ModelForm):
         elif value == 'ddtgz':
             return BOOT_RESOURCE_FILE_TYPE.ROOT_DD
 
-    def create_resource_file(self, resource_set, filetype, content):
+    def create_resource_file(self, resource_set, data):
         """Creates a new `BootResourceFile` on the given resource set."""
-        filetype = self.get_resource_filetype(filetype)
-        largefile = LargeFile.objects.get_or_create_file_from_content(content)
+        filetype = self.get_resource_filetype(data['filetype'])
+        largefile = LargeFile.objects.get_or_create_file_from_content(
+            data['content'])
         return BootResourceFile.objects.create(
             resource_set=resource_set, largefile=largefile,
             filename=filetype, filetype=filetype)
@@ -2277,6 +2279,54 @@ class BootResourceForm(ModelForm):
         resource.save()
         resource_set = self.create_resource_set(resource, label)
         self.create_resource_file(
-            resource_set, self.cleaned_data['filetype'],
-            self.cleaned_data['content'])
+            resource_set, self.cleaned_data)
         return resource
+
+
+class BootResourceNoContentForm(BootResourceForm):
+    """Form for uploading boot resources with no content."""
+
+    class Meta:
+        model = BootResource
+        fields = (
+            'name',
+            'title',
+            'architecture',
+            'filetype',
+            'sha256',
+            'size',
+            )
+
+    sha256 = forms.CharField(
+        label="SHA256", max_length=64, min_length=64, required=True)
+
+    size = forms.IntegerField(
+        label="Size", required=True)
+
+    def __init__(self, *args, **kwargs):
+        super(BootResourceNoContentForm, self).__init__(*args, **kwargs)
+        # Remove content field, as this form does not use it
+        del self.fields['content']
+
+    def create_resource_file(self, resource_set, data):
+        """Creates a new `BootResourceFile` on the given resource set."""
+        filetype = self.get_resource_filetype(data['filetype'])
+        sha256 = data['sha256']
+        total_size = data['size']
+        largefile = LargeFile.objects.get_file(sha256)
+        if largefile is not None:
+            if total_size != largefile.total_size:
+                raise ValidationError(
+                    "File already exists with sha256 that is of "
+                    "different size.")
+        else:
+            # Create an empty large object. It must be opened and closed
+            # for the object to be created in the database.
+            largeobject = LargeObjectFile()
+            largeobject.open().close()
+            largefile = LargeFile.objects.create(
+                sha256=sha256, total_size=total_size,
+                content=largeobject)
+        return BootResourceFile.objects.create(
+            resource_set=resource_set, largefile=largefile,
+            filename=filetype, filetype=filetype)

@@ -30,7 +30,11 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
-from maasserver.models import BootResource
+from maasserver.fields import LargeObjectFile
+from maasserver.models import (
+    BootResource,
+    LargeFile,
+    )
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -56,7 +60,8 @@ class TestHelpers(MAASServerTestCase):
         total_size = random.randint(1024, 2048)
         content = factory.make_string(size)
         largefile = factory.make_large_file(content=content, size=total_size)
-        resource = factory.make_boot_resource()
+        resource = factory.make_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_boot_resource_set(resource)
         rfile = factory.make_boot_resource_file(resource_set, largefile)
         dict_representation = boot_resource_file_to_dict(rfile)
@@ -67,6 +72,11 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual(False, dict_representation['complete'])
         self.assertEqual(
             rfile.largefile.progress, dict_representation['progress'])
+        self.assertEqual(
+            reverse(
+                'boot_resource_file_upload_handler',
+                args=[resource.id, rfile.id]),
+            dict_representation['upload_uri'])
 
     def test_boot_resource_set_to_dict(self):
         resource = factory.make_boot_resource()
@@ -111,7 +121,7 @@ class TestHelpers(MAASServerTestCase):
             dict_representation['sets'][resource_set.version])
 
 
-class TestBootSourcesAPI(APITestCase):
+class TestBootResourcesAPI(APITestCase):
     """Test the the boot resource API."""
 
     def test_handler_path(self):
@@ -254,6 +264,73 @@ class TestBootSourcesAPI(APITestCase):
         rfile = resource_set.files.first()
         self.assertEqual(BOOT_RESOURCE_FILE_TYPE.ROOT_TGZ, rfile.filetype)
 
+    def test_POST_creates_boot_resource_with_already_existing_largefile(self):
+        self.become_admin()
+
+        largefile = factory.make_large_file()
+        name = factory.make_name('name')
+        architecture = make_usable_architecture(self)
+        params = {
+            'name': name,
+            'architecture': architecture,
+            'sha256': largefile.sha256,
+            'size': largefile.total_size,
+        }
+        response = self.client.post(
+            reverse('boot_resources_handler'), params)
+        self.assertEqual(httplib.CREATED, response.status_code)
+        parsed_result = json.loads(response.content)
+
+        resource = BootResource.objects.get(id=parsed_result['id'])
+        resource_set = resource.sets.first()
+        rfile = resource_set.files.first()
+        self.assertEqual(largefile, rfile.largefile)
+
+    def test_POST_creates_boot_resource_with_empty_largefile(self):
+        self.become_admin()
+
+        # Create a largefile to get a random sha256 and size. We delete it
+        # immediately so the new resource does not pick it up.
+        largefile = factory.make_large_file()
+        largefile.delete()
+
+        name = factory.make_name('name')
+        architecture = make_usable_architecture(self)
+        params = {
+            'name': name,
+            'architecture': architecture,
+            'sha256': largefile.sha256,
+            'size': largefile.total_size,
+        }
+        response = self.client.post(
+            reverse('boot_resources_handler'), params)
+        self.assertEqual(httplib.CREATED, response.status_code)
+        parsed_result = json.loads(response.content)
+
+        resource = BootResource.objects.get(id=parsed_result['id'])
+        resource_set = resource.sets.first()
+        rfile = resource_set.files.first()
+        self.assertEqual(
+            (largefile.sha256, largefile.total_size, False),
+            (rfile.largefile.sha256, rfile.largefile.total_size,
+                rfile.largefile.complete))
+
+    def test_POST_validates_size_matches_total_size_for_largefile(self):
+        self.become_admin()
+
+        largefile = factory.make_large_file()
+        name = factory.make_name('name')
+        architecture = make_usable_architecture(self)
+        params = {
+            'name': name,
+            'architecture': architecture,
+            'sha256': largefile.sha256,
+            'size': largefile.total_size + 1,
+        }
+        response = self.client.post(
+            reverse('boot_resources_handler'), params)
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+
     def test_POST_returns_full_definition_of_boot_resource(self):
         self.become_admin()
 
@@ -342,3 +419,141 @@ class TestBootResourceAPI(APITestCase):
         resource = factory.make_boot_resource()
         response = self.client.delete(get_boot_resource_uri(resource))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+
+class TestBootResourceFileUploadAPI(APITestCase):
+
+    def get_boot_resource_file_upload_uri(self, rfile):
+        """Return a boot resource file's URI on the API."""
+        return reverse(
+            'boot_resource_file_upload_handler',
+            args=[rfile.resource_set.resource.id, rfile.id])
+
+    def make_empty_resource_file(self, rtype=None, content=None):
+        # Create a largefile to use the generated content,
+        # sha256, and total_size.
+        if content is None:
+            content = factory.make_bytes(1024)
+        total_size = len(content)
+        largefile = factory.make_large_file(content=content, size=total_size)
+        sha256 = largefile.sha256
+        with largefile.content.open('rb') as stream:
+            content = stream.read()
+        largefile.delete()
+
+        # Empty largefile
+        largeobject = LargeObjectFile()
+        largeobject.open().close()
+        largefile = LargeFile.objects.create(
+            sha256=sha256, total_size=total_size, content=largeobject)
+
+        if rtype is None:
+            rtype = BOOT_RESOURCE_TYPE.UPLOADED
+        resource = factory.make_boot_resource(rtype=rtype)
+        resource_set = factory.make_boot_resource_set(resource)
+        rfile = factory.make_boot_resource_file(resource_set, largefile)
+        return rfile, content
+
+    def read_content(self, rfile):
+        """Return the content saved in resource file."""
+        with rfile.largefile.content.open('rb') as stream:
+            return stream.read()
+
+    def test_handler_path(self):
+        self.assertEqual(
+            '/api/1.0/boot-resources/3/upload/5/',
+            reverse('boot_resource_file_upload_handler', args=['3', '5']))
+
+    def test_PUT_resource_file_writes_content(self):
+        self.become_admin()
+        rfile, content = self.make_empty_resource_file()
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(content, self.read_content(rfile))
+
+    def test_PUT_requires_admin(self):
+        rfile, content = self.make_empty_resource_file()
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_PUT_returns_bad_request_when_no_content(self):
+        self.become_admin()
+        rfile, _ = self.make_empty_resource_file()
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile))
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_PUT_returns_forbidden_when_resource_is_synced(self):
+        self.become_admin()
+        rfile, content = self.make_empty_resource_file(
+            BOOT_RESOURCE_TYPE.SYNCED)
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_PUT_returns_bad_request_when_resource_file_is_complete(self):
+        self.become_admin()
+        rfile, content = self.make_empty_resource_file()
+        with rfile.largefile.content.open('wb') as stream:
+            stream.write(content)
+
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_PUT_returns_bad_request_when_content_is_too_large(self):
+        self.become_admin()
+        rfile, content = self.make_empty_resource_file()
+        content = factory.make_bytes(len(content) + 1)
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_PUT_returns_bad_request_when_content_doesnt_match_sha256(self):
+        self.become_admin()
+        rfile, content = self.make_empty_resource_file()
+        content = factory.make_bytes(size=len(content))
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+
+    def test_PUT_on_complete_calls_clusters_to_import_boot_images(self):
+        self.become_admin()
+        nodegroup = MagicMock()
+        self.patch(boot_resources, 'NodeGroup', nodegroup)
+
+        rfile, content = self.make_empty_resource_file()
+        response = self.client.put(
+            self.get_boot_resource_file_upload_uri(rfile), data=content)
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        self.assertThat(
+            nodegroup.objects.import_boot_images_on_accepted_clusters,
+            MockCalledOnceWith())
+
+    def test_PUT_with_multiple_requests_and_large_content(self):
+        self.become_admin()
+
+        # Get large amount of data to test with
+        content = factory.make_bytes(1 << 24)  # 16MB
+        rfile, _ = self.make_empty_resource_file(content=content)
+        split_content = [
+            content[i:i + (1 << 22)]
+            for i in range(0, len(content), 1 << 22)  # Loop a total of 4 times
+            ]
+
+        for send_content in split_content:
+            response = self.client.put(
+                self.get_boot_resource_file_upload_uri(rfile),
+                data=send_content)
+            self.assertEqual(
+                httplib.OK, response.status_code, response.content)
+        self.assertEqual(content, self.read_content(rfile))

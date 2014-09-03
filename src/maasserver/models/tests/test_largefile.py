@@ -100,6 +100,23 @@ class TestLargeFile(MAASServerTestCase):
         largefile = factory.make_large_file()
         self.assertTrue(largefile.complete)
 
+    def test_valid_returns_False_when_complete_is_False(self):
+        size = randint(512, 1024)
+        total_size = randint(1025, 2048)
+        content = factory.make_string(size=size)
+        largefile = factory.make_large_file(content, size=total_size)
+        self.assertFalse(largefile.valid)
+
+    def test_valid_returns_False_when_content_doesnt_have_equal_sha256(self):
+        largefile = factory.make_large_file()
+        with largefile.content.open('wb') as stream:
+            stream.write(factory.make_string(size=largefile.total_size))
+        self.assertFalse(largefile.valid)
+
+    def test_valid_returns_True_when_content_has_equal_sha256(self):
+        largefile = factory.make_large_file()
+        self.assertTrue(largefile.valid)
+
     def test_delete_calls_unlink_on_content(self):
         largefile = factory.make_large_file()
         content = largefile.content

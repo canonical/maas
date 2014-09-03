@@ -15,9 +15,11 @@ __metaclass__ = type
 __all__ = [
     'BootResourceHandler',
     'BootResourcesHandler',
+    'BootResourceFileUploadHandler',
     ]
 
 import httplib
+import os
 
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -29,16 +31,23 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api.utils import get_mandatory_param
+from maasserver.api.utils import get_optional_param
 from maasserver.bootresources import import_resources
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
-from maasserver.exceptions import MAASAPIBadRequest
-from maasserver.forms import BootResourceForm
+from maasserver.exceptions import (
+    MAASAPIBadRequest,
+    MAASAPIForbidden,
+    )
+from maasserver.forms import (
+    BootResourceForm,
+    BootResourceNoContentForm,
+    )
 from maasserver.models import (
     BootResource,
+    BootResourceFile,
     NodeGroup,
     )
 from piston.emitters import JSONEmitter
@@ -53,10 +62,21 @@ TYPE_MAPPING = {
 }
 
 
+# XXX blake_r 2014-09-22 bug=1361370: We currently allow both generated and
+# uploaded resource to be uploaded. This is until the MAAS can generate its
+# own images.
+ALLOW_UPLOAD_RTYPES = [
+    BOOT_RESOURCE_TYPE.GENERATED,
+    BOOT_RESOURCE_TYPE.UPLOADED,
+    ]
+
+
 def get_content_parameter(request):
     """Get the "content" parameter from a POST or PUT."""
-    content_file = get_mandatory_param(request.FILES, 'content')
-    return content_file.read()
+    content = get_optional_param(request.FILES, 'content', None)
+    if content is None:
+        return None
+    return content.read()
 
 
 def boot_resource_file_to_dict(rfile):
@@ -70,6 +90,12 @@ def boot_resource_file_to_dict(rfile):
         }
     if not dict_representation['complete']:
         dict_representation['progress'] = rfile.largefile.progress
+        resource = rfile.resource_set.resource
+        if resource.rtype in ALLOW_UPLOAD_RTYPES:
+            dict_representation['upload_uri'] = reverse(
+                'boot_resource_file_upload_handler',
+                args=[resource.id, rfile.id])
+
     return dict_representation
 
 
@@ -166,18 +192,26 @@ class BootResourcesHandler(OperationsHandler):
         data = request.data
         if data is None:
             data = {}
-        content = SimpleUploadedFile(
-            content=get_content_parameter(request),
-            name='file', content_type='application/octet-stream')
         if 'filetype' not in data:
             data['filetype'] = 'tgz'
-        form = BootResourceForm(data=data, files={'content': content})
+        file_content = get_content_parameter(request)
+        if file_content is not None:
+            content = SimpleUploadedFile(
+                content=file_content, name='file',
+                content_type='application/octet-stream')
+            form = BootResourceForm(data=data, files={
+                'content': content,
+                })
+        else:
+            form = BootResourceNoContentForm(data=data)
         if not form.is_valid():
             raise ValidationError(form.errors)
         resource = form.save()
 
-        # Boot resource is now available. Have the clusters sync boot images.
-        NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        # If an upload contained the full file, then we can have the clusters
+        # sync a new resource.
+        if file_content is not None:
+            NodeGroup.objects.import_boot_images_on_accepted_clusters()
 
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -200,17 +234,14 @@ class BootResourcesHandler(OperationsHandler):
 
 
 class BootResourceHandler(OperationsHandler):
-    """Manage a boot resource.
-
-    This functionality is only available to administrators.
-    """
+    """Manage a boot resource."""
     api_doc_section_name = "Boot resource"
     model = BootResource
 
     create = update = None
 
     def read(self, request, id):
-        """Read a boot source."""
+        """Read a boot resource."""
         resource = get_object_or_404(BootResource, id=id)
         stream = json_object(
             boot_resource_to_dict(resource, with_sets=True), request)
@@ -233,3 +264,61 @@ class BootResourceHandler(OperationsHandler):
         else:
             id = resource.id
         return ('boot_resource_handler', (id, ))
+
+
+class BootResourceFileUploadHandler(OperationsHandler):
+    """Upload a boot resource file."""
+    api_doc_section_name = "Boot resource file upload"
+    model = BootResource
+
+    read = create = delete = None
+
+    @admin_method
+    def update(self, request, id, file_id):
+        """Upload piece of boot resource file."""
+        resource = get_object_or_404(BootResource, id=id)
+        rfile = get_object_or_404(BootResourceFile, id=file_id)
+        size = request.META.get('CONTENT_LENGTH', 0)
+        data = request.body
+        if size == 0:
+            raise MAASAPIBadRequest("Missing data.")
+        if size != len(data):
+            raise MAASAPIBadRequest(
+                "Content-Length doesn't equal size of recieved data.")
+        if resource.rtype not in ALLOW_UPLOAD_RTYPES:
+            raise MAASAPIForbidden(
+                "Cannot upload to a resource of type: %s. " % resource.rtype)
+        if rfile.largefile.complete:
+            raise MAASAPIBadRequest(
+                "Cannot upload to a complete file.")
+
+        with rfile.largefile.content.open('wb') as stream:
+            stream.seek(0, os.SEEK_END)
+
+            # Check that the uploading data will not make the file larger
+            # than expected.
+            current_size = stream.tell()
+            if current_size + size > rfile.largefile.total_size:
+                raise MAASAPIBadRequest(
+                    "Too much data recieved.")
+
+            stream.write(data)
+
+        if rfile.largefile.complete:
+            if not rfile.largefile.valid:
+                raise MAASAPIBadRequest(
+                    "Saved content does not match given SHA256 value.")
+            NodeGroup.objects.import_boot_images_on_accepted_clusters()
+        return rc.ALL_OK
+
+    @classmethod
+    def resource_uri(cls, resource=None, rfile=None):
+        if resource is None:
+            id = 'id'
+        else:
+            id = resource.id
+        if rfile is None:
+            file_id = 'id'
+        else:
+            file_id = rfile.id
+        return ('boot_resource_file_upload_handler', (id, file_id))

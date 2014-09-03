@@ -77,6 +77,10 @@ class MAASAPINotFound(MAASAPIException):
     api_error = httplib.NOT_FOUND
 
 
+class MAASAPIForbidden(MAASAPIException):
+    api_error = httplib.FORBIDDEN
+
+
 class Unauthorized(MAASAPIException):
     """HTTP error 401: Unauthorized.  Login required."""
     api_error = httplib.UNAUTHORIZED
