@@ -444,18 +444,18 @@ class NodeManager(Manager):
         :return: Those Nodes for which power-on was actually requested.
         :rtype: list
 
-        :raises MultipleFailures: When there are multiple failures
-            originating from a remote source.
+        :raises MultipleFailures: When there are failures originating from a
+            remote process. There could be one or more failures -- it's not
+            strictly *multiple* -- but they do all originate from comms with
+            remote processes.
+        :raises: `StaticIPAddressExhaustion` if there are not enough IP
+            addresses left in the static range..
         """
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
 
         # Obtain node model objects for each node specified.
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-
-        # Eliminate nodes that don't have a related MAC address.
-        nodes = nodes.prefetch_related("macaddress_set")
-        nodes = list(node for node in nodes if node.macaddress_set.exists())
 
         # Record the same user data for all nodes we've been *requested* to
         # start, regardless of whether or not we actually can; the user may

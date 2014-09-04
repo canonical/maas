@@ -1738,12 +1738,6 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             """,
             twisted_log.dump())
 
-    def test__ignores_nodes_without_mac(self):
-        user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user)
-        nodes_started = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([], nodes_started)
-
     def test__marks_allocated_node_as_deploying(self):
         user = factory.make_user()
         [node] = self.make_acquired_nodes_with_macs(user, count=1)
