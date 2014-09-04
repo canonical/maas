@@ -25,10 +25,8 @@ class IConnection(interface.Interface):
     hostCertificate = interface.Attribute(
         "hostCertificate", "The certificate used locally for TLS.")
 
-    # TODO: peerCertificate raises an exception when TLS is not
-    # activated, or maybe that's just in tests. Investigation is needed.
-    # peerCertificate = interface.Attribute(
-    #     "peerCertificate", "The certificate used remotely for TLS.")
+    peerCertificate = interface.Attribute(
+        "peerCertificate", "The certificate used remotely for TLS.")
 
     def callRemote(cmd, **arguments):
         """Call a remote method with the given arguments."""

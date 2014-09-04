@@ -41,10 +41,13 @@ from mock import (
     sentinel,
     )
 import provisioningserver
+from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (
     ClusterClient,
     ClusterClientService,
     )
+from provisioningserver.rpc.common import RPCProtocol
+from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
@@ -216,6 +219,18 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         # framework may know how to handle this sanely.
         return self.stopping
 
+    def getEventLoopName(self, protocol):
+        """Return `protocol`'s event-loop name.
+
+        If one has not been set already, one is generated and saved as
+        `protocol.ident`.
+        """
+        try:
+            return protocol.ident
+        except AttributeError:
+            protocol.ident = factory.make_name("eventloop")
+            return protocol.ident
+
     @asynchronous(timeout=5)
     def addEventLoop(self, protocol):
         """Add a new stub event-loop using the given `protocol`.
@@ -224,7 +239,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
 
         :returns: py:class:`twisted.test.iosim.IOPump`
         """
-        eventloop = factory.make_name("eventloop")
+        eventloop = self.getEventLoopName(protocol)
         address = factory.getRandomIPAddress(), factory.pick_port()
         client = ClusterClient(address, eventloop, self.rpc_service)
         return self.connect(client, protocol)
@@ -234,8 +249,15 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
 
         See `make_amp_protocol_factory` for details.
         """
+        if region.Identify not in commands:
+            commands = commands + (region.Identify,)
+        if amp.StartTLS not in commands:
+            commands = commands + (amp.StartTLS,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
+        eventloop = self.getEventLoopName(protocol)
+        protocol.Identify.return_value = {"ident": eventloop}
+        protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 
     @abstractmethod
@@ -385,12 +407,19 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
         @inlineCallbacks
         def shutdown():
+            # We need to make sure that everything is shutdown correctly. TLS
+            # seems to make this even more important: it complains loudly if
+            # connections are not closed cleanly. An interesting article to
+            # read now is Jono Lange's "How to Disconnect in Twisted, Really"
+            # <http://mumak.net/stuff/twisted-disconnect.html>.
             yield port.loseConnection()
             yield port.deferred
             if region.transport is not None:
                 yield region.transport.loseConnection()
+                yield region.onConnectionLost
             if client.transport is not None:
                 yield client.transport.loseConnection()
+                yield client.onConnectionLost
 
         # Fixtures don't wait for deferred work in clean-up tasks (or anywhere
         # else), so we can't use `self.addCleanup(shutdown)` here. We need to
@@ -407,7 +436,7 @@ amp_protocol_factory_names = (
 
 
 def make_amp_protocol_factory(*commands):
-    """Make a new AMP protocol factory."""
+    """Make a new protocol factory based on `RPCProtocol`."""
 
     def __init__(self):
         super(cls, self).__init__()
@@ -424,7 +453,7 @@ def make_amp_protocol_factory(*commands):
             self._commandDispatch[command.commandName] = (command, responder)
 
     name = next(amp_protocol_factory_names)
-    cls = type(name, (amp.AMP,), {"__init__": __init__})
+    cls = type(name, (RPCProtocol,), {"__init__": __init__})
 
     return cls
 

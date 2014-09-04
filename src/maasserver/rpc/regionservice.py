@@ -50,6 +50,7 @@ from provisioningserver.rpc import (
     exceptions,
     region,
     )
+from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
@@ -60,10 +61,7 @@ from provisioningserver.utils.twisted import (
     )
 from twisted.application import service
 from twisted.application.internet import TimerService
-from twisted.internet import (
-    defer,
-    ssl,
-    )
+from twisted.internet import defer
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
@@ -72,14 +70,11 @@ from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
-from twisted.python import (
-    filepath,
-    log,
-    )
+from twisted.python import log
 from zope.interface import implementer
 
 
-class Region(amp.AMP):
+class Region(RPCProtocol):
     """The RPC protocol supported by a region controller.
 
     This can be used on the client or server end of a connection; once a
@@ -119,18 +114,14 @@ class Region(amp.AMP):
 
         Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
         """
-        # TODO: Obtain certificates from a config store.
-        testing = filepath.FilePath(__file__).sibling("testing")
-        with testing.child("region.crt").open() as fin:
-            tls_localCertificate = ssl.PrivateCertificate.loadPEM(fin.read())
-        with testing.child("trust.crt").open() as fin:
-            tls_verifyAuthorities = [
-                ssl.Certificate.loadPEM(fin.read()),
-            ]
-        return {
-            "tls_localCertificate": tls_localCertificate,
-            "tls_verifyAuthorities": tls_verifyAuthorities,
-        }
+        try:
+            from provisioningserver.rpc.testing import tls
+        except ImportError:
+            # This is not a development/test environment.
+            # XXX: Return production TLS parameters.
+            return {}
+        else:
+            return tls.get_tls_parameters_for_region()
 
     @region.GetBootSources.responder
     def get_boot_sources(self, uuid):

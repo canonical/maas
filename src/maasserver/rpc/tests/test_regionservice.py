@@ -736,6 +736,9 @@ class TestRegionServer(MAASServerTestCase):
 
     def test_interfaces(self):
         protocol = RegionServer()
+        # transport.getHandle() is used by AMP._getPeerCertificate, which we
+        # call indirectly via the peerCertificate attribute in IConnection.
+        self.patch(protocol, "transport")
         verifyObject(IConnection, protocol)
 
     def test_connectionMade_identifies_the_remote_cluster(self):

@@ -13,12 +13,14 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "Identify",
     "Client",
+    "Identify",
+    "RPCProtocol",
 ]
 
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.defer import Deferred
 from twisted.protocols import amp
 
 
@@ -82,3 +84,31 @@ class Client:
 
     def __hash__(self):
         return hash(self._conn)
+
+
+class RPCProtocol(amp.AMP, object):
+    """A specialisation of `amp.AMP`.
+
+    It's hard to track exactly when an `amp.AMP` protocol is connected to its
+    transport, or disconnected, from the "outside". It's necessary to subclass
+    and override `connectionMade` and `connectionLost` and signal from there,
+    which is what this class does.
+
+    :ivar onConnectionMade: A `Deferred` that fires when `connectionMade` has
+        been called, i.e. this protocol is now connected.
+    :ivar onConnectionLost: A `Deferred` that fires when `connectionLost` has
+        been called, i.e. this protocol is no longer connected.
+    """
+
+    def __init__(self):
+        super(RPCProtocol, self).__init__()
+        self.onConnectionMade = Deferred()
+        self.onConnectionLost = Deferred()
+
+    def connectionMade(self):
+        super(RPCProtocol, self).connectionMade()
+        self.onConnectionMade.callback(None)
+
+    def connectionLost(self, reason):
+        super(RPCProtocol, self).connectionLost(reason)
+        self.onConnectionLost.callback(None)

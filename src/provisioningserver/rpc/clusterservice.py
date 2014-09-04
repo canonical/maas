@@ -39,6 +39,7 @@ from provisioningserver.rpc.boot_images import (
     import_boot_images,
     list_boot_images,
     )
+from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.dhcp import (
     configure_dhcpv6,
     create_host_maps,
@@ -55,7 +56,6 @@ from provisioningserver.rpc.power import (
     get_power_state,
     )
 from twisted.application.internet import TimerService
-from twisted.internet import ssl
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import (
     connectProtocol,
@@ -63,15 +63,12 @@ from twisted.internet.endpoints import (
     )
 from twisted.internet.error import ConnectError
 from twisted.protocols import amp
-from twisted.python import (
-    filepath,
-    log,
-    )
+from twisted.python import log
 from twisted.web.client import getPage
 from zope.interface import implementer
 
 
-class Cluster(amp.AMP, object):
+class Cluster(RPCProtocol):
     """The RPC protocol supported by a cluster controller.
 
     This can be used on the client or server end of a connection; once a
@@ -203,18 +200,14 @@ class Cluster(amp.AMP, object):
 
         Implementation of :py:class:`~twisted.protocols.amp.StartTLS`.
         """
-        # TODO: Obtain certificates from a config store.
-        testing = filepath.FilePath(__file__).sibling("testing")
-        with testing.child("cluster.crt").open() as fin:
-            tls_localCertificate = ssl.PrivateCertificate.loadPEM(fin.read())
-        with testing.child("trust.crt").open() as fin:
-            tls_verifyAuthorities = [
-                ssl.Certificate.loadPEM(fin.read()),
-            ]
-        return {
-            "tls_localCertificate": tls_localCertificate,
-            "tls_verifyAuthorities": tls_verifyAuthorities,
-        }
+        try:
+            from provisioningserver.rpc.testing import tls
+        except ImportError:
+            # This is not a development/test environment.
+            # XXX: Return production TLS parameters.
+            return {}
+        else:
+            return tls.get_tls_parameters_for_cluster()
 
 
 @implementer(IConnection)
@@ -272,7 +265,7 @@ class ClusterClient(Cluster):
         # the connection. Here we check that the remote event-loop is
         # who we expected it to be.
         response = yield self.callRemote(region.Identify)
-        remote_name = response.get("name")
+        remote_name = response.get("ident")
         if remote_name != self.eventloop:
             log.msg(
                 "The remote event-loop identifies itself as %s, but "

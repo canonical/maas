@@ -54,6 +54,7 @@ from provisioningserver.rpc import (
     clusterservice,
     common,
     exceptions,
+    getRegionClient,
     osystems as osystems_rpc_module,
     region,
     )
@@ -67,6 +68,7 @@ from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
+    MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
     )
 from provisioningserver.rpc.testing.doubles import (
@@ -587,6 +589,9 @@ class TestClusterClient(MAASTestCase):
 
     def test_interfaces(self):
         client = self.make_running_client()
+        # transport.getHandle() is used by AMP._getPeerCertificate, which we
+        # call indirectly via the peerCertificate attribute in IConnection.
+        self.patch(client, "transport")
         verifyObject(IConnection, client)
 
     def test_ident(self):
@@ -642,7 +647,7 @@ class TestClusterClient(MAASTestCase):
         callRemote = self.patch(client, "callRemote")
         callRemote_return_values = [
             {},  # In response to a StartTLS call.
-            {"name": client.eventloop},  # Identify.
+            {"ident": client.eventloop},  # Identify.
         ]
         callRemote.side_effect = lambda cmd, **kwargs: (
             callRemote_return_values.pop(0))
@@ -677,7 +682,7 @@ class TestClusterClient(MAASTestCase):
         callRemote = self.patch(client, "callRemote")
         callRemote_return_values = [
             {},  # In response to a StartTLS call.
-            {"name": "bogus-name"},  # Identify.
+            {"ident": "bogus-name"},  # Identify.
         ]
         callRemote.side_effect = lambda cmd, **kwargs: (
             callRemote_return_values.pop(0))
@@ -698,6 +703,16 @@ class TestClusterClient(MAASTestCase):
             eventloop:pid=12345 was expected.
             """,
             logger.dump())
+
+    @inlineCallbacks
+    def test_secureConnection_end_to_end(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop()
+        self.addCleanup((yield connecting))
+        client = yield getRegionClient()
+        # XXX: Expose secureConnection() in the client.
+        yield client._conn.secureConnection()
+        self.assertTrue(client.isSecure())
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

@@ -14,7 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    IsFiredDeferred,
+    IsUnfiredDeferred,
+    MockCalledOnceWith,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     create_autospec,
@@ -25,9 +29,12 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from testtools.matchers import (
     Equals,
     Is,
+    IsInstance,
     Not,
     )
+from twisted.internet.protocol import connectionDone
 from twisted.protocols import amp
+from twisted.test.proto_helpers import StringTransport
 
 
 class TestClient(MAASTestCase):
@@ -38,7 +45,7 @@ class TestClient(MAASTestCase):
         self.assertThat(client._conn, Is(conn))
 
     def make_connection_and_client(self):
-        conn = create_autospec(amp.AMP())
+        conn = create_autospec(common.RPCProtocol())
         client = common.Client(conn)
         return conn, client
 
@@ -91,3 +98,23 @@ class TestClient(MAASTestCase):
         conn, client = self.make_connection_and_client()
         # The hash of a common.Client object is that of its connection.
         self.assertThat(hash(conn), Equals(hash(client)))
+
+
+class TestRPCProtocol(MAASTestCase):
+
+    def test_init(self):
+        protocol = common.RPCProtocol()
+        self.assertThat(protocol.onConnectionMade, IsUnfiredDeferred())
+        self.assertThat(protocol.onConnectionLost, IsUnfiredDeferred())
+        self.assertThat(protocol, IsInstance(amp.AMP))
+
+    def test_onConnectionMade_fires_when_connection_is_made(self):
+        protocol = common.RPCProtocol()
+        protocol.connectionMade()
+        self.assertThat(protocol.onConnectionMade, IsFiredDeferred())
+
+    def test_onConnectionLost_fires_when_connection_is_lost(self):
+        protocol = common.RPCProtocol()
+        protocol.makeConnection(StringTransport())
+        protocol.connectionLost(connectionDone)
+        self.assertThat(protocol.onConnectionLost, IsFiredDeferred())
