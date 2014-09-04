@@ -1690,6 +1690,17 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual(
             NODE_STATUS.DEPLOYED, reload_object(node).status)
 
+    def test__only_returns_nodes_for_which_power_commands_have_been_sent(self):
+        user = factory.make_user()
+        node1, node2 = self.make_acquired_nodes_with_macs(user, count=2)
+        node1.power_type = 'ether_wake'  # Can be started.
+        node1.save()
+        node2.power_type = ''  # Undefined power type, cannot be started.
+        node2.save()
+        nodes_started = Node.objects.start_nodes(
+            [node1.system_id, node2.system_id], user)
+        self.assertItemsEqual([node1], nodes_started)
+
 
 class NodeManagerTest_StopNodes(MAASServerTestCase):
 

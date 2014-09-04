@@ -506,10 +506,9 @@ class NodeManager(Manager):
                     yield node, power_info
 
         # Create info that we can pass into the reactor (no model objects)
-        nodes_start_info = [
+        nodes_start_info = list(
             (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            for node, power_info in gen_power_info(nodes)
-        ]
+            for node, power_info in gen_power_info(nodes))
 
         # Request that these nodes be powered on.
         deferreds = power_on_nodes(nodes_start_info)
@@ -521,8 +520,8 @@ class NodeManager(Manager):
             for system_id, d in deferreds.viewitems():
                 d.addErrback(twisted.python.log.err)
 
-        # TODO: Only return list of those nodes that we've powered on.
-        return list(nodes)
+        # Return a list of those nodes that we've send power commands for.
+        return list(node for node in nodes if node.system_id in deferreds)
 
 
 def patch_pgarray_types():
