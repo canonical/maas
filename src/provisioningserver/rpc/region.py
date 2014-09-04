@@ -259,3 +259,40 @@ class GetClusterInterfaces(amp.Command):
              (b"ip", amp.Unicode())]))
     ]
     errors = []
+
+
+class TimerExpired(amp.Command):
+    """Called by a cluster when a running timer hits its deadline.
+
+    The original context parameter from the StartTimers call is returned.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"id", amp.Unicode()),
+        (b"context", StructureAsJSON()),
+        ]
+    response = []
+    errors = []
+
+
+class ReloadCluster(amp.Command):
+    """Called by a cluster when it wants to reload its state.
+
+    The region may respond with many different calls to the cluster
+    that will give it all the information it needs to restore state (for
+    example when it got restarted).
+
+    For example, the region will restore all the timers in the cluster,
+    so none or many StartTimer calls may be received after the cluster
+    issues this command.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"cluster_uuid", amp.Unicode()),
+        ]
+    response = []
+    errors = []
