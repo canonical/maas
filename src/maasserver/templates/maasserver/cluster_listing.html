@@ -3,7 +3,6 @@
 {% block nav-active-cluster-list %}active{% endblock %}
 {% block title %}{{ status_name }} clusters{% endblock %}
 {% block page-title %}{{ current_count }}{% if input_query %} matching{% endif %} {{ status_name|lower }} cluster{{ current_count|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
-{% block site-switcher %}{% endblock %}
 {% block header-search %}{% endblock %}
 
 {% block content %}

@@ -3,7 +3,6 @@
 {% block nav-active-node-list %}active{% endblock %}
 {% block title %}Nodes{% endblock %}
 {% block page-title %}{{ paginator.count }}{% if input_query %} matching{% endif %} node{{ paginator.count|pluralize }} in {% include "maasserver/site_title.html" %}{% endblock %}
-{% block site-switcher %}{% endblock %}
 {% block header-search %}{% endblock %}
 
 {% block html_includes %}{% include "maasserver/snippets.html" %}
