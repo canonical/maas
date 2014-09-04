@@ -1204,6 +1204,35 @@ def create_Network_from_NodeGroupInterface(interface):
     return network
 
 
+def disambiguate_name(original_name, ip_address):
+    """Return a unique variant of `original_name` for a cluster interface.
+
+    This function has no knowledge of other existing cluster interfaces.  It
+    disambiguates based purely on the given data and random numbers.
+
+    :param original_name: The originally proposed name for the cluster
+        interface, which presumably turned out to be ambiguous.
+    :param ip_address: IP address for the cluster interface (either as a
+        string or as an `IPAddress`).  Used to determine whether the interface
+        is an IPv4 one or an IPv6 one.
+    :return: A version of `original_name` with a disambiguating suffix.  The
+        suffix contains both the IP version (`ipv4` or `ipv6`) and possibly a
+        random part to avoid further clashes.
+    """
+    ip_version = IPAddress(ip_address).version
+    assert ip_version in (4, 6)
+    if ip_version == 6:
+        # IPv6 cluster interface.  In principle there could be many of these
+        # on the same network interface, so add a random suffix.
+        suffix = 'ipv6-%d' % randint(10000, 99999)
+    else:
+        # IPv4 cluster interface.  There can be only one of these on the
+        # network interface, so just suffixing '-ipv4' to the name should make
+        # it unique.
+        suffix = 'ipv4'
+    return '%s-%s' % (original_name, suffix)
+
+
 class NodeGroupInterfaceForm(ModelForm):
 
     management = forms.TypedChoiceField(
@@ -1272,9 +1301,8 @@ class NodeGroupInterfaceForm(ModelForm):
         if cluster is not None and interface:
             siblings = cluster.nodegroupinterface_set
             if siblings.filter(name=name).exists():
-                # This name is already in use.  Add a randomised suffix
-                # to make it unique.
-                return '%s-%d' % (name, randint(10000, 99999))
+                # This name is already in use.  Add a suffix to make it unique.
+                return disambiguate_name(name, self.cleaned_data['ip'])
 
         return name
 
@@ -1480,7 +1508,15 @@ class NodeGroupDefineForm(ModelForm):
 
     def save(self):
         nodegroup = super(NodeGroupDefineForm, self).save()
-        for interface in self.cleaned_data['interfaces']:
+        # Go through the interface definitions, but process the IPv4 ones
+        # first.  This way, if the NodeGroupInterfaceForm needs to make up
+        # unique names for cluster interfaces on the same network interface,
+        # the IPv4 one will get first stab at getting the exact same name as
+        # the network interface.
+        interfaces = sorted(
+            self.cleaned_data['interfaces'],
+            key=lambda definition: IPAddress(definition['ip']).version)
+        for interface in interfaces:
             instance = NodeGroupInterface(nodegroup=nodegroup)
             form = NodeGroupInterfaceForm(data=interface, instance=instance)
             form.save()

@@ -36,6 +36,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
+    HasLength,
     MatchesStructure,
     StartsWith,
     )
@@ -252,6 +253,47 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 nodegroup.management for nodegroup in
                 uuid_nodegroup.nodegroupinterface_set.all()
             ])
+
+    def test_gives_disambuation_preference_to_IPv4(self):
+        network_interface = factory.make_name('eth', sep='')
+        ipv4_network = factory.getRandomNetwork()
+        # We'll be creating a cluster with 3 interfaces, all using the same
+        # network interface: an IPv4 one and two IPv6 ones.
+        # The IPv4 one is in the middle here to rule out special treatment
+        # based on ordering of this list.
+        interfaces = [
+            factory.get_interface_fields(
+                network=factory.make_ipv6_network(slash=64),
+                interface=network_interface),
+            factory.get_interface_fields(
+                network=ipv4_network, interface=network_interface),
+            factory.get_interface_fields(
+                network=factory.make_ipv6_network(slash=64),
+                interface=network_interface),
+            ]
+        # We're not going to pass names for these cluster interfaces, so the
+        # form will have to make some up based on the network interface name.
+        for definition in interfaces:
+            del definition['name']
+        form = NodeGroupDefineForm(
+            data={
+                'name': factory.make_name('cluster'),
+                'uuid': factory.make_UUID(),
+                'interfaces': json.dumps(interfaces),
+                })
+        self.assertTrue(form.is_valid(), form._errors)
+        cluster = form.save()
+        # All of the cluster interfaces' names are unique and based on the
+        # network interface name, but the IPv4 one gets the unadorned name.
+        interfaces_by_name = {
+            interface.name: interface
+            for interface in cluster.nodegroupinterface_set.all()
+            }
+        self.expectThat(interfaces_by_name, HasLength(len(interfaces)))
+        self.assertIn(network_interface, interfaces_by_name)
+        self.assertEqual(
+            ipv4_network,
+            interfaces_by_name[network_interface].network)
 
 
 class TestNodeGroupEdit(MAASServerTestCase):

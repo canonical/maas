@@ -139,6 +139,32 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertThat(interface.name, StartsWith(int_settings['interface']))
         self.assertNotEqual(int_settings['interface'], interface.name)
 
+    def test__disambiguates_IPv4_interface_with_ipv4_suffix(self):
+        cluster = factory.make_node_group()
+        existing_interface = factory.make_node_group_interface(
+            cluster, network=factory.getRandomNetwork())
+        int_settings = factory.get_interface_fields()
+        del int_settings['name']
+        int_settings['interface'] = existing_interface.name
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance(cluster))
+        interface = form.save()
+        self.assertEqual('%s-ipv4' % int_settings['interface'], interface.name)
+
+    def test__disambiguates_IPv6_interface_with_ipv6_suffix(self):
+        cluster = factory.make_node_group()
+        existing_interface = factory.make_node_group_interface(cluster)
+        int_settings = factory.get_interface_fields(
+            network=factory.make_ipv6_network(slash=64))
+        del int_settings['name']
+        int_settings['interface'] = existing_interface.name
+        form = NodeGroupInterfaceForm(
+            data=int_settings, instance=make_ngi_instance(cluster))
+        interface = form.save()
+        self.assertThat(
+            interface.name,
+            StartsWith('%s-ipv6-' % int_settings['interface']))
+
     def test__requires_netmask_on_managed_IPv4_interface(self):
         network = factory.getRandomNetwork()
         int_settings = factory.get_interface_fields(
