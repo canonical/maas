@@ -13,12 +13,18 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "power_off_nodes",
     "power_on_nodes",
 ]
 
+from functools import partial
+
 from maasserver.rpc import getClientFor
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.cluster import PowerOn
+from provisioningserver.rpc.cluster import (
+    PowerOff,
+    PowerOn,
+    )
 from provisioningserver.utils.twisted import asynchronous
 
 
@@ -26,28 +32,29 @@ maaslog = get_maas_logger("power")
 
 
 @asynchronous(timeout=15)
-def power_on_nodes(nodes):
-    """Power-on the given nodes.
+def power_nodes(command, nodes):
+    """Power-on/off the given nodes.
 
-    Nodes can be in any cluster; the power-on calls will be directed to their
+    Nodes can be in any cluster; the power calls will be directed to their
     owning cluster.
 
+    :param command: The `amp.Command` to call.
     :param nodes: A sequence of ``(system-id, hostname, cluster-uuid,
         power-info)`` tuples.
     :returns: A mapping of each node's system ID to a
         :py:class:`twisted.internet.defer.Deferred` that will fire when
-        the `PowerOn` call completes.
+        the `command` call completes.
 
     """
-    def call_power_on(client, **kwargs):
-        return client(PowerOn, **kwargs)
+    def call_power_command(client, **kwargs):
+        return client(command, **kwargs)
 
     deferreds = {}
     for node in nodes:
         system_id, hostname, cluster_uuid, power_info = node
         maaslog.debug("%s: Asking cluster to power on", hostname)
         deferreds[system_id] = getClientFor(cluster_uuid).addCallback(
-            call_power_on, system_id=system_id, hostname=hostname,
+            call_power_command, system_id=system_id, hostname=hostname,
             power_type=power_info.power_type,
             context=power_info.power_parameters)
 
@@ -61,3 +68,7 @@ def power_on_nodes(nodes):
     # "cap them off", so that results are consumed (Twisted will complain if
     # an error is not consumed).
     return deferreds
+
+
+power_off_nodes = partial(power_nodes, PowerOff)
+power_on_nodes = partial(power_nodes, PowerOn)
