@@ -442,6 +442,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         nodegroup, nodegroupiface = self.make_nodegroup_and_interface()
         nodegroupiface.static_ip_range_low = None
         nodegroupiface.static_ip_range_high = None
+        nodegroupiface.save()
 
         # Generate some leases within and without the _static_ range of the
         # above nodegroup's only interface.

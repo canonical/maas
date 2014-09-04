@@ -71,7 +71,9 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
     for nodegroup, mappings in static_mappings.viewitems():
         managed_ranges = tuple(
             IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)
-            for ngi in nodegroup.get_managed_interfaces())
+            for ngi in nodegroup.get_managed_interfaces()
+            if ngi.static_ip_range_low is not None and
+            ngi.static_ip_range_high is not None)
         dhcp_leases = DHCPLease.objects.filter(
             nodegroup=nodegroup, mac__in=mappings.viewvalues())
         for dhcp_lease in dhcp_leases:
