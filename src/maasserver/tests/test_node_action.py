@@ -50,7 +50,6 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
-from provisioningserver.power.poweraction import PowerAction
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -237,16 +236,18 @@ class TestCommissionNodeAction(MAASServerTestCase):
 class TestAbortCommissioningNodeAction(MAASServerTestCase):
 
     def test_AbortCommissioning_aborts_commissioning(self):
-        self.patch(PowerAction, 'run_shell').return_value = ('', '')
         node = factory.make_node(
             mac=True, status=NODE_STATUS.COMMISSIONING,
             power_type='virsh')
-        action = AbortCommissioning(node, factory.make_admin())
-        action.execute()
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+        admin = factory.make_admin()
+
+        AbortCommissioning(node, admin).execute()
+
         self.assertEqual(NODE_STATUS.NEW, node.status)
-        self.assertEqual(
-            'provisioningserver.tasks.power_off',
-            self.celery.tasks[0]['task'].name)
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], admin))
 
 
 class TestAcquireNodeNodeAction(MAASServerTestCase):
@@ -315,7 +316,6 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 class TestStopNodeNodeAction(MAASServerTestCase):
 
     def test_StopNode_stops_node(self):
-        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         user = factory.make_user()
         params = dict(
             power_address=factory.make_string(),
@@ -325,17 +325,18 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+
         StopNode(node, user).execute()
 
-        self.assertEqual(
-            'provisioningserver.tasks.power_off',
-            self.celery.tasks[0]['task'].name)
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], user))
 
 
 class TestReleaseNodeNodeAction(MAASServerTestCase):
 
     def test_ReleaseNode_stops_and_releases_node(self):
-        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
         user = factory.make_user()
         params = dict(
             power_address=factory.make_string(),
@@ -345,13 +346,15 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+
         ReleaseNode(node, user).execute()
 
         self.assertEqual(NODE_STATUS.READY, node.status)
         self.assertIsNone(node.owner)
-        self.assertEqual(
-            'provisioningserver.tasks.power_off',
-            self.celery.tasks[0]['task'].name)
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], user))
 
 
 class TestUseCurtinNodeAction(MAASServerTestCase):

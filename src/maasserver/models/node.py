@@ -50,7 +50,10 @@ from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.dhcp import update_host_maps
-from maasserver.clusterrpc.power import power_on_nodes
+from maasserver.clusterrpc.power import (
+    power_off_nodes,
+    power_on_nodes,
+    )
 from maasserver.enum import (
     NODE_BOOT,
     NODE_BOOT_CHOICES,
@@ -91,10 +94,7 @@ from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import MultipleFailures
-from provisioningserver.tasks import (
-    power_off,
-    remove_dhcp_host_map,
-    )
+from provisioningserver.tasks import remove_dhcp_host_map
 from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import reactor_sync
@@ -399,30 +399,36 @@ class NodeManager(Manager):
         :return: Those Nodes for which shutdown was actually requested.
         :rtype: list
         """
-        maaslog.debug("Stopping node(s): %s", ids)
+        # Obtain node model objects for each node specified.
         nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-        processed_nodes = []
-        for node in nodes:
-            power_params = node.get_effective_power_parameters()
-            try:
-                node_power_type = node.get_effective_power_type()
-            except UnknownPowerType:
-                # Skip the rest of the loop to avoid creating a power
-                # event for a node that we can't power down.
-                maaslog.warning(
-                    "%s: Node has an unknown power type. Not creating "
-                    "power down event.", node.hostname)
-                continue
-            power_params['power_off_mode'] = stop_mode
-            # WAKE_ON_LAN does not support poweroff.
-            if node_power_type != 'ether_wake':
-                maaslog.info(
-                    "%s: Asking cluster to power off node", node.hostname)
-                power_off.apply_async(
-                    queue=node.work_queue, args=[node_power_type],
-                    kwargs=power_params)
-            processed_nodes.append(node)
-        return processed_nodes
+
+        # Helper function to whittle the list of nodes down to those that we
+        # can actually stop, and keep hold of their power control info.
+        def gen_power_info(nodes):
+            for node in nodes:
+                power_info = node.get_effective_power_info()
+                if power_info.can_be_stopped:
+                    # Smuggle in a hint about how to power-off the node.
+                    power_info.power_parameters['power_off_mode'] = stop_mode
+                    yield node, power_info
+
+        # Create info that we can pass into the reactor (no model objects).
+        nodes_start_info = list(
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            for node, power_info in gen_power_info(nodes))
+
+        # Request that these nodes be powered off.
+        deferreds = power_off_nodes(nodes_start_info)
+
+        # Cap these Deferreds off so that Twisted does not complain about
+        # unhandled errors. We just log errors for now; there are other
+        # channels that will report failures in more detail.
+        with reactor_sync():
+            for system_id, d in deferreds.viewitems():
+                d.addErrback(twisted.python.log.err)
+
+        # Return a list of those nodes that we've send power commands for.
+        return list(node for node in nodes if node.system_id in deferreds)
 
     def start_nodes(self, ids, by_user, user_data=None):
         """Request on given user's behalf that the given nodes be started up.
@@ -515,6 +521,7 @@ class NodeManager(Manager):
             for system_id, d in deferreds.viewitems():
                 d.addErrback(twisted.python.log.err)
 
+        # TODO: Only return list of those nodes that we've powered on.
         return list(nodes)
 
 

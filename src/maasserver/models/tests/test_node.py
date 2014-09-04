@@ -65,7 +65,10 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+    )
 from maastesting.testcase import MAASTestCase
 from metadataserver import commissioning
 from metadataserver.enum import RESULT_TYPE
@@ -78,7 +81,6 @@ from mock import (
     ANY,
     sentinel,
     )
-from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.rpc import cluster
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.testing import (
@@ -94,6 +96,7 @@ from testtools.matchers import (
     MatchesStructure,
     )
 from twisted.internet import defer
+from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
 
@@ -853,16 +856,13 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual("", node.distro_series)
 
     def test_release_powers_off_node(self):
-        # Test that releasing a node causes a 'power_off' celery job.
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        user = factory.make_user()
         node = factory.make_node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
-            power_type='virsh')
-        # Prevent actual job script from running.
-        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
+            status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh')
         node.release()
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_off'),
-            (len(self.celery.tasks), self.celery.tasks[0]['task'].name))
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], user))
 
     def test_release_deallocates_static_ips(self):
         deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
@@ -1008,27 +1008,20 @@ class NodeTest(MAASServerTestCase):
             data, NodeResult.objects.get_data(node, filename))
 
     def test_abort_commissioning_changes_status_and_stops_node(self):
-        self.patch(PowerAction, 'run_shell').return_value = ('', '')
         node = factory.make_node(
             status=NODE_STATUS.COMMISSIONING, power_type='virsh')
-        node.abort_commissioning(factory.make_admin())
+        admin = factory.make_admin()
+
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+
+        node.abort_commissioning(admin)
         expected_attrs = {
             'status': NODE_STATUS.NEW,
         }
         self.assertAttributes(node, expected_attrs)
-        self.assertEqual(
-            ['provisioningserver.tasks.power_off'],
-            [task['task'].name for task in self.celery.tasks])
-
-    def test_abort_commisssioning_doesnt_stop_nodes_for_non_admin_users(self):
-        node = factory.make_node(
-            status=NODE_STATUS.COMMISSIONING, power_type='virsh')
-        node.abort_commissioning(factory.make_user())
-        expected_attrs = {
-            'status': NODE_STATUS.COMMISSIONING,
-        }
-        self.assertAttributes(node, expected_attrs)
-        self.assertEqual([], self.celery.tasks)
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], admin))
 
     def test_abort_commisssioning_errors_if_node_is_not_commissioning(self):
         unaccepted_statuses = set(map_enum(NODE_STATUS).values())
@@ -1445,64 +1438,6 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertEqual(
             [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
-    def test_stop_nodes_stops_nodes(self):
-        # We don't actually want to fire off power events, but we'll go
-        # through the motions right up to the point where we'd normally
-        # run shell commands.
-        self.patch(PowerAction, 'run_shell', lambda *args, **kwargs: ('', ''))
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(user, power_type='virsh')
-        output = Node.objects.stop_nodes([node.system_id], user)
-
-        self.assertItemsEqual([node], output)
-        self.assertEqual(
-            (1, 'provisioningserver.tasks.power_off'),
-            (
-                len(self.celery.tasks),
-                self.celery.tasks[0]['task'].name,
-            ))
-
-    def test_stop_nodes_task_routed_to_nodegroup_worker(self):
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(user, power_type='virsh')
-        task = self.patch(node_module, 'power_off')
-        Node.objects.stop_nodes([node.system_id], user)
-        args, kwargs = task.apply_async.call_args
-        self.assertEqual(node.work_queue, kwargs['queue'])
-
-    def test_stop_nodes_task_uses_stop_mode(self):
-        self.patch(PowerAction, 'run_shell').return_value = ('', '')
-        user = factory.make_user()
-        node, mac = self.make_node_with_mac(user, power_type='virsh')
-        stop_mode = factory.make_name('stop_mode')
-        Node.objects.stop_nodes([node.system_id], user, stop_mode=stop_mode)
-        self.assertEqual(
-            stop_mode,
-            self.celery.tasks[0]['kwargs']['power_off_mode'])
-
-    def test_stop_nodes_ignores_uneditable_nodes(self):
-        nodes = [
-            self.make_node_with_mac(
-                factory.make_user(), power_type='ether_wake')
-            for counter in range(3)]
-        ids = [node.system_id for node, mac in nodes]
-        stoppable_node = nodes[0][0]
-        self.assertItemsEqual(
-            [stoppable_node],
-            Node.objects.stop_nodes(ids, stoppable_node.owner))
-
-    def test_stop_nodes_does_not_attempt_power_task_if_no_power_type(self):
-        # If the node has a power_type set to UNKNOWN_POWER_TYPE
-        # NodeManager.stop_node(this_node) won't create a power event
-        # for it.
-        user = factory.make_user()
-        node, unused = self.make_node_with_mac(
-            user, power_type='')
-        output = Node.objects.stop_nodes([node.system_id], user)
-
-        self.assertItemsEqual([], output)
-        self.assertEqual(0, len(self.celery.tasks))
-
     def test_netboot_on(self):
         node = factory.make_node(netboot=False)
         node.set_netboot(True)
@@ -1581,8 +1516,6 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         nodegroup = factory.make_node_group()
         self.prepare_rpc_to_cluster(nodegroup)
         nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
-
-        from maastesting.matchers import MockAnyCall
 
         claim_static_ip_addresses = self.patch_autospec(
             Node, "claim_static_ip_addresses", spec_set=False)
@@ -1756,6 +1689,84 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertItemsEqual([node], nodes_started)
         self.assertEqual(
             NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+
+class NodeManagerTest_StopNodes(MAASServerTestCase):
+
+    def make_nodes_with_macs(self, user, nodegroup=None, count=3):
+        nodes = []
+        for _ in xrange(count):
+            node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+                nodegroup=nodegroup, status=NODE_STATUS.READY,
+                power_type='virsh')
+            node.acquire(user)
+            nodes.append(node)
+        return nodes
+
+    def test_stop_nodes_stops_nodes(self):
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_nodes.side_effect = lambda nodes: {
+            system_id: Deferred() for system_id, _, _, _ in nodes}
+
+        user = factory.make_user()
+        nodes = self.make_nodes_with_macs(user)
+        power_infos = list(node.get_effective_power_info() for node in nodes)
+
+        stop_mode = factory.make_name('stop-mode')
+        nodes_stopped = Node.objects.stop_nodes(
+            list(node.system_id for node in nodes), user, stop_mode)
+
+        self.assertItemsEqual(nodes, nodes_stopped)
+        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+
+        nodes_start_info_observed = power_off_nodes.call_args[0][0]
+        nodes_start_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            for node, power_info in izip(nodes, power_infos)
+        ]
+
+        # The stop mode is added into the power info that's passed.
+        for _, _, _, power_info in nodes_start_info_expected:
+            power_info.power_parameters['power_off_mode'] = stop_mode
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_start_info_expected,
+            nodes_start_info_observed)
+
+    def test_stop_nodes_ignores_uneditable_nodes(self):
+        owner = factory.make_user()
+        nodes = self.make_nodes_with_macs(owner)
+
+        user = factory.make_user()
+        nodes_stopped = Node.objects.stop_nodes(
+            list(node.system_id for node in nodes), user)
+
+        self.assertItemsEqual([], nodes_stopped)
+
+    def test_stop_nodes_does_not_attempt_power_off_if_no_power_type(self):
+        # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop_nodes()
+        # won't attempt to power it off.
+        user = factory.make_user()
+        [node] = self.make_nodes_with_macs(user, count=1)
+        node.power_type = ""
+        node.save()
+
+        nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
+        self.assertItemsEqual([], nodes_stopped)
+
+    def test_stop_nodes_does_not_attempt_power_off_if_cannot_be_stopped(self):
+        # If the node has a power_type that MAAS knows stopping does not work,
+        # stop_nodes() won't attempt to power it off.
+        user = factory.make_user()
+        [node] = self.make_nodes_with_macs(user, count=1)
+        node.power_type = "ether_wake"
+        node.save()
+
+        nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
+        self.assertItemsEqual([], nodes_stopped)
 
 
 class TestClaimStaticIPAddresses(MAASTestCase):

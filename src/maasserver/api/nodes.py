@@ -229,12 +229,15 @@ class NodeHandler(OperationsHandler):
         :type stop_mode: unicode
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
-        nodes = Node.objects.stop_nodes(
-            [system_id], request.user, stop_mode=stop_mode)
-        if len(nodes) == 0:
-            raise PermissionDenied(
-                "You are not allowed to shut down this node.")
-        return nodes[0]
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        nodes_stopped = Node.objects.stop_nodes(
+            [node.system_id], request.user, stop_mode=stop_mode)
+        if len(nodes_stopped) == 0:
+            return None
+        else:
+            return node
 
     @operation(idempotent=False)
     def start(self, request, system_id):

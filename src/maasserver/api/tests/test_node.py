@@ -46,13 +46,17 @@ from maasserver.testing.orm import (
     )
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from metadataserver.models import (
     commissioningscript,
     NodeKey,
     NodeUserData,
     )
 from metadataserver.nodeinituser import get_node_init_user
+from mock import ANY
 from netaddr import IPAddress
 from provisioningserver.utils.enum import map_enum
 
@@ -196,11 +200,28 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_stop_checks_permission(self):
         node = factory.make_node()
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertThat(stop_nodes, MockNotCalled())
+
+    def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
+        # The node may not be stopped by stop_nodes because, for example, its
+        # power type does not support it. In this case the node is not
+        # returned to the caller.
+        node = factory.make_node(owner=self.logged_in_user)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = []
+        response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertIsNone(json.loads(response.content))
+        self.assertThat(stop_nodes, MockCalledOnceWith(
+            [node.system_id], ANY, stop_mode=ANY))
 
     def test_POST_stop_returns_node(self):
         node = factory.make_node(owner=self.logged_in_user)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -210,13 +231,15 @@ class TestNodeAPI(APITestCase):
         node = factory.make_node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_stop_stops_nodes(self):
         node = factory.make_node(owner=self.logged_in_user)
-        stop_nodes = self.patch(Node.objects, "stop_nodes")
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         stop_nodes.return_value = [node]
         stop_mode = factory.make_name('stop_mode')
         self.client.post(
