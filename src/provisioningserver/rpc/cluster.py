@@ -320,15 +320,14 @@ class StartTimers(amp.Command):
     errors = []
 
 
-class CancelTimers(amp.Command):
-    """Cancels existing timer(s) on the cluster.
+class CancelTimer(amp.Command):
+    """Cancels an existing timer on the cluster.
 
     :since: 1.7
     """
 
     arguments = [
-        (b"timers", amp.AmpList(
-            (b"id", amp.Unicode()),
-        ))]
+        (b"id", amp.Unicode()),
+        ]
     response = []
     error = []

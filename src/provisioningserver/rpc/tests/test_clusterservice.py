@@ -14,6 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from datetime import (
+    datetime,
+    timedelta,
+    )
 from itertools import product
 import json
 import os.path
@@ -75,9 +79,14 @@ from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
     StubOS,
     )
+from provisioningserver.rpc.timers import (
+    cancel_timer,
+    running_timers,
+    )
 from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
 from testtools.matchers import (
+    Contains,
     Equals,
     HasLength,
     Is,
@@ -86,6 +95,7 @@ from testtools.matchers import (
     MatchesAll,
     MatchesListwise,
     MatchesStructure,
+    Not,
     )
 from twisted.application.internet import TimerService
 from twisted.internet import error
@@ -1067,3 +1077,41 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
                 ip_addresses, shared_key))
+
+
+class TestClusterProtocol_StartTimers(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.StartTimers.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__executes_start_timers(self):
+        deadline = datetime.now(amp.utc) + timedelta(seconds=10)
+        timers = [{
+            "deadline": deadline, "context": factory.make_name("ctx"),
+            "id": factory.make_name("id")}]
+        d = call_responder(Cluster(), cluster.StartTimers, {"timers": timers})
+        self.addCleanup(cancel_timer, timers[0]["id"])
+        self.assertTrue(d.called)
+        self.assertThat(running_timers, Contains(timers[0]["id"]))
+
+
+class TestClusterProtocol_CancelTimer(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.CancelTimer.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__executes_cancel_timer(self):
+        deadline = datetime.now(amp.utc) + timedelta(seconds=10)
+        timers = [{
+            "deadline": deadline, "context": factory.make_name("ctx"),
+            "id": factory.make_name("id")}]
+        call_responder(Cluster(), cluster.StartTimers, {"timers": timers})
+
+        call_responder(Cluster(), cluster.CancelTimer, {"id": timers[0]["id"]})
+        self.assertThat(running_timers, Not(Contains(timers[0]["id"])))

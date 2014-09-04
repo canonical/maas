@@ -55,6 +55,10 @@ from provisioningserver.rpc.power import (
     change_power_state,
     get_power_state,
     )
+from provisioningserver.rpc.timers import (
+    cancel_timer,
+    start_timers,
+    )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import (
@@ -192,6 +196,16 @@ class Cluster(RPCProtocol):
     @cluster.RemoveHostMaps.responder
     def remove_host_maps(self, ip_addresses, shared_key):
         remove_host_maps(ip_addresses, shared_key)
+        return {}
+
+    @cluster.StartTimers.responder
+    def start_timers(self, timers):
+        start_timers(timers)
+        return {}
+
+    @cluster.CancelTimer.responder
+    def cancel_timer(self, id):
+        cancel_timer(id)
         return {}
 
     @amp.StartTLS.responder
