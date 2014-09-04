@@ -54,11 +54,11 @@ EventDetail = namedtuple("EventDetail", ("description", "level"))
 EVENT_DETAILS = {
     # Event type -> EventDetail mapping.
     EVENT_TYPES.NODE_POWER_ON_STARTING: EventDetail(
-        description="Node power on starting",
+        description="Powering node on",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWER_OFF_STARTING: EventDetail(
-        description="Node power off starting",
+        description="Powering node off",
         level=INFO,
     ),
     EVENT_TYPES.NODE_POWERED_ON: EventDetail(
