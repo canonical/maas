@@ -147,6 +147,16 @@ class Region(RPCProtocol):
         d.addCallback(lambda sources: {b"sources": sources})
         return d
 
+    @region.GetArchiveMirrors.responder
+    def get_archive_mirrors(self):
+        """get_archive_mirrors()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.GetArchiveMirrors`.
+        """
+        d = deferToThread(configuration.get_archive_mirrors)
+        return d
+
     @region.GetProxies.responder
     def get_proxies(self):
         """get_proxies()

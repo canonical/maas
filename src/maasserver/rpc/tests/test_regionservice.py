@@ -21,6 +21,7 @@ from operator import attrgetter
 import os.path
 import random
 import threading
+from urlparse import urlparse
 
 from crochet import wait_for_reactor
 from django.db import connection
@@ -76,6 +77,7 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
+    GetArchiveMirrors,
     GetBootSources,
     GetBootSourcesV2,
     GetClusterInterfaces,
@@ -399,6 +401,62 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
             Region(), GetBootSourcesV2, {b"uuid": uuid})
 
         self.assertEqual({b"sources": [boot_source]}, response)
+
+
+class TestRegionProtocol_GetArchiveMirrors(MAASTestCase):
+
+    def test_get_archive_mirrors_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetArchiveMirrors.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def set_main_archive(self, url):
+        Config.objects.set_config("main_archive", url)
+
+    @transactional
+    def set_ports_archive(self, url):
+        Config.objects.set_config("ports_archive", url)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_archive_mirrors_with_main_archive_port_archive_default(self):
+        yield deferToThread(self.set_main_archive,
+                            "http://archive.ubuntu.com/ubuntu")
+        yield deferToThread(self.set_ports_archive,
+                            "http://ports.ubuntu.com/ubuntu-ports")
+
+        response = yield call_responder(Region(), GetArchiveMirrors, {})
+
+        self.assertEqual(
+            {b"main": urlparse("http://archive.ubuntu.com/ubuntu"),
+             b"ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
+            response)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_archive_mirrors_with_main_archive_set(self):
+        url = factory.make_parsed_url()
+        yield deferToThread(self.set_main_archive, url.geturl())
+
+        response = yield call_responder(Region(), GetArchiveMirrors, {})
+
+        self.assertEqual(
+            {b"main": url,
+             b"ports": urlparse("http://ports.ubuntu.com/ubuntu-ports")},
+            response)
+
+    @inlineCallbacks
+    def test_get_archive_mirrors_with_ports_archive_set(self):
+        url = factory.make_parsed_url()
+        yield deferToThread(self.set_ports_archive, url.geturl())
+
+        response = yield call_responder(Region(), GetArchiveMirrors, {})
+
+        self.assertEqual(
+            {b"main": urlparse("http://arhive.ubuntu.com/ubuntu"),
+             b"ports": url},
+            response)
 
 
 class TestRegionProtocol_GetProxies(MAASTestCase):

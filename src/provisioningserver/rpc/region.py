@@ -121,6 +121,19 @@ class UpdateLeases(amp.Command):
     errors = []
 
 
+class GetArchiveMirrors(amp.Command):
+    """Return the Main and Port mirrors to use.
+
+    :since: 1.7
+    """
+    arguments = []
+    response = [
+        (b"main", ParsedURL()),
+        (b"ports", ParsedURL()),
+    ]
+    errors = []
+
+
 class GetProxies(amp.Command):
     """Return the HTTP and HTTPS proxies to use.
 

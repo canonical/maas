@@ -17,9 +17,23 @@ __all__ = []
 from urlparse import urlparse
 
 from maasserver.models.config import Config
-from maasserver.rpc.configuration import get_proxies
+from maasserver.rpc.configuration import (
+    get_archive_mirrors,
+    get_proxies,
+    )
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+
+
+class TestGetArchiveMirrors(MAASTestCase):
+
+    def test_returns_populated_dict_when_main_and_port_is_set(self):
+        url = factory.make_parsed_url().geturl()
+        Config.objects.set_config("main_archive", url)
+        Config.objects.set_config("ports_archive", url)
+        self.assertEqual(
+            {"main": urlparse(url), "ports": urlparse(url)},
+            get_archive_mirrors())
 
 
 class TestGetProxies(MAASTestCase):
