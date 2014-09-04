@@ -46,60 +46,15 @@ from provisioningserver.import_images.testing.factory import (
     )
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
+    make_image,
     )
 from provisioningserver.testing.config import set_tftp_root
-from provisioningserver.testing.os import FakeOS
+from provisioningserver.testing.os import make_osystem
 from testtools.matchers import (
     Not,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
-
-
-def make_image(params, purpose, metadata=None, xinstall_path=None,
-               xinstall_type=None):
-    """Describe an image as a dict similar to what `list_boot_images` returns.
-
-    The `params` are as returned from `make_boot_image_storage_params`.
-    """
-    image = params.copy()
-    image['purpose'] = purpose
-    if metadata is not None:
-        image.update(metadata)
-    if purpose == 'xinstall':
-        if xinstall_path is None:
-            xinstall_path = 'root-tgz'
-        if xinstall_type is None:
-            xinstall_type = 'tgz'
-        image['xinstall_path'] = xinstall_path
-        image['xinstall_type'] = xinstall_type
-    else:
-        image['xinstall_path'] = ''
-        image['xinstall_type'] = ''
-    return image
-
-
-def make_osystem(testcase, osystem, purpose):
-    """Makes the operating system class and registers it."""
-    if osystem not in OperatingSystemRegistry:
-        fake = FakeOS(osystem, purpose)
-        OperatingSystemRegistry.register_item(fake.name, fake)
-        testcase.addCleanup(
-            OperatingSystemRegistry.unregister_item, osystem)
-        return fake
-
-    else:
-
-        obj = OperatingSystemRegistry[osystem]
-        old_func = obj.get_boot_image_purposes
-        testcase.patch(obj, 'get_boot_image_purposes').return_value = purpose
-
-        def reset_func(obj, old_func):
-            obj.get_boot_image_purposes = old_func
-
-        testcase.addCleanup(reset_func, obj, old_func)
-
-        return obj
 
 
 class TestTFTPPath(MAASTestCase):

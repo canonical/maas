@@ -153,6 +153,19 @@ class BootResourceManager(Manager):
                 return resource
         return get_first(commissionable)
 
+    def get_resource_for(
+            self, osystem, architecture, subarchitecture, series):
+        """Return resource that support the given osystem, architecture,
+        subarchitecture, and series."""
+        name = '%s/%s' % (osystem, series)
+        resources = BootResource.objects.filter(
+            rtype__in=RTYPE_REQUIRING_OS_SERIES_NAME,
+            name=name, architecture__startswith=architecture)
+        for resource in resources:
+            if resource.supports_subarch(subarchitecture):
+                return resource
+        return None
+
 
 def validate_architecture(value):
     """Validates that architecture value contains a subarchitecture."""
@@ -278,3 +291,13 @@ class BootResource(CleanSave, TimestampedModel):
                 if set_idx > max_idx:
                     max_idx = set_idx
         return '%s.%d' % (version_name, max_idx + 1)
+
+    def supports_subarch(self, subarch):
+        """Return True if the resource supports the given subarch."""
+        _, self_subarch = self.split_arch()
+        if subarch == self_subarch:
+            return True
+        if 'subarches' not in self.extra:
+            return False
+        subarches = self.extra['subarches'].split(',')
+        return subarch in subarches

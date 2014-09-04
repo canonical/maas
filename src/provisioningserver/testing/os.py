@@ -17,7 +17,10 @@ __all__ = [
 
 
 from maastesting.factory import factory
-from provisioningserver.drivers.osystem import OperatingSystem
+from provisioningserver.drivers.osystem import (
+    OperatingSystem,
+    OperatingSystemRegistry,
+    )
 
 
 class FakeOS(OperatingSystem):
@@ -48,3 +51,26 @@ class FakeOS(OperatingSystem):
 
     def get_release_title(self, release):
         return release
+
+
+def make_osystem(testcase, osystem, purpose):
+    """Makes the operating system class and registers it."""
+    if osystem not in OperatingSystemRegistry:
+        fake = FakeOS(osystem, purpose)
+        OperatingSystemRegistry.register_item(fake.name, fake)
+        testcase.addCleanup(
+            OperatingSystemRegistry.unregister_item, osystem)
+        return fake
+
+    else:
+
+        obj = OperatingSystemRegistry[osystem]
+        old_func = obj.get_boot_image_purposes
+        testcase.patch(obj, 'get_boot_image_purposes').return_value = purpose
+
+        def reset_func(obj, old_func):
+            obj.get_boot_image_purposes = old_func
+
+        testcase.addCleanup(reset_func, obj, old_func)
+
+        return obj

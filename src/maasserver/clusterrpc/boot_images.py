@@ -14,8 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = [
     "get_boot_images",
+    "get_boot_images_for",
 ]
 
+from maasserver.models import BootResource
 from maasserver.rpc import getClientFor
 from provisioningserver.rpc.cluster import ListBootImages
 from provisioningserver.utils.twisted import synchronous
@@ -35,3 +37,44 @@ def get_boot_images(nodegroup):
     client = getClientFor(nodegroup.uuid, timeout=1)
     call = client(ListBootImages)
     return call.wait(30).get("images")
+
+
+@synchronous
+def get_boot_images_for(
+        nodegroup, osystem, architecture, subarchitecture, series):
+    """Obtain the available boot images of this cluster for the given
+    osystem, architecture, subarchitecute, and series.
+
+    :param nodegroup: The nodegroup.
+    :param osystem: The operating system.
+    :param architecture: The architecture.
+    :param subarchitecute: The subarchitecute.
+    :param series: The operating system series.
+
+    :raises NoConnectionsAvailable: When no connections to the node's
+        cluster are available for use.
+    :raises crochet.TimeoutError: If a response has not been received within
+        30 seconds.
+    """
+    images = get_boot_images(nodegroup)
+    images = [
+        image
+        for image in images
+        if image['osystem'] == osystem and
+        image['release'] == series and
+        image['architecture'] == architecture
+        ]
+
+    # Subarchitecture can be different than what the cluster sends back. This
+    # is because of hwe kernels. If the image matches this far, then we check
+    # its matching BootResource for all supported subarchitectures.
+    matching_images = []
+    for image in images:
+        if image['subarchitecture'] == subarchitecture:
+            matching_images.append(image)
+        else:
+            resource = BootResource.objects.get_resource_for(
+                osystem, architecture, subarchitecture, series)
+            if resource is not None:
+                matching_images.append(image)
+    return matching_images

@@ -25,7 +25,10 @@ from maasserver.enum import (
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
     )
 from maasserver.models import bootresource
-from maasserver.models.bootresource import BootResource
+from maasserver.models.bootresource import (
+    BootResource,
+    RTYPE_REQUIRING_OS_SERIES_NAME,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -254,6 +257,24 @@ class TestBootResourceManager(MAASServerTestCase):
             BootResource.objects.get_default_commissioning_resource(
                 os, series).architecture)
 
+    def test_get_resource_for_returns_matching_resource(self):
+        resources = [
+            factory.make_boot_resource(
+                rtype=random.choice(RTYPE_REQUIRING_OS_SERIES_NAME))
+            for _ in range(3)
+            ]
+        resource = resources.pop()
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        subarch = random.choice(subarches)
+        resource.extra['subarches'] = ','.join(subarches)
+        resource.save()
+        osystem, series = resource.name.split('/')
+        arch, _ = resource.split_arch()
+        self.assertEqual(
+            resource,
+            BootResource.objects.get_resource_for(
+                osystem, arch, subarch, series))
+
 
 class TestBootResource(MAASServerTestCase):
     """Tests for the `BootResource` model."""
@@ -366,3 +387,29 @@ class TestBootResource(MAASServerTestCase):
         self.assertEqual(
             '%s.%d' % (expected_version, set_count),
             resource.get_next_version_name())
+
+    def test_supports_subarch_returns_True_if_subarch_in_name_matches(self):
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_boot_resource(architecture=architecture)
+        self.assertTrue(resource.supports_subarch(subarch))
+
+    def test_supports_subarch_returns_False_if_subarches_is_missing(self):
+        resource = factory.make_boot_resource()
+        self.assertFalse(
+            resource.supports_subarch(factory.make_name('subarch')))
+
+    def test_supports_subarch_returns_True_if_subarch_in_subarches(self):
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        subarch = random.choice(subarches)
+        resource = factory.make_boot_resource(
+            extra={'subarches': ','.join(subarches)})
+        self.assertTrue(resource.supports_subarch(subarch))
+
+    def test_supports_subarch_returns_False_if_subarch_not_in_subarches(self):
+        subarches = [factory.make_name('subarch') for _ in range(3)]
+        resource = factory.make_boot_resource(
+            extra={'subarches': ','.join(subarches)})
+        self.assertFalse(
+            resource.supports_subarch(factory.make_name('subarch')))
