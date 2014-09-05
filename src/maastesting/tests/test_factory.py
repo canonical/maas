@@ -52,25 +52,25 @@ class TestFactory(MAASTestCase):
     def test_pick_port_returns_int(self):
         self.assertIsInstance(factory.pick_port(), int)
 
-    def test_getRandomIPAddress(self):
-        ip_address = factory.getRandomIPAddress()
+    def test_make_ipv4_address(self):
+        ip_address = factory.make_ipv4_address()
         self.assertIsInstance(ip_address, unicode)
         octets = ip_address.split('.')
         self.assertEqual(4, len(octets))
         for octet in octets:
             self.assertTrue(0 <= int(octet) <= 255)
 
-    def test_getRandomIPAddress_but_not(self):
+    def test_make_ipv4_address_but_not(self):
         # We want to look for clashes between identical IPs and/or netmasks.
         # Narrow down the range of randomness so we have a decent chance of
         # triggering a clash, but not so far that we'll loop for very long
         # trying to find a network we haven't seen already.
         self.patch(
-            factory, 'getRandomIPAddress',
+            factory, 'make_ipv4_address',
             lambda: '10.%d.0.0' % randint(1, 200))
         networks = []
         for _ in range(100):
-            networks.append(factory.getRandomNetwork(but_not=networks))
+            networks.append(factory.make_ipv4_network(but_not=networks))
         self.assertEquals(len(networks), len(set(networks)))
 
     def test_make_UUID(self):
@@ -78,60 +78,60 @@ class TestFactory(MAASTestCase):
         self.assertIsInstance(uuid, unicode)
         self.assertEqual(36, len(uuid))
 
-    def test_getRandomNetwork(self):
-        network = factory.getRandomNetwork()
+    def test_make_ipv4_network(self):
+        network = factory.make_ipv4_network()
         self.assertIsInstance(network, IPNetwork)
 
-    def test_getRandomNetwork_respects_but_not(self):
-        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+    def test_make_ipv4_network_respects_but_not(self):
+        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
             '10.1.1.0')
         self.assertRaises(
             TooManyRandomRetries,
-            factory.getRandomNetwork,
+            factory.make_ipv4_network,
             slash=24, but_not=[IPNetwork('10.1.1.0/24')])
 
-    def test_getRandomNetwork_returns_network_not_in_but_not(self):
-        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+    def test_make_ipv4_network_returns_network_not_in_but_not(self):
+        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
             '10.1.1.0')
         self.assertEqual(
             IPNetwork('10.1.1.0/24'),
-            factory.getRandomNetwork(
+            factory.make_ipv4_network(
                 slash=24, but_not=[IPNetwork('10.9.9.0/24')]))
 
-    def test_getRandomNetwork_may_overlap_but_not(self):
-        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+    def test_make_ipv4_network_may_overlap_but_not(self):
+        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
             '10.1.1.0')
         self.assertEqual(
             IPNetwork('10.1.1.0/24'),
-            factory.getRandomNetwork(
+            factory.make_ipv4_network(
                 slash=24, but_not=[IPNetwork('10.1.0.0/16')]))
 
-    def test_getRandomNetwork_avoids_network_in_disjoint_from(self):
-        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+    def test_make_ipv4_network_avoids_network_in_disjoint_from(self):
+        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
             '10.1.1.0')
         self.assertRaises(
             TooManyRandomRetries,
-            factory.getRandomNetwork,
+            factory.make_ipv4_network,
             slash=24, disjoint_from=[IPNetwork('10.1.1.0/24')])
 
-    def test_getRandomNetwork_avoids_network_overlapping_disjoint_from(self):
-        self.patch(factory, 'getRandomIPAddress').return_value = IPAddress(
+    def test_make_ipv4_network_avoids_network_overlapping_disjoint_from(self):
+        self.patch(factory, 'make_ipv4_address').return_value = IPAddress(
             '10.1.1.0')
         self.assertRaises(
             TooManyRandomRetries,
-            factory.getRandomNetwork,
+            factory.make_ipv4_network,
             slash=24, disjoint_from=[IPNetwork('10.1.0.0/16')])
 
-    def test_getRandomNetwork_returns_network_disjoint_from(self):
-        existing_network = factory.getRandomNetwork()
-        new_network = factory.getRandomNetwork(
+    def test_make_ipv4_network_returns_network_disjoint_from(self):
+        existing_network = factory.make_ipv4_network()
+        new_network = factory.make_ipv4_network(
             disjoint_from=[existing_network])
         self.assertNotEqual(existing_network, new_network)
         self.assertNotIn(new_network, existing_network)
         self.assertNotIn(existing_network, new_network)
 
     def test_pick_ip_in_network(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         ip = factory.pick_ip_in_network(network)
         self.assertTrue(
             network.first <= IPAddress(ip).value <= network.last)
@@ -143,7 +143,7 @@ class TestFactory(MAASTestCase):
         self.assertLess(low, high)
 
     def test_make_ip_range_obeys_network(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         low, high = factory.make_ip_range(network)
         self.assertIn(low, network)
         self.assertIn(high, network)
@@ -151,13 +151,13 @@ class TestFactory(MAASTestCase):
     def test_make_ip_range_returns_low_and_high(self):
         # Make a very very small network, to maximise the chances of exposure
         # if the method gets this wrong e.g. by returning identical addresses.
-        low, high = factory.make_ip_range(factory.getRandomNetwork(slash=31))
+        low, high = factory.make_ip_range(factory.make_ipv4_network(slash=31))
         self.assertLess(low, high)
 
     def test_make_ip_range_obeys_but_not(self):
         # Make a very very small network, to maximise the chances of exposure
         # if the method gets this wrong.
-        network = factory.getRandomNetwork(slash=30)
+        network = factory.make_ipv4_network(slash=30)
         first_low, first_high = factory.make_ip_range(network)
         second_low, second_high = factory.make_ip_range(
             network, but_not=(first_low, first_high))
@@ -166,16 +166,16 @@ class TestFactory(MAASTestCase):
     def test_make_date_returns_datetime(self):
         self.assertIsInstance(factory.make_date(), datetime)
 
-    def test_getRandomMACAddress(self):
-        mac_address = factory.getRandomMACAddress()
+    def test_make_random_mac_address(self):
+        mac_address = factory.make_random_mac_address()
         self.assertIsInstance(mac_address, unicode)
         self.assertEqual(17, len(mac_address))
         for hex_octet in mac_address.split(":"):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
 
-    def test_getRandomMACAddress_alternative_delimiter(self):
+    def test_make_random_mac_address_alternative_delimiter(self):
         self.patch(factory, "random_octets", count(0x3a))
-        mac_address = factory.getRandomMACAddress(delimiter="-")
+        mac_address = factory.make_random_mac_address(delimiter="-")
         self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
     def test_make_random_leases_maps_ips_to_macs(self):
