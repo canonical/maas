@@ -47,6 +47,7 @@ from maasserver.rpc.regionservice import (
     RegionService,
     )
 from maasserver.rpc.testing.doubles import IdentifyingRegionServer
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -77,6 +78,7 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
+    CreateNode,
     GetArchiveMirrors,
     GetBootSources,
     GetBootSourcesV2,
@@ -100,6 +102,7 @@ from provisioningserver.rpc.testing import (
 from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
+from simplejson import dumps
 from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
@@ -746,7 +749,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
         )
 
     @wait_for_reactor
-    def test_send_event_raises_if_unknown_type(self):
+    def test_create_node_raises_if_unknown_type(self):
         name = factory.make_name('type_name')
         system_id = factory.make_name('system_id')
         description = factory.make_name('description')
@@ -767,7 +770,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_send_event_raises_if_unknown_node(self):
+    def test_create_node_raises_if_unknown_node(self):
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
@@ -1573,7 +1576,7 @@ class TestRegionAdvertisingService(MAASTestCase):
 
 class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
 
-    def test_send_event_is_registered(self):
+    def test_create_node_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(
             ReportForeignDHCPServer.commandName)
@@ -1628,7 +1631,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
 
 class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
 
-    def test_send_event_is_registered(self):
+    def test_create_node_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(
             GetClusterInterfaces.commandName)
@@ -1657,3 +1660,45 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
         self.assertIsNot(None, response)
         self.assertItemsEqual(
             expected_interfaces, response["interfaces"])
+
+
+class TestRegionProtocol_CreateNode(MAASTestCase):
+
+    def test_create_node_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            CreateNode.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def create_node(self):
+        return factory.make_node()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_create_node_function(self):
+        create_node_function = self.patch(regionservice, 'create_node')
+        create_node_function.return_value = yield deferToThread(
+            self.create_node)
+
+        params = {
+            'cluster_uuid': factory.make_name('uuid'),
+            'architecture': make_usable_architecture(self),
+            'power_type': factory.make_name("power_type"),
+            'power_parameters': dumps({}),
+            'mac_addresses': [factory.getRandomMACAddress()],
+        }
+
+        response = yield call_responder(
+            Region(), CreateNode, params)
+        self.assertIsNotNone(response)
+
+        self.assertThat(
+            create_node_function,
+            MockCalledOnceWith(
+                params['cluster_uuid'], params['architecture'],
+                params['power_type'], params['power_parameters'],
+                params['mac_addresses']))
+        self.assertEqual(
+            create_node_function.return_value.system_id,
+            response['system_id'])

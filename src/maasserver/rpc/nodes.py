@@ -15,9 +15,13 @@ __metaclass__ = type
 __all__ = [
     "mark_node_failed",
     "update_node_power_state",
+    "create_node",
 ]
 
 
+from django.core.exceptions import ValidationError
+from maasserver.api.utils import get_overridden_query_dict
+from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
     Node,
     NodeGroup,
@@ -86,3 +90,35 @@ def update_node_power_state(system_id, power_state):
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
     node.update_power_state(power_state)
+
+
+@transactional
+def create_node(cluster_uuid, architecture, power_type,
+                power_parameters, mac_addresses):
+    """Create a new `Node` and return it.
+
+    :param cluster_uuid: The UUID of the cluster upon which the node
+        should be created.
+    :param architecture: The architecture of the new node.
+    :param power_type: The power type of the new node.
+    :param power_parameters: A JSON-encoded string of power parameters
+        for the new node.
+    :param mac_addresses: An iterable of MAC addresses that belong to
+        the node.
+    """
+    cluster = NodeGroup.objects.get_by_natural_key(cluster_uuid)
+    data = {
+        'power_type': power_type,
+        'power_parameters': power_parameters,
+        'architecture': architecture,
+        'nodegroup': cluster,
+        'mac_addresses': mac_addresses,
+    }
+    data_query_dict = get_overridden_query_dict(
+        {}, data, AdminNodeWithMACAddressesForm.Meta.fields)
+    form = AdminNodeWithMACAddressesForm(data_query_dict)
+    if form.is_valid():
+        node = form.save()
+        return node
+    else:
+        raise ValidationError(form.errors)

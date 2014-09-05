@@ -274,6 +274,25 @@ class GetClusterInterfaces(amp.Command):
     errors = []
 
 
+class CreateNode(amp.Command):
+    """Create a node on a given cluster.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b'cluster_uuid', amp.Unicode()),
+        (b'architecture', amp.Unicode()),
+        (b'power_type', amp.Unicode()),
+        (b'power_parameters', amp.Unicode()),
+        (b'mac_addresses', amp.ListOf(amp.Unicode())),
+    ]
+    response = [
+        (b'system_id', amp.Unicode()),
+    ]
+    errors = {}
+
+
 class TimerExpired(amp.Command):
     """Called by a cluster when a running timer hits its deadline.
 
