@@ -57,7 +57,7 @@ class TestBootSourceSelection(MAASServerTestCase):
         # BootSourceSelections. This is implicit in Django but it's
         # worth adding a test for it all the same.
         boot_source = factory.make_boot_source()
-        boot_source_selection = factory.make_boot_source_selection(
+        boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source)
         boot_source.delete()
         self.assertNotIn(
@@ -65,7 +65,7 @@ class TestBootSourceSelection(MAASServerTestCase):
             [selection.id for selection in BootSourceSelection.objects.all()])
 
     def test_to_dict_returns_dict(self):
-        boot_source_selection = factory.make_boot_source_selection()
+        boot_source_selection = factory.make_BootSourceSelection()
         expected = {
             "os": boot_source_selection.os,
             "release": boot_source_selection.release,

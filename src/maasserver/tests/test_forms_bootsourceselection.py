@@ -24,7 +24,7 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
     """Tests for `BootSourceSelectionForm`."""
 
     def test_edits_boot_source_selection_object(self):
-        boot_source_selection = factory.make_boot_source_selection()
+        boot_source_selection = factory.make_BootSourceSelection()
         params = {
             'os': factory.make_name('os'),
             'release': factory.make_name('release'),

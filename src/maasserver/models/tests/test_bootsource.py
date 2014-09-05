@@ -56,7 +56,7 @@ class TestBootSource(MAASServerTestCase):
     def test_to_dict_returns_dict(self):
         boot_source = factory.make_boot_source(
             keyring_data=b"123445", keyring_filename='')
-        boot_source_selection = factory.make_boot_source_selection(
+        boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source)
         boot_source_dict = boot_source.to_dict()
         self.assertEqual(boot_source.url, boot_source_dict['url'])
