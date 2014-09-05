@@ -1914,6 +1914,7 @@ class NetworkForm(ModelForm):
             'ip',
             'netmask',
             'vlan_tag',
+            'default_gateway',
             )
 
     mac_addresses = NodeMACAddressChoiceField(

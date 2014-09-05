@@ -55,6 +55,7 @@ class TestNetwork(APITestCase):
                 network.netmask,
                 network.vlan_tag,
                 network.description,
+                network.default_gateway,
             ),
             (
                 parsed_result['name'],
@@ -62,6 +63,7 @@ class TestNetwork(APITestCase):
                 parsed_result['netmask'],
                 parsed_result['vlan_tag'],
                 parsed_result['description'],
+                parsed_result['default_gateway'],
             ))
 
     def test_GET_returns_404_for_unknown_network(self):
@@ -79,6 +81,7 @@ class TestNetwork(APITestCase):
             'netmask': '%s' % new_net.netmask,
             'vlan_tag': factory.make_vlan_tag(),
             'description': "Changed description",
+            'default_gateway': factory.getRandomIPAddress(),
             }
 
         response = self.client_put(self.get_url(network.name), new_values)

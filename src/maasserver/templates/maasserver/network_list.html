@@ -23,6 +23,7 @@
             <th>Description</th>
             <th>Network</th>
             <th>VLAN tag</th>
+            <th>Default gateway</th>
             <th>Attached nodes</th>
             {% if user.is_superuser %}
   	      {% comment %} Action buttons {% endcomment %}
@@ -41,6 +42,7 @@
             <td>{{ network_item.description|truncatechars:40 }}</td>
             <td>{{ network_item.get_network }}</td>
             <td>{{ network_item.vlan_tag|default_if_none:"" }}</td>
+            <td>{{ network_item.default_gateway|default_if_none:"" }}</td>
             <td>
               <a title="View nodes attached to network {{ network_item.name }}"
 		 href="{% url 'node-list' %}?query=networks%3D{{ network_item.name }}">

@@ -61,7 +61,9 @@ class TestNetworksAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertEqual(1, len(parsed_result))
         [returned_network] = parsed_result
-        fields = {'name', 'ip', 'netmask', 'vlan_tag', 'description'}
+        fields = {
+            'name', 'ip', 'netmask', 'vlan_tag', 'description',
+            'default_gateway'}
         self.assertEqual(
             fields.union({'resource_uri'}),
             set(returned_network.keys()))

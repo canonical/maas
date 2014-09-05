@@ -834,7 +834,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None, sortable_name=False,
-                     disjoint_from=None):
+                     disjoint_from=None, default_gateway=None):
         """Create a `Network`.
 
         :param network: An `IPNetwork`.  If given, the `ip` and `netmask`
@@ -867,6 +867,8 @@ class Factory(maastesting.factory.Factory):
             ]
         if network is None:
             network = self.getRandomNetwork(disjoint_from=disjoint_from)
+        if default_gateway is None and self.pick_bool():
+            default_gateway = self.pick_ip_in_network(network)
         ip = unicode(network.ip)
         netmask = unicode(network.netmask)
         if description is None:
@@ -875,7 +877,7 @@ class Factory(maastesting.factory.Factory):
             vlan_tag = self.make_vlan_tag()
         network = Network(
             name=name, ip=ip, netmask=netmask, vlan_tag=vlan_tag,
-            description=description)
+            description=description, default_gateway=default_gateway)
         network.save()
         return network
 

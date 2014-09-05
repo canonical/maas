@@ -45,7 +45,8 @@ class NetworkHandler(OperationsHandler):
     api_doc_section_name = "Network"
 
     model = Network
-    fields = ('name', 'ip', 'netmask', 'vlan_tag', 'description')
+    fields = (
+        'name', 'ip', 'netmask', 'vlan_tag', 'description', 'default_gateway')
 
     # Creation happens on the NetworksHandler.
     create = None
