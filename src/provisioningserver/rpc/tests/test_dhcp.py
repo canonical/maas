@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from random import randint
+
 from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -29,11 +31,16 @@ from mock import (
     call,
     sentinel,
     )
+from provisioningserver.dhcp import control
 from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.rpc import (
     dhcp,
     exceptions,
+    )
+from provisioningserver.rpc.exceptions import (
+    CannotConfigureDHCP,
+    CannotStopDHCP,
     )
 from provisioningserver.utils.shell import ExternalProcessError
 
@@ -44,7 +51,7 @@ class TestConfigureDHCPv6(MAASTestCase):
         return self.patch(dhcp, 'sudo_write_file')
 
     def patch_restart_dhcpv6(self):
-        return self.patch(dhcp, 'restart_dhcpv6')
+        return self.patch(control, 'restart_dhcpv6')
 
     def patch_get_config(self):
         return self.patch(dhcp, 'get_config')
@@ -114,7 +121,7 @@ class TestConfigureDHCPv6(MAASTestCase):
     def test__stops_dhcpv6_server_if_no_subnets_defined(self):
         self.patch_sudo_write_file()
         restart_dhcpv6 = self.patch_restart_dhcpv6()
-        stop_dhcpv6 = self.patch(dhcp, 'stop_dhcpv6')
+        stop_dhcpv6 = self.patch(control, 'stop_dhcpv6')
         dhcp.configure_dhcpv6(factory.make_name('key'), [])
         self.assertThat(stop_dhcpv6, MockCalledWith())
         self.assertThat(restart_dhcpv6, MockNotCalled())
@@ -219,3 +226,66 @@ class TestRemoveHostMaps(MAASTestCase):
         self.assertDocTestMatches(
             "Could not remove host map for ...: ...",
             logger.output)
+
+
+class TestStopAndDisableDHCP(MAASTestCase):
+    """Test `stop_and_disable_dhcpv4` and `stop_and_disable_dhcpv6`."""
+
+    scenarios = (
+        ("DHCPv4", {
+            "stop_dhcp": (control, "stop_dhcpv4"),  # For patching.
+            "stop_and_disable_dhcp": dhcp.stop_and_disable_dhcpv4,
+            "expected_config_file": dhcp.DHCPv4_CONFIG_FILE,
+        }),
+        ("DHCPv6", {
+            "stop_dhcp": (control, "stop_dhcpv6"),  # For patching.
+            "stop_and_disable_dhcp": dhcp.stop_and_disable_dhcpv6,
+            "expected_config_file": dhcp.DHCPv6_CONFIG_FILE,
+        }),
+    )
+
+    def test__writes_config_and_stops_dhcp_server(self):
+        # Avoid trying to actually write a file via sudo.
+        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
+        # Avoid trying to actually stop a live DHCP server.
+        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
+
+        self.stop_and_disable_dhcp()
+
+        self.assertThat(sudo_write_file, MockCalledOnceWith(
+            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
+        self.assertThat(stop_dhcp, MockCalledOnceWith())
+
+    def test__raises_CannotConfigureDHCP_when_config_file_write_fails(self):
+        # Avoid trying to actually write a file via sudo.
+        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
+        # Avoid trying to actually stop a live DHCP server.
+        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
+
+        # Simulate a failure when writing the configuration file.
+        sudo_write_file.side_effect = ExternalProcessError(
+            randint(1, 99), [factory.make_name("command")],
+            factory.make_name("stderr"))
+
+        self.assertRaises(CannotConfigureDHCP, self.stop_and_disable_dhcp)
+
+        self.assertThat(sudo_write_file, MockCalledOnceWith(
+            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
+        self.assertThat(stop_dhcp, MockNotCalled())
+
+    def test__raises_CannotStopDHCP_when_stop_fails(self):
+        # Avoid trying to actually write a file via sudo.
+        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
+        # Avoid trying to actually stop a live DHCP server.
+        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
+
+        # Simulate a failure when stopping the DHCP server.
+        stop_dhcp.side_effect = ExternalProcessError(
+            randint(1, 99), [factory.make_name("command")],
+            factory.make_name("stderr"))
+
+        self.assertRaises(CannotStopDHCP, self.stop_and_disable_dhcp)
+
+        self.assertThat(sudo_write_file, MockCalledOnceWith(
+            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
+        self.assertThat(stop_dhcp, MockCalledOnceWith())
