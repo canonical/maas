@@ -23,8 +23,8 @@ from provisioningserver.dhcp.control import (
     restart_dhcpv6,
     stop_dhcpv6,
     )
+from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.omshell import Omshell
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,

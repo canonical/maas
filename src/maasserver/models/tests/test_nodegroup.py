@@ -45,7 +45,7 @@ from mock import (
     call,
     Mock,
     )
-from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import ImportBootImages
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum

@@ -44,7 +44,7 @@ from provisioningserver.dhcp.leases import (
     update_leases,
     upload_leases,
     )
-from provisioningserver.omshell import Omshell
+from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.testing.testcase import PservTestCase
 
 

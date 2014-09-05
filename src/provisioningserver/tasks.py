@@ -48,6 +48,7 @@ from provisioningserver.dhcp.control import (
     restart_dhcpv4,
     stop_dhcpv4,
     )
+from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -62,7 +63,6 @@ from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.omshell import Omshell
 from provisioningserver.power.poweraction import PowerAction
 from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.env import environment_variables

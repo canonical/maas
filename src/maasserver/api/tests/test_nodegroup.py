@@ -70,7 +70,7 @@ from mock import Mock
 import netaddr
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.dhcp.leases import send_leases
-from provisioningserver.omshell import Omshell
+from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.rpc.cluster import ImportBootImages
 from testresources import FixtureResource
 from testtools.matchers import (

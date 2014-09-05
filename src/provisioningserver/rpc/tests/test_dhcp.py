@@ -29,8 +29,8 @@ from mock import (
     call,
     sentinel,
     )
+from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dhcp.testing.config import make_subnet_config
-from provisioningserver.omshell import Omshell
 from provisioningserver.rpc import (
     dhcp,
     exceptions,

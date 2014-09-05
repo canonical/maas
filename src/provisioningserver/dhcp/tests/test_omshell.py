@@ -28,9 +28,8 @@ from mock import (
     ANY,
     Mock,
     )
-from provisioningserver import omshell
-import provisioningserver.omshell
-from provisioningserver.omshell import (
+from provisioningserver.dhcp import omshell
+from provisioningserver.dhcp.omshell import (
     call_dnssec_keygen,
     generate_omapi_key,
     Omshell,
@@ -273,7 +272,7 @@ class Test_generate_omapi_key(MAASTestCase):
         # An iterator that we can exhaust without mutating bad_keys.
         iter_bad_keys = iter(bad_keys)
         # Reference to the original parse_key_value_file, before we patch.
-        parse_key_value_file = provisioningserver.omshell.parse_key_value_file
+        parse_key_value_file = omshell.parse_key_value_file
 
         # Patch parse_key_value_file to return each of the known-bad keys
         # we've created, followed by reverting to its usual behaviour.
@@ -283,7 +282,7 @@ class Test_generate_omapi_key(MAASTestCase):
             except StopIteration:
                 return parse_key_value_file(*args, **kwargs)
 
-        mock = self.patch(provisioningserver.omshell, 'parse_key_value_file')
+        mock = self.patch(omshell, 'parse_key_value_file')
         mock.side_effect = side_effect
 
         # generate_omapi_key() does not return a key known to be bad.
@@ -294,8 +293,7 @@ class TestCallDnsSecKeygen(MAASTestCase):
     """Tests for omshell.call_dnssec_keygen."""
 
     def test_runs_external_script(self):
-        call_and_check = self.patch(
-            provisioningserver.omshell, 'call_and_check')
+        call_and_check = self.patch(omshell, 'call_and_check')
         target_dir = self.make_dir()
         path = os.environ.get("PATH", "").split(os.pathsep)
         path.append("/usr/sbin")

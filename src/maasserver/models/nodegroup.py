@@ -37,7 +37,7 @@ from piston.models import (
     KEY_SIZE,
     Token,
     )
-from provisioningserver.omshell import generate_omapi_key
+from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import ImportBootImages
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tasks import (
