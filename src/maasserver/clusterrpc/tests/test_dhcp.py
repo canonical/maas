@@ -375,6 +375,30 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
             ))
         )
 
+    def test__skips_IPv6_mappings(self):
+        clients = DummyClients()
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            dhcp_key=factory.make_name("key"))
+
+        static_mapping = {
+            nodegroup: {
+                factory.make_ipv6_address(): factory.getRandomMACAddress()
+            }
+        }
+
+        calls = dhcp.gen_calls_to_create_host_maps(clients, static_mapping)
+        self.assertThat(calls, IsInstance(Iterator))
+        calls = list(calls)
+        self.assertThat(calls, HasLength(1))
+        [call] = calls
+        # The mappings are empty.
+        self.assertThat(
+            call,
+            MatchesPartialCall(
+                clients[nodegroup], CreateHostMaps, shared_key=ANY,
+                mappings=[]))
+
 
 class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 

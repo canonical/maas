@@ -19,7 +19,6 @@ __all__ = [
 from collections import defaultdict
 from functools import partial
 
-from maasserver.models.dhcplease import DHCPLease
 from maasserver.rpc import getClientFor
 from maasserver.utils import async
 from netaddr import (
@@ -37,6 +36,9 @@ from twisted.python.failure import Failure
 def gen_calls_to_create_host_maps(clients, static_mappings):
     """Generate calls to create host maps in clusters' DHCP servers.
 
+    This includes only IPv4 addresses.  We don't generate host maps for
+    IPv6 addresses.
+
     :param clients: A mapping of cluster UUIDs to
         :py:class:`~provisioningserver.rpc.common.Client` instances.
         There must be a client for each nodegroup in the
@@ -48,6 +50,7 @@ def gen_calls_to_create_host_maps(clients, static_mappings):
     make_mappings_for_call = lambda mappings: [
         {"ip_address": ip_address, "mac_address": mac_address}
         for ip_address, mac_address in mappings.viewitems()
+        if IPAddress(ip_address).version == 4
     ]
     for nodegroup, mappings in static_mappings.viewitems():
         yield partial(
@@ -68,6 +71,9 @@ def gen_dynamic_ip_addresses_with_host_maps(static_mappings):
         to mappings of ``ip-address -> mac-address``.
     :return: A generator of ``(nodegroup, ip-address)`` tuples.
     """
+    # Avoid circular imports.
+    from maasserver.models.dhcplease import DHCPLease
+
     for nodegroup, mappings in static_mappings.viewitems():
         managed_ranges = tuple(
             IPRange(ngi.static_ip_range_low, ngi.static_ip_range_high)
