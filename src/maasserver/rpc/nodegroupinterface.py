@@ -37,6 +37,11 @@ def update_foreign_dhcp_ip(cluster_uuid, interface_name, foreign_dhcp_ip):
     None, sometimes as an empty string, and the difference being enough
     to convince the signal machinery that these fields have changed when
     in fact they have not.
+
+    :param cluster_uuid: Cluster's UUID.
+    :param interface_name: The name of the cluster interface on which the
+        foreign DHCP server was (or wasn't) discovered.
+    :param foreign_dhcp_ip: IP address of foreign DCHP server, if any.
     """
     query = NodeGroupInterface.objects.filter(
         nodegroup__uuid=cluster_uuid, name=interface_name)
@@ -47,11 +52,16 @@ def update_foreign_dhcp_ip(cluster_uuid, interface_name, foreign_dhcp_ip):
 def get_cluster_interfaces_as_dicts(cluster_uuid):
     """Return all the interfaces on a given cluster as a list of dicts.
 
-    :return: A list of dicts in the form {'name': interface.name, 'ip':
-        interface.ip}, one dict per interface on the cluster.
+    :return: A list of dicts in the form {'name': interface.name,
+        'interface': interface.interface, 'ip': interface.ip}, one dict per
+        interface on the cluster.
     """
     cluster_interfaces = NodeGroupInterface.objects.filter(
         nodegroup__uuid=cluster_uuid)
     return [
-        {b'name': interface.name, b'ip': interface.ip}
+        {
+            b'name': interface.name,
+            b'interface': interface.interface,
+            b'ip': interface.ip,
+        }
         for interface in cluster_interfaces]

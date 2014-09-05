@@ -85,7 +85,7 @@ class PeriodicDHCPProbeService(TimerService, object):
         """Tell the region that there's a rogue DHCP server.
 
         :param client: The RPC client to use.
-        :param name: The name of the interface where the rogue
+        :param name: The name of the network interface where the rogue
             DHCP server was found.
         :param foreign_dhcp_ip: The IP address of the rogue server.
         """
@@ -122,7 +122,7 @@ class PeriodicDHCPProbeService(TimerService, object):
         for interface in cluster_interfaces:
             try:
                 servers = yield deferToThread(
-                    probe_interface, interface['name'], interface['ip'])
+                    probe_interface, interface['interface'], interface['ip'])
             except socket.error:
                 maaslog.error(
                     "Failed to probe sockets; did you configure authbind as "

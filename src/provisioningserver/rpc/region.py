@@ -269,6 +269,7 @@ class GetClusterInterfaces(amp.Command):
     response = [
         (b"interfaces", amp.AmpList(
             [(b"name", amp.Unicode()),
+             (b"interface", amp.Unicode()),
              (b"ip", amp.Unicode())]))
     ]
     errors = []

@@ -55,6 +55,16 @@ class TestDHCPProbeService(PservTestCase):
             region.GetClusterInterfaces, region.ReportForeignDHCPServer)
         return protocol, connecting
 
+    def make_cluster_interface_values(self, ip=None):
+        """Return a dict describing a cluster interface."""
+        if ip is None:
+            ip = factory.getRandomIPAddress()
+        return {
+            'name': factory.make_name('interface'),
+            'interface': factory.make_name('eth'),
+            'ip': ip,
+            }
+
     def test_is_called_every_interval(self):
         clock = Clock()
         service = PeriodicDHCPProbeService(
@@ -85,10 +95,7 @@ class TestDHCPProbeService(PservTestCase):
 
     def test_probe_is_initiated_in_new_thread(self):
         clock = Clock()
-        interface = {
-            'name': 'eth0',
-            'ip': '192.168.1.1',
-            }
+        interface = self.make_cluster_interface_values()
         rpc_service = Mock()
         rpc_client = rpc_service.getClient.return_value
         rpc_client.side_effect = [
@@ -108,7 +115,7 @@ class TestDHCPProbeService(PservTestCase):
         self.assertThat(
             deferToThread, MockCalledOnceWith(
                 dhcp_probe_service.probe_interface,
-                interface['name'], interface['ip']))
+                interface['interface'], interface['ip']))
 
     @defer.inlineCallbacks
     def test_exits_gracefully_if_cant_get_interfaces(self):
@@ -146,8 +153,9 @@ class TestDHCPProbeService(PservTestCase):
             region.ReportForeignDHCPServer.commandName]
         protocol.GetClusterInterfaces.return_value = {
             'interfaces': [
-                {'name': 'eth0', 'ip': '192.168.0.1'},
-            ]}
+                self.make_cluster_interface_values(ip='192.168.0.1'),
+                ],
+            }
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
@@ -188,12 +196,10 @@ class TestDHCPProbeService(PservTestCase):
         deferToThread.return_value = defer.succeed(
             [foreign_dhcp_ip])
 
-        interface = {
-            'name': factory.make_name('interface'),
-            'ip': factory.getRandomIPAddress(),
-            }
+        interface = self.make_cluster_interface_values()
         protocol.GetClusterInterfaces.return_value = {
-            'interfaces': [interface]}
+            'interfaces': [interface],
+            }
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
@@ -220,12 +226,10 @@ class TestDHCPProbeService(PservTestCase):
             dhcp_probe_service, 'deferToThread')
         deferToThread.return_value = defer.succeed([])
 
-        interface = {
-            'name': factory.make_name('interface'),
-            'ip': factory.getRandomIPAddress(),
-            }
+        interface = self.make_cluster_interface_values()
         protocol.GetClusterInterfaces.return_value = {
-            'interfaces': [interface]}
+            'interfaces': [interface],
+            }
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()

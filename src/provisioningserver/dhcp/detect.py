@@ -12,7 +12,9 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'probe_dhcp',
+    ]
 
 
 from contextlib import contextmanager

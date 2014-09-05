@@ -1643,7 +1643,11 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
         for i in range(3):
             factory.make_node_group_interface(cluster)
         interfaces = [
-            {'name': interface.name, 'ip': interface.ip}
+            {
+                'name': interface.name,
+                'interface': interface.interface,
+                'ip': interface.ip,
+            }
             for interface in cluster.nodegroupinterface_set.all()]
         return cluster, interfaces
 
