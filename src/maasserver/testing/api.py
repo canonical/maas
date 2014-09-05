@@ -41,7 +41,7 @@ class MultipleUsersScenarios:
     class ExampleTest(MultipleUsersScenarios, MAASServerTestCase):
         scenarios = [
             ('anon', dict(userfactory=lambda: AnonymousUser())),
-            ('user', dict(userfactory=factory.make_user)),
+            ('user', dict(userfactory=factory.make_User)),
             ('admin', dict(userfactory=factory.make_admin)),
             ]
 
@@ -81,7 +81,7 @@ class APITestCase(MAASServerTestCase):
 
     def setUp(self):
         super(APITestCase, self).setUp()
-        self.logged_in_user = factory.make_user(
+        self.logged_in_user = factory.make_User(
             username='test', password='test')
         self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
@@ -99,7 +99,7 @@ class APITestCase(MAASServerTestCase):
 def log_in_as_normal_user(client):
     """Log `client` in as a normal user."""
     password = factory.make_string()
-    user = factory.make_user(password=password)
+    user = factory.make_User(password=password)
     client.login(username=user.username, password=password)
     return user
 

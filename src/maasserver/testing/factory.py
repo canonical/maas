@@ -223,7 +223,7 @@ class Factory(maastesting.factory.Factory):
         finally:
             NODE_TRANSITIONS[None] = valid_initial_states
 
-    def make_node(self, mac=False, hostname=None, status=None,
+    def make_Node(self, mac=False, hostname=None, status=None,
                   architecture="i386/generic", updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
@@ -244,11 +244,11 @@ class Factory(maastesting.factory.Factory):
         if status is None:
             status = NODE_STATUS.DEFAULT
         if nodegroup is None:
-            nodegroup = self.make_node_group()
+            nodegroup = self.make_NodeGroup()
         if routers is None:
             routers = [self.make_MAC()]
         if zone is None:
-            zone = self.make_zone()
+            zone = self.make_Zone()
         if power_type is None:
             power_type = 'ether_wake'
         if power_state is None:
@@ -267,7 +267,7 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             node.networks.add(*networks)
         if mac:
-            self.make_mac_address(node=node)
+            self.make_MACAddress(node=node)
 
         # Update the 'updated'/'created' fields with a call to 'update'
         # preventing a call to save() from overriding the values.
@@ -276,6 +276,8 @@ class Factory(maastesting.factory.Factory):
         if created is not None:
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
+
+    make_node = make_Node  # DEPRECATED
 
     def get_interface_fields(self, name=None, ip=None, router_ip=None,
                              network=None, subnet_mask=None, broadcast_ip=None,
@@ -346,12 +348,12 @@ class Factory(maastesting.factory.Factory):
             management=management,
             interface=interface)
 
-    def make_node_group(self, name=None, uuid=None, cluster_name=None,
-                        dhcp_key=None, ip=None, router_ip=None, network=None,
-                        subnet_mask=None, broadcast_ip=None, ip_range_low=None,
-                        ip_range_high=None, interface=None, management=None,
-                        status=None, maas_url='', static_ip_range_low=None,
-                        static_ip_range_high=None, **kwargs):
+    def make_NodeGroup(self, name=None, uuid=None, cluster_name=None,
+                       dhcp_key=None, ip=None, router_ip=None, network=None,
+                       subnet_mask=None, broadcast_ip=None, ip_range_low=None,
+                       ip_range_high=None, interface=None, management=None,
+                       status=None, maas_url='', static_ip_range_low=None,
+                       static_ip_range_high=None, **kwargs):
         """Create a :class:`NodeGroup`.
 
         If `management` is set (to a `NODEGROUPINTERFACE_MANAGEMENT` value),
@@ -385,8 +387,10 @@ class Factory(maastesting.factory.Factory):
                 static_ip_range_low=static_ip_range_low,
                 static_ip_range_high=static_ip_range_high)
             interface_settings.update(kwargs)
-            self.make_node_group_interface(cluster, **interface_settings)
+            self.make_NodeGroupInterface(cluster, **interface_settings)
         return cluster
+
+    make_node_group = make_NodeGroup  # DEPRECATED
 
     def make_unrenamable_nodegroup_with_node(self):
         """Create a `NodeGroup` that can't be renamed, and `Node`.
@@ -400,21 +404,21 @@ class Factory(maastesting.factory.Factory):
         :return: tuple: (`NodeGroup`, `Node`).
         """
         name = self.make_name('original-name')
-        nodegroup = self.make_node_group(
+        nodegroup = self.make_NodeGroup(
             name=name, status=NODEGROUP_STATUS.ACCEPTED)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = self.make_node(
+        node = self.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
 
-    def make_node_group_interface(self, nodegroup, name=None, ip=None,
-                                  router_ip=None, network=None,
-                                  subnet_mask=None, broadcast_ip=None,
-                                  ip_range_low=None, ip_range_high=None,
-                                  interface=None, management=None,
-                                  static_ip_range_low=None,
-                                  static_ip_range_high=None, **kwargs):
+    def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
+                                router_ip=None, network=None,
+                                subnet_mask=None, broadcast_ip=None,
+                                ip_range_low=None, ip_range_high=None,
+                                interface=None, management=None,
+                                static_ip_range_low=None,
+                                static_ip_range_high=None, **kwargs):
         interface_settings = self.get_interface_fields(
             name=name, ip=ip, router_ip=router_ip, network=network,
             subnet_mask=subnet_mask, broadcast_ip=broadcast_ip,
@@ -428,10 +432,13 @@ class Factory(maastesting.factory.Factory):
         interface.save()
         return interface
 
+    make_node_group_interface = make_NodeGroupInterface  # DEPRECATED
+
     def make_node_commission_result(self, node=None, name=None,
                                     script_result=None, data=None):
+        """Create a `NodeResult` as one would see from commissioning a node."""
         if node is None:
-            node = self.make_node()
+            node = self.make_Node()
         if name is None:
             name = "ncrname-" + self.make_string(92)
         if data is None:
@@ -446,8 +453,9 @@ class Factory(maastesting.factory.Factory):
 
     def make_node_install_result(self, node=None, name=None,
                                  script_result=None, data=None):
+        """Create a `NodeResult` as one would see from installing a node."""
         if node is None:
-            node = self.make_node()
+            node = self.make_Node()
         if name is None:
             name = "ncrname-" + self.make_string(92)
         if data is None:
@@ -464,11 +472,11 @@ class Factory(maastesting.factory.Factory):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.getRandomMACAddress())
 
-    def make_mac_address(self, address=None, node=None, networks=None,
-                         **kwargs):
-        """Create a MACAddress model object."""
+    def make_MACAddress(self, address=None, node=None, networks=None,
+                        **kwargs):
+        """Create a `MACAddress` model object."""
         if node is None:
-            node = self.make_node()
+            node = self.make_Node()
         if address is None:
             address = self.getRandomMACAddress()
         mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
@@ -476,6 +484,8 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             mac.networks.add(*networks)
         return mac
+
+    make_mac_address = make_MACAddress  # DEPRECATED
 
     def make_node_with_mac_attached_to_nodegroupinterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
@@ -487,17 +497,17 @@ class Factory(maastesting.factory.Factory):
         """
         nodegroup = kwargs.pop("nodegroup", None)
         if nodegroup is None:
-            nodegroup = self.make_node_group()
-        node = self.make_node(
+            nodegroup = self.make_NodeGroup()
+        node = self.make_Node(
             mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
-        ngi = self.make_node_group_interface(
+        ngi = self.make_NodeGroupInterface(
             nodegroup, network=network, management=management)
         mac = node.get_primary_mac()
         mac.cluster_interface = ngi
         mac.save()
         return node
 
-    def make_staticipaddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
+    def make_StaticIPAddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,
                              mac=None, user=None):
         """Create and return a StaticIPAddress model object.
 
@@ -513,10 +523,12 @@ class Factory(maastesting.factory.Factory):
                 mac_address=mac, ip_address=ipaddress).save()
         return ipaddress
 
-    def make_dhcp_lease(self, nodegroup=None, ip=None, mac=None):
+    make_staticipaddress = make_StaticIPAddress  # DEPRECATED
+
+    def make_DHCPLease(self, nodegroup=None, ip=None, mac=None):
         """Create a :class:`DHCPLease`."""
         if nodegroup is None:
-            nodegroup = self.make_node_group()
+            nodegroup = self.make_NodeGroup()
         if ip is None:
             ip = self.getRandomIPAddress()
         if mac is None:
@@ -525,10 +537,12 @@ class Factory(maastesting.factory.Factory):
         lease.save()
         return lease
 
+    make_dhcp_lease = make_DHCPLease  # DEPRECATED
+
     def make_email(self):
         return '%s@example.com' % self.make_string(10)
 
-    def make_user(self, username=None, password='test', email=None):
+    def make_User(self, username=None, password='test', email=None):
         if username is None:
             username = self.make_username()
         if email is None:
@@ -536,14 +550,18 @@ class Factory(maastesting.factory.Factory):
         return User.objects.create_user(
             username=username, password=password, email=email)
 
-    def make_sshkey(self, user, key_string=None):
+    make_user = make_User  # DEPRECATED
+
+    def make_SSHKey(self, user, key_string=None):
         if key_string is None:
             key_string = get_data('data/test_rsa0.pub')
         key = SSHKey(key=key_string, user=user)
         key.save()
         return key
 
-    def make_tag(self, name=None, definition=None, comment='',
+    make_sshkey = make_SSHKey  # DEPRECATED
+
+    def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):
         if name is None:
             name = self.make_name('tag')
@@ -562,6 +580,8 @@ class Factory(maastesting.factory.Factory):
             Tag.objects.filter(id=tag.id).update(created=created)
         return reload_object(tag)
 
+    make_tag = make_Tag  # DEPRECATED
+
     def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
         """Create a user with n `SSHKey`.  If user is not None, use this user
         instead of creating one.
@@ -574,7 +594,7 @@ class Factory(maastesting.factory.Factory):
                 "add more keys in src/maasserver/tests/data/."
                 % MAX_PUBLIC_KEYS)
         if user is None:
-            user = self.make_user(**kwargs)
+            user = self.make_User(**kwargs)
         keys = []
         for i in range(n_keys):
             key_string = get_data('data/test_rsa%d.pub' % i)
@@ -597,7 +617,7 @@ class Factory(maastesting.factory.Factory):
                 "add more keys in src/maasserver/tests/data/."
                 % MAX_PUBLIC_KEYS)
         if user is None:
-            user = self.make_user(**kwargs)
+            user = self.make_User(**kwargs)
         keys = []
         for i in range(n_keys):
             key_string = get_data('data/test_x509_%d.pem' % i)
@@ -614,9 +634,11 @@ class Factory(maastesting.factory.Factory):
         return User.objects.create_superuser(
             username, password=password, email=email)
 
-    def make_file_storage(self, filename=None, content=None, owner=None):
+    def make_FileStorage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)
         return FileStorage.objects.save_file(fake_file.name, fake_file, owner)
+
+    make_file_storage = make_FileStorage  # DEPRECATED
 
     def make_oauth_header(self, **kwargs):
         """Fake an OAuth authorization header.
@@ -638,10 +660,10 @@ class Factory(maastesting.factory.Factory):
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
 
-    def make_boot_image(self, osystem=None, architecture=None,
-                        subarchitecture=None, release=None, purpose=None,
-                        nodegroup=None, label=None, supported_subarches=None,
-                        xinstall_path=None, xinstall_type=None):
+    def make_BootImage(self, osystem=None, architecture=None,
+                       subarchitecture=None, release=None, purpose=None,
+                       nodegroup=None, label=None, supported_subarches=None,
+                       xinstall_path=None, xinstall_type=None):
         if osystem is None:
             osystem = self.make_name('os')
         if architecture is None:
@@ -653,7 +675,7 @@ class Factory(maastesting.factory.Factory):
         if purpose is None:
             purpose = self.make_name('purpose')
         if nodegroup is None:
-            nodegroup = self.make_node_group()
+            nodegroup = self.make_NodeGroup()
         if label is None:
             label = self.make_name('label')
         if supported_subarches is None:
@@ -675,6 +697,8 @@ class Factory(maastesting.factory.Factory):
             xinstall_type=xinstall_type,
             )
 
+    make_boot_image = make_BootImage  # DEPRECATED
+
     def make_boot_images_for_node_with_purposes(self, node, purposes):
         osystem = node.get_osystem()
         series = node.get_distro_series()
@@ -688,14 +712,14 @@ class Factory(maastesting.factory.Factory):
                 xinstall_path = None
                 xinstall_type = None
             images.append(
-                self.make_boot_image(
+                self.make_BootImage(
                     osystem=osystem, architecture=arch,
                     subarchitecture=subarch, release=series, purpose=purpose,
                     nodegroup=node.nodegroup, xinstall_path=xinstall_path,
                     xinstall_type=xinstall_type))
         return images
 
-    def make_commissioning_script(self, name=None, content=None):
+    def make_CommissioningScript(self, name=None, content=None):
         if name is None:
             name = self.make_name('script')
         if content is None:
@@ -703,9 +727,11 @@ class Factory(maastesting.factory.Factory):
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
 
-    def make_download_progress(self, nodegroup=None, filename=None,
-                               size=NO_VALUE, bytes_downloaded=NO_VALUE,
-                               error=None):
+    make_commissioning_script = make_CommissioningScript  # DEPRECATED
+
+    def make_DownloadProgress(self, nodegroup=None, filename=None,
+                              size=NO_VALUE, bytes_downloaded=NO_VALUE,
+                              error=None):
         """Create a `DownloadProgress` in some poorly-defined state.
 
         If you have specific wishes about the object's state, you'll want to
@@ -715,7 +741,7 @@ class Factory(maastesting.factory.Factory):
         known.  The default picks either a random number, or None.
         """
         if nodegroup is None:
-            nodegroup = self.make_node_group()
+            nodegroup = self.make_NodeGroup()
         if filename is None:
             filename = self.make_name('download')
         if size is NO_VALUE:
@@ -741,10 +767,12 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded)
 
+    make_download_progress = make_DownloadProgress  # DEPRECATED
+
     def make_download_progress_initial(self, nodegroup=None, filename=None,
                                        size=NO_VALUE):
         """Create a `DownloadProgress` as reported before a download."""
-        return self.make_download_progress(
+        return self.make_DownloadProgress(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=None, error='')
 
@@ -753,7 +781,7 @@ class Factory(maastesting.factory.Factory):
         """Create a `DownloadProgress` indicating success."""
         if size is None:
             size = random.randint(0, 1000000000)
-        return self.make_download_progress(
+        return self.make_DownloadProgress(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=size, error='')
 
@@ -773,7 +801,7 @@ class Factory(maastesting.factory.Factory):
             else:
                 max_size = size
             bytes_downloaded = random.randint(0, max_size - 1)
-        return self.make_download_progress(
+        return self.make_DownloadProgress(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error='')
 
@@ -787,7 +815,7 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error=error)
 
-    def make_zone(self, name=None, description=None, nodes=None,
+    def make_Zone(self, name=None, description=None, nodes=None,
                   sortable_name=False):
         """Create a physical `Zone`.
 
@@ -808,6 +836,8 @@ class Factory(maastesting.factory.Factory):
         if nodes is not None:
             zone.node_set.add(*nodes)
         return zone
+
+    make_zone = make_Zone
 
     def make_vlan_tag(self, allow_none=False, but_not=None):
         """Create a random VLAN tag.
@@ -832,7 +862,7 @@ class Factory(maastesting.factory.Factory):
             raise maastesting.factory.TooManyRandomRetries(
                 "Could not find an available VLAN tag.")
 
-    def make_network(self, name=None, network=None, vlan_tag=NO_VALUE,
+    def make_Network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None, sortable_name=False,
                      disjoint_from=None, default_gateway=None):
         """Create a `Network`.
@@ -881,7 +911,9 @@ class Factory(maastesting.factory.Factory):
         network.save()
         return network
 
-    def make_networks(self, number, with_vlans=True, **kwargs):
+    make_network = make_Network  # DEPRECATED
+
+    def make_Networks(self, number, with_vlans=True, **kwargs):
         """Create multiple networks.
 
         This avoids accidentally clashing VLAN tags.
@@ -905,12 +937,14 @@ class Factory(maastesting.factory.Factory):
         networks = []
         for tag in vlan_tags:
             networks.append(
-                self.make_network(
+                self.make_Network(
                     vlan_tag=tag, disjoint_from=networks, **kwargs))
         return networks
 
-    def make_boot_source(self, url=None, keyring_filename=None,
-                         keyring_data=None):
+    make_networks = make_Networks  # DEPRECATED
+
+    def make_BootSource(self, url=None, keyring_filename=None,
+                        keyring_data=None):
         """Create a new `BootSource`."""
         if url is None:
             url = "http://%s.com" % self.make_name('source-url')
@@ -927,12 +961,14 @@ class Factory(maastesting.factory.Factory):
         boot_source.save()
         return boot_source
 
-    def make_boot_source_selection(self, boot_source=None, os=None,
-                                   release=None, arches=None, subarches=None,
-                                   labels=None):
+    make_boot_source = make_BootSource  # DEPRECATED
+
+    def make_BootSourceSelection(self, boot_source=None, os=None,
+                                 release=None, arches=None, subarches=None,
+                                 labels=None):
         """Create a `BootSourceSelection`."""
         if boot_source is None:
-            boot_source = self.make_boot_source()
+            boot_source = self.make_BootSource()
         if os is None:
             os = self.make_name('os')
         if release is None:
@@ -955,8 +991,10 @@ class Factory(maastesting.factory.Factory):
         boot_source_selection.save()
         return boot_source_selection
 
-    def make_license_key(self, osystem=None, distro_series=None,
-                         license_key=None):
+    make_boot_source_selection = make_BootSourceSelection  # DEPRECATED
+
+    def make_LicenseKey(self, osystem=None, distro_series=None,
+                        license_key=None):
         if osystem is None:
             osystem = factory.make_name('osystem')
         if distro_series is None:
@@ -968,7 +1006,9 @@ class Factory(maastesting.factory.Factory):
             distro_series=distro_series,
             license_key=license_key)
 
-    def make_event_type(self, name=None, level=None, description=None):
+    make_license_key = make_LicenseKey  # DEPRECATED
+
+    def make_EventType(self, name=None, level=None, description=None):
         if name is None:
             name = self.make_name('name', size=20)
         if description is None:
@@ -979,14 +1019,18 @@ class Factory(maastesting.factory.Factory):
         return EventType.objects.create(
             name=name, description=description, level=level)
 
-    def make_event(self, node=None, type=None):
+    make_event_type = make_EventType  # DEPRECATED
+
+    def make_Event(self, node=None, type=None):
         if node is None:
-            node = self.make_node()
+            node = self.make_Node()
         if type is None:
-            type = self.make_event_type()
+            type = self.make_EventType()
         return Event.objects.create(node=node, type=type)
 
-    def make_large_file(self, content=None, size=512):
+    make_event = make_Event  # DEPRECATED
+
+    def make_LargeFile(self, content=None, size=512):
         """Create `LargeFile`.
 
         :param content: Data to store in large file object.
@@ -1006,8 +1050,10 @@ class Factory(maastesting.factory.Factory):
         return LargeFile.objects.create(
             sha256=sha256, total_size=size, content=largeobject)
 
-    def make_boot_resource(self, rtype=None, name=None, architecture=None,
-                           extra=None):
+    make_large_file = make_LargeFile  # DEPRECATED
+
+    def make_BootResource(self, rtype=None, name=None, architecture=None,
+                          extra=None):
         if rtype is None:
             rtype = self.pick_enum(BOOT_RESOURCE_TYPE)
         if name is None:
@@ -1029,7 +1075,9 @@ class Factory(maastesting.factory.Factory):
         return BootResource.objects.create(
             rtype=rtype, name=name, architecture=architecture, extra=extra)
 
-    def make_boot_resource_set(self, resource, version=None, label=None):
+    make_boot_resource = make_BootResource  # DEPRECATED
+
+    def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
             version = self.make_name('version')
         if label is None:
@@ -1037,8 +1085,10 @@ class Factory(maastesting.factory.Factory):
         return BootResourceSet.objects.create(
             resource=resource, version=version, label=label)
 
-    def make_boot_resource_file(self, resource_set, largefile, filename=None,
-                                filetype=None, extra=None):
+    make_boot_resource_set = make_BootResourceSet  # DEPRECATED
+
+    def make_BootResourceFile(self, resource_set, largefile, filename=None,
+                              filetype=None, extra=None):
         if filename is None:
             filename = self.make_name('name')
         if filetype is None:
@@ -1052,20 +1102,22 @@ class Factory(maastesting.factory.Factory):
             resource_set=resource_set, largefile=largefile, filename=filename,
             filetype=filetype, extra=extra)
 
+    make_boot_resource_file = make_BootResourceFile  # DEPRECATED
+
     def make_boot_resource_file_with_content(
             self, resource_set, filename=None, filetype=None, extra=None,
             content=None, size=512):
-        largefile = self.make_large_file(content=content, size=size)
-        return self.make_boot_resource_file(
+        largefile = self.make_LargeFile(content=content, size=size)
+        return self.make_BootResourceFile(
             resource_set, largefile, filename=filename, filetype=filetype,
             extra=extra)
 
     def make_usable_boot_resource(
             self, rtype=None, name=None, architecture=None,
             extra=None, version=None, label=None):
-        resource = self.make_boot_resource(
+        resource = self.make_BootResource(
             rtype=rtype, name=name, architecture=architecture, extra=extra)
-        resource_set = self.make_boot_resource_set(
+        resource_set = self.make_BootResourceSet(
             resource, version=version, label=label)
         filetypes = COMMISSIONABLE_SET.union(INSTALL_SET)
         filetypes.add(random.choice(XINSTALL_TYPES))

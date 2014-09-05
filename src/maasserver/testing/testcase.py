@@ -84,7 +84,7 @@ class MAASServerTestCase(DjangoTestCase):
         if as_admin:
             user = factory.make_admin(password=password)
         else:
-            user = factory.make_user(password=password)
+            user = factory.make_User(password=password)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
 
