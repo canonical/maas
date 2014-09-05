@@ -215,17 +215,13 @@
       {% if nodeinstallresults != None %}
         <li class="block first size5 separate" id="nodeinstallresults">
           <h4>Installation output</h4>
-  	<ul>
-  	{% for install_result in nodeinstallresults %}
-  	  <li>
-              <span>
-                <a href="{% url 'nodeinstallresult-view' install_result.id %}">
-  		{{ install_result.name }}
-                </a>
-              </span>
-  	  </li>
-  	{% endfor %}
-  	</ul>
+  	  {% for install_result in nodeinstallresults %}
+          <span>
+            <a href="{% url 'nodeinstallresult-view' install_result.id %}">
+  	      {{ install_result.name }}
+            </a>
+          </span>
+  	  {% endfor %}
         </li>
       {% endif %}
       {% if nodecommissionresults > 0 %}
