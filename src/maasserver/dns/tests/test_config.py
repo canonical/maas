@@ -121,7 +121,7 @@ class TestDNSServer(MAASServerTestCase):
     def create_managed_nodegroup(self, network=None):
         if network is None:
             network = IPNetwork('192.168.0.1/24')
-        return factory.make_node_group(
+        return factory.make_NodeGroup(
             network=network,
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
@@ -130,12 +130,12 @@ class TestDNSServer(MAASServerTestCase):
         if nodegroup is None:
             nodegroup = self.create_managed_nodegroup()
         [interface] = nodegroup.get_managed_interfaces()
-        node = factory.make_node(nodegroup=nodegroup, disable_ipv4=False)
+        node = factory.make_Node(nodegroup=nodegroup, disable_ipv4=False)
         mac = factory.make_MACAddress(node=node, cluster_interface=interface)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
         static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
-        staticaddress = factory.make_staticipaddress(ip=static_ip, mac=mac)
+        staticaddress = factory.make_StaticIPAddress(ip=static_ip, mac=mac)
         change_dns_zones([nodegroup])
         return nodegroup, node, staticaddress
 
@@ -284,7 +284,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_edit_nodegroupinterface_updates_DNS_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
         old_network = IPNetwork('192.168.7.1/24')
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=old_network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
@@ -317,7 +317,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(settings, "DNS_CONNECT", True)
         network = IPNetwork('192.168.7.1/24')
         ip = factory.pick_ip_in_network(network)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
@@ -329,7 +329,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(settings, "DNS_CONNECT", True)
         network = IPNetwork('192.168.7.1/24')
         ip = factory.pick_ip_in_network(network)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=network, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         nodegroup.delete()
@@ -376,7 +376,7 @@ class TestDNSBackwardCompat(TestDNSServer):
         network = IPNetwork('192.168.7.1/24')
         nodegroup = self.create_managed_nodegroup(network=network)
         [interface] = nodegroup.get_managed_interfaces()
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
             disable_ipv4=False)
         mac = factory.make_MACAddress(node=node, cluster_interface=interface)

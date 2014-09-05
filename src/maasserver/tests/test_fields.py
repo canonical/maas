@@ -57,14 +57,14 @@ from psycopg2.extensions import ISQLQuote
 class TestNodeGroupFormField(MAASServerTestCase):
 
     def test_label_from_instance_tolerates_missing_interface(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertEqual(
             nodegroup.name,
             NodeGroupFormField().label_from_instance(nodegroup))
 
     def test_label_from_instance_shows_name_and_address(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
@@ -79,41 +79,41 @@ class TestNodeGroupFormField(MAASServerTestCase):
             [field.clean(spelling) for spelling in spellings_for_none])
 
     def test_clean_accepts_nodegroup(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(nodegroup, NodeGroupFormField().clean(nodegroup))
 
     def test_clean_accepts_id_as_unicode(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean("%s" % nodegroup.id))
 
     def test_clean_accepts_id_as_bytes(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean(("%s" % nodegroup.id).encode('ascii')))
 
     def test_clean_accepts_uuid(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean(nodegroup.uuid))
 
     def test_clean_accepts_uuid_as_bytes(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean(nodegroup.uuid.encode('ascii')))
 
     def test_clean_accepts_cluster_name(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean(nodegroup.cluster_name))
 
     def test_clean_accepts_cluster_name_as_bytes(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroupFormField().clean(nodegroup.cluster_name.encode('ascii')))
@@ -122,7 +122,7 @@ class TestNodeGroupFormField(MAASServerTestCase):
         # This cluster has a name that looks just like a number.  Pick a number
         # that's highly unlikely to clash with the node's ID.
         cluster_name = '%s' % randint(1000000, 10000000)
-        nodegroup = factory.make_node_group(cluster_name=cluster_name)
+        nodegroup = factory.make_NodeGroup(cluster_name=cluster_name)
         self.assertEqual(nodegroup, NodeGroupFormField().clean(cluster_name))
 
     def test_clean_rejects_unknown_nodegroup(self):

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.populate_tags`."""
@@ -30,7 +30,7 @@ import mock
 class TestPopulateTags(MAASServerTestCase):
 
     def test_populate_tags_task_routed_to_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         tag = factory.make_tag()
         task = self.patch(populate_tags_module, 'update_node_tags')
         populate_tags(tag)
@@ -38,7 +38,7 @@ class TestPopulateTags(MAASServerTestCase):
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
     def test_populate_tags_task_routed_to_all_nodegroup_workers(self):
-        nodegroups = [factory.make_node_group() for i in range(5)]
+        nodegroups = [factory.make_NodeGroup() for i in range(5)]
         tag = factory.make_tag()
         refresh = self.patch(populate_tags_module, 'refresh_worker')
         task = self.patch(populate_tags_module, 'update_node_tags')
@@ -62,7 +62,7 @@ class TestPopulateTags(MAASServerTestCase):
 class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_updates_node_with_all_applicable_tags(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         factory.make_NodeResult_for_commissioning(
@@ -77,7 +77,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
             ["foo", "bar"], [tag.name for tag in node.tags.all()])
 
     def test_ignores_tags_with_unrecognised_namespaces(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
@@ -89,7 +89,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
             ["foo"], [tag.name for tag in node.tags.all()])
 
     def test_ignores_tags_without_definition(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [

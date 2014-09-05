@@ -46,7 +46,7 @@ class TestCreateNode(MAASTestCase):
         return protocol
 
     def test_creates_node(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         cluster.accept()
         self.prepare_cluster_rpc(cluster)
 
@@ -78,7 +78,7 @@ class TestCreateNode(MAASTestCase):
             [mac.mac_address for mac in node.macaddress_set.all()])
 
     def test_raises_validation_errors_for_invalid_data(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         cluster.accept()
         self.prepare_cluster_rpc(cluster)
 

@@ -66,7 +66,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
     """Test `warn_if_missing_boot_images`."""
 
     def test_warns_if_no_images_found(self):
-        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         recorder = self.patch(boot_images_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertIn(
@@ -78,7 +78,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
             recorder.call_args_list[0][0][1])
 
     def test_warns_if_any_nodegroup_has_no_images(self):
-        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         recorder = self.patch(boot_images_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertIn(
@@ -86,8 +86,8 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
             [args[0][0] for args in recorder.call_args_list])
 
     def test_ignores_non_accepted_groups(self):
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
-        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
         recorder = self.patch(boot_images_module, 'register_persistent_error')
         warn_if_missing_boot_images()
         self.assertEqual([], recorder.mock_calls)
@@ -96,7 +96,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
         self.patch(boot_images_module, 'register_persistent_error')
         self.patch(boot_images_module, 'discard_persistent_error')
         factory.make_boot_image(
-            nodegroup=factory.make_node_group(
+            nodegroup=factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED))
         warn_if_missing_boot_images()
         self.assertEqual(
@@ -131,7 +131,7 @@ class TestBootImagesAPI(APITestCase):
         return rpc_image, api_image
 
     def test_GET_returns_boot_image_list(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         rpc_images = []
         api_images = []
         for _ in range(3):
@@ -155,7 +155,7 @@ class TestBootImagesAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_GET_returns_503_when_no_connection_avaliable(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         mock_get_boot_images = self.patch(
             boot_images_module, 'get_boot_images')
         mock_get_boot_images.side_effect = NoConnectionsAvailable
@@ -167,7 +167,7 @@ class TestBootImagesAPI(APITestCase):
             response.status_code, response.content)
 
     def test_GET_returns_503_when_timeout_error(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         mock_get_boot_images = self.patch(
             boot_images_module, 'get_boot_images')
         mock_get_boot_images.side_effect = TimeoutError
@@ -304,7 +304,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
             BootImage.objects.have_image(nodegroup=nodegroup, **image_dict))
 
     def test_report_boot_images_keeps_known_images(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         image = make_boot_image_params()
         client = make_worker_client(nodegroup)
         response = self.report_images(nodegroup, [image], client=client)
@@ -336,7 +336,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
     def test_report_boot_images_warns_about_missing_boot_images(self):
         register_error = self.patch(
             boot_images_module, 'register_persistent_error')
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.report_images(
             nodegroup, [], client=make_worker_client(nodegroup))
         self.assertEqual(httplib.OK, response.status_code)

@@ -109,7 +109,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         prefix = factory.make_string()
         osystem = factory.make_string()
         release = factory.make_string()
-        node = factory.make_node(hostname=hostname)
+        node = factory.make_Node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
@@ -141,7 +141,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         hostname = factory.make_string()
         osystem = factory.make_string()
         release = factory.make_string()
-        node = factory.make_node(hostname=hostname)
+        node = factory.make_Node(hostname=hostname)
         arch, subarch = node.architecture.split('/')
         self.assertSequenceEqual(
             [
@@ -160,7 +160,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         hostname = factory.make_string()
         prefix = factory.make_string()
         release = factory.make_string()
-        node = factory.make_node(hostname=hostname)
+        node = factory.make_Node(hostname=hostname)
         self.assertSequenceEqual(
             'generic',
             list(get_preseed_filenames(
@@ -173,7 +173,7 @@ class TestGetPreseedFilenames(MAASServerTestCase):
         hostname = factory.make_string()
         prefix = factory.make_string()
         release = factory.make_string()
-        node = factory.make_node(hostname=hostname)
+        node = factory.make_Node(hostname=hostname)
         self.assertSequenceEqual(
             prefix,
             list(get_preseed_filenames(
@@ -258,12 +258,12 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
     def test_load_preseed_template_returns_PreseedTemplate(self):
         name = factory.make_string()
         self.create_template(self.location, name)
-        node = factory.make_node()
+        node = factory.make_Node()
         template = load_preseed_template(node, name)
         self.assertIsInstance(template, PreseedTemplate)
 
     def test_load_preseed_template_raises_if_no_template(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         unknown_template_name = factory.make_string()
         self.assertRaises(
             TemplateNotFoundError, load_preseed_template, node,
@@ -273,7 +273,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # The template lookup method ends up picking up a template named
         # 'generic' if no more specific template exist.
         content = self.create_template(self.location, GENERIC_FILENAME)
-        node = factory.make_node(hostname=factory.make_string())
+        node = factory.make_Node(hostname=factory.make_string())
         template = load_preseed_template(node, factory.make_string())
         self.assertEqual(content, template.substitute())
 
@@ -286,7 +286,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # Create the 'prefix' template.  This is the one which will be
         # picked up.
         content = self.create_template(self.location, prefix)
-        node = factory.make_node(hostname=factory.make_string())
+        node = factory.make_Node(hostname=factory.make_string())
         template = load_preseed_template(node, prefix)
         self.assertEqual(content, template.substitute())
 
@@ -300,7 +300,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # due to the presence of a more specific template.
         self.create_template(self.location, GENERIC_FILENAME)
         self.create_template(self.location, prefix)
-        node = factory.make_node(hostname=factory.make_string())
+        node = factory.make_Node(hostname=factory.make_string())
         node_template_name = "%s_%s_%s_%s_%s" % (
             prefix, osystem, node.architecture.replace('/', '_'),
             release, node.hostname)
@@ -318,7 +318,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         self.create_template(self.location, prefix, preseed_content)
         master_content = self.create_template(
             self.location, master_template_name)
-        node = factory.make_node()
+        node = factory.make_Node()
         template = load_preseed_template(node, prefix)
         self.assertEqual(master_content, template.substitute())
 
@@ -333,7 +333,7 @@ class TestLoadPreseedTemplate(MAASServerTestCase):
         # Create preseed template.
         preseed_content = '{{inherit "%s"}}' % unknown_master_template_name
         self.create_template(self.location, prefix, preseed_content)
-        node = factory.make_node()
+        node = factory.make_Node()
         template = load_preseed_template(node, prefix)
         self.assertRaises(
             TemplateNotFoundError, template.substitute)
@@ -344,7 +344,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def make_bare_nodegroup(self):
         """Create `NodeGroup` without interfaces."""
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.nodegroupinterface_set.all().delete()
         return nodegroup
 
@@ -366,7 +366,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         factory.make_dhcp_lease(nodegroup=node.nodegroup, mac=mac, ip=ip)
 
     def test_returns_only_interface(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         interface = factory.make_NodeGroupInterface(node.nodegroup)
 
         address = pick_cluster_controller_address(node)
@@ -380,7 +380,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         self.make_nodegroupinterface(nodegroup, '192.168.11.1')
         self.make_nodegroupinterface(nodegroup, nearest_address)
         self.make_nodegroupinterface(nodegroup, '192.168.22.1')
-        node = factory.make_node(nodegroup=nodegroup)
+        node = factory.make_Node(nodegroup=nodegroup)
         self.make_lease_for_node(node, '192.168.33.101')
         self.make_lease_for_node(node, '10.99.1.105')
         self.make_lease_for_node(node, '192.168.44.101')
@@ -392,7 +392,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
             nodegroup, '10.100.100.1',
             mgt=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.make_nodegroupinterface(nodegroup, '10.100.101.1')
-        node = factory.make_node(nodegroup=nodegroup)
+        node = factory.make_Node(nodegroup=nodegroup)
         self.make_lease_for_node(node, '10.100.101.99')
         self.assertEqual('10.100.101.1', pick_cluster_controller_address(node))
 
@@ -406,7 +406,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         address = pick_cluster_controller_address(
-            factory.make_node(nodegroup=nodegroup))
+            factory.make_Node(nodegroup=nodegroup))
 
         self.assertIsNotNone(address)
         self.assertEqual(best_interface.ip, address)
@@ -421,27 +421,27 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         address = pick_cluster_controller_address(
-            factory.make_node(nodegroup=nodegroup))
+            factory.make_Node(nodegroup=nodegroup))
 
         self.assertIsNotNone(address)
         self.assertEqual(best_interface.ip, address)
 
     def test_returns_None_if_no_interfaces(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertIsNone(
             pick_cluster_controller_address(
-                factory.make_node(nodegroup=nodegroup)))
+                factory.make_Node(nodegroup=nodegroup)))
 
     def test_makes_consistent_choice(self):
         # Not a very thorough test, but we want at least a little bit of
         # predictability.
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         for _ in range(5):
             factory.make_NodeGroupInterface(
                 nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        node = factory.make_node(nodegroup=nodegroup)
+        node = factory.make_Node(nodegroup=nodegroup)
         self.assertEqual(
             pick_cluster_controller_address(node),
             pick_cluster_controller_address(node))
@@ -452,7 +452,7 @@ class TestPreseedContext(MAASServerTestCase):
 
     def test_get_preseed_context_contains_keys(self):
         release = factory.make_string()
-        nodegroup = factory.make_node_group(maas_url=factory.make_string())
+        nodegroup = factory.make_NodeGroup(maas_url=factory.make_string())
         context = get_preseed_context(release, nodegroup)
         self.assertItemsEqual(
             ['osystem', 'release', 'metadata_enlist_url', 'server_host',
@@ -468,8 +468,8 @@ class TestPreseedContext(MAASServerTestCase):
         ports_archive = factory.make_url(netloc="ports-archive.example.com")
         Config.objects.set_config('main_archive', main_archive)
         Config.objects.set_config('ports_archive', ports_archive)
-        nodegroup = factory.make_node_group(maas_url=factory.make_string())
-        context = get_preseed_context(factory.make_node(), nodegroup)
+        nodegroup = factory.make_NodeGroup(maas_url=factory.make_string())
+        context = get_preseed_context(factory.make_Node(), nodegroup)
         parsed_main_archive = urlparse(main_archive)
         parsed_ports_archive = urlparse(ports_archive)
         self.assertEqual(
@@ -491,7 +491,7 @@ class TestNodePreseedContext(PreseedRPCMixin, MAASServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
-        node = factory.make_node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
         release = factory.make_string()
         context = get_node_preseed_context(node, release)
         self.assertItemsEqual(
@@ -502,7 +502,7 @@ class TestNodePreseedContext(PreseedRPCMixin, MAASServerTestCase):
             context)
 
     def test_context_contains_third_party_drivers(self):
-        node = factory.make_node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
         release = factory.make_string()
         enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
@@ -539,7 +539,7 @@ class TestRenderPreseed(PreseedRPCMixin, MAASServerTestCase):
     ]
 
     def test_render_preseed(self):
-        node = factory.make_node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
         preseed = render_preseed(node, self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
@@ -550,7 +550,7 @@ class TestRenderPreseed(PreseedRPCMixin, MAASServerTestCase):
         self.rpc_nodegroup.maas_url = ng_url
         self.rpc_nodegroup.save()
         maas_url = 'http://%s' % factory.make_hostname()
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         preseed = render_preseed(node, self.preseed, "precise")
@@ -583,7 +583,7 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
         ng_url = 'http://%s' % factory.make_hostname()
         maas_url = 'http://%s' % factory.make_hostname()
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
-        nodegroup = factory.make_node_group(maas_url=ng_url)
+        nodegroup = factory.make_NodeGroup(maas_url=ng_url)
         preseed = render_enlistment_preseed(
             self.preseed, "precise", nodegroup=nodegroup)
         self.assertThat(
@@ -617,7 +617,7 @@ class TestRenderPreseedWindows(PreseedRPCMixin, MAASServerTestCase):
 
     def test_render_preseed(self):
         self.return_windows_specific_preseed_data()
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem='windows',
             architecture='amd64/generic', distro_series=self.release)
         factory.make_boot_image(
@@ -634,7 +634,7 @@ class TestGetCurtinUserData(PreseedRPCMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -660,7 +660,7 @@ class TestGetCurtinUserDataOS(PreseedRPCMixin, MAASServerTestCase):
     ]
 
     def test_get_curtin_userdata(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=self.os_name,
             boot_type=NODE_BOOT.FASTPATH)
         factory.make_NodeGroupInterface(
@@ -681,7 +681,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         config = get_curtin_config(node)
         self.assertThat(
@@ -702,7 +702,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         if main_arch is None:
             main_arch = factory.make_name('arch')
         arch = '%s/%s' % (main_arch, factory.make_name('subarch'))
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, architecture=arch,
             boot_type=NODE_BOOT.FASTPATH)
         return node
@@ -749,7 +749,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
             self.summarise_url(self.extract_archive_setting(userdata)))
 
     def test_get_curtin_context(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         context = get_curtin_context(node)
         self.assertItemsEqual(
@@ -762,7 +762,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = factory.make_name('xi_type')
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
         factory.make_NodeGroupInterface(
@@ -787,7 +787,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         osystem = factory.pick_OS()
         series = factory.pick_release(osystem)
         architecture = make_usable_architecture(self)
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
         # Generate a boot image with a different arch/subarch.
@@ -817,7 +817,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = 'tgz'
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
         factory.make_NodeGroupInterface(
@@ -839,30 +839,30 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
             installer_url)
 
     def test_get_preseed_type_for_commissioning(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default(self):
-        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin(self):
-        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
+        node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default_when_curtin_not_supported(self):
-        node = factory.make_node(boot_type=NODE_BOOT.FASTPATH)
+        node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin_when_default_not_supported(self):
-        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
@@ -873,11 +873,11 @@ class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
 
     def test_render_preseed_uses_default_archives_intel(self):
         nodes = [
-            factory.make_node(
+            factory.make_Node(
                 nodegroup=self.rpc_nodegroup,
                 architecture=make_usable_architecture(
                     self, arch_name="i386", subarch_name="generic")),
-            factory.make_node(
+            factory.make_Node(
                 nodegroup=self.rpc_nodegroup,
                 architecture=make_usable_architecture(
                     self, arch_name="amd64", subarch_name="generic")),
@@ -891,7 +891,7 @@ class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
             self.assertThat(preseed, ContainsAll(default_snippets))
 
     def test_render_preseed_uses_default_archives_arm(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup,
             architecture=make_usable_architecture(
                 self, arch_name="armhf", subarch_name="generic"))
@@ -913,7 +913,7 @@ class TestPreseedProxy(PreseedRPCMixin, MAASServerTestCase):
         expected_proxy_statement = (
             "mirror/http/proxy string http://%s:8000" % server_host)
         preseed = render_preseed(
-            factory.make_node(nodegroup=self.rpc_nodegroup),
+            factory.make_Node(nodegroup=self.rpc_nodegroup),
             PRESEED_TYPE.DEFAULT, "precise")
         self.assertIn(expected_proxy_statement, preseed)
 
@@ -924,7 +924,7 @@ class TestPreseedProxy(PreseedRPCMixin, MAASServerTestCase):
         expected_proxy_statement = (
             "mirror/http/proxy string %s" % http_proxy)
         preseed = render_preseed(
-            factory.make_node(nodegroup=self.rpc_nodegroup),
+            factory.make_Node(nodegroup=self.rpc_nodegroup),
             PRESEED_TYPE.DEFAULT, "precise")
         self.assertIn(expected_proxy_statement, preseed)
 
@@ -936,14 +936,14 @@ class TestPreseedMethods(PreseedRPCMixin, MAASServerTestCase):
     """
 
     def test_get_preseed_returns_default_preseed(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.DEBIAN)
         factory.make_boot_images_for_node_with_purposes(node, ['install'])
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
     def test_get_preseed_returns_curtin_preseed(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
         preseed = get_preseed(node)
@@ -955,7 +955,7 @@ class TestPreseedMethods(PreseedRPCMixin, MAASServerTestCase):
         self.assertTrue(preseed.startswith('#cloud-config'))
 
     def test_get_preseed_returns_commissioning_preseed(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
         preseed = get_preseed(node)
         self.assertIn('#cloud-config', preseed)
@@ -977,7 +977,7 @@ class TestPreseedURLs(PreseedRPCMixin, MAASServerTestCase):
             compose_enlistment_preseed_url(), StartsWith(url))
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
-        node = factory.make_node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
         response = self.client.get(compose_preseed_url(node))
         self.assertEqual(
             (httplib.OK, get_preseed(node)),
@@ -985,5 +985,5 @@ class TestPreseedURLs(PreseedRPCMixin, MAASServerTestCase):
 
     def test_compose_preseed_url_returns_absolute_link(self):
         self.assertThat(
-            compose_preseed_url(factory.make_node()),
+            compose_preseed_url(factory.make_Node()),
             StartsWith('http://'))

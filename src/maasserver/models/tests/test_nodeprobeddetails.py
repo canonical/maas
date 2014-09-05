@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.models.nodeprobeddetails`."""
@@ -34,7 +34,7 @@ def make_lldp_result(node, data, script_result=0):
 class TestNodeDetail(MAASServerTestCase):
 
     def test_calls_through_to_get_probed_details(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         get_probed_details = self.patch(
             nodeprobeddetails, "get_probed_details",
             create_autospec(nodeprobeddetails.get_probed_details))
@@ -57,7 +57,7 @@ class TestNodesDetail(MAASServerTestCase):
             node.system_id for node in nodes)
 
     def test_returns_null_details_when_there_are_none(self):
-        nodes = [factory.make_node(), factory.make_node()]
+        nodes = [factory.make_Node(), factory.make_Node()]
         expected = {
             node.system_id: {"lshw": None, "lldp": None}
             for node in nodes
@@ -65,7 +65,7 @@ class TestNodesDetail(MAASServerTestCase):
         self.assertDictEqual(expected, self.get_details(nodes))
 
     def test_returns_all_details(self):
-        nodes = [factory.make_node(), factory.make_node()]
+        nodes = [factory.make_Node(), factory.make_Node()]
         expected = {
             node.system_id: {
                 "lshw": make_lshw_result(node, b"<node%d/>" % index).data,
@@ -76,7 +76,7 @@ class TestNodesDetail(MAASServerTestCase):
         self.assertDictEqual(expected, self.get_details(nodes))
 
     def test_returns_only_those_details_that_exist(self):
-        nodes = [factory.make_node(), factory.make_node()]
+        nodes = [factory.make_Node(), factory.make_Node()]
         expected = {
             node.system_id: {
                 "lshw": make_lshw_result(node, b"<node%d/>" % index).data,
@@ -87,7 +87,7 @@ class TestNodesDetail(MAASServerTestCase):
         self.assertDictEqual(expected, self.get_details(nodes))
 
     def test_returns_only_details_from_okay_commissioning_results(self):
-        nodes = [factory.make_node(), factory.make_node()]
+        nodes = [factory.make_Node(), factory.make_Node()]
         expected = {}
         for index, node in enumerate(nodes):
             make_lshw_result(node, b"<node%d/>" % index)

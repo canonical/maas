@@ -57,7 +57,7 @@ class TestNodeForm(MAASServerTestCase):
             ], list(form.fields))
 
     def test_changes_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         hostname = factory.make_string()
         patch_usable_architectures(self, [node.architecture])
 
@@ -217,12 +217,12 @@ class TestNodeForm(MAASServerTestCase):
         # If a host with a given hostname exists on a managed nodegroup,
         # new nodes on unmanaged nodegroups with hostnames that match
         # that FQDN will be rejected.
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname=factory.make_name("hostname"), nodegroup=nodegroup)
-        other_nodegroup = factory.make_node_group()
+        other_nodegroup = factory.make_NodeGroup()
         form = NodeForm(data={
             'nodegroup': other_nodegroup,
             'hostname': node.fqdn,
@@ -234,10 +234,10 @@ class TestNodeForm(MAASServerTestCase):
     def test_rejects_duplicate_fqdn_on_same_nodegroup(self):
         # If a node with a given FQDN exists on a managed nodegroup, new
         # nodes on that nodegroup with duplicate FQDNs will be rejected.
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname=factory.make_name("hostname"), nodegroup=nodegroup)
         form = NodeForm(data={
             'nodegroup': nodegroup,
@@ -251,7 +251,7 @@ class TestNodeForm(MAASServerTestCase):
 class TestAdminNodeForm(MAASServerTestCase):
 
     def test_AdminNodeForm_contains_limited_set_of_fields(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         form = AdminNodeForm(instance=node)
 
         self.assertEqual(
@@ -278,7 +278,7 @@ class TestAdminNodeForm(MAASServerTestCase):
         # zone's ID instead of its name, and ends up reverting to the default.
         # The code must work around this bug.
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_Node(zone=zone)
         # We'll create a form that makes a change, but not to the zone.
         data = {'hostname': factory.make_name('host')}
         form = AdminNodeForm(instance=node, data=data)
@@ -287,7 +287,7 @@ class TestAdminNodeForm(MAASServerTestCase):
         self.assertEqual(zone.name, form.initial['zone'])
 
     def test_AdminNodeForm_changes_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         zone = factory.make_zone()
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
@@ -313,12 +313,12 @@ class TestAdminNodeForm(MAASServerTestCase):
             [choice[0] for choice in form.fields['power_type'].choices])
 
     def test_AdminNodeForm_populates_power_type_initial(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         form = AdminNodeForm(instance=node)
         self.assertEqual(node.power_type, form.fields['power_type'].initial)
 
     def test_AdminNodeForm_changes_node_with_skip_check(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
         power_parameters_field = factory.make_string()
@@ -342,11 +342,11 @@ class TestAdminNodeForm(MAASServerTestCase):
         # We had to make Node.nodegroup editable to get Django to
         # validate it as non-blankable, but that doesn't mean that we
         # actually want to allow people to edit it through API or UI.
-        old_nodegroup = factory.make_node_group()
-        node = factory.make_node(
+        old_nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(
             nodegroup=old_nodegroup,
             architecture=make_usable_architecture(self))
-        new_nodegroup = factory.make_node_group()
+        new_nodegroup = factory.make_NodeGroup()
         AdminNodeForm(data={'nodegroup': new_nodegroup}, instance=node).save()
         # The form saved without error, but the nodegroup change was ignored.
         self.assertEqual(old_nodegroup, node.nodegroup)

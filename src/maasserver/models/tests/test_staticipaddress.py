@@ -83,7 +83,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         # addresses.  See https://bugs.launchpad.net/maas/+bug/1338452
         low = "10.0.0.98"
         high = "10.0.0.100"
-        factory.make_staticipaddress("10.0.0.99")
+        factory.make_StaticIPAddress("10.0.0.99")
         ipaddress = StaticIPAddress.objects.allocate_new(low, high)
         self.assertEqual(ipaddress.ip, "10.0.0.98")
 
@@ -135,11 +135,11 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             unicode(error))
 
     def test_deallocate_by_node_removes_addresses(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         [mac1, mac2] = [
             factory.make_MACAddress(node=node) for _ in range(2)]
-        factory.make_staticipaddress(mac=mac1)
-        factory.make_staticipaddress(mac=mac2)
+        factory.make_StaticIPAddress(mac=mac1)
+        factory.make_StaticIPAddress(mac=mac2)
         StaticIPAddress.objects.deallocate_by_node(node)
         # Check the DB is cleared.
         self.assertEqual([], list(StaticIPAddress.objects.all()))
@@ -147,11 +147,11 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertEqual([], list(node.static_ip_addresses()))
 
     def test_deallocate_by_node_returns_deallocated_ips(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         [mac1, mac2] = [
             factory.make_MACAddress(node=node) for _ in range(2)]
-        ip1 = factory.make_staticipaddress(mac=mac1)
-        ip2 = factory.make_staticipaddress(mac=mac2)
+        ip1 = factory.make_StaticIPAddress(mac=mac1)
+        ip2 = factory.make_StaticIPAddress(mac=mac2)
         observed = StaticIPAddress.objects.deallocate_by_node(node)
         self.assertItemsEqual(
             [ip1.ip.format(), ip2.ip.format()],
@@ -159,22 +159,22 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             )
 
     def test_deallocate_by_node_ignores_other_nodes(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         mac1 = factory.make_MACAddress(node=node1)
-        factory.make_staticipaddress(mac=mac1)
-        node2 = factory.make_node()
+        factory.make_StaticIPAddress(mac=mac1)
+        node2 = factory.make_Node()
         mac2 = factory.make_MACAddress(node=node2)
-        ip2 = factory.make_staticipaddress(mac=mac2)
+        ip2 = factory.make_StaticIPAddress(mac=mac2)
 
         StaticIPAddress.objects.deallocate_by_node(node1)
         self.assertItemsEqual([ip2.ip], node2.static_ip_addresses())
 
     def test_deallocate_only_deletes_auto_types(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mac = factory.make_MACAddress(node=node)
         alloc_types = map_enum(IPADDRESS_TYPE).values()
         for alloc_type in alloc_types:
-            factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
+            factory.make_StaticIPAddress(mac=mac, alloc_type=alloc_type)
 
         StaticIPAddress.objects.deallocate_by_node(node)
         types_without_auto = set(alloc_types)
@@ -184,11 +184,11 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             [ip.alloc_type for ip in StaticIPAddress.objects.all()])
 
     def test_delete_by_node_removes_addresses(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         [mac1, mac2] = [
             factory.make_MACAddress(node=node) for _ in range(2)]
-        factory.make_staticipaddress(mac=mac1)
-        factory.make_staticipaddress(mac=mac2)
+        factory.make_StaticIPAddress(mac=mac1)
+        factory.make_StaticIPAddress(mac=mac2)
         StaticIPAddress.objects.delete_by_node(node)
         # Check the DB is cleared.
         self.assertEqual([], list(StaticIPAddress.objects.all()))
@@ -196,11 +196,11 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertEqual([], list(node.static_ip_addresses()))
 
     def test_delete_by_node_returns_deallocated_ips(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         [mac1, mac2] = [
             factory.make_MACAddress(node=node) for _ in range(2)]
-        ip1 = factory.make_staticipaddress(mac=mac1)
-        ip2 = factory.make_staticipaddress(mac=mac2)
+        ip1 = factory.make_StaticIPAddress(mac=mac1)
+        ip2 = factory.make_StaticIPAddress(mac=mac2)
         observed = StaticIPAddress.objects.delete_by_node(node)
         self.assertItemsEqual(
             [ip1.ip.format(), ip2.ip.format()],
@@ -208,22 +208,22 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             )
 
     def test_delete_by_node_ignores_other_nodes(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         mac1 = factory.make_MACAddress(node=node1)
-        factory.make_staticipaddress(mac=mac1)
-        other_node = factory.make_node()
+        factory.make_StaticIPAddress(mac=mac1)
+        other_node = factory.make_Node()
         other_mac = factory.make_MACAddress(node=other_node)
-        other_ip = factory.make_staticipaddress(mac=other_mac)
+        other_ip = factory.make_StaticIPAddress(mac=other_mac)
 
         StaticIPAddress.objects.delete_by_node(node1)
         self.assertItemsEqual([other_ip.ip], other_node.static_ip_addresses())
 
     def test_delete_by_node_deletes_all_types(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mac = factory.make_MACAddress(node=node)
         alloc_types = map_enum(IPADDRESS_TYPE).values()
         for alloc_type in alloc_types:
-            factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
+            factory.make_StaticIPAddress(mac=mac, alloc_type=alloc_type)
 
         StaticIPAddress.objects.delete_by_node(node)
         self.assertItemsEqual([], StaticIPAddress.objects.all())
@@ -233,23 +233,23 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     """Tests for get_hostname_ip_mapping()."""
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         expected_mapping = {}
         for i in range(3):
             node = factory.make_node_with_mac_attached_to_nodegroupinterface(
                 nodegroup=nodegroup)
-            staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+            staticip = factory.make_StaticIPAddress(mac=node.get_primary_mac())
             expected_mapping[node.hostname] = [staticip.ip]
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_strips_out_domain(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         hostname = factory.make_name('hostname')
         domain = factory.make_name('domain')
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             nodegroup=nodegroup, hostname="%s.%s" % (hostname, domain))
-        staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+        staticip = factory.make_StaticIPAddress(mac=node.get_primary_mac())
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
         self.assertEqual({hostname: [staticip.ip]}, mapping)
 
@@ -257,17 +257,17 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             hostname=factory.make_name('host'))
         second_mac = factory.make_MACAddress(node=node)
-        staticip = factory.make_staticipaddress(mac=second_mac)
+        staticip = factory.make_StaticIPAddress(mac=second_mac)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
         self.assertEqual({node.hostname: [staticip.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             nodegroup=nodegroup)
-        factory.make_staticipaddress(mac=node.get_primary_mac())
-        another_nodegroup = factory.make_node_group()
+        factory.make_StaticIPAddress(mac=node.get_primary_mac())
+        another_nodegroup = factory.make_NodeGroup()
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             another_nodegroup)
         self.assertEqual({}, mapping)
@@ -276,20 +276,20 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             hostname=factory.make_name('host'))
         newer_mac = factory.make_MACAddress(node=node)
-        factory.make_staticipaddress(mac=newer_mac)
-        ip_for_older_mac = factory.make_staticipaddress(
+        factory.make_StaticIPAddress(mac=newer_mac)
+        ip_for_older_mac = factory.make_StaticIPAddress(
             mac=node.get_primary_mac())
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
         self.assertEqual({node.hostname: [ip_for_older_mac.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_combines_IPv4_and_IPv6_addresses(self):
-        node = factory.make_node(mac=True, disable_ipv4=False)
+        node = factory.make_Node(mac=True, disable_ipv4=False)
         mac = node.get_primary_mac()
-        ipv4_address = factory.make_staticipaddress(
+        ipv4_address = factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
-        ipv6_address = factory.make_staticipaddress(
+        ipv6_address = factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
@@ -301,11 +301,11 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     def test_get_hostname_ip_mapping_combines_MACs_for_same_node(self):
         # A node's preferred static IPv4 and IPv6 addresses may be on
         # different MACs.
-        node = factory.make_node(disable_ipv4=False)
-        ipv4_address = factory.make_staticipaddress(
+        node = factory.make_Node(disable_ipv4=False)
+        ipv4_address = factory.make_StaticIPAddress(
             mac=factory.make_MACAddress(node=node),
             ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
-        ipv6_address = factory.make_staticipaddress(
+        ipv6_address = factory.make_StaticIPAddress(
             mac=factory.make_MACAddress(node=node),
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
@@ -315,12 +315,12 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
             mapping[node.hostname])
 
     def test_get_hostname_ip_mapping_skips_ipv4_if_disable_ipv4_set(self):
-        node = factory.make_node(mac=True, disable_ipv4=True)
+        node = factory.make_Node(mac=True, disable_ipv4=True)
         mac = node.get_primary_mac()
-        factory.make_staticipaddress(
+        factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
-        ipv6_address = factory.make_staticipaddress(
+        ipv6_address = factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
@@ -331,17 +331,17 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
 class StaticIPAddressTest(MAASServerTestCase):
 
     def test_repr_with_valid_type(self):
-        actual = "%s" % factory.make_staticipaddress(
+        actual = "%s" % factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=IPADDRESS_TYPE.AUTO)
         self.assertEqual("<StaticIPAddress: <10.0.0.1:type=AUTO>>", actual)
 
     def test_repr_with_invalid_type(self):
-        actual = "%s" % factory.make_staticipaddress(
+        actual = "%s" % factory.make_StaticIPAddress(
             ip="10.0.0.1", alloc_type=99999)
         self.assertEqual("<StaticIPAddress: <10.0.0.1:type=99999>>", actual)
 
     def test_stores_to_database(self):
-        ipaddress = factory.make_staticipaddress()
+        ipaddress = factory.make_StaticIPAddress()
         self.assertEqual([ipaddress], list(StaticIPAddress.objects.all()))
 
     def test_invalid_address_raises_validation_error(self):
@@ -349,12 +349,12 @@ class StaticIPAddressTest(MAASServerTestCase):
         self.assertRaises(ValidationError, ip.full_clean)
 
     def test_deallocate_removes_object(self):
-        ipaddress = factory.make_staticipaddress()
+        ipaddress = factory.make_StaticIPAddress()
         ipaddress.deallocate()
         self.assertEqual([], list(StaticIPAddress.objects.all()))
 
     def test_deallocate_ignores_other_objects(self):
-        ipaddress = factory.make_staticipaddress()
-        ipaddress2 = factory.make_staticipaddress()
+        ipaddress = factory.make_StaticIPAddress()
+        ipaddress2 = factory.make_StaticIPAddress()
         ipaddress.deallocate()
         self.assertEqual([ipaddress2], list(StaticIPAddress.objects.all()))

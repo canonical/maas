@@ -101,7 +101,7 @@ class TestZoneAPI(APITestCase):
     def test_PUT_changing_name_maintains_foreign_keys(self):
         self.become_admin()
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_Node(zone=zone)
 
         response = self.client_put(
             get_zone_uri(zone),
@@ -148,7 +148,7 @@ class TestZoneAPI(APITestCase):
         default_zone = Zone.objects.get_default_zone()
         self.become_admin()
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_Node(zone=zone)
 
         response = self.client.delete(get_zone_uri(zone))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)

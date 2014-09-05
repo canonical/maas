@@ -45,7 +45,7 @@ def get_boot_source_selection_backward_uri(
         boot_source_selection, nodegroup=None):
     """Return a boot source's URI on the API."""
     if nodegroup is None:
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
     boot_source = boot_source_selection.boot_source
     return reverse(
         'boot_source_selection_backward_handler',
@@ -181,7 +181,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         for _ in range(3):
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
             response = self.client.get(
                 get_boot_source_selection_backward_uri(
                     boot_source_selection, nodegroup))
@@ -322,7 +322,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
 
     def get_uri(self, boot_source, nodegroup=None):
         if nodegroup is None:
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
         return reverse(
             'boot_source_selections_backward_handler',
             args=[nodegroup.uuid, boot_source.id])
@@ -358,7 +358,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
         # Create boot source selections in another boot source.
         [factory.make_BootSourceSelection() for _ in range(3)]
         for _ in range(3):
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
             response = self.client.get(self.get_uri(boot_source, nodegroup))
             self.assertEqual(
                 httplib.OK, response.status_code, response.content)

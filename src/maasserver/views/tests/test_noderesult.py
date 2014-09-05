@@ -66,7 +66,7 @@ class TestNodeInstallResultView(MAASServerTestCase):
     def test_installing_allowed_with_edit_perm(self):
         password = 'test'
         user = factory.make_user(password=password)
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
         result = factory.make_NodeResult_for_installing(node=node)
@@ -121,7 +121,7 @@ class TestNodeCommissionResultView(MAASServerTestCase):
     def test_commissioning_allowed_with_edit_perm(self):
         password = 'test'
         user = factory.make_user(password=password)
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
         result = factory.make_NodeResult_for_commissioning(node=node)
@@ -252,7 +252,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
             link.get('href'))
 
     def test_groups_by_node(self):
-        nodes = [factory.make_node() for _ in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         # Create two results per node, but interleave them so the results for
         # any given node are unlikely to occur side by side by accident.
         for _ in range(2):
@@ -264,7 +264,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         self.assertEqual(sorted_results[4].node, sorted_results[5].node)
 
     def test_sorts_by_creation_time_for_same_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         results = [
             factory.make_NodeResult_for_commissioning(node=node)
             for _ in range(3)
@@ -278,7 +278,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
             list(self.make_view().get_queryset()))
 
     def test_sorts_by_name_for_same_node_and_creation_time(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         results = {
             factory.make_NodeResult_for_commissioning(
                 node=node, name=factory.make_name().lower())
@@ -290,7 +290,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_filters_by_node(self):
         factory.make_NodeResult_for_commissioning()
-        node = factory.make_node()
+        node = factory.make_Node()
         node_results = {
             factory.make_NodeResult_for_commissioning(node=node)
             for _ in range(3)
@@ -334,7 +334,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_shows_node_if_filtering_by_node(self):
         self.client_log_in(as_admin=True)
-        node = factory.make_node()
+        node = factory.make_Node()
         doc = self.request_page(nodes=[node])
         header = get_one(doc.cssselect('#results_header'))
         self.assertEqual(
@@ -344,7 +344,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
     def test_shows_nodes_if_filtering_by_multiple_nodes(self):
         self.client_log_in(as_admin=True)
         names = [factory.make_name('node').lower() for _ in range(2)]
-        nodes = [factory.make_node(hostname=name) for name in names]
+        nodes = [factory.make_Node(hostname=name) for name in names]
         doc = self.request_page(nodes=nodes)
         header = get_one(doc.cssselect('#results_header'))
         self.assertEqual(

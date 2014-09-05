@@ -79,7 +79,7 @@ class NodeAnonAPITest(MAASServerTestCase):
         self.assertEqual("", sys.stderr.getvalue())
 
     def test_node_init_user_cannot_access(self):
-        token = NodeKey.objects.get_token_for_node(factory.make_node())
+        token = NodeKey.objects.get_token_for_node(factory.make_Node())
         client = OAuthAuthenticatedClient(get_node_init_user(), token)
         response = client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -90,7 +90,7 @@ class NodesAPILoggedInTest(MAASServerTestCase):
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
         self.client_log_in()
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         parsed_result = json.loads(response.content)
 
@@ -114,7 +114,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_returns_node(self):
         # The api allows for fetching a single Node (using system_id).
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -123,7 +123,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(node.system_id, parsed_result['system_id'])
 
     def test_GET_returns_associated_tag(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         tag = factory.make_tag()
         node.tags.add(tag)
         response = self.client.get(self.get_node_uri(node))
@@ -133,7 +133,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual([tag.name], parsed_result['tag_names'])
 
     def test_GET_returns_associated_ip_addresses(self):
-        node = factory.make_node(disable_ipv4=False)
+        node = factory.make_Node(disable_ipv4=False)
         mac = factory.make_MACAddress(node=node)
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -146,7 +146,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_returns_associated_routers(self):
         macs = [MAC('aa:bb:cc:dd:ee:ff'), MAC('00:11:22:33:44:55')]
-        node = factory.make_node(routers=macs)
+        node = factory.make_Node(routers=macs)
         response = self.client.get(self.get_node_uri(node))
 
         self.assertEqual(
@@ -156,7 +156,7 @@ class TestNodeAPI(APITestCase):
             [mac.get_raw() for mac in macs], parsed_result['routers'])
 
     def test_GET_returns_zone(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -176,7 +176,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_GET_returns_owner_name_when_allocated_to_self(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
@@ -184,7 +184,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(node.owner.username, parsed_result["owner"])
 
     def test_GET_returns_owner_name_when_allocated_to_other_user(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
@@ -192,14 +192,14 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(node.owner.username, parsed_result["owner"])
 
     def test_GET_returns_empty_owner_when_not_allocated(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual(None, parsed_result["owner"])
 
     def test_POST_stop_checks_permission(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -209,7 +209,7 @@ class TestNodeAPI(APITestCase):
         # The node may not be stopped by stop_nodes because, for example, its
         # power type does not support it. In this case the node is not
         # returned to the caller.
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         stop_nodes.return_value = []
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
@@ -219,7 +219,7 @@ class TestNodeAPI(APITestCase):
             [node.system_id], ANY, stop_mode=ANY))
 
     def test_POST_stop_returns_node(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         stop_nodes.return_value = [node]
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
@@ -228,7 +228,7 @@ class TestNodeAPI(APITestCase):
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_stop_may_be_repeated(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
@@ -238,7 +238,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_stop_stops_nodes(self):
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         stop_nodes.return_value = [node]
         stop_mode = factory.make_name('stop_mode')
@@ -250,12 +250,12 @@ class TestNodeAPI(APITestCase):
                 [node.system_id], self.logged_in_user, stop_mode=stop_mode))
 
     def test_POST_start_checks_permission(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_start_returns_node(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
         response = self.client.post(self.get_node_uri(node), {'op': 'start'})
@@ -264,7 +264,7 @@ class TestNodeAPI(APITestCase):
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_start_sets_osystem_and_distro_series(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -284,7 +284,7 @@ class TestNodeAPI(APITestCase):
             distro_series, reload_object(node).distro_series)
 
     def test_POST_start_validates_distro_series(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -303,7 +303,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_sets_license_key(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -326,7 +326,7 @@ class TestNodeAPI(APITestCase):
             license_key, reload_object(node).license_key)
 
     def test_POST_start_validates_license_key(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -351,7 +351,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_may_be_repeated(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
         self.client.post(self.get_node_uri(node), {'op': 'start'})
@@ -359,7 +359,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_start_stores_user_data(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
         user_data = (
@@ -393,7 +393,7 @@ class TestNodeAPI(APITestCase):
             NODE_STATUS.ALLOCATED,
             ]
         owned_nodes = [
-            factory.make_node(owner=self.logged_in_user, status=status)
+            factory.make_Node(owner=self.logged_in_user, status=status)
             for status in owned_statuses]
         responses = [
             self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -406,7 +406,7 @@ class TestNodeAPI(APITestCase):
             [node.status for node in reload_objects(Node, owned_nodes)])
 
     def test_POST_release_releases_failed_node(self):
-        owned_node = factory.make_node(
+        owned_node = factory.make_Node(
             owner=self.logged_in_user,
             status=NODE_STATUS.FAILED_DEPLOYMENT)
         response = self.client.post(
@@ -419,7 +419,7 @@ class TestNodeAPI(APITestCase):
             (owned_node.status, owned_node.owner))
 
     def test_POST_release_turns_on_netboot(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
         node.set_netboot(on=False)
         self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -428,7 +428,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_release_resets_osystem_and_distro_series(self):
         osystem = factory.pick_OS()
         release = factory.pick_release(osystem)
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release)
         self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -439,7 +439,7 @@ class TestNodeAPI(APITestCase):
         osystem = factory.pick_OS()
         release = factory.pick_release(osystem)
         license_key = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release,
             license_key=license_key)
@@ -450,7 +450,7 @@ class TestNodeAPI(APITestCase):
         agent_name = factory.make_name('agent-name')
         osystem = factory.pick_OS()
         release = factory.pick_release(osystem)
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
             osystem=osystem.name, distro_series=release,
             agent_name=agent_name)
@@ -458,7 +458,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual('', reload_object(node).agent_name)
 
     def test_POST_release_removes_token_and_user(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -470,7 +470,7 @@ class TestNodeAPI(APITestCase):
         self.assertIs(None, node.token)
 
     def test_POST_release_does_nothing_for_unowned_node(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.READY, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -478,7 +478,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_POST_release_forbidden_if_user_cannot_edit_node(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -492,7 +492,7 @@ class TestNodeAPI(APITestCase):
             if status not in releasable_statuses
         ]
         nodes = [
-            factory.make_node(status=status, owner=self.logged_in_user)
+            factory.make_Node(status=status, owner=self.logged_in_user)
             for status in unreleasable_statuses]
         responses = [
             self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -505,7 +505,7 @@ class TestNodeAPI(APITestCase):
             [node.status for node in reload_objects(Node, nodes)])
 
     def test_POST_release_in_wrong_state_reports_current_state(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.RETIRED, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -517,7 +517,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, response.content))
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -525,7 +525,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         self.become_admin()
         response = self.client.post(
@@ -534,7 +534,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
@@ -544,7 +544,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_POST_commission_commissions_node(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.READY, owner=factory.make_user())
         self.become_admin()
         response = self.client.post(
@@ -554,7 +554,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_node(self):
         # The api allows the updating of a Node.
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         response = self.client_put(
@@ -569,7 +569,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
         arch = make_usable_architecture(self)
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname=hostname, owner=self.logged_in_user, architecture=arch)
         response = self.client_put(
             self.get_node_uri(node),
@@ -578,7 +578,7 @@ class TestNodeAPI(APITestCase):
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
 
     def test_PUT_ignores_unknown_fields(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         field = factory.make_string()
@@ -593,7 +593,7 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         original_power_type = factory.pick_power_type()
         new_power_type = factory.pick_power_type(but_not=original_power_type)
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type=original_power_type,
             architecture=make_usable_architecture(self))
@@ -608,7 +608,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_non_admin_cannot_change_power_type(self):
         original_power_type = factory.pick_power_type()
         new_power_type = factory.pick_power_type(but_not=original_power_type)
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user, power_type=original_power_type)
         self.client_put(
             self.get_node_uri(node),
@@ -621,7 +621,7 @@ class TestNodeAPI(APITestCase):
     def test_resource_uri_points_back_at_node(self):
         # When a Node is returned by the API, the field 'resource_uri'
         # provides the URI for this Node.
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         response = self.client_put(
@@ -635,7 +635,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_rejects_invalid_data(self):
         # If the data provided to update a node is invalid, a 'Bad request'
         # response is returned.
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         response = self.client_put(
@@ -650,7 +650,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_refuses_to_update_invisible_node(self):
         # The request to update a single node is denied if the node isn't
         # visible by the user.
-        other_node = factory.make_node(
+        other_node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
         response = self.client_put(self.get_node_uri(other_node))
@@ -668,7 +668,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_updates_power_parameters_field(self):
         # The api allows the updating of a Node's power_parameters field.
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -685,7 +685,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_cpu_memory_storage(self):
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type=factory.pick_power_type(),
             architecture=make_usable_architecture(self))
@@ -700,7 +700,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_power_parameters_accepts_only_mac_for_wol(self):
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
@@ -721,7 +721,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_updates_power_parameters_rejects_unknown_param(self):
         self.become_admin()
         power_parameters = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
@@ -744,7 +744,7 @@ class TestNodeAPI(APITestCase):
         # reset by default (if skip_check is not set).
         self.become_admin()
         power_parameters = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
@@ -762,7 +762,7 @@ class TestNodeAPI(APITestCase):
         # If one sets power_type to empty, one cannot set power_parameters.
         self.become_admin()
         power_parameters = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
@@ -791,7 +791,7 @@ class TestNodeAPI(APITestCase):
         # XXX bigjools 2014-01-21 Why is this necessary?
         self.become_admin()
         power_parameters = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=power_parameters,
@@ -814,7 +814,7 @@ class TestNodeAPI(APITestCase):
         # With power_parameters_skip_check, arbitrary data
         # can be put in a Node's power_parameter field.
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
@@ -832,7 +832,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_updates_power_parameters_empty_string(self):
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             power_type='ether_wake',
             power_parameters=factory.make_string(),
@@ -849,7 +849,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_sets_zone(self):
         self.become_admin()
         new_zone = factory.make_zone()
-        node = factory.make_node(architecture=make_usable_architecture(self))
+        node = factory.make_Node(architecture=make_usable_architecture(self))
 
         response = self.client_put(
             self.get_node_uri(node), {'zone': new_zone.name})
@@ -861,7 +861,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_does_not_set_zone_if_not_present(self):
         self.become_admin()
         new_name = factory.make_name()
-        node = factory.make_node(architecture=make_usable_architecture(self))
+        node = factory.make_Node(architecture=make_usable_architecture(self))
         old_zone = node.zone
 
         response = self.client_put(
@@ -880,7 +880,7 @@ class TestNodeAPI(APITestCase):
         # simpler way.
         return
         self.become_admin()
-        node = factory.make_node(zone=factory.make_zone())
+        node = factory.make_Node(zone=factory.make_zone())
 
         response = self.client_put(self.get_node_uri(node), {'zone': ''})
 
@@ -891,7 +891,7 @@ class TestNodeAPI(APITestCase):
     def test_PUT_without_zone_leaves_zone_unchanged(self):
         self.become_admin()
         zone = factory.make_zone()
-        node = factory.make_node(
+        node = factory.make_Node(
             zone=zone, architecture=make_usable_architecture(self))
 
         response = self.client_put(self.get_node_uri(node), {})
@@ -902,7 +902,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_zone_change_requires_admin(self):
         new_zone = factory.make_zone()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         old_zone = node.zone
@@ -920,7 +920,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_sets_disable_ipv4(self):
         original_setting = factory.pick_bool()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self),
             disable_ipv4=original_setting)
@@ -935,7 +935,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_leaves_disable_ipv4_unchanged_by_default(self):
         original_setting = factory.pick_bool()
-        node = factory.make_node(
+        node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self),
             disable_ipv4=original_setting)
@@ -951,7 +951,7 @@ class TestNodeAPI(APITestCase):
     def test_DELETE_deletes_node(self):
         # The api allows to delete a Node.
         self.become_admin()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         system_id = node.system_id
         response = self.client.delete(self.get_node_uri(node))
 
@@ -961,7 +961,7 @@ class TestNodeAPI(APITestCase):
     def test_DELETE_cannot_delete_allocated_node(self):
         # The api allows to delete a Node.
         self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(
@@ -973,14 +973,14 @@ class TestNodeAPI(APITestCase):
 
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_forbidden_without_edit_permission(self):
         # A user without the edit permission cannot delete a Node.
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.delete(self.get_node_uri(node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -988,7 +988,7 @@ class TestNodeAPI(APITestCase):
     def test_DELETE_refuses_to_delete_invisible_node(self):
         # The request to delete a single node is denied if the node isn't
         # visible by the user.
-        other_node = factory.make_node(
+        other_node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
 
         response = self.client.delete(self.get_node_uri(other_node))
@@ -1012,7 +1012,7 @@ class TestStickyIP(APITestCase):
         return reverse('node_handler', args=[node.system_id])
 
     def test_claim_sticky_ip_address_disallows_non_admin(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
@@ -1020,7 +1020,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_disallows_when_allocated(self):
         self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.ALLOCATED)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(
@@ -1141,7 +1141,7 @@ class TestStickyIP(APITestCase):
         # Create 2 nodes on the same nodegroup and interface.
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         ngi = node.get_primary_mac().cluster_interface
-        other_node = factory.make_node(mac=True, nodegroup=ngi.nodegroup)
+        other_node = factory.make_Node(mac=True, nodegroup=ngi.nodegroup)
         other_mac = other_node.get_primary_mac()
         other_mac.cluster_interface = ngi
         other_mac.save()
@@ -1184,13 +1184,13 @@ class TestGetDetails(APITestCase):
         return bson.BSON(response.content).decode()
 
     def test_GET_returns_empty_details_when_there_are_none(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         self.assertDictEqual(
             {"lshw": None, "lldp": None},
             self.get_details(node))
 
     def test_GET_returns_all_details(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         lshw_result = self.make_lshw_result(node)
         lldp_result = self.make_lldp_result(node)
         self.assertDictEqual(
@@ -1199,7 +1199,7 @@ class TestGetDetails(APITestCase):
             self.get_details(node))
 
     def test_GET_returns_only_those_details_that_exist(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         lshw_result = self.make_lshw_result(node)
         self.assertDictEqual(
             {"lshw": bson.Binary(lshw_result.data),
@@ -1220,7 +1220,7 @@ class TestMarkBroken(APITestCase):
         return reverse('node_handler', args=[node.system_id])
 
     def test_mark_broken_changes_status(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_broken'})
@@ -1228,7 +1228,7 @@ class TestMarkBroken(APITestCase):
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_mark_broken_updates_error_description(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, owner=self.logged_in_user)
         error_description = factory.make_name('error-description')
         response = self.client.post(
@@ -1242,7 +1242,7 @@ class TestMarkBroken(APITestCase):
         )
 
     def test_mark_broken_requires_ownership(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_broken'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -1257,14 +1257,14 @@ class TestMarkFixed(APITestCase):
 
     def test_mark_fixed_changes_status(self):
         self.become_admin()
-        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_mark_fixed_requires_admin(self):
-        node = factory.make_node(status=NODE_STATUS.BROKEN)
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_fixed'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -1277,7 +1277,7 @@ class TestPowerParameters(APITestCase):
 
     def test_get_power_parameters(self):
         self.become_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             power_parameters=factory.make_name("power_parameters"))
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
@@ -1287,7 +1287,7 @@ class TestPowerParameters(APITestCase):
 
     def test_get_power_parameters_empty(self):
         self.become_admin()
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -1295,7 +1295,7 @@ class TestPowerParameters(APITestCase):
         self.assertEqual("", parsed_params)
 
     def test_power_parameters_requires_admin(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(
             self.get_node_uri(node), {'op': 'power_parameters'})
         self.assertEqual(
@@ -1311,7 +1311,7 @@ class TestDeploymentStatus(APITestCase):
         return reverse('node_handler', args=[node.system_id])
 
     def test_GET_returns_single_matching_node(self):
-        owned_node = factory.make_node(
+        owned_node = factory.make_Node(
             owner=self.logged_in_user, netboot=False)
         response = self.client.get(
             self.endpoint,
@@ -1324,7 +1324,7 @@ class TestDeploymentStatus(APITestCase):
         nodes = []
         expected = dict()
         for _ in range(3):
-            node = factory.make_node(owner=self.logged_in_user, netboot=False)
+            node = factory.make_Node(owner=self.logged_in_user, netboot=False)
             nodes.append(node)
             expected[node.system_id] = "Deployed"
         ids = [n.system_id for n in nodes]
@@ -1334,8 +1334,8 @@ class TestDeploymentStatus(APITestCase):
         self.assertEqual(expected, json.loads(response.content))
 
     def test_GET_rejects_unviewable_nodes(self):
-        owned_node = factory.make_node(owner=self.logged_in_user)
-        unowned_node = factory.make_node(owner=factory.make_user())
+        owned_node = factory.make_Node(owner=self.logged_in_user)
+        unowned_node = factory.make_Node(owner=factory.make_user())
         node_ids = [owned_node.system_id, unowned_node.system_id]
         response = self.client.get(
             self.endpoint,

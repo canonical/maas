@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the UserProfile model."""
@@ -93,7 +93,7 @@ class UserProfileTest(MAASServerTestCase):
     def test_delete_attached_nodes(self):
         # Cannot delete a user with nodes attached to it.
         profile = factory.make_user().get_profile()
-        factory.make_node(owner=profile.user)
+        factory.make_Node(owner=profile.user)
         self.assertRaises(CannotDeleteUserException, profile.delete)
 
     def test_manager_all_users(self):

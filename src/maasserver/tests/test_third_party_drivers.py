@@ -39,7 +39,7 @@ class TestNodeModaliases(MAASTestCase):
 
     def test_uses_commissioning_modaliases(self):
         test_data = b'hulla\nbaloo'
-        node = factory.make_node()
+        node = factory.make_Node()
         NodeResult.objects.store_data(
             node, commissioningscript.LIST_MODALIASES_OUTPUT_NAME,
             0, RESULT_TYPE.COMMISSIONING, Bin(test_data))
@@ -48,7 +48,7 @@ class TestNodeModaliases(MAASTestCase):
         self.assertEqual(['hulla', 'baloo'], aliases)
 
     def test_survives_no_commissioning_data(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         aliases = node_modaliases(node)
         self.assertEqual([], aliases)
 
@@ -89,7 +89,7 @@ class TestPopulateKernelOpts(MAASTestCase):
 class TestGetThirdPartyCode(MAASTestCase):
 
     def test_finds_match(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mock = self.patch(third_party_drivers, 'match_aliases_to_driver')
         base_driver = dict(comment='hooray')
         mock.return_value = base_driver
@@ -102,7 +102,7 @@ class TestGetThirdPartyCode(MAASTestCase):
         self.assertEqual('hooray', driver['comment'])
 
     def test_finds_no_match(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mock = self.patch(third_party_drivers, 'match_aliases_to_driver')
         mock.return_value = None
         driver = get_third_party_driver(node)

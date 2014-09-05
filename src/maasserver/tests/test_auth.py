@@ -68,14 +68,14 @@ class LoginLogoutTest(MAASServerTestCase):
 
 def make_unallocated_node():
     """Return a node that is not allocated to anyone."""
-    return factory.make_node()
+    return factory.make_Node()
 
 
 def make_allocated_node(owner=None):
     """Create a node, owned by `owner` (or create owner if not given)."""
     if owner is None:
         owner = factory.make_user()
-    return factory.make_node(owner=owner, status=NODE_STATUS.ALLOCATED)
+    return factory.make_Node(owner=owner, status=NODE_STATUS.ALLOCATED)
 
 
 class TestMAASAuthorizationBackend(MAASServerTestCase):
@@ -142,7 +142,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         user = factory.make_user()
         self.assertFalse(
             backend.has_perm(
-                user, NODE_PERMISSION.ADMIN, factory.make_node()))
+                user, NODE_PERMISSION.ADMIN, factory.make_Node()))
 
 
 class TestNodeVisibility(MAASServerTestCase):

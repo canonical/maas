@@ -59,7 +59,7 @@ class TestDownloadProgressForm(MAASServerTestCase):
                 progress.bytes_downloaded + 1))
 
     def test_get_download_recognises_start_of_new_download(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         filename = factory.make_string()
         progress = DownloadProgressForm.get_download(nodegroup, filename, None)
         self.assertIsNotNone(progress)
@@ -70,4 +70,4 @@ class TestDownloadProgressForm(MAASServerTestCase):
     def test_get_download_returns_none_for_unknown_ongoing_download(self):
         self.assertIsNone(
             DownloadProgressForm.get_download(
-                factory.make_node_group(), factory.make_string(), 1))
+                factory.make_NodeGroup(), factory.make_string(), 1))

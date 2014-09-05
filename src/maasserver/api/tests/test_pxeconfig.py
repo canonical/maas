@@ -141,7 +141,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_uses_present_boot_image(self):
         osystem = Config.objects.get_config('commissioning_osystem')
         release = Config.objects.get_config('commissioning_distro_series')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         factory.make_boot_image(
             osystem=osystem,
             architecture="amd64", release=release, nodegroup=nodegroup,
@@ -173,7 +173,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         host = factory.make_name('host')
         domain = factory.make_name('domain')
         full_hostname = '.'.join([host, domain])
-        node = factory.make_node(hostname=full_hostname)
+        node = factory.make_Node(hostname=full_hostname)
         mac = factory.make_MACAddress(node=node)
         params = self.get_default_params()
         params['mac'] = mac.mac_address
@@ -217,7 +217,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
         self.patch(server_address, 'resolve_hostname').return_value = {ip}
-        factory.make_node_group(
+        factory.make_NodeGroup(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
@@ -238,7 +238,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         ip = factory.pick_ip_in_network(network)
         mock = self.patch(server_address, 'resolve_hostname')
         mock.return_value = {ip}
-        factory.make_node_group(
+        factory.make_NodeGroup(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
@@ -265,7 +265,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # completely ignores the other node or request details, as shown
         # here by passing a uuid for a different cluster.
         params = self.get_mac_params()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         params['cluster_uuid'] = nodegroup.uuid
         request = RequestFactory().get(reverse('pxeconfig'), params)
         self.assertEqual(
@@ -277,7 +277,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
         self.patch(server_address, 'resolve_hostname').return_value = {ip}
-        nodegroup = factory.make_node_group(maas_url=ng_url, network=network)
+        nodegroup = factory.make_NodeGroup(maas_url=ng_url, network=network)
         params = self.get_mac_params()
         node = MACAddress.objects.get(mac_address=params['mac']).node
         node.nodegroup = nodegroup
@@ -312,7 +312,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             ("local", {"status": NODE_STATUS.DEPLOYED}),
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
             ]
-        node = factory.make_node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         for purpose, parameters in options:
             factory.make_boot_images_for_node_with_purposes(node, [purpose])
             if purpose == "xinstall":
@@ -325,7 +325,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         osystem = make_usable_osystem(
             self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
         release = factory.pick_release(osystem)
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, netboot=True,
             osystem=osystem.name, distro_series=release,
             boot_type=NODE_BOOT.FASTPATH)
@@ -350,7 +350,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(params["local"], kernel_params.fs_host)
 
     def test_pxeconfig_returns_extra_kernel_options(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         extra_kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', extra_kernel_opts)
         mac = factory.make_MACAddress(node=node)
@@ -387,13 +387,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # subarch from the image, rather than the requested one.
         osystem = 'ubuntu'
         release = Config.objects.get_config('default_distro_series')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         factory.make_boot_image(
             osystem=osystem,
             architecture="amd64", subarchitecture="generic",
             supported_subarches="hwe-s", release=release, nodegroup=nodegroup,
             purpose="install")
-        node = factory.make_node(
+        node = factory.make_Node(
             mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             architecture="amd64/hwe-s")
         params = self.get_default_params()

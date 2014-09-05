@@ -35,7 +35,7 @@ class TestNodeResult(DjangoTestCase):
             unicode(result))
 
     def test_can_store_data(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         name = factory.make_string()
         data = factory.make_bytes()
         factory.make_NodeResult_for_commissioning(
@@ -47,17 +47,17 @@ class TestNodeResult(DjangoTestCase):
     def test_node_name_uniqueness(self):
         # You cannot have two result rows with the same name for the
         # same node.
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(node=node, name="foo")
         self.assertRaises(
             ValidationError,
             factory.make_NodeResult_for_commissioning, node=node, name="foo")
 
     def test_different_nodes_can_have_same_data_name(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         ncr1 = factory.make_NodeResult_for_commissioning(
             node=node, name="foo")
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         ncr2 = factory.make_NodeResult_for_commissioning(
             node=node2, name="foo")
         self.assertEqual(ncr1.name, ncr2.name)
@@ -89,7 +89,7 @@ class TestNodeResultManager(DjangoTestCase):
 
     def test_clear_results_removes_rows(self):
         # clear_results should remove all a node's results.
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_NodeResult_for_commissioning(node=node)
         factory.make_NodeResult_for_commissioning(node=node)
         factory.make_NodeResult_for_commissioning(node=node)
@@ -102,9 +102,9 @@ class TestNodeResultManager(DjangoTestCase):
     def test_clear_results_ignores_other_nodes(self):
         # clear_results should only remove results for the supplied
         # node.
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         factory.make_NodeResult_for_commissioning(node=node1)
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         factory.make_NodeResult_for_commissioning(node=node2)
 
         NodeResult.objects.clear_results(node1)
@@ -112,7 +112,7 @@ class TestNodeResultManager(DjangoTestCase):
             NodeResult.objects.filter(node=node2).exists())
 
     def test_store_data(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         name = factory.make_string(255)
         data = factory.make_bytes(1024 * 1024)
         script_result = randint(0, 10)
@@ -126,7 +126,7 @@ class TestNodeResultManager(DjangoTestCase):
         self.assertEqual(result, result_in_db)
 
     def test_store_data_updates_existing(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         name = factory.make_string(255)
         script_result = randint(0, 10)
         factory.make_NodeResult_for_commissioning(node=node, name=name)

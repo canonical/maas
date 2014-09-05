@@ -31,7 +31,7 @@ from netaddr import (
 
 
 def make_interface(network=None):
-    nodegroup = factory.make_node_group(
+    nodegroup = factory.make_NodeGroup(
         status=NODEGROUP_STATUS.ACCEPTED,
         management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
         network=network)
@@ -79,31 +79,31 @@ class TestNodeGroupInterface(MAASServerTestCase):
             interface.display_management())
 
     def test_name_accepts_network_interface_name(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         self.assertEqual(
             'eth0',
             factory.make_NodeGroupInterface(cluster, name='eth0').name)
 
     def test_name_accepts_network_interface_name_with_alias(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         self.assertEqual(
             'eth0:1',
             factory.make_NodeGroupInterface(cluster, name='eth0:1').name)
 
     def test_name_accepts_vlan_interface(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         self.assertEqual(
             'eth0.1',
             factory.make_NodeGroupInterface(cluster, name='eth0.1').name)
 
     def test_name_accepts_dashes(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         self.assertEqual(
             'eth0-1',
             factory.make_NodeGroupInterface(cluster, name='eth0-1').name)
 
     def test_name_rejects_other_unusual_characters(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         self.assertRaises(
             ValidationError,
             factory.make_node_group_interface, cluster, name='eth 0')
@@ -120,7 +120,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'static_ip_range_high',
             ]
         for field in checked_fields:
-            nodegroup = factory.make_node_group(
+            nodegroup = factory.make_NodeGroup(
                 network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
             [interface] = nodegroup.get_managed_interfaces()
             setattr(interface, field, ip_outside_network)
@@ -133,7 +133,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             self.assertEqual({field: [message]}, exception.message_dict)
 
     def test_clean_network(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=IPNetwork('192.168.0.3/24'),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         [interface] = nodegroup.get_managed_interfaces()
@@ -155,7 +155,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'ip_range_high',
             ]
         for field in checked_fields:
-            nodegroup = factory.make_node_group(
+            nodegroup = factory.make_NodeGroup(
                 network=network,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
             [interface] = nodegroup.get_managed_interfaces()
@@ -174,7 +174,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             'static_ip_range_high',
             ]
         for field in checked_fields:
-            nodegroup = factory.make_node_group(
+            nodegroup = factory.make_NodeGroup(
                 network=network,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
             [interface] = nodegroup.get_managed_interfaces()
@@ -184,7 +184,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
         network = factory.getRandomNetwork()
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface] = nodegroup.get_managed_interfaces()
@@ -193,7 +193,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
 
     def test_clean_network_config_sets_no_broadcast_without_netmask(self):
         network = factory.getRandomNetwork()
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = NodeGroupInterface.objects.get(nodegroup=nodegroup)
@@ -206,7 +206,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         # When the default value for broadcast_ip was introduced, it broke
         # the form but not tests.  The reason: the default was an IPAddress,
         # but GenericIPAddressValidation expects a string.
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         # Can't use the factory for this one; it may hide the problem.
         interface = NodeGroupInterface(
             nodegroup=nodegroup, name=factory.make_name('ngi'),
@@ -307,7 +307,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         self.assertEqual(errors, exception.message_dict)
 
     def test_manages_static_range_returns_False_if_not_managed(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         network = IPNetwork("10.9.9.0/24")
         interface = factory.make_NodeGroupInterface(
             cluster, network=network,
@@ -332,7 +332,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         self.assertFalse(interface.manages_static_range())
 
     def test_manages_static_range_returns_True_if_manages_static_range(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         network = IPNetwork("10.9.9.0/24")
         interface = factory.make_NodeGroupInterface(
             cluster, network=network,
@@ -346,7 +346,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
     def make_managed_interface():
         return factory.make_NodeGroupInterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            nodegroup=factory.make_node_group())
+            nodegroup=factory.make_NodeGroup())
 
     def test_dynamic_ip_range_returns_None_if_range_low_not_set(self):
         interface = self.make_managed_interface()

@@ -36,7 +36,7 @@ def make_usable_boot_images(nodegroup=None, osystem=None, arch=None,
                             subarchitecture=None, release=None):
         """Create a set of boot images."""
         if nodegroup is None:
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
         if osystem is None:
             osystem = factory.make_name('os')
         if arch is None:
@@ -329,7 +329,7 @@ class TestReleases(MAASServerTestCase):
     def test_get_distro_series_initial(self):
         osystem = make_usable_osystem(self)
         series = factory.pick_release(osystem)
-        node = factory.make_node(osystem=osystem.name, distro_series=series)
+        node = factory.make_Node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s' % (osystem.name, series),
             get_distro_series_initial(node, with_key_required=False))
@@ -338,7 +338,7 @@ class TestReleases(MAASServerTestCase):
         osystem = make_usable_osystem(self)
         self.patch(osystem, 'requires_license_key').return_value = True
         series = factory.pick_release(osystem)
-        node = factory.make_node(osystem=osystem.name, distro_series=series)
+        node = factory.make_Node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s' % (osystem.name, series),
             get_distro_series_initial(node, with_key_required=False))
@@ -347,7 +347,7 @@ class TestReleases(MAASServerTestCase):
         osystem = make_usable_osystem(self)
         self.patch(osystem, 'requires_license_key').return_value = True
         series = factory.pick_release(osystem)
-        node = factory.make_node(osystem=osystem.name, distro_series=series)
+        node = factory.make_Node(osystem=osystem.name, distro_series=series)
         self.assertEqual(
             '%s/%s*' % (osystem.name, series),
             get_distro_series_initial(node, with_key_required=True))

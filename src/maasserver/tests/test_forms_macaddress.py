@@ -23,7 +23,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestMACAddressForm(MAASServerTestCase):
 
     def test_MACAddressForm_creates_mac_address(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mac = factory.getRandomMACAddress()
         form = MACAddressForm(node=node, data={'mac_address': mac})
         form.save()
@@ -31,7 +31,7 @@ class TestMACAddressForm(MAASServerTestCase):
             MACAddress.objects.filter(node=node, mac_address=mac).exists())
 
     def test_saves_to_db_by_default(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mac = factory.getRandomMACAddress()
         form = MACAddressForm(node=node, data={'mac_address': mac})
         form.save()
@@ -39,7 +39,7 @@ class TestMACAddressForm(MAASServerTestCase):
             mac, MACAddress.objects.get(mac_address=mac).mac_address)
 
     def test_does_not_save_to_db_if_commit_is_False(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         mac = factory.getRandomMACAddress()
         form = MACAddressForm(node=node, data={'mac_address': mac})
         form.save(commit=False)
@@ -48,7 +48,7 @@ class TestMACAddressForm(MAASServerTestCase):
     def test_MACAddressForm_displays_error_message_if_mac_already_used(self):
         mac = factory.getRandomMACAddress()
         node = factory.make_MACAddress(address=mac)
-        node = factory.make_node()
+        node = factory.make_Node()
         form = MACAddressForm(node=node, data={'mac_address': mac})
         self.assertFalse(form.is_valid())
         self.assertEquals(

@@ -168,7 +168,7 @@ class MAASMessengerTest(TestModelMixin, MAASServerTestCase):
             obj_name, decoded_msg['instance']['name'])
 
     def test_msg_containing_node_representation(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         messenger = MAASMessenger(Node, FakeProducer())
         msg = messenger.create_msg(factory.make_string(), node)
         decoded_msg = json.loads(msg)

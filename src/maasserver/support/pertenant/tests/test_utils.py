@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the utilities of the per-tenant file storage work."""
@@ -30,7 +30,7 @@ def make_provider_state_file(node=None):
     to a node.
     """
     if node is None:
-        node = factory.make_node()
+        node = factory.make_Node()
     node_link = reverse('node_handler', args=[node.system_id])
     content = 'zookeeper-instances: [%s]\n' % node_link
     content_data = content.encode('ascii')
@@ -41,7 +41,7 @@ def make_provider_state_file(node=None):
 class TestExtractBootstrapNodeSystemId(MAASServerTestCase):
 
     def test_parses_valid_provider_state_file(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         provider_state_file = make_provider_state_file(node=node)
         system_id = extract_bootstrap_node_system_id(
             provider_state_file.content)
@@ -65,12 +65,12 @@ class TestGetBootstrapNodeOwner(MAASServerTestCase):
         self.assertIsNone(get_bootstrap_node_owner())
 
     def test_returns_owner_if_node_found(self):
-        node = factory.make_node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_user())
         make_provider_state_file(node=node)
         self.assertEqual(node.owner, get_bootstrap_node_owner())
 
     def test_returns_None_if_node_does_not_exist(self):
-        node = factory.make_node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_user())
         make_provider_state_file(node=node)
         node.delete()
         self.assertIsNone(get_bootstrap_node_owner())

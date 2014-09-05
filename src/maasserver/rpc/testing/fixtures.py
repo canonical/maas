@@ -141,7 +141,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
     Example usage (in this case, for stubbing the `Identify` RPC method)::
 
-      nodegroup = factory.make_node_group()
+      nodegroup = factory.make_NodeGroup()
       fixture = self.useFixture(MockRegionToClusterRPCFixture())
       protocol, io = fixture.makeCluster(nodegroup, region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})
@@ -221,7 +221,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
 
     Example usage::
 
-      nodegroup = factory.make_node_group()
+      nodegroup = factory.make_NodeGroup()
       fixture = self.useFixture(RegionToClusterRPCFixture())
       protocol = fixture.makeCluster(nodegroup, region.Identify)
       protocol.Identify.return_value = defer.succeed({"ident": "foobar"})

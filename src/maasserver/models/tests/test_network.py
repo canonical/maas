@@ -309,8 +309,8 @@ class TestNetwork(MAASServerTestCase):
 
     def test_get_connected_nodes_doesnt_count_multiple_connections_twice(self):
         network = factory.make_Network()
-        node1 = factory.make_node()
-        node2 = factory.make_node()
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
         [factory.make_MACAddress(
             node=node1, networks=[network]) for _ in range(3)]
         [factory.make_MACAddress(

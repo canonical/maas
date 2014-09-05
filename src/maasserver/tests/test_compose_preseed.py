@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `maasserver.compose_preseed`."""
@@ -41,7 +41,7 @@ import yaml
 class TestComposePreseed(MAASServerTestCase):
 
     def test_compose_preseed_for_commissioning_node_produces_yaml(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertIn('datasource', preseed)
@@ -52,19 +52,19 @@ class TestComposePreseed(MAASServerTestCase):
                 'metadata_url', 'consumer_key', 'token_key', 'token_secret'))
 
     def test_compose_preseed_for_commissioning_node_has_header(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = compose_preseed(PRESEED_TYPE.COMMISSIONING, node)
         self.assertThat(preseed, StartsWith("#cloud-config\n"))
 
     def test_compose_preseed_includes_metadata_url(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
         self.assertIn(absolute_reverse('metadata'), preseed)
 
     def test_compose_preseed_for_commissioning_includes_metadata_url(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         self.assertEqual(
@@ -72,7 +72,7 @@ class TestComposePreseed(MAASServerTestCase):
             preseed['datasource']['MAAS']['metadata_url'])
 
     def test_compose_preseed_includes_node_oauth_token(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
@@ -82,7 +82,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertIn('oauth_token_secret=%s' % token.secret, preseed)
 
     def test_compose_preseed_for_commissioning_includes_auth_token(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         preseed = yaml.safe_load(
             compose_preseed(PRESEED_TYPE.COMMISSIONING, node))
         maas_dict = preseed['datasource']['MAAS']
@@ -92,7 +92,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(token.secret, maas_dict['token_secret'])
 
     def test_compose_preseed_valid_local_cloud_config(self):
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         preseed = compose_preseed(PRESEED_TYPE.DEFAULT, node)
@@ -118,7 +118,7 @@ class TestComposePreseed(MAASServerTestCase):
         self.assertEqual(data["apt_preserve_sources_list"], True)
 
     def test_compose_preseed_with_curtin_installer(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.READY, boot_type=NODE_BOOT.FASTPATH)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
@@ -141,7 +141,7 @@ class TestComposePreseed(MAASServerTestCase):
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = compose_preseed_orig
 
-        node = factory.make_node(
+        node = factory.make_Node(
             osystem=osystem.name, status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
@@ -162,7 +162,7 @@ class TestComposePreseed(MAASServerTestCase):
         osystem = make_usable_osystem(self)
         compose_preseed_mock = self.patch(osystem, 'compose_preseed')
         compose_preseed_mock.side_effect = NoSuchOperatingSystem
-        node = factory.make_node(
+        node = factory.make_Node(
             osystem=osystem.name, status=NODE_STATUS.READY)
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
@@ -174,7 +174,7 @@ class TestComposePreseed(MAASServerTestCase):
         # If the region does not have any connections to the node's cluster
         # controller, compose_preseed() simply passes the exception up.
         osystem = make_usable_osystem(self)
-        node = factory.make_node(
+        node = factory.make_Node(
             osystem=osystem.name, status=NODE_STATUS.READY)
         self.assertRaises(
             NoConnectionsAvailable,

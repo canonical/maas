@@ -379,7 +379,7 @@ class MAASExceptionHandledInView(MAASServerTestCase):
         def post(self, request, *args, **kwargs):
             raise ExternalComponentException()
         self.patch(NodeEdit, 'post', post)
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.post(node_edit_link, {})
         self.assertEqual(node_edit_link, extract_redirect(response))
@@ -394,7 +394,7 @@ class MAASExceptionHandledInView(MAASServerTestCase):
         def post(self, request, *args, **kwargs):
             raise ExternalComponentException(error_message)
         self.patch(NodeEdit, 'post', post)
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         node_edit_link = reverse('node-edit', args=[node.system_id])
         self.client.post(node_edit_link, {})
         # Manually perform the redirect: i.e. get the same page.

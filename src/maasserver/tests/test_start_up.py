@@ -177,7 +177,7 @@ class TestPostStartUp(MAASServerTestCase):
         patched_handlers = tasks.refresh_functions.copy()
         patched_handlers['nodegroup_uuid'] = Mock()
         self.patch(tasks, 'refresh_functions', patched_handlers)
-        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         start_up.post_start_up()
         self.assertThat(
             patched_handlers['nodegroup_uuid'],

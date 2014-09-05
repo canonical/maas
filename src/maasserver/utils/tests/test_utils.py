@@ -66,7 +66,7 @@ class TestAbsoluteReverse(MAASServerTestCase):
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_kwargs(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
         absolute_url = absolute_reverse(
             'node-view', kwargs={'system_id': node.system_id})
@@ -74,7 +74,7 @@ class TestAbsoluteReverse(MAASServerTestCase):
         self.assertEqual(expected_url, absolute_url)
 
     def test_absolute_reverse_uses_args(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
         absolute_url = absolute_reverse('node-view', args=[node.system_id])
         expected_url = reverse('node-view', args=[node.system_id])
@@ -86,7 +86,7 @@ class GetDbStateTest(MAASServerTestCase):
 
     def test_get_db_state_returns_db_state(self):
         status = factory.pick_choice(NODE_STATUS_CHOICES)
-        node = factory.make_node(status=status)
+        node = factory.make_Node(status=status)
         another_status = factory.pick_choice(
             NODE_STATUS_CHOICES, but_not=[status])
         node.status = another_status
@@ -201,12 +201,12 @@ class TestFindNodegroup(MAASServerTestCase):
             management = factory.pick_enum(
                 NODEGROUPINTERFACE_MANAGEMENT,
                 but_not=[NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED])
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         return factory.make_NodeGroupInterface(
             cluster, network=network, management=management)
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(nodegroup)
         self.assertEqual(
             nodegroup,

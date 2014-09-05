@@ -107,7 +107,7 @@ class TestHelpers(DjangoTestCase):
         self.assertRaises(UnknownMetadataVersion, check_version, '1.0')
 
     def test_get_node_for_request_finds_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
             HTTP_AUTHORIZATION=factory.make_oauth_header(
@@ -139,7 +139,7 @@ class TestHelpers(DjangoTestCase):
             get_queried_node(object(), for_mac=mac.mac_address))
 
     def test_get_queried_node_looks_up_oauth_key_by_default(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         request = self.fake_request(
             HTTP_AUTHORIZATION=factory.make_oauth_header(
@@ -150,7 +150,7 @@ class TestHelpers(DjangoTestCase):
 def make_node_client(node=None):
     """Create a test client logged in as if it were `node`."""
     if node is None:
-        node = factory.make_node()
+        node = factory.make_Node()
     token = NodeKey.objects.get_token_for_node(node)
     return OAuthAuthenticatedClient(get_node_init_user(), token)
 
@@ -167,7 +167,7 @@ def call_signal(client=None, version='latest', files={}, **kwargs):
         to the "signal" call.
     """
     if client is None:
-        client = make_node_client(factory.make_node(
+        client = make_node_client(factory.make_Node(
             status=NODE_STATUS.COMMISSIONING))
     params = {
         'op': 'signal',
@@ -241,7 +241,7 @@ class TestMetadataCommon(DjangoTestCase):
         self.assertNotIn('user-data', items)
 
     def test_version_index_shows_user_data_if_available(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         NodeUserData.objects.set_user_data(node, b"User data for node")
         client = make_node_client(node)
         view_name = self.get_metadata_name('-version')
@@ -252,7 +252,7 @@ class TestMetadataCommon(DjangoTestCase):
     def test_meta_data_view_lists_fields(self):
         # Some fields only are returned if there is data related to them.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         client = make_node_client(node=node)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', ''])
@@ -282,12 +282,12 @@ class TestMetadataCommon(DjangoTestCase):
         self.assertNotIn(None, producers)
 
     def test_meta_data_local_hostname_returns_fqdn(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         hostname = factory.make_string()
         domain = factory.make_string()
-        node = factory.make_node(
+        node = factory.make_Node(
             hostname='%s.%s' % (hostname, domain), nodegroup=nodegroup)
         client = make_node_client(node)
         view_name = self.get_metadata_name('-meta-data')
@@ -299,7 +299,7 @@ class TestMetadataCommon(DjangoTestCase):
         self.assertIn('text/plain', response['Content-Type'])
 
     def test_meta_data_instance_id_returns_system_id(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         client = make_node_client(node)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'instance-id'])
@@ -319,7 +319,7 @@ class TestMetadataCommon(DjangoTestCase):
 
     def test_public_keys_listed_for_node_with_public_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', ''])
         client = make_node_client(node=node)
@@ -338,7 +338,7 @@ class TestMetadataCommon(DjangoTestCase):
 
     def test_public_keys_for_node_returns_list_of_keys(self):
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'public-keys'])
         client = make_node_client(node=node)
@@ -355,7 +355,7 @@ class TestMetadataCommon(DjangoTestCase):
         # The metadata service also accepts urls with any number of additional
         # slashes after 'metadata': e.g. http://host/metadata///rest-of-url.
         user, _ = factory.make_user_with_keys(n_keys=2, username='my-user')
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         view_name = self.get_metadata_name('-meta-data')
         url = reverse(view_name, args=['latest', 'public-keys'])
         # Insert additional slashes.
@@ -372,7 +372,7 @@ class TestMetadataUserData(DjangoTestCase):
     """Tests for the metadata user-data API endpoint."""
 
     def test_user_data_view_returns_binary_data(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
@@ -394,7 +394,7 @@ class TestMetadataUserDataStateChanges(DjangoTestCase):
     def test_request_does_not_cause_status_change_if_not_deploying(self):
         status = factory.pick_enum(
             NODE_STATUS, but_not=[NODE_STATUS.DEPLOYING])
-        node = factory.make_node(status=status)
+        node = factory.make_Node(status=status)
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
@@ -402,7 +402,7 @@ class TestMetadataUserDataStateChanges(DjangoTestCase):
         self.assertEqual(status, reload_object(node).status)
 
     def test_request_causes_status_change_if_deploying(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
@@ -414,7 +414,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -435,7 +435,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
 class TestInstallingAPI(MAASServerTestCase):
 
     def test_other_user_than_node_cannot_signal_installing_result(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = OAuthAuthenticatedClient(factory.make_user())
         response = call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -443,23 +443,23 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installing_result_does_not_affect_other_node(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = make_node_client(
-            node=factory.make_node(status=NODE_STATUS.DEPLOYING))
+            node=factory.make_Node(status=NODE_STATUS.DEPLOYING))
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installing_success_leaves_node_deploying(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installing_success_is_idempotent(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
@@ -467,7 +467,7 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installing_success_does_not_clear_owner(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
@@ -475,7 +475,7 @@ class TestInstallingAPI(MAASServerTestCase):
         self.assertEqual(node.owner, reload_object(node).owner)
 
     def test_signaling_installing_failure_makes_node_failed(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
@@ -484,7 +484,7 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_DEPLOYMENT, reload_object(node).status)
 
     def test_signaling_installing_failure_is_idempotent(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
@@ -518,7 +518,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             archive.getnames())
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = OAuthAuthenticatedClient(factory.make_user())
         response = call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -526,9 +526,9 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_result_does_not_affect_other_node(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(
-            node=factory.make_node(status=NODE_STATUS.COMMISSIONING))
+            node=factory.make_Node(status=NODE_STATUS.COMMISSIONING))
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -537,7 +537,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def test_signaling_commissioning_OK_repopulates_tags(self):
         populate_tags_for_single_node = self.patch(
             api, "populate_tags_for_single_node")
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node)
         response = call_signal(client, status='OK', script_result='0')
         self.assertEqual(httplib.OK, response.status_code)
@@ -547,7 +547,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             MockCalledOnceWith(ANY, node))
 
     def test_signaling_requires_status_code(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'signal'})
@@ -558,7 +558,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_signaling_refuses_if_node_in_unexpected_state(self):
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         client = make_node_client(node=node)
         response = call_signal(client)
         self.assertEqual(
@@ -569,7 +569,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_signaling_accepts_WORKING_status(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='WORKING')
         self.assertEqual(httplib.OK, response.status_code)
@@ -577,7 +577,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.COMMISSIONING, reload_object(node).status)
 
     def test_signaling_stores_script_result(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
         filename = factory.make_string()
@@ -589,7 +589,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(script_result, result.script_result)
 
     def test_signaling_stores_empty_script_result(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(
             client, script_result=random.randint(0, 10),
@@ -600,7 +600,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_WORKING_keeps_owner(self):
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         node.owner = user
         node.save()
         client = make_node_client(node=node)
@@ -609,14 +609,14 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(user, reload_object(node).owner)
 
     def test_signaling_commissioning_success_makes_node_Ready(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_success_is_idempotent(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         call_signal(client, status='OK')
         response = call_signal(client, status='OK')
@@ -624,7 +624,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_signaling_commissioning_success_clears_owner(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         node.owner = factory.make_user()
         node.save()
         client = make_node_client(node=node)
@@ -633,7 +633,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(None, reload_object(node).owner)
 
     def test_signaling_commissioning_failure_makes_node_Failed_Tests(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
@@ -641,7 +641,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_failure_is_idempotent(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
@@ -650,7 +650,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
 
     def test_signaling_commissioning_failure_sets_node_error(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         error_text = factory.make_string()
         response = call_signal(client, status='FAILED', error=error_text)
@@ -658,7 +658,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(error_text, reload_object(node).error)
 
     def test_signaling_commissioning_failure_clears_owner(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         node.owner = factory.make_user()
         node.save()
         client = make_node_client(node=node)
@@ -667,7 +667,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(None, reload_object(node).owner)
 
     def test_signaling_no_error_clears_existing_error(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, error=factory.make_string())
         client = make_node_client(node=node)
         response = call_signal(client)
@@ -678,7 +678,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         statuses = ['WORKING', 'OK', 'FAILED']
         filename = factory.make_string()
         nodes = {
-            status: factory.make_node(status=NODE_STATUS.COMMISSIONING)
+            status: factory.make_Node(status=NODE_STATUS.COMMISSIONING)
             for status in statuses}
         for status, node in nodes.items():
             client = make_node_client(node=node)
@@ -694,7 +694,7 @@ class TestCommissioningAPI(MAASServerTestCase):
                 for status, node in nodes.items()})
 
     def test_signal_stores_file_contents(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         text = factory.make_string().encode('ascii')
         script_result = random.randint(0, 10)
@@ -706,7 +706,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signal_stores_binary(self):
         unicode_text = '<\u2621>'
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
         response = call_signal(
@@ -721,7 +721,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         contents = {
             factory.make_string(): factory.make_string().encode('ascii')
             for counter in range(3)}
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
         response = call_signal(
@@ -740,7 +740,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         # anybody's business, but files up to this size should work.
         size_limit = 2 ** 20
         contents = factory.make_string(size_limit, spaces=True)
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         script_result = random.randint(0, 10)
         response = call_signal(
@@ -752,7 +752,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(size_limit, len(stored_data))
 
     def test_signal_stores_virtual_tag_on_node_if_virtual(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         content = 'virtual'.encode('utf-8')
         response = call_signal(
@@ -764,7 +764,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             ["virtual"], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_removes_virtual_tag_on_node_if_not_virtual(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         tag, _ = Tag.objects.get_or_create(name='virtual')
         node.tags.add(tag)
         client = make_node_client(node=node)
@@ -778,7 +778,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             [], [each_tag.name for each_tag in node.tags.all()])
 
     def test_signal_leaves_untagged_physical_node_unaltered(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         content = 'notvirtual'.encode('utf-8')
         response = call_signal(
@@ -789,7 +789,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(0, len(node.tags.all()))
 
     def test_signal_refuses_bad_power_type(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(client, power_type="foo")
         self.assertEqual(
@@ -797,7 +797,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_signal_power_type_stores_params(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
             power_address=factory.make_string(),
@@ -811,7 +811,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(params, node.power_parameters)
 
     def test_signal_power_type_lower_case_works(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         params = dict(
             power_address=factory.make_string(),
@@ -825,7 +825,7 @@ class TestCommissioningAPI(MAASServerTestCase):
             params, node.power_parameters)
 
     def test_signal_invalid_power_parameters(self):
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
         response = call_signal(
             client, power_type="ipmi", power_parameters="badjson")
@@ -870,7 +870,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
 class TestNetbootOperationAPI(DjangoTestCase):
 
     def test_netboot_off(self):
-        node = factory.make_node(netboot=True)
+        node = factory.make_Node(netboot=True)
         client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'netboot_off'})
@@ -878,7 +878,7 @@ class TestNetbootOperationAPI(DjangoTestCase):
         self.assertFalse(node.netboot, response)
 
     def test_netboot_on(self):
-        node = factory.make_node(netboot=False)
+        node = factory.make_Node(netboot=False)
         client = make_node_client(node=node)
         url = reverse('metadata-version', args=['latest'])
         response = client.post(url, {'op': 'netboot_on'})
@@ -889,7 +889,7 @@ class TestNetbootOperationAPI(DjangoTestCase):
 class TestAnonymousAPI(DjangoTestCase):
 
     def test_anonymous_netboot_off(self):
-        node = factory.make_node(netboot=True)
+        node = factory.make_Node(netboot=True)
         anon_netboot_off_url = reverse(
             'metadata-node-by-id', args=['latest', node.system_id])
         response = self.client.post(
@@ -922,7 +922,7 @@ class TestAnonymousAPI(DjangoTestCase):
         ng_url = 'http://%s' % factory.make_name('host')
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        factory.make_node_group(
+        factory.make_NodeGroup(
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         anon_enlist_preseed_url = reverse(
@@ -934,7 +934,7 @@ class TestAnonymousAPI(DjangoTestCase):
 
     def test_anonymous_get_preseed(self):
         # The preseed for a node can be obtained anonymously.
-        node = factory.make_node()
+        node = factory.make_Node()
         anon_node_url = reverse(
             'metadata-node-by-id',
             args=['latest', node.system_id])
@@ -1014,7 +1014,7 @@ class TestEnlistViews(DjangoTestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         network = IPNetwork("10.1.1/24")
         ip = factory.pick_ip_in_network(network)
-        factory.make_node_group(
+        factory.make_NodeGroup(
             maas_url=nodegroup_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         url = reverse('enlist-metadata-user-data', args=['latest'])

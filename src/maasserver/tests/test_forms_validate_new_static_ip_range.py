@@ -35,7 +35,7 @@ class TestValidateNewStaticIPRanges(MAASServerTestCase):
 
     def make_interface(self):
         network = IPNetwork("10.1.0.0/24")
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network)

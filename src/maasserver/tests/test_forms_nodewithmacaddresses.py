@@ -126,7 +126,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
 
     def test_does_not_include_nodegroup_field_for_existing_node(self):
         params = self.make_params()
-        node = factory.make_node()
+        node = factory.make_Node()
         self.assertNotIn(
             'nodegroup',
             NodeWithMACAddressesForm(data=params, instance=node).fields)
@@ -139,9 +139,9 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
     def test_leaves_nodegroup_alone_if_unset_on_existing_node(self):
         # Selecting a node group for a node is only supported on new
         # nodes.  You can't change it later.
-        original_nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=original_nodegroup)
-        factory.make_node_group(network=IPNetwork("192.168.1.0/24"))
+        original_nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=original_nodegroup)
+        factory.make_NodeGroup(network=IPNetwork("192.168.1.0/24"))
         form = NodeWithMACAddressesForm(
             data=self.make_params(nodegroup='192.168.1.0'), instance=node)
         form.save()

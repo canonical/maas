@@ -45,7 +45,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_get_action_form_creates_form_class(self):
         user = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(node)
 
         self.assertIsInstance(form, NodeActionForm)
@@ -53,7 +53,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_get_action_form_for_admin(self):
         admin = factory.make_admin()
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.NEW, boot_type=NODE_BOOT.DEBIAN)
         form = get_action_form(admin)(node)
 
@@ -63,7 +63,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_get_action_form_for_user(self):
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(node)
 
         self.assertIsInstance(form, NodeActionForm)
@@ -72,7 +72,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_save_performs_requested_action(self):
         admin = factory.make_admin()
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(admin)(
             node, {NodeActionForm.input_name: Commission.name})
         self.assertTrue(form.is_valid())
@@ -81,7 +81,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_rejects_disallowed_action(self):
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: Commission.name})
         self.assertFalse(form.is_valid())
@@ -91,7 +91,7 @@ class TestNodeActionForm(MAASServerTestCase):
 
     def test_rejects_unknown_action(self):
         user = factory.make_user()
-        node = factory.make_node(status=NODE_STATUS.NEW)
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         action = factory.make_string()
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: action})
@@ -104,7 +104,7 @@ class TestNodeActionForm(MAASServerTestCase):
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
         user = factory.make_user()
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user)
         action = StartNode.name
         # Required for messages to work:

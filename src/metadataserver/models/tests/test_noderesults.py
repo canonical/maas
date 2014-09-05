@@ -335,7 +335,7 @@ class TestExtractRouters(MAASServerTestCase):
 class TestSetNodeRouters(MAASServerTestCase):
 
     def test_set_node_routers_updates_node(self):
-        node = factory.make_node(routers=None)
+        node = factory.make_Node(routers=None)
         macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
         lldp_output = make_lldp_output(macs)
         set_node_routers(node, lldp_output, 0)
@@ -343,13 +343,13 @@ class TestSetNodeRouters(MAASServerTestCase):
             [MAC(mac) for mac in macs], reload_object(node).routers)
 
     def test_set_node_routers_updates_node_if_no_routers(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         lldp_output = make_lldp_output([])
         set_node_routers(node, lldp_output, 0)
         self.assertItemsEqual([], reload_object(node).routers)
 
     def test_set_node_routers_does_nothing_if_script_failed(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         routers_before = node.routers
         macs = ["11:22:33:44:55:66", "aa:bb:cc:dd:ee:ff"]
         lldp_output = make_lldp_output(macs)
@@ -361,7 +361,7 @@ class TestSetNodeRouters(MAASServerTestCase):
 class TestInjectResult(MAASServerTestCase):
 
     def test_inject_result_stores_data(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         name = factory.make_name("result")
         output = factory.make_bytes()
         exit_status = next(factory.random_octets)
@@ -376,7 +376,7 @@ class TestInjectResult(MAASServerTestCase):
                 data=output))
 
     def test_inject_result_calls_hook(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         name = factory.make_name("result")
         output = factory.make_bytes()
         exit_status = next(factory.random_octets)
@@ -420,13 +420,13 @@ class TestSetVirtualTag(MAASServerTestCase):
             tags, [tag.name for tag in node.tags.all()])
 
     def test_sets_virtual_tag(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         self.assertTagsEqual(node, [])
         set_virtual_tag(node, b"virtual", 0)
         self.assertTagsEqual(node, ["virtual"])
 
     def test_removes_virtual_tag(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         node.tags.add(self.getVirtualTag())
         self.assertTagsEqual(node, ["virtual"])
         set_virtual_tag(node, b"notvirtual", 0)
@@ -434,7 +434,7 @@ class TestSetVirtualTag(MAASServerTestCase):
 
     def test_output_not_containing_virtual_does_not_set_tag(self):
         logger = self.useFixture(FakeLogger())
-        node = factory.make_node()
+        node = factory.make_Node()
         self.assertTagsEqual(node, [])
         set_virtual_tag(node, b"wibble", 0)
         self.assertTagsEqual(node, [])
@@ -445,7 +445,7 @@ class TestSetVirtualTag(MAASServerTestCase):
 
     def test_output_not_containing_virtual_does_not_remove_tag(self):
         logger = self.useFixture(FakeLogger())
-        node = factory.make_node()
+        node = factory.make_Node()
         node.tags.add(self.getVirtualTag())
         self.assertTagsEqual(node, ["virtual"])
         set_virtual_tag(node, b"wibble", 0)
@@ -461,7 +461,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
     doctest_flags = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
     def test_hardware_updates_cpu_count(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
         <node id="core">
            <node id="cpu:0" class="processor"/>
@@ -473,7 +473,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         self.assertEqual(2, node.cpu_count)
 
     def test_cpu_count_counts_multi_cores(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
         <node id="core">
            <node id="cpu:0" class="processor">
@@ -491,7 +491,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         self.assertEqual(5, node.cpu_count)
 
     def test_cpu_count_skips_disabled_cpus(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
         <node id="core">
            <node id="cpu:0" class="processor"/>
@@ -504,7 +504,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         self.assertEqual(1, node.cpu_count)
 
     def test_hardware_updates_memory(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
         <node id="memory">
            <size units="bytes">4294967296</size>
@@ -515,7 +515,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         self.assertEqual(4096, node.memory)
 
     def test_hardware_updates_memory_lenovo(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
         <node>
           <node id="memory:0" class="memory">
@@ -541,7 +541,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         self.assertEqual(expected, node.memory)
 
     def test_hardware_updates_storage(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
             <node id="volume:0" claimed="true" class="volume" handle="">
                 <description>Extended partition</description>
@@ -558,7 +558,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
     def test_hardware_updates_storage_1279728(self):
         # Hardware data from bug 1279728.
-        node = factory.make_node()
+        node = factory.make_Node()
         xmlbytes = dedent("""\
             <node id="volume" claimed="true" class="volume" handle="">
                 <description>EXT4 volume</description>
@@ -577,7 +577,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.
         factory.make_tag(definition='')
-        node = factory.make_node()
+        node = factory.make_Node()
         node.save()
         xmlbytes = '<node/>'.encode("utf-8")
         update_hardware_details(node, xmlbytes, 0)
@@ -588,7 +588,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
     def test_hardware_updates_logs_invalid_xml(self):
         logger = self.useFixture(FakeLogger())
-        update_hardware_details(factory.make_node(), b"garbage", 0)
+        update_hardware_details(factory.make_Node(), b"garbage", 0)
         expected_log = dedent("""\
         Invalid lshw data.
         Traceback (most recent call last):
@@ -601,5 +601,5 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
 
     def test_hardware_updates_does_nothing_when_exit_status_is_not_zero(self):
         logger = self.useFixture(FakeLogger(name='commissioningscript'))
-        update_hardware_details(factory.make_node(), b"garbage", exit_status=1)
+        update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for power parameters."""
@@ -58,7 +58,7 @@ class TestPowerActionRendering(MAASServerTestCase):
 
     def test_render_template(self):
         params = self.make_random_parameters()
-        node = factory.make_node(power_type=self.power_type)
+        node = factory.make_Node(power_type=self.power_type)
         params.update(node.get_effective_power_parameters())
         # ip_address is determined by querying the ARP cache,
         # hence in this test the value does not matter.

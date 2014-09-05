@@ -116,7 +116,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
 
     def test_nodegroups_index_lists_nodegroups(self):
         # The nodegroups index lists node groups for the MAAS.
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroups_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -137,7 +137,7 @@ class TestAnonNodeGroupsAPI(MAASServerTestCase):
         )
 
     def test_refresh_calls_refresh_worker(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'refresh_workers'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -166,7 +166,7 @@ class TestNodeGroupAPI(APITestCase):
             reverse('nodegroup_handler', args=['name']))
 
     def test_GET_returns_node_group(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -181,7 +181,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
     def test_PUT_reserved_to_admin_users(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client_put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': factory.make_name("new-name")})
@@ -190,7 +190,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_PUT_updates_nodegroup(self):
         # The api allows the updating of a NodeGroup.
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.become_admin()
         new_name = factory.make_name("new-name")
         new_cluster_name = factory.make_name("new-cluster-name")
@@ -227,7 +227,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_update_leases_processes_empty_leases_dict(self):
         self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         response = client.post(
@@ -245,7 +245,7 @@ class TestNodeGroupAPI(APITestCase):
     def test_update_leases_stores_leases(self):
         self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         lease = factory.make_random_leases()
         client = make_worker_client(nodegroup)
         response = client.post(
@@ -267,7 +267,7 @@ class TestNodeGroupAPI(APITestCase):
         self.patch(
             nodegroups_module, 'update_mac_cluster_interfaces', FakeMethod())
         self.patch(Omshell, 'create')
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         cluster_interface = factory.make_NodeGroupInterface(
             nodegroup=cluster)
         mac_address = factory.make_MACAddress()
@@ -293,7 +293,7 @@ class TestNodeGroupAPI(APITestCase):
     def test_update_leases_does_not_add_old_leases(self):
         self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         self.patch(Omshell, 'create')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         client = make_worker_client(nodegroup)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -311,7 +311,7 @@ class TestNodeGroupAPI(APITestCase):
         # path now.
         self.useFixture(
             EnvironmentVariableFixture("MAAS_URL", settings.DEFAULT_MAAS_URL))
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         refresh_worker(nodegroup)
         self.patch(MAASClient, 'post', Mock())
         leases = factory.make_random_leases()
@@ -323,7 +323,7 @@ class TestNodeGroupAPI(APITestCase):
             nodegroup_path, 'update_leases', leases=json.dumps(leases))
 
     def test_accept_accepts_nodegroup(self):
-        nodegroups = [factory.make_node_group() for i in range(3)]
+        nodegroups = [factory.make_NodeGroup() for i in range(3)]
         uuids = [nodegroup.uuid for nodegroup in nodegroups]
         self.become_admin()
         response = self.client.post(
@@ -350,7 +350,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_reject_rejects_nodegroup(self):
-        nodegroups = [factory.make_node_group() for i in range(3)]
+        nodegroups = [factory.make_NodeGroup() for i in range(3)]
         uuids = [nodegroup.uuid for nodegroup in nodegroups]
         self.become_admin()
         response = self.client.post(
@@ -380,11 +380,11 @@ class TestNodeGroupAPI(APITestCase):
         self.become_admin()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
         ]
-        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         response = self.client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
         self.assertEqual(
@@ -410,7 +410,7 @@ class TestNodeGroupAPI(APITestCase):
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_report_download_progress_accepts_new_download(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         filename = factory.make_string()
         client = make_worker_client(nodegroup)
 
@@ -466,7 +466,7 @@ class TestNodeGroupAPI(APITestCase):
             explain_unexpected_response(httplib.BAD_REQUEST, response))
 
     def test_probe_and_enlist_ucsm_adds_ucsm(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         url = 'http://url'
         username = factory.make_name('user')
         password = factory.make_name('password')
@@ -492,7 +492,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertThat(mock.apply_async, matcher)
 
     def test_probe_and_enlist_mscm_adds_mscm(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         host = 'http://host'
         username = factory.make_name('user')
         password = factory.make_name('password')
@@ -548,13 +548,13 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             data=Bin(data))
 
     def test_nodegroup_requires_authentication(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_update_leases_works_for_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         client = make_worker_client(nodegroup)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -564,7 +564,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.OK, response))
 
     def test_update_leases_does_not_work_for_normal_user(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         log_in_as_normal_user(self.client)
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -574,8 +574,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_update_leases_does_not_let_worker_update_other_nodegroup(self):
-        requesting_nodegroup = factory.make_node_group()
-        about_nodegroup = factory.make_node_group()
+        requesting_nodegroup = factory.make_NodeGroup()
+        about_nodegroup = factory.make_NodeGroup()
         client = make_worker_client(requesting_nodegroup)
 
         response = client.post(
@@ -587,14 +587,14 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_nodegroup_list_nodes_requires_authentication(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'op': 'list_nodes'})
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_nodegroup_list_nodes_does_not_work_for_normal_user(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         log_in_as_normal_user(self.client)
 
         response = self.client.get(
@@ -606,8 +606,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_nodegroup_list_nodes_works_for_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
 
         response = client.get(
@@ -621,10 +621,10 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         self.assertItemsEqual([node.system_id], parsed_result)
 
     def test_nodegroup_list_nodes_works_for_admin(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)
-        node = factory.make_node(nodegroup=nodegroup)
+        node = factory.make_Node(nodegroup=nodegroup)
 
         response = client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -641,7 +641,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         fake_client = Mock()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         mock_getClientFor.return_value = fake_client
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
 
         admin = factory.make_admin()
         client = OAuthAuthenticatedClient(admin)
@@ -656,7 +656,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             MockCalledOnceWith(ImportBootImages, sources=sources))
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         user = factory.make_user()
         client = OAuthAuthenticatedClient(user)
 
@@ -675,21 +675,21 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             {'op': 'details', 'system_ids': system_ids})
 
     def test_details_requires_authentication(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.make_details_request(self.client, nodegroup)
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
 
     def test_details_refuses_nonworker(self):
         log_in_as_normal_user(self.client)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.make_details_request(self.client, nodegroup)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code,
             explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_details_returns_details(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         self.set_lshw_details(node, self.example_lshw_details)
         self.set_lldp_details(node, self.example_lldp_details)
         client = make_worker_client(nodegroup)
@@ -710,8 +710,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             parsed_result)
 
     def test_details_allows_admin(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         user = factory.make_admin()
         client = OAuthAuthenticatedClient(user)
 
@@ -732,8 +732,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_empty_details(self):
         # Empty details are passed through.
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         self.set_lshw_details(node, b'')
         self.set_lldp_details(node, b'')
         client = make_worker_client(nodegroup)
@@ -754,11 +754,11 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             parsed_result)
 
     def test_details_does_not_see_other_node_groups(self):
-        nodegroup_mine = factory.make_node_group()
-        nodegroup_theirs = factory.make_node_group()
-        node_mine = factory.make_node(nodegroup=nodegroup_mine)
+        nodegroup_mine = factory.make_NodeGroup()
+        nodegroup_theirs = factory.make_NodeGroup()
+        node_mine = factory.make_Node(nodegroup=nodegroup_mine)
         self.set_lshw_details(node_mine, self.example_lshw_details)
-        node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
+        node_theirs = factory.make_Node(nodegroup=nodegroup_theirs)
         self.set_lldp_details(node_theirs, self.example_lldp_details)
         client = make_worker_client(nodegroup_mine)
 
@@ -780,7 +780,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_details_with_no_details(self):
         # If there are no nodes, an empty map is returned.
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         client = make_worker_client(nodegroup)
         response = self.make_details_request(client, nodegroup)
         self.assertEqual(httplib.OK, response.status_code)
@@ -788,7 +788,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         self.assertDictEqual({}, parsed_result)
 
     def test_POST_report_download_progress_works_for_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         filename = factory.make_string()
         client = make_worker_client(nodegroup)
 
@@ -804,7 +804,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.OK, response))
 
     def test_POST_report_download_progress_does_not_work_for_normal_user(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         log_in_as_normal_user(self.client)
 
         response = self.client.post(
@@ -820,11 +820,11 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_POST_report_download_progress_does_work_for_other_cluster(self):
         filename = factory.make_string()
-        client = make_worker_client(factory.make_node_group())
+        client = make_worker_client(factory.make_NodeGroup())
 
         response = client.post(
             reverse(
-                'nodegroup_handler', args=[factory.make_node_group().uuid]),
+                'nodegroup_handler', args=[factory.make_NodeGroup().uuid]),
             {
                 'op': 'report_download_progress',
                 'filename': filename,
@@ -839,7 +839,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
     """Tests for `update_mac_cluster_interfaces`()."""
 
     def make_cluster_with_macs_and_leases(self, use_static_range=False):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         mac_addresses = {
             factory.make_MACAddress(): factory.make_NodeGroupInterface(
                 nodegroup=cluster)
@@ -897,7 +897,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
                 ))
 
     def test_does_not_overwrite_network_with_same_name(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         ngi = factory.make_NodeGroupInterface(nodegroup=cluster)
         net1 = create_Network_from_NodeGroupInterface(ngi)
 
@@ -908,7 +908,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         self.assertItemsEqual([net1], Network.objects.all())
 
     def test_ignores_mac_not_attached_to_cluster(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         mac_address = factory.make_MACAddress()
         leases = {
             factory.getRandomIPAddress(): mac_address.mac_address
@@ -919,7 +919,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         self.assertIsNone(mac_address.cluster_interface)
 
     def test_ignores_unknown_macs(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         mac_address = factory.getRandomMACAddress()
         leases = {
             factory.getRandomIPAddress(): mac_address
@@ -932,7 +932,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
             MACAddress.objects.filter(mac_address=mac_address).exists())
 
     def test_ignores_unconfigured_interfaces(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         factory.make_NodeGroupInterface(
             nodegroup=cluster, subnet_mask='', broadcast_ip='',
             static_ip_range_low='', static_ip_range_high='',

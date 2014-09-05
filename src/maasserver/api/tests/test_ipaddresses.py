@@ -31,7 +31,7 @@ from maasserver.testing.orm import reload_object
 class TestNetworksAPI(APITestCase):
 
     def make_interface(self, status=NODEGROUP_STATUS.ACCEPTED, **kwargs):
-        cluster = factory.make_node_group(status=status, **kwargs)
+        cluster = factory.make_NodeGroup(status=status, **kwargs)
         return factory.make_NodeGroupInterface(cluster)
 
     def post_reservation_request(self, net):
@@ -104,7 +104,7 @@ class TestNetworksAPI(APITestCase):
             response.content)
 
     def test_GET_returns_ipaddresses(self):
-        original_ipaddress = factory.make_staticipaddress(
+        original_ipaddress = factory.make_StaticIPAddress(
             user=self.logged_in_user)
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -133,8 +133,8 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual([], json.loads(response.content))
 
     def test_GET_only_returns_request_users_addresses(self):
-        ipaddress = factory.make_staticipaddress(user=self.logged_in_user)
-        factory.make_staticipaddress(user=factory.make_user())
+        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
+        factory.make_StaticIPAddress(user=factory.make_user())
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -145,7 +145,7 @@ class TestNetworksAPI(APITestCase):
         addrs = []
         for _ in range(3):
             addrs.append(
-                factory.make_staticipaddress(user=self.logged_in_user))
+                factory.make_StaticIPAddress(user=self.logged_in_user))
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -156,20 +156,20 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(expected, observed)
 
     def test_POST_release_deallocates_address(self):
-        ipaddress = factory.make_staticipaddress(user=self.logged_in_user)
+        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertIsNone(reload_object(ipaddress))
 
     def test_POST_release_does_not_delete_IP_that_I_dont_own(self):
-        ipaddress = factory.make_staticipaddress(user=factory.make_user())
+        ipaddress = factory.make_StaticIPAddress(user=factory.make_user())
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_release_does_not_delete_other_IPs_I_own(self):
-        ipaddress = factory.make_staticipaddress(user=self.logged_in_user)
-        other_address = factory.make_staticipaddress(user=self.logged_in_user)
+        ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
+        other_address = factory.make_StaticIPAddress(user=self.logged_in_user)
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertIsNotNone(reload_object(other_address))

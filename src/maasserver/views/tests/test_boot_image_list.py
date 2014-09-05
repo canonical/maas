@@ -33,7 +33,7 @@ class BootImageListTest(MAASServerTestCase):
 
     def test_contains_boot_image_list(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         boot_images = [
             factory.make_boot_image(nodegroup=nodegroup) for _ in range(3)]
         for bi in boot_images:
@@ -59,7 +59,7 @@ class BootImageListTest(MAASServerTestCase):
     def test_listing_is_paginated(self):
         self.patch(BootImagesListView, "paginate_by", 3)
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         # Create 4 images.
         boot_images = [
             factory.make_boot_image(nodegroup=nodegroup)
@@ -81,7 +81,7 @@ class BootImageListTest(MAASServerTestCase):
         for bi in boot_images:
             make_osystem(self, bi.osystem, ['install'])
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('cluster-bootimages-list', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code)

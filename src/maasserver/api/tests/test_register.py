@@ -59,7 +59,7 @@ class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
     def test_update_from_request(self):
         request = self.make_request(
             "example.com", script="/script", path="/script/path")
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
 
         update_nodegroup_maas_url(nodegroup, request)
 
@@ -68,7 +68,7 @@ class TestUpdateNodeGroupMAASURL(MAASServerTestCase):
     def test_update_from_request_discarded_if_localhost(self):
         request = self.make_request("localhost")
         maas_url = factory.make_name('maas_url')
-        nodegroup = factory.make_node_group(maas_url=maas_url)
+        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
 
         update_nodegroup_maas_url(nodegroup, request)
 
@@ -172,7 +172,7 @@ class TestRegisterNodegroup(MAASServerTestCase):
         self.assertNotEqual(NodeGroup.objects.ensure_master().id, nodegroup.id)
 
     def test_rejects_duplicate_uuid(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         request = make_register_request(nodegroup.uuid)
 
         self.assertRaises(
@@ -183,14 +183,14 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
     """Tests for `compose_nodegroup_register_response`."""
 
     def test_returns_credentials_if_accepted(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         existed = factory.pick_bool()
         self.assertEqual(
             get_celery_credentials(),
             compose_nodegroup_register_response(nodegroup, existed))
 
     def test_credentials_contain_broker_url(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         broker_url = patch_broker_url(self)
         existed = factory.pick_bool()
 
@@ -199,14 +199,14 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
         self.assertEqual({'BROKER_URL': broker_url}, response)
 
     def test_returns_forbidden_if_rejected(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
         already_existed = factory.pick_bool()
 
         with ExpectedException(PermissionDenied, "Rejected cluster."):
             compose_nodegroup_register_response(nodegroup, already_existed)
 
     def test_returns_accepted_for_new_pending_nodegroup(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         response = compose_nodegroup_register_response(
             nodegroup, already_existed=False)
         self.assertEqual(
@@ -215,7 +215,7 @@ class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_returns_accepted_for_existing_pending_nodegroup(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         response = compose_nodegroup_register_response(
             nodegroup, already_existed=True)
         self.assertEqual(
@@ -350,7 +350,7 @@ class TestRegisterAPI(MAASServerTestCase):
 
     def test_register_nodegroup_twice_does_not_update_nodegroup(self):
         create_configured_master()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.status = NODEGROUP_STATUS.PENDING
         nodegroup.save()
         name = factory.make_name('cluster')
@@ -407,7 +407,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # When registering an existing, accepted, cluster, the MAAS URL we give
         # it in the future is updated to the one on which the call was made.
         create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         update_maas_url = self.patch(
             nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -421,7 +421,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # it in the future is *not* updated to the one on which the call was
         # made.
         create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         update_maas_url = self.patch(
             nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(
@@ -435,7 +435,7 @@ class TestRegisterAPI(MAASServerTestCase):
         # it in the future is *not* updated to the one on which the call was
         # made.
         create_configured_master()
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
         update_maas_url = self.patch(
             nodegroups_module, "update_nodegroup_maas_url")
         response = self.client.post(

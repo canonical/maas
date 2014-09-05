@@ -63,7 +63,7 @@ class TestGetBootImages(MAASServerTestCase):
         self.useFixture(set_tftp_root(self.tftproot))
 
     def test_returns_boot_images(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         self.useFixture(RunningClusterRPCFixture())
 
         purposes = ['install', 'commissioning', 'xinstall']
@@ -104,7 +104,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
             ]
 
     def test_returns_boot_images_matching_subarchitecture(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()
@@ -119,7 +119,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
                 param['release']))
 
     def test_returns_boot_images_matching_subarches_in_boot_resources(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         self.useFixture(RunningClusterRPCFixture())
         params = self.make_boot_images()
         param = params.pop()

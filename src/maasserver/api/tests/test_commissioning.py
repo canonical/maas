@@ -47,7 +47,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
 
     def test_check_with_no_action(self):
         self.client_log_in()
-        node = factory.make_node(status=NODE_STATUS.READY)
+        node = factory.make_Node(status=NODE_STATUS.READY)
         self.age_node(node, settings.COMMISSIONING_TIMEOUT + 100)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
@@ -59,7 +59,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
 
     def test_check_with_commissioning_but_not_expired_node(self):
         self.client_log_in()
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         self.age_node(node, settings.COMMISSIONING_TIMEOUT - 1)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'check_commissioning'})
@@ -70,7 +70,7 @@ class TestCommissioningTimeout(MAASServerTestCase):
 
     def test_check_with_commissioning_and_expired_node(self):
         self.client_log_in()
-        node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         self.age_node(node, settings.COMMISSIONING_TIMEOUT + 1)
 
         response = self.client.post(
@@ -93,10 +93,10 @@ class TestCommissioningTimeout(MAASServerTestCase):
         # Set time zone, for the duration of the ongoing transaction.
         cursor.execute("SET LOCAL TIME ZONE +13")
         self.client_log_in()
-        late_node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        late_node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         self.age_node(
             late_node, settings.COMMISSIONING_TIMEOUT + 1, cursor=cursor)
-        timely_node = factory.make_node(status=NODE_STATUS.COMMISSIONING)
+        timely_node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         self.age_node(
             timely_node, settings.COMMISSIONING_TIMEOUT - 1, cursor=cursor)
 
@@ -321,7 +321,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             [result.get('data') for result in parsed_results])
 
     def test_list_displays_only_visible_nodes(self):
-        node = factory.make_node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_user())
         factory.make_NodeResult_for_commissioning(node)
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})

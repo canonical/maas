@@ -261,7 +261,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
 
     @transactional
     def make_node_group(self, uuid):
-        return factory.make_node_group(uuid=uuid)
+        return factory.make_NodeGroup(uuid=uuid)
 
     @transactional
     def make_node_group_interface(self, nodegroup):
@@ -343,7 +343,7 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
 
     @transactional
     def make_boot_source_selection(self, keyring):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         boot_source = factory.make_boot_source(keyring_data=keyring)
         factory.make_BootSourceSelection(boot_source)
         return nodegroup.uuid, boot_source.to_dict()
@@ -383,7 +383,7 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
 
     @transactional
     def make_boot_source_selection(self, keyring):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         boot_source = factory.make_boot_source(keyring_data=keyring)
         factory.make_BootSourceSelection(boot_source)
         return nodegroup.uuid, boot_source.to_dict()
@@ -506,7 +506,7 @@ class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
 
     @transactional
     def create_deploying_node(self):
-        node = factory.make_node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         return node.system_id
 
     @transactional
@@ -559,12 +559,12 @@ class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
 
     @transactional
     def create_nodegroup(self, **kwargs):
-        nodegroup = factory.make_node_group(**kwargs)
+        nodegroup = factory.make_NodeGroup(**kwargs)
         return nodegroup
 
     @transactional
     def create_node(self, nodegroup, **kwargs):
-        node = factory.make_node(nodegroup=nodegroup, **kwargs)
+        node = factory.make_Node(nodegroup=nodegroup, **kwargs)
         return node
 
     @transactional
@@ -619,7 +619,7 @@ class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
 
     @transactional
     def create_node(self, power_state):
-        node = factory.make_node(power_state=power_state)
+        node = factory.make_Node(power_state=power_state)
         return node
 
     @transactional
@@ -720,7 +720,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
 
     @transactional
     def create_node(self):
-        return factory.make_node().system_id
+        return factory.make_Node().system_id
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1584,7 +1584,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
 
     @transactional
     def create_cluster_interface(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         return factory.make_NodeGroupInterface(cluster)
 
     @wait_for_reactor
@@ -1639,7 +1639,7 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
 
     @transactional
     def create_cluster_and_interfaces(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         for i in range(3):
             factory.make_NodeGroupInterface(cluster)
         interfaces = [
@@ -1676,7 +1676,7 @@ class TestRegionProtocol_CreateNode(MAASTestCase):
 
     @transactional
     def create_node(self):
-        return factory.make_node()
+        return factory.make_Node()
 
     @wait_for_reactor
     @inlineCallbacks

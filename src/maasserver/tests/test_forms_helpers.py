@@ -48,7 +48,7 @@ class TestHelpers(MAASServerTestCase):
         Nothing is returned.
         """
         if nodegroup is None:
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
         if osystem is None:
             osystem = factory.make_name('os')
         if arch is None:
@@ -64,15 +64,15 @@ class TestHelpers(MAASServerTestCase):
                 purpose=purpose)
 
     def test_initialize_node_group_leaves_nodegroup_reference_intact(self):
-        preselected_nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=preselected_nodegroup)
+        preselected_nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=preselected_nodegroup)
         initialize_node_group(node)
         self.assertEqual(preselected_nodegroup, node.nodegroup)
 
     def test_initialize_node_group_initializes_nodegroup_to_form_value(self):
         node = Node(
             NODE_STATUS.NEW, architecture=make_usable_architecture(self))
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         initialize_node_group(node, nodegroup)
         self.assertEqual(nodegroup, node.nodegroup)
 

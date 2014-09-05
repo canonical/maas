@@ -46,7 +46,7 @@ class PreseedRPCMixin:
         self.useFixture(self.rpc_fixture)
         # Create a cluster that's connected by RPC that responds to the
         # GetPreseedData call with a simple NotImplementedError.
-        self.rpc_nodegroup = factory.make_node_group()
+        self.rpc_nodegroup = factory.make_NodeGroup()
         self.rpc_cluster = self.rpc_fixture.makeCluster(
             self.rpc_nodegroup, GetPreseedData)
         self.rpc_cluster.GetPreseedData.side_effect = (

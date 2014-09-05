@@ -307,7 +307,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         }
 
     def test_changes_name(self):
-        nodegroup = factory.make_node_group(name=factory.make_name('old-name'))
+        nodegroup = factory.make_NodeGroup(name=factory.make_name('old-name'))
         new_name = factory.make_name('new-name')
         data = self.make_form_data(nodegroup)
         data['name'] = new_name

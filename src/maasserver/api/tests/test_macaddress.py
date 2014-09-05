@@ -38,7 +38,7 @@ class MACAddressAPITest(APITestCase):
             reverse('node_mac_handler', args=['node-id', 'mac']))
 
     def createNodeWithMacs(self, owner=None):
-        node = factory.make_node(owner=owner)
+        node = factory.make_Node(owner=owner)
         mac1 = node.add_mac_address('aa:bb:cc:dd:ee:ff')
         mac2 = node.add_mac_address('22:bb:cc:dd:aa:ff')
         return node, mac1, mac2
@@ -66,7 +66,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_GET_node_not_found(self):
         # When fetching a MAC address, the api returns a 'Not Found' (404)
         # error if the MAC address does not exist.
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.get(
             reverse(
                 'node_mac_handler',
@@ -77,7 +77,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_GET_node_bad_request(self):
         # When fetching a MAC address, the api returns a 'Bad Request' (400)
         # error if the MAC address is not valid.
-        node = factory.make_node()
+        node = factory.make_Node()
         url = reverse('node_mac_handler', args=[node.system_id, 'invalid-mac'])
         response = self.client.get(url)
 
@@ -85,7 +85,7 @@ class MACAddressAPITest(APITestCase):
 
     def test_macs_POST_add_mac(self):
         # The api allows to add a MAC address to an existing node.
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         nb_macs = MACAddress.objects.filter(node=node).count()
         response = self.client.post(
             reverse('node_macs_handler', args=[node.system_id]),
@@ -101,7 +101,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_POST_add_mac_without_edit_perm(self):
         # Adding a MAC address to a node requires the NODE_PERMISSION.EDIT
         # permission.
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.post(
             reverse('node_macs_handler', args=[node.system_id]),
             {'mac_address': '01:BB:CC:DD:EE:FF'})
@@ -139,7 +139,7 @@ class MACAddressAPITest(APITestCase):
 
     def test_macs_DELETE_disconnects_from_network(self):
         network = factory.make_Network()
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         mac = factory.make_MACAddress(node=node, networks=[network])
         response = self.client.delete(
             reverse(
@@ -151,7 +151,7 @@ class MACAddressAPITest(APITestCase):
         # When deleting a MAC address, the api returns a 'Forbidden' (403)
         # error if the node is not visible to the logged-in user.
         node, mac1, _ = self.createNodeWithMacs()
-        factory.make_node(
+        factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
         response = self.client.delete(
             reverse(
@@ -163,7 +163,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_not_found(self):
         # When deleting a MAC address, the api returns a 'Not Found' (404)
         # error if no existing MAC address is found.
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         response = self.client.delete(
             reverse(
                 'node_mac_handler',
@@ -175,7 +175,7 @@ class MACAddressAPITest(APITestCase):
         # When deleting a MAC address, the api returns a 'Forbidden'
         # (403) error if the user does not have the 'edit' permission on the
         # node.
-        node = factory.make_node(owner=self.logged_in_user)
+        node = factory.make_Node(owner=self.logged_in_user)
         response = self.client.delete(
             reverse(
                 'node_mac_handler',
@@ -186,7 +186,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_bad_request(self):
         # When deleting a MAC address, the api returns a 'Bad Request' (400)
         # error if the provided MAC address is not valid.
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.delete(
             reverse(
                 'node_mac_handler',

@@ -43,7 +43,7 @@ class TestWriteDNSConfigCommand(MAASServerTestCase):
         # Prevent rndc task dispatch.
         self.patch(tasks, "rndc_command")
         domain = factory.make_string()
-        factory.make_node_group(
+        factory.make_NodeGroup(
             name=domain,
             network=IPNetwork('192.168.0.1/24'),
             status=NODEGROUP_STATUS.ACCEPTED,

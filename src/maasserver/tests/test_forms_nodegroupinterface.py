@@ -59,7 +59,7 @@ def make_ngi_instance(nodegroup=None):
     to tell it which cluster that is.
     """
     if nodegroup is None:
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
     return NodeGroupInterface(nodegroup=nodegroup)
 
 
@@ -128,7 +128,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertNotEqual(interface1.name, interface2.name)
 
     def test__disambiguates_default_name(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         existing_interface = factory.make_NodeGroupInterface(cluster)
         int_settings = factory.get_interface_fields()
         del int_settings['name']
@@ -140,7 +140,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertNotEqual(int_settings['interface'], interface.name)
 
     def test__disambiguates_IPv4_interface_with_ipv4_suffix(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         existing_interface = factory.make_NodeGroupInterface(
             cluster, network=factory.getRandomNetwork())
         int_settings = factory.get_interface_fields()
@@ -152,7 +152,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual('%s-ipv4' % int_settings['interface'], interface.name)
 
     def test__disambiguates_IPv6_interface_with_ipv6_suffix(self):
-        cluster = factory.make_node_group()
+        cluster = factory.make_NodeGroup()
         existing_interface = factory.make_NodeGroupInterface(cluster)
         int_settings = factory.get_interface_fields(
             network=factory.make_ipv6_network(slash=64))
@@ -198,7 +198,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             network=network)
@@ -247,7 +247,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # Don't allow DNS management to be enabled when it would
         # cause more than one node on the nodegroup to have the
         # same FQDN.
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         base_hostname = factory.make_hostname("host")
@@ -255,7 +255,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             "%s.%s" % (base_hostname, factory.make_hostname("domain"))
             for _ in range(0, 2)]
         for hostname in full_hostnames:
-            factory.make_node(hostname=hostname, nodegroup=nodegroup)
+            factory.make_Node(hostname=hostname, nodegroup=nodegroup)
         [interface] = nodegroup.get_managed_interfaces()
         data = {"management": NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS}
         form = NodeGroupInterfaceForm(data=data, instance=interface)
@@ -269,20 +269,20 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         # as a node in another nodegroup.
 
         conflicting_domain = factory.make_hostname("conflicting-domain")
-        nodegroup_a = factory.make_node_group(
+        nodegroup_a = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             name=conflicting_domain)
         conflicting_hostname = factory.make_hostname("conflicting-hostname")
-        factory.make_node(
+        factory.make_Node(
             hostname="%s.%s" % (conflicting_hostname, conflicting_domain),
             nodegroup=nodegroup_a)
 
-        nodegroup_b = factory.make_node_group(
+        nodegroup_b = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             name=conflicting_domain)
-        factory.make_node(
+        factory.make_Node(
             hostname="%s.%s" % (
                 conflicting_hostname, factory.make_hostname("other-domain")),
             nodegroup=nodegroup_b)

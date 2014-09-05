@@ -23,14 +23,14 @@ class TestNodeKeyManager(DjangoTestCase):
     """Test NodeKeyManager."""
 
     def test_get_token_for_node_registers_node_key(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         nodekey = NodeKey.objects.get(node=node, key=token.key)
         self.assertNotEqual(None, nodekey)
         self.assertEqual(token, nodekey.token)
 
     def test_get_node_for_key_finds_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(node, NodeKey.objects.get_node_for_key(token.key))
 
@@ -40,25 +40,25 @@ class TestNodeKeyManager(DjangoTestCase):
             NodeKey.DoesNotExist, NodeKey.objects.get_node_for_key, non_key)
 
     def test_get_token_for_node_creates_token(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(node, NodeKey.objects.get_node_for_key(token.key))
 
     def test_get_token_for_node_returns_existing_token(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         original_token = NodeKey.objects.get_token_for_node(node)
         repeated_token = NodeKey.objects.get_token_for_node(node)
         self.assertEqual(original_token, repeated_token)
 
     def test_get_token_for_node_inverts_get_node_for_key(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         self.assertEqual(
             node,
             NodeKey.objects.get_node_for_key(
                 NodeKey.objects.get_token_for_node(node).key))
 
     def test_get_node_for_key_inverts_get_token_for_node(self):
-        key = NodeKey.objects.get_token_for_node(factory.make_node()).key
+        key = NodeKey.objects.get_token_for_node(factory.make_Node()).key
         self.assertEqual(
             key,
             NodeKey.objects.get_token_for_node(

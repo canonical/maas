@@ -40,8 +40,8 @@ class TestZone(MAASServerTestCase):
     """Tests for :class:`Zone`."""
 
     def test_init(self):
-        node1 = factory.make_node()
-        node2 = factory.make_node()
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
         name = factory.make_name('name')
         description = factory.make_name('description')
 
@@ -67,7 +67,7 @@ class TestZone(MAASServerTestCase):
 
     def test_delete_severs_link_to_nodes(self):
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_Node(zone=zone)
         zone.delete()
         self.assertIsNone(reload_object(zone))
         node = reload_object(node)

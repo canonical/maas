@@ -44,7 +44,7 @@ class TagViewsTest(MAASServerTestCase):
     def test_view_tag_includes_node_links(self):
         self.client_log_in()
         tag = factory.make_tag()
-        node = factory.make_node()
+        node = factory.make_Node()
         node.tags.add(tag)
         mac = factory.make_MACAddress(node=node).mac_address
         tag_link = reverse('tag-view', args=[tag.name])
@@ -61,8 +61,8 @@ class TagViewsTest(MAASServerTestCase):
         self.client_log_in()
         tag = factory.make_tag()
         tag_link = reverse('tag-view', args=[tag.name])
-        nodegroup = factory.make_node_group()
-        nodes = [factory.make_node(nodegroup=nodegroup, mac=True)
+        nodegroup = factory.make_NodeGroup()
+        nodes = [factory.make_Node(nodegroup=nodegroup, mac=True)
                  for i in range(20)]
         for node in nodes[:10]:
             node.tags.add(tag)
@@ -86,8 +86,8 @@ class TagViewsTest(MAASServerTestCase):
     def test_view_tag_hides_private_nodes(self):
         self.client_log_in()
         tag = factory.make_tag()
-        node = factory.make_node()
-        node2 = factory.make_node(owner=factory.make_user())
+        node = factory.make_Node()
+        node2 = factory.make_Node(owner=factory.make_user())
         node.tags.add(tag)
         node2.tags.add(tag)
         tag_link = reverse('tag-view', args=[tag.name])
@@ -100,7 +100,7 @@ class TagViewsTest(MAASServerTestCase):
     def test_view_tag_shows_kernel_params(self):
         self.client_log_in()
         tag = factory.make_tag(kernel_opts='--test tag params')
-        node = factory.make_node()
+        node = factory.make_Node()
         node.tags = [tag]
         tag_link = reverse('tag-view', args=[tag.name])
         response = self.client.get(tag_link)
@@ -120,7 +120,7 @@ class TagViewsTest(MAASServerTestCase):
         self.patch(tags_views.TagView, 'paginate_by', page_size)
         tag = factory.make_tag()
         nodes = [
-            factory.make_node(created="2012-10-12 12:00:%02d" % i)
+            factory.make_Node(created="2012-10-12 12:00:%02d" % i)
             for i in range(page_size * 2 + 1)
         ]
         for node in nodes:

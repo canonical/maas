@@ -41,7 +41,7 @@ class TestDHCPLease(MAASServerTestCase):
     """Tests for :class:`DHCPLease`."""
 
     def test_init(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         ip = factory.getRandomIPAddress()
         mac = factory.getRandomMACAddress()
 
@@ -65,18 +65,18 @@ class TestDHCPLeaseManager(MAASServerTestCase):
     """Tests for :class:`DHCPLeaseManager`."""
 
     def test_update_leases_accepts_empty_leases(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         DHCPLease.objects.update_leases(nodegroup, {})
         self.assertItemsEqual([], get_leases(nodegroup))
 
     def test_update_leases_creates_new_lease(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         lease = factory.make_random_leases()
         DHCPLease.objects.update_leases(nodegroup, lease)
         self.assertEqual(lease, map_leases(nodegroup))
 
     def test_update_leases_returns_new_leases(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         obsolete_lease = factory.make_dhcp_lease(nodegroup=nodegroup)
         ignore_unused(obsolete_lease)
         remaining_lease = factory.make_dhcp_lease(nodegroup=nodegroup)
@@ -92,13 +92,13 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             DHCPLease.objects.update_leases(nodegroup, surviving_leases))
 
     def test_update_leases_deletes_obsolete_lease(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         factory.make_dhcp_lease(nodegroup=nodegroup)
         DHCPLease.objects.update_leases(nodegroup, {})
         self.assertItemsEqual([], get_leases(nodegroup))
 
     def test_update_leases_replaces_reassigned_ip(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         ip = factory.getRandomIPAddress()
         factory.make_dhcp_lease(nodegroup=nodegroup, ip=ip)
         new_mac = factory.getRandomMACAddress()
@@ -113,7 +113,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertItemsEqual([original_lease], get_leases(nodegroup))
 
     def test_update_leases_adds_new_ip_to_mac(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         mac = factory.getRandomMACAddress()
         ip1 = factory.getRandomIPAddress()
         ip2 = factory.getRandomIPAddress()
@@ -122,7 +122,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({ip1: mac, ip2: mac}, map_leases(nodegroup))
 
     def test_update_leases_deletes_only_obsolete_ips(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         mac = factory.getRandomMACAddress()
         obsolete_ip = factory.getRandomIPAddress()
         current_ip = factory.getRandomIPAddress()
@@ -132,15 +132,15 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({current_ip: mac}, map_leases(nodegroup))
 
     def test_update_leases_leaves_other_nodegroups_alone(self):
-        innocent_nodegroup = factory.make_node_group()
+        innocent_nodegroup = factory.make_NodeGroup()
         innocent_lease = factory.make_dhcp_lease(nodegroup=innocent_nodegroup)
         DHCPLease.objects.update_leases(
-            factory.make_node_group(), factory.make_random_leases())
+            factory.make_NodeGroup(), factory.make_random_leases())
         self.assertItemsEqual(
             [innocent_lease], get_leases(innocent_nodegroup))
 
     def test_update_leases_combines_additions_deletions_and_replacements(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         mac1 = factory.getRandomMACAddress()
         mac2 = factory.getRandomMACAddress()
         obsolete_lease = factory.make_dhcp_lease(
@@ -167,17 +167,17 @@ class TestDHCPLeaseManager(MAASServerTestCase):
 
     def test_update_leases_does_not_update_dns_zone_if_nothing_added(self):
         self.patch(dns, 'change_dns_zones')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         DHCPLease.objects.update_leases(nodegroup, {})
         self.assertFalse(dns.change_dns_zones.called)
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         expected_mapping = {}
         for i in range(3):
             status = random.choice(
                 [NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
-            node = factory.make_node(
+            node = factory.make_Node(
                 nodegroup=nodegroup, status=status)
             mac = factory.make_MACAddress(node=node)
             factory.make_MACAddress(node=node)
@@ -188,13 +188,13 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual(expected_mapping, mapping)
 
     def test_get_hostname_ip_mapping_ignores_non_deployed_nodes(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         # Create non-allocated nodes with leases.
         for i in range(10):
             status = factory.pick_choice(
                 NODE_STATUS_CHOICES,
                 but_not=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
-            node = factory.make_node(
+            node = factory.make_Node(
                 nodegroup=nodegroup, status=status)
             mac = factory.make_MACAddress(node=node)
             factory.make_dhcp_lease(
@@ -203,10 +203,10 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({}, mapping)
 
     def test_get_hostname_ip_mapping_strips_out_domain(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         hostname = factory.make_name('hostname')
         domain = factory.make_name('domain')
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=nodegroup,
             status=NODE_STATUS.DEPLOYED,
             hostname='%s.%s' % (hostname, domain))
@@ -217,7 +217,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({hostname: [lease.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_picks_mac_with_lease(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             hostname=factory.make_name('host'))
         factory.make_MACAddress(node=node)
@@ -229,7 +229,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({node.hostname: [lease.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_picks_oldest_mac_with_lease(self):
-        node = factory.make_node(
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             hostname=factory.make_name('host'))
         older_mac = factory.make_MACAddress(node=node)
@@ -244,14 +244,14 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         self.assertEqual({node.hostname: [lease_for_older_mac.ip]}, mapping)
 
     def test_get_hostname_ip_mapping_considers_given_nodegroup(self):
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(
             status=NODE_STATUS.DEPLOYED,
             nodegroup=nodegroup)
         mac = factory.make_MACAddress(node=node)
         factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)
-        another_nodegroup = factory.make_node_group()
+        another_nodegroup = factory.make_NodeGroup()
         mapping = DHCPLease.objects.get_hostname_ip_mapping(
             another_nodegroup)
         self.assertEqual({}, mapping)

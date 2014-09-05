@@ -124,13 +124,13 @@ class TestNodeGroupManager(MAASServerTestCase):
         self.assertEqual(NODEGROUP_STATUS.ACCEPTED, master.status)
 
     def test_get_by_natural_key_looks_up_by_uuid(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(
             nodegroup,
             NodeGroup.objects.get_by_natural_key(nodegroup.uuid))
 
     def test_get_by_natural_key_will_not_return_other_nodegroup(self):
-        factory.make_node_group()
+        factory.make_NodeGroup()
         self.assertRaises(
             NodeGroup.DoesNotExist,
             NodeGroup.objects.get_by_natural_key,
@@ -138,8 +138,8 @@ class TestNodeGroupManager(MAASServerTestCase):
 
     def test__mass_change_status_changes_statuses(self):
         old_status = factory.pick_enum(NODEGROUP_STATUS)
-        nodegroup1 = factory.make_node_group(status=old_status)
-        nodegroup2 = factory.make_node_group(status=old_status)
+        nodegroup1 = factory.make_NodeGroup(status=old_status)
+        nodegroup2 = factory.make_NodeGroup(status=old_status)
         new_status = factory.pick_enum(NODEGROUP_STATUS, but_not=[old_status])
         changed = NodeGroup.objects._mass_change_status(old_status, new_status)
         self.assertEqual(
@@ -156,7 +156,7 @@ class TestNodeGroupManager(MAASServerTestCase):
 
     def test__mass_change_status_calls_post_save_signal(self):
         old_status = factory.pick_enum(NODEGROUP_STATUS)
-        nodegroup = factory.make_node_group(status=old_status)
+        nodegroup = factory.make_NodeGroup(status=old_status)
         recorder = Mock()
 
         def post_save_NodeGroup(sender, instance, created, **kwargs):
@@ -173,7 +173,7 @@ class TestNodeGroupManager(MAASServerTestCase):
             [call(nodegroup)], recorder.call_args_list)
 
     def test_reject_all_pending_rejects_nodegroups(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         changed = NodeGroup.objects.reject_all_pending()
         self.assertEqual(
             (NODEGROUP_STATUS.REJECTED, 1),
@@ -182,14 +182,14 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_reject_all_pending_does_not_change_others(self):
         unaffected_status = factory.pick_enum(
             NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
-        nodegroup = factory.make_node_group(status=unaffected_status)
+        nodegroup = factory.make_NodeGroup(status=unaffected_status)
         changed_count = NodeGroup.objects.reject_all_pending()
         self.assertEqual(
             (unaffected_status, 0),
             (reload_object(nodegroup).status, changed_count))
 
     def test_accept_all_pending_accepts_nodegroups(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         changed = NodeGroup.objects.accept_all_pending()
         self.assertEqual(
             (NODEGROUP_STATUS.ACCEPTED, 1),
@@ -198,7 +198,7 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_accept_all_pending_does_not_change_others(self):
         unaffected_status = factory.pick_enum(
             NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.PENDING])
-        nodegroup = factory.make_node_group(status=unaffected_status)
+        nodegroup = factory.make_NodeGroup(status=unaffected_status)
         changed_count = NodeGroup.objects.accept_all_pending()
         self.assertEqual(
             (unaffected_status, 0),
@@ -207,11 +207,11 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_import_boot_images_on_accepted_clusters_calls_getClientFor(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
-            factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
         ]
-        factory.make_node_group(status=NODEGROUP_STATUS.REJECTED)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING)
         NodeGroup.objects.import_boot_images_on_accepted_clusters()
         expected_uuids = [
             nodegroup.uuid
@@ -225,7 +225,7 @@ class TestNodeGroupManager(MAASServerTestCase):
 
     def test_refresh_workers_refreshes_accepted_cluster_controllers(self):
         self.patch(nodegroup_module, 'refresh_worker')
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         NodeGroup.objects.refresh_workers()
         nodegroup_module.refresh_worker.assert_called_once_with(nodegroup)
 
@@ -233,7 +233,7 @@ class TestNodeGroupManager(MAASServerTestCase):
         self.patch(nodegroup_module, 'refresh_worker')
         for status in map_enum(NODEGROUP_STATUS).values():
             if status != NODEGROUP_STATUS.ACCEPTED:
-                factory.make_node_group(status=status)
+                factory.make_NodeGroup(status=status)
         NodeGroup.objects.refresh_workers()
         self.assertEqual(0, nodegroup_module.refresh_worker.call_count)
 
@@ -245,25 +245,25 @@ class TestNodeGroup(MAASServerTestCase):
         )
 
     def test_delete_cluster_with_nodes(self):
-        nodegroup = factory.make_node_group()
-        factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        factory.make_Node(nodegroup=nodegroup)
         nodegroup.delete()
         self.assertEqual(nodegroup.uuid, nodegroup.work_queue)
         self.assertFalse(NodeGroup.objects.filter(id=nodegroup.id).exists())
 
     def test_work_queue_returns_uuid(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertEqual(nodegroup.uuid, nodegroup.work_queue)
 
     def test_manages_dns_returns_True_if_managing_DNS(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.assertTrue(nodegroup.manages_dns())
 
     def test_manages_dns_returns_False_if_not_accepted(self):
         nodegroups = [
-            factory.make_node_group(
+            factory.make_NodeGroup(
                 status=status,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
             for status in map_enum(NODEGROUP_STATUS).values()
@@ -281,7 +281,7 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_manages_dns_returns_False_if_no_interface_manages_DNS(self):
         nodegroups = {
-            management: factory.make_node_group(
+            management: factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             }
@@ -297,60 +297,60 @@ class TestNodeGroup(MAASServerTestCase):
             })
 
     def test_manages_dns_returns_False_if_nodegroup_has_no_interfaces(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertFalse(nodegroup.manages_dns())
 
     def test_get_managed_interfaces_returns_list(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         self.assertIsInstance(nodegroup.get_managed_interfaces(), list)
 
     def test_get_managed_interfaces_returns_dhcp_managed_interfaces(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
             set(nodegroup.nodegroupinterface_set.all()),
             set(nodegroup.get_managed_interfaces()))
 
     def test_get_managed_interfaces_returns_dns_managed_interfaces(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         self.assertEqual(
             set(nodegroup.nodegroupinterface_set.all()),
             set(nodegroup.get_managed_interfaces()))
 
     def test_get_managed_interfaces_ignores_unmanaged_interfaces(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         self.assertEqual([], nodegroup.get_managed_interfaces())
 
     def test_get_managed_interfaces_returns_empty_list_if_none_managed(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         managed_interfaces = nodegroup.get_managed_interfaces()
         self.assertIsInstance(managed_interfaces, list)
         self.assertEqual([], managed_interfaces)
 
     def test_get_managed_interface_returns_empty_list_if_no_interface(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertEqual([], nodegroup.get_managed_interfaces())
 
     def test_accept_node_changes_status(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.accept()
         self.assertEqual(nodegroup.status, NODEGROUP_STATUS.ACCEPTED)
 
     def test_reject_node_changes_status(self):
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=factory.pick_enum(NODEGROUP_STATUS))
         nodegroup.reject()
         self.assertEqual(nodegroup.status, NODEGROUP_STATUS.REJECTED)
 
     def test_ensure_dhcp_key_creates_key(self):
-        nodegroup = factory.make_node_group(dhcp_key='')
+        nodegroup = factory.make_NodeGroup(dhcp_key='')
         nodegroup.ensure_dhcp_key()
         # Check that the dhcp_key is not empty and looks
         # valid.
@@ -361,20 +361,20 @@ class TestNodeGroup(MAASServerTestCase):
 
     def test_ensure_dhcp_key_preserves_existing_key(self):
         key = factory.make_name('dhcp-key')
-        nodegroup = factory.make_node_group(dhcp_key=key)
+        nodegroup = factory.make_NodeGroup(dhcp_key=key)
         nodegroup.ensure_dhcp_key()
         self.assertEqual(key, nodegroup.dhcp_key)
 
     def test_ensure_dhcp_key_creates_different_keys(self):
-        nodegroup1 = factory.make_node_group(dhcp_key='')
-        nodegroup2 = factory.make_node_group(dhcp_key='')
+        nodegroup1 = factory.make_NodeGroup(dhcp_key='')
+        nodegroup2 = factory.make_NodeGroup(dhcp_key='')
         nodegroup1.ensure_dhcp_key()
         nodegroup2.ensure_dhcp_key()
         self.assertNotEqual(nodegroup1.dhcp_key, nodegroup2.dhcp_key)
 
     def test_import_boot_images_calls_getClientFor_with_uuid(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.import_boot_images()
         self.assertThat(
             mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=1))
@@ -384,7 +384,7 @@ class TestNodeGroup(MAASServerTestCase):
         fake_client = Mock()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         mock_getClientFor.return_value = fake_client
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.import_boot_images()
         self.assertThat(
             fake_client,
@@ -395,12 +395,12 @@ class TestNodeGroup(MAASServerTestCase):
         mock_getClientFor.side_effect = NoConnectionsAvailable()
         mock_get_simplestreams_endpoint = self.patch(
             nodegroup_module, 'get_simplestream_endpoint')
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         nodegroup.import_boot_images()
         self.assertThat(mock_get_simplestreams_endpoint, MockNotCalled())
 
     def test_import_boot_images_end_to_end(self):
-        nodegroup = factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
         self.useFixture(RunningEventLoopFixture())

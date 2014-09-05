@@ -89,7 +89,7 @@ class TestStoreNodeParameters(MAASServerTestCase):
 
     def setUp(self):
         super(TestStoreNodeParameters, self).setUp()
-        self.node = factory.make_node()
+        self.node = factory.make_Node()
         self.save = self.patch(self.node, "save")
         self.request = Mock()
 
@@ -485,7 +485,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
     def test_list_lists_interfaces(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
@@ -516,7 +516,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
     def test_new_creates_interface(self):
         self.become_admin()
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         interface_settings = factory.get_interface_fields()
@@ -539,7 +539,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
     def test_new_validates_data(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.post(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'new', 'ip': 'invalid ip'})
@@ -654,7 +654,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
 
     def test_read_interface(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(nodegroup)
         response = self.client.get(
             reverse(
@@ -667,7 +667,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
 
     def test_update_interface(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(nodegroup)
         new_ip_range_high = unicode(
             IPAddress(interface.ip_range_high) - 1)
@@ -682,7 +682,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
 
     def test_delete_interface(self):
         self.become_admin()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(nodegroup)
         response = self.client.delete(
             reverse(

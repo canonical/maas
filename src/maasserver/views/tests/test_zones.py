@@ -218,7 +218,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
     def test_zone_detail_displays_node_count(self):
         self.client_log_in()
         zone = factory.make_zone()
-        node = factory.make_node()
+        node = factory.make_Node()
         node.zone = zone
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         document = fromstring(response.content)
@@ -229,7 +229,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
     def test_zone_detail_links_to_node_list(self):
         self.client_log_in()
         zone = factory.make_zone()
-        node = factory.make_node()
+        node = factory.make_Node()
         node.zone = zone
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_node_link = (
@@ -363,7 +363,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
     def test_does_not_delete_nodes(self):
         self.client_log_in(as_admin=True)
         zone = factory.make_zone()
-        node = factory.make_node(zone=zone)
+        node = factory.make_Node(zone=zone)
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),
             {'post': 'yes'})

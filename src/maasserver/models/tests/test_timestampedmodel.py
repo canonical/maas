@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """:class:`TimestampedModel` tests."""
@@ -92,6 +92,6 @@ class UtilitiesTransactionalTest(TransactionTestCase):
     def test_now_returns_transaction_time(self):
         date_now = now()
         # Perform a write database operation.
-        factory.make_node()
+        factory.make_Node()
         transaction.commit()
         self.assertLessEqual(date_now, now())

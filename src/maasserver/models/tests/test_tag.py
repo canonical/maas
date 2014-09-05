@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver models."""
@@ -46,7 +46,7 @@ class TagTest(MAASServerTestCase):
         self.assertIsNot(None, tag.created)
 
     def test_add_tag_to_node(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         tag = factory.make_tag()
         tag.save()
         node.tags.add(tag)
@@ -65,18 +65,18 @@ class TagTest(MAASServerTestCase):
             self.assertRaises(ValidationError, factory.make_tag, name=invalid)
 
     def test_applies_tags_to_nodes(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><child /></node>')
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node />')
         tag = factory.make_tag(definition='//node/child')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
 
     def test_removes_old_values(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo /></node>')
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node><bar /></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
@@ -92,9 +92,9 @@ class TagTest(MAASServerTestCase):
         self.assertItemsEqual([], node2.tag_names())
 
     def test_doesnt_touch_other_tags(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo /></node>')
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node><bar /></node>')
         tag1 = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag1.name], node1.tag_names())
@@ -104,7 +104,7 @@ class TagTest(MAASServerTestCase):
         self.assertItemsEqual([tag2.name], node2.tag_names())
 
     def test_rollsback_invalid_xpath(self):
-        node = factory.make_node()
+        node = factory.make_Node()
         inject_lshw_result(node, b'<node><foo /></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node.tag_names())

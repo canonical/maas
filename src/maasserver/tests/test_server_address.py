@@ -57,7 +57,7 @@ class TestGetMAASFacingServerHost(MAASServerTestCase):
     def test_get_maas_facing_server_host_returns_nodegroup_maas_url(self):
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
-        nodegroup = factory.make_node_group(maas_url=maas_url)
+        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
         self.assertEqual(
             hostname, server_address.get_maas_facing_server_host(nodegroup))
 
@@ -125,7 +125,7 @@ class TestGetMAASFacingServerAddress(MAASServerTestCase):
     def test__integrates_with_get_maas_facing_server_host(self):
         ip = factory.getRandomIPAddress()
         maas_url = 'http://%s' % ip
-        nodegroup = factory.make_node_group(maas_url=maas_url)
+        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
         self.assertEqual(
             unicode(ip),
             server_address.get_maas_facing_server_host(nodegroup))

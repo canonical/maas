@@ -106,18 +106,18 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual([], list(get_owned_nodes()))
 
     def test_get_owned_nodes_no_owned_nodes(self):
-        factory.make_node()
+        factory.make_Node()
         self.assertEqual([], list(get_owned_nodes()))
 
     def test_get_owned_nodes_with_owned_nodes(self):
         nodes = {
-            factory.make_node(owner=factory.make_user()),
-            factory.make_node(owner=factory.make_user()),
+            factory.make_Node(owner=factory.make_user()),
+            factory.make_Node(owner=factory.make_user()),
             }
         self.assertSetEqual(nodes, set(get_owned_nodes()))
 
     def test_get_owned_nodes_with_nodes_owned_by_system_users(self):
-        factory.make_node(owner=get_legacy_user()),
+        factory.make_Node(owner=get_legacy_user()),
         self.assertEqual([], list(get_owned_nodes()))
 
     def test_get_owned_nodes_owners_no_users(self):
@@ -129,16 +129,16 @@ class TestFunctions(MAASServerTestCase):
 
     def test_get_owned_nodes_owners_no_owned_nodes(self):
         factory.make_user()
-        factory.make_node(owner=None)
+        factory.make_Node(owner=None)
         self.assertEqual([], list(get_owned_nodes_owners()))
 
     def test_get_owned_nodes_owners(self):
         user1 = factory.make_user()
         user2 = factory.make_user()
         factory.make_user()
-        factory.make_node(owner=user1)
-        factory.make_node(owner=user2)
-        factory.make_node(owner=None)
+        factory.make_Node(owner=user1)
+        factory.make_Node(owner=user2)
+        factory.make_Node(owner=None)
         self.assertSetEqual({user1, user2}, set(get_owned_nodes_owners()))
 
     def test_get_destination_user_one_real_user(self):
@@ -157,7 +157,7 @@ class TestFunctions(MAASServerTestCase):
         user = factory.make_user()
         # Also create another user.
         factory.make_user()
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         make_provider_state_file(node)
         self.assertEqual(user, get_destination_user())
 
@@ -165,7 +165,7 @@ class TestFunctions(MAASServerTestCase):
         user = factory.make_user()
         # Also create another user.
         factory.make_user()
-        node = factory.make_node(owner=user)
+        node = factory.make_Node(owner=user)
         make_provider_state_file(node)
         node.delete()  # Orphan the state.
         self.assertEqual(get_legacy_user(), get_destination_user())
@@ -256,7 +256,7 @@ class TestGiveNodeToUser(MAASServerTestCase):
     def test_give(self):
         user1 = factory.make_user()
         user2 = factory.make_user()
-        node = factory.make_node(owner=user1)
+        node = factory.make_Node(owner=user1)
         give_node_to_user(node, user2)
         self.assertEqual(user2, reload_object(node).owner)
 
@@ -345,18 +345,18 @@ class TestMigrate(MAASServerTestCase):
     def test_migrate_all_nodes_to_new_legacy_user_when_multiple_users(self):
         factory.make_file_storage(owner=None)
         user1 = factory.make_user()
-        node1 = factory.make_node(owner=user1)
+        node1 = factory.make_Node(owner=user1)
         user2 = factory.make_user()
-        node2 = factory.make_node(owner=user2)
+        node2 = factory.make_Node(owner=user2)
         migrate()
         self.assertNotIn(reload_object(node1).owner, {user1, user2, None})
         self.assertNotIn(reload_object(node2).owner, {user1, user2, None})
 
     def test_migrate_all_nodes_to_bootstrap_owner_when_multiple_users(self):
         user1 = factory.make_user()
-        node1 = factory.make_node(owner=user1)
+        node1 = factory.make_Node(owner=user1)
         user2 = factory.make_user()
-        node2 = factory.make_node(owner=user2)
+        node2 = factory.make_Node(owner=user2)
         make_provider_state_file(node1)
         migrate()
         self.assertEqual(
@@ -370,11 +370,11 @@ class TestMigrate(MAASServerTestCase):
         user1 = factory.make_user()
         consumer1, token1 = user1.get_profile().create_authorisation_token()
         key1 = factory.make_sshkey(user1, get_ssh_key_string(1))
-        node1 = factory.make_node(owner=user1)
+        node1 = factory.make_Node(owner=user1)
         user2 = factory.make_user()
         consumer2, token2 = user2.get_profile().create_authorisation_token()
         key2 = factory.make_sshkey(user2, get_ssh_key_string(2))
-        node2 = factory.make_node(owner=user2)
+        node2 = factory.make_Node(owner=user2)
         migrate()
         # The SSH keys have been copied to the legacy user.
         legacy_user = get_legacy_user()

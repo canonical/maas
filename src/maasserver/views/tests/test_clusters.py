@@ -62,7 +62,7 @@ class ClusterListingTest(MAASServerTestCase):
     def test_cluster_listing_contains_links_to_manipulate_clusters(self):
         self.client_log_in(as_admin=True)
         nodegroups = {
-            factory.make_node_group(status=self.status)
+            factory.make_NodeGroup(status=self.status)
             for _ in range(3)
             }
         links = get_content_links(self.client.get(self.get_url()))
@@ -86,7 +86,7 @@ class ClusterListingTest(MAASServerTestCase):
         # the returned entry is a link.
         other_status = factory.pick_choice(
             NODEGROUP_STATUS_CHOICES, but_not=[self.status])
-        factory.make_node_group(status=other_status)
+        factory.make_NodeGroup(status=other_status)
         link_name = ClusterListView.status_links[other_status]
         view = self.make_listing_view(self.status)
         entry = view.make_title_entry(other_status, link_name)
@@ -110,7 +110,7 @@ class ClusterListingTest(MAASServerTestCase):
 
     def test_title_displays_number_of_clusters(self):
         for _ in range(3):
-            factory.make_node_group(status=self.status)
+            factory.make_NodeGroup(status=self.status)
         view = self.make_listing_view(self.status)
         status_name = NODEGROUP_STATUS_CHOICES[self.status][1]
         title = view.make_cluster_listing_title()
@@ -124,7 +124,7 @@ class ClusterListingTest(MAASServerTestCase):
         for status in map_enum(NODEGROUP_STATUS).values():
             if status != self.status:
                 other_statuses.append(status)
-                factory.make_node_group(status=status)
+                factory.make_NodeGroup(status=status)
         for status in other_statuses:
             link_name = ClusterListView.status_links[status]
             title = view.make_cluster_listing_title()
@@ -134,7 +134,7 @@ class ClusterListingTest(MAASServerTestCase):
         self.patch(ClusterListView, "paginate_by", 2)
         self.client_log_in(as_admin=True)
         for _ in range(3):
-            factory.make_node_group(status=self.status)
+            factory.make_NodeGroup(status=self.status)
         response = self.client.get(self.get_url())
         self.assertEqual(httplib.OK, response.status_code)
         doc = fromstring(response.content)
@@ -163,7 +163,7 @@ class ClusterPendingListingTest(MAASServerTestCase):
 
     def test_pending_listing_contains_form_to_accept_all_nodegroups(self):
         self.client_log_in(as_admin=True)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
         response = self.client.get(reverse('cluster-list-pending'))
         doc = fromstring(response.content)
         forms = doc.cssselect('form#accept_all_pending_nodegroups')
@@ -171,7 +171,7 @@ class ClusterPendingListingTest(MAASServerTestCase):
 
     def test_pending_listing_contains_form_to_reject_all_nodegroups(self):
         self.client_log_in(as_admin=True)
-        factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
         response = self.client.get(reverse('cluster-list-pending'))
         doc = fromstring(response.content)
         forms = doc.cssselect('form#reject_all_pending_nodegroups')
@@ -180,8 +180,8 @@ class ClusterPendingListingTest(MAASServerTestCase):
     def test_pending_listing_accepts_all_pending_nodegroups_POST(self):
         self.client_log_in(as_admin=True)
         nodegroups = {
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
         }
         response = self.client.post(
             reverse('cluster-list-pending'), {'mass_accept_submit': 1})
@@ -193,8 +193,8 @@ class ClusterPendingListingTest(MAASServerTestCase):
     def test_pending_listing_rejects_all_pending_nodegroups_POST(self):
         self.client_log_in(as_admin=True)
         nodegroups = {
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
-            factory.make_node_group(status=NODEGROUP_STATUS.PENDING),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.PENDING),
         }
         response = self.client.post(
             reverse('cluster-list-pending'), {'mass_reject_submit': 1})
@@ -209,7 +209,7 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
     def test_accepted_listing_import_boot_images_calls_import_resources(self):
         self.client_log_in(as_admin=True)
         fake_import = self.patch(clusters, 'import_resources')
-        factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
+        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
         response = self.client.post(
             reverse('cluster-list'), {'import_all_boot_images': 1})
         self.assertEqual(httplib.FOUND, response.status_code)
@@ -217,7 +217,7 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
 
     def test_a_warning_is_displayed_if_the_cluster_has_no_boot_images(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED)
         response = self.client.get(reverse('cluster-list'))
         document = fromstring(response.content)
@@ -234,7 +234,7 @@ class ClusterDeleteTest(MAASServerTestCase):
 
     def test_can_delete_cluster(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         delete_link = reverse('cluster-delete', args=[nodegroup.uuid])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(
@@ -248,7 +248,7 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_cluster_page_contains_links_to_edit_and_delete_interfaces(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interfaces = set()
         for _ in range(3):
             interfaces.add(
@@ -273,7 +273,7 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_can_edit_cluster(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
         data = {
             'cluster_name': factory.make_name('cluster_name'),
@@ -288,7 +288,7 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_contains_link_to_add_interface(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         links = get_content_links(
             self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
         self.assertIn(
@@ -296,7 +296,7 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_contains_link_to_boot_image_list(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         boot_images = [
             factory.make_boot_image(nodegroup=nodegroup)
             for _ in range(3)
@@ -317,7 +317,7 @@ class ClusterEditTest(MAASServerTestCase):
         for bi in boot_images:
             make_osystem(self, bi.osystem, ['install'])
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         response = self.client.get(
             reverse('cluster-edit', args=[nodegroup.uuid]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -334,7 +334,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
 
     def test_can_delete_cluster_interface(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
@@ -350,7 +350,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
 
     def test_interface_delete_supports_interface_alias(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, name="eth0:0")
@@ -366,7 +366,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
 
     def test_can_edit_cluster_interface(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup)
@@ -384,7 +384,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
 
     def test_interface_edit_supports_interface_alias(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, name="eth0:0")
@@ -400,7 +400,7 @@ class ClusterInterfaceCreateTest(MAASServerTestCase):
 
     def test_can_create_cluster_interface(self):
         self.client_log_in(as_admin=True)
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         create_link = reverse(
             'cluster-interface-create', args=[nodegroup.uuid])

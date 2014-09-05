@@ -186,18 +186,18 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertItemsEqual(nodes, form.filter_nodes(Node.objects.all()))
 
     def test_no_constraints(self):
-        nodes = [factory.make_node() for i in range(3)]
+        nodes = [factory.make_Node() for i in range(3)]
         form = AcquireNodeForm(data={})
         self.assertTrue(form.is_valid())
         self.assertItemsEqual(nodes, Node.objects.all())
 
     def test_hostname(self):
-        nodes = [factory.make_node() for i in range(3)]
+        nodes = [factory.make_Node() for i in range(3)]
         self.assertConstrainedNodes([nodes[0]], {'name': nodes[0].hostname})
         self.assertConstrainedNodes([], {'name': 'unknown-name'})
 
     def test_hostname_with_domain_part(self):
-        nodes = [factory.make_node() for i in range(3)]
+        nodes = [factory.make_Node() for i in range(3)]
         self.assertConstrainedNodes(
             [nodes[0]],
             {'name': '%s.%s' % (nodes[0].hostname, nodes[0].nodegroup.name)})
@@ -207,7 +207,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             [],
             {'name': '%s.%s' % (nodes[0].hostname, nodes[1].nodegroup.name)})
-        node = factory.make_node(hostname="host21.mydomain")
+        node = factory.make_Node(hostname="host21.mydomain")
         self.assertConstrainedNodes(
             [node],
             {'name': 'host21.mydomain'})
@@ -217,8 +217,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'name': 'host21.%s' % node.nodegroup.name})
 
     def test_cpu_count(self):
-        node1 = factory.make_node(cpu_count=1)
-        node2 = factory.make_node(cpu_count=2)
+        node1 = factory.make_Node(cpu_count=1)
+        node2 = factory.make_Node(cpu_count=2)
         nodes = [node1, node2]
         self.assertConstrainedNodes(nodes, {'cpu_count': '0'})
         self.assertConstrainedNodes(nodes, {'cpu_count': '1.0'})
@@ -232,8 +232,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_memory(self):
-        node1 = factory.make_node(memory=1024)
-        node2 = factory.make_node(memory=4096)
+        node1 = factory.make_Node(memory=1024)
+        node2 = factory.make_Node(memory=4096)
         self.assertConstrainedNodes([node1, node2], {'mem': '512'})
         self.assertConstrainedNodes([node1, node2], {'mem': '1024'})
         self.assertConstrainedNodes([node2], {'mem': '2048'})
@@ -289,7 +289,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_networks_filter_ignores_macs_on_other_networks(self):
         network = factory.make_Network()
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_MACAddress(node=node, networks=[network])
         factory.make_MACAddress(node=node, networks=[factory.make_Network()])
         self.assertConstrainedNodes({node}, {'networks': [network.name]})
@@ -391,7 +391,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'not_networks': ['vlan:%d' % vlan_tags[1]]})
 
     def test_not_networks_accepts_nodes_without_network_connections(self):
-        macless_node = factory.make_node()
+        macless_node = factory.make_Node()
         unconnected_mac = factory.make_MACAddress(networks=[])
         self.assertConstrainedNodes(
             {macless_node, unconnected_mac.node},
@@ -399,7 +399,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_not_networks_excludes_node_with_any_mac_on_not_networks(self):
         network = factory.make_Network()
-        node = factory.make_node()
+        node = factory.make_Node()
         factory.make_MACAddress(node=node, networks=[network])
         factory.make_MACAddress(node=node, networks=[factory.make_Network()])
         self.assertConstrainedNodes([], {'not_networks': [network.name]})
@@ -465,9 +465,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_connected_to(self):
         mac1 = MAC('aa:bb:cc:dd:ee:ff')
         mac2 = MAC('00:11:22:33:44:55')
-        node1 = factory.make_node(routers=[mac1, mac2])
-        node2 = factory.make_node(routers=[mac1])
-        factory.make_node()
+        node1 = factory.make_Node(routers=[mac1, mac2])
+        node2 = factory.make_Node(routers=[mac1])
+        factory.make_Node()
         self.assertConstrainedNodes(
             [node1], {'connected_to': [
                 mac1.get_raw(), mac2.get_raw()]})
@@ -485,9 +485,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_not_connected_to(self):
         mac1 = MAC('aa:bb:cc:dd:ee:ff')
         mac2 = MAC('00:11:22:33:44:55')
-        node1 = factory.make_node(routers=[mac1, mac2])
-        node2 = factory.make_node(routers=[mac1])
-        node3 = factory.make_node()
+        node1 = factory.make_Node(routers=[mac1, mac2])
+        node2 = factory.make_Node(routers=[mac1])
+        node3 = factory.make_Node()
         self.assertConstrainedNodes(
             [node3], {'not_connected_to': [
                 mac1.get_raw(), mac2.get_raw()]})
@@ -505,9 +505,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_zone(self):
-        node1 = factory.make_node()
-        node2 = factory.make_node()
-        node3 = factory.make_node()
+        node1 = factory.make_Node()
+        node2 = factory.make_Node()
+        node3 = factory.make_Node()
         zone1 = factory.make_zone(nodes=[node1, node2])
         zone2 = factory.make_zone()
 
@@ -527,15 +527,15 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_not_in_zone_excludes_given_zones(self):
-        ineligible_nodes = [factory.make_node() for _ in range(2)]
-        eligible_nodes = [factory.make_node() for _ in range(2)]
+        ineligible_nodes = [factory.make_Node() for _ in range(2)]
+        eligible_nodes = [factory.make_Node() for _ in range(2)]
         self.assertConstrainedNodes(
             eligible_nodes,
             {'not_in_zone': [node.zone.name for node in ineligible_nodes]})
 
     def test_not_in_zone_with_required_zone_yields_no_nodes(self):
         zone = factory.make_zone()
-        factory.make_node(zone=zone)
+        factory.make_Node(zone=zone)
         self.assertConstrainedNodes([], {'zone': zone, 'not_in_zone': [zone]})
 
     def test_validates_not_in_zone(self):
@@ -556,7 +556,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         # Three nodes, all in different physical zones.  If we say we don't
         # want the first node's zone or the second node's zone, we get the node
         # in the remaining zone.
-        nodes = [factory.make_node() for _ in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         self.assertConstrainedNodes(
             [nodes[2]],
             {'not_in_zone': [nodes[0].zone.name, nodes[1].zone.name]})
@@ -564,11 +564,11 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_tags(self):
         tag_big = factory.make_tag(name='big')
         tag_burly = factory.make_tag(name='burly')
-        node_big = factory.make_node()
+        node_big = factory.make_Node()
         node_big.tags.add(tag_big)
-        node_burly = factory.make_node()
+        node_burly = factory.make_Node()
         node_burly.tags.add(tag_burly)
-        node_bignburly = factory.make_node()
+        node_bignburly = factory.make_Node()
         node_bignburly.tags.add(tag_big)
         node_bignburly.tags.add(tag_burly)
         self.assertConstrainedNodes(
@@ -580,22 +580,22 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_not_tags_negates_individual_tags(self):
         tag = factory.make_tag()
-        tagged_node = factory.make_node()
+        tagged_node = factory.make_Node()
         tagged_node.tags.add(tag)
-        untagged_node = factory.make_node()
+        untagged_node = factory.make_Node()
 
         self.assertConstrainedNodes(
             [untagged_node], {'not_tags': [tag.name]})
 
     def test_not_tags_negates_multiple_tags(self):
-        tagged_node = factory.make_node()
+        tagged_node = factory.make_Node()
         tags = [
             factory.make_tag('spam'),
             factory.make_tag('eggs'),
             factory.make_tag('ham'),
             ]
         tagged_node.tags = tags
-        partially_tagged_node = factory.make_node()
+        partially_tagged_node = factory.make_Node()
         partially_tagged_node.tags.add(tags[0])
 
         self.assertConstrainedNodes(
@@ -615,11 +615,11 @@ class TestAcquireNodeForm(MAASServerTestCase):
         arch = '%s/generic' % factory.make_name('arch')
         wrong_arch = '%s/generic' % factory.make_name('arch')
         patch_usable_architectures(self, [arch, wrong_arch])
-        node_big = factory.make_node(architecture=arch)
+        node_big = factory.make_Node(architecture=arch)
         node_big.tags.add(tag_big)
-        node_small = factory.make_node(architecture=arch)
+        node_small = factory.make_Node(architecture=arch)
         ignore_unused(node_small)
-        node_big_other_arch = factory.make_node(architecture=wrong_arch)
+        node_big_other_arch = factory.make_Node(architecture=wrong_arch)
         node_big_other_arch.tags.add(tag_big)
         self.assertConstrainedNodes(
             [node_big, node_big_other_arch], {'tags': ['big']})
@@ -638,7 +638,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_returns_distinct_nodes(self):
         network = factory.make_Network()
-        node = factory.make_node()
+        node = factory.make_Node()
         # Create multiple NICs for `node` connected to `network`.
         [
             factory.make_MACAddress(node=node, networks=[network])

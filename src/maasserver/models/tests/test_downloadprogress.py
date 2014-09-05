@@ -27,7 +27,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
     def test_get_latest_download_returns_None_if_nothing_found(self):
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
-                factory.make_node_group(), factory.make_string()))
+                factory.make_NodeGroup(), factory.make_string()))
 
     def test_get_latest_download_finds_download_progress(self):
         progress = factory.make_download_progress()
@@ -37,7 +37,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
                 progress.nodegroup, progress.filename))
 
     def test_get_latest_download_returns_latest_matching_download(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         filename = factory.make_string()
         progress = [
             factory.make_download_progress(
@@ -53,7 +53,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
         progress = factory.make_download_progress()
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
-                factory.make_node_group(), progress.filename))
+                factory.make_NodeGroup(), progress.filename))
 
     def test_get_latest_download_ignores_other_files(self):
         progress = factory.make_download_progress()
@@ -65,7 +65,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
 class TestDownloadProgress(MAASServerTestCase):
 
     def test_save_download_progress(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         filename = factory.make_name('download')
         size = randint(0, 100)
         bytes_downloaded = randint(0, size)

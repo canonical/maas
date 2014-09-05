@@ -61,7 +61,7 @@ class TestPowerNodes(MAASServerTestCase):
     def test__powers_single_node(self):
         rpc_fixture = self.prepare_rpc()
 
-        node = factory.make_node()
+        node = factory.make_Node()
         cluster, io = rpc_fixture.makeCluster(node.nodegroup, self.command)
 
         nodes_for_call = [
@@ -89,8 +89,8 @@ class TestPowerNodes(MAASServerTestCase):
             ))
 
     def test__powers_multiple_nodes(self):
-        nodegroup = factory.make_node_group()
-        nodes = [factory.make_node(nodegroup=nodegroup) for _ in xrange(3)]
+        nodegroup = factory.make_NodeGroup()
+        nodes = [factory.make_Node(nodegroup=nodegroup) for _ in xrange(3)]
         nodes_for_call = list(  # Use list() to avoid namespace leaks.
             (node.system_id, node.hostname, node.nodegroup.uuid,
              node.get_effective_power_info())
@@ -130,7 +130,7 @@ class TestPowerNodes(MAASServerTestCase):
 
         nodes = {}
         for _ in xrange(3):
-            node = factory.make_node()
+            node = factory.make_Node()
             cluster, io = rpc_fixture.makeCluster(node.nodegroup, self.command)
             nodes[node] = cluster, io
 

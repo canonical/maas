@@ -83,7 +83,7 @@ class TestUpdateHostMaps(MAASServerTestCase):
 
     @staticmethod
     def make_managed_node_group():
-        return factory.make_node_group(
+        return factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             status=NODEGROUP_STATUS.ACCEPTED)
 
@@ -340,7 +340,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
         # will return a call for each of these, because each must be
         # sent mappings via a different client.
         nodegroups = [
-            factory.make_node_group(
+            factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED,
                 dhcp_key=factory.make_name("shared-key"))
             for _ in (1, 2)
@@ -420,7 +420,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
     @staticmethod
     def make_nodegroup_and_interface():
         # Create and return an accepted nodegroup with a managed interface.
-        nodegroup = factory.make_node_group(
+        nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             status=NODEGROUP_STATUS.ACCEPTED)
         [nodegroupiface] = nodegroup.get_managed_interfaces()

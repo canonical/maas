@@ -36,7 +36,7 @@ def get_boot_source_uri(boot_source):
 
 def get_boot_source_backward_uri(boot_source, nodegroup=None):
     if nodegroup is None:
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
     return reverse(
         'boot_source_backward_handler',
         args=[nodegroup.uuid, boot_source.id])
@@ -145,7 +145,7 @@ class TestBootSourceBackwardAPI(APITestCase):
         self.become_admin()
         boot_source = factory.make_boot_source()
         for _ in range(3):
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
             response = self.client.get(
                 get_boot_source_backward_uri(boot_source, nodegroup))
             self.assertEqual(httplib.OK, response.status_code)
@@ -291,7 +291,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
 
     def get_uri(self, nodegroup=None):
         if nodegroup is None:
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
         return reverse(
             'boot_sources_backward_handler', args=[nodegroup.uuid])
 
@@ -316,7 +316,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
         sources = [
             factory.make_boot_source() for _ in range(3)]
         for _ in range(3):
-            nodegroup = factory.make_node_group()
+            nodegroup = factory.make_NodeGroup()
             response = self.client.get(self.get_uri(nodegroup))
             self.assertEqual(
                 httplib.OK, response.status_code, response.content)

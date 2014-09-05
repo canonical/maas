@@ -331,7 +331,7 @@ class TestListConnectedMACs(APITestCase):
         if owner is None:
             owner = factory.make_user()
         if node is None:
-            node = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=owner)
+            node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         return factory.make_MACAddress(networks=networks, node=node)
 
     def request_connected_macs(self, network):
@@ -379,7 +379,7 @@ class TestListConnectedMACs(APITestCase):
         network = factory.make_Network()
         macs = [
             self.make_mac(
-                networks=[network], node=factory.make_node(sortable_name=True),
+                networks=[network], node=factory.make_Node(sortable_name=True),
                 owner=self.logged_in_user)
             for _ in range(4)
             ]

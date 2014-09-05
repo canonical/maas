@@ -115,7 +115,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         resolver.return_value = {ip}
         hostname = factory.make_hostname()
         maas_url = 'http://%s' % hostname
-        nodegroup = factory.make_node_group(maas_url=maas_url)
+        nodegroup = factory.make_NodeGroup(maas_url=maas_url)
         result = get_dns_server_address(nodegroup)
         self.expectThat(ip, Equals(result))
         self.expectThat(resolver, MockAnyCall(hostname, 4))
@@ -188,9 +188,9 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
     """Test for `get_hostname_ip_mapping`."""
 
     def test_get_hostname_ip_mapping_combines_mappings(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         # Create dynamic mapping for a deployed node.
-        node1 = factory.make_node(
+        node1 = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED)
         mac = factory.make_MACAddress(node=node1)
         lease = factory.make_dhcp_lease(
@@ -198,7 +198,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         # Create static mapping for an allocated node.
         node2 = factory.make_node_with_mac_attached_to_nodegroupinterface(
             nodegroup=nodegroup)
-        staticip = factory.make_staticipaddress(mac=node2.get_primary_mac())
+        staticip = factory.make_StaticIPAddress(mac=node2.get_primary_mac())
 
         expected_mapping = {
             node1.hostname: [lease.ip],
@@ -208,16 +208,16 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
             expected_mapping, get_hostname_ip_mapping(nodegroup))
 
     def test_get_hostname_ip_mapping_gives_precedence_to_static_mappings(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         # Create dynamic mapping for an allocated node.
-        node = factory.make_node(
+        node = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             disable_ipv4=False)
         mac = factory.make_MACAddress(node=node)
         factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)
         # Create static mapping for the *same* node.
-        staticip = factory.make_staticipaddress(mac=node.get_primary_mac())
+        staticip = factory.make_StaticIPAddress(mac=node.get_primary_mac())
 
         self.assertEqual(
             {node.hostname: [staticip.ip]},
@@ -232,8 +232,8 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         mac = node.get_primary_mac()
         ipv4 = factory.getRandomIPAddress()
         ipv6 = factory.make_ipv6_address()
-        factory.make_staticipaddress(mac=mac, ip=ipv4)
-        factory.make_staticipaddress(mac=mac, ip=ipv6)
+        factory.make_StaticIPAddress(mac=mac, ip=ipv4)
+        factory.make_StaticIPAddress(mac=mac, ip=ipv6)
 
         self.assertItemsEqual(
             [ipv4, ipv6],
@@ -245,15 +245,15 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         mac = node.get_primary_mac()
         ipv4 = factory.getRandomIPAddress()
         ipv6 = factory.make_ipv6_address()
-        factory.make_staticipaddress(mac=mac, ip=ipv4)
-        factory.make_staticipaddress(mac=mac, ip=ipv6)
+        factory.make_StaticIPAddress(mac=mac, ip=ipv4)
+        factory.make_StaticIPAddress(mac=mac, ip=ipv6)
 
         self.assertItemsEqual(
             [ipv6],
             get_hostname_ip_mapping(node.nodegroup)[node.hostname])
 
     def test_get_hostname_ip_mapping_disables_IPv4_per_individual_node(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         node_with_ipv4 = (
             factory.make_node_with_mac_attached_to_nodegroupinterface(
                 nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
@@ -263,9 +263,9 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
                 nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
                 disable_ipv4=True))
         ipv4 = factory.getRandomIPAddress()
-        factory.make_staticipaddress(
+        factory.make_StaticIPAddress(
             mac=node_with_ipv4.get_primary_mac(), ip=ipv4)
-        factory.make_staticipaddress(
+        factory.make_StaticIPAddress(
             mac=node_without_ipv4.get_primary_mac())
 
         mappings = get_hostname_ip_mapping(nodegroup)
@@ -303,7 +303,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def make_node_group(self, **kwargs):
         """Create an accepted nodegroup with a managed interface."""
-        return factory.make_node_group(
+        return factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS, **kwargs)
 
@@ -333,10 +333,10 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_get_forward_nodegroups_ignores_non_dns_nodegroups(self):
         domain = factory.make_name('domain')
         managed_nodegroup = self.make_node_group(name=domain)
-        factory.make_node_group(
+        factory.make_NodeGroup(
             name=domain, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        factory.make_node_group(
+        factory.make_NodeGroup(
             name=domain, status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
@@ -352,7 +352,7 @@ class TestZoneGenerator(MAASServerTestCase):
     def test_get_forward_nodegroups_ignores_unaccepted_nodegroups(self):
         domain = factory.make_name('domain')
         nodegroups = {
-            status: factory.make_node_group(
+            status: factory.make_NodeGroup(
                 status=status, name=domain,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
             for status in map_enum(NODEGROUP_STATUS).values()
@@ -363,7 +363,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_get_reverse_nodegroups_returns_only_dns_managed_nodegroups(self):
         nodegroups = {
-            management: factory.make_node_group(
+            management: factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             }
@@ -379,7 +379,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_get_reverse_nodegroups_ignores_unaccepted_nodegroups(self):
         nodegroups = {
-            status: factory.make_node_group(
+            status: factory.make_NodeGroup(
                 status=status,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
             for status in map_enum(NODEGROUP_STATUS).values()
@@ -404,7 +404,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_get_networks_returns_managed_networks(self):
         nodegroups = [
-            factory.make_node_group(
+            factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED, management=management)
             for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
             ]

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the code that refreshes a node-group worker's information."""
@@ -45,7 +45,7 @@ class TestRefreshWorker(MAASServerTestCase):
 
     def test_refreshes_api_credentials(self):
         refresh_functions = self.patch_refresh_functions()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         refresh_worker(nodegroup)
         creds_string = convert_tuple_to_string(
             get_creds_tuple(nodegroup.api_token))
@@ -55,14 +55,14 @@ class TestRefreshWorker(MAASServerTestCase):
 
     def test_refreshes_nodegroup_uuid(self):
         refresh_functions = self.patch_refresh_functions()
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         refresh_worker(nodegroup)
         self.assertEqual(
             [(nodegroup.uuid, )],
             refresh_functions['nodegroup_uuid'].extract_args())
 
     def test_refresh_worker_task_routed_to_nodegroup_worker(self):
-        nodegroup = factory.make_node_group()
+        nodegroup = factory.make_NodeGroup()
         task = self.patch(refresh_worker_module, 'refresh_secrets')
         refresh_worker(nodegroup)
         args, kwargs = task.apply_async.call_args

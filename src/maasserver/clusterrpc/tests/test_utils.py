@@ -31,7 +31,7 @@ class TestCallClusters(MAASServerTestCase):
     def test__gets_clients_for_accepted_nodegroups_only(self):
         # Create several pending nodegroups.
         nodegroups = [
-            factory.make_node_group(
+            factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.PENDING)
             for _ in xrange(5)
         ]

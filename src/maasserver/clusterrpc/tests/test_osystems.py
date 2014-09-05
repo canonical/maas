@@ -46,7 +46,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
 
     def test_yields_oses_known_to_a_cluster(self):
         # The operating systems known to a single node are returned.
-        factory.make_node_group().accept()
+        factory.make_NodeGroup().accept()
         self.useFixture(RunningClusterRPCFixture())
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
@@ -55,8 +55,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         self.assertThat(osystems, AllMatch(IsInstance(dict)))
 
     def test_yields_oses_known_to_multiple_clusters(self):
-        factory.make_node_group().accept()
-        factory.make_node_group().accept()
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
         self.useFixture(RunningClusterRPCFixture())
         osystems = gen_all_known_operating_systems()
         self.assertIsInstance(osystems, Iterator)
@@ -67,8 +67,8 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
     def test_only_yields_os_once(self):
         # Duplicate OSes that exactly match are suppressed. Typically
         # every cluster will have several (or all) OSes in common.
-        factory.make_node_group().accept()
-        factory.make_node_group().accept()
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
         self.useFixture(RunningClusterRPCFixture())
         counter = Counter(
             osystem["name"] for osystem in
@@ -83,7 +83,7 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
                 AfterPreprocessing(get_count, Equals(1))))
 
     def test_os_data_is_passed_through_unmolested(self):
-        factory.make_node_group().accept()
+        factory.make_NodeGroup().accept()
         self.useFixture(RunningClusterRPCFixture())
         example = {
             "osystems": [
@@ -102,9 +102,9 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
             example["osystems"], gen_all_known_operating_systems())
 
     def test_ignores_failures_when_talking_to_clusters(self):
-        factory.make_node_group().accept()
-        factory.make_node_group().accept()
-        factory.make_node_group().accept()
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
         self.useFixture(RunningClusterRPCFixture())
 
         clients = getAllClients()
@@ -132,7 +132,7 @@ class TestGetPreseedData(MAASServerTestCase):
 
     def test_returns_preseed_data(self):
         # The Windows driver is known to provide custom preseed data.
-        node = factory.make_node(osystem="windows")
+        node = factory.make_Node(osystem="windows")
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         preseed_data = get_preseed_data(
@@ -146,7 +146,7 @@ class TestGetPreseedData(MAASServerTestCase):
     def test_propagates_NotImplementedError(self):
         # The Windows driver is known to *not* provide custom preseed
         # data when using Curtin.
-        node = factory.make_node(osystem="windows")
+        node = factory.make_Node(osystem="windows")
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(
@@ -155,7 +155,7 @@ class TestGetPreseedData(MAASServerTestCase):
             metadata_url=factory.make_url())
 
     def test_propagates_NoSuchOperatingSystem(self):
-        node = factory.make_node(osystem=factory.make_name("foo"))
+        node = factory.make_Node(osystem=factory.make_name("foo"))
         node.nodegroup.accept()
         self.useFixture(RunningClusterRPCFixture())
         self.assertRaises(

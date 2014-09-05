@@ -104,9 +104,9 @@ class TestTagAPI(APITestCase):
         self.assertTrue(Tag.objects.filter(name='new-tag-name').exists())
 
     def test_PUT_updates_node_associations(self):
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo/></node>')
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
@@ -129,9 +129,9 @@ class TestTagAPI(APITestCase):
 
     def test_GET_nodes_returns_nodes(self):
         tag = factory.make_tag()
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         # Create a second node that isn't tagged.
-        factory.make_node()
+        factory.make_Node()
         node1.tags.add(tag)
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
@@ -142,9 +142,9 @@ class TestTagAPI(APITestCase):
 
     def test_GET_nodes_hides_invisible_nodes(self):
         user2 = factory.make_user()
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo/></node>')
-        node2 = factory.make_node(status=NODE_STATUS.ALLOCATED, owner=user2)
+        node2 = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user2)
         inject_lshw_result(node2, b'<node><bar/></node>')
         tag = factory.make_tag(definition='//node')
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
@@ -163,7 +163,7 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_invalid_definition(self):
         self.become_admin()
-        node = factory.make_node()
+        node = factory.make_Node()
         inject_lshw_result(node, b'<node ><child/></node>')
         tag = factory.make_tag(definition='//child')
         self.assertItemsEqual([tag.name], node.tag_names())
@@ -187,8 +187,8 @@ class TestTagAPI(APITestCase):
     def test_POST_update_nodes_changes_associations(self):
         tag = factory.make_tag()
         self.become_admin()
-        node_first = factory.make_node()
-        node_second = factory.make_node()
+        node_first = factory.make_Node()
+        node_second = factory.make_Node()
         node_first.tags.add(tag)
         self.assertItemsEqual([node_first], tag.node_set.all())
         response = self.client.post(
@@ -221,7 +221,7 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_doesnt_require_add_or_remove(self):
         tag = factory.make_tag()
-        node = factory.make_node()
+        node = factory.make_Node()
         self.become_admin()
         self.assertItemsEqual([], tag.node_set.all())
         response = self.client.post(
@@ -243,7 +243,7 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_rejects_normal_user(self):
         tag = factory.make_tag()
-        node = factory.make_node()
+        node = factory.make_Node()
         response = self.client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
@@ -254,8 +254,8 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_allows_nodegroup_worker(self):
         tag = factory.make_tag()
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         response = client.post(
             self.get_tag_uri(tag), {
@@ -270,8 +270,8 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_refuses_unidentified_nodegroup_worker(self):
         tag = factory.make_tag()
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         # We don't pass nodegroup:uuid so we get refused
         response = client.post(
@@ -284,8 +284,8 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_refuses_non_nodegroup_worker(self):
         tag = factory.make_tag()
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         response = self.client.post(
             self.get_tag_uri(tag), {
                 'op': 'update_nodes',
@@ -297,9 +297,9 @@ class TestTagAPI(APITestCase):
 
     def test_POST_update_nodes_doesnt_modify_other_nodegroup_nodes(self):
         tag = factory.make_tag()
-        nodegroup_mine = factory.make_node_group()
-        nodegroup_theirs = factory.make_node_group()
-        node_theirs = factory.make_node(nodegroup=nodegroup_theirs)
+        nodegroup_mine = factory.make_NodeGroup()
+        nodegroup_theirs = factory.make_NodeGroup()
+        node_theirs = factory.make_Node(nodegroup=nodegroup_theirs)
         client = make_worker_client(nodegroup_mine)
         response = client.post(
             self.get_tag_uri(tag), {
@@ -315,8 +315,8 @@ class TestTagAPI(APITestCase):
     def test_POST_update_nodes_ignores_incorrect_definition(self):
         tag = factory.make_tag()
         orig_def = tag.definition
-        nodegroup = factory.make_node_group()
-        node = factory.make_node(nodegroup=nodegroup)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         tag.definition = '//new/node/definition'
         tag.save()
@@ -334,9 +334,9 @@ class TestTagAPI(APITestCase):
     def test_POST_rebuild_rebuilds_node_mapping(self):
         tag = factory.make_tag(definition='//foo/bar')
         # Only one node matches the tag definition, rebuilding should notice
-        node_matching = factory.make_node()
+        node_matching = factory.make_Node()
         inject_lshw_result(node_matching, b'<foo><bar/></foo>')
-        node_bogus = factory.make_node()
+        node_bogus = factory.make_Node()
         inject_lshw_result(node_bogus, b'<foo/>')
         node_matching.tags.add(tag)
         node_bogus.tags.add(tag)
@@ -351,7 +351,7 @@ class TestTagAPI(APITestCase):
 
     def test_POST_rebuild_leaves_manual_tags(self):
         tag = factory.make_tag(definition='')
-        node = factory.make_node()
+        node = factory.make_Node()
         node.tags.add(tag)
         self.assertItemsEqual([node], tag.node_set.all())
         self.become_admin()
@@ -484,10 +484,10 @@ class TestTagsAPI(APITestCase):
 
     def test_POST_new_populates_nodes(self):
         self.become_admin()
-        node1 = factory.make_node()
+        node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><child/></node>')
         # Create another node that doesn't have a 'child'
-        node2 = factory.make_node()
+        node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node/>')
         self.assertItemsEqual([], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
