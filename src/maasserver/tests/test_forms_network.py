@@ -57,11 +57,11 @@ class TestNetworkForm(MAASServerTestCase):
     def test_populates_initial_macaddresses(self):
         network = factory.make_Network()
         macs = [
-            factory.make_mac_address(networks=[network])
+            factory.make_MACAddress(networks=[network])
             for _ in range(3)]
         # Create other MAC addresses.
         for _ in range(2):
-            factory.make_mac_address(networks=[factory.make_Network()])
+            factory.make_MACAddress(networks=[factory.make_Network()])
         new_description = factory.make_string()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
@@ -72,15 +72,15 @@ class TestNetworkForm(MAASServerTestCase):
     def test_macaddresses_are_sorted(self):
         network1, network2 = factory.make_networks(2)
         macs = [
-            factory.make_mac_address(networks=[network1])
+            factory.make_MACAddress(networks=[network1])
             for _ in range(3)]
         # Create macs connected to the same node.
         macs = macs + [
-            factory.make_mac_address(networks=[network1], node=macs[0].node)
+            factory.make_MACAddress(networks=[network1], node=macs[0].node)
             for _ in range(3)]
         # Create other MAC addresses.
         for _ in range(2):
-            factory.make_mac_address(networks=[network2])
+            factory.make_MACAddress(networks=[network2])
         form = NetworkForm(data={}, instance=network1)
         self.assertEqual(
             list(MACAddress.objects.all().order_by(
@@ -92,10 +92,10 @@ class TestNetworkForm(MAASServerTestCase):
         same_network = networks[0]
         misc_networks = networks[1:]
         for _ in range(3):
-            factory.make_mac_address(networks=[same_network])
+            factory.make_MACAddress(networks=[same_network])
         # Create other MAC addresses.
         for network in misc_networks:
-            factory.make_mac_address(networks=[network])
+            factory.make_MACAddress(networks=[network])
         form = NetworkForm(data={}, instance=same_network)
         self.assertItemsEqual(
             [(mac.mac_address, "%s (%s)" % (
@@ -106,9 +106,9 @@ class TestNetworkForm(MAASServerTestCase):
     def test_updates_macaddresses(self):
         network = factory.make_Network()
         # Attach a couple of MAC addresses to the network.
-        [factory.make_mac_address(networks=[network]) for _ in range(3)]
+        [factory.make_MACAddress(networks=[network]) for _ in range(3)]
         new_macs = [
-            factory.make_mac_address()
+            factory.make_MACAddress()
             for _ in range(3)]
         form = NetworkForm(
             data={

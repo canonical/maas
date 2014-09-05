@@ -134,7 +134,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_returns_associated_ip_addresses(self):
         node = factory.make_node(disable_ipv4=False)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=mac.mac_address)
         response = self.client.get(self.get_node_uri(node))
@@ -1075,7 +1075,7 @@ class TestStickyIP(APITestCase):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         ngi = factory.make_node_group_interface(nodegroup=node.nodegroup)
-        second_mac = factory.make_mac_address(node=node, cluster_interface=ngi)
+        second_mac = factory.make_MACAddress(node=node, cluster_interface=ngi)
 
         response = self.client.post(
             self.get_node_uri(node),

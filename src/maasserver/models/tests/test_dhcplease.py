@@ -55,7 +55,7 @@ class TestDHCPLease(MAASServerTestCase):
 
     def test_dhcplease_gets_removed_when_corresponding_node_is_deleted(self):
         lease = factory.make_dhcp_lease()
-        mac = factory.make_mac_address(address=lease.mac)
+        mac = factory.make_MACAddress(address=lease.mac)
         mac.node.delete()
         self.assertItemsEqual(
             [], DHCPLease.objects.filter(mac=mac.mac_address))
@@ -179,8 +179,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
                 [NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
             node = factory.make_node(
                 nodegroup=nodegroup, status=status)
-            mac = factory.make_mac_address(node=node)
-            factory.make_mac_address(node=node)
+            mac = factory.make_MACAddress(node=node)
+            factory.make_MACAddress(node=node)
             lease = factory.make_dhcp_lease(
                 nodegroup=nodegroup, mac=mac.mac_address)
             expected_mapping[node.hostname] = [lease.ip]
@@ -196,7 +196,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
                 but_not=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
             node = factory.make_node(
                 nodegroup=nodegroup, status=status)
-            mac = factory.make_mac_address(node=node)
+            mac = factory.make_MACAddress(node=node)
             factory.make_dhcp_lease(
                 nodegroup=nodegroup, mac=mac.mac_address)
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
@@ -210,7 +210,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             nodegroup=nodegroup,
             status=NODE_STATUS.DEPLOYED,
             hostname='%s.%s' % (hostname, domain))
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         lease = factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)
         mapping = DHCPLease.objects.get_hostname_ip_mapping(nodegroup)
@@ -220,8 +220,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         node = factory.make_node(
             status=NODE_STATUS.DEPLOYED,
             hostname=factory.make_name('host'))
-        factory.make_mac_address(node=node)
-        second_mac = factory.make_mac_address(node=node)
+        factory.make_MACAddress(node=node)
+        second_mac = factory.make_MACAddress(node=node)
         # Create a lease for the second MAC Address.
         lease = factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=second_mac.mac_address)
@@ -232,8 +232,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         node = factory.make_node(
             status=NODE_STATUS.DEPLOYED,
             hostname=factory.make_name('host'))
-        older_mac = factory.make_mac_address(node=node)
-        newer_mac = factory.make_mac_address(node=node)
+        older_mac = factory.make_MACAddress(node=node)
+        newer_mac = factory.make_MACAddress(node=node)
 
         factory.make_dhcp_lease(
             nodegroup=node.nodegroup, mac=newer_mac.mac_address)
@@ -248,7 +248,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         node = factory.make_node(
             status=NODE_STATUS.DEPLOYED,
             nodegroup=nodegroup)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         factory.make_dhcp_lease(
             nodegroup=nodegroup, mac=mac.mac_address)
         another_nodegroup = factory.make_node_group()

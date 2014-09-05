@@ -266,7 +266,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
     def test_POST_fails_if_mac_duplicated(self):
         # Mac Addresses should be unique.
         mac = 'aa:bb:cc:dd:ee:ff'
-        factory.make_mac_address(mac)
+        factory.make_MACAddress(mac)
         architecture = make_usable_architecture(self)
         response = self.client.post(
             reverse('nodes_handler'),

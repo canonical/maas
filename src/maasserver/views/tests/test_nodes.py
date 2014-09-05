@@ -459,7 +459,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_node(owner=self.logged_in_user, disable_ipv4=False)
         nodegroup = node.nodegroup
         macs = [
-            factory.make_mac_address(node=node).mac_address for i in range(2)]
+            factory.make_MACAddress(node=node).mac_address for i in range(2)]
         ips = [factory.getRandomIPAddress() for i in range(2)]
         for i in range(2):
             factory.make_dhcp_lease(
@@ -551,7 +551,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_shows_macs(self):
         self.client_log_in()
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))
@@ -565,8 +565,8 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_lists_macs_as_list_items(self):
         self.client_log_in()
         node = factory.make_node()
-        factory.make_mac_address('11:11:11:11:11:11', node=node)
-        factory.make_mac_address('22:22:22:22:22:22', node=node)
+        factory.make_MACAddress('11:11:11:11:11:11', node=node)
+        factory.make_MACAddress('22:22:22:22:22:22', node=node)
 
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -582,7 +582,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_links_network_interfaces_to_networks(self):
         self.client_log_in()
         network = factory.make_Network()
-        mac = factory.make_mac_address(networks=[network])
+        mac = factory.make_MACAddress(networks=[network])
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))
@@ -604,7 +604,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_sorts_networks_by_name(self):
         self.client_log_in()
         networks = factory.make_networks(3, sortable_name=True)
-        mac = factory.make_mac_address(networks=networks)
+        mac = factory.make_MACAddress(networks=networks)
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))
@@ -742,7 +742,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         macs = [
-            unicode(factory.make_mac_address(node=node).mac_address)
+            unicode(factory.make_MACAddress(node=node).mac_address)
             for i in range(3)
         ]
         node_edit_link = reverse('node-edit', args=[node.system_id])
@@ -753,7 +753,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         macs = [
-            factory.make_mac_address(node=node).mac_address
+            factory.make_MACAddress(node=node).mac_address
             for i in range(3)
         ]
         node_edit_link = reverse('node-edit', args=[node.system_id])
@@ -1706,7 +1706,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
     def test_node_delete_access_denied_if_user_cannot_edit_node(self):
         self.client_log_in()
         node = factory.make_node(owner=factory.make_user())
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -1714,7 +1714,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
     def test_node_delete_mac_contains_mac(self):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertIn(
@@ -1725,7 +1725,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
     def test_node_delete_mac_POST_deletes_mac(self):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.post(mac_delete_link, {'post': 'yes'})
         self.assertEqual(
@@ -1736,7 +1736,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
     def test_node_delete_mac_POST_displays_message(self):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.post(mac_delete_link, {'post': 'yes'})
         redirect = extract_redirect(response)
@@ -1749,7 +1749,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
         self.client_log_in()
         network = factory.make_Network()
         node = factory.make_node(owner=self.logged_in_user)
-        mac = factory.make_mac_address(node=node, networks=[network])
+        mac = factory.make_MACAddress(node=node, networks=[network])
         response = self.client.post(
             reverse('mac-delete', args=[node.system_id, mac]), {'post': 'yes'})
         self.assertEqual(httplib.FOUND, response.status_code)

@@ -131,7 +131,7 @@ class TestDNSServer(MAASServerTestCase):
             nodegroup = self.create_managed_nodegroup()
         [interface] = nodegroup.get_managed_interfaces()
         node = factory.make_node(nodegroup=nodegroup, disable_ipv4=False)
-        mac = factory.make_mac_address(node=node, cluster_interface=interface)
+        mac = factory.make_MACAddress(node=node, cluster_interface=interface)
         ips = IPRange(
             interface.static_ip_range_low, interface.static_ip_range_high)
         static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
@@ -379,7 +379,7 @@ class TestDNSBackwardCompat(TestDNSServer):
         node = factory.make_node(
             nodegroup=nodegroup, status=NODE_STATUS.DEPLOYED,
             disable_ipv4=False)
-        mac = factory.make_mac_address(node=node, cluster_interface=interface)
+        mac = factory.make_MACAddress(node=node, cluster_interface=interface)
         # Get an IP in the dynamic range.
         ip_range = IPRange(
             interface.ip_range_low, interface.ip_range_high)

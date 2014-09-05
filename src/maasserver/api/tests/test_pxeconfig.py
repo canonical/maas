@@ -66,7 +66,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
     def get_mac_params(self):
         params = self.get_default_params()
-        params['mac'] = factory.make_mac_address().mac_address
+        params['mac'] = factory.make_MACAddress().mac_address
         return params
 
     def get_pxeconfig(self, params=None):
@@ -174,7 +174,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         domain = factory.make_name('domain')
         full_hostname = '.'.join([host, domain])
         node = factory.make_node(hostname=full_hostname)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
@@ -182,7 +182,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         params = self.get_default_params()
         params['mac'] = mac
         self.assertEqual(
@@ -353,14 +353,14 @@ class TestPXEConfigAPI(MAASServerTestCase):
         node = factory.make_node()
         extra_kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', extra_kernel_opts)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(extra_kernel_opts, pxe_config['extra_opts'])
 
     def test_pxeconfig_returns_None_for_extra_kernel_opts(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
@@ -372,7 +372,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # release, purpose) it sets the label to no-such-image. This is
         # clearly nonsensical, but this state only arises during tests
         # or an insane environment.
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         params['arch'] = 'iHaveNoIdea'

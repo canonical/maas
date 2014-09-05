@@ -269,7 +269,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
 
     @transactional
     def make_mac_address(self):
-        return factory.make_mac_address()
+        return factory.make_MACAddress()
 
     @transactional
     def get_leases_for(self, nodegroup):

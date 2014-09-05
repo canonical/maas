@@ -87,7 +87,7 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
 
     def test_is_registered_returns_True_if_node_registered(self):
         mac_address = factory.getRandomMACAddress()
-        factory.make_mac_address(mac_address)
+        factory.make_MACAddress(mac_address)
         response = self.client.get(
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})
@@ -97,7 +97,7 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
 
     def test_is_registered_returns_False_if_mac_registered_node_retired(self):
         mac_address = factory.getRandomMACAddress()
-        mac = factory.make_mac_address(mac_address)
+        mac = factory.make_MACAddress(mac_address)
         mac.node.status = NODE_STATUS.RETIRED
         mac.node.save()
         response = self.client.get(
@@ -111,7 +111,7 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
         # These two non-normalized MAC addresses are the same.
         non_normalized_mac_address = 'AA-bb-cc-dd-ee-ff'
         non_normalized_mac_address2 = 'aabbccddeeff'
-        factory.make_mac_address(non_normalized_mac_address)
+        factory.make_MACAddress(non_normalized_mac_address)
         response = self.client.get(
             reverse('nodes_handler'),
             {
@@ -319,7 +319,7 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_with_macs_returns_matching_nodes(self):
         # The "list" operation takes optional "mac_address" parameters. Only
         # nodes with matching MAC addresses will be returned.
-        macs = [factory.make_mac_address() for counter in range(3)]
+        macs = [factory.make_MACAddress() for counter in range(3)]
         matching_mac = macs[0].mac_address
         matching_system_id = macs[0].node.system_id
         response = self.client.get(reverse('nodes_handler'), {
@@ -336,7 +336,7 @@ class TestNodesAPI(APITestCase):
         # humans.
         bad_mac1 = '00:E0:81:DD:D1:ZZ'  # ZZ is bad.
         bad_mac2 = '00:E0:81:DD:D1:XX'  # XX is bad.
-        ok_mac = factory.make_mac_address()
+        ok_mac = factory.make_MACAddress()
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
             'mac_address': [bad_mac1, bad_mac2, ok_mac],
@@ -847,7 +847,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_network(self):
         networks = factory.make_networks(5)
         macs = [
-            factory.make_mac_address(
+            factory.make_MACAddress(
                 node=factory.make_node(status=NODE_STATUS.READY),
                 networks=[network])
             for network in networks
@@ -869,9 +869,9 @@ class TestNodesAPI(APITestCase):
         networks = factory.make_networks(5)
         for network in networks:
             node = factory.make_node(status=NODE_STATUS.READY)
-            factory.make_mac_address(node=node, networks=[network])
+            factory.make_MACAddress(node=node, networks=[network])
         right_node = factory.make_node(status=NODE_STATUS.READY)
-        factory.make_mac_address(node=node, networks=[factory.make_Network()])
+        factory.make_MACAddress(node=node, networks=[factory.make_Network()])
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',

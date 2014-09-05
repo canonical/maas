@@ -46,7 +46,7 @@ from testtools.matchers import (
 class MACAddressTest(MAASServerTestCase):
 
     def test_stores_to_database(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         self.assertEqual([mac], list(MACAddress.objects.all()))
 
     def test_invalid_address_raises_validation_error(self):
@@ -55,26 +55,26 @@ class MACAddressTest(MAASServerTestCase):
         self.assertRaises(ValidationError, mac.full_clean)
 
     def test_mac_not_in_any_network_by_default(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         self.assertItemsEqual([], mac.networks.all())
 
     def test_mac_can_be_connected_to_multiple_networks(self):
         networks = factory.make_networks(3)
-        mac = factory.make_mac_address(networks=networks)
+        mac = factory.make_MACAddress(networks=networks)
         self.assertItemsEqual(networks, reload_object(mac).networks.all())
 
     def test_get_networks_returns_empty_if_no_networks(self):
-        mac = factory.make_mac_address(networks=[])
+        mac = factory.make_MACAddress(networks=[])
         self.assertEqual([], list(mac.get_networks()))
 
     def test_get_networks_returns_networks(self):
         network = factory.make_Network()
-        mac = factory.make_mac_address(networks=[network])
+        mac = factory.make_MACAddress(networks=[network])
         self.assertEqual([network], list(mac.get_networks()))
 
     def test_get_networks_sorts_by_network_name(self):
         networks = factory.make_networks(3, sortable_name=True)
-        mac = factory.make_mac_address(networks=networks)
+        mac = factory.make_MACAddress(networks=networks)
         self.assertEqual(
             sorted(networks, key=attrgetter('name')),
             list(mac.get_networks()))
@@ -205,13 +205,13 @@ class TestMapAllocatedAddresses(MAASServerTestCase):
     """Tests for `_map_allocated_addresses`."""
 
     def test__returns_empty_if_no_interfaces_given(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         self.assertEqual({}, mac._map_allocated_addresses([]))
 
     def test__maps_interface_without_allocation_to_None(self):
         cluster = factory.make_node_group()
         interface = factory.make_node_group_interface(cluster)
-        mac = factory.make_mac_address(cluster_interface=interface)
+        mac = factory.make_MACAddress(cluster_interface=interface)
         self.assertEqual(
             {interface: None},
             mac._map_allocated_addresses([interface]))
@@ -318,7 +318,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
 
     def test__returns_empty_if_no_cluster_interface(self):
         # If mac.cluster_interface is None, we can't allocate any IP.
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         self.assertEquals([], mac.claim_static_ips())
 
     def test__reserves_an_ip_address(self):
@@ -622,12 +622,12 @@ class TestGetClusterInterfaces(MAASServerTestCase):
     def test__returns_nothing_if_none_known(self):
         self.assertItemsEqual(
             [],
-            factory.make_mac_address().get_cluster_interfaces())
+            factory.make_MACAddress().get_cluster_interfaces())
 
     def test__returns_cluster_interface_if_known(self):
         cluster = factory.make_node_group()
         cluster_interface = factory.make_node_group_interface(cluster)
-        mac = factory.make_mac_address(cluster_interface=cluster_interface)
+        mac = factory.make_MACAddress(cluster_interface=cluster_interface)
         self.assertItemsEqual(
             [cluster_interface],
             mac.get_cluster_interfaces())
@@ -646,7 +646,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         ipv6_interface = factory.make_node_group_interface(
             nodegroup=cluster, network=factory.make_ipv6_network(),
             interface=network_interface)
-        mac = factory.make_mac_address(cluster_interface=ipv4_interface)
+        mac = factory.make_MACAddress(cluster_interface=ipv4_interface)
         self.assertItemsEqual(
             [ipv4_interface, ipv6_interface],
             mac.get_cluster_interfaces())
@@ -660,7 +660,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         node = factory.make_node(nodegroup=cluster)
         self.assertItemsEqual(
             [],
-            factory.make_mac_address(node=node).get_cluster_interfaces())
+            factory.make_MACAddress(node=node).get_cluster_interfaces())
 
     def test__ignores_other_clusters(self):
         my_cluster = factory.make_node_group()
@@ -672,6 +672,6 @@ class TestGetClusterInterfaces(MAASServerTestCase):
             unrelated_cluster, network=factory.make_ipv6_network(),
             name='eth0', interface='eth0')
         my_node = factory.make_node(nodegroup=my_cluster)
-        my_mac = factory.make_mac_address(
+        my_mac = factory.make_MACAddress(
             node=my_node, cluster_interface=my_interface)
         self.assertItemsEqual([my_interface], my_mac.get_cluster_interfaces())

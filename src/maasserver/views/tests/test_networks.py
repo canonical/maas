@@ -60,7 +60,7 @@ class NetworkListingViewTest(MAASServerTestCase):
         factory.make_networks(3)
         networks = Network.objects.all()
         # Attach some NICs to some of the networks.
-        [factory.make_mac_address(networks=networks[1:3]) for _ in range(12)]
+        [factory.make_MACAddress(networks=networks[1:3]) for _ in range(12)]
         response = self.client.get(reverse('network-list'))
         details_list = [
             [
@@ -237,7 +237,7 @@ class NetworkDetailViewTest(MAASServerTestCase):
     def test_network_detail_displays_node_count(self):
         self.client_log_in()
         network = factory.make_Network()
-        [factory.make_mac_address(networks=[network]) for i in range(5)]
+        [factory.make_MACAddress(networks=[network]) for i in range(5)]
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         document = fromstring(response.content)
@@ -312,7 +312,7 @@ class NetworkEditAdminTest(MAASServerTestCase):
         new_name = factory.make_name('name')
         new_description = factory.make_name('description')
         new_macs = [
-            factory.make_mac_address()
+            factory.make_MACAddress()
             for _ in range(3)]
         new_gateway = factory.getRandomIPAddress()
         response = self.client.post(
@@ -367,7 +367,7 @@ class NetworkDeleteAdminTest(MAASServerTestCase):
     def test_disconnects_macs(self):
         self.client_log_in(as_admin=True)
         network = factory.make_Network()
-        mac = factory.make_mac_address(networks=[network])
+        mac = factory.make_MACAddress(networks=[network])
         response = self.client.post(
             reverse('network-del', args=[network.name]),
             {'post': 'yes'})

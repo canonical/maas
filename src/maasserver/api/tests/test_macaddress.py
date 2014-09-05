@@ -140,7 +140,7 @@ class MACAddressAPITest(APITestCase):
     def test_macs_DELETE_disconnects_from_network(self):
         network = factory.make_Network()
         node = factory.make_node(owner=self.logged_in_user)
-        mac = factory.make_mac_address(node=node, networks=[network])
+        mac = factory.make_MACAddress(node=node, networks=[network])
         response = self.client.delete(
             reverse(
                 'node_mac_handler', args=[node.system_id, mac.mac_address]))

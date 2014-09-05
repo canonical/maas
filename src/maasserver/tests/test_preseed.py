@@ -362,7 +362,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def make_lease_for_node(self, node, ip=None):
         """Create a `MACAddress` and corresponding `DHCPLease` for `node`."""
-        mac = factory.make_mac_address(node=node).mac_address
+        mac = factory.make_MACAddress(node=node).mac_address
         factory.make_dhcp_lease(nodegroup=node.nodegroup, mac=mac, ip=ip)
 
     def test_returns_only_interface(self):

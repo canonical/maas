@@ -681,7 +681,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_node()
-        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for i in range(2)]
         leases = [
             factory.make_dhcp_lease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -694,7 +694,7 @@ class NodeTest(MAASServerTestCase):
         # the node group's set of DHCP leases is already cached in Django's
         # ORM.  This test exercises that code path.
         node = factory.make_node()
-        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for i in range(2)]
         leases = [
             factory.make_dhcp_lease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -729,7 +729,7 @@ class NodeTest(MAASServerTestCase):
         # that tells ip_addresses what nodes these leases belong to are their
         # MAC addresses.
         other_node = factory.make_node(nodegroup=node.nodegroup)
-        macs = [factory.make_mac_address(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for i in range(2)]
         for mac in macs:
             factory.make_dhcp_lease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -740,7 +740,7 @@ class NodeTest(MAASServerTestCase):
     def test_static_ip_addresses_returns_static_ip_addresses(self):
         node = factory.make_node()
         [mac2, mac3] = [
-            factory.make_mac_address(node=node) for i in range(2)]
+            factory.make_MACAddress(node=node) for i in range(2)]
         ip1 = factory.make_staticipaddress(mac=mac2)
         ip2 = factory.make_staticipaddress(mac=mac3)
         # Create another node with a static IP address.
@@ -754,7 +754,7 @@ class NodeTest(MAASServerTestCase):
         # test exercises that code path.
         node = factory.make_node()
         [mac2, mac3] = [
-            factory.make_mac_address(node=node) for i in range(2)]
+            factory.make_MACAddress(node=node) for i in range(2)]
         ip1 = factory.make_staticipaddress(mac=mac2)
         ip2 = factory.make_staticipaddress(mac=mac3)
 
@@ -948,7 +948,7 @@ class NodeTest(MAASServerTestCase):
 
         node = factory.make_node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
-        factory.make_mac_address(node=node)
+        factory.make_MACAddress(node=node)
         admin = factory.make_admin()
         node.start_commissioning(admin)
 
@@ -962,7 +962,7 @@ class NodeTest(MAASServerTestCase):
     def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
         node = factory.make_node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
-        factory.make_mac_address(node=node)
+        factory.make_MACAddress(node=node)
         node.start_commissioning(factory.make_user())
 
         expected_attrs = {
@@ -1119,11 +1119,11 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
 
-        mac_with_no_interface = factory.make_mac_address(node=node)
+        mac_with_no_interface = factory.make_MACAddress(node=node)
         unmanaged_interface = factory.make_node_group_interface(
             nodegroup=node.nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac_with_unmanaged_interface = factory.make_mac_address(
+        mac_with_unmanaged_interface = factory.make_MACAddress(
             node=node, cluster_interface=unmanaged_interface)
         ignore_unused(mac_with_no_interface, mac_with_unmanaged_interface)
 
@@ -1271,7 +1271,7 @@ class NodeManagerTest(MAASServerTestCase):
 
     def make_node_with_mac(self, user=None, **kwargs):
         node = self.make_node(user, **kwargs)
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         return node, mac
 
     def make_user_data(self):
@@ -1684,7 +1684,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         node = factory.make_node(
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
             owner=user)
-        factory.make_mac_address(node=node)
+        factory.make_MACAddress(node=node)
         nodes_started = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([node], nodes_started)
         self.assertEqual(
@@ -1789,7 +1789,7 @@ class TestClaimStaticIPAddresses(MAASTestCase):
 
     def test__returns_empty_list_if_no_iface_on_managed_network(self):
         node = factory.make_node()
-        factory.make_mac_address(node=node)
+        factory.make_MACAddress(node=node)
         self.assertEqual([], node.claim_static_ip_addresses())
 
     def test__returns_mapping_for_iface_on_managed_network(self):
@@ -1803,7 +1803,7 @@ class TestClaimStaticIPAddresses(MAASTestCase):
 
     def test__returns_mappings_for_ifaces_on_managed_network(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        mac_address2 = factory.make_mac_address(node=node)
+        mac_address2 = factory.make_MACAddress(node=node)
         [managed_interface] = node.nodegroup.get_managed_interfaces()
         mac_address2.cluster_interface = managed_interface
         mac_address2.save()
@@ -1816,7 +1816,7 @@ class TestClaimStaticIPAddresses(MAASTestCase):
     def test__ignores_mac_addresses_with_non_auto_addresses(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac_address1 = node.macaddress_set.first()
-        mac_address2 = factory.make_mac_address(node=node)
+        mac_address2 = factory.make_MACAddress(node=node)
         [managed_interface] = node.nodegroup.get_managed_interfaces()
         mac_address2.cluster_interface = managed_interface
         mac_address2.claim_static_ips(IPADDRESS_TYPE.STICKY)
@@ -1834,8 +1834,8 @@ class TestClaimStaticIPAddresses(MAASTestCase):
         node = factory.make_node()
         nodegroupinterface = factory.make_node_group_interface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        mac_address1 = factory.make_mac_address(node=node)
-        mac_address2 = factory.make_mac_address(node=node)
+        mac_address1 = factory.make_MACAddress(node=node)
+        mac_address2 = factory.make_MACAddress(node=node)
         mac_address1.cluster_interface = nodegroupinterface
         mac_address2.cluster_interface = nodegroupinterface
         mac_address1.save()

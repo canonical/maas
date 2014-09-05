@@ -46,7 +46,7 @@ class TagViewsTest(MAASServerTestCase):
         tag = factory.make_tag()
         node = factory.make_node()
         node.tags.add(tag)
-        mac = factory.make_mac_address(node=node).mac_address
+        mac = factory.make_MACAddress(node=node).mac_address
         tag_link = reverse('tag-view', args=[tag.name])
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(tag_link)

@@ -221,7 +221,7 @@ class TestMAC(MAASServerTestCase):
             [addr])
 
     def test_django_serializes_MAC_to_JSON(self):
-        mac = factory.make_mac_address()
+        mac = factory.make_MACAddress()
         query = MACAddress.objects.filter(id=mac.id)
         output = serializers.serialize('json', query)
         self.assertIn(json.dumps(mac.mac_address.get_raw()), output)
@@ -266,7 +266,7 @@ class TestVerboseRegexField(MAASServerTestCase):
 class TestMACAddressField(MAASServerTestCase):
 
     def test_mac_address_is_stored_normalized_and_loaded(self):
-        stored_mac = factory.make_mac_address(' AA-bb-CC-dd-EE-Ff ')
+        stored_mac = factory.make_MACAddress(' AA-bb-CC-dd-EE-Ff ')
         stored_mac.save()
         loaded_mac = MACAddress.objects.get(id=stored_mac.id)
         self.assertEqual('aa:bb:cc:dd:ee:ff', loaded_mac.mac_address)

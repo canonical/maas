@@ -137,7 +137,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_node()
         [mac1, mac2] = [
-            factory.make_mac_address(node=node) for _ in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         factory.make_staticipaddress(mac=mac1)
         factory.make_staticipaddress(mac=mac2)
         StaticIPAddress.objects.deallocate_by_node(node)
@@ -149,7 +149,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
     def test_deallocate_by_node_returns_deallocated_ips(self):
         node = factory.make_node()
         [mac1, mac2] = [
-            factory.make_mac_address(node=node) for _ in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         ip1 = factory.make_staticipaddress(mac=mac1)
         ip2 = factory.make_staticipaddress(mac=mac2)
         observed = StaticIPAddress.objects.deallocate_by_node(node)
@@ -160,10 +160,10 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
 
     def test_deallocate_by_node_ignores_other_nodes(self):
         node1 = factory.make_node()
-        mac1 = factory.make_mac_address(node=node1)
+        mac1 = factory.make_MACAddress(node=node1)
         factory.make_staticipaddress(mac=mac1)
         node2 = factory.make_node()
-        mac2 = factory.make_mac_address(node=node2)
+        mac2 = factory.make_MACAddress(node=node2)
         ip2 = factory.make_staticipaddress(mac=mac2)
 
         StaticIPAddress.objects.deallocate_by_node(node1)
@@ -171,7 +171,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
 
     def test_deallocate_only_deletes_auto_types(self):
         node = factory.make_node()
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         alloc_types = map_enum(IPADDRESS_TYPE).values()
         for alloc_type in alloc_types:
             factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
@@ -186,7 +186,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
     def test_delete_by_node_removes_addresses(self):
         node = factory.make_node()
         [mac1, mac2] = [
-            factory.make_mac_address(node=node) for _ in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         factory.make_staticipaddress(mac=mac1)
         factory.make_staticipaddress(mac=mac2)
         StaticIPAddress.objects.delete_by_node(node)
@@ -198,7 +198,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
     def test_delete_by_node_returns_deallocated_ips(self):
         node = factory.make_node()
         [mac1, mac2] = [
-            factory.make_mac_address(node=node) for _ in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         ip1 = factory.make_staticipaddress(mac=mac1)
         ip2 = factory.make_staticipaddress(mac=mac2)
         observed = StaticIPAddress.objects.delete_by_node(node)
@@ -209,10 +209,10 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
 
     def test_delete_by_node_ignores_other_nodes(self):
         node1 = factory.make_node()
-        mac1 = factory.make_mac_address(node=node1)
+        mac1 = factory.make_MACAddress(node=node1)
         factory.make_staticipaddress(mac=mac1)
         other_node = factory.make_node()
-        other_mac = factory.make_mac_address(node=other_node)
+        other_mac = factory.make_MACAddress(node=other_node)
         other_ip = factory.make_staticipaddress(mac=other_mac)
 
         StaticIPAddress.objects.delete_by_node(node1)
@@ -220,7 +220,7 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
 
     def test_delete_by_node_deletes_all_types(self):
         node = factory.make_node()
-        mac = factory.make_mac_address(node=node)
+        mac = factory.make_MACAddress(node=node)
         alloc_types = map_enum(IPADDRESS_TYPE).values()
         for alloc_type in alloc_types:
             factory.make_staticipaddress(mac=mac, alloc_type=alloc_type)
@@ -256,7 +256,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     def test_get_hostname_ip_mapping_picks_mac_with_static_address(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             hostname=factory.make_name('host'))
-        second_mac = factory.make_mac_address(node=node)
+        second_mac = factory.make_MACAddress(node=node)
         staticip = factory.make_staticipaddress(mac=second_mac)
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
@@ -275,7 +275,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     def test_get_hostname_ip_mapping_picks_oldest_mac_with_static_ip(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             hostname=factory.make_name('host'))
-        newer_mac = factory.make_mac_address(node=node)
+        newer_mac = factory.make_MACAddress(node=node)
         factory.make_staticipaddress(mac=newer_mac)
         ip_for_older_mac = factory.make_staticipaddress(
             mac=node.get_primary_mac())
@@ -303,10 +303,10 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         # different MACs.
         node = factory.make_node(disable_ipv4=False)
         ipv4_address = factory.make_staticipaddress(
-            mac=factory.make_mac_address(node=node),
+            mac=factory.make_MACAddress(node=node),
             ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
         ipv6_address = factory.make_staticipaddress(
-            mac=factory.make_mac_address(node=node),
+            mac=factory.make_MACAddress(node=node),
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
         mapping = StaticIPAddress.objects.get_hostname_ip_mapping(
             node.nodegroup)
