@@ -27,6 +27,8 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
+    "StopDHCPv4",
+    "StopDHCPv6",
     "ValidateLicenseKey",
 ]
 
@@ -273,6 +275,34 @@ class RemoveHostMaps(amp.Command):
     errors = {
         exceptions.CannotRemoveHostMap: (
             "CannotRemoveHostMap"),
+    }
+
+
+class StopDHCPv4(amp.Command):
+    """Stop (and disable) the DHCPv4 server.
+
+    :since: 1.7
+    """
+
+    arguments = []
+    response = []
+    errors = {
+        exceptions.CannotConfigureDHCP: "CannotConfigureDHCP",
+        exceptions.CannotStopDHCP: "CannotStopDHCP",
+    }
+
+
+class StopDHCPv6(amp.Command):
+    """Stop (and disable) the DHCPv6 server.
+
+    :since: 1.7
+    """
+
+    arguments = []
+    response = []
+    errors = {
+        exceptions.CannotConfigureDHCP: "CannotConfigureDHCP",
+        exceptions.CannotStopDHCP: "CannotStopDHCP",
     }
 
 
