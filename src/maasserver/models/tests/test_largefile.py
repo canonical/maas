@@ -127,7 +127,7 @@ class TestLargeFile(MAASServerTestCase):
 
     def test_delete_does_nothing_if_linked(self):
         largefile = factory.make_large_file()
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         resource_set = factory.make_boot_resource_set(resource)
         factory.make_boot_resource_file(resource_set, largefile)
         largefile.delete()

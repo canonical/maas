@@ -60,7 +60,7 @@ class TestHelpers(MAASServerTestCase):
         total_size = random.randint(1024, 2048)
         content = factory.make_string(size)
         largefile = factory.make_large_file(content=content, size=total_size)
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         resource_set = factory.make_boot_resource_set(resource)
         rfile = factory.make_boot_resource_file(resource_set, largefile)
@@ -79,7 +79,7 @@ class TestHelpers(MAASServerTestCase):
             dict_representation['upload_uri'])
 
     def test_boot_resource_set_to_dict(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         resource_set = factory.make_boot_resource_set(resource)
         total_size = random.randint(1024, 2048)
         content = factory.make_string(random.randint(512, 1023))
@@ -97,7 +97,7 @@ class TestHelpers(MAASServerTestCase):
             dict_representation['files'][rfile.filename])
 
     def test_boot_resource_to_dict_without_sets(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(resource)
         dict_representation = boot_resource_to_dict(resource, with_sets=False)
         self.assertEqual(resource.id, dict_representation['id'])
@@ -113,7 +113,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertFalse('sets' in dict_representation)
 
     def test_boot_resource_to_dict_with_sets(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         resource_set = factory.make_boot_resource_set(resource)
         dict_representation = boot_resource_to_dict(resource, with_sets=True)
         self.assertItemsEqual(
@@ -131,7 +131,7 @@ class TestBootResourcesAPI(APITestCase):
 
     def test_GET_returns_boot_resources_list(self):
         resources = [
-            factory.make_boot_resource() for _ in range(3)]
+            factory.make_BootResource() for _ in range(3)]
         response = self.client.get(
             reverse('boot_resources_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -142,11 +142,11 @@ class TestBootResourcesAPI(APITestCase):
 
     def test_GET_synced_returns_synced_boot_resources(self):
         resources = [
-            factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
             for _ in range(3)
             ]
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'synced'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -157,11 +157,11 @@ class TestBootResourcesAPI(APITestCase):
 
     def test_GET_generated_returns_generated_boot_resources(self):
         resources = [
-            factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
             for _ in range(3)
             ]
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'generated'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -172,11 +172,11 @@ class TestBootResourcesAPI(APITestCase):
 
     def test_GET_uploaded_returns_uploaded_boot_resources(self):
         resources = [
-            factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
             for _ in range(3)
             ]
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.GENERATED)
         response = self.client.get(
             reverse('boot_resources_handler'), {'type': 'uploaded'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -186,7 +186,7 @@ class TestBootResourcesAPI(APITestCase):
             [resource.get('id') for resource in parsed_result])
 
     def test_GET_doesnt_include_full_definition_of_boot_resource(self):
-        factory.make_boot_resource()
+        factory.make_BootResource()
         response = self.client.get(
             reverse('boot_resources_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -410,13 +410,13 @@ class TestBootResourceAPI(APITestCase):
 
     def test_DELETE_deletes_boot_resource(self):
         self.become_admin()
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         response = self.client.delete(get_boot_resource_uri(resource))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(resource))
 
     def test_DELETE_requires_admin(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         response = self.client.delete(get_boot_resource_uri(resource))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -449,7 +449,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
 
         if rtype is None:
             rtype = BOOT_RESOURCE_TYPE.UPLOADED
-        resource = factory.make_boot_resource(rtype=rtype)
+        resource = factory.make_BootResource(rtype=rtype)
         resource_set = factory.make_boot_resource_set(resource)
         rfile = factory.make_boot_resource_file(resource_set, largefile)
         return rfile, content

@@ -40,7 +40,7 @@ class TestBootResourceManager(MAASServerTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         architecture = '%s/%s' % (arch, subarch)
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=rtype, name=name, architecture=architecture)
         return resource, (arch, subarch)
 
@@ -179,7 +179,7 @@ class TestBootResourceManager(MAASServerTestCase):
         name = '%s/%s' % (os, series)
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
-        not_commissionable = factory.make_boot_resource(
+        not_commissionable = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         factory.make_boot_resource_set(not_commissionable)
         commissionables = BootResource.objects.get_commissionable_resource(
@@ -259,7 +259,7 @@ class TestBootResourceManager(MAASServerTestCase):
 
     def test_get_resource_for_returns_matching_resource(self):
         resources = [
-            factory.make_boot_resource(
+            factory.make_BootResource(
                 rtype=random.choice(RTYPE_REQUIRING_OS_SERIES_NAME))
             for _ in range(3)
             ]
@@ -326,7 +326,7 @@ class TestBootResource(MAASServerTestCase):
             factory.make_name('os'), factory.make_name('series'))
         arch = '%s/%s' % (
             factory.make_name('arch'), factory.make_name('subarch'))
-        factory.make_boot_resource(
+        factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture=arch)
         self.assertRaises(
@@ -343,17 +343,17 @@ class TestBootResource(MAASServerTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         architecture = '%s/%s' % (arch, subarch)
-        resource = factory.make_boot_resource(architecture=architecture)
+        resource = factory.make_BootResource(architecture=architecture)
         self.assertEqual([arch, subarch], resource.split_arch())
 
     def test_get_latest_set(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(resource)
         latest_two = factory.make_boot_resource_set(resource)
         self.assertEqual(latest_two, resource.get_latest_set())
 
     def test_get_latest_complete_set(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(resource)
         self.make_complete_boot_resource_set(resource)
         latest_complete = self.make_complete_boot_resource_set(resource)
@@ -367,12 +367,12 @@ class TestBootResource(MAASServerTestCase):
 
     def test_get_next_version_name_returns_current_date(self):
         expected_version = self.configure_now()
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         self.assertEqual(expected_version, resource.get_next_version_name())
 
     def test_get_next_version_name_returns_first_revision(self):
         expected_version = '%s.1' % self.configure_now()
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(
             resource, version=resource.get_next_version_name())
         self.assertEqual(expected_version, resource.get_next_version_name())
@@ -380,7 +380,7 @@ class TestBootResource(MAASServerTestCase):
     def test_get_next_version_name_returns_later_revision(self):
         expected_version = self.configure_now()
         set_count = random.randint(2, 4)
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         for _ in range(set_count):
             factory.make_boot_resource_set(
                 resource, version=resource.get_next_version_name())
@@ -392,24 +392,24 @@ class TestBootResource(MAASServerTestCase):
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
         architecture = '%s/%s' % (arch, subarch)
-        resource = factory.make_boot_resource(architecture=architecture)
+        resource = factory.make_BootResource(architecture=architecture)
         self.assertTrue(resource.supports_subarch(subarch))
 
     def test_supports_subarch_returns_False_if_subarches_is_missing(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         self.assertFalse(
             resource.supports_subarch(factory.make_name('subarch')))
 
     def test_supports_subarch_returns_True_if_subarch_in_subarches(self):
         subarches = [factory.make_name('subarch') for _ in range(3)]
         subarch = random.choice(subarches)
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             extra={'subarches': ','.join(subarches)})
         self.assertTrue(resource.supports_subarch(subarch))
 
     def test_supports_subarch_returns_False_if_subarch_not_in_subarches(self):
         subarches = [factory.make_name('subarch') for _ in range(3)]
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             extra={'subarches': ','.join(subarches)})
         self.assertFalse(
             resource.supports_subarch(factory.make_name('subarch')))

@@ -230,7 +230,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             output['index']['maas:v2:download']['products'])
 
     def test_streams_product_index_empty_with_incomplete_resource(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(resource)
         response = self.get_stream_client('index.json')
         output = json.loads(response.content)
@@ -272,7 +272,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
             output['products'])
 
     def test_streams_product_download_empty_with_incomplete_resource(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         factory.make_boot_resource_set(resource)
         response = self.get_stream_client('maas:v2:download.json')
         output = json.loads(response.content)
@@ -332,7 +332,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         self.assertEqual(newest_set.label, output_product['label'])
 
     def test_streams_product_download_product_contains_multiple_versions(self):
-        resource = factory.make_boot_resource()
+        resource = factory.make_BootResource()
         resource_sets = [
             factory.make_boot_resource_set(resource)
             for _ in range(3)
@@ -472,7 +472,7 @@ class TestConnectionWrapper(TransactionTestCase):
             filename = filetype
             size = randint(1024, 2048)
             content = factory.make_string(size=size)
-            resource = factory.make_boot_resource(
+            resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
             resource_set = factory.make_boot_resource_set(
@@ -586,7 +586,7 @@ def make_boot_resource_group(
         rtype=None, name=None, architecture=None,
         version=None, filename=None, filetype=None):
     """Make boot resource that contains one set and one file."""
-    resource = factory.make_boot_resource(
+    resource = factory.make_BootResource(
         rtype=rtype, name=name, architecture=architecture)
     resource_set = factory.make_boot_resource_set(resource, version=version)
     rfile = factory.make_boot_resource_file_with_content(
@@ -604,7 +604,7 @@ def make_boot_resource_group_from_product(product):
     """
     name = '%s/%s' % (product['os'], product['release'])
     architecture = '%s/%s' % (product['arch'], product['subarch'])
-    resource = factory.make_boot_resource(
+    resource = factory.make_BootResource(
         rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
         architecture=architecture)
     resource_set = factory.make_boot_resource_set(
@@ -621,7 +621,7 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def make_boot_resources(self):
         resources = [
-            factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+            factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
             for _ in range(3)
             ]
         resource_names = []
@@ -649,7 +649,7 @@ class TestBootResourceStore(MAASServerTestCase):
     def test_prevent_resource_deletion_doesnt_remove_unknown_resource(self):
         resources, resource_names = self.make_boot_resources()
         store = BootResourceStore()
-        resource = factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         store.prevent_resource_deletion(resource)
         self.assertItemsEqual(resource_names, store._resources_to_delete)
 
@@ -673,7 +673,7 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def test_get_or_create_boot_resource_gets_resource(self):
         name, architecture, product = make_product()
-        expected = factory.make_boot_resource(
+        expected = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
             architecture=architecture)
         store = BootResourceStore()
@@ -684,7 +684,7 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def test_get_or_create_boot_resource_calls_prevent_resource_deletion(self):
         name, architecture, product = make_product()
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture=architecture)
         store = BootResourceStore()
@@ -695,7 +695,7 @@ class TestBootResourceStore(MAASServerTestCase):
 
     def test_get_or_create_boot_resource_converts_generated_into_synced(self):
         name, architecture, product = make_product()
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED,
             name=name, architecture=architecture)
         store = BootResourceStore()
@@ -758,7 +758,7 @@ class TestBootResourceStore(MAASServerTestCase):
         filename = factory.make_name('filename')
         name = '%s/%s' % (os, series)
         architecture = '%s/%s' % (arch, subarch)
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
             architecture=architecture)
         resource_set = factory.make_boot_resource_set(
@@ -859,7 +859,7 @@ class TestBootResourceTransactional(TransactionTestCase):
     def test_insert_deletes_mismatch_largefile_keeps_other_resource_file(self):
         name, architecture, product = make_product()
         with transaction.atomic():
-            resource = factory.make_boot_resource(
+            resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
             resource_set = factory.make_boot_resource_set(
@@ -889,7 +889,7 @@ class TestBootResourceTransactional(TransactionTestCase):
     def test_insert_creates_new_largefile(self):
         name, architecture, product = make_product()
         with transaction.atomic():
-            resource = factory.make_boot_resource(
+            resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
             resource_set = factory.make_boot_resource_set(
@@ -909,7 +909,7 @@ class TestBootResourceTransactional(TransactionTestCase):
     def test_resource_cleaner_removes_old_boot_resources(self):
         with transaction.atomic():
             resources = [
-                factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+                factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
                 for _ in range(3)
                 ]
         store = BootResourceStore()
@@ -933,7 +933,7 @@ class TestBootResourceTransactional(TransactionTestCase):
 
     def test_resource_set_cleaner_keeps_only_newest_completed_set(self):
         with transaction.atomic():
-            resource = factory.make_boot_resource(
+            resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
             old_complete_sets = []
             for _ in range(3):
@@ -951,7 +951,7 @@ class TestBootResourceTransactional(TransactionTestCase):
 
     def test_resource_set_cleaner_removes_resources_with_empty_sets(self):
         with transaction.atomic():
-            resource = factory.make_boot_resource(
+            resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
         store = BootResourceStore()
         store.resource_set_cleaner()
@@ -1023,11 +1023,11 @@ class TestImportImages(MAASTestCase):
             MockCalledOnceWith())
 
     def test_has_synced_resources_returns_true(self):
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         self.assertTrue(bootresources.has_synced_resources())
 
     def test_has_synced_resources_returns_false(self):
-        factory.make_boot_resource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         self.assertFalse(bootresources.has_synced_resources())
 
     def test__import_resources_exists_early_without_force(self):

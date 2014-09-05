@@ -129,7 +129,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
         resource_arch = '%s/%s' % (
             param['architecture'], param['subarchitecture'])
 
-        resource = factory.make_boot_resource(
+        resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=resource_name, architecture=resource_arch)
         resource.extra['subarches'] = ','.join(subarches)
