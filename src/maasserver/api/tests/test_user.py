@@ -87,7 +87,7 @@ class TestUsers(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_GET_lists_users(self):
-        users = [factory.make_user() for counter in range(2)]
+        users = [factory.make_User() for counter in range(2)]
 
         response = self.client.get(reverse('users_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -104,7 +104,7 @@ class TestUsers(APITestCase):
         # the two may use different collations.
         users = [factory.make_name('user').lower() for counter in range(5)]
         for user in users:
-            factory.make_user(username=user)
+            factory.make_User(username=user)
 
         response = self.client.get(reverse('users_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -126,7 +126,7 @@ class TestUser(APITestCase):
             reverse('user_handler', args=['username']))
 
     def test_GET_finds_user(self):
-        user = factory.make_user()
+        user = factory.make_User()
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))
@@ -138,7 +138,7 @@ class TestUser(APITestCase):
         self.assertFalse(returned_user['is_superuser'])
 
     def test_GET_shows_expected_fields(self):
-        user = factory.make_user()
+        user = factory.make_User()
 
         response = self.client.get(
             reverse('user_handler', args=[user.username]))

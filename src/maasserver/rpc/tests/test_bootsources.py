@@ -24,7 +24,7 @@ class TestGetBootSources(MAASServerTestCase):
     def test_returns_boot_sources_and_selections(self):
         keyring = factory.make_bytes()
         nodegroup = factory.make_NodeGroup()
-        source = factory.make_boot_source(keyring_data=keyring)
+        source = factory.make_BootSource(keyring_data=keyring)
         factory.make_BootSourceSelection(source)
 
         expected = source.to_dict()
@@ -33,7 +33,7 @@ class TestGetBootSources(MAASServerTestCase):
     def test_removes_os_from_boot_source_selections(self):
         keyring = factory.make_bytes()
         nodegroup = factory.make_NodeGroup()
-        source = factory.make_boot_source(keyring_data=keyring)
+        source = factory.make_BootSource(keyring_data=keyring)
         factory.make_BootSourceSelection(source)
 
         expected = source.to_dict()

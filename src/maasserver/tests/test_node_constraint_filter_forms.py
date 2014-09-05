@@ -101,7 +101,7 @@ class TestUtils(MAASServerTestCase):
         self.assertEqual([], detect_nonexistent_zone_names([]))
 
     def test_detect_nonexistent_zone_names_returns_empty_if_all_OK(self):
-        zones = [factory.make_zone() for _ in range(3)]
+        zones = [factory.make_Zone() for _ in range(3)]
         self.assertEqual(
             [],
             detect_nonexistent_zone_names([zone.name for zone in zones]))
@@ -117,7 +117,7 @@ class TestUtils(MAASServerTestCase):
             detect_nonexistent_zone_names(names))
 
     def test_detect_nonexistent_zone_names_combines_good_and_bad_names(self):
-        zone = factory.make_zone().name
+        zone = factory.make_Zone().name
         non_zone = factory.make_name('nonzone')
         self.assertEqual(
             [non_zone],
@@ -248,7 +248,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_filters_by_name(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         macs = [
             factory.make_MACAddress(networks=[network])
             for network in networks
@@ -261,7 +261,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'networks': [networks[pick].name]})
 
     def test_networks_filters_by_ip(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         macs = [
             factory.make_MACAddress(networks=[network])
             for network in networks
@@ -295,7 +295,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes({node}, {'networks': [network.name]})
 
     def test_networks_filter_ignores_other_networks_on_mac(self):
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         mac = factory.make_MACAddress(networks=networks)
         self.assertConstrainedNodes(
             {mac.node},
@@ -322,7 +322,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_networks_combines_filters(self):
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         [
             network_by_name,
             network_by_ip,
@@ -352,7 +352,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             })
 
     def test_networks_ignores_other_networks(self):
-        [this_network, other_network] = factory.make_networks(2)
+        [this_network, other_network] = factory.make_Networks(2)
         mac = factory.make_MACAddress(
             networks=[this_network, other_network])
         self.assertConstrainedNodes(
@@ -360,7 +360,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'networks': [this_network.name]})
 
     def test_not_networks_filters_by_name(self):
-        networks = factory.make_networks(2)
+        networks = factory.make_Networks(2)
         macs = [
             factory.make_MACAddress(networks=[network])
             for network in networks
@@ -370,7 +370,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'not_networks': [networks[1].name]})
 
     def test_not_networks_filters_by_ip(self):
-        networks = factory.make_networks(2)
+        networks = factory.make_Networks(2)
         macs = [
             factory.make_MACAddress(networks=[network])
             for network in networks
@@ -405,7 +405,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes([], {'not_networks': [network.name]})
 
     def test_not_networks_excludes_node_with_mac_on_any_not_networks(self):
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         not_network = networks[1]
         factory.make_MACAddress(networks=[not_network])
         self.assertConstrainedNodes([], {'not_networks': [not_network.name]})
@@ -431,7 +431,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_not_networks_combines_filters(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         [
             network_by_name,
             network_by_ip,
@@ -508,8 +508,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
         node1 = factory.make_Node()
         node2 = factory.make_Node()
         node3 = factory.make_Node()
-        zone1 = factory.make_zone(nodes=[node1, node2])
-        zone2 = factory.make_zone()
+        zone1 = factory.make_Zone(nodes=[node1, node2])
+        zone2 = factory.make_Zone()
 
         self.assertConstrainedNodes(
             [node1, node2], {'zone': zone1.name})
@@ -534,7 +534,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'not_in_zone': [node.zone.name for node in ineligible_nodes]})
 
     def test_not_in_zone_with_required_zone_yields_no_nodes(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         factory.make_Node(zone=zone)
         self.assertConstrainedNodes([], {'zone': zone, 'not_in_zone': [zone]})
 
@@ -562,8 +562,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             {'not_in_zone': [nodes[0].zone.name, nodes[1].zone.name]})
 
     def test_tags(self):
-        tag_big = factory.make_tag(name='big')
-        tag_burly = factory.make_tag(name='burly')
+        tag_big = factory.make_Tag(name='big')
+        tag_burly = factory.make_Tag(name='burly')
         node_big = factory.make_Node()
         node_big.tags.add(tag_big)
         node_burly = factory.make_Node()
@@ -579,7 +579,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             [node_bignburly], {'tags': ['big', 'burly']})
 
     def test_not_tags_negates_individual_tags(self):
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         tagged_node = factory.make_Node()
         tagged_node.tags.add(tag)
         untagged_node = factory.make_Node()
@@ -590,9 +590,9 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_not_tags_negates_multiple_tags(self):
         tagged_node = factory.make_Node()
         tags = [
-            factory.make_tag('spam'),
-            factory.make_tag('eggs'),
-            factory.make_tag('ham'),
+            factory.make_Tag('spam'),
+            factory.make_Tag('eggs'),
+            factory.make_Tag('ham'),
             ]
         tagged_node.tags = tags
         partially_tagged_node = factory.make_Node()
@@ -611,7 +611,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             (form.is_valid(), form.errors))
 
     def test_combined_constraints(self):
-        tag_big = factory.make_tag(name='big')
+        tag_big = factory.make_Tag(name='big')
         arch = '%s/generic' % factory.make_name('arch')
         wrong_arch = '%s/generic' % factory.make_name('arch')
         patch_usable_architectures(self, [arch, wrong_arch])
@@ -668,14 +668,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEqual('arch=%s' % arch, form.describe_constraints())
 
     def test_describe_constraints_shows_multi_constraint(self):
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         form = AcquireNodeForm(data={'tags': [tag.name]})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual('tags=%s' % tag.name, form.describe_constraints())
 
     def test_describe_constraints_sorts_constraints(self):
         hostname = factory.make_name('host')
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         form = AcquireNodeForm(data={'name': hostname, 'zone': zone})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
@@ -683,8 +683,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             form.describe_constraints())
 
     def test_describe_constraints_combines_constraint_values(self):
-        tag1 = factory.make_tag()
-        tag2 = factory.make_tag()
+        tag1 = factory.make_Tag()
+        tag2 = factory.make_Tag()
         form = AcquireNodeForm(data={'tags': [tag1.name, tag2.name]})
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(
@@ -697,14 +697,14 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'arch': self.set_usable_arch(),
             'cpu_count': randint(1, 32),
             'mem': randint(1024, 256 * 1024),
-            'tags': [factory.make_tag().name],
-            'not_tags': [factory.make_tag().name],
+            'tags': [factory.make_Tag().name],
+            'not_tags': [factory.make_Tag().name],
             'networks': [factory.make_Network().name],
             'not_networks': [factory.make_Network().name],
             'connected_to': [factory.getRandomMACAddress()],
             'not_connected_to': [factory.getRandomMACAddress()],
-            'zone': factory.make_zone(),
-            'not_in_zone': [factory.make_zone().name],
+            'zone': factory.make_Zone(),
+            'not_in_zone': [factory.make_Zone().name],
             }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)

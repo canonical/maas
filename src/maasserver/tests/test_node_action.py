@@ -100,7 +100,7 @@ class TestNodeAction(MAASServerTestCase):
 
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         actions = compile_node_actions(
-            node, factory.make_user(), classes=[MyAction])
+            node, factory.make_User(), classes=[MyAction])
         self.assertEqual({}, actions)
 
     def test_compile_node_actions_includes_inhibited_actions(self):
@@ -143,7 +143,7 @@ class TestNodeAction(MAASServerTestCase):
             permission = NODE_PERMISSION.EDIT
 
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         self.assertTrue(MyAction(node, node.owner).is_permitted())
 
     def test_is_permitted_disallows_if_user_lacks_permission(self):
@@ -152,12 +152,12 @@ class TestNodeAction(MAASServerTestCase):
             permission = NODE_PERMISSION.EDIT
 
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
-        self.assertFalse(MyAction(node, factory.make_user()).is_permitted())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
+        self.assertFalse(MyAction(node, factory.make_User()).is_permitted())
 
     def test_inhibition_wraps_inhibit(self):
         inhibition = factory.make_string()
-        action = FakeNodeAction(factory.make_Node(), factory.make_user())
+        action = FakeNodeAction(factory.make_Node(), factory.make_User())
         action.fake_inhibition = inhibition
         self.assertEqual(inhibition, action.inhibition)
 
@@ -166,7 +166,7 @@ class TestNodeAction(MAASServerTestCase):
         # prove this by changing the string inhibit() returns; it won't
         # affect the value of the property.
         inhibition = factory.make_string()
-        action = FakeNodeAction(factory.make_Node(), factory.make_user())
+        action = FakeNodeAction(factory.make_Node(), factory.make_User())
         action.fake_inhibition = inhibition
         self.assertEqual(inhibition, action.inhibition)
         action.fake_inhibition = factory.make_string()
@@ -176,7 +176,7 @@ class TestNodeAction(MAASServerTestCase):
         # An inhibition of None is also faithfully cached.  In other
         # words, it doesn't get mistaken for an uninitialized cache or
         # anything.
-        action = FakeNodeAction(factory.make_Node(), factory.make_user())
+        action = FakeNodeAction(factory.make_Node(), factory.make_User())
         action.fake_inhibition = None
         self.assertIsNone(action.inhibition)
         action.fake_inhibition = factory.make_string()
@@ -256,7 +256,7 @@ class TestAcquireNodeNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.READY,
             power_type='ether_wake')
-        user = factory.make_user()
+        user = factory.make_User()
         AcquireNode(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(user, node.owner)
@@ -265,13 +265,13 @@ class TestAcquireNodeNodeAction(MAASServerTestCase):
 class TestStartNodeNodeAction(MAASServerTestCase):
 
     def test_StartNode_inhibit_allows_user_with_SSH_key(self):
-        user_with_key = factory.make_user()
-        factory.make_sshkey(user_with_key)
+        user_with_key = factory.make_User()
+        factory.make_SSHKey(user_with_key)
         self.assertIsNone(
             StartNode(factory.make_Node(), user_with_key).inhibit())
 
     def test_StartNode_inhibit_disallows_user_without_SSH_key(self):
-        user_without_key = factory.make_user()
+        user_without_key = factory.make_User()
         action = StartNode(factory.make_Node(), user_without_key)
         inhibition = action.inhibit()
         self.assertIsNotNone(inhibition)
@@ -279,7 +279,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 
     def test_StartNode_starts_node(self):
         start_nodes = self.patch(Node.objects, "start_nodes")
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
@@ -288,7 +288,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
             start_nodes, MockCalledOnceWith([node.system_id], user))
 
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user)
         ngi = node.get_primary_mac().cluster_interface
@@ -306,7 +306,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.READY, node.status)
 
     def test_StartNode_requires_edit_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node()
         self.assertFalse(
             user.has_perm(NODE_PERMISSION.EDIT, node))
@@ -316,7 +316,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 class TestStopNodeNodeAction(MAASServerTestCase):
 
     def test_StopNode_stops_node(self):
-        user = factory.make_user()
+        user = factory.make_User()
         params = dict(
             power_address=factory.make_string(),
             power_user=factory.make_string(),
@@ -337,7 +337,7 @@ class TestStopNodeNodeAction(MAASServerTestCase):
 class TestReleaseNodeNodeAction(MAASServerTestCase):
 
     def test_ReleaseNode_stops_and_releases_node(self):
-        user = factory.make_user()
+        user = factory.make_User()
         params = dict(
             power_address=factory.make_string(),
             power_user=factory.make_string(),
@@ -360,7 +360,7 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
 class TestUseCurtinNodeAction(MAASServerTestCase):
 
     def test_sets_boot_type(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(owner=user, boot_type=NODE_BOOT.DEBIAN)
         action = UseCurtin(node, user)
         self.assertTrue(action.is_permitted())
@@ -368,7 +368,7 @@ class TestUseCurtinNodeAction(MAASServerTestCase):
         self.assertEqual(NODE_BOOT.FASTPATH, node.boot_type)
 
     def test_requires_edit_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         self.assertFalse(UseCurtin(node, user).is_permitted())
 
@@ -381,7 +381,7 @@ class TestUseCurtinNodeAction(MAASServerTestCase):
 class TestUseDINodeAction(MAASServerTestCase):
 
     def test_sets_boot_type(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(owner=user, boot_type=NODE_BOOT.FASTPATH)
         action = UseDI(node, user)
         self.assertTrue(action.is_permitted())
@@ -389,7 +389,7 @@ class TestUseDINodeAction(MAASServerTestCase):
         self.assertEqual(NODE_BOOT.DEBIAN, node.boot_type)
 
     def test_requires_edit_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
         self.assertFalse(UseDI(node, user).is_permitted())
 
@@ -402,7 +402,7 @@ class TestUseDINodeAction(MAASServerTestCase):
 class TestMarkBrokenAction(MAASServerTestCase):
 
     def test_changes_status(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(owner=user, status=NODE_STATUS.COMMISSIONING)
         action = MarkBroken(node, user)
         self.assertTrue(action.is_permitted())
@@ -410,7 +410,7 @@ class TestMarkBrokenAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_updates_error_description(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(owner=user, status=NODE_STATUS.COMMISSIONING)
         action = MarkBroken(node, user)
         self.assertTrue(action.is_permitted())
@@ -421,7 +421,7 @@ class TestMarkBrokenAction(MAASServerTestCase):
         )
 
     def test_requires_edit_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node()
         self.assertFalse(MarkBroken(node, user).is_permitted())
 
@@ -437,7 +437,7 @@ class TestMarkFixedAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
     def test_requires_admin_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node()
         self.assertFalse(MarkFixed(node, user).is_permitted())
 

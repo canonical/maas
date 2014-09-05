@@ -137,7 +137,7 @@ class TestOAuthHelpers(MAASServerTestCase):
                 factory.make_oauth_header(oauth_token=token))))
 
     def test_get_oauth_token_finds_token(self):
-        user = factory.make_user()
+        user = factory.make_User()
         consumer, token = user.get_profile().create_authorisation_token()
         self.assertEqual(
             token,

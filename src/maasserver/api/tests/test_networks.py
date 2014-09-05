@@ -82,7 +82,7 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual([], json.loads(response.content))
 
     def test_GET_sorts_by_name(self):
-        networks = factory.make_networks(3, sortable_name=True)
+        networks = factory.make_Networks(3, sortable_name=True)
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
@@ -91,7 +91,7 @@ class TestNetworksAPI(APITestCase):
             [network['name'] for network in json.loads(response.content)])
 
     def test_GET_filters_by_node(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         mac = factory.make_MACAddress(networks=networks[1:3])
         node = mac.node
         response = self.client.get(
@@ -104,7 +104,7 @@ class TestNetworksAPI(APITestCase):
             {network['name'] for network in json.loads(response.content)})
 
     def test_GET_combines_node_filters_as_intersection_of_networks(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         mac1 = factory.make_MACAddress(networks=networks[1:3])
         mac2 = factory.make_MACAddress(networks=networks[2:4])
         node1 = mac1.node

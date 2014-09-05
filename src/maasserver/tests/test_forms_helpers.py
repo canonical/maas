@@ -58,7 +58,7 @@ class TestHelpers(MAASServerTestCase):
         if release is None:
             release = factory.make_name('release')
         for purpose in ['install', 'commissioning']:
-            factory.make_boot_image(
+            factory.make_BootImage(
                 nodegroup=nodegroup, osystem=osystem, architecture=arch,
                 subarchitecture=subarchitecture, release=release,
                 purpose=purpose)
@@ -137,7 +137,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual({}, remove_None_values({}))
 
     def test_get_node_edit_form_returns_NodeForm_if_non_admin(self):
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertEqual(NodeForm, get_node_edit_form(user))
 
     def test_get_node_edit_form_returns_APIAdminNodeEdit_if_admin(self):
@@ -145,7 +145,7 @@ class TestHelpers(MAASServerTestCase):
         self.assertEqual(AdminNodeForm, get_node_edit_form(admin))
 
     def test_get_node_create_form_if_non_admin(self):
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertEqual(
             NodeWithMACAddressesForm, get_node_create_form(user))
 

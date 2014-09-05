@@ -46,7 +46,7 @@ def make_usable_boot_images(nodegroup=None, osystem=None, arch=None,
         if release is None:
             release = factory.make_name('release')
         for purpose in ['install', 'commissioning']:
-            factory.make_boot_image(
+            factory.make_BootImage(
                 nodegroup=nodegroup, osystem=osystem, architecture=arch,
                 subarchitecture=subarchitecture, release=release,
                 purpose=purpose)

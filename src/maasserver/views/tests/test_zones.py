@@ -56,7 +56,7 @@ class ZoneListingViewTest(MAASServerTestCase):
     def test_zone_list_displays_zone_details(self):
         # Zone listing displays the zone name and the zone description.
         self.client_log_in()
-        [factory.make_zone() for i in range(3)]
+        [factory.make_Zone() for i in range(3)]
         zones = Zone.objects.all()
         response = self.client.get(reverse('zone-list'))
         zone_names = [zone.name for zone in zones]
@@ -69,7 +69,7 @@ class ZoneListingViewTest(MAASServerTestCase):
     def test_zone_list_displays_sorted_list_of_zones(self):
         # Zones are alphabetically sorted on the zone list page.
         self.client_log_in()
-        [factory.make_zone(sortable_name=True) for i in range(3)]
+        [factory.make_Zone(sortable_name=True) for i in range(3)]
         zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
@@ -83,7 +83,7 @@ class ZoneListingViewTest(MAASServerTestCase):
 
     def test_zone_list_displays_links_to_zone_node(self):
         self.client_log_in()
-        [factory.make_zone(sortable_name=True) for i in range(3)]
+        [factory.make_Zone(sortable_name=True) for i in range(3)]
         zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
@@ -101,7 +101,7 @@ class ZoneListingViewTestNonAdmin(MAASServerTestCase):
 
     def test_zone_list_does_not_contain_edit_and_delete_links(self):
         self.client_log_in()
-        zones = [factory.make_zone() for i in range(3)]
+        zones = [factory.make_Zone() for i in range(3)]
         response = self.client.get(reverse('zone-list'))
         zone_edit_links = [
             reverse('zone-edit', args=[zone.name]) for zone in zones]
@@ -125,7 +125,7 @@ class ZoneListingViewTestNonAdmin(MAASServerTestCase):
         self.patch(ZoneListView, "paginate_by", 3)
         self.client_log_in(as_admin=True)
         # Create 4 zones.
-        [factory.make_zone() for _ in range(4)]
+        [factory.make_Zone() for _ in range(4)]
         response = self.client.get(reverse('zone-list'))
         self.assertEqual(httplib.OK, response.status_code)
         doc = fromstring(response.content)
@@ -138,7 +138,7 @@ class ZoneListingViewTestAdmin(MAASServerTestCase):
 
     def test_zone_list_contains_edit_links(self):
         self.client_log_in(as_admin=True)
-        zones = [factory.make_zone() for i in range(3)]
+        zones = [factory.make_Zone() for i in range(3)]
         default_zone = Zone.objects.get_default_zone()
         zone_edit_links = [
             reverse('zone-edit', args=[zone.name]) for zone in zones]
@@ -209,7 +209,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
         # The Zone detail view displays the zone name and the zone
         # description.
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         self.assertThat(response.content, Contains(zone.name))
         self.assertThat(
@@ -217,7 +217,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
 
     def test_zone_detail_displays_node_count(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node()
         node.zone = zone
         response = self.client.get(reverse('zone-view', args=[zone.name]))
@@ -228,7 +228,7 @@ class ZoneDetailViewTest(MAASServerTestCase):
 
     def test_zone_detail_links_to_node_list(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node()
         node.zone = zone
         response = self.client.get(reverse('zone-view', args=[zone.name]))
@@ -243,14 +243,14 @@ class ZoneDetailViewNonAdmin(MAASServerTestCase):
 
     def test_zone_detail_does_not_contain_edit_link(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_edit_link = reverse('zone-edit', args=[zone.name])
         self.assertNotIn(zone_edit_link, get_content_links(response))
 
     def test_zone_detail_does_not_contain_delete_link(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_delete_link = reverse('zone-del', args=[zone.name])
         self.assertNotIn(zone_delete_link, get_content_links(response))
@@ -260,14 +260,14 @@ class ZoneDetailViewAdmin(MAASServerTestCase):
 
     def test_zone_detail_contains_edit_link(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_edit_link = reverse('zone-edit', args=[zone.name])
         self.assertIn(zone_edit_link, get_content_links(response))
 
     def test_zone_detail_contains_delete_link(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(reverse('zone-view', args=[zone.name]))
         zone_delete_link = reverse('zone-del', args=[zone.name])
         self.assertIn(zone_delete_link, get_content_links(response))
@@ -284,7 +284,7 @@ class ZoneEditNonAdminTest(MAASServerTestCase):
 
     def test_cannot_access_zone_edit(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(reverse('zone-edit', args=[zone.name]))
         self.assertEqual(reverse('login'), extract_redirect(response))
 
@@ -293,7 +293,7 @@ class ZoneEditAdminTest(MAASServerTestCase):
 
     def test_zone_edit(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         new_name = factory.make_name('name')
         new_description = factory.make_name('description')
         response = self.client.post(
@@ -316,7 +316,7 @@ class ZoneDeleteNonAdminTest(MAASServerTestCase):
 
     def test_cannot_delete(self):
         self.client_log_in()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(reverse('zone-del', args=[zone.name]))
         self.assertEqual(reverse('login'), extract_redirect(response))
         self.assertIsNotNone(reload_object(zone))
@@ -326,7 +326,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
 
     def test_deletes_zone(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),
             {'post': 'yes'})
@@ -354,7 +354,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
 
     def test_redirects_to_listing(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),
             {'post': 'yes'})
@@ -362,7 +362,7 @@ class ZoneDeleteAdminTest(MAASServerTestCase):
 
     def test_does_not_delete_nodes(self):
         self.client_log_in(as_admin=True)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         response = self.client.post(
             reverse('zone-del', args=[zone.name]),

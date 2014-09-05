@@ -344,7 +344,7 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
     @transactional
     def make_boot_source_selection(self, keyring):
         nodegroup = factory.make_NodeGroup()
-        boot_source = factory.make_boot_source(keyring_data=keyring)
+        boot_source = factory.make_BootSource(keyring_data=keyring)
         factory.make_BootSourceSelection(boot_source)
         return nodegroup.uuid, boot_source.to_dict()
 
@@ -384,7 +384,7 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
     @transactional
     def make_boot_source_selection(self, keyring):
         nodegroup = factory.make_NodeGroup()
-        boot_source = factory.make_boot_source(keyring_data=keyring)
+        boot_source = factory.make_BootSource(keyring_data=keyring)
         factory.make_BootSourceSelection(boot_source)
         return nodegroup.uuid, boot_source.to_dict()
 

@@ -36,7 +36,7 @@ class TestLicenseKey(APITestCase):
 
     def make_license_key_with_os(self, osystem=None, distro_series=None,
                                  license_key=None):
-        license_key = factory.make_license_key(
+        license_key = factory.make_LicenseKey(
             osystem=osystem, distro_series=distro_series,
             license_key=license_key)
         osystem = make_usable_osystem(
@@ -56,7 +56,7 @@ class TestLicenseKey(APITestCase):
 
     def test_POST_is_prohibited(self):
         self.become_admin()
-        license_key = factory.make_license_key()
+        license_key = factory.make_LicenseKey()
         response = self.client.post(
             self.get_url(license_key.osystem, license_key.distro_series),
             {'osystem': "New osystem"})
@@ -64,7 +64,7 @@ class TestLicenseKey(APITestCase):
 
     def test_GET_returns_license_key(self):
         self.become_admin()
-        license_key = factory.make_license_key()
+        license_key = factory.make_LicenseKey()
 
         response = self.client.get(
             self.get_url(license_key.osystem, license_key.distro_series))
@@ -90,7 +90,7 @@ class TestLicenseKey(APITestCase):
             self.client.get(self.get_url('noneos', 'noneseries')).status_code)
 
     def test_GET_requires_admin(self):
-        license_key = factory.make_license_key()
+        license_key = factory.make_LicenseKey()
         response = self.client.get(
             self.get_url(license_key.osystem, license_key.distro_series))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -128,14 +128,14 @@ class TestLicenseKey(APITestCase):
 
     def test_DELETE_deletes_network(self):
         self.become_admin()
-        license_key = factory.make_license_key()
+        license_key = factory.make_LicenseKey()
         response = self.client.delete(
             self.get_url(license_key.osystem, license_key.distro_series))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(license_key))
 
     def test_DELETE_requires_admin(self):
-        license_key = factory.make_license_key()
+        license_key = factory.make_LicenseKey()
         response = self.client.delete(
             self.get_url(license_key.osystem, license_key.distro_series))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -165,7 +165,7 @@ class TestLicenseKeysAPI(APITestCase):
 
     def test_GET_returns_license_keys(self):
         self.become_admin()
-        orig_license_key = factory.make_license_key()
+        orig_license_key = factory.make_LicenseKey()
 
         response = self.client.get(reverse('license_keys_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -188,7 +188,7 @@ class TestLicenseKeysAPI(APITestCase):
         self.assertEqual(expected_values, returned_network)
 
     def test_GET_requires_admin(self):
-        factory.make_license_key()
+        factory.make_LicenseKey()
         response = self.client.get(reverse('license_keys_handler'))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 

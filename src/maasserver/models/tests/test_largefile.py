@@ -26,16 +26,16 @@ from maastesting.matchers import MockCalledOnceWith
 class TestLargeFileManager(MAASServerTestCase):
 
     def test_has_file(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         self.assertTrue(LargeFile.objects.has_file(largefile.sha256))
 
     def test_get_file(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         obj = LargeFile.objects.get_file(largefile.sha256)
         self.assertEqual(largefile, obj)
 
     def test_get_or_create_file_from_content_returns_same_largefile(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         stream = largefile.content.open('rb')
         self.addCleanup(stream.close)
         self.assertEqual(
@@ -56,7 +56,7 @@ class TestLargeFile(MAASServerTestCase):
     def test_content(self):
         size = randint(512, 1024)
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content, size=size)
+        largefile = factory.make_LargeFile(content, size=size)
         with largefile.content.open('rb') as stream:
             data = stream.read()
         self.assertEqual(content, data)
@@ -64,7 +64,7 @@ class TestLargeFile(MAASServerTestCase):
     def test_empty_content(self):
         size = 0
         content = ""
-        largefile = factory.make_large_file(content, size=size)
+        largefile = factory.make_LargeFile(content, size=size)
         with largefile.content.open('rb') as stream:
             data = stream.read()
         self.assertEqual(content, data)
@@ -73,52 +73,52 @@ class TestLargeFile(MAASServerTestCase):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content, size=total_size)
+        largefile = factory.make_LargeFile(content, size=total_size)
         self.assertEqual(size, largefile.size)
 
     def test_progress(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content, size=total_size)
+        largefile = factory.make_LargeFile(content, size=total_size)
         self.assertEqual(total_size / float(size), largefile.progress)
 
     def test_progress_of_empty_file(self):
         size = 0
         content = ""
-        largefile = factory.make_large_file(content, size=size)
+        largefile = factory.make_LargeFile(content, size=size)
         self.assertEqual(0, largefile.progress)
 
     def test_complete_returns_False_when_content_incomplete(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content, size=total_size)
+        largefile = factory.make_LargeFile(content, size=total_size)
         self.assertFalse(largefile.complete)
 
     def test_complete_returns_True_when_content_is_complete(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         self.assertTrue(largefile.complete)
 
     def test_valid_returns_False_when_complete_is_False(self):
         size = randint(512, 1024)
         total_size = randint(1025, 2048)
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content, size=total_size)
+        largefile = factory.make_LargeFile(content, size=total_size)
         self.assertFalse(largefile.valid)
 
     def test_valid_returns_False_when_content_doesnt_have_equal_sha256(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         with largefile.content.open('wb') as stream:
             stream.write(factory.make_string(size=largefile.total_size))
         self.assertFalse(largefile.valid)
 
     def test_valid_returns_True_when_content_has_equal_sha256(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         self.assertTrue(largefile.valid)
 
     def test_delete_calls_unlink_on_content(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         content = largefile.content
         self.addCleanup(content.unlink)
         unlink_mock = self.patch(content, 'unlink')
@@ -126,14 +126,14 @@ class TestLargeFile(MAASServerTestCase):
         self.assertThat(unlink_mock, MockCalledOnceWith())
 
     def test_delete_does_nothing_if_linked(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
-        factory.make_boot_resource_file(resource_set, largefile)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_BootResourceFile(resource_set, largefile)
         largefile.delete()
         self.assertTrue(LargeFile.objects.filter(id=largefile.id).exists())
 
     def test_delete_deletes_if_not_linked(self):
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         largefile.delete()
         self.assertFalse(LargeFile.objects.filter(id=largefile.id).exists())

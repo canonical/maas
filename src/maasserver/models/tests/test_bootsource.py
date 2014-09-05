@@ -34,7 +34,7 @@ class TestBootSource(MAASServerTestCase):
             BootSource.objects.filter(id=boot_source.id).exists())
 
     def test_url_is_unqiue(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         self.assertRaises(
             ValidationError, factory.make_boot_source, url=boot_source.url)
 
@@ -54,7 +54,7 @@ class TestBootSource(MAASServerTestCase):
         self.assertRaises(ValidationError, boot_source.clean)
 
     def test_to_dict_returns_dict(self):
-        boot_source = factory.make_boot_source(
+        boot_source = factory.make_BootSource(
             keyring_data=b"123445", keyring_filename='')
         boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source)
@@ -69,7 +69,7 @@ class TestBootSource(MAASServerTestCase):
         keyring_file = self.make_file(contents=keyring_data)
         self.addCleanup(os.remove, keyring_file)
 
-        boot_source = factory.make_boot_source(
+        boot_source = factory.make_BootSource(
             keyring_data=b"", keyring_filename=keyring_file)
         source = boot_source.to_dict()
         self.assertEqual(
@@ -78,7 +78,7 @@ class TestBootSource(MAASServerTestCase):
 
     def test_to_dict_handles_keyring_data(self):
         keyring_data = b"Some Keyring Data"
-        boot_source = factory.make_boot_source(
+        boot_source = factory.make_BootSource(
             keyring_data=keyring_data, keyring_filename="")
         source = boot_source.to_dict()
         self.assertEqual(

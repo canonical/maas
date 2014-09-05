@@ -51,7 +51,7 @@ class TestBootSourceAPI(APITestCase):
 
     def test_GET_returns_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_uri(boot_source))
         self.assertEqual(httplib.OK, response.status_code)
         returned_boot_source = json.loads(response.content)
@@ -72,25 +72,25 @@ class TestBootSourceAPI(APITestCase):
             MatchesStructure.byEquality(**returned_boot_source))
 
     def test_GET_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_uri(boot_source))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source))
 
     def test_DELETE_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.delete(get_boot_source_uri(boot_source))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         new_values = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
@@ -102,7 +102,7 @@ class TestBootSourceAPI(APITestCase):
         self.assertAttributes(boot_source, new_values)
 
     def test_PUT_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         new_values = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
@@ -121,7 +121,7 @@ class TestBootSourceBackwardAPI(APITestCase):
 
     def test_GET_returns_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_backward_uri(boot_source))
         self.assertEqual(httplib.OK, response.status_code)
         returned_boot_source = json.loads(response.content)
@@ -143,7 +143,7 @@ class TestBootSourceBackwardAPI(APITestCase):
 
     def test_GET_returns_same_boot_source_no_matter_the_nodegroup(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         for _ in range(3):
             nodegroup = factory.make_NodeGroup()
             response = self.client.get(
@@ -156,27 +156,27 @@ class TestBootSourceBackwardAPI(APITestCase):
                 MatchesStructure.byEquality(**returned_boot_source))
 
     def test_GET_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(get_boot_source_backward_uri(boot_source))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_deletes_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.delete(
             get_boot_source_backward_uri(boot_source))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(boot_source))
 
     def test_DELETE_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.delete(
             get_boot_source_backward_uri(boot_source))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_updates_boot_source(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         new_values = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
@@ -188,7 +188,7 @@ class TestBootSourceBackwardAPI(APITestCase):
         self.assertAttributes(boot_source, new_values)
 
     def test_PUT_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         new_values = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
@@ -209,7 +209,7 @@ class TestBootSourcesAPI(APITestCase):
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
         sources = [
-            factory.make_boot_source() for _ in range(3)]
+            factory.make_BootSource() for _ in range(3)]
         response = self.client.get(
             reverse('boot_sources_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -303,7 +303,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
     def test_GET_returns_boot_source_list(self):
         self.become_admin()
         sources = [
-            factory.make_boot_source() for _ in range(3)]
+            factory.make_BootSource() for _ in range(3)]
         response = self.client.get(self.get_uri())
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -314,7 +314,7 @@ class TestBootSourcesBackwardAPI(APITestCase):
     def test_GET_returns_same_list_for_different_node_groups(self):
         self.become_admin()
         sources = [
-            factory.make_boot_source() for _ in range(3)]
+            factory.make_BootSource() for _ in range(3)]
         for _ in range(3):
             nodegroup = factory.make_NodeGroup()
             response = self.client.get(self.get_uri(nodegroup))

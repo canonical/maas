@@ -54,7 +54,7 @@ class TestCommissioningScriptForm(MAASServerTestCase):
     def test_raises_if_duplicated_name(self):
         content = factory.make_string().encode('ascii')
         name = factory.make_name('filename')
-        factory.make_commissioning_script(name=name)
+        factory.make_CommissioningScript(name=name)
         uploaded_file = SimpleUploadedFile(content=content, name=name)
         form = CommissioningScriptForm(files={'content': uploaded_file})
         self.assertEqual(

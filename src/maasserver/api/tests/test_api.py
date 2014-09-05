@@ -61,7 +61,7 @@ class TestAuthentication(MAASServerTestCase):
 
     def test_invalid_oauth_request(self):
         # An OAuth-signed request that does not validate is an error.
-        user = factory.make_user()
+        user = factory.make_User()
         client = OAuthAuthenticatedClient(user)
         get_auth_tokens(user).delete()  # Delete the user's API keys.
         response = client.post(reverse('nodes_handler'), {'op': 'start'})

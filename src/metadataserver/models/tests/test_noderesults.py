@@ -96,14 +96,14 @@ def make_script_name(base_name=None, number=None):
 class TestCommissioningScriptManager(MAASServerTestCase):
 
     def test_get_archive_wraps_scripts_in_tar(self):
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         path = os.path.join(ARCHIVE_PREFIX, script.name)
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertTrue(archive.getmember(path).isfile())
         self.assertEqual(script.content, archive.extractfile(path).read())
 
     def test_get_archive_wraps_all_scripts(self):
-        scripts = {factory.make_commissioning_script() for counter in range(3)}
+        scripts = {factory.make_CommissioningScript() for counter in range(3)}
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertThat(
             archive.getnames(),
@@ -113,7 +113,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
                 }))
 
     def test_get_archive_supports_binary_scripts(self):
-        script = factory.make_commissioning_script(content=sample_binary_data)
+        script = factory.make_CommissioningScript(content=sample_binary_data)
         path = os.path.join(ARCHIVE_PREFIX, script.name)
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertEqual(script.content, archive.extractfile(path).read())
@@ -130,7 +130,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
 
     def test_get_archive_sets_sensible_mode(self):
         for counter in range(3):
-            factory.make_commissioning_script()
+            factory.make_CommissioningScript()
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         self.assertEqual({0755}, {info.mode for info in archive.getmembers()})
 
@@ -139,7 +139,7 @@ class TestCommissioningScriptManager(MAASServerTestCase):
         # It would otherwise default to the Epoch, and GNU tar warns
         # annoyingly about improbably old files.
         start_time = floor(time.time())
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         path = os.path.join(ARCHIVE_PREFIX, script.name)
         archive = open_tarfile(CommissioningScript.objects.get_archive())
         timestamp = archive.getmember(path).mtime
@@ -576,7 +576,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.
-        factory.make_tag(definition='')
+        factory.make_Tag(definition='')
         node = factory.make_Node()
         node.save()
         xmlbytes = '<node/>'.encode("utf-8")

@@ -42,7 +42,7 @@ class SettingsTest(MAASServerTestCase):
         # delete or edit each user. Note that the link to delete the the
         # logged-in user is not display.
         self.client_log_in(as_admin=True)
-        [factory.make_user() for i in range(3)]
+        [factory.make_User() for i in range(3)]
         users = UserProfile.objects.all_users()
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)
@@ -289,7 +289,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_edit_user_POST_profile_updates_attributes(self):
         self.client_log_in(as_admin=True)
-        user = factory.make_user()
+        user = factory.make_User()
         params = make_user_attribute_params(user)
         params.update({
             'last_name': factory.make_name('Newname'),
@@ -308,7 +308,7 @@ class UserManagementTest(MAASServerTestCase):
 
     def test_edit_user_POST_updates_password(self):
         self.client_log_in(as_admin=True)
-        user = factory.make_user()
+        user = factory.make_User()
         new_password = factory.make_string()
         params = make_password_params(new_password)
         response = self.client.post(
@@ -320,7 +320,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_delete_user_GET(self):
         # The user delete page displays a confirmation page with a form.
         self.client_log_in(as_admin=True)
-        user = factory.make_user()
+        user = factory.make_User()
         del_link = reverse('accounts-del', args=[user.username])
         response = self.client.get(del_link)
         doc = fromstring(response.content)
@@ -339,7 +339,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_delete_user_POST(self):
         # A POST request to the user delete finally deletes the user.
         self.client_log_in(as_admin=True)
-        user = factory.make_user()
+        user = factory.make_User()
         user_id = user.id
         del_link = reverse('accounts-del', args=[user.username])
         response = self.client.post(del_link, {'post': 'yes'})
@@ -349,7 +349,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_view_user(self):
         # The user page feature the basic information about the user.
         self.client_log_in(as_admin=True)
-        user = factory.make_user()
+        user = factory.make_User()
         del_link = reverse('accounts-view', args=[user.username])
         response = self.client.get(del_link)
         doc = fromstring(response.content)
@@ -360,7 +360,7 @@ class UserManagementTest(MAASServerTestCase):
     def test_account_views_are_routable_for_full_range_of_usernames(self):
         # Usernames can include characters in the regex [\w.@+-].
         self.client_log_in(as_admin=True)
-        user = factory.make_user(username="abc-123@example.com")
+        user = factory.make_User(username="abc-123@example.com")
         for view in "edit", "view", "del":
             path = reverse("accounts-%s" % view, args=[user.username])
             self.assertIsInstance(path, (bytes, unicode))

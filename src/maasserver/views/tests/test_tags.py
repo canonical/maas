@@ -30,7 +30,7 @@ class TagViewsTest(MAASServerTestCase):
     def test_view_tag_displays_tag_info(self):
         # The tag page features the basic information about the tag.
         self.client_log_in()
-        tag = factory.make_tag(
+        tag = factory.make_Tag(
             name='the-named-tag',
             comment='Human description of the tag',
             definition='//xpath')
@@ -43,7 +43,7 @@ class TagViewsTest(MAASServerTestCase):
 
     def test_view_tag_includes_node_links(self):
         self.client_log_in()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         node = factory.make_Node()
         node.tags.add(tag)
         mac = factory.make_MACAddress(node=node).mac_address
@@ -59,7 +59,7 @@ class TagViewsTest(MAASServerTestCase):
 
     def test_view_tag_num_queries_is_independent_of_num_nodes(self):
         self.client_log_in()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         tag_link = reverse('tag-view', args=[tag.name])
         nodegroup = factory.make_NodeGroup()
         nodes = [factory.make_Node(nodegroup=nodegroup, mac=True)
@@ -85,9 +85,9 @@ class TagViewsTest(MAASServerTestCase):
 
     def test_view_tag_hides_private_nodes(self):
         self.client_log_in()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         node = factory.make_Node()
-        node2 = factory.make_Node(owner=factory.make_user())
+        node2 = factory.make_Node(owner=factory.make_User())
         node.tags.add(tag)
         node2.tags.add(tag)
         tag_link = reverse('tag-view', args=[tag.name])
@@ -99,7 +99,7 @@ class TagViewsTest(MAASServerTestCase):
 
     def test_view_tag_shows_kernel_params(self):
         self.client_log_in()
-        tag = factory.make_tag(kernel_opts='--test tag params')
+        tag = factory.make_Tag(kernel_opts='--test tag params')
         node = factory.make_Node()
         node.tags = [tag]
         tag_link = reverse('tag-view', args=[tag.name])
@@ -118,7 +118,7 @@ class TagViewsTest(MAASServerTestCase):
         # Set a very small page size to save creating lots of nodes
         page_size = 2
         self.patch(tags_views.TagView, 'paginate_by', page_size)
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         nodes = [
             factory.make_Node(created="2012-10-12 12:00:%02d" % i)
             for i in range(page_size * 2 + 1)

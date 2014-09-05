@@ -34,7 +34,7 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(description, zone.description)
 
     def test_updates_zone(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         new_description = factory.make_string()
         form = ZoneForm(data={'description': new_description}, instance=zone)
         form.save()
@@ -42,7 +42,7 @@ class TestZoneForm(MAASServerTestCase):
         self.assertEqual(new_description, zone.description)
 
     def test_renames_zone(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         new_name = factory.make_name('zone')
         form = ZoneForm(data={'name': new_name}, instance=zone)
         form.save()

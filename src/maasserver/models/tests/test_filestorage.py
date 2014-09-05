@@ -42,7 +42,7 @@ class FileStorageTest(MAASServerTestCase):
     def test_save_file_creates_storage(self):
         filename = factory.make_string()
         content = self.make_data()
-        user = factory.make_user()
+        user = factory.make_User()
         storage = FileStorage.objects.save_file(
             filename, BytesIO(content), user)
         self.assertEqual(
@@ -52,14 +52,14 @@ class FileStorageTest(MAASServerTestCase):
     def test_storage_can_be_retrieved(self):
         filename = factory.make_string()
         content = self.make_data()
-        factory.make_file_storage(filename=filename, content=content)
+        factory.make_FileStorage(filename=filename, content=content)
         storage = FileStorage.objects.get(filename=filename)
         self.assertEqual(
             (filename, content),
             (storage.filename, storage.content))
 
     def test_stores_binary_data(self):
-        storage = factory.make_file_storage(content=sample_binary_data)
+        storage = factory.make_FileStorage(content=sample_binary_data)
         self.assertEqual(sample_binary_data, storage.content)
 
     def test_overwrites_file(self):
@@ -67,10 +67,10 @@ class FileStorageTest(MAASServerTestCase):
         # reference to the old data gets overwritten with one to the new
         # data.
         filename = factory.make_name('filename')
-        old_storage = factory.make_file_storage(
+        old_storage = factory.make_FileStorage(
             filename=filename, content=self.make_data('old data'))
         new_data = self.make_data('new-data')
-        new_storage = factory.make_file_storage(
+        new_storage = factory.make_FileStorage(
             filename=filename, content=new_data)
         self.assertEqual(old_storage.filename, new_storage.filename)
         self.assertEqual(
@@ -78,10 +78,10 @@ class FileStorageTest(MAASServerTestCase):
 
     def test_key_gets_generated(self):
         # The generated system_id looks good.
-        storage = factory.make_file_storage()
+        storage = factory.make_FileStorage()
         self.assertEqual(len(storage.key), 36)
 
     def test_key_includes_random_part(self):
-        storage1 = factory.make_file_storage()
-        storage2 = factory.make_file_storage()
+        storage1 = factory.make_FileStorage()
+        storage2 = factory.make_FileStorage()
         self.assertNotEqual(storage1.key, storage2.key)

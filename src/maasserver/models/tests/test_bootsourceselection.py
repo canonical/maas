@@ -56,7 +56,7 @@ class TestBootSourceSelection(MAASServerTestCase):
         # BootSource deletion cascade-deletes related
         # BootSourceSelections. This is implicit in Django but it's
         # worth adding a test for it all the same.
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         boot_source_selection = factory.make_BootSourceSelection(
             boot_source=boot_source)
         boot_source.delete()

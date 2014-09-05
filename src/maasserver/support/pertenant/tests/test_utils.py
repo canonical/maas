@@ -34,7 +34,7 @@ def make_provider_state_file(node=None):
     node_link = reverse('node_handler', args=[node.system_id])
     content = 'zookeeper-instances: [%s]\n' % node_link
     content_data = content.encode('ascii')
-    return factory.make_file_storage(
+    return factory.make_FileStorage(
         filename=PROVIDER_STATE_FILENAME, content=content_data, owner=None)
 
 
@@ -65,18 +65,18 @@ class TestGetBootstrapNodeOwner(MAASServerTestCase):
         self.assertIsNone(get_bootstrap_node_owner())
 
     def test_returns_owner_if_node_found(self):
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         make_provider_state_file(node=node)
         self.assertEqual(node.owner, get_bootstrap_node_owner())
 
     def test_returns_None_if_node_does_not_exist(self):
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         make_provider_state_file(node=node)
         node.delete()
         self.assertIsNone(get_bootstrap_node_owner())
 
     def test_returns_None_if_invalid_yaml(self):
         invalid_content = '%'.encode('ascii')
-        factory.make_file_storage(
+        factory.make_FileStorage(
             filename=PROVIDER_STATE_FILENAME, content=invalid_content)
         self.assertIsNone(get_bootstrap_node_owner())

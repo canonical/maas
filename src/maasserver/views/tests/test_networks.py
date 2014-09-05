@@ -57,7 +57,7 @@ class NetworkListingViewTest(MAASServerTestCase):
         # Network listing displays the network name, description,
         # network information and VLAN tag.
         self.client_log_in()
-        factory.make_networks(3)
+        factory.make_Networks(3)
         networks = Network.objects.all()
         # Attach some NICs to some of the networks.
         [factory.make_MACAddress(networks=networks[1:3]) for _ in range(12)]
@@ -80,7 +80,7 @@ class NetworkListingViewTest(MAASServerTestCase):
     def test_network_list_displays_sorted_list_of_networks(self):
         # Networks are alphabetically sorted on the network list page.
         self.client_log_in()
-        factory.make_networks(3, sortable_name=True)
+        factory.make_Networks(3, sortable_name=True)
         networks = Network.objects.all()
         sorted_networks = sorted(networks, key=attrgetter('name'))
         response = self.client.get(reverse('network-list'))
@@ -94,7 +94,7 @@ class NetworkListingViewTest(MAASServerTestCase):
 
     def test_network_list_displays_links_to_network_node(self):
         self.client_log_in()
-        factory.make_networks(3, sortable_name=True)
+        factory.make_Networks(3, sortable_name=True)
         networks = Network.objects.all()
         sorted_networks = sorted(networks, key=attrgetter('name'))
         response = self.client.get(reverse('network-list'))
@@ -110,7 +110,7 @@ class NetworkListingViewTest(MAASServerTestCase):
     def test_network_listing_is_paginated(self):
         self.patch(NetworkListView, "paginate_by", 3)
         self.client_log_in(as_admin=True)
-        factory.make_networks(4)
+        factory.make_Networks(4)
         response = self.client.get(reverse('network-list'))
         self.assertEqual(httplib.OK, response.status_code)
         doc = fromstring(response.content)
@@ -123,7 +123,7 @@ class NetworkListingViewTestNonAdmin(MAASServerTestCase):
 
     def test_network_list_does_not_contain_edit_and_delete_links(self):
         self.client_log_in()
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         response = self.client.get(reverse('network-list'))
         network_edit_links = [
             reverse('network-edit', args=[network.name])
@@ -152,7 +152,7 @@ class NetworkListingViewTestAdmin(MAASServerTestCase):
 
     def test_network_list_contains_edit_links(self):
         self.client_log_in(as_admin=True)
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         network_edit_links = [
             reverse('network-edit', args=[network.name])
             for network in networks

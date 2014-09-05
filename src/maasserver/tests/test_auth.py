@@ -34,7 +34,7 @@ class LoginLogoutTest(MAASServerTestCase):
 
     def make_user(self, name='test', password='test'):
         """Create a user with a password."""
-        return factory.make_user(username=name, password=password)
+        return factory.make_User(username=name, password=password)
 
     def test_login(self):
         name = factory.make_string()
@@ -59,7 +59,7 @@ class LoginLogoutTest(MAASServerTestCase):
     def test_logout(self):
         name = factory.make_string()
         password = factory.make_string()
-        factory.make_user(name, password)
+        factory.make_User(name, password)
         self.client.login(username=name, password=password)
         self.client.post(reverse('logout'))
 
@@ -74,7 +74,7 @@ def make_unallocated_node():
 def make_allocated_node(owner=None):
     """Create a node, owned by `owner` (or create owner if not given)."""
     if owner is None:
-        owner = factory.make_user()
+        owner = factory.make_User()
     return factory.make_Node(owner=owner, status=NODE_STATUS.ALLOCATED)
 
 
@@ -102,13 +102,13 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
     def test_user_can_view_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(backend.has_perm(
-            factory.make_user(), NODE_PERMISSION.VIEW,
+            factory.make_User(), NODE_PERMISSION.VIEW,
             make_unallocated_node()))
 
     def test_user_can_view_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
         self.assertTrue(backend.has_perm(
-            factory.make_user(), NODE_PERMISSION.VIEW, make_allocated_node()))
+            factory.make_User(), NODE_PERMISSION.VIEW, make_allocated_node()))
 
     def test_owned_status(self):
         # A non-admin user can access nodes he owns.
@@ -121,17 +121,17 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
     def test_user_cannot_edit_nodes_owned_by_others(self):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(
-            factory.make_user(), NODE_PERMISSION.EDIT, make_allocated_node()))
+            factory.make_User(), NODE_PERMISSION.EDIT, make_allocated_node()))
 
     def test_user_cannot_edit_unowned_node(self):
         backend = MAASAuthorizationBackend()
         self.assertFalse(backend.has_perm(
-            factory.make_user(), NODE_PERMISSION.EDIT,
+            factory.make_User(), NODE_PERMISSION.EDIT,
             make_unallocated_node()))
 
     def test_user_can_edit_his_own_nodes(self):
         backend = MAASAuthorizationBackend()
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertTrue(backend.has_perm(
             user, NODE_PERMISSION.EDIT, make_allocated_node(owner=user)))
 
@@ -139,7 +139,7 @@ class TestMAASAuthorizationBackend(MAASServerTestCase):
         # NODE_PERMISSION.ADMIN permission on nodes is granted to super users
         # only.
         backend = MAASAuthorizationBackend()
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertFalse(
             backend.has_perm(
                 user, NODE_PERMISSION.ADMIN, factory.make_Node()))
@@ -158,7 +158,7 @@ class TestNodeVisibility(MAASServerTestCase):
                 factory.make_admin(), NODE_PERMISSION.VIEW))
 
     def test_user_sees_own_nodes_and_unowned_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         make_allocated_node()
         own_node = make_allocated_node(owner=user)
         unowned_node = make_unallocated_node()

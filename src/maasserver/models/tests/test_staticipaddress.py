@@ -57,14 +57,14 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
 
     def test_allocate_new_sets_user(self):
         low, high = factory.make_ip_range()
-        user = factory.make_user()
+        user = factory.make_User()
         ipaddress = StaticIPAddress.objects.allocate_new(
             low, high, alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=user)
         self.assertEqual(user, ipaddress.user)
 
     def test_allocate_new_with_user_disallows_wrong_alloc_types(self):
         low, high = factory.make_ip_range()
-        user = factory.make_user()
+        user = factory.make_User()
         alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
         self.assertRaises(

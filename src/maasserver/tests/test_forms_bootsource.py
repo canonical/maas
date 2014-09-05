@@ -28,7 +28,7 @@ class TestBootSourceForm(MAASServerTestCase):
     """Tests for `BootSourceForm`."""
 
     def test_edits_boot_source_object(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         params = {
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('keyring_filename'),

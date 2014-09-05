@@ -21,5 +21,5 @@ from maasserver.testing.testcase import MAASServerTestCase
 class EventTest(MAASServerTestCase):
 
     def test_displays_event_node(self):
-        event = factory.make_event()
+        event = factory.make_Event()
         self.assertIn("%s" % event.node, "%s" % event)

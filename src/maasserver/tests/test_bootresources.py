@@ -123,7 +123,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_ensure_boot_source_definition_skips_if_already_present(self):
         sources = [
-            factory.make_boot_source()
+            factory.make_BootSource()
             for _ in range(3)
             ]
         ensure_boot_source_definition()
@@ -231,7 +231,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def test_streams_product_index_empty_with_incomplete_resource(self):
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
         response = self.get_stream_client('index.json')
         output = json.loads(response.content)
         self.assertEqual(
@@ -273,7 +273,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
 
     def test_streams_product_download_empty_with_incomplete_resource(self):
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
         response = self.get_stream_client('maas:v2:download.json')
         output = json.loads(response.content)
         self.assertEqual(
@@ -323,8 +323,8 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
     def test_streams_product_download_product_uses_latest_complete_label(self):
         product, resource = self.make_usable_product_boot_resource()
         # Incomplete resource_set
-        factory.make_boot_resource_set(resource)
-        newest_set = factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
+        newest_set = factory.make_BootResourceSet(resource)
         factory.make_boot_resource_file_with_content(newest_set)
         response = self.get_stream_client('maas:v2:download.json')
         output = json.loads(response.content)
@@ -334,7 +334,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
     def test_streams_product_download_product_contains_multiple_versions(self):
         resource = factory.make_BootResource()
         resource_sets = [
-            factory.make_boot_resource_set(resource)
+            factory.make_BootResourceSet(resource)
             for _ in range(3)
             ]
         versions = []
@@ -475,10 +475,10 @@ class TestConnectionWrapper(TransactionTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
-            resource_set = factory.make_boot_resource_set(
+            resource_set = factory.make_BootResourceSet(
                 resource, version=version)
-            largefile = factory.make_large_file(content=content, size=size)
-            factory.make_boot_resource_file(
+            largefile = factory.make_LargeFile(content=content, size=size)
+            factory.make_BootResourceFile(
                 resource_set, largefile, filename=filename, filetype=filetype)
         return content, reverse(
             'simplestreams_file_handler', kwargs={
@@ -588,7 +588,7 @@ def make_boot_resource_group(
     """Make boot resource that contains one set and one file."""
     resource = factory.make_BootResource(
         rtype=rtype, name=name, architecture=architecture)
-    resource_set = factory.make_boot_resource_set(resource, version=version)
+    resource_set = factory.make_BootResourceSet(resource, version=version)
     rfile = factory.make_boot_resource_file_with_content(
         resource_set, filename=filename, filetype=filetype)
     return resource, resource_set, rfile
@@ -607,7 +607,7 @@ def make_boot_resource_group_from_product(product):
     resource = factory.make_BootResource(
         rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
         architecture=architecture)
-    resource_set = factory.make_boot_resource_set(
+    resource_set = factory.make_BootResourceSet(
         resource, version=product['version_name'])
     rfile = factory.make_boot_resource_file_with_content(
         resource_set, filename=product['ftype'],
@@ -761,7 +761,7 @@ class TestBootResourceStore(MAASServerTestCase):
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
             architecture=architecture)
-        resource_set = factory.make_boot_resource_set(
+        resource_set = factory.make_BootResourceSet(
             resource, version=version)
         rfile = factory.make_boot_resource_file_with_content(
             resource_set, filename=filename)
@@ -828,7 +828,7 @@ class TestBootResourceTransactional(TransactionTestCase):
             product, resource = make_boot_resource_group_from_product(product)
             resource_set = resource.sets.first()
             resource_set.files.all().delete()
-            largefile = factory.make_large_file()
+            largefile = factory.make_LargeFile()
         product['sha256'] = largefile.sha256
         product['size'] = largefile.total_size
         store = BootResourceStore()
@@ -845,7 +845,7 @@ class TestBootResourceTransactional(TransactionTestCase):
             product, resource = make_boot_resource_group_from_product(product)
             rfile = resource.sets.first().files.first()
             delete_largefile = rfile.largefile
-            largefile = factory.make_large_file()
+            largefile = factory.make_LargeFile()
         product['sha256'] = largefile.sha256
         product['size'] = largefile.total_size
         store = BootResourceStore()
@@ -862,16 +862,16 @@ class TestBootResourceTransactional(TransactionTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
-            resource_set = factory.make_boot_resource_set(
+            resource_set = factory.make_BootResourceSet(
                 resource, version=product['version_name'])
             other_type = factory.pick_enum(
                 BOOT_RESOURCE_FILE_TYPE, but_not=product['ftype'])
             other_file = factory.make_boot_resource_file_with_content(
                 resource_set, filename=other_type, filetype=other_type)
-            rfile = factory.make_boot_resource_file(
+            rfile = factory.make_BootResourceFile(
                 resource_set, other_file.largefile,
                 filename=product['ftype'], filetype=product['ftype'])
-            largefile = factory.make_large_file()
+            largefile = factory.make_LargeFile()
         product['sha256'] = largefile.sha256
         product['size'] = largefile.total_size
         store = BootResourceStore()
@@ -892,7 +892,7 @@ class TestBootResourceTransactional(TransactionTestCase):
             resource = factory.make_BootResource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name,
                 architecture=architecture)
-            resource_set = factory.make_boot_resource_set(
+            resource_set = factory.make_BootResourceSet(
                 resource, version=product['version_name'])
         product['sha256'] = factory.make_string(size=64)
         product['size'] = randint(1024, 2048)
@@ -925,7 +925,7 @@ class TestBootResourceTransactional(TransactionTestCase):
         with transaction.atomic():
             resource = factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
-            incomplete_set = factory.make_boot_resource_set(resource)
+            incomplete_set = factory.make_BootResourceSet(resource)
         store = BootResourceStore()
         store.resource_set_cleaner()
         self.assertFalse(
@@ -937,10 +937,10 @@ class TestBootResourceTransactional(TransactionTestCase):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
             old_complete_sets = []
             for _ in range(3):
-                resource_set = factory.make_boot_resource_set(resource)
+                resource_set = factory.make_BootResourceSet(resource)
                 factory.make_boot_resource_file_with_content(resource_set)
                 old_complete_sets.append(resource_set)
-            newest_set = factory.make_boot_resource_set(resource)
+            newest_set = factory.make_BootResourceSet(resource)
             factory.make_boot_resource_file_with_content(newest_set)
         store = BootResourceStore()
         store.resource_set_cleaner()

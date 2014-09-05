@@ -82,7 +82,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
     def test_updates_license_key(self):
         osystem = self.make_os_with_license_key()
         series = factory.pick_release(osystem)
-        license_key = factory.make_license_key(
+        license_key = factory.make_LicenseKey(
             osystem=osystem.name, distro_series=series,
             license_key=factory.make_name('key'))
         new_key = factory.make_name('key')
@@ -95,7 +95,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
     def test_validates_license_key(self):
         osystem = self.make_os_with_license_key(key_is_valid=False)
         series = factory.pick_release(osystem)
-        license_key = factory.make_license_key(
+        license_key = factory.make_LicenseKey(
             osystem=osystem.name, distro_series=series,
             license_key=factory.make_name('key'))
         new_key = factory.make_name('key')
@@ -132,7 +132,7 @@ class TestLicenseKeyForm(MAASServerTestCase):
         osystem = self.make_os_with_license_key()
         series = factory.pick_release(osystem)
         key = factory.make_name('key')
-        factory.make_license_key(
+        factory.make_LicenseKey(
             osystem=osystem.name, distro_series=series, license_key=key)
         definition = {
             'osystem': osystem.name,

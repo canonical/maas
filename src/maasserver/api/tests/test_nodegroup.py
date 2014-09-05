@@ -228,7 +228,7 @@ class TestNodeGroupAPI(APITestCase):
     def test_update_leases_processes_empty_leases_dict(self):
         self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
         nodegroup = factory.make_NodeGroup()
-        factory.make_dhcp_lease(nodegroup=nodegroup)
+        factory.make_DHCPLease(nodegroup=nodegroup)
         client = make_worker_client(nodegroup)
         response = client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -401,7 +401,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertItemsEqual(expected_uuids, called_uuids)
 
     def test_import_boot_images_denied_if_not_admin(self):
-        user = factory.make_user()
+        user = factory.make_User()
         client = OAuthAuthenticatedClient(user)
         response = client.post(
             reverse('nodegroups_handler'), {'op': 'import_boot_images'})
@@ -657,7 +657,7 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_NodeGroup()
-        user = factory.make_user()
+        user = factory.make_User()
         client = OAuthAuthenticatedClient(user)
 
         response = client.post(

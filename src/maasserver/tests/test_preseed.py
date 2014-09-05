@@ -363,7 +363,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
     def make_lease_for_node(self, node, ip=None):
         """Create a `MACAddress` and corresponding `DHCPLease` for `node`."""
         mac = factory.make_MACAddress(node=node).mac_address
-        factory.make_dhcp_lease(nodegroup=node.nodegroup, mac=mac, ip=ip)
+        factory.make_DHCPLease(nodegroup=node.nodegroup, mac=mac, ip=ip)
 
     def test_returns_only_interface(self):
         node = factory.make_Node()
@@ -620,7 +620,7 @@ class TestRenderPreseedWindows(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem='windows',
             architecture='amd64/generic', distro_series=self.release)
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem='windows', architecture='amd64', subarchitecture='generic',
             release=self.release, purpose='install', nodegroup=node.nodegroup)
         preseed = render_preseed(
@@ -639,7 +639,7 @@ class TestGetCurtinUserData(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
@@ -666,7 +666,7 @@ class TestGetCurtinUserDataOS(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
@@ -768,7 +768,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
-        boot_image = factory.make_boot_image(
+        boot_image = factory.make_BootImage(
             osystem=osystem.name, architecture=arch,
             subarchitecture=subarch, release=series,
             purpose='xinstall', xinstall_path=xinstall_path,
@@ -791,7 +791,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
         # Generate a boot image with a different arch/subarch.
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=osystem.name,
             architecture=factory.make_name('arch'),
             subarchitecture=factory.make_name('subarch'), release=series,
@@ -823,7 +823,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
-        boot_image = factory.make_boot_image(
+        boot_image = factory.make_BootImage(
             osystem=osystem.name, architecture=arch,
             subarchitecture=subarch, release=series,
             purpose='xinstall', xinstall_path=xinstall_path,

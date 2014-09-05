@@ -282,7 +282,7 @@ class TestNetwork(MAASServerTestCase):
             {'vlan_tag': ['Network with this Vlan tag already exists.']})
 
     def test_zero_vlan_tag_is_not_unique(self):
-        networks = factory.make_networks(3, with_vlans=False)
+        networks = factory.make_Networks(3, with_vlans=False)
         self.assertEqual(
             sorted(networks, key=attrgetter('id')),
             list(Network.objects.filter(vlan_tag=None).order_by('id')))

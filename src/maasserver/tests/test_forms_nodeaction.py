@@ -62,7 +62,7 @@ class TestNodeActionForm(MAASServerTestCase):
             form.actions)
 
     def test_get_action_form_for_user(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(node)
 
@@ -80,7 +80,7 @@ class TestNodeActionForm(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
     def test_rejects_disallowed_action(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(user)(
             node, {NodeActionForm.input_name: Commission.name})
@@ -90,7 +90,7 @@ class TestNodeActionForm(MAASServerTestCase):
             form._errors)
 
     def test_rejects_unknown_action(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         action = factory.make_string()
         form = get_action_form(user)(
@@ -103,7 +103,7 @@ class TestNodeActionForm(MAASServerTestCase):
         error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user)
         action = StartNode.name

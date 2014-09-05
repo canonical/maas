@@ -59,7 +59,7 @@ class MACAddressTest(MAASServerTestCase):
         self.assertItemsEqual([], mac.networks.all())
 
     def test_mac_can_be_connected_to_multiple_networks(self):
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         mac = factory.make_MACAddress(networks=networks)
         self.assertItemsEqual(networks, reload_object(mac).networks.all())
 
@@ -73,7 +73,7 @@ class MACAddressTest(MAASServerTestCase):
         self.assertEqual([network], list(mac.get_networks()))
 
     def test_get_networks_sorts_by_network_name(self):
-        networks = factory.make_networks(3, sortable_name=True)
+        networks = factory.make_Networks(3, sortable_name=True)
         mac = factory.make_MACAddress(networks=networks)
         self.assertEqual(
             sorted(networks, key=attrgetter('name')),

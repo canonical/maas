@@ -210,7 +210,7 @@ class TestHostnameValidator(MAASTestCase):
 
 def make_active_lease(nodegroup=None):
     """Create a `DHCPLease` on a managed `NodeGroupInterface`."""
-    lease = factory.make_dhcp_lease(nodegroup=nodegroup)
+    lease = factory.make_DHCPLease(nodegroup=nodegroup)
     factory.make_NodeGroupInterface(
         lease.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
     return lease
@@ -261,7 +261,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual('2', node.display_storage())
 
     def test_add_node_with_token(self):
-        user = factory.make_user()
+        user = factory.make_User()
         token = create_auth_token(user)
         node = factory.make_Node(token=token)
         self.assertEqual(token, node.token)
@@ -559,7 +559,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_kernel_options_not_confused_by_None_opts(self):
         node = factory.make_Node()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         node.tags.add(tag)
         kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', kernel_opts)
@@ -568,7 +568,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_kernel_options_not_confused_by_empty_str_opts(self):
         node = factory.make_Node()
-        tag = factory.make_tag(kernel_opts="")
+        tag = factory.make_Tag(kernel_opts="")
         node.tags.add(tag)
         kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', kernel_opts)
@@ -585,9 +585,9 @@ class NodeTest(MAASServerTestCase):
         # tag with a valid kernel option.
         Config.objects.set_config('kernel_opts', 'fish-n-chips')
         node = factory.make_Node()
-        node.tags.add(factory.make_tag('tag_a'))
-        node.tags.add(factory.make_tag('tag_b', kernel_opts=''))
-        tag_c = factory.make_tag('tag_c', kernel_opts='bacon-n-eggs')
+        node.tags.add(factory.make_Tag('tag_a'))
+        node.tags.add(factory.make_Tag('tag_b', kernel_opts=''))
+        tag_c = factory.make_Tag('tag_c', kernel_opts='bacon-n-eggs')
         node.tags.add(tag_c)
 
         self.assertEqual(
@@ -595,12 +595,12 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_kernel_options_ignores_unassociated_tag_value(self):
         node = factory.make_Node()
-        factory.make_tag(kernel_opts=factory.make_string())
+        factory.make_Tag(kernel_opts=factory.make_string())
         self.assertEqual((None, None), node.get_effective_kernel_options())
 
     def test_get_effective_kernel_options_uses_tag_value(self):
         node = factory.make_Node()
-        tag = factory.make_tag(kernel_opts=factory.make_string())
+        tag = factory.make_Tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
         self.assertEqual(
             (tag, tag.kernel_opts), node.get_effective_kernel_options())
@@ -609,7 +609,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node()
         global_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', global_opts)
-        tag = factory.make_tag(kernel_opts=factory.make_string())
+        tag = factory.make_Tag(kernel_opts=factory.make_string())
         node.tags.add(tag)
         self.assertEqual(
             (tag, tag.kernel_opts), node.get_effective_kernel_options())
@@ -618,13 +618,13 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node()
         # Intentionally create them in reverse order, so the default 'db' order
         # doesn't work, and we have asserted that we sort them.
-        tag3 = factory.make_tag(
+        tag3 = factory.make_Tag(
             factory.make_name('tag-03-'),
             kernel_opts=factory.make_string())
-        tag2 = factory.make_tag(
+        tag2 = factory.make_Tag(
             factory.make_name('tag-02-'),
             kernel_opts=factory.make_string())
-        tag1 = factory.make_tag(factory.make_name('tag-01-'), kernel_opts=None)
+        tag1 = factory.make_Tag(factory.make_name('tag-01-'), kernel_opts=None)
         self.assertTrue(tag1.name < tag2.name)
         self.assertTrue(tag2.name < tag3.name)
         node.tags.add(tag1, tag2, tag3)
@@ -633,7 +633,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_acquire(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
-        user = factory.make_user()
+        user = factory.make_User()
         token = create_auth_token(user)
         agent_name = factory.make_name('agent-name')
         node.acquire(user, token, agent_name)
@@ -644,7 +644,7 @@ class NodeTest(MAASServerTestCase):
     def test_release(self):
         agent_name = factory.make_name('agent-name')
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
             agent_name=agent_name)
         node.release()
         self.assertEqual(
@@ -652,7 +652,7 @@ class NodeTest(MAASServerTestCase):
             (node.status, node.owner, ''))
 
     def test_release_deletes_static_ip_host_maps(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
         sips = node.get_primary_mac().claim_static_ips()
@@ -662,7 +662,7 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(delete_static_host_maps, MockCalledOnceWith(expected))
 
     def test_delete_static_host_maps(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
         [sip] = node.get_primary_mac().claim_static_ips()
@@ -683,7 +683,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node()
         macs = [factory.make_MACAddress(node=node) for i in range(2)]
         leases = [
-            factory.make_dhcp_lease(
+            factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
             for mac in macs]
         self.assertItemsEqual(
@@ -696,12 +696,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node()
         macs = [factory.make_MACAddress(node=node) for i in range(2)]
         leases = [
-            factory.make_dhcp_lease(
+            factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
             for mac in macs]
         # Other nodes in the nodegroup have leases, but those are not
         # relevant here.
-        factory.make_dhcp_lease(nodegroup=node.nodegroup)
+        factory.make_DHCPLease(nodegroup=node.nodegroup)
 
         # Don't address the node directly; address it through a query with
         # prefetched DHCP leases, to ensure that the query cache for those
@@ -731,7 +731,7 @@ class NodeTest(MAASServerTestCase):
         other_node = factory.make_Node(nodegroup=node.nodegroup)
         macs = [factory.make_MACAddress(node=node) for i in range(2)]
         for mac in macs:
-            factory.make_dhcp_lease(
+            factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
         # The other node's leases do not get mistaken for ones that belong to
         # our original node.
@@ -780,7 +780,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(mac=True, disable_ipv4=False)
         mac = node.macaddress_set.all()[0]
         # Create a dynamic IP attached to the node.
-        factory.make_dhcp_lease(
+        factory.make_DHCPLease(
             nodegroup=node.nodegroup, mac=mac.mac_address)
         # Create a static IP attached to the node.
         ip = factory.make_StaticIPAddress(mac=mac)
@@ -788,7 +788,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_ip_addresses_returns_dynamic_ip_if_no_static_ip(self):
         node = factory.make_Node(mac=True, disable_ipv4=False)
-        lease = factory.make_dhcp_lease(
+        lease = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
             mac=node.macaddress_set.all()[0].mac_address)
         self.assertItemsEqual([lease.ip], node.ip_addresses())
@@ -839,14 +839,14 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.set_netboot(on=False)
         node.release()
         self.assertTrue(node.netboot)
 
     def test_release_clears_osystem_and_distro_series(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         osystem = factory.pick_OS()
         release = factory.pick_release(osystem)
         node.osystem = osystem.name
@@ -857,7 +857,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_powers_off_node(self):
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh')
         node.release()
@@ -867,7 +867,7 @@ class NodeTest(MAASServerTestCase):
     def test_release_deallocates_static_ips(self):
         deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user(),
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
             power_type='ether_wake')
         node.release()
         self.assertThat(deallocate, MockCalledOnceWith(node))
@@ -879,7 +879,7 @@ class NodeTest(MAASServerTestCase):
             status=NODEGROUP_STATUS.ACCEPTED)
         node = factory.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
-            owner=factory.make_user(), power_type='ether_wake')
+            owner=factory.make_User(), power_type='ether_wake')
         node.release()
         self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
 
@@ -889,7 +889,7 @@ class NodeTest(MAASServerTestCase):
         target_state = NODE_STATUS.COMMISSIONING
 
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        return_value = node.accept_enlistment(factory.make_user())
+        return_value = node.accept_enlistment(factory.make_User())
         self.assertEqual((node, target_state), (return_value, node.status))
 
     def test_accept_enlistment_does_nothing_if_already_accepted(self):
@@ -905,7 +905,7 @@ class NodeTest(MAASServerTestCase):
             for status in accepted_states}
 
         return_values = {
-            status: node.accept_enlistment(factory.make_user())
+            status: node.accept_enlistment(factory.make_User())
             for status, node in nodes.items()}
 
         self.assertEqual(
@@ -933,7 +933,7 @@ class NodeTest(MAASServerTestCase):
         exceptions = {status: False for status in unacceptable_states}
         for status, node in nodes.items():
             try:
-                node.accept_enlistment(factory.make_user())
+                node.accept_enlistment(factory.make_User())
             except NodeStateViolation:
                 exceptions[status] = True
 
@@ -963,7 +963,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
         factory.make_MACAddress(node=node)
-        node.start_commissioning(factory.make_user())
+        node.start_commissioning(factory.make_User())
 
         expected_attrs = {
             'status': NODE_STATUS.COMMISSIONING,
@@ -1036,7 +1036,7 @@ class NodeTest(MAASServerTestCase):
     def test_full_clean_checks_status_transition_and_raises_if_invalid(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_Node(
-            status=NODE_STATUS.RETIRED, owner=factory.make_user())
+            status=NODE_STATUS.RETIRED, owner=factory.make_User())
         node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegexp(
             NodeStateViolation,
@@ -1064,7 +1064,7 @@ class NodeTest(MAASServerTestCase):
     def test_save_raises_node_state_violation_on_bad_transition(self):
         # RETIRED -> ALLOCATED is an invalid transition.
         node = factory.make_Node(
-            status=NODE_STATUS.RETIRED, owner=factory.make_user())
+            status=NODE_STATUS.RETIRED, owner=factory.make_User())
         node.status = NODE_STATUS.ALLOCATED
         self.assertRaisesRegexp(
             NodeStateViolation,
@@ -1167,13 +1167,13 @@ class NodeTest(MAASServerTestCase):
 
     def test_mark_broken_changes_status_to_broken(self):
         node = factory.make_Node(
-            status=NODE_STATUS.NEW, owner=factory.make_user())
+            status=NODE_STATUS.NEW, owner=factory.make_User())
         node.mark_broken(factory.make_name('error-description'))
         self.assertEqual(NODE_STATUS.BROKEN, reload_object(node).status)
 
     def test_mark_broken_releases_allocated_node(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node.mark_broken(factory.make_name('error-description'))
         node = reload_object(node)
         self.assertEqual(
@@ -1303,9 +1303,9 @@ class NodeManagerTest(MAASServerTestCase):
         When run for a regular user it returns unowned nodes, and nodes
         owned by that user.
         """
-        user = factory.make_user()
+        user = factory.make_User()
         visible_nodes = [self.make_node(owner) for owner in [None, user]]
-        self.make_node(factory.make_user())
+        self.make_node(factory.make_User())
         self.assertItemsEqual(
             visible_nodes, Node.objects.get_nodes(user, NODE_PERMISSION.VIEW))
 
@@ -1313,7 +1313,7 @@ class NodeManagerTest(MAASServerTestCase):
         admin = factory.make_admin()
         owners = [
             None,
-            factory.make_user(),
+            factory.make_User(),
             factory.make_admin(),
             admin,
             ]
@@ -1322,7 +1322,7 @@ class NodeManagerTest(MAASServerTestCase):
             nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.VIEW))
 
     def test_get_nodes_filters_by_id(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = [self.make_node(user) for counter in range(5)]
         ids = [node.system_id for node in nodes]
         wanted_slice = slice(0, 3)
@@ -1345,13 +1345,13 @@ class NodeManagerTest(MAASServerTestCase):
                 from_nodes=Node.objects.filter(id=wanted_node.id)))
 
     def test_get_nodes_combines_from_nodes_with_other_filter(self):
-        user = factory.make_user()
+        user = factory.make_User()
         # Node that we want to see in the result:
         matching_node = factory.make_Node(owner=user)
         # Node that we'll exclude from from_nodes:
         factory.make_Node(owner=user)
         # Node that will be ignored on account of belonging to someone else:
-        invisible_node = factory.make_Node(owner=factory.make_user())
+        invisible_node = factory.make_Node(owner=factory.make_User())
 
         self.assertItemsEqual(
             [matching_node],
@@ -1363,10 +1363,10 @@ class NodeManagerTest(MAASServerTestCase):
                     ))))
 
     def test_get_nodes_with_edit_perm_for_user_lists_owned_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         visible_node = self.make_node(user)
         self.make_node(None)
-        self.make_node(factory.make_user())
+        self.make_node(factory.make_User())
         self.assertItemsEqual(
             [visible_node],
             Node.objects.get_nodes(user, NODE_PERMISSION.EDIT))
@@ -1375,7 +1375,7 @@ class NodeManagerTest(MAASServerTestCase):
         admin = factory.make_admin()
         owners = [
             None,
-            factory.make_user(),
+            factory.make_User(),
             factory.make_admin(),
             admin,
             ]
@@ -1384,14 +1384,14 @@ class NodeManagerTest(MAASServerTestCase):
             nodes, Node.objects.get_nodes(admin, NODE_PERMISSION.EDIT))
 
     def test_get_nodes_with_admin_perm_returns_empty_list_for_user(self):
-        user = factory.make_user()
+        user = factory.make_User()
         [self.make_node(user) for counter in range(5)]
         self.assertItemsEqual(
             [],
             Node.objects.get_nodes(user, NODE_PERMISSION.ADMIN))
 
     def test_get_nodes_with_admin_perm_returns_all_nodes_for_admin(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = [self.make_node(user) for counter in range(5)]
         self.assertItemsEqual(
             nodes,
@@ -1400,7 +1400,7 @@ class NodeManagerTest(MAASServerTestCase):
 
     def test_get_visible_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""
-        user = factory.make_user()
+        user = factory.make_User()
         node = self.make_node(user)
         self.assertEqual(
             node,
@@ -1408,7 +1408,7 @@ class NodeManagerTest(MAASServerTestCase):
                 node.system_id, user, NODE_PERMISSION.VIEW))
 
     def test_get_available_nodes_finds_available_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node1 = self.make_node(None)
         node2 = self.make_node(None)
         self.assertItemsEqual(
@@ -1416,12 +1416,12 @@ class NodeManagerTest(MAASServerTestCase):
             Node.objects.get_available_nodes_for_acquisition(user))
 
     def test_get_available_node_returns_empty_list_if_empty(self):
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertEqual(
             [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
     def test_get_available_nodes_ignores_taken_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         available_status = NODE_STATUS.READY
         unavailable_statuses = (
             set(NODE_STATUS_CHOICES_DICT) - set([available_status]))
@@ -1431,9 +1431,9 @@ class NodeManagerTest(MAASServerTestCase):
             [], list(Node.objects.get_available_nodes_for_acquisition(user)))
 
     def test_get_available_node_ignores_invisible_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = self.make_node()
-        node.owner = factory.make_user()
+        node.owner = factory.make_User()
         node.save()
         self.assertEqual(
             [], list(Node.objects.get_available_nodes_for_acquisition(user)))
@@ -1475,7 +1475,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         return nodes
 
     def test__sets_user_data(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
@@ -1494,7 +1494,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__resets_user_data(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
@@ -1512,7 +1512,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__claims_static_ip_addresses(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
@@ -1531,7 +1531,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__claims_static_ip_addresses_for_allocated_nodes_only(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodegroup = factory.make_NodeGroup()
         self.prepare_rpc_to_cluster(nodegroup)
         nodes = self.make_acquired_nodes_with_macs(user, nodegroup, count=2)
@@ -1559,7 +1559,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__updates_host_maps(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = self.make_acquired_nodes_with_macs(user)
 
         update_host_maps = self.patch(node_module, "update_host_maps")
@@ -1583,7 +1583,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__propagates_errors_when_updating_host_maps(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = self.make_acquired_nodes_with_macs(user)
 
         update_host_maps = self.patch(node_module, "update_host_maps")
@@ -1604,7 +1604,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__updates_dns(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = self.make_acquired_nodes_with_macs(user)
 
         change_dns_zones = self.patch(dns_config, "change_dns_zones")
@@ -1621,7 +1621,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         self.assertEqual("", twisted_log.dump())
 
     def test__starts_nodes(self):
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = self.make_acquired_nodes_with_macs(user)
         power_infos = list(
             node.get_effective_power_info()
@@ -1660,7 +1660,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         }
 
         with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes([], factory.make_user())
+            Node.objects.start_nodes([], factory.make_User())
 
         # Complaints go only to the Twisted log.
         self.assertDocTestMatches(
@@ -1672,7 +1672,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             twisted_log.dump())
 
     def test__marks_allocated_node_as_deploying(self):
-        user = factory.make_user()
+        user = factory.make_User()
         [node] = self.make_acquired_nodes_with_macs(user, count=1)
         nodes_started = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([node], nodes_started)
@@ -1680,7 +1680,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test__does_not_change_state_of_deployed_node(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
             owner=user)
@@ -1691,7 +1691,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             NODE_STATUS.DEPLOYED, reload_object(node).status)
 
     def test__only_returns_nodes_for_which_power_commands_have_been_sent(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node1, node2 = self.make_acquired_nodes_with_macs(user, count=2)
         node1.power_type = 'ether_wake'  # Can be started.
         node1.save()
@@ -1719,7 +1719,7 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
         power_off_nodes.side_effect = lambda nodes: {
             system_id: Deferred() for system_id, _, _, _ in nodes}
 
-        user = factory.make_user()
+        user = factory.make_User()
         nodes = self.make_nodes_with_macs(user)
         power_infos = list(node.get_effective_power_info() for node in nodes)
 
@@ -1748,10 +1748,10 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
             nodes_start_info_observed)
 
     def test_stop_nodes_ignores_uneditable_nodes(self):
-        owner = factory.make_user()
+        owner = factory.make_User()
         nodes = self.make_nodes_with_macs(owner)
 
-        user = factory.make_user()
+        user = factory.make_User()
         nodes_stopped = Node.objects.stop_nodes(
             list(node.system_id for node in nodes), user)
 
@@ -1760,7 +1760,7 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
     def test_stop_nodes_does_not_attempt_power_off_if_no_power_type(self):
         # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop_nodes()
         # won't attempt to power it off.
-        user = factory.make_user()
+        user = factory.make_User()
         [node] = self.make_nodes_with_macs(user, count=1)
         node.power_type = ""
         node.save()
@@ -1771,7 +1771,7 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
     def test_stop_nodes_does_not_attempt_power_off_if_cannot_be_stopped(self):
         # If the node has a power_type that MAAS knows stopping does not work,
         # stop_nodes() won't attempt to power it off.
-        user = factory.make_user()
+        user = factory.make_User()
         [node] = self.make_nodes_with_macs(user, count=1)
         node.power_type = "ether_wake"
         node.save()
@@ -1860,11 +1860,11 @@ class TestDeploymentStatus(MAASServerTestCase):
     """Tests for node.get_deployment_status."""
 
     def test_returns_deployed_when_deployed(self):
-        node = factory.make_Node(owner=factory.make_user(), netboot=False)
+        node = factory.make_Node(owner=factory.make_User(), netboot=False)
         self.assertEqual("Deployed", node.get_deployment_status())
 
     def test_returns_deploying_when_deploying(self):
-        node = factory.make_Node(owner=factory.make_user(), netboot=True)
+        node = factory.make_Node(owner=factory.make_User(), netboot=True)
         self.assertEqual("Deploying", node.get_deployment_status())
 
     def test_returns_broken_when_broken(self):

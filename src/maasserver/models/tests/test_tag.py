@@ -28,7 +28,7 @@ class TagTest(MAASServerTestCase):
         The generated system_id looks good.
 
         """
-        tag = factory.make_tag('tag-name', '//node[@id=display]')
+        tag = factory.make_Tag('tag-name', '//node[@id=display]')
         self.assertEqual('tag-name', tag.name)
         self.assertEqual('//node[@id=display]', tag.definition)
         self.assertEqual('', tag.comment)
@@ -37,7 +37,7 @@ class TagTest(MAASServerTestCase):
         self.assertIsNot(None, tag.created)
 
     def test_factory_make_tag_with_hardware_details(self):
-        tag = factory.make_tag('a-tag', 'true', kernel_opts="console=ttyS0")
+        tag = factory.make_Tag('a-tag', 'true', kernel_opts="console=ttyS0")
         self.assertEqual('a-tag', tag.name)
         self.assertEqual('true', tag.definition)
         self.assertEqual('', tag.comment)
@@ -47,7 +47,7 @@ class TagTest(MAASServerTestCase):
 
     def test_add_tag_to_node(self):
         node = factory.make_Node()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         tag.save()
         node.tags.add(tag)
         self.assertEqual([tag.id], [t.id for t in node.tags.all()])
@@ -55,7 +55,7 @@ class TagTest(MAASServerTestCase):
 
     def test_valid_tag_names(self):
         for valid in ['valid-dash', 'under_score', 'long' * 50]:
-            tag = factory.make_tag(name=valid)
+            tag = factory.make_Tag(name=valid)
             self.assertEqual(valid, tag.name)
 
     def test_validate_traps_invalid_tag_name(self):
@@ -69,7 +69,7 @@ class TagTest(MAASServerTestCase):
         inject_lshw_result(node1, b'<node><child /></node>')
         node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node />')
-        tag = factory.make_tag(definition='//node/child')
+        tag = factory.make_Tag(definition='//node/child')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
 
@@ -78,7 +78,7 @@ class TagTest(MAASServerTestCase):
         inject_lshw_result(node1, b'<node><foo /></node>')
         node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node><bar /></node>')
-        tag = factory.make_tag(definition='//node/foo')
+        tag = factory.make_Tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
         tag.definition = '//node/bar'
@@ -96,17 +96,17 @@ class TagTest(MAASServerTestCase):
         inject_lshw_result(node1, b'<node><foo /></node>')
         node2 = factory.make_Node()
         inject_lshw_result(node2, b'<node><bar /></node>')
-        tag1 = factory.make_tag(definition='//node/foo')
+        tag1 = factory.make_Tag(definition='//node/foo')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([], node2.tag_names())
-        tag2 = factory.make_tag(definition='//node/bar')
+        tag2 = factory.make_Tag(definition='//node/bar')
         self.assertItemsEqual([tag1.name], node1.tag_names())
         self.assertItemsEqual([tag2.name], node2.tag_names())
 
     def test_rollsback_invalid_xpath(self):
         node = factory.make_Node()
         inject_lshw_result(node, b'<node><foo /></node>')
-        tag = factory.make_tag(definition='//node/foo')
+        tag = factory.make_Tag(definition='//node/foo')
         self.assertItemsEqual([tag.name], node.tag_names())
         tag.definition = 'invalid::tag'
         self.assertRaises(ValidationError, tag.save)

@@ -95,7 +95,7 @@ class TestWarnIfMissingBootImages(MAASServerTestCase):
     def test_removes_warning_if_images_found(self):
         self.patch(boot_images_module, 'register_persistent_error')
         self.patch(boot_images_module, 'discard_persistent_error')
-        factory.make_boot_image(
+        factory.make_BootImage(
             nodegroup=factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED))
         warn_if_missing_boot_images()
@@ -196,7 +196,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
                 })
 
     def test_summarise_boot_image_object_returns_tuple(self):
-        image = factory.make_boot_image()
+        image = factory.make_BootImage()
         self.assertEqual(
             (
                 image.osystem,
@@ -244,7 +244,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
         image_dict = make_boot_image_params()
         image_dict['xinstall_path'] = factory.make_name('xi_path')
         image_dict['xinstall_type'] = factory.make_name('xi_type')
-        image_obj = factory.make_boot_image(
+        image_obj = factory.make_BootImage(
             osystem=image_dict['osystem'],
             architecture=image_dict['architecture'],
             subarchitecture=image_dict['subarchitecture'],
@@ -282,7 +282,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
             BootImage.objects.have_image(nodegroup=nodegroup, **image))
 
     def test_report_boot_images_removes_unreported_images(self):
-        deleted_image = factory.make_boot_image()
+        deleted_image = factory.make_BootImage()
         nodegroup = deleted_image.nodegroup
         client = make_worker_client(nodegroup)
         response = self.report_images(nodegroup, [], client=client)
@@ -292,7 +292,7 @@ class TestBootImagesReportImagesAPI(APITestCase):
     def test_report_boot_images_pruning_ignores_non_key_field(self):
         image_dict = make_boot_image_params()
         image_dict_copy = image_dict.copy()
-        existing_image = factory.make_boot_image(**image_dict_copy)
+        existing_image = factory.make_BootImage(**image_dict_copy)
         image_dict['supported_subarches'] = 'foo'
         nodegroup = existing_image.nodegroup
         client = make_worker_client(nodegroup)
@@ -315,8 +315,8 @@ class TestBootImagesReportImagesAPI(APITestCase):
         self.assertEqual(known_image, reload_object(known_image))
 
     def test_report_boot_images_ignores_images_for_other_nodegroups(self):
-        unrelated_image = factory.make_boot_image()
-        deleted_image = factory.make_boot_image()
+        unrelated_image = factory.make_BootImage()
+        deleted_image = factory.make_BootImage()
         nodegroup = deleted_image.nodegroup
         client = make_worker_client(nodegroup)
         response = self.report_images(nodegroup, [], client=client)

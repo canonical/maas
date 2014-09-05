@@ -142,7 +142,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         osystem = Config.objects.get_config('commissioning_osystem')
         release = Config.objects.get_config('commissioning_distro_series')
         nodegroup = factory.make_NodeGroup()
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=osystem,
             architecture="amd64", release=release, nodegroup=nodegroup,
             purpose="commissioning")
@@ -388,7 +388,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         osystem = 'ubuntu'
         release = Config.objects.get_config('default_distro_series')
         nodegroup = factory.make_NodeGroup()
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=osystem,
             architecture="amd64", subarchitecture="generic",
             supported_subarches="hwe-s", release=release, nodegroup=nodegroup,

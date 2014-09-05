@@ -39,8 +39,8 @@ class CommissioningScriptListingTest(MAASServerTestCase):
     def test_settings_contains_names_and_content_of_scripts(self):
         self.client_log_in(as_admin=True)
         scripts = {
-            factory.make_commissioning_script(),
-            factory.make_commissioning_script(),
+            factory.make_CommissioningScript(),
+            factory.make_CommissioningScript(),
             }
         response = self.client.get(reverse('settings'))
         names = [script.name for script in scripts]
@@ -56,8 +56,8 @@ class CommissioningScriptListingTest(MAASServerTestCase):
     def test_settings_contains_links_to_delete_scripts(self):
         self.client_log_in(as_admin=True)
         scripts = {
-            factory.make_commissioning_script(),
-            factory.make_commissioning_script(),
+            factory.make_CommissioningScript(),
+            factory.make_CommissioningScript(),
             }
         links = get_content_links(self.client.get(reverse('settings')))
         script_delete_links = [
@@ -80,7 +80,7 @@ class CommissioningScriptDeleteTest(MAASServerTestCase):
 
     def test_can_delete_commissioning_script(self):
         self.client_log_in(as_admin=True)
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         delete_link = reverse('commissioning-script-delete', args=[script.id])
         response = self.client.post(delete_link, {'post': 'yes'})
         self.assertEqual(

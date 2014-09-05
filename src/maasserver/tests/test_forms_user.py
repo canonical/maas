@@ -39,15 +39,15 @@ class TestUniqueEmailForms(MAASServerTestCase):
 
     def test_ProfileForm_fails_validation_if_email_taken(self):
         another_email = '%s@example.com' % factory.make_string()
-        factory.make_user(email=another_email)
+        factory.make_User(email=another_email)
         email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
+        user = factory.make_User(email=email)
         form = ProfileForm(instance=user, data={'email': another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_ProfileForm_validates_if_email_unchanged(self):
         email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
+        user = factory.make_User(email=email)
         form = ProfileForm(instance=user, data={'email': email})
         self.assertTrue(form.is_valid())
 
@@ -55,7 +55,7 @@ class TestUniqueEmailForms(MAASServerTestCase):
         email = '%s@example.com' % factory.make_string()
         username = factory.make_string()
         password = factory.make_string()
-        factory.make_user(email=email)
+        factory.make_User(email=email)
         form = NewUserCreationForm(
             {
                 'email': email,
@@ -67,15 +67,15 @@ class TestUniqueEmailForms(MAASServerTestCase):
 
     def test_EditUserForm_fails_validation_if_email_taken(self):
         another_email = '%s@example.com' % factory.make_string()
-        factory.make_user(email=another_email)
+        factory.make_User(email=another_email)
         email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
+        user = factory.make_User(email=email)
         form = EditUserForm(instance=user, data={'email': another_email})
         self.assertFormFailsValidationBecauseEmailNotUnique(form)
 
     def test_EditUserForm_validates_if_email_unchanged(self):
         email = '%s@example.com' % factory.make_string()
-        user = factory.make_user(email=email)
+        user = factory.make_User(email=email)
         form = EditUserForm(
             instance=user,
             data={

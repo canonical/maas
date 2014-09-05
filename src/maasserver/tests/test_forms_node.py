@@ -277,7 +277,7 @@ class TestAdminNodeForm(MAASServerTestCase):
         # from an instance: the field tries to initialise the field using a
         # zone's ID instead of its name, and ends up reverting to the default.
         # The code must work around this bug.
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         # We'll create a form that makes a change, but not to the zone.
         data = {'hostname': factory.make_name('host')}
@@ -288,7 +288,7 @@ class TestAdminNodeForm(MAASServerTestCase):
 
     def test_AdminNodeForm_changes_node(self):
         node = factory.make_Node()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         hostname = factory.make_string()
         power_type = factory.pick_power_type()
         form = AdminNodeForm(

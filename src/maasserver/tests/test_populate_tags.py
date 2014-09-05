@@ -31,7 +31,7 @@ class TestPopulateTags(MAASServerTestCase):
 
     def test_populate_tags_task_routed_to_nodegroup_worker(self):
         nodegroup = factory.make_NodeGroup()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         task = self.patch(populate_tags_module, 'update_node_tags')
         populate_tags(tag)
         args, kwargs = task.apply_async.call_args
@@ -39,7 +39,7 @@ class TestPopulateTags(MAASServerTestCase):
 
     def test_populate_tags_task_routed_to_all_nodegroup_workers(self):
         nodegroups = [factory.make_NodeGroup() for i in range(5)]
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         refresh = self.patch(populate_tags_module, 'refresh_worker')
         task = self.patch(populate_tags_module, 'update_node_tags')
         populate_tags(tag)
@@ -68,9 +68,9 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LLDP_OUTPUT_NAME, 0, b"<bar/>")
         tags = [
-            factory.make_tag("foo", "/foo"),
-            factory.make_tag("bar", "//lldp:bar"),
-            factory.make_tag("baz", "/foo/bar"),
+            factory.make_Tag("foo", "/foo"),
+            factory.make_Tag("bar", "//lldp:bar"),
+            factory.make_Tag("baz", "/foo/bar"),
             ]
         populate_tags_for_single_node(tags, node)
         self.assertItemsEqual(
@@ -81,8 +81,8 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
-            factory.make_tag("foo", "/foo"),
-            factory.make_tag("lou", "//nge:bar"),
+            factory.make_Tag("foo", "/foo"),
+            factory.make_Tag("lou", "//nge:bar"),
             ]
         populate_tags_for_single_node(tags, node)  # Look mom, no exception!
         self.assertSequenceEqual(
@@ -93,7 +93,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
         factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
-            factory.make_tag("foo", "/foo"),
+            factory.make_Tag("foo", "/foo"),
             Tag(name="empty", definition=""),
             Tag(name="null", definition=None),
             ]

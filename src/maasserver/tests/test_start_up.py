@@ -140,7 +140,7 @@ class TestInnerStartUp(MAASServerTestCase):
     def test__does_not_warn_if_boot_images_are_known(self):
         # If boot images are known, there is no warning about the import
         # script.
-        factory.make_boot_image()
+        factory.make_BootImage()
         recorder = self.patch(start_up, 'register_persistent_error')
 
         start_up.inner_start_up()

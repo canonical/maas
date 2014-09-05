@@ -170,7 +170,7 @@ class KeyManagementTest(MAASServerTestCase):
     def test_key_can_be_added_if_same_key_already_setup_for_other_user(self):
         self.client_log_in()
         key_string = get_data('data/test_rsa0.pub')
-        key = SSHKey(user=factory.make_user(), key=key_string)
+        key = SSHKey(user=factory.make_User(), key=key_string)
         key.save()
         response = self.client.post(
             reverse('prefs-add-sshkey'), {'key': key_string})
@@ -183,7 +183,7 @@ class KeyManagementTest(MAASServerTestCase):
     def test_delete_key_GET(self):
         # The 'Delete key' page displays a confirmation page with a form.
         self.client_log_in()
-        key = factory.make_sshkey(self.logged_in_user)
+        key = factory.make_SSHKey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
         doc = fromstring(response.content)
@@ -199,7 +199,7 @@ class KeyManagementTest(MAASServerTestCase):
 
     def test_delete_key_GET_cannot_access_someone_elses_key(self):
         self.client_log_in()
-        key = factory.make_sshkey(factory.make_user())
+        key = factory.make_SSHKey(factory.make_User())
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.get(del_link)
 
@@ -209,7 +209,7 @@ class KeyManagementTest(MAASServerTestCase):
         # Deleting a nonexistent key requires no confirmation.  It just
         # "succeeds" instantaneously.
         self.client_log_in()
-        key = factory.make_sshkey(self.logged_in_user)
+        key = factory.make_SSHKey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()
         response = self.client.get(del_link)
@@ -218,7 +218,7 @@ class KeyManagementTest(MAASServerTestCase):
     def test_delete_key_POST(self):
         # A POST request deletes the key, and redirects to the prefs.
         self.client_log_in()
-        key = factory.make_sshkey(self.logged_in_user)
+        key = factory.make_SSHKey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         response = self.client.post(del_link, {'post': 'yes'})
 
@@ -229,7 +229,7 @@ class KeyManagementTest(MAASServerTestCase):
         # Deleting a key that's already been deleted?  Basically that's
         # success.
         self.client_log_in()
-        key = factory.make_sshkey(self.logged_in_user)
+        key = factory.make_SSHKey(self.logged_in_user)
         del_link = reverse('prefs-delete-sshkey', args=[key.id])
         key.delete()
         response = self.client.post(del_link, {'post': 'yes'})

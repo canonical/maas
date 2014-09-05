@@ -59,11 +59,11 @@ class TestHelpers(MAASServerTestCase):
         size = random.randint(512, 1023)
         total_size = random.randint(1024, 2048)
         content = factory.make_string(size)
-        largefile = factory.make_large_file(content=content, size=total_size)
+        largefile = factory.make_LargeFile(content=content, size=total_size)
         resource = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.UPLOADED)
-        resource_set = factory.make_boot_resource_set(resource)
-        rfile = factory.make_boot_resource_file(resource_set, largefile)
+        resource_set = factory.make_BootResourceSet(resource)
+        rfile = factory.make_BootResourceFile(resource_set, largefile)
         dict_representation = boot_resource_file_to_dict(rfile)
         self.assertEqual(rfile.filename, dict_representation['filename'])
         self.assertEqual(rfile.filetype, dict_representation['filetype'])
@@ -80,11 +80,11 @@ class TestHelpers(MAASServerTestCase):
 
     def test_boot_resource_set_to_dict(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         total_size = random.randint(1024, 2048)
         content = factory.make_string(random.randint(512, 1023))
-        largefile = factory.make_large_file(content=content, size=total_size)
-        rfile = factory.make_boot_resource_file(resource_set, largefile)
+        largefile = factory.make_LargeFile(content=content, size=total_size)
+        rfile = factory.make_BootResourceFile(resource_set, largefile)
         dict_representation = boot_resource_set_to_dict(resource_set)
         self.assertEqual(resource_set.version, dict_representation['version'])
         self.assertEqual(resource_set.label, dict_representation['label'])
@@ -98,7 +98,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_boot_resource_to_dict_without_sets(self):
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
         dict_representation = boot_resource_to_dict(resource, with_sets=False)
         self.assertEqual(resource.id, dict_representation['id'])
         self.assertEqual(
@@ -114,7 +114,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_boot_resource_to_dict_with_sets(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         dict_representation = boot_resource_to_dict(resource, with_sets=True)
         self.assertItemsEqual(
             boot_resource_set_to_dict(resource_set),
@@ -267,7 +267,7 @@ class TestBootResourcesAPI(APITestCase):
     def test_POST_creates_boot_resource_with_already_existing_largefile(self):
         self.become_admin()
 
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
         params = {
@@ -291,7 +291,7 @@ class TestBootResourcesAPI(APITestCase):
 
         # Create a largefile to get a random sha256 and size. We delete it
         # immediately so the new resource does not pick it up.
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         largefile.delete()
 
         name = factory.make_name('name')
@@ -318,7 +318,7 @@ class TestBootResourcesAPI(APITestCase):
     def test_POST_validates_size_matches_total_size_for_largefile(self):
         self.become_admin()
 
-        largefile = factory.make_large_file()
+        largefile = factory.make_LargeFile()
         name = factory.make_name('name')
         architecture = make_usable_architecture(self)
         params = {
@@ -435,7 +435,7 @@ class TestBootResourceFileUploadAPI(APITestCase):
         if content is None:
             content = factory.make_bytes(1024)
         total_size = len(content)
-        largefile = factory.make_large_file(content=content, size=total_size)
+        largefile = factory.make_LargeFile(content=content, size=total_size)
         sha256 = largefile.sha256
         with largefile.content.open('rb') as stream:
             content = stream.read()
@@ -450,8 +450,8 @@ class TestBootResourceFileUploadAPI(APITestCase):
         if rtype is None:
             rtype = BOOT_RESOURCE_TYPE.UPLOADED
         resource = factory.make_BootResource(rtype=rtype)
-        resource_set = factory.make_boot_resource_set(resource)
-        rfile = factory.make_boot_resource_file(resource_set, largefile)
+        resource_set = factory.make_BootResourceSet(resource)
+        rfile = factory.make_BootResourceFile(resource_set, largefile)
         return rfile, content
 
     def read_content(self, rfile):

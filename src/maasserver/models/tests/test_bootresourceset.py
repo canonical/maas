@@ -39,13 +39,13 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_commissionable_returns_true_when_all_filetypes_present(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         self.make_all_boot_resource_files(resource_set, COMMISSIONABLE_SET)
         self.assertTrue(resource_set.commissionable)
 
     def test_commissionable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         types = COMMISSIONABLE_SET.copy()
         types.pop()
         self.make_all_boot_resource_files(resource_set, types)
@@ -53,13 +53,13 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_installable_returns_true_when_all_filetypes_present(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         self.make_all_boot_resource_files(resource_set, INSTALL_SET)
         self.assertTrue(resource_set.installable)
 
     def test_installable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         types = INSTALL_SET.copy()
         types.pop()
         self.make_all_boot_resource_files(resource_set, types)
@@ -67,7 +67,7 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_xinstallable_returns_true_when_filetype_present(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         filetype = random.choice(XINSTALL_TYPES)
         factory.make_boot_resource_file_with_content(
             resource_set, filename=filetype, filetype=filetype)
@@ -75,7 +75,7 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_xinstallable_returns_false_when_missing_filetypes(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         filetype = random.choice(list(INSTALL_SET))
         factory.make_boot_resource_file_with_content(
             resource_set, filename=filetype, filetype=filetype)
@@ -83,7 +83,7 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_total_size(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         total_size = 0
         sizes = [random.randint(512, 1024) for _ in range(3)]
         types = [
@@ -94,14 +94,14 @@ class TestBootResourceSet(MAASServerTestCase):
         for size in sizes:
             total_size += size
             filetype = types.pop()
-            largefile = factory.make_large_file(size=size)
-            factory.make_boot_resource_file(
+            largefile = factory.make_LargeFile(size=size)
+            factory.make_BootResourceFile(
                 resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertEqual(total_size, resource_set.total_size)
 
     def test_size(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         final_size = 0
         sizes = [random.randint(512, 1024) for _ in range(3)]
         total_sizes = [random.randint(1025, 2048) for _ in range(3)]
@@ -114,33 +114,33 @@ class TestBootResourceSet(MAASServerTestCase):
             final_size += size
             filetype = types.pop()
             content = factory.make_string(size=size)
-            largefile = factory.make_large_file(
+            largefile = factory.make_LargeFile(
                 content=content, size=total_sizes.pop())
-            factory.make_boot_resource_file(
+            factory.make_BootResourceFile(
                 resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertEqual(final_size, resource_set.size)
 
     def test_progress_handles_zero_division(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
         total_size = random.randint(1025, 2048)
         content = ""
-        largefile = factory.make_large_file(
+        largefile = factory.make_LargeFile(
             content=content, size=total_size)
-        factory.make_boot_resource_file(
+        factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertEqual(0, resource_set.progress)
 
     def test_progress_increases_from_0_to_1(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
         total_size = 100
         current_size = 0
-        largefile = factory.make_large_file(
+        largefile = factory.make_LargeFile(
             content="", size=total_size)
-        factory.make_boot_resource_file(
+        factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)
         stream = largefile.content.open()
         self.addCleanup(stream.close)
@@ -154,7 +154,7 @@ class TestBootResourceSet(MAASServerTestCase):
 
     def test_progress_accumulates_all_files(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         final_size = 0
         final_total_size = 0
         sizes = [random.randint(512, 1024) for _ in range(3)]
@@ -170,21 +170,21 @@ class TestBootResourceSet(MAASServerTestCase):
             final_total_size += total_size
             filetype = types.pop()
             content = factory.make_string(size=size)
-            largefile = factory.make_large_file(
+            largefile = factory.make_LargeFile(
                 content=content, size=total_size)
-            factory.make_boot_resource_file(
+            factory.make_BootResourceFile(
                 resource_set, largefile, filename=filetype, filetype=filetype)
         progress = final_total_size / float(final_size)
         self.assertAlmostEqual(progress, resource_set.progress)
 
     def test_complete_returns_false_for_no_files(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         self.assertFalse(resource_set.complete)
 
     def test_complete_returns_false_for_one_incomplete_file(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         types = [
             BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
             BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,
@@ -198,14 +198,14 @@ class TestBootResourceSet(MAASServerTestCase):
         total_size = random.randint(1025, 2048)
         filetype = types.pop()
         content = factory.make_string(size=size)
-        largefile = factory.make_large_file(content=content, size=total_size)
-        factory.make_boot_resource_file(
+        largefile = factory.make_LargeFile(content=content, size=total_size)
+        factory.make_BootResourceFile(
             resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertFalse(resource_set.complete)
 
     def test_complete_returns_true_for_complete_files(self):
         resource = factory.make_BootResource()
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         types = [
             BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE,
             BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL,

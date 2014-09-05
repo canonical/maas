@@ -152,7 +152,7 @@ class MACAddressAPITest(APITestCase):
         # error if the node is not visible to the logged-in user.
         node, mac1, _ = self.createNodeWithMacs()
         factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.delete(
             reverse(
                 'node_mac_handler',

@@ -418,7 +418,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_boot_image(
+        factory.make_BootImage(
             osystem=node.get_osystem(),
             architecture=arch, subarchitecture=subarch,
             release=node.get_distro_series(), purpose='xinstall',
@@ -436,7 +436,7 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_other_user_than_node_cannot_signal_installing_result(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        client = OAuthAuthenticatedClient(factory.make_user())
+        client = OAuthAuthenticatedClient(factory.make_User())
         response = call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(
@@ -468,7 +468,7 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installing_success_does_not_clear_owner(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)
@@ -476,7 +476,7 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installing_failure_makes_node_failed(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')
         self.assertEqual(httplib.OK, response.status_code)
@@ -485,7 +485,7 @@ class TestInstallingAPI(MAASServerTestCase):
 
     def test_signaling_installing_failure_is_idempotent(self):
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, owner=factory.make_user())
+            status=NODE_STATUS.DEPLOYING, owner=factory.make_User())
         client = make_node_client(node=node)
         call_signal(client, status='FAILED')
         response = call_signal(client, status='FAILED')
@@ -497,7 +497,7 @@ class TestInstallingAPI(MAASServerTestCase):
 class TestCommissioningAPI(MAASServerTestCase):
 
     def test_commissioning_scripts(self):
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         response = make_node_client().get(
             reverse('commissioning-scripts', args=['latest']))
         self.assertEqual(
@@ -519,7 +519,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_other_user_than_node_cannot_signal_commissioning_result(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        client = OAuthAuthenticatedClient(factory.make_user())
+        client = OAuthAuthenticatedClient(factory.make_User())
         response = call_signal(client)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(
@@ -599,7 +599,7 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual('', result.data)
 
     def test_signaling_WORKING_keeps_owner(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         node.owner = user
         node.save()
@@ -625,7 +625,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_commissioning_success_clears_owner(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        node.owner = factory.make_user()
+        node.owner = factory.make_User()
         node.save()
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
@@ -659,7 +659,7 @@ class TestCommissioningAPI(MAASServerTestCase):
 
     def test_signaling_commissioning_failure_clears_owner(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        node.owner = factory.make_user()
+        node.owner = factory.make_User()
         node.save()
         client = make_node_client(node=node)
         response = call_signal(client, status='FAILED')

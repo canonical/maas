@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for :class:`User`-related helpers."""
@@ -46,7 +46,7 @@ class AuthTokensTest(MAASServerTestCase):
         self.assertEqual('', consumer.secret)
 
     def test_create_auth_token(self):
-        user = factory.make_user()
+        user = factory.make_User()
         token = create_auth_token(user)
         self.assertEqual(user, token.user)
         self.assertEqual(user, token.consumer.user)
@@ -55,30 +55,30 @@ class AuthTokensTest(MAASServerTestCase):
         self.assertTokenValid(token)
 
     def test_get_auth_tokens_finds_tokens_for_user(self):
-        user = factory.make_user()
+        user = factory.make_User()
         token = create_auth_token(user)
         self.assertIn(token, get_auth_tokens(user))
 
     def test_get_auth_tokens_ignores_other_users(self):
-        user, other_user = factory.make_user(), factory.make_user()
+        user, other_user = factory.make_User(), factory.make_User()
         unrelated_token = create_auth_token(other_user)
         self.assertNotIn(unrelated_token, get_auth_tokens(user))
 
     def test_get_auth_tokens_ignores_unapproved_tokens(self):
-        user = factory.make_user()
+        user = factory.make_User()
         token = create_auth_token(user)
         token.is_approved = False
         token.save()
         self.assertNotIn(token, get_auth_tokens(user))
 
     def test_get_creds_tuple_returns_creds(self):
-        token = create_auth_token(factory.make_user())
+        token = create_auth_token(factory.make_User())
         self.assertEqual(
             (token.consumer.key, token.key, token.secret),
             get_creds_tuple(token))
 
     def test_get_creds_tuple_integrates_with_api_client(self):
-        creds_tuple = get_creds_tuple(create_auth_token(factory.make_user()))
+        creds_tuple = get_creds_tuple(create_auth_token(factory.make_User()))
         self.assertEqual(
             creds_tuple,
             convert_string_to_tuple(convert_tuple_to_string(creds_tuple)))

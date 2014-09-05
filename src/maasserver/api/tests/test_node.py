@@ -124,7 +124,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_returns_associated_tag(self):
         node = factory.make_Node()
-        tag = factory.make_tag()
+        tag = factory.make_Tag()
         node.tags.add(tag)
         response = self.client.get(self.get_node_uri(node))
 
@@ -135,7 +135,7 @@ class TestNodeAPI(APITestCase):
     def test_GET_returns_associated_ip_addresses(self):
         node = factory.make_Node(disable_ipv4=False)
         mac = factory.make_MACAddress(node=node)
-        lease = factory.make_dhcp_lease(
+        lease = factory.make_DHCPLease(
             nodegroup=node.nodegroup, mac=mac.mac_address)
         response = self.client.get(self.get_node_uri(node))
 
@@ -185,7 +185,7 @@ class TestNodeAPI(APITestCase):
 
     def test_GET_returns_owner_name_when_allocated_to_other_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.get(self.get_node_uri(node))
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -518,7 +518,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -526,7 +526,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -545,7 +545,7 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_commission_commissions_node(self):
         node = factory.make_Node(
-            status=NODE_STATUS.READY, owner=factory.make_user())
+            status=NODE_STATUS.READY, owner=factory.make_User())
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'commission'})
@@ -651,7 +651,7 @@ class TestNodeAPI(APITestCase):
         # The request to update a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
 
         response = self.client_put(self.get_node_uri(other_node))
 
@@ -848,7 +848,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_sets_zone(self):
         self.become_admin()
-        new_zone = factory.make_zone()
+        new_zone = factory.make_Zone()
         node = factory.make_Node(architecture=make_usable_architecture(self))
 
         response = self.client_put(
@@ -880,7 +880,7 @@ class TestNodeAPI(APITestCase):
         # simpler way.
         return
         self.become_admin()
-        node = factory.make_Node(zone=factory.make_zone())
+        node = factory.make_Node(zone=factory.make_Zone())
 
         response = self.client_put(self.get_node_uri(node), {'zone': ''})
 
@@ -890,7 +890,7 @@ class TestNodeAPI(APITestCase):
 
     def test_PUT_without_zone_leaves_zone_unchanged(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(
             zone=zone, architecture=make_usable_architecture(self))
 
@@ -901,7 +901,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(zone, node.zone)
 
     def test_PUT_zone_change_requires_admin(self):
-        new_zone = factory.make_zone()
+        new_zone = factory.make_Zone()
         node = factory.make_Node(
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
@@ -942,7 +942,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(original_setting, node.disable_ipv4)
 
         response = self.client_put(
-            self.get_node_uri(node), {'zone': factory.make_zone()})
+            self.get_node_uri(node), {'zone': factory.make_Zone()})
         self.assertEqual(httplib.OK, response.status_code)
 
         node = reload_object(node)
@@ -989,7 +989,7 @@ class TestNodeAPI(APITestCase):
         # The request to delete a single node is denied if the node isn't
         # visible by the user.
         other_node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
 
         response = self.client.delete(self.get_node_uri(other_node))
 
@@ -1335,7 +1335,7 @@ class TestDeploymentStatus(APITestCase):
 
     def test_GET_rejects_unviewable_nodes(self):
         owned_node = factory.make_Node(owner=self.logged_in_user)
-        unowned_node = factory.make_Node(owner=factory.make_user())
+        unowned_node = factory.make_Node(owner=factory.make_User())
         node_ids = [owned_node.system_id, unowned_node.system_id]
         response = self.client.get(
             self.endpoint,

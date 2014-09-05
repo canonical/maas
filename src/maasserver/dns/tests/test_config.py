@@ -384,7 +384,7 @@ class TestDNSBackwardCompat(TestDNSServer):
         ip_range = IPRange(
             interface.ip_range_low, interface.ip_range_high)
         ip = "%s" % random.choice(ip_range)
-        lease = factory.make_dhcp_lease(
+        lease = factory.make_DHCPLease(
             nodegroup=nodegroup, mac=mac.mac_address, ip=ip)
         change_dns_zones([nodegroup])
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)

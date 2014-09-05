@@ -329,7 +329,7 @@ class TestListConnectedMACs(APITestCase):
         if networks is None:
             networks = []
         if owner is None:
-            owner = factory.make_user()
+            owner = factory.make_User()
         if node is None:
             node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
         return factory.make_MACAddress(networks=networks, node=node)

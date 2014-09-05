@@ -70,7 +70,7 @@ class TestNetworkForm(MAASServerTestCase):
             form.initial['mac_addresses'])
 
     def test_macaddresses_are_sorted(self):
-        network1, network2 = factory.make_networks(2)
+        network1, network2 = factory.make_Networks(2)
         macs = [
             factory.make_MACAddress(networks=[network1])
             for _ in range(3)]
@@ -88,7 +88,7 @@ class TestNetworkForm(MAASServerTestCase):
             list(form.fields['mac_addresses'].queryset))
 
     def test_macaddresses_widget_displays_MAC_and_node_hostname(self):
-        networks = factory.make_networks(3)
+        networks = factory.make_Networks(3)
         same_network = networks[0]
         misc_networks = networks[1:]
         for _ in range(3):

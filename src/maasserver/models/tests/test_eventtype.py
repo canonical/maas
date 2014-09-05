@@ -22,14 +22,14 @@ from maasserver.testing.testcase import MAASServerTestCase
 class EventTypeTest(MAASServerTestCase):
 
     def test_displays_event_type_description(self):
-        event_type = factory.make_event_type()
+        event_type = factory.make_EventType()
         self.assertIn(event_type.description, "%s" % event_type)
 
     def test_level_str_returns_level_description(self):
         events_and_levels = [
             (
                 level,
-                factory.make_event(type=factory.make_event_type(level=level))
+                factory.make_Event(type=factory.make_EventType(level=level))
             )
             for level in LOGGING_LEVELS
         ]

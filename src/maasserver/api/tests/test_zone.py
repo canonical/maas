@@ -38,7 +38,7 @@ class TestZoneAPI(APITestCase):
 
     def test_POST_is_prohibited(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(
             get_zone_uri(zone),
             {
@@ -48,7 +48,7 @@ class TestZoneAPI(APITestCase):
         self.assertEqual(httplib.METHOD_NOT_ALLOWED, response.status_code)
 
     def test_GET_returns_zone(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.get(get_zone_uri(zone))
         self.assertEqual(httplib.OK, response.status_code)
         returned_zone = json.loads(response.content)
@@ -58,7 +58,7 @@ class TestZoneAPI(APITestCase):
 
     def test_PUT_updates_zone(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         new_description = factory.make_string()
 
         response = self.client_put(
@@ -70,7 +70,7 @@ class TestZoneAPI(APITestCase):
         self.assertEqual(new_description, zone.description)
 
     def test_PUT_requires_admin(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client_put(
             get_zone_uri(zone),
             {'description': factory.make_string()})
@@ -78,7 +78,7 @@ class TestZoneAPI(APITestCase):
 
     def test_PUT_updates_zone_name(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         new_name = factory.make_name('zone-new')
 
         response = self.client_put(get_zone_uri(zone), {'name': new_name})
@@ -100,7 +100,7 @@ class TestZoneAPI(APITestCase):
 
     def test_PUT_changing_name_maintains_foreign_keys(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
 
         response = self.client_put(
@@ -114,7 +114,7 @@ class TestZoneAPI(APITestCase):
 
     def test_DELETE_removes_zone(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.delete(get_zone_uri(zone))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(zone))
@@ -127,7 +127,7 @@ class TestZoneAPI(APITestCase):
         self.assertIsNotNone(Zone.objects.get_default_zone())
 
     def test_DELETE_requires_admin(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.delete(get_zone_uri(zone))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -147,7 +147,7 @@ class TestZoneAPI(APITestCase):
     def test_DELETE_sets_foreign_keys_to_default(self):
         default_zone = Zone.objects.get_default_zone()
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
 
         response = self.client.delete(get_zone_uri(zone))
@@ -159,7 +159,7 @@ class TestZoneAPI(APITestCase):
 
     def test_DELETE_is_idempotent(self):
         self.become_admin()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.delete(get_zone_uri(zone))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 

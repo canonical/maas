@@ -31,7 +31,7 @@ class TestZoneManager(MAASServerTestCase):
             DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
 
     def test_get_default_zone_ignores_other_zones(self):
-        factory.make_zone()
+        factory.make_Zone()
         self.assertEqual(
             DEFAULT_ZONE_NAME, Zone.objects.get_default_zone().name)
 
@@ -61,12 +61,12 @@ class TestZone(MAASServerTestCase):
             (set([node1, node2]), name, description, zone, zone))
 
     def test_delete_deletes_zone(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         zone.delete()
         self.assertIsNone(reload_object(zone))
 
     def test_delete_severs_link_to_nodes(self):
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         zone.delete()
         self.assertIsNone(reload_object(zone))
@@ -78,4 +78,4 @@ class TestZone(MAASServerTestCase):
         self.assertTrue(Zone.objects.get_default_zone().is_default())
 
     def test_is_default_returns_False_for_normal_zone(self):
-        self.assertFalse(factory.make_zone().is_default())
+        self.assertFalse(factory.make_Zone().is_default())

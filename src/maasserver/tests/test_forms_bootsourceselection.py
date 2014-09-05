@@ -41,7 +41,7 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
         self.assertAttributes(boot_source_selection, params)
 
     def test_creates_boot_source_selection_object(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         params = {
             'os': factory.make_name('os'),
             'release': factory.make_name('release'),

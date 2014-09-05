@@ -80,11 +80,11 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual([], list(get_unowned_files()))
 
     def test_get_unowned_files(self):
-        user = factory.make_user()
+        user = factory.make_User()
         files = [
-            factory.make_file_storage(owner=None),
-            factory.make_file_storage(owner=user),
-            factory.make_file_storage(owner=None),
+            factory.make_FileStorage(owner=None),
+            factory.make_FileStorage(owner=user),
+            factory.make_FileStorage(owner=None),
             ]
         self.assertSetEqual(
             {files[0], files[2]},
@@ -97,8 +97,8 @@ class TestFunctions(MAASServerTestCase):
     def test_get_real_users(self):
         get_legacy_user()  # Ensure at least the legacy user exists.
         users = [
-            factory.make_user(),
-            factory.make_user(),
+            factory.make_User(),
+            factory.make_User(),
             ]
         self.assertSetEqual(set(users), set(get_real_users()))
 
@@ -111,8 +111,8 @@ class TestFunctions(MAASServerTestCase):
 
     def test_get_owned_nodes_with_owned_nodes(self):
         nodes = {
-            factory.make_Node(owner=factory.make_user()),
-            factory.make_Node(owner=factory.make_user()),
+            factory.make_Node(owner=factory.make_User()),
+            factory.make_Node(owner=factory.make_User()),
             }
         self.assertSetEqual(nodes, set(get_owned_nodes()))
 
@@ -124,47 +124,47 @@ class TestFunctions(MAASServerTestCase):
         self.assertEqual([], list(get_owned_nodes_owners()))
 
     def test_get_owned_nodes_owners_no_nodes(self):
-        factory.make_user()
+        factory.make_User()
         self.assertEqual([], list(get_owned_nodes_owners()))
 
     def test_get_owned_nodes_owners_no_owned_nodes(self):
-        factory.make_user()
+        factory.make_User()
         factory.make_Node(owner=None)
         self.assertEqual([], list(get_owned_nodes_owners()))
 
     def test_get_owned_nodes_owners(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
-        factory.make_user()
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        factory.make_User()
         factory.make_Node(owner=user1)
         factory.make_Node(owner=user2)
         factory.make_Node(owner=None)
         self.assertSetEqual({user1, user2}, set(get_owned_nodes_owners()))
 
     def test_get_destination_user_one_real_user(self):
-        user = factory.make_user()
+        user = factory.make_User()
         self.assertEqual(user, get_destination_user())
 
     def test_get_destination_user_two_real_users(self):
-        factory.make_user()
-        factory.make_user()
+        factory.make_User()
+        factory.make_User()
         self.assertEqual(get_legacy_user(), get_destination_user())
 
     def test_get_destination_user_no_real_users(self):
         self.assertEqual(get_legacy_user(), get_destination_user())
 
     def test_get_destination_user_with_user_from_juju_state(self):
-        user = factory.make_user()
+        user = factory.make_User()
         # Also create another user.
-        factory.make_user()
+        factory.make_User()
         node = factory.make_Node(owner=user)
         make_provider_state_file(node)
         self.assertEqual(user, get_destination_user())
 
     def test_get_destination_user_with_orphaned_juju_state(self):
-        user = factory.make_user()
+        user = factory.make_User()
         # Also create another user.
-        factory.make_user()
+        factory.make_User()
         node = factory.make_Node(owner=user)
         make_provider_state_file(node)
         node.delete()  # Orphan the state.
@@ -175,16 +175,16 @@ class TestCopySSHKeys(MAASServerTestCase):
     """Tests for copy_ssh_keys()."""
 
     def test_noop_when_there_are_no_keys(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
+        user1 = factory.make_User()
+        user2 = factory.make_User()
         copy_ssh_keys(user1, user2)
         ssh_keys = SSHKey.objects.filter(user__in={user1, user2})
         self.assertEqual([], list(ssh_keys))
 
     def test_copy(self):
-        user1 = factory.make_user()
-        key1 = factory.make_sshkey(user1)
-        user2 = factory.make_user()
+        user1 = factory.make_User()
+        key1 = factory.make_SSHKey(user1)
+        user2 = factory.make_User()
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
         self.assertSetEqual(
@@ -193,10 +193,10 @@ class TestCopySSHKeys(MAASServerTestCase):
     def test_copy_is_idempotent(self):
         # When the destination user already has a key, copy_ssh_keys() is a
         # noop for that key.
-        user1 = factory.make_user()
-        key1 = factory.make_sshkey(user1)
-        user2 = factory.make_user()
-        key2 = factory.make_sshkey(user2, key1.key)
+        user1 = factory.make_User()
+        key1 = factory.make_SSHKey(user1)
+        user2 = factory.make_User()
+        key2 = factory.make_SSHKey(user2, key1.key)
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
         self.assertSetEqual(
@@ -205,10 +205,10 @@ class TestCopySSHKeys(MAASServerTestCase):
     def test_copy_does_not_clobber(self):
         # When the destination user already has some keys, copy_ssh_keys()
         # adds to them; it does not remove them.
-        user1 = factory.make_user()
-        key1 = factory.make_sshkey(user1, get_ssh_key_string(1))
-        user2 = factory.make_user()
-        key2 = factory.make_sshkey(user2, get_ssh_key_string(2))
+        user1 = factory.make_User()
+        key1 = factory.make_SSHKey(user1, get_ssh_key_string(1))
+        user2 = factory.make_User()
+        key2 = factory.make_SSHKey(user2, get_ssh_key_string(2))
         copy_ssh_keys(user1, user2)
         user2s_ssh_keys = SSHKey.objects.filter(user=user2)
         self.assertSetEqual(
@@ -219,21 +219,21 @@ class TestCopySSHKeys(MAASServerTestCase):
 class TestGiveFileToUser(MAASServerTestCase):
 
     def test_give_unowned_file(self):
-        user = factory.make_user()
-        file = factory.make_file_storage(owner=None)
+        user = factory.make_User()
+        file = factory.make_FileStorage(owner=None)
         give_file_to_user(file, user)
         self.assertEqual(user, file.owner)
 
     def test_give_owned_file(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
-        file = factory.make_file_storage(owner=user1)
+        user1 = factory.make_User()
+        user2 = factory.make_User()
+        file = factory.make_FileStorage(owner=user1)
         give_file_to_user(file, user2)
         self.assertEqual(user2, file.owner)
 
     def test_file_saved(self):
-        user = factory.make_user()
-        file = factory.make_file_storage(owner=None)
+        user = factory.make_User()
+        file = factory.make_FileStorage(owner=None)
         save = self.patch(file, "save")
         give_file_to_user(file, user)
         self.assertThat(save, MockCalledOnceWith())
@@ -242,8 +242,8 @@ class TestGiveFileToUser(MAASServerTestCase):
 class TestGiveCredentialsToUser(MAASServerTestCase):
 
     def test_give(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
+        user1 = factory.make_User()
+        user2 = factory.make_User()
         profile = user1.get_profile()
         consumer, token = profile.create_authorisation_token()
         give_api_credentials_to_user(user1, user2)
@@ -254,8 +254,8 @@ class TestGiveCredentialsToUser(MAASServerTestCase):
 class TestGiveNodeToUser(MAASServerTestCase):
 
     def test_give(self):
-        user1 = factory.make_user()
-        user2 = factory.make_user()
+        user1 = factory.make_User()
+        user2 = factory.make_User()
         node = factory.make_Node(owner=user1)
         give_node_to_user(node, user2)
         self.assertEqual(user2, reload_object(node).owner)
@@ -325,37 +325,37 @@ class TestMigrate(MAASServerTestCase):
         migrate()
 
     def test_migrate_runs_when_no_unowned_files_exist(self):
-        factory.make_file_storage(owner=factory.make_user())
+        factory.make_FileStorage(owner=factory.make_User())
         migrate()
 
     def test_migrate_all_files_to_single_user_when_only_one_user(self):
-        user = factory.make_user()
-        stored = factory.make_file_storage(owner=None)
+        user = factory.make_User()
+        stored = factory.make_FileStorage(owner=None)
         migrate()
         self.assertEqual(user, reload_object(stored).owner)
 
     def test_migrate_all_files_to_new_legacy_user_when_multiple_users(self):
-        stored = factory.make_file_storage(owner=None)
-        user1 = factory.make_user()
-        user2 = factory.make_user()
+        stored = factory.make_FileStorage(owner=None)
+        user1 = factory.make_User()
+        user2 = factory.make_User()
         migrate()
         stored = reload_object(stored)
         self.assertNotIn(stored.owner, {user1, user2, None})
 
     def test_migrate_all_nodes_to_new_legacy_user_when_multiple_users(self):
-        factory.make_file_storage(owner=None)
-        user1 = factory.make_user()
+        factory.make_FileStorage(owner=None)
+        user1 = factory.make_User()
         node1 = factory.make_Node(owner=user1)
-        user2 = factory.make_user()
+        user2 = factory.make_User()
         node2 = factory.make_Node(owner=user2)
         migrate()
         self.assertNotIn(reload_object(node1).owner, {user1, user2, None})
         self.assertNotIn(reload_object(node2).owner, {user1, user2, None})
 
     def test_migrate_all_nodes_to_bootstrap_owner_when_multiple_users(self):
-        user1 = factory.make_user()
+        user1 = factory.make_User()
         node1 = factory.make_Node(owner=user1)
-        user2 = factory.make_user()
+        user2 = factory.make_User()
         node2 = factory.make_Node(owner=user2)
         make_provider_state_file(node1)
         migrate()
@@ -365,15 +365,15 @@ class TestMigrate(MAASServerTestCase):
              reload_object(node2).owner))
 
     def test_migrate_ancillary_data_to_legacy_user_when_multiple_users(self):
-        factory.make_file_storage(owner=None)
+        factory.make_FileStorage(owner=None)
         # Create two users, both with API credentials, an SSH key and a node.
-        user1 = factory.make_user()
+        user1 = factory.make_User()
         consumer1, token1 = user1.get_profile().create_authorisation_token()
-        key1 = factory.make_sshkey(user1, get_ssh_key_string(1))
+        key1 = factory.make_SSHKey(user1, get_ssh_key_string(1))
         node1 = factory.make_Node(owner=user1)
-        user2 = factory.make_user()
+        user2 = factory.make_User()
         consumer2, token2 = user2.get_profile().create_authorisation_token()
-        key2 = factory.make_sshkey(user2, get_ssh_key_string(2))
+        key2 = factory.make_SSHKey(user2, get_ssh_key_string(2))
         node2 = factory.make_Node(owner=user2)
         migrate()
         # The SSH keys have been copied to the legacy user.

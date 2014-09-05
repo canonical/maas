@@ -298,7 +298,7 @@ class ClusterEditTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_NodeGroup()
         boot_images = [
-            factory.make_boot_image(nodegroup=nodegroup)
+            factory.make_BootImage(nodegroup=nodegroup)
             for _ in range(3)
             ]
         for bi in boot_images:
@@ -313,7 +313,7 @@ class ClusterEditTest(MAASServerTestCase):
 
     def test_displays_warning_if_boot_image_list_is_empty(self):
         # Create boot images in another nodegroup.
-        boot_images = [factory.make_boot_image() for _ in range(3)]
+        boot_images = [factory.make_BootImage() for _ in range(3)]
         for bi in boot_images:
             make_osystem(self, bi.osystem, ['install'])
         self.client_log_in(as_admin=True)

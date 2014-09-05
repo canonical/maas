@@ -252,7 +252,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_GET_returns_boot_source_selection_list(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         selections = [
             factory.make_BootSourceSelection(boot_source=boot_source)
             for _ in range(3)]
@@ -269,7 +269,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
             [selection.get('id') for selection in parsed_result])
 
     def test_GET_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(
             reverse(
                 'boot_source_selections_handler',
@@ -278,7 +278,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         ubuntu_os = UbuntuOS()
         new_release = factory.pick_release(ubuntu_os)
         params = {
@@ -300,7 +300,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
         self.assertAttributes(boot_source_selection, params)
 
     def test_POST_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         ubuntu_os = UbuntuOS()
         new_release = factory.pick_release(ubuntu_os)
         params = {
@@ -336,7 +336,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
 
     def test_GET_returns_boot_source_selection_list(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         selections = [
             factory.make_BootSourceSelection(boot_source=boot_source)
             for _ in range(3)]
@@ -351,7 +351,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
 
     def test_GET_returns_same_list_for_different_node_groups(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         selections = [
             factory.make_BootSourceSelection(boot_source=boot_source)
             for _ in range(3)]
@@ -368,13 +368,13 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
                 [selection.get('id') for selection in parsed_result])
 
     def test_GET_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         response = self.client.get(self.get_uri(boot_source))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         ubuntu_os = UbuntuOS()
         new_release = factory.pick_release(ubuntu_os)
         params = {
@@ -393,7 +393,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
         self.assertAttributes(boot_source_selection, params)
 
     def test_POST_requires_admin(self):
-        boot_source = factory.make_boot_source()
+        boot_source = factory.make_BootSource()
         ubuntu_os = UbuntuOS()
         new_release = factory.pick_release(ubuntu_os)
         params = {

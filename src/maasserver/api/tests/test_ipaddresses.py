@@ -134,7 +134,7 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_only_returns_request_users_addresses(self):
         ipaddress = factory.make_StaticIPAddress(user=self.logged_in_user)
-        factory.make_StaticIPAddress(user=factory.make_user())
+        factory.make_StaticIPAddress(user=factory.make_User())
         response = self.client.get(reverse('ipaddresses_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -162,7 +162,7 @@ class TestNetworksAPI(APITestCase):
         self.assertIsNone(reload_object(ipaddress))
 
     def test_POST_release_does_not_delete_IP_that_I_dont_own(self):
-        ipaddress = factory.make_StaticIPAddress(user=factory.make_user())
+        ipaddress = factory.make_StaticIPAddress(user=factory.make_User())
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)

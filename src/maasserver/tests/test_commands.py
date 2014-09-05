@@ -194,7 +194,7 @@ class TestApikeyCommand(DjangoTestCase):
         stderr = BytesIO()
         out = BytesIO()
         stdout = getwriter("UTF-8")(out)
-        user = factory.make_user()
+        user = factory.make_User()
         call_command(
             'apikey', username=user.username, stderr=stderr, stdout=stdout)
         self.assertEqual('', stderr.getvalue().strip())
@@ -209,7 +209,7 @@ class TestApikeyCommand(DjangoTestCase):
         stderr = BytesIO()
         out = BytesIO()
         stdout = getwriter("UTF-8")(out)
-        user = factory.make_user()
+        user = factory.make_User()
         num_keys = len(user.get_profile().get_authorisation_tokens())
         call_command(
             'apikey', username=user.username, generate=True, stderr=stderr,
@@ -226,7 +226,7 @@ class TestApikeyCommand(DjangoTestCase):
     def test_apikey_deletes_key(self):
         stderr = BytesIO()
         stdout = BytesIO()
-        user = factory.make_user()
+        user = factory.make_User()
         existing_token = get_one(
             user.get_profile().get_authorisation_tokens())
         token_string = convert_tuple_to_string(
@@ -240,7 +240,7 @@ class TestApikeyCommand(DjangoTestCase):
         self.assertEqual(0, len(keys_after))
 
     def test_apikey_rejects_mutually_exclusive_options(self):
-        user = factory.make_user()
+        user = factory.make_User()
         error_text = assertCommandErrors(
             self, 'apikey',
             username=user.username, generate=True, delete="foo")
@@ -249,7 +249,7 @@ class TestApikeyCommand(DjangoTestCase):
             error_text)
 
     def test_apikey_rejects_deletion_of_bad_key(self):
-        user = factory.make_user()
+        user = factory.make_User()
         error_text = assertCommandErrors(
             self, 'apikey',
             username=user.username, delete="foo")
@@ -259,7 +259,7 @@ class TestApikeyCommand(DjangoTestCase):
 
     def test_api_key_rejects_deletion_of_nonexistent_key(self):
         stderr = BytesIO()
-        user = factory.make_user()
+        user = factory.make_User()
         existing_token = get_one(
             user.get_profile().get_authorisation_tokens())
         token_string = convert_tuple_to_string(

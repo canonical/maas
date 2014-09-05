@@ -264,7 +264,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_node_list_sorts_by_zone(self):
         self.client_log_in()
-        zones = [factory.make_zone(sortable_name=True) for _ in range(5)]
+        zones = [factory.make_Zone(sortable_name=True) for _ in range(5)]
         nodes = [factory.make_Node(zone=zone) for zone in zones]
 
         # We use PostgreSQL's case-insensitive text sorting algorithm.
@@ -303,7 +303,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.patch(nodes_views.NodeListView, 'paginate_by', page_size)
 
         nodes = []
-        tag = factory.make_tag('shiny')
+        tag = factory.make_Tag('shiny')
         for name in ('bbb', 'ccc', 'ddd', 'aaa'):
             node = factory.make_Node(hostname=name)
             node.tags = [tag]
@@ -440,8 +440,8 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_contains_tag_names(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
-        tag_a = factory.make_tag()
-        tag_b = factory.make_tag()
+        tag_a = factory.make_Tag()
+        tag_b = factory.make_Tag()
         node.tags.add(tag_a)
         node.tags.add(tag_b)
         node_link = reverse('node-view', args=[node.system_id])
@@ -462,7 +462,7 @@ class NodeViewsTest(MAASServerTestCase):
             factory.make_MACAddress(node=node).mac_address for i in range(2)]
         ips = [factory.getRandomIPAddress() for i in range(2)]
         for i in range(2):
-            factory.make_dhcp_lease(
+            factory.make_DHCPLease(
                 nodegroup=nodegroup, mac=macs[i], ip=ips[i])
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
@@ -603,7 +603,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_sorts_networks_by_name(self):
         self.client_log_in()
-        networks = factory.make_networks(3, sortable_name=True)
+        networks = factory.make_Networks(3, sortable_name=True)
         mac = factory.make_MACAddress(networks=networks)
 
         response = self.client.get(
@@ -669,7 +669,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node_view_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_view_link)
         node_delete_link = reverse('node-delete', args=[node.system_id])
@@ -683,7 +683,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_allocated_node_cannot_be_deleted(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.get(node_delete_link)
 
@@ -691,28 +691,28 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_user_can_view_someone_elses_node(self):
         self.client_log_in()
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         node_view_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_view_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_cannot_edit_someone_elses_node(self):
         self.client_log_in()
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_admin_can_view_someonelses_node(self):
         self.client_log_in(as_admin=True)
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         node_view_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_view_link)
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_admin_can_edit_someonelses_node(self):
         self.client_log_in(as_admin=True)
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
         self.assertEqual(httplib.OK, response.status_code)
@@ -792,7 +792,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_shows_tag_kernel_params(self):
         self.client_log_in()
-        tag = factory.make_tag(name='shiny', kernel_opts="--test params")
+        tag = factory.make_Tag(name='shiny', kernel_opts="--test params")
         node = factory.make_Node()
         node.tags = [tag]
         self.assertEqual(
@@ -859,7 +859,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.patch(node_module, "update_host_maps").return_value = []
 
         self.client_log_in()
-        factory.make_sshkey(self.logged_in_user)
+        factory.make_SSHKey(self.logged_in_user)
         self.set_up_oauth_token()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             status=NODE_STATUS.ALLOCATED, power_type='ether_wake',
@@ -926,7 +926,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_POST_action_displays_message(self):
         self.client_log_in()
-        factory.make_sshkey(self.logged_in_user)
+        factory.make_SSHKey(self.logged_in_user)
         self.set_up_oauth_token()
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.perform_action_and_get_node_page(
@@ -961,7 +961,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_node_list_query_selects_subset(self):
         self.client_log_in()
-        tag = factory.make_tag("shiny")
+        tag = factory.make_Tag("shiny")
         node1 = factory.make_Node(cpu_count=1)
         node2 = factory.make_Node(cpu_count=2)
         node3 = factory.make_Node(cpu_count=2)
@@ -1030,7 +1030,7 @@ class NodeViewsTest(MAASServerTestCase):
         nodes = [
             factory.make_Node(created="2012-10-12 12:00:%02d" % i)
             for i in range(10)]
-        tag = factory.make_tag("odd")
+        tag = factory.make_Tag("odd")
         for node in nodes[::2]:
             node.tags = [tag]
         last_node_link = reverse('node-view', args=[nodes[0].system_id])
@@ -1170,12 +1170,12 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node()
         # Create old events.
         [
-            factory.make_event(node=node)
+            factory.make_Event(node=node)
             for _ in range(4)
         ]
         # Create NodeView.number_of_events_shown events.
         events = [
-            factory.make_event(node=node)
+            factory.make_Event(node=node)
             for _ in range(NodeView.number_of_events_shown)
         ]
         response = self.client.get(reverse('node-view', args=[node.system_id]))
@@ -1192,7 +1192,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node()
         # Create an event related to another node.
-        event = factory.make_event()
+        event = factory.make_Event()
         response = self.client.get(
             reverse('node-view', args=[node.system_id]))
         self.assertIn("Latest node events", response.content)
@@ -1206,7 +1206,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_node_view_links_to_node_event_log(self):
         self.client_log_in()
         node = factory.make_Node()
-        factory.make_event(node=node)
+        factory.make_Event(node=node)
         response = self.client.get(
             reverse('node-view', args=[node.system_id]))
         self.assertIn("Latest node events", response.content)
@@ -1221,7 +1221,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node()
         num_events = randint(2, 3)
         for _ in range(num_events):
-            factory.make_event(node=node)
+            factory.make_Event(node=node)
         response = self.client.get(
             reverse('node-view', args=[node.system_id]))
         self.assertIn("Latest node events", response.content)
@@ -1236,7 +1236,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node()
         # Create an event related to another node.
         [
-            factory.make_event(node=node)
+            factory.make_Event(node=node)
             for _ in range(4)
         ]
         response = self.client.get(
@@ -1252,7 +1252,7 @@ class NodeEventLogTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node()
         events = [
-            factory.make_event(node=node)
+            factory.make_Event(node=node)
             for _ in range(NodeView.number_of_events_shown)
         ]
         response = self.client.get(
@@ -1270,7 +1270,7 @@ class NodeEventLogTest(MAASServerTestCase):
         self.patch(NodeEventListView, "paginate_by", 3)
         node = factory.make_Node()
         # Create 4 events.
-        [factory.make_event(node=node) for _ in range(4)]
+        [factory.make_Event(node=node) for _ in range(4)]
 
         response = self.client.get(
             reverse('node-event-list-view', args=[node.system_id]))
@@ -1365,7 +1365,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
     def test_view_node_shows_commissioning_results_with_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
@@ -1379,7 +1379,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
     def test_view_node_shows_commissioning_results_requires_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
@@ -1419,7 +1419,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
     def test_view_node_shows_installing_results_with_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
@@ -1433,7 +1433,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
     def test_view_node_shows_installing_results_requires_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
@@ -1705,7 +1705,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
 
     def test_node_delete_access_denied_if_user_cannot_edit_node(self):
         self.client_log_in()
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         mac = factory.make_MACAddress(node=node)
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
@@ -1795,7 +1795,7 @@ class AdminNodeViewsTest(MAASServerTestCase):
 
     def test_admin_can_edit_nodes(self):
         self.client_log_in(as_admin=True)
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         node_edit_link = reverse('node-edit', args=[node.system_id])
         params = {
             'hostname': factory.make_string(),

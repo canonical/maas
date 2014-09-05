@@ -32,7 +32,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestLogin(MAASServerTestCase):
 
     def test_login_contains_input_tags_if_user(self):
-        factory.make_user()
+        factory.make_User()
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
         self.assertFalse(response.context['no_users'])
@@ -48,14 +48,14 @@ class TestLogin(MAASServerTestCase):
 
     def test_login_redirects_when_authenticated(self):
         password = factory.make_string()
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         self.client.login(username=user.username, password=password)
         response = self.client.get('/accounts/login/')
         self.assertEqual('/', extract_redirect(response))
 
     def test_login_sets_autocomplete_off_in_production(self):
         self.patch(settings, 'DEBUG', False)
-        factory.make_user()
+        factory.make_User()
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]
@@ -63,7 +63,7 @@ class TestLogin(MAASServerTestCase):
 
     def test_login_sets_autocomplete_on_in_debug_mode(self):
         self.patch(settings, 'DEBUG', True)
-        factory.make_user()
+        factory.make_User()
         response = self.client.get('/accounts/login/')
         doc = fromstring(response.content)
         form = doc.cssselect("form")[0]

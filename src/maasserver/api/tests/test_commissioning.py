@@ -132,7 +132,7 @@ class AdminCommissioningScriptsAPITest(MAASServerTestCase):
         # sensitivity.
         names = {factory.make_name('script').lower() for counter in range(5)}
         for name in names:
-            factory.make_commissioning_script(name=name)
+            factory.make_CommissioningScript(name=name)
 
         response = self.client.get(self.get_url())
 
@@ -190,14 +190,14 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
 
     def test_GET_returns_script_contents(self):
         self.client_log_in(as_admin=True)
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(script.content, response.content)
 
     def test_GET_preserves_binary_data(self):
         self.client_log_in(as_admin=True)
-        script = factory.make_commissioning_script(content=sample_binary_data)
+        script = factory.make_CommissioningScript(content=sample_binary_data)
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(sample_binary_data, response.content)
@@ -205,7 +205,7 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
     def test_PUT_updates_contents(self):
         self.client_log_in(as_admin=True)
         old_content = b'old:%s' % factory.make_string().encode('ascii')
-        script = factory.make_commissioning_script(content=old_content)
+        script = factory.make_CommissioningScript(content=old_content)
         new_content = b'new:%s' % factory.make_string().encode('ascii')
 
         response = self.client_put(
@@ -217,7 +217,7 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
 
     def test_DELETE_deletes_script(self):
         self.client_log_in(as_admin=True)
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         self.client.delete(self.get_url(script.name))
         self.assertItemsEqual(
             [],
@@ -233,18 +233,18 @@ class CommissioningScriptAPITest(APITestCase):
         # It's not inconceivable that commissioning scripts contain
         # credentials of some sort.  There is no need for regular users
         # (consumers of the MAAS) to see these.
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         response = self.client.get(self.get_url(script.name))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_PUT_is_forbidden(self):
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         response = self.client_put(
             self.get_url(script.name), {'content': factory.make_string()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_is_forbidden(self):
-        script = factory.make_commissioning_script()
+        script = factory.make_CommissioningScript()
         response = self.client_put(self.get_url(script.name))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -321,7 +321,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
             [result.get('data') for result in parsed_results])
 
     def test_list_displays_only_visible_nodes(self):
-        node = factory.make_Node(owner=factory.make_user())
+        node = factory.make_Node(owner=factory.make_User())
         factory.make_NodeResult_for_commissioning(node)
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})

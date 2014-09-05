@@ -390,9 +390,9 @@ class TestNodesAPI(APITestCase):
 
     def test_GET_list_with_zone_filters_by_zone(self):
         non_listed_node = factory.make_Node(
-            zone=factory.make_zone(name='twilight'))
+            zone=factory.make_Zone(name='twilight'))
         ignore_unused(non_listed_node)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
         response = self.client.get(reverse('nodes_handler'), {
             'op': 'list',
@@ -405,7 +405,7 @@ class TestNodesAPI(APITestCase):
 
     def test_GET_list_without_zone_does_not_filter(self):
         nodes = [
-            factory.make_Node(zone=factory.make_zone())
+            factory.make_Node(zone=factory.make_Zone())
             for i in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -426,7 +426,7 @@ class TestNodesAPI(APITestCase):
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
             token=second_token)
 
-        user_2 = factory.make_user()
+        user_2 = factory.make_User()
         create_auth_token(user_2)
         factory.make_Node(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED,
@@ -532,7 +532,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_ignores_already_allocated_node(self):
         factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(httplib.CONFLICT, response.status_code)
@@ -561,7 +561,7 @@ class TestNodesAPI(APITestCase):
         # can't meet the request.
         factory.make_Node(status=NODE_STATUS.READY, owner=None)
         desired_node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'name': desired_node.system_id,
@@ -679,7 +679,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_tags(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -693,7 +693,7 @@ class TestNodesAPI(APITestCase):
         tagged_node = factory.make_Node(status=NODE_STATUS.READY)
         partially_tagged_node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        tags = [factory.make_tag(t) for t in node_tag_names]
+        tags = [factory.make_Tag(t) for t in node_tag_names]
         tagged_node.tags = tags
         partially_tagged_node.tags = tags[:-1]
         # Legacy call using comma-separated tags.
@@ -711,7 +711,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_zone(self):
         factory.make_Node(status=NODE_STATUS.READY)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         node = factory.make_Node(status=NODE_STATUS.READY, zone=zone)
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -723,7 +723,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_allocates_node_by_zone_fails_if_no_node(self):
         factory.make_Node(status=NODE_STATUS.READY)
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'zone': zone.name,
@@ -740,7 +740,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_tags_comma_separated(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-separated tags.
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -753,7 +753,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_tags_space_separated(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using space-separated tags.
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -766,7 +766,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_tags_comma_space_separated(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Legacy call using comma-and-space-separated tags.
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -779,7 +779,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_allocates_node_by_tags_mixed_input(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_tag_names = ["fast", "stable", "cute"]
-        node.tags = [factory.make_tag(t) for t in node_tag_names]
+        node.tags = [factory.make_Tag(t) for t in node_tag_names]
         # Mixed call using comma-separated tags in a list.
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
@@ -792,9 +792,9 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_fails_without_all_tags(self):
         # Asking for particular tags does not acquire if no node has all tags.
         node1 = factory.make_Node(status=NODE_STATUS.READY)
-        node1.tags = [factory.make_tag(t) for t in ("fast", "stable", "cute")]
+        node1.tags = [factory.make_Tag(t) for t in ("fast", "stable", "cute")]
         node2 = factory.make_Node(status=NODE_STATUS.READY)
-        node2.tags = [factory.make_tag("cheap")]
+        node2.tags = [factory.make_Tag("cheap")]
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, cheap',
@@ -804,7 +804,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_acquire_fails_with_unknown_tags(self):
         # Asking for a tag that does not exist gives a specific error.
         node = factory.make_Node(status=NODE_STATUS.READY)
-        node.tags = [factory.make_tag("fast")]
+        node.tags = [factory.make_Tag("fast")]
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',
             'tags': 'fast, hairy, boo',
@@ -845,7 +845,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_network(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         macs = [
             factory.make_MACAddress(
                 node=factory.make_Node(status=NODE_STATUS.READY),
@@ -866,7 +866,7 @@ class TestNodesAPI(APITestCase):
         self.assertEqual(macs[pick].node.system_id, response_json['system_id'])
 
     def test_POST_acquire_allocates_node_by_not_network(self):
-        networks = factory.make_networks(5)
+        networks = factory.make_Networks(5)
         for network in networks:
             node = factory.make_Node(status=NODE_STATUS.READY)
             factory.make_MACAddress(node=node, networks=[network])
@@ -884,7 +884,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_acquire_obeys_not_in_zone(self):
         # Zone we don't want to acquire from.
-        not_in_zone = factory.make_zone()
+        not_in_zone = factory.make_Zone()
         nodes = [
             factory.make_Node(status=NODE_STATUS.READY, zone=not_in_zone)
             for _ in range(5)
@@ -892,7 +892,7 @@ class TestNodesAPI(APITestCase):
         # Pick a node in the middle to avoid false negatives if acquire()
         # always tries the oldest, or the newest, node first.
         eligible_node = nodes[2]
-        eligible_node.zone = factory.make_zone()
+        eligible_node.zone = factory.make_Zone()
         eligible_node.save()
 
         response = self.client.post(
@@ -1031,7 +1031,7 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'release',
@@ -1151,7 +1151,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_set_zone_sets_zone_on_nodes(self):
         self.become_admin()
         node = factory.make_Node()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         response = self.client.post(
             reverse('nodes_handler'),
             {
@@ -1172,7 +1172,7 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'set_zone',
                 'nodes': [factory.make_Node().system_id],
-                'zone': factory.make_zone().name
+                'zone': factory.make_Zone().name
             })
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
@@ -1186,7 +1186,7 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'set_zone',
                 'nodes': [node.system_id],
-                'zone': factory.make_zone().name
+                'zone': factory.make_Zone().name
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         node = reload_object(node)

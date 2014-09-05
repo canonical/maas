@@ -59,8 +59,8 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
         self.patch(StartNode, "execute").side_effect = exc
-        user = factory.make_user()
-        factory.make_sshkey(user)
+        user = factory.make_User()
+        factory.make_SSHKey(user)
         node = factory.make_Node(status=NODE_STATUS.READY, owner=user)
         form = BulkNodeActionForm(
             user=user,
@@ -91,7 +91,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [choice for choice in choices if choice[0] == 'set_zone'])
 
     def test_nonadmin_is_not_offered_bulk_node_change(self):
-        form = BulkNodeActionForm(user=factory.make_user())
+        form = BulkNodeActionForm(user=factory.make_User())
         choices = form.fields['action'].choices
         self.assertEqual(
             [],
@@ -113,9 +113,9 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             [done, not_actionable, not_permitted])
 
     def test_gives_stat_when_no_permission(self):
-        user = factory.make_user()
+        user = factory.make_User()
         node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYED, owner=factory.make_user())
+            status=NODE_STATUS.DEPLOYED, owner=factory.make_User())
         system_id_for_action = [node.system_id]
         form = BulkNodeActionForm(
             user=user,
@@ -130,7 +130,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
 
     def test_gives_stat_when_action_is_inhibited(self):
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_user())
+            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data=dict(
@@ -180,7 +180,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
 
     def test_set_zone_sets_zone_on_node(self):
         node = factory.make_Node()
-        zone = factory.make_zone()
+        zone = factory.make_Zone()
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data={
@@ -196,10 +196,10 @@ class TestBulkNodeActionForm(MAASServerTestCase):
     def test_set_zone_does_not_work_if_not_admin(self):
         node = factory.make_Node()
         form = BulkNodeActionForm(
-            user=factory.make_user(),
+            user=factory.make_User(),
             data={
                 'action': SetZoneBulkAction.name,
-                'zone': factory.make_zone().name,
+                'zone': factory.make_Zone().name,
                 'system_id': [node.system_id],
             })
         self.assertFalse(form.is_valid())
@@ -241,7 +241,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
             user=factory.make_admin(),
             data={
                 'action': SetZoneBulkAction.name,
-                'zone': factory.make_zone().name,
+                'zone': factory.make_Zone().name,
                 'system_id': [factory.make_Node().system_id],
             })
         self.assertTrue(form.is_valid(), form._errors)

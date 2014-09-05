@@ -30,7 +30,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
                 factory.make_NodeGroup(), factory.make_string()))
 
     def test_get_latest_download_finds_download_progress(self):
-        progress = factory.make_download_progress()
+        progress = factory.make_DownloadProgress()
         self.assertEqual(
             progress,
             DownloadProgress.objects.get_latest_download(
@@ -40,7 +40,7 @@ class TestDownloadProgressManager(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         filename = factory.make_string()
         progress = [
-            factory.make_download_progress(
+            factory.make_DownloadProgress(
                 nodegroup=nodegroup, filename=filename)
             for counter in range(10)
             ]
@@ -50,13 +50,13 @@ class TestDownloadProgressManager(MAASServerTestCase):
             DownloadProgress.objects.get_latest_download(nodegroup, filename))
 
     def test_get_latest_download_ignores_other_clusters(self):
-        progress = factory.make_download_progress()
+        progress = factory.make_DownloadProgress()
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
                 factory.make_NodeGroup(), progress.filename))
 
     def test_get_latest_download_ignores_other_files(self):
-        progress = factory.make_download_progress()
+        progress = factory.make_DownloadProgress()
         self.assertIsNone(
             DownloadProgress.objects.get_latest_download(
                 progress.nodegroup, factory.make_string()))
@@ -91,11 +91,11 @@ class TestDownloadProgress(MAASServerTestCase):
             factory.make_download_progress, bytes_downloaded=-1)
 
     def test_accepts_zero_bytes_downloaded(self):
-        progress = factory.make_download_progress(bytes_downloaded=0)
+        progress = factory.make_DownloadProgress(bytes_downloaded=0)
         self.assertEqual(0, progress.bytes_downloaded)
 
     def test_accepts_completion(self):
-        progress = factory.make_download_progress(
+        progress = factory.make_DownloadProgress(
             size=1000, bytes_downloaded=1000)
         self.assertEqual(1000, progress.size)
         self.assertEqual(progress.size, progress.bytes_downloaded)

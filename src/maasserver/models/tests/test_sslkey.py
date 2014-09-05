@@ -75,21 +75,21 @@ class SSLKeyTest(MAASServerTestCase):
 
     def test_sslkey_validation_with_valid_key(self):
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.full_clean()
         # No ValidationError.
 
     def test_sslkey_validation_fails_if_key_is_invalid(self):
         key_string = factory.make_string()
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         self.assertRaises(
             ValidationError, key.full_clean)
 
     def test_sslkey_display_is_marked_as_HTML_safe(self):
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
         self.assertIsInstance(display, SafeUnicode)
@@ -98,7 +98,7 @@ class SSLKeyTest(MAASServerTestCase):
         self.patch(
             sslkey_module, 'find_ssl_common_name').return_value = "<escape>"
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         display = key.display_html()
         self.assertThat(display, StartsWith("&lt;escape&gt;"))
@@ -107,7 +107,7 @@ class SSLKeyTest(MAASServerTestCase):
 
     def test_sslkey_user_and_key_unique_together(self):
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.save()
         key2 = SSLKey(key=key_string, user=user)
@@ -118,14 +118,14 @@ class SSLKeyTest(MAASServerTestCase):
         # Even if we hack our way around model-level checks, uniqueness
         # of the user/key combination is enforced at the database level.
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         existing_key = SSLKey(key=key_string, user=user)
         existing_key.save()
         # The trick to hack around the model-level checks: create a
         # duplicate key for another user, then attach it to the same
         # user as the existing key by updating it directly in the
         # database.
-        redundant_key = SSLKey(key=key_string, user=factory.make_user())
+        redundant_key = SSLKey(key=key_string, user=factory.make_User())
         redundant_key.save()
         self.assertRaises(
             IntegrityError,
@@ -134,10 +134,10 @@ class SSLKeyTest(MAASServerTestCase):
 
     def test_sslkey_same_key_can_be_used_by_different_users(self):
         key_string = get_data('data/test_x509_0.pem')
-        user = factory.make_user()
+        user = factory.make_User()
         key = SSLKey(key=key_string, user=user)
         key.save()
-        user2 = factory.make_user()
+        user2 = factory.make_User()
         key2 = SSLKey(key=key_string, user=user2)
         key2.full_clean()
         # No ValidationError.
@@ -147,7 +147,7 @@ class SSLKeyManagerTest(MAASServerTestCase):
     """Testing for the :class:`SSLKeyManager` model manager."""
 
     def test_get_keys_for_user_no_keys(self):
-        user = factory.make_user()
+        user = factory.make_User()
         keys = SSLKey.objects.get_keys_for_user(user)
         self.assertItemsEqual([], keys)
 

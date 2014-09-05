@@ -63,7 +63,7 @@ class TestAdminMethodDecorator(APITestCase):
 
     def test_non_admin_are_rejected(self):
         FakeRequest = namedtuple('FakeRequest', ['user'])
-        request = FakeRequest(user=factory.make_user())
+        request = FakeRequest(user=factory.make_User())
         mock = Mock()
 
         @admin_method

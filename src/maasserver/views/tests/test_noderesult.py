@@ -65,7 +65,7 @@ class TestNodeInstallResultView(MAASServerTestCase):
 
     def test_installing_allowed_with_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
@@ -120,7 +120,7 @@ class TestNodeCommissionResultView(MAASServerTestCase):
 
     def test_commissioning_allowed_with_edit_perm(self):
         password = 'test'
-        user = factory.make_user(password=password)
+        user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user

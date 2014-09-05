@@ -1,4 +1,4 @@
-# Copyright 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2013-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for physical `Zone` API."""
@@ -58,7 +58,7 @@ class TestZonesAPI(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_list_returns_zone_list(self):
-        [factory.make_zone(sortable_name=True) for i in range(3)]
+        [factory.make_Zone(sortable_name=True) for i in range(3)]
         zones = Zone.objects.all()
         response = self.client.get(
             reverse('zones_handler'),
@@ -78,7 +78,7 @@ class TestZonesAPI(APITestCase):
              for zone in parsed_result])
 
     def test_list_returns_sorted_zone_list(self):
-        [factory.make_zone(sortable_name=True) for i in range(10)]
+        [factory.make_Zone(sortable_name=True) for i in range(10)]
         zones = Zone.objects.all()
         response = self.client.get(
             reverse('zones_handler'),

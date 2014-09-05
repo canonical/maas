@@ -181,7 +181,7 @@ class TestBootResourceManager(MAASServerTestCase):
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
         not_commissionable = factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
-        factory.make_boot_resource_set(not_commissionable)
+        factory.make_BootResourceSet(not_commissionable)
         commissionables = BootResource.objects.get_commissionable_resource(
             os, series)
         self.assertItemsEqual([resource], commissionables)
@@ -280,11 +280,11 @@ class TestBootResource(MAASServerTestCase):
     """Tests for the `BootResource` model."""
 
     def make_complete_boot_resource_set(self, resource):
-        resource_set = factory.make_boot_resource_set(resource)
+        resource_set = factory.make_BootResourceSet(resource)
         filename = factory.make_name('name')
         filetype = factory.pick_enum(BOOT_RESOURCE_FILE_TYPE)
-        largefile = factory.make_large_file()
-        factory.make_boot_resource_file(
+        largefile = factory.make_LargeFile()
+        factory.make_BootResourceFile(
             resource_set, largefile, filename=filename, filetype=filetype)
         return resource_set
 
@@ -348,16 +348,16 @@ class TestBootResource(MAASServerTestCase):
 
     def test_get_latest_set(self):
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(resource)
-        latest_two = factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
+        latest_two = factory.make_BootResourceSet(resource)
         self.assertEqual(latest_two, resource.get_latest_set())
 
     def test_get_latest_complete_set(self):
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
         self.make_complete_boot_resource_set(resource)
         latest_complete = self.make_complete_boot_resource_set(resource)
-        factory.make_boot_resource_set(resource)
+        factory.make_BootResourceSet(resource)
         self.assertEqual(latest_complete, resource.get_latest_complete_set())
 
     def configure_now(self):
@@ -373,7 +373,7 @@ class TestBootResource(MAASServerTestCase):
     def test_get_next_version_name_returns_first_revision(self):
         expected_version = '%s.1' % self.configure_now()
         resource = factory.make_BootResource()
-        factory.make_boot_resource_set(
+        factory.make_BootResourceSet(
             resource, version=resource.get_next_version_name())
         self.assertEqual(expected_version, resource.get_next_version_name())
 
@@ -382,7 +382,7 @@ class TestBootResource(MAASServerTestCase):
         set_count = random.randint(2, 4)
         resource = factory.make_BootResource()
         for _ in range(set_count):
-            factory.make_boot_resource_set(
+            factory.make_BootResourceSet(
                 resource, version=resource.get_next_version_name())
         self.assertEqual(
             '%s.%d' % (expected_version, set_count),

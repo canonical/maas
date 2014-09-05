@@ -252,7 +252,7 @@ class TestUpdateHostMaps(MAASServerTestCase):
         # These are preexisting leases with addresses in the dynamic range.
         # The host maps for these will be removed.
         leases_in_the_dynamic_range = {
-            factory.make_dhcp_lease(
+            factory.make_DHCPLease(
                 nodegroup, get_random_dynamic_ip(), MAC(mac_address))
             for nodegroup, mappings in static_mappings.viewitems()
             for _, mac_address in mappings.viewitems()
@@ -408,7 +408,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         leased_ips = set()
         for _ in xrange(count):
             ip_address = pick_address(network, but_not=leased_ips)
-            yield factory.make_dhcp_lease(nodegroup=nodegroup, ip=ip_address)
+            yield factory.make_DHCPLease(nodegroup=nodegroup, ip=ip_address)
             leased_ips.add(ip_address)
 
     def test__returns_nothing_when_there_are_no_static_mappings(self):
