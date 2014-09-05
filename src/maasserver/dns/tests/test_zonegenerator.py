@@ -448,7 +448,7 @@ class TestZoneGenerator(MAASServerTestCase):
 
     def test_two_managed_interfaces_yields_one_forward_two_reverse_zones(self):
         nodegroup = self.make_node_group()
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         [interface1, interface2] = nodegroup.get_managed_interfaces()

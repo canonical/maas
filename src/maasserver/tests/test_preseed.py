@@ -356,7 +356,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         Other network settings are derived from the IP address.
         """
         network = make_network(ip, subnet_mask)
-        return factory.make_node_group_interface(
+        return factory.make_NodeGroupInterface(
             nodegroup=nodegroup, management=mgt, network=network, ip=ip,
             subnet_mask=subnet_mask)
 
@@ -367,7 +367,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def test_returns_only_interface(self):
         node = factory.make_node()
-        interface = factory.make_node_group_interface(node.nodegroup)
+        interface = factory.make_NodeGroupInterface(node.nodegroup)
 
         address = pick_cluster_controller_address(node)
 
@@ -398,11 +398,11 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def test_prefers_managed_interface_over_unmanaged_interface(self):
         nodegroup = self.make_bare_nodegroup()
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        best_interface = factory.make_node_group_interface(
+        best_interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         address = pick_cluster_controller_address(
@@ -413,11 +413,11 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
 
     def test_prefers_dns_managed_interface_over_unmanaged_interface(self):
         nodegroup = self.make_bare_nodegroup()
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        best_interface = factory.make_node_group_interface(
+        best_interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
 
         address = pick_cluster_controller_address(
@@ -439,7 +439,7 @@ class TestPickClusterControllerAddress(MAASServerTestCase):
         nodegroup = factory.make_node_group(
             NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         for _ in range(5):
-            factory.make_node_group_interface(
+            factory.make_NodeGroupInterface(
                 nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         node = factory.make_node(nodegroup=nodegroup)
         self.assertEqual(
@@ -636,7 +636,7 @@ class TestGetCurtinUserData(PreseedRPCMixin, MAASServerTestCase):
     def test_get_curtin_userdata(self):
         node = factory.make_node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
@@ -663,7 +663,7 @@ class TestGetCurtinUserDataOS(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_node(
             nodegroup=self.rpc_nodegroup, osystem=self.os_name,
             boot_type=NODE_BOOT.FASTPATH)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(
@@ -765,7 +765,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = factory.make_boot_image(
@@ -820,7 +820,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = factory.make_boot_image(

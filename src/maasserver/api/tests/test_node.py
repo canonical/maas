@@ -1074,7 +1074,7 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        ngi = factory.make_node_group_interface(nodegroup=node.nodegroup)
+        ngi = factory.make_NodeGroupInterface(nodegroup=node.nodegroup)
         second_mac = factory.make_MACAddress(node=node, cluster_interface=ngi)
 
         response = self.client.post(

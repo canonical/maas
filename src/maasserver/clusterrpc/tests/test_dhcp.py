@@ -527,7 +527,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
 
         # Add another 3 managed interfaces, for a total of 4.
         for _ in xrange(3):
-            factory.make_node_group_interface(
+            factory.make_NodeGroupInterface(
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
                 nodegroup=nodegroup)
 

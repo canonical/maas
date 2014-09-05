@@ -265,7 +265,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
 
     @transactional
     def make_node_group_interface(self, nodegroup):
-        return factory.make_node_group_interface(nodegroup=nodegroup)
+        return factory.make_NodeGroupInterface(nodegroup=nodegroup)
 
     @transactional
     def make_mac_address(self):
@@ -1585,7 +1585,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
     @transactional
     def create_cluster_interface(self):
         cluster = factory.make_node_group()
-        return factory.make_node_group_interface(cluster)
+        return factory.make_NodeGroupInterface(cluster)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1641,7 +1641,7 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
     def create_cluster_and_interfaces(self):
         cluster = factory.make_node_group()
         for i in range(3):
-            factory.make_node_group_interface(cluster)
+            factory.make_NodeGroupInterface(cluster)
         interfaces = [
             {
                 'name': interface.name,

@@ -113,7 +113,7 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
             IPNetwork('10.3.3.0/24'),
             ]
         interfaces = [
-            factory.make_node_group_interface(nodegroup, network=network)
+            factory.make_NodeGroupInterface(nodegroup, network=network)
             for network in networks
             ]
         self.assertEqual(
@@ -129,7 +129,7 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
             IPNetwork('2001:3::/64'),
             ]
         interfaces = [
-            factory.make_node_group_interface(nodegroup, network=network)
+            factory.make_NodeGroupInterface(nodegroup, network=network)
             for network in networks
             ]
         self.assertEqual(
@@ -145,7 +145,7 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
             IPNetwork('10.3.3.0/24'),
             ]
         interfaces = [
-            factory.make_node_group_interface(nodegroup, network=network)
+            factory.make_NodeGroupInterface(nodegroup, network=network)
             for network in networks
             ]
         self.assertIsNone(
@@ -160,7 +160,7 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
             IPNetwork('10.3.3.0/24'),
             ]
         interfaces = [
-            factory.make_node_group_interface(nodegroup, network=network)
+            factory.make_NodeGroupInterface(nodegroup, network=network)
             for network in networks
             ]
         self.assertEqual(
@@ -195,7 +195,7 @@ def make_node_attached_to_cluster_interfaces(ipv4_network=None,
     # The IPv6 cluster interface must be for the same network interface
     # as the IPv4 one; that's how we know the MAC is attached to both.
     ipv4_interface = find_cluster_interface(node.nodegroup, 4)
-    factory.make_node_group_interface(
+    factory.make_NodeGroupInterface(
         node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
         network=ipv6_network, interface=ipv4_interface.interface)
     return node
@@ -210,7 +210,7 @@ class TestMapAllocatedAddresses(MAASServerTestCase):
 
     def test__maps_interface_without_allocation_to_None(self):
         cluster = factory.make_node_group()
-        interface = factory.make_node_group_interface(cluster)
+        interface = factory.make_NodeGroupInterface(cluster)
         mac = factory.make_MACAddress(cluster_interface=interface)
         self.assertEqual(
             {interface: None},
@@ -626,7 +626,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
 
     def test__returns_cluster_interface_if_known(self):
         cluster = factory.make_node_group()
-        cluster_interface = factory.make_node_group_interface(cluster)
+        cluster_interface = factory.make_NodeGroupInterface(cluster)
         mac = factory.make_MACAddress(cluster_interface=cluster_interface)
         self.assertItemsEqual(
             [cluster_interface],
@@ -640,10 +640,10 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         # from the IPv4 one is set to change.  It may affect this test.
         cluster = factory.make_node_group()
         network_interface = factory.make_name('eth', sep='')
-        ipv4_interface = factory.make_node_group_interface(
+        ipv4_interface = factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.getRandomNetwork(),
             interface=network_interface)
-        ipv6_interface = factory.make_node_group_interface(
+        ipv6_interface = factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.make_ipv6_network(),
             interface=network_interface)
         mac = factory.make_MACAddress(cluster_interface=ipv4_interface)
@@ -653,9 +653,9 @@ class TestGetClusterInterfaces(MAASServerTestCase):
 
     def test__ignores_other_cluster_interfaces(self):
         cluster = factory.make_node_group()
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.getRandomNetwork())
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.make_ipv6_network())
         node = factory.make_node(nodegroup=cluster)
         self.assertItemsEqual(
@@ -665,10 +665,10 @@ class TestGetClusterInterfaces(MAASServerTestCase):
     def test__ignores_other_clusters(self):
         my_cluster = factory.make_node_group()
         unrelated_cluster = factory.make_node_group()
-        my_interface = factory.make_node_group_interface(
+        my_interface = factory.make_NodeGroupInterface(
             my_cluster, network=factory.getRandomNetwork(),
             name='eth0', interface='eth0')
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             unrelated_cluster, network=factory.make_ipv6_network(),
             name='eth0', interface='eth0')
         my_node = factory.make_node(nodegroup=my_cluster)

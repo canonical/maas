@@ -129,7 +129,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__disambiguates_default_name(self):
         cluster = factory.make_node_group()
-        existing_interface = factory.make_node_group_interface(cluster)
+        existing_interface = factory.make_NodeGroupInterface(cluster)
         int_settings = factory.get_interface_fields()
         del int_settings['name']
         int_settings['interface'] = existing_interface.name
@@ -141,7 +141,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__disambiguates_IPv4_interface_with_ipv4_suffix(self):
         cluster = factory.make_node_group()
-        existing_interface = factory.make_node_group_interface(
+        existing_interface = factory.make_NodeGroupInterface(
             cluster, network=factory.getRandomNetwork())
         int_settings = factory.get_interface_fields()
         del int_settings['name']
@@ -153,7 +153,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
 
     def test__disambiguates_IPv6_interface_with_ipv6_suffix(self):
         cluster = factory.make_node_group()
-        existing_interface = factory.make_node_group_interface(cluster)
+        existing_interface = factory.make_NodeGroupInterface(cluster)
         int_settings = factory.get_interface_fields(
             network=factory.make_ipv6_network(slash=64))
         del int_settings['name']

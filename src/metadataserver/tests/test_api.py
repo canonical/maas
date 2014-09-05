@@ -415,7 +415,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
 
     def test_curtin_user_data_view_returns_curtin_data(self):
         node = factory.make_node(nodegroup=self.rpc_nodegroup)
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         factory.make_boot_image(

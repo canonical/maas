@@ -65,7 +65,7 @@ class TestNodeGroupFormField(MAASServerTestCase):
 
     def test_label_from_instance_shows_name_and_address(self):
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.assertEqual(
             '%s: %s' % (nodegroup.name, interface.ip),

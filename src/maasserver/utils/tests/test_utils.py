@@ -202,12 +202,12 @@ class TestFindNodegroup(MAASServerTestCase):
                 NODEGROUPINTERFACE_MANAGEMENT,
                 but_not=[NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED])
         cluster = factory.make_node_group()
-        return factory.make_node_group_interface(
+        return factory.make_NodeGroupInterface(
             cluster, network=network, management=management)
 
     def test_find_nodegroup_looks_up_nodegroup_by_controller_ip(self):
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
+        interface = factory.make_NodeGroupInterface(nodegroup)
         self.assertEqual(
             nodegroup,
             find_nodegroup(make_request(interface.ip)))

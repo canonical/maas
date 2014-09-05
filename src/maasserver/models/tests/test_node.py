@@ -211,7 +211,7 @@ class TestHostnameValidator(MAASTestCase):
 def make_active_lease(nodegroup=None):
     """Create a `DHCPLease` on a managed `NodeGroupInterface`."""
     lease = factory.make_dhcp_lease(nodegroup=nodegroup)
-    factory.make_node_group_interface(
+    factory.make_NodeGroupInterface(
         lease.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
     return lease
 
@@ -1120,7 +1120,7 @@ class NodeTest(MAASServerTestCase):
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
 
         mac_with_no_interface = factory.make_MACAddress(node=node)
-        unmanaged_interface = factory.make_node_group_interface(
+        unmanaged_interface = factory.make_NodeGroupInterface(
             nodegroup=node.nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         mac_with_unmanaged_interface = factory.make_MACAddress(
@@ -1832,7 +1832,7 @@ class TestClaimStaticIPAddresses(MAASTestCase):
 
     def test__allocates_all_addresses_or_none_at_all(self):
         node = factory.make_node()
-        nodegroupinterface = factory.make_node_group_interface(
+        nodegroupinterface = factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         mac_address1 = factory.make_MACAddress(node=node)
         mac_address2 = factory.make_MACAddress(node=node)

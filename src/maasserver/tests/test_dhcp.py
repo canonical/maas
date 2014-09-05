@@ -63,11 +63,11 @@ class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
     """Tests for `split_ipv4_ipv6_interfaces`."""
 
     def make_ipv4_interface(self, nodegroup):
-        return factory.make_node_group_interface(
+        return factory.make_NodeGroupInterface(
             nodegroup, network=factory.getRandomNetwork())
 
     def make_ipv6_interface(self, nodegroup):
-        return factory.make_node_group_interface(
+        return factory.make_NodeGroupInterface(
             nodegroup, network=factory.make_ipv6_network())
 
     def test__separates_IPv4_from_IPv6_interfaces(self):
@@ -95,7 +95,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
     """Tests for `make_subnet_config`."""
 
     def test__includes_all_parameters(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group())
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
@@ -117,7 +117,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
                 ]))
 
     def test__sets_dns_and_ntp_from_arguments(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group())
         dns = '%s %s' % (
             factory.getRandomIPAddress(),
@@ -130,13 +130,13 @@ class TestMakeSubnetConfig(MAASServerTestCase):
 
     def test__sets_domain_name_from_cluster(self):
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
+        interface = factory.make_NodeGroupInterface(nodegroup)
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
         self.expectThat(config['domain_name'], Equals(nodegroup.name))
 
     def test__sets_other_items_from_interface(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group())
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
@@ -145,7 +145,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.expectThat(config['router_ip'], Equals(interface.router_ip))
 
     def test__passes_IP_addresses_as_strings(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group())
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
@@ -158,7 +158,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.expectThat(config['ip_range_high'], IsInstance(unicode))
 
     def test__defines_IPv4_subnet(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group(), network=IPNetwork('10.9.8.7/24'))
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
@@ -167,7 +167,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.expectThat(config['subnet_cidr'], Equals('10.9.8.0/24'))
 
     def test__defines_IPv6_subnet(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group(),
             network=IPNetwork('fd38:c341:27da:c831::/64'))
         config = make_subnet_config(
@@ -183,7 +183,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
             Equals(IPNetwork('fd38:c341:27da:c831::/64')))
 
     def test__passes_dynamic_range(self):
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group())
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
@@ -224,7 +224,7 @@ class TestConfigureDHCPv4(MAASServerTestCase):
             network=IPNetwork("192.168.102.0/22"),
             maas_url='http://%s' % dns_server)
         # Create a second DHCP-managed interface.
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
             interface=factory.make_name('eth'),
             network=IPNetwork("10.1.1/24"),
@@ -364,7 +364,7 @@ class TestConfigureDHCP(MAASServerTestCase):
                                **kwargs):
         if cluster is None:
             cluster = self.make_cluster()
-        return factory.make_node_group_interface(
+        return factory.make_NodeGroupInterface(
             cluster, network=network, management=management, **kwargs)
 
     def make_ipv4_interface(self, cluster=None, **kwargs):
@@ -634,7 +634,7 @@ class TestDHCPConnect(MAASServerTestCase):
     def test_dhcp_config_gets_written_when_managed_interface_is_deleted(self):
         configure_dhcpv4 = self.patch(dhcp, 'configure_dhcpv4')
         self.patch(dhcp, 'configure_dhcpv6')
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             factory.make_node_group(status=NODEGROUP_STATUS.ACCEPTED),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)

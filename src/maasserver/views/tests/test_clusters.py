@@ -252,7 +252,7 @@ class ClusterEditTest(MAASServerTestCase):
         interfaces = set()
         for _ in range(3):
             interfaces.add(
-                factory.make_node_group_interface(
+                factory.make_NodeGroupInterface(
                     nodegroup=nodegroup,
                     management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
         links = get_content_links(
@@ -335,7 +335,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
     def test_can_delete_cluster_interface(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         delete_link = reverse(
@@ -352,7 +352,7 @@ class ClusterInterfaceDeleteTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, name="eth0:0")
         delete_link = reverse(
             'cluster-interface-delete',
@@ -368,7 +368,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup)
         edit_link = reverse(
             'cluster-interface-edit',
@@ -386,7 +386,7 @@ class ClusterInterfaceEditTest(MAASServerTestCase):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_node_group(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup=nodegroup, name="eth0:0")
         edit_link = reverse(
             'cluster-interface-edit',

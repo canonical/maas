@@ -268,7 +268,7 @@ class TestNodeGroupAPI(APITestCase):
             nodegroups_module, 'update_mac_cluster_interfaces', FakeMethod())
         self.patch(Omshell, 'create')
         cluster = factory.make_node_group()
-        cluster_interface = factory.make_node_group_interface(
+        cluster_interface = factory.make_NodeGroupInterface(
             nodegroup=cluster)
         mac_address = factory.make_MACAddress()
         leases = {
@@ -841,7 +841,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
     def make_cluster_with_macs_and_leases(self, use_static_range=False):
         cluster = factory.make_node_group()
         mac_addresses = {
-            factory.make_MACAddress(): factory.make_node_group_interface(
+            factory.make_MACAddress(): factory.make_NodeGroupInterface(
                 nodegroup=cluster)
             for i in range(4)
             }
@@ -898,10 +898,10 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
 
     def test_does_not_overwrite_network_with_same_name(self):
         cluster = factory.make_node_group()
-        ngi = factory.make_node_group_interface(nodegroup=cluster)
+        ngi = factory.make_NodeGroupInterface(nodegroup=cluster)
         net1 = create_Network_from_NodeGroupInterface(ngi)
 
-        other_ngi = factory.make_node_group_interface(nodegroup=cluster)
+        other_ngi = factory.make_NodeGroupInterface(nodegroup=cluster)
         other_ngi.interface = ngi.interface
         net2 = create_Network_from_NodeGroupInterface(ngi)
         self.assertEqual(None, net2)
@@ -933,7 +933,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
 
     def test_ignores_unconfigured_interfaces(self):
         cluster = factory.make_node_group()
-        factory.make_node_group_interface(
+        factory.make_NodeGroupInterface(
             nodegroup=cluster, subnet_mask='', broadcast_ip='',
             static_ip_range_low='', static_ip_range_high='',
             ip_range_low='', ip_range_high='', router_ip='',

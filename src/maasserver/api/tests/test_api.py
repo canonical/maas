@@ -579,7 +579,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_read_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         log_in_as_normal_user(self.client)
         response = self.client.get(
@@ -591,7 +591,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_read_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         client = make_worker_client(nodegroup)
         response = client.get(
@@ -602,7 +602,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_update_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         log_in_as_normal_user(self.client)
         response = self.client_put(
@@ -615,7 +615,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_update_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.client = make_worker_client(nodegroup)
         new_ip_range_high = IPAddress(interface.ip_range_high) - 1
@@ -628,7 +628,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_delete_does_not_work_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         log_in_as_normal_user(self.client)
         response = self.client.delete(
@@ -640,7 +640,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
     def test_delete_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
-        interface = factory.make_node_group_interface(
+        interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.client = make_worker_client(nodegroup)
         response = self.client.delete(
@@ -655,7 +655,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_read_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
+        interface = factory.make_NodeGroupInterface(nodegroup)
         response = self.client.get(
             reverse(
                 'nodegroupinterface_handler',
@@ -668,7 +668,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_update_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
+        interface = factory.make_NodeGroupInterface(nodegroup)
         new_ip_range_high = unicode(
             IPAddress(interface.ip_range_high) - 1)
         response = self.client_put(
@@ -683,7 +683,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
     def test_delete_interface(self):
         self.become_admin()
         nodegroup = factory.make_node_group()
-        interface = factory.make_node_group_interface(nodegroup)
+        interface = factory.make_NodeGroupInterface(nodegroup)
         response = self.client.delete(
             reverse(
                 'nodegroupinterface_handler',

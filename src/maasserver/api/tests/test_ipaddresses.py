@@ -32,7 +32,7 @@ class TestNetworksAPI(APITestCase):
 
     def make_interface(self, status=NODEGROUP_STATUS.ACCEPTED, **kwargs):
         cluster = factory.make_node_group(status=status, **kwargs)
-        return factory.make_node_group_interface(cluster)
+        return factory.make_NodeGroupInterface(cluster)
 
     def post_reservation_request(self, net):
         params = {
