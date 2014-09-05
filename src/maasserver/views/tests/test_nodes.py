@@ -885,7 +885,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_node(owner=self.logged_in_user)
         lldp_data = "<foo>bar</foo>".encode("utf-8")
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
         node_link = reverse('node-view', args=[node.system_id])
 
@@ -1143,7 +1143,7 @@ class NodeViewsTest(MAASServerTestCase):
             name='enable_third_party_drivers', value=True)
         node = factory.make_node(status=NODE_STATUS.READY)
         data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
             data=data.encode("utf-8"))
         response = self.client.get(reverse('node-view', args=[node.system_id]))
@@ -1159,7 +1159,7 @@ class NodeViewsTest(MAASServerTestCase):
             name='enable_third_party_drivers', value=False)
         node = factory.make_node(status=NODE_STATUS.READY)
         data = "pci:v00001590d00000047sv00001590sd00000047bc*sc*i*"
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node=node, name=LIST_MODALIASES_OUTPUT_NAME, script_result=0,
             data=data.encode("utf-8"))
         response = self.client.get(reverse('node-view', args=[node.system_id]))
@@ -1348,7 +1348,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
     def test_view_node_links_to_commissioning_results_if_appropriate(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result()
+        result = factory.make_NodeResult_for_commissioning()
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
@@ -1369,7 +1369,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         node = factory.make_node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_commission_result(node=node)
+        result = factory.make_NodeResult_for_commissioning(node=node)
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
@@ -1383,14 +1383,14 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         node = factory.make_node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_commission_result(node=node)
+        result = factory.make_NodeResult_for_commissioning(node=node)
         self.assertIsNone(
             self.request_results_display(
                 result.node, RESULT_TYPE.COMMISSIONING))
 
     def test_view_node_shows_single_commissioning_result(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result()
+        result = factory.make_NodeResult_for_commissioning()
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
@@ -1403,7 +1403,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         node = factory.make_node()
         num_results = randint(2, 5)
         for _ in range(num_results):
-            factory.make_node_commission_result(node=node)
+            factory.make_NodeResult_for_commissioning(node=node)
         section = self.request_results_display(
             node, RESULT_TYPE.COMMISSIONING)
         link = self.get_results_link(section)
@@ -1423,7 +1423,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         node = factory.make_node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_install_result(node=node)
+        result = factory.make_NodeResult_for_installing(node=node)
         section = self.request_results_display(
             result.node, RESULT_TYPE.INSTALLING)
         link = self.get_results_link(section)
@@ -1437,7 +1437,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         node = factory.make_node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_install_result(node=node)
+        result = factory.make_NodeResult_for_installing(node=node)
         self.assertIsNone(
             self.request_results_display(
                 result.node, RESULT_TYPE.INSTALLING))
@@ -1508,7 +1508,7 @@ class NodeProbedDetailsExpanderTest(SeleniumTestCase):
 
     def make_node_with_lldp_output(self):
         node = factory.make_node()
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node=node, name=LLDP_OUTPUT_NAME,
             data="<foo>bar</foo>".encode("utf-8"),
             script_result=0)

@@ -253,7 +253,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
 
     def test_list_returns_commissioning_results(self):
         commissioning_results = [
-            factory.make_node_commission_result()
+            factory.make_NodeResult_for_commissioning()
             for counter in range(3)]
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})
@@ -282,7 +282,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
 
     def test_list_can_be_filtered_by_node(self):
         commissioning_results = [
-            factory.make_node_commission_result()
+            factory.make_NodeResult_for_commissioning()
             for counter in range(3)]
         url = reverse('node_results_handler')
         response = self.client.get(
@@ -304,7 +304,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
 
     def test_list_can_be_filtered_by_name(self):
         commissioning_results = [
-            factory.make_node_commission_result()
+            factory.make_NodeResult_for_commissioning()
             for counter in range(3)]
         url = reverse('node_results_handler')
         response = self.client.get(
@@ -322,7 +322,7 @@ class NodeCommissionResultHandlerAPITest(APITestCase):
 
     def test_list_displays_only_visible_nodes(self):
         node = factory.make_node(owner=factory.make_user())
-        factory.make_node_commission_result(node)
+        factory.make_NodeResult_for_commissioning(node)
         url = reverse('node_results_handler')
         response = self.client.get(url, {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code, response.content)

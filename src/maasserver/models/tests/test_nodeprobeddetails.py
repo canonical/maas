@@ -20,13 +20,13 @@ from mock import create_autospec
 
 
 def make_lshw_result(node, data, script_result=0):
-    return factory.make_node_commission_result(
+    return factory.make_NodeResult_for_commissioning(
         node=node, name=commissioningscript.LSHW_OUTPUT_NAME,
         data=data, script_result=script_result)
 
 
 def make_lldp_result(node, data, script_result=0):
-    return factory.make_node_commission_result(
+    return factory.make_NodeResult_for_commissioning(
         node=node, name=commissioningscript.LLDP_OUTPUT_NAME,
         data=data, script_result=script_result)
 

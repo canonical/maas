@@ -317,14 +317,14 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertEqual(new_name, reload_object(nodegroup).name)
 
     def test_refuses_name_change_if_dns_managed_and_nodes_in_use(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
         form = NodeGroupEdit(instance=nodegroup, data=data)
         self.assertFalse(form.is_valid())
 
     def test_accepts_unchanged_name(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         original_name = nodegroup.name
         form = NodeGroupEdit(
             instance=nodegroup, data=self.make_form_data(nodegroup))
@@ -333,7 +333,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertEqual(original_name, reload_object(nodegroup).name)
 
     def test_accepts_omitted_name(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         original_name = nodegroup.name
         data = self.make_form_data(nodegroup)
         del data['name']
@@ -343,7 +343,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertEqual(original_name, reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodegroup_not_accepted(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         nodegroup.status = NODEGROUP_STATUS.PENDING
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')
@@ -351,7 +351,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertTrue(form.is_valid())
 
     def test_accepts_name_change_if_dns_managed_but_no_nodes_in_use(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         node.status = NODE_STATUS.READY
         node.save()
         data = self.make_form_data(nodegroup)
@@ -362,7 +362,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertEqual(data['name'], reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodes_in_use_but_dns_not_managed(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         [interface] = nodegroup.get_managed_interfaces()
         interface.management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
         interface.save()
@@ -374,7 +374,7 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertEqual(data['name'], reload_object(nodegroup).name)
 
     def test_accepts_name_change_if_nodegroup_has_no_interface(self):
-        nodegroup, node = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, node = factory.make_unrenamable_NodeGroup_with_Node()
         NodeGroupInterface.objects.filter(nodegroup=nodegroup).delete()
         data = self.make_form_data(nodegroup)
         data['name'] = factory.make_name('new-name')

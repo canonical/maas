@@ -63,9 +63,9 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_updates_node_with_all_applicable_tags(self):
         node = factory.make_node()
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LLDP_OUTPUT_NAME, 0, b"<bar/>")
         tags = [
             factory.make_tag("foo", "/foo"),
@@ -78,7 +78,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_ignores_tags_with_unrecognised_namespaces(self):
         node = factory.make_node()
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
             factory.make_tag("foo", "/foo"),
@@ -90,7 +90,7 @@ class TestPopulateTagsForSingleNode(MAASServerTestCase):
 
     def test_ignores_tags_without_definition(self):
         node = factory.make_node()
-        factory.make_node_commission_result(
+        factory.make_NodeResult_for_commissioning(
             node, commissioningscript.LSHW_OUTPUT_NAME, 0, b"<foo/>")
         tags = [
             factory.make_tag("foo", "/foo"),

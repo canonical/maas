@@ -1167,12 +1167,12 @@ class TestGetDetails(APITestCase):
     """Tests for /api/1.0/nodes/<node>/?op=details."""
 
     def make_lshw_result(self, node, script_result=0):
-        return factory.make_node_commission_result(
+        return factory.make_NodeResult_for_commissioning(
             node=node, name=commissioningscript.LSHW_OUTPUT_NAME,
             script_result=script_result)
 
     def make_lldp_result(self, node, script_result=0):
-        return factory.make_node_commission_result(
+        return factory.make_NodeResult_for_commissioning(
             node=node, name=commissioningscript.LLDP_OUTPUT_NAME,
             script_result=script_result)
 

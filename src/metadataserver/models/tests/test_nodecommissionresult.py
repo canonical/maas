@@ -29,7 +29,7 @@ class TestNodeResult(DjangoTestCase):
     """Test the NodeResult model."""
 
     def test_unicode_represents_result(self):
-        result = factory.make_node_commission_result()
+        result = factory.make_NodeResult_for_commissioning()
         self.assertEqual(
             '%s/%s' % (result.node.system_id, result.name),
             unicode(result))
@@ -38,7 +38,8 @@ class TestNodeResult(DjangoTestCase):
         node = factory.make_node()
         name = factory.make_string()
         data = factory.make_bytes()
-        factory.make_node_commission_result(node=node, name=name, data=data)
+        factory.make_NodeResult_for_commissioning(
+            node=node, name=name, data=data)
 
         ncr = NodeResult.objects.get(name=name)
         self.assertAttributes(ncr, dict(node=node, data=data))
@@ -47,27 +48,29 @@ class TestNodeResult(DjangoTestCase):
         # You cannot have two result rows with the same name for the
         # same node.
         node = factory.make_node()
-        factory.make_node_commission_result(node=node, name="foo")
+        factory.make_NodeResult_for_commissioning(node=node, name="foo")
         self.assertRaises(
             ValidationError,
-            factory.make_node_commission_result, node=node, name="foo")
+            factory.make_NodeResult_for_commissioning, node=node, name="foo")
 
     def test_different_nodes_can_have_same_data_name(self):
         node = factory.make_node()
-        ncr1 = factory.make_node_commission_result(node=node, name="foo")
+        ncr1 = factory.make_NodeResult_for_commissioning(
+            node=node, name="foo")
         node2 = factory.make_node()
-        ncr2 = factory.make_node_commission_result(node=node2, name="foo")
+        ncr2 = factory.make_NodeResult_for_commissioning(
+            node=node2, name="foo")
         self.assertEqual(ncr1.name, ncr2.name)
 
     def test_get_data_as_html_returns_output(self):
         output = factory.make_string()
-        result = factory.make_node_commission_result(
+        result = factory.make_NodeResult_for_commissioning(
             data=output.encode('ascii'))
         self.assertEqual(output, result.get_data_as_html())
 
     def test_get_data_as_html_escapes_binary(self):
         output = b'\x00\xff'
-        result = factory.make_node_commission_result(data=output)
+        result = factory.make_NodeResult_for_commissioning(data=output)
         html = result.get_data_as_html()
         self.assertIsInstance(html, unicode)
         # The nul byte turns into the zero character.  The 0xff is an invalid
@@ -76,7 +79,7 @@ class TestNodeResult(DjangoTestCase):
 
     def test_get_data_as_html_escapes_for_html(self):
         output = '<&>'
-        result = factory.make_node_commission_result(
+        result = factory.make_NodeResult_for_commissioning(
             data=output.encode('ascii'))
         self.assertEqual('&lt;&amp;&gt;', result.get_data_as_html())
 
@@ -87,9 +90,9 @@ class TestNodeResultManager(DjangoTestCase):
     def test_clear_results_removes_rows(self):
         # clear_results should remove all a node's results.
         node = factory.make_node()
-        factory.make_node_commission_result(node=node)
-        factory.make_node_commission_result(node=node)
-        factory.make_node_commission_result(node=node)
+        factory.make_NodeResult_for_commissioning(node=node)
+        factory.make_NodeResult_for_commissioning(node=node)
+        factory.make_NodeResult_for_commissioning(node=node)
 
         NodeResult.objects.clear_results(node)
         self.assertItemsEqual(
@@ -100,9 +103,9 @@ class TestNodeResultManager(DjangoTestCase):
         # clear_results should only remove results for the supplied
         # node.
         node1 = factory.make_node()
-        factory.make_node_commission_result(node=node1)
+        factory.make_NodeResult_for_commissioning(node=node1)
         node2 = factory.make_node()
-        factory.make_node_commission_result(node=node2)
+        factory.make_NodeResult_for_commissioning(node=node2)
 
         NodeResult.objects.clear_results(node1)
         self.assertTrue(
@@ -126,7 +129,7 @@ class TestNodeResultManager(DjangoTestCase):
         node = factory.make_node()
         name = factory.make_string(255)
         script_result = randint(0, 10)
-        factory.make_node_commission_result(node=node, name=name)
+        factory.make_NodeResult_for_commissioning(node=node, name=name)
         data = factory.make_bytes(1024 * 1024)
         NodeResult.objects.store_data(
             node, name=name, script_result=script_result,
@@ -137,12 +140,12 @@ class TestNodeResultManager(DjangoTestCase):
             dict(name=name, data=data, script_result=script_result))
 
     def test_get_data(self):
-        ncr = factory.make_node_commission_result()
+        ncr = factory.make_NodeResult_for_commissioning()
         result = NodeResult.objects.get_data(ncr.node, ncr.name)
         self.assertEqual(ncr.data, result)
 
     def test_get_data_404s_when_not_found(self):
-        ncr = factory.make_node_commission_result()
+        ncr = factory.make_NodeResult_for_commissioning()
         self.assertRaises(
             Http404,
             NodeResult.objects.get_data, ncr.node, "bad name")

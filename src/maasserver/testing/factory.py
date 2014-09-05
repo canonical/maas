@@ -392,7 +392,7 @@ class Factory(maastesting.factory.Factory):
 
     make_node_group = make_NodeGroup  # DEPRECATED
 
-    def make_unrenamable_nodegroup_with_node(self):
+    def make_unrenamable_NodeGroup_with_Node(self):
         """Create a `NodeGroup` that can't be renamed, and `Node`.
 
         Node groups can't be renamed while they are in an accepted state, have
@@ -411,6 +411,9 @@ class Factory(maastesting.factory.Factory):
         node = self.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
+
+    make_unrenamable_nodegroup_with_node = (
+        make_unrenamable_NodeGroup_with_Node)  # DEPRECATED
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
                                 router_ip=None, network=None,
@@ -434,8 +437,8 @@ class Factory(maastesting.factory.Factory):
 
     make_node_group_interface = make_NodeGroupInterface  # DEPRECATED
 
-    def make_node_commission_result(self, node=None, name=None,
-                                    script_result=None, data=None):
+    def make_NodeResult_for_commissioning(
+            self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from commissioning a node."""
         if node is None:
             node = self.make_Node()
@@ -451,8 +454,11 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
-    def make_node_install_result(self, node=None, name=None,
-                                 script_result=None, data=None):
+    make_node_commission_result = (
+        make_NodeResult_for_commissioning)  # DEPRECATED
+
+    def make_NodeResult_for_installing(
+            self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from installing a node."""
         if node is None:
             node = self.make_Node()
@@ -467,6 +473,9 @@ class Factory(maastesting.factory.Factory):
             result_type=RESULT_TYPE.INSTALLING, data=Bin(data))
         ncr.save()
         return ncr
+
+    make_node_install_result = (
+        make_NodeResult_for_installing)  # DEPRECATED
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""

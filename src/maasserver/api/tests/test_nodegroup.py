@@ -211,7 +211,7 @@ class TestNodeGroupAPI(APITestCase):
             (nodegroup.name, nodegroup.cluster_name, nodegroup.status))
 
     def test_PUT_updates_nodegroup_validates_data(self):
-        nodegroup, _ = factory.make_unrenamable_nodegroup_with_node()
+        nodegroup, _ = factory.make_unrenamable_NodeGroup_with_Node()
         self.become_admin()
         new_name = factory.make_name("new-name")
         response = self.client_put(

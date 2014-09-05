@@ -58,7 +58,7 @@ class TestNodeInstallResultView(MAASServerTestCase):
 
     def test_installing_forbidden_without_edit_perm(self):
         self.client_log_in(as_admin=False)
-        result = factory.make_node_install_result()
+        result = factory.make_NodeResult_for_installing()
         response = self.client.get(
             reverse('nodeinstallresult-view', args=[result.id]))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -69,7 +69,7 @@ class TestNodeInstallResultView(MAASServerTestCase):
         node = factory.make_node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_install_result(node=node)
+        result = factory.make_NodeResult_for_installing(node=node)
         response = self.client.get(
             reverse('nodeinstallresult-view', args=[result.id]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -80,19 +80,19 @@ class TestNodeInstallResultView(MAASServerTestCase):
         # un-escapes on parsing, and is very tolerant of malformed input.
         # Parsing an un-escaped A<B>C, however, would produce text "AC"
         # (because the <B> looks like a tag).
-        result = factory.make_node_install_result(data=b'A<B>C')
+        result = factory.make_NodeResult_for_installing(data=b'A<B>C')
         doc = self.request_page(result)
         self.assertEqual('A<B>C', extract_field(doc, 'output', 'pre'))
 
     def test_installing_escapes_binary_in_output(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_install_result(data=b'A\xffB')
+        result = factory.make_NodeResult_for_installing(data=b'A\xffB')
         doc = self.request_page(result)
         self.assertEqual('A\ufffdB', extract_field(doc, 'output', 'pre'))
 
     def test_installing_hides_output_if_empty(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_install_result(data=b'')
+        result = factory.make_NodeResult_for_installing(data=b'')
         doc = self.request_page(result)
         field = get_one(doc.cssselect('#output'))
         self.assertEqual('', field.text_content().strip())
@@ -113,7 +113,7 @@ class TestNodeCommissionResultView(MAASServerTestCase):
 
     def test_commissioning_forbidden_without_edit_perm(self):
         self.client_log_in(as_admin=False)
-        result = factory.make_node_commission_result()
+        result = factory.make_NodeResult_for_commissioning()
         response = self.client.get(
             reverse('nodecommissionresult-view', args=[result.id]))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -124,14 +124,14 @@ class TestNodeCommissionResultView(MAASServerTestCase):
         node = factory.make_node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_node_commission_result(node=node)
+        result = factory.make_NodeResult_for_commissioning(node=node)
         response = self.client.get(
             reverse('nodecommissionresult-view', args=[result.id]))
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_commissioning_displays_result(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(
+        result = factory.make_NodeResult_for_commissioning(
             data=factory.make_string().encode('ascii'))
         doc = self.request_page(result)
 
@@ -150,19 +150,19 @@ class TestNodeCommissionResultView(MAASServerTestCase):
         # un-escapes on parsing, and is very tolerant of malformed input.
         # Parsing an un-escaped A<B>C, however, would produce text "AC"
         # (because the <B> looks like a tag).
-        result = factory.make_node_commission_result(data=b'A<B>C')
+        result = factory.make_NodeResult_for_commissioning(data=b'A<B>C')
         doc = self.request_page(result)
         self.assertEqual('A<B>C', extract_field(doc, 'output', 'pre'))
 
     def test_commissioning_escapes_binary_in_output(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(data=b'A\xffB')
+        result = factory.make_NodeResult_for_commissioning(data=b'A\xffB')
         doc = self.request_page(result)
         self.assertEqual('A\ufffdB', extract_field(doc, 'output', 'pre'))
 
     def test_commissioning_hides_output_if_empty(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(data=b'')
+        result = factory.make_NodeResult_for_commissioning(data=b'')
         doc = self.request_page(result)
         field = get_one(doc.cssselect('#output'))
         self.assertEqual('', field.text_content().strip())
@@ -213,7 +213,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_lists_results(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(script_result=0)
+        result = factory.make_NodeResult_for_commissioning(script_result=0)
         content = self.request_page()
         result_row = get_one(content.cssselect('.result'))
         fields = result_row.cssselect('td')
@@ -229,7 +229,8 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_shows_failure(self):
         self.client_log_in(as_admin=True)
-        factory.make_node_commission_result(script_result=randint(1, 100))
+        factory.make_NodeResult_for_commissioning(
+            script_result=randint(1, 100))
         content = self.request_page()
         result_row = get_one(content.cssselect('.result'))
         fields = result_row.cssselect('td')
@@ -239,7 +240,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_links_to_result(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_node_commission_result(
+        result = factory.make_NodeResult_for_commissioning(
             script_result=randint(1, 100))
         content = self.request_page()
         result_row = get_one(content.cssselect('.result'))
@@ -256,7 +257,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         # any given node are unlikely to occur side by side by accident.
         for _ in range(2):
             for node in nodes:
-                factory.make_node_commission_result(node=node)
+                factory.make_NodeResult_for_commissioning(node=node)
         sorted_results = self.make_view().get_queryset()
         self.assertEqual(sorted_results[0].node, sorted_results[1].node)
         self.assertEqual(sorted_results[2].node, sorted_results[3].node)
@@ -265,7 +266,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
     def test_sorts_by_creation_time_for_same_node(self):
         node = factory.make_node()
         results = [
-            factory.make_node_commission_result(node=node)
+            factory.make_NodeResult_for_commissioning(node=node)
             for _ in range(3)
             ]
         for result in results:
@@ -279,7 +280,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
     def test_sorts_by_name_for_same_node_and_creation_time(self):
         node = factory.make_node()
         results = {
-            factory.make_node_commission_result(
+            factory.make_NodeResult_for_commissioning(
                 node=node, name=factory.make_name().lower())
             for _ in range(5)
             }
@@ -288,12 +289,13 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
             list(self.make_view().get_queryset()))
 
     def test_filters_by_node(self):
-        factory.make_node_commission_result()
+        factory.make_NodeResult_for_commissioning()
         node = factory.make_node()
         node_results = {
-            factory.make_node_commission_result(node=node) for _ in range(3)
+            factory.make_NodeResult_for_commissioning(node=node)
+            for _ in range(3)
             }
-        factory.make_node_commission_result()
+        factory.make_NodeResult_for_commissioning()
 
         self.assertEqual(
             node_results,
@@ -305,7 +307,10 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         # naively would ignore all but the first node passed, so make sure we
         # process all of them.
         self.client_log_in(as_admin=True)
-        results = [factory.make_node_commission_result() for _ in range(3)]
+        results = [
+            factory.make_NodeResult_for_commissioning()
+            for _ in range(3)
+        ]
         matching_results = results[1:3]
         content = self.request_page(
             nodes=[result.node for result in matching_results])
