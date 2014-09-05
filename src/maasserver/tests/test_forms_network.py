@@ -46,7 +46,7 @@ class TestNetworkForm(MAASServerTestCase):
         self.assertAttributes(network_obj, definition)
 
     def test_updates_network(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         new_description = factory.make_string()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
@@ -55,13 +55,13 @@ class TestNetworkForm(MAASServerTestCase):
         self.assertEqual(new_description, network.description)
 
     def test_populates_initial_macaddresses(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         macs = [
             factory.make_mac_address(networks=[network])
             for _ in range(3)]
         # Create other MAC addresses.
         for _ in range(2):
-            factory.make_mac_address(networks=[factory.make_network()])
+            factory.make_mac_address(networks=[factory.make_Network()])
         new_description = factory.make_string()
         form = NetworkForm(
             data={'description': new_description}, instance=network)
@@ -104,7 +104,7 @@ class TestNetworkForm(MAASServerTestCase):
             form.fields['mac_addresses'].widget.choices)
 
     def test_updates_macaddresses(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         # Attach a couple of MAC addresses to the network.
         [factory.make_mac_address(networks=[network]) for _ in range(3)]
         new_macs = [
@@ -127,7 +127,7 @@ class TestNetworkForm(MAASServerTestCase):
         big_network = IPNetwork('10.9.0.0/16')
         nested_network = IPNetwork('10.9.9.0/24')
 
-        existing_network = factory.make_network(network=big_network)
+        existing_network = factory.make_Network(network=big_network)
         form = NetworkForm(data={
             'name': factory.make_name('clashing-network'),
             'ip': "%s" % nested_network.cidr.ip,
@@ -160,7 +160,7 @@ class TestNetworkForm(MAASServerTestCase):
         self.assertThat(write_full_dns_config, MockCalledOnceWith())
 
     def test_writes_dns_when_network_deleted(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         write_full_dns_config = self.patch(
             dns_config_module, "write_full_dns_config")
         network.delete()

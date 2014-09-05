@@ -409,12 +409,12 @@ class TestGetTrustedNetworks(MAASServerTestCase):
         self.assertEqual("", get_trusted_networks())
 
     def test__returns_single_network(self):
-        net = factory.make_network()
+        net = factory.make_Network()
         expected = unicode(net.get_network().cidr) + ';'
         self.assertEqual(expected, get_trusted_networks())
 
     def test__returns_many_networks(self):
-        nets = [factory.make_network() for _ in xrange(random.randint(1, 5))]
+        nets = [factory.make_Network() for _ in xrange(random.randint(1, 5))]
         expected = "; ".join(unicode(net.get_network().cidr) for net in nets)
         expected += ';'
         self.assertEqual(expected, get_trusted_networks())

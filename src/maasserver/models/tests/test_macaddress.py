@@ -68,7 +68,7 @@ class MACAddressTest(MAASServerTestCase):
         self.assertEqual([], list(mac.get_networks()))
 
     def test_get_networks_returns_networks(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
         self.assertEqual([network], list(mac.get_networks()))
 

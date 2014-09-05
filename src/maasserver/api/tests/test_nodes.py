@@ -871,7 +871,7 @@ class TestNodesAPI(APITestCase):
             node = factory.make_node(status=NODE_STATUS.READY)
             factory.make_mac_address(node=node, networks=[network])
         right_node = factory.make_node(status=NODE_STATUS.READY)
-        factory.make_mac_address(node=node, networks=[factory.make_network()])
+        factory.make_mac_address(node=node, networks=[factory.make_Network()])
 
         response = self.client.post(reverse('nodes_handler'), {
             'op': 'acquire',

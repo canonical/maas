@@ -138,7 +138,7 @@ class MACAddressAPITest(APITestCase):
             node.macaddress_set.count())
 
     def test_macs_DELETE_disconnects_from_network(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.make_mac_address(node=node, networks=[network])
         response = self.client.delete(

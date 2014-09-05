@@ -35,14 +35,14 @@ class TestNetwork(APITestCase):
 
     def test_POST_is_prohibited(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             self.get_url(network.name),
             {'description': "New description"})
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_GET_returns_network(self):
-        network = factory.make_network()
+        network = factory.make_Network()
 
         response = self.client.get(self.get_url(network.name))
         self.assertEqual(httplib.OK, response.status_code)
@@ -73,7 +73,7 @@ class TestNetwork(APITestCase):
 
     def test_PUT_updates_network(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         new_net = factory.getRandomNetwork()
         new_values = {
             'name': factory.make_name('new'),
@@ -92,7 +92,7 @@ class TestNetwork(APITestCase):
 
     def test_PUT_requires_admin(self):
         description = "Original description"
-        network = factory.make_network(description=description)
+        network = factory.make_Network(description=description)
         response = self.client_put(
             self.get_url(network.name), {'description': "Changed description"})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -106,13 +106,13 @@ class TestNetwork(APITestCase):
 
     def test_DELETE_deletes_network(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
 
     def test_DELETE_requires_admin(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertIsNotNone(reload_object(network))
@@ -126,7 +126,7 @@ class TestNetwork(APITestCase):
 
     def test_DELETE_works_with_MACs_attached(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
@@ -136,7 +136,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_connects_macs_to_network(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         macs = [factory.make_mac_address(networks=[network]) for _ in range(2)]
         response = self.client.post(
             self.get_url(network.name),
@@ -149,7 +149,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_accepts_empty_macs_list(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -161,8 +161,8 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_leaves_other_networks_unchanged(self):
         self.become_admin()
-        network = factory.make_network()
-        other_network = factory.make_network()
+        network = factory.make_Network()
+        other_network = factory.make_Network()
         mac = factory.make_mac_address(networks=[other_network])
         response = self.client.post(
             self.get_url(network.name),
@@ -175,7 +175,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[])
         other_mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
@@ -189,7 +189,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_ignores_MACs_already_on_network(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
@@ -201,7 +201,7 @@ class TestNetwork(APITestCase):
         self.assertEqual({mac}, set(network.macaddress_set.all()))
 
     def test_POST_connect_macs_requires_admin(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -212,7 +212,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_connect_macs_fails_on_unknown_MAC(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         nonexistent_mac = factory.make_MAC()
         response = self.client.post(
             self.get_url(network.name),
@@ -227,7 +227,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_disconnect_macs_removes_MACs_from_network(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
@@ -240,7 +240,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_disconnect_macs_requires_admin(self):
         response = self.client.post(
-            self.get_url(factory.make_network().name),
+            self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
                 'macs': [factory.make_mac_address().mac_address],
@@ -250,7 +250,7 @@ class TestNetwork(APITestCase):
     def test_POST_disconnect_macs_accepts_empty_MACs_list(self):
         self.become_admin()
         response = self.client.post(
-            self.get_url(factory.make_network().name),
+            self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
                 'macs': [],
@@ -260,7 +260,7 @@ class TestNetwork(APITestCase):
     def test_POST_disconnect_macs_is_idempotent(self):
         self.become_admin()
         response = self.client.post(
-            self.get_url(factory.make_network().name),
+            self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
                 'macs': [factory.make_mac_address().mac_address],
@@ -269,7 +269,7 @@ class TestNetwork(APITestCase):
 
     def test_POST_disconnect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
-        network = factory.make_network()
+        network = factory.make_Network()
         other_mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
@@ -284,8 +284,8 @@ class TestNetwork(APITestCase):
 
     def test_POST_disconnect_macs_leaves_other_networks_unchanged(self):
         self.become_admin()
-        network = factory.make_network()
-        other_network = factory.make_network()
+        network = factory.make_Network()
+        other_network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network, other_network])
         response = self.client.post(
             self.get_url(network.name),
@@ -300,7 +300,7 @@ class TestNetwork(APITestCase):
         self.become_admin()
         nonexistent_mac = factory.make_MAC()
         response = self.client.post(
-            self.get_url(factory.make_network().name),
+            self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
                 'macs': [nonexistent_mac],
@@ -346,7 +346,7 @@ class TestListConnectedMACs(APITestCase):
         return [item['mac_address'] for item in returned_macs]
 
     def test_returns_connected_macs(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         macs = [
             self.make_mac(networks=[network], owner=self.logged_in_user)
             for _ in range(3)
@@ -357,26 +357,26 @@ class TestListConnectedMACs(APITestCase):
 
     def test_ignores_unconnected_macs(self):
         self.make_mac(
-            networks=[factory.make_network()], owner=self.logged_in_user)
+            networks=[factory.make_Network()], owner=self.logged_in_user)
         self.make_mac(networks=[], owner=self.logged_in_user)
         self.assertEqual(
             [],
-            self.request_connected_macs(factory.make_network()))
+            self.request_connected_macs(factory.make_Network()))
 
     def test_includes_MACs_for_nodes_visible_to_user(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = self.make_mac(networks=[network], owner=self.logged_in_user)
         self.assertEqual(
             [mac.mac_address],
             self.extract_macs(self.request_connected_macs(network)))
 
     def test_excludes_MACs_for_nodes_not_visible_to_user(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         self.make_mac(networks=[network])
         self.assertEqual([], self.request_connected_macs(network))
 
     def test_returns_sorted_MACs(self):
-        network = factory.make_network()
+        network = factory.make_Network()
         macs = [
             self.make_mac(
                 networks=[network], node=factory.make_node(sortable_name=True),

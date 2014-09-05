@@ -221,7 +221,7 @@ class NetworkDetailViewTest(MAASServerTestCase):
         # The Network detail view displays the network name and the network
         # description.
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         self.assertThat(
@@ -236,7 +236,7 @@ class NetworkDetailViewTest(MAASServerTestCase):
 
     def test_network_detail_displays_node_count(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         [factory.make_mac_address(networks=[network]) for i in range(5)]
         response = self.client.get(
             reverse('network-view', args=[network.name]))
@@ -247,7 +247,7 @@ class NetworkDetailViewTest(MAASServerTestCase):
     def test_network_detail_escapes_description(self):
         nasty_description = 'A<B>C&D'
         self.client_log_in()
-        network = factory.make_network(description=nasty_description)
+        network = factory.make_Network(description=nasty_description)
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         doc = fromstring(response.content)
@@ -260,7 +260,7 @@ class NetworkDetailViewNonAdmin(MAASServerTestCase):
 
     def test_network_detail_does_not_contain_edit_link(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         network_edit_link = reverse('network-edit', args=[network.name])
@@ -268,7 +268,7 @@ class NetworkDetailViewNonAdmin(MAASServerTestCase):
 
     def test_network_detail_does_not_contain_delete_link(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         network_delete_link = reverse('network-del', args=[network.name])
@@ -279,7 +279,7 @@ class NetworkDetailViewAdmin(MAASServerTestCase):
 
     def test_network_detail_contains_edit_link(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         network_edit_link = reverse('network-edit', args=[network.name])
@@ -287,7 +287,7 @@ class NetworkDetailViewAdmin(MAASServerTestCase):
 
     def test_network_detail_contains_delete_link(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         network_delete_link = reverse('network-del', args=[network.name])
@@ -298,7 +298,7 @@ class NetworkEditNonAdminTest(MAASServerTestCase):
 
     def test_cannot_access_network_edit(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             reverse('network-edit', args=[network.name]))
         self.assertEqual(reverse('login'), extract_redirect(response))
@@ -308,7 +308,7 @@ class NetworkEditAdminTest(MAASServerTestCase):
 
     def test_network_edit(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         new_name = factory.make_name('name')
         new_description = factory.make_name('description')
         new_macs = [
@@ -338,7 +338,7 @@ class NetworkDeleteNonAdminTest(MAASServerTestCase):
 
     def test_cannot_delete(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             reverse('network-del', args=[network.name]))
         self.assertEqual(reverse('login'), extract_redirect(response))
@@ -349,7 +349,7 @@ class NetworkDeleteAdminTest(MAASServerTestCase):
 
     def test_deletes_network(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             reverse('network-del', args=[network.name]),
             {'post': 'yes'})
@@ -358,7 +358,7 @@ class NetworkDeleteAdminTest(MAASServerTestCase):
 
     def test_redirects_to_listing(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         response = self.client.post(
             reverse('network-del', args=[network.name]),
             {'post': 'yes'})
@@ -366,7 +366,7 @@ class NetworkDeleteAdminTest(MAASServerTestCase):
 
     def test_disconnects_macs(self):
         self.client_log_in(as_admin=True)
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
         response = self.client.post(
             reverse('network-del', args=[network.name]),

@@ -53,7 +53,7 @@ class TestNetworksAPI(APITestCase):
         self.assertIsNone(get_one(Network.objects.filter(name=name)))
 
     def test_GET_returns_networks(self):
-        original_network = factory.make_network()
+        original_network = factory.make_Network()
 
         response = self.client.get(reverse('networks_handler'))
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -132,8 +132,8 @@ class TestNetworksAPI(APITestCase):
             json.loads(response.content))
 
     def test_GET_ignores_duplicates(self):
-        factory.make_network()
-        mac = factory.make_mac_address(networks=[factory.make_network()])
+        factory.make_Network()
+        mac = factory.make_mac_address(networks=[factory.make_Network()])
         node = mac.node
         response = self.client.get(
             reverse('networks_handler'),

@@ -581,7 +581,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_links_network_interfaces_to_networks(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         mac = factory.make_mac_address(networks=[network])
 
         response = self.client.get(
@@ -1747,7 +1747,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
 
     def test_node_delete_mac_POST_disconnects_MAC_from_network(self):
         self.client_log_in()
-        network = factory.make_network()
+        network = factory.make_Network()
         node = factory.make_node(owner=self.logged_in_user)
         mac = factory.make_mac_address(node=node, networks=[network])
         response = self.client.post(
