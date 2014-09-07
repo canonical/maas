@@ -44,6 +44,10 @@ Physical network: {{ network.name }}
       <span>{{ network.default_gateway|default_if_none:"" }}</span>
     </li>
     <li class="block size2">
+      <h4>DNS servers</h4>
+      <span>{{ network.dns_servers|default_if_none:"" }}</span>
+    </li>
+    <li class="block size2">
       <h4>Attached nodes</h4>
       <span id="nodecount">
         <a title="View nodes attached to network {{ network.name }}"

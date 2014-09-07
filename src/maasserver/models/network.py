@@ -248,6 +248,11 @@ class Network(CleanSave, Model):
         blank=True, editable=True, null=True,
         help_text="Default gateway for this network (e.g. 192.168.1.1).")
 
+    dns_servers = CharField(
+        blank=True, editable=True, null=True, max_length=255,
+        help_text="Space separated list of DNS server addresses that this "
+                  "network may use.")
+
     vlan_tag = PositiveSmallIntegerField(
         editable=True, null=True, blank=True, unique=True,
         help_text="A 12-bit field specifying the VLAN to which the frame "

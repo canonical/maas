@@ -46,7 +46,8 @@ class NetworkHandler(OperationsHandler):
 
     model = Network
     fields = (
-        'name', 'ip', 'netmask', 'vlan_tag', 'description', 'default_gateway')
+        'name', 'ip', 'netmask', 'vlan_tag', 'description', 'default_gateway',
+        'dns_servers')
 
     # Creation happens on the NetworksHandler.
     create = None

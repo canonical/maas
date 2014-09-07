@@ -38,6 +38,8 @@ class TestNetworksAPI(APITestCase):
             'netmask': '%s' % net.netmask,
             'vlan_tag': factory.make_vlan_tag(),
             'description': factory.make_string(),
+            'default_gateway': factory.getRandomIPAddress(),
+            'dns_servers': factory.getRandomIPAddress(),
         }
         response = self.client.post(reverse('networks_handler'), params)
         self.assertEqual(httplib.OK, response.status_code)
@@ -63,7 +65,7 @@ class TestNetworksAPI(APITestCase):
         [returned_network] = parsed_result
         fields = {
             'name', 'ip', 'netmask', 'vlan_tag', 'description',
-            'default_gateway'}
+            'default_gateway', 'dns_servers'}
         self.assertEqual(
             fields.union({'resource_uri'}),
             set(returned_network.keys()))

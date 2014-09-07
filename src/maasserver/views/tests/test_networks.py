@@ -200,6 +200,7 @@ class NetworkAddTestAdmin(MAASServerTestCase):
             'netmask': "%s" % network.netmask,
             'vlan_tag': factory.make_vlan_tag(),
             'default_gateway': factory.getRandomIPAddress(),
+            'dns_servers': factory.getRandomIPAddress(),
         }
         response = self.client.post(reverse('network-add'), definition)
         self.assertEqual(httplib.FOUND, response.status_code)
@@ -315,6 +316,7 @@ class NetworkEditAdminTest(MAASServerTestCase):
             factory.make_MACAddress()
             for _ in range(3)]
         new_gateway = factory.getRandomIPAddress()
+        new_dns_servers = factory.getRandomIPAddress()
         response = self.client.post(
             reverse('network-edit', args=[network.name]),
             data={
@@ -322,6 +324,7 @@ class NetworkEditAdminTest(MAASServerTestCase):
                 'description': new_description,
                 'default_gateway': new_gateway,
                 'mac_addresses': new_macs,
+                'dns_servers': new_dns_servers,
             })
         self.assertEqual(
             reverse('network-list'), extract_redirect(response),
