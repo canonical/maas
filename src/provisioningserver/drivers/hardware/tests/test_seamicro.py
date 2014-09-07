@@ -44,7 +44,7 @@ from provisioningserver.drivers.hardware.seamicro import (
 import provisioningserver.utils as utils
 
 
-class FakeResponse(object):
+class FakeResponse:
 
     def __init__(self, response_code, response, is_json=False):
         self.response_code = response_code

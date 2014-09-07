@@ -39,7 +39,7 @@ class WinRMX509Error(Exception):
     """Error when generating x509 certificate."""
 
 
-class WinRMX509(object):
+class WinRMX509:
     """Generates X509 certificates compatible with Windows WinRM."""
 
     KEY_SIZE = 2048

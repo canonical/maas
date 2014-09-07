@@ -42,7 +42,7 @@ cartridge_mapping = {
 }
 
 
-class MSCM_CLI_API(object):
+class MSCM_CLI_API:
     """An API for interacting with the Moonshot iLO CM CLI."""
 
     def __init__(self, host, username, password):

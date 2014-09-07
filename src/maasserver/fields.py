@@ -418,7 +418,7 @@ class MAASIPAddressField(GenericIPAddressField):
         return 'inet'
 
 
-class LargeObjectFile(object):
+class LargeObjectFile:
     """Large object file.
 
     Proxy the access from this object to psycopg2.

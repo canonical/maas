@@ -50,7 +50,7 @@ class SeaMicroAPIV09Error(SeaMicroError):
         self.response_code = response_code
 
 
-class SeaMicroAPIV09(object):
+class SeaMicroAPIV09:
     allowed_codes = [httplib.OK, httplib.ACCEPTED, httplib.NOT_MODIFIED]
 
     def __init__(self, url):

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """API credentials for node-group workers."""
@@ -21,7 +21,7 @@ __all__ = [
 from multiprocessing import Manager
 
 
-class Cache(object):
+class Cache:
     """A process-safe dict-like cache."""
 
     def __init__(self, cache_backend):

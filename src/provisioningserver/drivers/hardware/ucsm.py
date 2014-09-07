@@ -114,7 +114,7 @@ def parse_response(response_string):
     return doc
 
 
-class UCSM_XML_API(object):
+class UCSM_XML_API:
     """Provides access to a Cisco UCS Manager's XML API. Public methods
     on this class correspond to UCS Manager XML API methods.
 

@@ -76,7 +76,7 @@ def load_hivex(*args, **kwargs):
     return module.Hivex(*args, **kwargs)
 
 
-class Bcd(object):
+class Bcd:
     """Allows modification of the load options in a Windows boot
     configuration data file.
 

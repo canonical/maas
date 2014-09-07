@@ -194,7 +194,7 @@ class Options(usage.Options):
 
 
 @implementer(IServiceMaker, IPlugin)
-class ProvisioningServiceMaker(object):
+class ProvisioningServiceMaker:
     """Create a service for the Twisted plugin."""
 
     options = Options
