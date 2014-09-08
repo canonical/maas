@@ -497,14 +497,13 @@ class TestNodeGroupInterfacesAPI(APITestCase):
             ],
             json.loads(response.content))
 
-    def test_list_does_not_work_for_normal_user(self):
+    def test_list_works_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
         log_in_as_normal_user(self.client)
         response = self.client.get(
             reverse('nodegroupinterfaces_handler', args=[nodegroup.uuid]),
             {'op': 'list'})
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
 
     def test_list_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()
@@ -577,7 +576,7 @@ class TestNodeGroupInterfacesAPI(APITestCase):
 
 class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
 
-    def test_read_does_not_work_for_normal_user(self):
+    def test_read_works_for_normal_user(self):
         nodegroup = NodeGroup.objects.ensure_master()
         interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -586,8 +585,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]))
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
 
     def test_read_works_for_master_worker(self):
         nodegroup = NodeGroup.objects.ensure_master()

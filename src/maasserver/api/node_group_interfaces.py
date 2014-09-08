@@ -61,9 +61,8 @@ class NodeGroupInterfacesHandler(OperationsHandler):
     @operation(idempotent=True)
     def list(self, request, uuid):
         """List of NodeGroupInterfaces of a NodeGroup."""
+        # Any user has read-only access to nodegroup interfaces.
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        if not request.user.is_superuser:
-            check_nodegroup_access(request, nodegroup)
         return NodeGroupInterface.objects.filter(nodegroup=nodegroup)
 
     @operation(idempotent=False)
@@ -141,7 +140,10 @@ class NodeGroupInterfaceHandler(OperationsHandler):
 
     def read(self, request, uuid, name):
         """List of NodeGroupInterfaces of a NodeGroup."""
-        return self.get_interface(request, uuid, name)
+        # Read-only access is allowed to any user.
+        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
+        return get_object_or_404(
+            NodeGroupInterface, nodegroup=nodegroup, name=name)
 
     def update(self, request, uuid, name):
         """Update a specific NodeGroupInterface.

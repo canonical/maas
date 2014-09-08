@@ -494,11 +494,20 @@ Usage: maas *<profile>* node-group-interfaces [-d --debug] [-h
            default router address for this subnet.
 
       ip_range_low=<value>
-           The lowest value of IP address to allocate via DHCP
+           The lowest value of IP address to allocate via DHCP, used
+           only for enlistment, commissioning and unknown devices.
 
       ip_range_high=<value>
-           The highest value of IP address to allocate via DHCP
+           The highest value of IP address to allocate via DHCP, used
+           only for enlistment, commissioning and unknown devices.
 
+      static_ip_range_low=<value>
+           Lowest IP number of the range for IPs given to allocated
+           nodes and user requests for IPs.
+
+      static_ip_range_low=<value>
+           Highest IP number of the range for IPs given to allocated
+           nodes and user requests for IPs.
 
 tag
 ^^^
