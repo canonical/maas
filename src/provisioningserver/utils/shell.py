@@ -15,16 +15,35 @@ __metaclass__ = type
 __all__ = [
     'call_and_check',
     'ExternalProcessError',
+    'pipefork',
+    'PipeForkError',
     ]
 
-
+from contextlib import contextmanager
+import cPickle
+import os
 from pipes import quote
+import signal
 from string import printable
 from subprocess import (
     CalledProcessError,
     PIPE,
     Popen,
     )
+from sys import (
+    stderr,
+    stdout,
+    )
+from tempfile import TemporaryFile
+
+from twisted.python.failure import Failure
+
+# A mapping of signal numbers to names. It is strange that this isn't in the
+# standard library (but I did check).
+signal_names = {
+    value: name for name, value in vars(signal).viewitems()
+    if name.startswith('SIG') and '_' not in name
+}
 
 # A table suitable for use with str.translate() to replace each
 # non-printable and non-ASCII character in a byte string with a question
@@ -105,3 +124,131 @@ def call_and_check(command, *args, **kwargs):
     if process.returncode != 0:
         raise ExternalProcessError(process.returncode, command, output=stderr)
     return stdout
+
+
+class PipeForkError(Exception):
+    """An error occurred in `pipefork`."""
+
+
+@contextmanager
+def pipefork():
+    """Context manager that forks with pipes between parent and child.
+
+    Use like so::
+
+        with pipefork() as (pid, fin, fout):
+            if pid == 0:
+                # This is the child.
+                ...
+            else:
+                # This is the parent.
+                ...
+
+    Pipes are set up so that the parent can write to the child, and
+    vice-versa.
+
+    In the child, ``fin`` is a file that reads from the parent, and ``fout``
+    is a file that writes to the parent.
+
+    In the parent, ``fin`` is a file that reads from the child, and ``fout``
+    is a file that writes to the child.
+
+    Be careful to think about closing these file objects to avoid deadlocks.
+    For example, the following will deadlock:
+
+        with pipefork() as (pid, fin, fout):
+            if pid == 0:
+                fin.read()  # Read from the parent.
+                fout.write(b'Moien')  # Greet the parent.
+            else:
+                fout.write(b'Hello')  # Greet the child.
+                fin.read()  # Read from the child *BLOCKS FOREVER*
+
+    The reason is that the read in the child never returns because the pipe is
+    never closed. Closing ``fout`` in the parent resolves the problem::
+
+        with pipefork() as (pid, fin, fout):
+            if pid == 0:
+                fin.read()  # Read from the parent.
+                fout.write(b'Moien')  # Greet the parent.
+            else:
+                fout.write(b'Hello')  # Greet the child.
+                fout.close()  # Close the write pipe to the child.
+                fin.read()  # Read from the child.
+
+    Exceptions raised in the child are magically re-raised in the parent. When
+    the child has died for another reason, a signal perhaps, a `PipeForkError`
+    is raised with an explanatory message.
+
+    :raises: `PipeForkError` when the child process dies a somewhat unnatural
+        death, e.g. by a signal or when writing a crash-dump fails.
+    """
+    crashfile = TemporaryFile()
+
+    c2pread, c2pwrite = os.pipe()
+    p2cread, p2cwrite = os.pipe()
+
+    pid = os.fork()
+
+    if pid == 0:
+        # Child: this conditional branch runs in the child process.
+        try:
+            os.close(c2pread)
+            os.close(p2cwrite)
+
+            with os.fdopen(p2cread, 'rb') as fin:
+                with os.fdopen(c2pwrite, 'wb') as fout:
+                    yield pid, fin, fout
+
+            stdout.flush()
+            stderr.flush()
+        except:
+            try:
+                # Pickle error to crash file.
+                cPickle.dump(Failure(), crashfile, cPickle.HIGHEST_PROTOCOL)
+                crashfile.flush()
+            finally:
+                # Exit hard.
+                os._exit(2)
+        finally:
+            # Exit hard.
+            os._exit(0)
+    else:
+        # Parent: this conditional branch runs in the parent process.
+        os.close(c2pwrite)
+        os.close(p2cread)
+
+        with os.fdopen(c2pread, 'rb') as fin:
+            with os.fdopen(p2cwrite, 'wb') as fout:
+                yield pid, fin, fout
+
+        # Wait for the child to finish.
+        _, status = os.waitpid(pid, 0)
+        signal = (status & 0xff)
+        code = (status >> 8) & 0xff
+
+        # Check for a saved crash.
+        crashfile.seek(0)
+        try:
+            error = cPickle.load(crashfile)
+        except EOFError:
+            # No crash was recorded.
+            error = None
+        else:
+            # Raise exception from child.
+            error.raiseException()
+        finally:
+            crashfile.close()
+
+        if os.WIFSIGNALED(status):
+            # The child was killed by a signal.
+            raise PipeForkError(
+                "Child killed by signal %d (%s)" % (
+                    signal, signal_names.get(signal, "?")))
+        elif code != 0:
+            # The child exited with a non-zero code.
+            raise PipeForkError(
+                "Child exited with code %d" % code)
+        else:
+            # All okay.
+            pass

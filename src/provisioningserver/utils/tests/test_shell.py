@@ -15,14 +15,21 @@ __metaclass__ = type
 __all__ = []
 
 import os
+from random import randint
+import re
+import signal
+import time
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    pipefork,
+    PipeForkError,
     )
 import provisioningserver.utils.shell as shell_module
+from testtools import ExpectedException
 
 
 class TestCallAndCheck(MAASTestCase):
@@ -140,3 +147,52 @@ class TestExternalProcessError(MAASTestCase):
         error = ExternalProcessError(
             returncode=-1, cmd="foo-bar", output=output)
         self.assertEqual(unicode_output, error.output_as_unicode)
+
+
+class TestPipeFork(MAASTestCase):
+
+    def test__forks(self):
+        with pipefork() as (pid, fin, fout):
+            if pid == 0:
+                # Child.
+                message_in = fin.read()
+                message_out = b"Hello %s!" % message_in
+                fout.write(message_out)
+                fout.close()
+            else:
+                # Parent.
+                message_out = factory.make_name("Parent").encode("ascii")
+                fout.write(message_out)
+                fout.close()
+                message_in = fin.read()
+                self.assertEqual(b"Hello %s!" % message_out, message_in)
+
+    def test__raises_childs_exception_when_child_crashes(self):
+        # If the child process exits with an exception, it is passed back to
+        # the parent via a pickled t.p.failure.Failure, and re-raised.
+        with ExpectedException(ZeroDivisionError):
+            with pipefork() as (pid, fin, fout):
+                if pid == 0:
+                    # Child.
+                    raise ZeroDivisionError()
+
+    def test__raises_exception_when_child_killed_by_signal(self):
+        expected_message = re.escape("Child killed by signal 15 (SIGTERM)")
+        with ExpectedException(PipeForkError, expected_message):
+            with pipefork() as (pid, fin, fout):
+                if pid == 0:
+                    # Close `fout` to signal to parent that we're running.
+                    fout.close()
+                    time.sleep(10)
+                else:
+                    # Wait for child to close its `fout` before signalling.
+                    fin.read()
+                    os.kill(pid, signal.SIGTERM)
+
+    def test__raises_exception_when_child_exits_with_non_zero_code(self):
+        exit_code = randint(1, 99)
+        expected_message = re.escape("Child exited with code %s" % exit_code)
+        with ExpectedException(PipeForkError, expected_message):
+            with pipefork() as (pid, fin, fout):
+                if pid == 0:
+                    os._exit(exit_code)
