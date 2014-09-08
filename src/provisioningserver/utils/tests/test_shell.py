@@ -25,6 +25,7 @@ from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
+    objectfork,
     pipefork,
     PipeForkError,
     )
@@ -196,3 +197,40 @@ class TestPipeFork(MAASTestCase):
             with pipefork() as (pid, fin, fout):
                 if pid == 0:
                     os._exit(exit_code)
+
+
+class TestObjectFork(MAASTestCase):
+
+    def test__can_send_and_receive_objects(self):
+
+        def child(recv, send):
+            # Sum numbers until we get None through.
+            for numbers in iter(recv, None):
+                send(sum(numbers))
+            # Now echo things until we get None.
+            for things in iter(recv, None):
+                send(things)
+
+        def parent(recv, send):
+            # Send numbers to the child first.
+            for _ in xrange(randint(3, 10)):
+                numbers = list(randint(1, 100) for _ in xrange(10))
+                send(numbers)
+                self.assertEqual(sum(numbers), recv())
+            # Signal that we're done with numbers.
+            send(None)
+            # Send some other things and see that they come back.
+            picklable_things = {
+                "foo": [randint(1, 1000) for _ in xrange(10)],
+                (1, 2, b"three", 4.0): {self.__class__, "bar"},
+            }
+            send(picklable_things)
+            self.assertEqual(picklable_things, recv())
+            # Signal that we're done again.
+            send(None)
+
+        with objectfork() as (pid, recv, send):
+            if pid == 0:
+                child(recv, send)
+            else:
+                parent(recv, send)

@@ -252,3 +252,41 @@ def pipefork():
         else:
             # All okay.
             pass
+
+
+@contextmanager
+def objectfork():
+    """Like `pipefork`, but objects can be passed between parent and child.
+
+    Usage::
+
+        with objectfork() as (pid, recv, send):
+            if pid == 0:
+                # Child.
+                for foo in bar():
+                    send(foo)
+                send(None)  # Done.
+            else:
+                for data in iter(recv, None):
+                    ...  # Process data.
+
+    In the child, ``recv`` receives objects sent -- via `send` -- from
+    the parent.
+
+    In the parent, ``recv`` receives objects sent -- via `send` -- from
+    the child.
+
+    All objects must be picklable.
+
+    See `pipefork` for more details.
+    """
+    with pipefork() as (pid, fin, fout):
+
+        def recv():
+            return cPickle.load(fin)
+
+        def send(obj):
+            cPickle.dump(obj, fout, cPickle.HIGHEST_PROTOCOL)
+            fout.flush()  # cPickle.dump() does not flush.
+
+        yield pid, recv, send
