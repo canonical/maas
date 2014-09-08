@@ -54,7 +54,6 @@ from maasserver.forms import (
     NodeGroupEdit,
     )
 from maasserver.models import (
-    DHCPLease,
     MACAddress,
     Network,
     Node,
@@ -67,7 +66,6 @@ from maasserver.utils import (
     )
 from maasserver.utils.orm import get_one
 import netaddr
-import simplejson as json
 
 
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
@@ -407,21 +405,6 @@ class NodeGroupHandler(OperationsHandler):
             return form.save()
         else:
             raise ValidationError(form.errors)
-
-    @operation(idempotent=False)
-    def update_leases(self, request, uuid):
-        """Submit latest state of DHCP leases within the cluster.
-
-        The cluster controller calls this periodically to tell the region
-        controller about the IP addresses it manages.
-        """
-        leases = get_mandatory_param(request.data, 'leases')
-        nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-        check_nodegroup_access(request, nodegroup)
-        leases = json.loads(leases)
-        DHCPLease.objects.update_leases(nodegroup, leases)
-        update_mac_cluster_interfaces(leases, nodegroup)
-        return HttpResponse("Leases updated.", status=httplib.OK)
 
     @admin_method
     @operation(idempotent=False)

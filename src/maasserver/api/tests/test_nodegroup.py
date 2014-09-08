@@ -19,13 +19,9 @@ import json
 import random
 from textwrap import dedent
 
-from apiclient.maas_client import MAASClient
 import bson
-from django.conf import settings
 from django.contrib.auth.models import AnonymousUser
 from django.core.urlresolvers import reverse
-from fixtures import EnvironmentVariableFixture
-from maasserver.api import node_groups as nodegroups_module
 from maasserver.api.node_groups import update_mac_cluster_interfaces
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
@@ -35,14 +31,12 @@ from maasserver.enum import (
     )
 from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
-    DHCPLease,
     DownloadProgress,
     MACAddress,
     Network,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
-from maasserver.refresh_worker import refresh_worker
 from maasserver.testing.api import (
     APITestCase,
     explain_unexpected_response,
@@ -58,7 +52,6 @@ from maasserver.testing.orm import (
     )
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.celery import CeleryFixture
-from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -69,8 +62,6 @@ from metadataserver.models import (
 from mock import Mock
 import netaddr
 from provisioningserver.auth import get_recorded_nodegroup_uuid
-from provisioningserver.dhcp.leases import send_leases
-from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.rpc.cluster import ImportBootImages
 from testresources import FixtureResource
 from testtools.matchers import (
@@ -224,103 +215,6 @@ class TestNodeGroupAPI(APITestCase):
         self.assertIn(
             "Can't rename DNS zone",
             parsed_result['name'][0])
-
-    def test_update_leases_processes_empty_leases_dict(self):
-        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
-        nodegroup = factory.make_NodeGroup()
-        factory.make_DHCPLease(nodegroup=nodegroup)
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps({}),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-        self.assertItemsEqual(
-            [], DHCPLease.objects.filter(nodegroup=nodegroup))
-
-    def test_update_leases_stores_leases(self):
-        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
-        self.patch(Omshell, 'create')
-        nodegroup = factory.make_NodeGroup()
-        lease = factory.make_random_leases()
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps(lease),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-        self.assertItemsEqual(
-            lease.keys(), [
-                dhcplease.ip
-                for dhcplease in DHCPLease.objects.filter(nodegroup=nodegroup)
-            ])
-
-    def test_update_leases_updates_mac_interface_mappings(self):
-        self.patch(
-            nodegroups_module, 'update_mac_cluster_interfaces', FakeMethod())
-        self.patch(Omshell, 'create')
-        cluster = factory.make_NodeGroup()
-        cluster_interface = factory.make_NodeGroupInterface(
-            nodegroup=cluster)
-        mac_address = factory.make_MACAddress()
-        leases = {
-            get_random_ip_from_interface_range(cluster_interface): (
-                unicode(mac_address.mac_address))
-            }
-
-        client = make_worker_client(cluster)
-        response = client.post(
-            reverse('nodegroup_handler', args=[cluster.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps(leases),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-        self.assertEqual(
-            [(leases, cluster)],
-            nodegroups_module.update_mac_cluster_interfaces.extract_args())
-
-    def test_update_leases_does_not_add_old_leases(self):
-        self.patch(nodegroups_module, 'update_mac_cluster_interfaces')
-        self.patch(Omshell, 'create')
-        nodegroup = factory.make_NodeGroup()
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {
-                'op': 'update_leases',
-                'leases': json.dumps(factory.make_random_leases()),
-            })
-        self.assertEqual(
-            (httplib.OK, "Leases updated."),
-            (response.status_code, response.content))
-
-    def test_worker_calls_update_leases(self):
-        # In bug 1041158, the worker's upload_leases task tried to call
-        # the update_leases API at the wrong URL path.  It has the right
-        # path now.
-        self.useFixture(
-            EnvironmentVariableFixture("MAAS_URL", settings.DEFAULT_MAAS_URL))
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
-        refresh_worker(nodegroup)
-        self.patch(MAASClient, 'post', Mock())
-        leases = factory.make_random_leases()
-        send_leases(leases)
-        nodegroup_path = reverse(
-            'nodegroup_handler', args=[nodegroup.uuid])
-        nodegroup_path = nodegroup_path.decode('ascii').lstrip('/')
-        MAASClient.post.assert_called_once_with(
-            nodegroup_path, 'update_leases', leases=json.dumps(leases))
 
     def test_accept_accepts_nodegroup(self):
         nodegroups = [factory.make_NodeGroup() for i in range(3)]
@@ -552,39 +446,6 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         response = self.client.get(
             reverse('nodegroup_handler', args=[nodegroup.uuid]))
         self.assertEqual(httplib.UNAUTHORIZED, response.status_code)
-
-    def test_update_leases_works_for_nodegroup_worker(self):
-        nodegroup = factory.make_NodeGroup()
-        client = make_worker_client(nodegroup)
-        response = client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {'op': 'update_leases', 'leases': json.dumps({})})
-        self.assertEqual(
-            httplib.OK, response.status_code,
-            explain_unexpected_response(httplib.OK, response))
-
-    def test_update_leases_does_not_work_for_normal_user(self):
-        nodegroup = factory.make_NodeGroup()
-        log_in_as_normal_user(self.client)
-        response = self.client.post(
-            reverse('nodegroup_handler', args=[nodegroup.uuid]),
-            {'op': 'update_leases', 'leases': json.dumps({})})
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
-
-    def test_update_leases_does_not_let_worker_update_other_nodegroup(self):
-        requesting_nodegroup = factory.make_NodeGroup()
-        about_nodegroup = factory.make_NodeGroup()
-        client = make_worker_client(requesting_nodegroup)
-
-        response = client.post(
-            reverse('nodegroup_handler', args=[about_nodegroup.uuid]),
-            {'op': 'update_leases', 'leases': json.dumps({})})
-
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code,
-            explain_unexpected_response(httplib.FORBIDDEN, response))
 
     def test_nodegroup_list_nodes_requires_authentication(self):
         nodegroup = factory.make_NodeGroup()
