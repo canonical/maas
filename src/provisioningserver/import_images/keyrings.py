@@ -11,10 +11,11 @@ from __future__ import (
 str = None
 
 __metaclass__ = type
-__all__ = []
+__all__ = [
+    'write_all_keyrings',
+    ]
 
 import os
-import tempfile
 from urlparse import urlsplit
 
 from provisioningserver.import_images.helpers import maaslog
@@ -40,16 +41,17 @@ def calculate_keyring_name(source_url):
     return keyring_name
 
 
-def write_all_keyrings(sources):
+def write_all_keyrings(directory, sources):
     """For a given set of `sources`, write the keyrings to disk.
 
+    :param directory: A directory where the key files should be written.  Use
+        a dedicated temporary directory for this, and clean it up when done.
     :param sources: An iterable of the sources whose keyrings need to be
         written.
     :return: The sources iterable, with each source whose keyring has
         been written now having a "keyring" value set, pointing to the file
         on disk.
     """
-    keyring_dir = tempfile.mkdtemp("maas-keyrings")
     for source in sources:
         source_url = source.get('url')
         keyring_file = source.get('keyring')
@@ -62,7 +64,7 @@ def write_all_keyrings(sources):
 
         if keyring_data is not None:
             keyring_file = os.path.join(
-                keyring_dir, calculate_keyring_name(source_url))
+                directory, calculate_keyring_name(source_url))
             write_keyring(keyring_file, keyring_data)
             source['keyring'] = keyring_file
     return sources

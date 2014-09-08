@@ -495,4 +495,4 @@ class TestImportImages(MAASTestCase):
             ],
         boot_resources.import_images(sources)
         self.assertThat(
-            fake_write_all_keyrings, MockCalledWith(sources))
+            fake_write_all_keyrings, MockCalledWith(mock.ANY, sources))

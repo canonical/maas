@@ -61,11 +61,8 @@ class TestWriteAllKeyrings(MAASTestCase):
             } for i in range(5)]
 
         keyring_path = self.make_dir()
-        self.patch(
-            keyrings.tempfile,
-            'mkdtemp').return_value = keyring_path
 
-        keyrings.write_all_keyrings(sources)
+        keyrings.write_all_keyrings(keyring_path, sources)
 
         expected_calls = (
             mock.call(
@@ -84,9 +81,6 @@ class TestWriteAllKeyrings(MAASTestCase):
             } for i in range(5)]
 
         keyring_path = self.make_dir()
-        self.patch(
-            keyrings.tempfile,
-            'mkdtemp').return_value = keyring_path
 
         expected_values = [
             os.path.join(
@@ -94,7 +88,7 @@ class TestWriteAllKeyrings(MAASTestCase):
                 keyrings.calculate_keyring_name(source['url']))
             for source in sources]
 
-        returned_sources = keyrings.write_all_keyrings(sources)
+        returned_sources = keyrings.write_all_keyrings(keyring_path, sources)
         actual_values = [
             source.get('keyring') for source in returned_sources]
         self.assertEqual(expected_values, actual_values)
@@ -109,11 +103,8 @@ class TestWriteAllKeyrings(MAASTestCase):
             }
 
         keyring_path = self.make_dir()
-        self.patch(
-            keyrings.tempfile,
-            'mkdtemp').return_value = keyring_path
 
-        [returned_source] = keyrings.write_all_keyrings([source])
+        [returned_source] = keyrings.write_all_keyrings(keyring_path, [source])
         expected_keyring = os.path.join(
             keyring_path, keyrings.calculate_keyring_name(source['url']))
         self.assertEqual(expected_keyring, returned_source.get('keyring'))

@@ -60,6 +60,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     MagicMock,
     Mock,
     sentinel,
@@ -1050,7 +1051,7 @@ class TestImportImages(MAASTestCase):
         fake_write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
 
-        def test_for_held_lock(sources):
+        def test_for_held_lock(directory, sources):
             self.assertTrue(bootresources.locks.import_images.is_locked())
             return []
         fake_write_all_keyrings.side_effect = test_for_held_lock
@@ -1077,7 +1078,7 @@ class TestImportImages(MAASTestCase):
 
         self.assertThat(
             fake_write_all_keyrings,
-            MockCalledOnceWith([]))
+            MockCalledOnceWith(ANY, []))
         self.assertThat(
             fake_image_descriptions,
             MockCalledOnceWith(sentinel.sources))

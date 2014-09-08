@@ -37,6 +37,7 @@ from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils.fs import (
     atomic_write,
     read_text_file,
+    tempdir,
     )
 from provisioningserver.utils.shell import call_and_check
 
@@ -226,29 +227,30 @@ def import_images(sources):
         maaslog.warn("Can't import: no Simplestreams sources selected.")
         return
 
-    # We download the keyrings now  because we need them for both
-    # download_all_image_descriptions() and
-    # download_all_boot_resources() later.
-    sources = write_all_keyrings(sources)
+    with tempdir('keyrings') as keyrings_path:
+        # We download the keyrings now  because we need them for both
+        # download_all_image_descriptions() and
+        # download_all_boot_resources() later.
+        sources = write_all_keyrings(keyrings_path, sources)
 
-    image_descriptions = download_all_image_descriptions(sources)
-    if image_descriptions.is_empty():
-        maaslog.warn(
-            "No boot resources found.  "
-            "Check sources specification and connectivity.")
-        return
+        image_descriptions = download_all_image_descriptions(sources)
+        if image_descriptions.is_empty():
+            maaslog.warn(
+                "No boot resources found.  "
+                "Check sources specification and connectivity.")
+            return
 
-    storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
-    meta_file_content = image_descriptions.dump_json()
-    if meta_contains(storage, meta_file_content):
-        # The current maas.meta already contains the new config.  No need to
-        # rewrite anything.
-        return
+        storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
+        meta_file_content = image_descriptions.dump_json()
+        if meta_contains(storage, meta_file_content):
+            # The current maas.meta already contains the new config.  No need
+            # to rewrite anything.
+            return
 
-    product_mapping = map_products(image_descriptions)
+        product_mapping = map_products(image_descriptions)
 
-    snapshot_path = download_all_boot_resources(
-        sources, storage, product_mapping)
+        snapshot_path = download_all_boot_resources(
+            sources, storage, product_mapping)
 
     maaslog.info("Writing metadata and iSCSI targets.")
     write_snapshot_metadata(snapshot_path, meta_file_content)

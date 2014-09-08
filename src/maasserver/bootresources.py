@@ -62,6 +62,7 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import environment_variables
+from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.twisted import synchronous
 from simplestreams import util as sutil
 from simplestreams.mirrors import (
@@ -878,17 +879,17 @@ def _import_resources(force=False):
         return
 
     try:
-        variables = {
+        env = {
             'GNUPGHOME': get_maas_user_gpghome(),
             }
         http_proxy = Config.objects.get_config('http_proxy')
         if http_proxy is not None:
-            variables['http_proxy'] = http_proxy
-            variables['https_proxy'] = http_proxy
-        with environment_variables(variables):
+            env['http_proxy'] = http_proxy
+            env['https_proxy'] = http_proxy
+        with environment_variables(env), tempdir('keyrings') as keyrings_path:
             maaslog.info("Started importing of boot resources.")
             sources = [source.to_dict() for source in BootSource.objects.all()]
-            sources = write_all_keyrings(sources)
+            sources = write_all_keyrings(keyrings_path, sources)
 
             image_descriptions = download_all_image_descriptions(sources)
             if image_descriptions.is_empty():
