@@ -35,6 +35,7 @@ __all__ = [
 
 
 from collections import defaultdict
+import cPickle
 import errno
 import json
 from os import (
@@ -54,6 +55,7 @@ from provisioningserver.auth import (
 from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.dhcp.leases_parser_fast import parse_leases
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.shell import pipefork
 
 
 maaslog = get_maas_logger("dhcp.leases")
@@ -130,7 +132,17 @@ def check_lease_changes():
 
     if get_leases_timestamp() == previous_leases_time:
         return None
-    parse_result = parse_leases_file()
+
+    with pipefork() as (pid, fin, fout):
+        if pid == 0:
+            # Child, where we'll do the parsing.
+            cPickle.dump(
+                parse_leases_file(),
+                fout, cPickle.HIGHEST_PROTOCOL)
+        else:
+            # Parent, where we'll receive the results.
+            parse_result = cPickle.load(fin)
+
     if parse_result is not None:
         timestamp, leases = parse_result
         if leases == previous_leases:
