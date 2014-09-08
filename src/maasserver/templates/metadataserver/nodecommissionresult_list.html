@@ -19,7 +19,7 @@ in {% include "maasserver/site_title.html" %}
         {% endif %}
       </h2>
       {% if paginator.count == 0 %}
-      <p>No matching commissioning results.</p>
+      <p id="no_results">No matching commissioning results.</p>
       {% else %}
       <table class="list">
         <thead>

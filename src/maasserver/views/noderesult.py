@@ -21,6 +21,7 @@ from django.shortcuts import get_object_or_404
 from django.views.generic import DetailView
 from maasserver.models import Node
 from maasserver.views import PaginatedListView
+from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 
 
@@ -44,7 +45,8 @@ class NodeCommissionResultListView(PaginatedListView):
         return context
 
     def get_queryset(self):
-        results = NodeResult.objects.all()
+        results = NodeResult.objects.filter(
+            result_type=RESULT_TYPE.COMMISSIONING)
         system_ids = self.get_filter_system_ids()
         if system_ids is not None and len(system_ids) > 0:
             results = results.filter(node__system_id__in=system_ids)

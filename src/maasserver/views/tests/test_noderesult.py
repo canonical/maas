@@ -175,7 +175,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         return '&'.join('node=%s' % node.system_id for node in nodes)
 
     def request_page(self, nodes=None):
-        """Request and parse the  page for the given `NodeResult`.
+        """Request and parse the page for the given `NodeResult`.
 
         :param node: Optional list of `Node` for which results should be
             displayed.  If not given, all results are displayed.
@@ -350,3 +350,11 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
         self.assertEqual(
             "Commissioning results for %s" % ', '.join(sorted(names)),
             normalise_whitespace(header.text_content()))
+
+    def test_does_not_list_installation_results(self):
+        self.client_log_in(as_admin=True)
+        factory.make_node_install_result()
+        content = self.request_page()
+        self.assertIsNotNone(
+            get_one(content.cssselect('#no_results')))
+        self.assertEqual([], content.cssselect('.result'))
