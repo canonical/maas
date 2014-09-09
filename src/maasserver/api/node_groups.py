@@ -256,9 +256,16 @@ def update_mac_cluster_interfaces(leases, cluster):
             continue
         for interface, (ip_range, static_range) in interface_ranges.items():
             ipaddress = netaddr.IPAddress(ip)
-            if ipaddress in ip_range or ipaddress in static_range:
+            # Set the cluster interface only if it's new/changed.
+            # This is only an optimisation to prevent repeated logging.
+            changed = mac_address.cluster_interface != interface
+            in_range = ipaddress in ip_range or ipaddress in static_range
+            if in_range and changed:
                 mac_address.cluster_interface = interface
                 mac_address.save()
+                maaslog.info(
+                    "%s %s linked to cluster interface %s",
+                    mac_address.node.hostname, mac_address, interface.name)
 
                 # Locate the Network to which this MAC belongs.
                 ipnetwork = interface.network

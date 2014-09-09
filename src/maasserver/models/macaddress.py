@@ -38,9 +38,11 @@ from maasserver.models.managers import BulkManager
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import IPAddress
+from provisioningserver.logger import get_maas_logger
 
 
 mac_re = re.compile(r'^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$')
+maaslog = get_maas_logger("macaddress")
 
 
 def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
@@ -121,6 +123,9 @@ class MACAddress(CleanSave, TimestampedModel):
         # also manages the node's IPv4 address."
         if self.cluster_interface is None:
             # No known cluster interface.  Nothing we can do.
+            maaslog.error(
+                "%s: Tried to allocate an IP to MAC %s but its cluster "
+                "interface is not known", self.node.hostname, self)
             return []
         else:
             return NodeGroupInterface.objects.filter(
