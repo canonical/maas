@@ -114,7 +114,9 @@ setup(
              'contrib/preseeds_v2/'
              'preseed_master_windows_amd64_generic_win2012r2']),
         ('/usr/sbin', ['scripts/maas-import-pxe-files']),
-        ('/usr/bin', ['scripts/uec2roottar']),
+        ('/usr/bin',
+            ['scripts/maas-generate-winrm-cert',
+             'scripts/uec2roottar']),
     ],
 
     install_requires=[
