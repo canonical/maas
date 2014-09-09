@@ -106,7 +106,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         cluster = factory.make_NodeGroup()
         self.assertRaises(
             ValidationError,
-            factory.make_node_group_interface, cluster, name='eth 0')
+            factory.make_NodeGroupInterface, cluster, name='eth 0')
 
     def test_clean_ips_in_network_validates_IP(self):
         network = IPNetwork('192.168.0.3/24')

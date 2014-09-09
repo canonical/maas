@@ -89,7 +89,7 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
                         MAASServerTestCase):
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_user)),
+        ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 
@@ -326,7 +326,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual('', progress.error)
 
     def test_report_download_progress_updates_ongoing_download(self):
-        progress = factory.make_download_progress_incomplete()
+        progress = factory.make_DownloadProgress_incomplete()
         client = make_worker_client(progress.nodegroup)
         new_bytes_downloaded = progress.bytes_downloaded + 1
 
@@ -345,7 +345,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(new_bytes_downloaded, progress.bytes_downloaded)
 
     def test_report_download_progress_rejects_invalid_data(self):
-        progress = factory.make_download_progress_incomplete()
+        progress = factory.make_DownloadProgress_incomplete()
         client = make_worker_client(progress.nodegroup)
 
         response = client.post(

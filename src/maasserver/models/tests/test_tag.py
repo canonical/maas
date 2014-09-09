@@ -23,7 +23,7 @@ from metadataserver.models.commissioningscript import inject_lshw_result
 
 class TagTest(MAASServerTestCase):
 
-    def test_factory_make_tag(self):
+    def test_factory_make_Tag(self):
         """
         The generated system_id looks good.
 
@@ -36,7 +36,7 @@ class TagTest(MAASServerTestCase):
         self.assertIsNot(None, tag.updated)
         self.assertIsNot(None, tag.created)
 
-    def test_factory_make_tag_with_hardware_details(self):
+    def test_factory_make_Tag_with_hardware_details(self):
         tag = factory.make_Tag('a-tag', 'true', kernel_opts="console=ttyS0")
         self.assertEqual('a-tag', tag.name)
         self.assertEqual('true', tag.definition)
@@ -62,7 +62,7 @@ class TagTest(MAASServerTestCase):
         for invalid in ['invalid:name', 'no spaces', 'no\ttabs',
                         'no&ampersand', 'no!shouting', '',
                         'too-long' * 33, '\xb5']:
-            self.assertRaises(ValidationError, factory.make_tag, name=invalid)
+            self.assertRaises(ValidationError, factory.make_Tag, name=invalid)
 
     def test_applies_tags_to_nodes(self):
         node1 = factory.make_Node()

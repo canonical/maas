@@ -291,7 +291,7 @@ class TestBootResource(MAASServerTestCase):
     def test_validation_raises_error_on_missing_subarch(self):
         arch = factory.make_name('arch')
         self.assertRaises(
-            ValidationError, factory.make_boot_resource, architecture=arch)
+            ValidationError, factory.make_BootResource, architecture=arch)
 
     def test_validation_raises_error_on_invalid_name_for_synced(self):
         name = factory.make_name('name')
@@ -331,7 +331,7 @@ class TestBootResource(MAASServerTestCase):
             name=name, architecture=arch)
         self.assertRaises(
             ValidationError,
-            factory.make_boot_resource,
+            factory.make_BootResource,
             rtype=BOOT_RESOURCE_TYPE.GENERATED, name=name, architecture=arch)
 
     def test_display_rtype(self):

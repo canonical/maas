@@ -231,7 +231,7 @@ class NodeTest(MAASServerTestCase):
         bad_hostname = '-_?!@*-'
         self.assertRaises(
             ValidationError,
-            factory.make_node, hostname=bad_hostname)
+            factory.make_Node, hostname=bad_hostname)
 
     def test_work_queue_returns_nodegroup_uuid(self):
         nodegroup = factory.make_NodeGroup()

@@ -353,7 +353,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_does_not_list_installation_results(self):
         self.client_log_in(as_admin=True)
-        factory.make_node_install_result()
+        factory.make_NodeResult_for_installing()
         content = self.request_page()
         self.assertIsNotNone(
             get_one(content.cssselect('#no_results')))

@@ -251,7 +251,7 @@ class TestNetwork(MAASServerTestCase):
 
     def test_reserved_vlan_tag_does_not_validate(self):
         error = self.assertRaises(
-            ValidationError, factory.make_network, vlan_tag=0xFFF)
+            ValidationError, factory.make_Network, vlan_tag=0xFFF)
         self.assertEqual(
             error.message_dict,
             {'vlan_tag': ["Cannot use reserved value 0xFFF."]})
@@ -260,12 +260,12 @@ class TestNetwork(MAASServerTestCase):
         out_of_range_msg = (
             "Value must be between 0x000 and 0xFFF (12 bits)")
         error = self.assertRaises(
-            ValidationError, factory.make_network, vlan_tag=0x1000)
+            ValidationError, factory.make_Network, vlan_tag=0x1000)
         self.assertEqual(
             error.message_dict, {'vlan_tag': [out_of_range_msg]})
 
         error = self.assertRaises(
-            ValidationError, factory.make_network, vlan_tag=-1)
+            ValidationError, factory.make_Network, vlan_tag=-1)
         self.assertEqual(
             error.message_dict, {'vlan_tag': [out_of_range_msg]})
 
@@ -276,7 +276,7 @@ class TestNetwork(MAASServerTestCase):
         tag = factory.make_vlan_tag(allow_none=False)
         factory.make_Network(vlan_tag=tag)
         error = self.assertRaises(
-            ValidationError, factory.make_network, vlan_tag=tag)
+            ValidationError, factory.make_Network, vlan_tag=tag)
         self.assertEqual(
             error.message_dict,
             {'vlan_tag': ['Network with this Vlan tag already exists.']})
@@ -322,11 +322,11 @@ class TestNetwork(MAASServerTestCase):
         self.assertEqual(name, factory.make_Network(name=name).name)
 
     def test_name_validation_disallows_special_characters(self):
-        self.assertRaises(ValidationError, factory.make_network, name='a/b')
-        self.assertRaises(ValidationError, factory.make_network, name='a@b')
-        self.assertRaises(ValidationError, factory.make_network, name='a?b')
-        self.assertRaises(ValidationError, factory.make_network, name='a\\b')
-        self.assertRaises(ValidationError, factory.make_network, name='a@b')
+        self.assertRaises(ValidationError, factory.make_Network, name='a/b')
+        self.assertRaises(ValidationError, factory.make_Network, name='a@b')
+        self.assertRaises(ValidationError, factory.make_Network, name='a?b')
+        self.assertRaises(ValidationError, factory.make_Network, name='a\\b')
+        self.assertRaises(ValidationError, factory.make_Network, name='a@b')
 
     def test_netmask_validation_accepts_netmask(self):
         netmask = '255.255.255.128'
@@ -338,30 +338,30 @@ class TestNetwork(MAASServerTestCase):
     def test_netmask_validation_does_not_allow_extreme_cases(self):
         ip = factory.getRandomIPAddress()
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=make_network(ip, '255.255.255.255'))
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=make_network(ip, '0.0.0.0'))
 
     def test_netmask_validation_does_not_allow_too_small_ipv6_netmask(self):
         ip = factory.make_ipv6_address()
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=make_network(
                 ip, 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'))
 
     def test_netmask_validation_does_not_allow_too_large_ipv6_netmask(self):
         ip = factory.make_ipv6_address()
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=make_network(
                 ip, '0000:0000:0000:0000:0000:0000:0000:0000'))
 
     def test_netmask_valid_doesnt_allow_short_allow_all_ipv6_netmask(self):
         ip = factory.make_ipv6_address()
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=make_network(ip, '::'))
 
     def test_netmask_validation_does_not_allow_mixed_zeroes_and_ones(self):
@@ -415,7 +415,7 @@ class TestNetwork(MAASServerTestCase):
     def test_disallows_identical_networks_with_same_netmask(self):
         existing_network = factory.make_Network()
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=existing_network.get_network())
 
     def test_unique_network_validation_check_doesnt_use_name(self):
@@ -429,20 +429,20 @@ class TestNetwork(MAASServerTestCase):
     def test_disallows_identical_networks_with_different_netmasks(self):
         factory.make_Network(network=IPNetwork('10.0.0.0/16'))
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=IPNetwork('10.0.0.0/8'))
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=IPNetwork('10.0.0.0/24'))
 
     def test_disallows_same_network_specified_using_different_addresses(self):
         factory.make_Network(network=IPNetwork('10.1.2.3/16'))
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=IPNetwork('10.1.0.0/16'))
 
     def test_disallows_nested_networks_with_different_base_addresses(self):
         factory.make_Network(network=IPNetwork('10.0.0.0/16'))
         self.assertRaises(
-            ValidationError, factory.make_network,
+            ValidationError, factory.make_Network,
             network=IPNetwork('10.0.1.0/24'))

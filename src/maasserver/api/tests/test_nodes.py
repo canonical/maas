@@ -57,7 +57,7 @@ class NodeHostnameTest(MultipleUsersScenarios,
                        MAASServerTestCase):
 
     scenarios = [
-        ('user', dict(userfactory=factory.make_user)),
+        ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 

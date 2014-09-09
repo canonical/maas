@@ -744,7 +744,7 @@ class Factory(maastesting.factory.Factory):
         """Create a `DownloadProgress` in some poorly-defined state.
 
         If you have specific wishes about the object's state, you'll want to
-        use one of the specialized `make_download_progress_*` methods instead.
+        use one of the specialized `make_DownloadProgress_*` methods instead.
 
         Pass a `size` of `None` to indicate that total file size is not yet
         known.  The default picks either a random number, or None.
@@ -778,15 +778,15 @@ class Factory(maastesting.factory.Factory):
 
     make_download_progress = make_DownloadProgress  # DEPRECATED
 
-    def make_download_progress_initial(self, nodegroup=None, filename=None,
-                                       size=NO_VALUE):
+    def make_DownloadProgress_initial(self, nodegroup=None, filename=None,
+                                      size=NO_VALUE):
         """Create a `DownloadProgress` as reported before a download."""
         return self.make_DownloadProgress(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=None, error='')
 
-    def make_download_progress_success(self, nodegroup=None, filename=None,
-                                       size=None):
+    def make_DownloadProgress_success(self, nodegroup=None, filename=None,
+                                      size=None):
         """Create a `DownloadProgress` indicating success."""
         if size is None:
             size = random.randint(0, 1000000000)
@@ -794,9 +794,9 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=size, error='')
 
-    def make_download_progress_incomplete(self, nodegroup=None, filename=None,
-                                          size=NO_VALUE,
-                                          bytes_downloaded=None):
+    def make_DownloadProgress_incomplete(self, nodegroup=None, filename=None,
+                                         size=NO_VALUE,
+                                         bytes_downloaded=None):
         """Create a `DownloadProgress` that's not done yet."""
         if size is NO_VALUE:
             if self.pick_bool():
@@ -814,13 +814,13 @@ class Factory(maastesting.factory.Factory):
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error='')
 
-    def make_download_progress_failure(self, nodegroup=None, filename=None,
-                                       size=NO_VALUE,
-                                       bytes_downloaded=NO_VALUE, error=None):
+    def make_DownloadProgress_failure(self, nodegroup=None, filename=None,
+                                      size=NO_VALUE,
+                                      bytes_downloaded=NO_VALUE, error=None):
         """Create a `DownloadProgress` indicating failure."""
         if error is None:
             error = self.make_string()
-        return self.make_download_progress_incomplete(
+        return self.make_DownloadProgress_incomplete(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded, error=error)
 

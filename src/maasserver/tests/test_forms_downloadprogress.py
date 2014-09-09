@@ -23,7 +23,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 class TestDownloadProgressForm(MAASServerTestCase):
 
     def test_updates_instance(self):
-        progress = factory.make_download_progress_incomplete(size=None)
+        progress = factory.make_DownloadProgress_incomplete(size=None)
         new_bytes_downloaded = progress.bytes_downloaded + 1
         size = progress.bytes_downloaded + 2
         error = factory.make_string()
@@ -50,7 +50,7 @@ class TestDownloadProgressForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
 
     def test_get_download_returns_ongoing_download(self):
-        progress = factory.make_download_progress_incomplete()
+        progress = factory.make_DownloadProgress_incomplete()
 
         self.assertEqual(
             progress,

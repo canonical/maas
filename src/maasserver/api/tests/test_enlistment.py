@@ -44,7 +44,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
     """Enlistment tests."""
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_user)),
+        ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 
@@ -348,7 +348,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
 
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_user)),
+        ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
 
@@ -448,7 +448,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
 
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
-        ('user', dict(userfactory=factory.make_user)),
+        ('user', dict(userfactory=factory.make_User)),
         ]
 
     def test_POST_non_admin_creates_node_in_declared_state(self):

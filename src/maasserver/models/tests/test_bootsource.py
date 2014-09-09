@@ -36,7 +36,7 @@ class TestBootSource(MAASServerTestCase):
     def test_url_is_unqiue(self):
         boot_source = factory.make_BootSource()
         self.assertRaises(
-            ValidationError, factory.make_boot_source, url=boot_source.url)
+            ValidationError, factory.make_BootSource, url=boot_source.url)
 
     def test_cannot_set_keyring_data_and_filename(self):
         # A BootSource cannot have both a keyring filename and keyring

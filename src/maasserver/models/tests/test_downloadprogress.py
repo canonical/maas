@@ -83,12 +83,12 @@ class TestDownloadProgress(MAASServerTestCase):
     def test_rejects_negative_size(self):
         self.assertRaises(
             ValidationError,
-            factory.make_download_progress, size=-1, bytes_downloaded=0)
+            factory.make_DownloadProgress, size=-1, bytes_downloaded=0)
 
     def test_rejects_negative_bytes_downloaded(self):
         self.assertRaises(
             ValidationError,
-            factory.make_download_progress, bytes_downloaded=-1)
+            factory.make_DownloadProgress, bytes_downloaded=-1)
 
     def test_accepts_zero_bytes_downloaded(self):
         progress = factory.make_DownloadProgress(bytes_downloaded=0)
@@ -103,9 +103,9 @@ class TestDownloadProgress(MAASServerTestCase):
     def test_rejects_bytes_downloaded_in_excess_of_size(self):
         self.assertRaises(
             ValidationError,
-            factory.make_download_progress, size=1000, bytes_downloaded=1001)
+            factory.make_DownloadProgress, size=1000, bytes_downloaded=1001)
 
     def test_accepts_any_bytes_downloaded_if_size_unknown(self):
-        progress = factory.make_download_progress_incomplete(size=None)
+        progress = factory.make_DownloadProgress_incomplete(size=None)
         self.assertIsNone(progress.size)
         self.assertGreater(progress.bytes_downloaded, 0)
