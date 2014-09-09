@@ -16,7 +16,6 @@ __all__ = [
     "CannotConfigureDHCP",
     "CannotCreateHostMap",
     "CannotRemoveHostMap",
-    "CannotStopDHCP",
     "MultipleFailures",
     "NoConnectionsAvailable",
     "NoSuchCluster",
@@ -77,10 +76,6 @@ class CannotCreateHostMap(Exception):
 
 class CannotRemoveHostMap(Exception):
     """The host map could not be removed."""
-
-
-class CannotStopDHCP(Exception):
-    """The DHCP server cannot be stopped."""
 
 
 class MultipleFailures(Exception):

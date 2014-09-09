@@ -38,29 +38,40 @@ from provisioningserver.rpc import (
     dhcp,
     exceptions,
     )
-from provisioningserver.rpc.exceptions import (
-    CannotConfigureDHCP,
-    CannotStopDHCP,
-    )
+from provisioningserver.rpc.exceptions import CannotConfigureDHCP
 from provisioningserver.utils.shell import ExternalProcessError
 
 
-class TestConfigureDHCPv6(MAASTestCase):
+class TestConfigureDHCP(MAASTestCase):
+
+    scenarios = (
+        ("DHCPv4", {
+            "server": dhcp.DHCPv4Server,
+            "configure": dhcp.configure_dhcpv4,
+        }),
+        ("DHCPv6", {
+            "server": dhcp.DHCPv6Server,
+            "configure": dhcp.configure_dhcpv6,
+        }),
+    )
 
     def patch_sudo_write_file(self):
-        return self.patch(dhcp, 'sudo_write_file')
+        return self.patch_autospec(dhcp, 'sudo_write_file')
 
-    def patch_restart_dhcpv6(self):
-        return self.patch(control, 'restart_dhcpv6')
+    def patch_server_restart(self):
+        return self.patch_autospec(self.server, 'restart')
+
+    def patch_server_stop(self):
+        return self.patch_autospec(self.server, 'stop')
 
     def patch_get_config(self):
-        return self.patch(dhcp, 'get_config')
+        return self.patch_autospec(dhcp, 'get_config')
 
     def test__extracts_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6()
+        self.patch_server_restart()
         subnets = [make_subnet_config() for _ in range(3)]
-        dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
+        self.configure(factory.make_name('key'), subnets)
         self.assertThat(
             write_file,
             MockCalledWith(
@@ -69,79 +80,77 @@ class TestConfigureDHCPv6(MAASTestCase):
 
     def test__eliminates_duplicate_interfaces(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6()
+        self.patch_server_restart()
         interface = factory.make_name('interface')
         subnets = [make_subnet_config() for _ in range(2)]
         for subnet in subnets:
             subnet['interface'] = interface
-        dhcp.configure_dhcpv6(factory.make_name('key'), subnets)
+        self.configure(factory.make_name('key'), subnets)
         self.assertThat(write_file, MockCalledWith(ANY, interface))
 
-    def test__composes_dhcpv6_config(self):
+    def test__composes_dhcp_config(self):
         self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6()
+        self.patch_server_restart()
         get_config = self.patch_get_config()
         omapi_key = factory.make_name('key')
         subnet = make_subnet_config()
-        dhcp.configure_dhcpv6(omapi_key, [subnet])
+        self.configure(omapi_key, [subnet])
         self.assertThat(
             get_config,
             MockCalledOnceWith(
-                'dhcpd6.conf.template', omapi_key=omapi_key,
+                self.server.template_basename, omapi_key=omapi_key,
                 dhcp_subnets=[subnet]))
 
-    def test__writes_dhcpv6_config(self):
+    def test__writes_dhcp_config(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6()
+        self.patch_server_restart()
 
         subnet = make_subnet_config()
         expected_config = factory.make_name('config')
         self.patch_get_config().return_value = expected_config
 
-        dhcp.configure_dhcpv6(factory.make_name('key'), [subnet])
+        self.configure(factory.make_name('key'), [subnet])
 
         self.assertThat(
             write_file,
-            MockAnyCall(dhcp.DHCPv6_CONFIG_FILE, expected_config))
+            MockAnyCall(self.server.config_filename, expected_config))
 
     def test__writes_interfaces_file(self):
         write_file = self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6()
-        dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
+        self.patch_server_restart()
+        self.configure(factory.make_name('key'), [make_subnet_config()])
         self.assertThat(
             write_file,
-            MockCalledWith(dhcp.DHCPv6_INTERFACES_FILE, ANY))
+            MockCalledWith(self.server.interfaces_filename, ANY))
 
-    def test__restarts_dhcpv6_server_if_subnets_defined(self):
+    def test__restarts_dhcp_server_if_subnets_defined(self):
         self.patch_sudo_write_file()
-        restart_dhcpv6 = self.patch_restart_dhcpv6()
-        dhcp.configure_dhcpv6(factory.make_name('key'), [make_subnet_config()])
-        self.assertThat(restart_dhcpv6, MockCalledWith())
+        restart_dhcp = self.patch_server_restart()
+        self.configure(factory.make_name('key'), [make_subnet_config()])
+        self.assertThat(restart_dhcp, MockCalledWith(ANY))
 
-    def test__stops_dhcpv6_server_if_no_subnets_defined(self):
+    def test__stops_dhcp_server_if_no_subnets_defined(self):
         self.patch_sudo_write_file()
-        restart_dhcpv6 = self.patch_restart_dhcpv6()
-        stop_dhcpv6 = self.patch(control, 'stop_dhcpv6')
-        dhcp.configure_dhcpv6(factory.make_name('key'), [])
-        self.assertThat(stop_dhcpv6, MockCalledWith())
-        self.assertThat(restart_dhcpv6, MockNotCalled())
+        restart_dhcp = self.patch_server_restart()
+        stop_dhcp = self.patch_server_stop()
+        self.configure(factory.make_name('key'), [])
+        self.assertThat(stop_dhcp, MockCalledWith(ANY))
+        self.assertThat(restart_dhcp, MockNotCalled())
 
     def test__converts_failure_writing_file_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file().side_effect = (
             ExternalProcessError(1, "sudo something"))
-        self.patch_restart_dhcpv6()
+        self.patch_server_restart()
         self.assertRaises(
-            exceptions.CannotConfigureDHCP,
-            dhcp.configure_dhcpv6,
+            exceptions.CannotConfigureDHCP, self.configure,
             factory.make_name('key'), [make_subnet_config()])
 
     def test__converts_dhcp_restart_failure_to_CannotConfigureDHCP(self):
         self.patch_sudo_write_file()
-        self.patch_restart_dhcpv6().side_effect = (
+        self.patch_server_restart().side_effect = (
             ExternalProcessError(1, "sudo something"))
         self.assertRaises(
-            exceptions.CannotConfigureDHCP,
-            dhcp.configure_dhcpv6,
+            exceptions.CannotConfigureDHCP, self.configure,
             factory.make_name('key'), [make_subnet_config()])
 
 
@@ -229,63 +238,69 @@ class TestRemoveHostMaps(MAASTestCase):
 
 
 class TestStopAndDisableDHCP(MAASTestCase):
-    """Test `stop_and_disable_dhcpv4` and `stop_and_disable_dhcpv6`."""
+    """Test how `DHCPServer` subclasses behave when given no subnets."""
 
     scenarios = (
         ("DHCPv4", {
+            "server": dhcp.DHCPv4Server,
             "stop_dhcp": (control, "stop_dhcpv4"),  # For patching.
-            "stop_and_disable_dhcp": dhcp.stop_and_disable_dhcpv4,
+            "expected_interfaces_file": dhcp.DHCPv4_INTERFACES_FILE,
             "expected_config_file": dhcp.DHCPv4_CONFIG_FILE,
         }),
         ("DHCPv6", {
+            "server": dhcp.DHCPv6Server,
             "stop_dhcp": (control, "stop_dhcpv6"),  # For patching.
-            "stop_and_disable_dhcp": dhcp.stop_and_disable_dhcpv6,
+            "expected_interfaces_file": dhcp.DHCPv6_INTERFACES_FILE,
             "expected_config_file": dhcp.DHCPv6_CONFIG_FILE,
         }),
     )
 
-    def test__writes_config_and_stops_dhcp_server(self):
+    def setUp(self):
+        super(TestStopAndDisableDHCP, self).setUp()
         # Avoid trying to actually write a file via sudo.
-        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
+        self.sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
         # Avoid trying to actually stop a live DHCP server.
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
+        self.stop_dhcp = self.patch_autospec(*self.stop_dhcp)
 
-        self.stop_and_disable_dhcp()
+    def test__writes_config_and_stops_dhcp_server(self):
+        omapi_key = factory.make_name('omapi-key')
+        server = self.server(omapi_key)
+        server.configure([])
 
-        self.assertThat(sudo_write_file, MockCalledOnceWith(
-            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
-        self.assertThat(stop_dhcp, MockCalledOnceWith())
+        self.assertThat(self.sudo_write_file, MockCallsMatch(
+            call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
+            call(self.expected_interfaces_file, ""),
+        ))
+        self.assertThat(self.stop_dhcp, MockCalledOnceWith())
 
     def test__raises_CannotConfigureDHCP_when_config_file_write_fails(self):
-        # Avoid trying to actually write a file via sudo.
-        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
-        # Avoid trying to actually stop a live DHCP server.
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-
         # Simulate a failure when writing the configuration file.
-        sudo_write_file.side_effect = ExternalProcessError(
+        self.sudo_write_file.side_effect = ExternalProcessError(
             randint(1, 99), [factory.make_name("command")],
             factory.make_name("stderr"))
 
-        self.assertRaises(CannotConfigureDHCP, self.stop_and_disable_dhcp)
+        omapi_key = factory.make_name('omapi-key')
+        server = self.server(omapi_key)
 
-        self.assertThat(sudo_write_file, MockCalledOnceWith(
+        self.assertRaises(CannotConfigureDHCP, server.configure, [])
+
+        self.assertThat(self.sudo_write_file, MockCalledOnceWith(
             self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
-        self.assertThat(stop_dhcp, MockNotCalled())
+        self.assertThat(self.stop_dhcp, MockNotCalled())
 
     def test__raises_CannotStopDHCP_when_stop_fails(self):
-        # Avoid trying to actually write a file via sudo.
-        sudo_write_file = self.patch_autospec(dhcp, "sudo_write_file")
-        # Avoid trying to actually stop a live DHCP server.
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-
         # Simulate a failure when stopping the DHCP server.
-        stop_dhcp.side_effect = ExternalProcessError(
+        self.stop_dhcp.side_effect = ExternalProcessError(
             randint(1, 99), [factory.make_name("command")],
             factory.make_name("stderr"))
 
-        self.assertRaises(CannotStopDHCP, self.stop_and_disable_dhcp)
+        omapi_key = factory.make_name('omapi-key')
+        server = self.server(omapi_key)
 
-        self.assertThat(sudo_write_file, MockCalledOnceWith(
-            self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
-        self.assertThat(stop_dhcp, MockCalledOnceWith())
+        self.assertRaises(CannotConfigureDHCP, server.configure, [])
+
+        self.assertThat(self.sudo_write_file, MockCallsMatch(
+            call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
+            call(self.expected_interfaces_file, ""),
+        ))
+        self.assertThat(self.stop_dhcp, MockCalledOnceWith())

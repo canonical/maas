@@ -41,11 +41,10 @@ from provisioningserver.rpc.boot_images import (
     )
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.dhcp import (
+    configure_dhcpv4,
     configure_dhcpv6,
     create_host_maps,
     remove_host_maps,
-    stop_and_disable_dhcpv4,
-    stop_and_disable_dhcpv6,
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.osystems import (
@@ -185,6 +184,11 @@ class Cluster(RPCProtocol):
             context=context)
         return {'state': state}
 
+    @cluster.ConfigureDHCPv4.responder
+    def configure_dhcpv4(self, omapi_key, subnet_configs):
+        configure_dhcpv4(omapi_key, subnet_configs)
+        return {}
+
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(self, omapi_key, subnet_configs):
         configure_dhcpv6(omapi_key, subnet_configs)
@@ -198,16 +202,6 @@ class Cluster(RPCProtocol):
     @cluster.RemoveHostMaps.responder
     def remove_host_maps(self, ip_addresses, shared_key):
         remove_host_maps(ip_addresses, shared_key)
-        return {}
-
-    @cluster.StopDHCPv4.responder
-    def stop_dhcpv4(self):
-        stop_and_disable_dhcpv4()
-        return {}
-
-    @cluster.StopDHCPv6.responder
-    def stop_dhcpv6(self):
-        stop_and_disable_dhcpv6()
         return {}
 
     @cluster.StartTimers.responder

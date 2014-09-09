@@ -13,12 +13,17 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "configure_dhcpv4",
     "configure_dhcpv6",
     "create_host_maps",
     "remove_host_maps",
-    "stop_and_disable_dhcpv4",
-    "stop_and_disable_dhcpv6",
 ]
+
+from abc import (
+    ABCMeta,
+    abstractmethod,
+    abstractproperty,
+    )
 
 from provisioningserver.dhcp import control
 from provisioningserver.dhcp.config import get_config
@@ -28,7 +33,6 @@ from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
     CannotRemoveHostMap,
-    CannotStopDHCP,
     )
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.shell import ExternalProcessError
@@ -48,56 +52,151 @@ DHCPv6_CONFIG_FILE = '/etc/maas/dhcpd6.conf'
 # Location of the DHCPv6 interfaces file.
 DHCPv6_INTERFACES_FILE = '/var/lib/maas/dhcpd6-interfaces'
 
+# Message to put in the DHCP config file when the DHCP server gets stopped.
+DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
 
-def configure_dhcpv6(omapi_key, subnet_configs):
-    """Configure the DHCPv6 server, and restart it as appropriate.
 
-    :param omapi_key: OMAPI secret key.
-    :param subnet_configs: List of dicts with subnet parameters for each
-        subnet for which the DHCP server should serve DHCPv6.  If no subnets
-        are defined, the DHCP server will be stopped.
+class DHCPServer:
+    """Represents the settings and controls for a DHCP server.
+
+    :cvar descriptive_name: A name to use for this server in human-readable
+        texts.
+    :cvar template_basename: The base filename for the template to use when
+        generating configuration for this server.
+    :cvar interfaces_filename: The full path and filename for the server's
+        interfaces file.
+    :cvar config_filename: The full path and filename for the server's
+        configuration file.
+    :ivar omapi_key: The OMAPI secret key for the server.
     """
 
-    interfaces = ' '.join(
-        sorted({subnet['interface'] for subnet in subnet_configs}))
-    dhcpd_config = get_config(
-        'dhcpd6.conf.template',
-        omapi_key=omapi_key, dhcp_subnets=subnet_configs)
-    try:
-        sudo_write_file(DHCPv6_CONFIG_FILE, dhcpd_config)
-        sudo_write_file(DHCPv6_INTERFACES_FILE, interfaces)
-    except ExternalProcessError as e:
-        # ExternalProcessError.__unicode__ contains a generic failure message
-        # as well as the command and its error output.  On the other hand,
-        # ExternalProcessError.output_as_unicode contains just the error
-        # output which is probably the best information on what went wrong.
-        # Log the full error information, but keep the exception message short
-        # and to the point.
-        maaslog.error(
-            "Could not rewrite DHCPv6 server configuration "
-            "(for network interfaces %s): %s",
-            ', '.join(interfaces), unicode(e))
-        raise CannotConfigureDHCP(
-            "Could not rewrite DHCPv6 server configuration: %s"
-            % e.output_as_unicode)
+    __metaclass__ = ABCMeta
 
-    if len(subnet_configs) == 0:
+    descriptive_name = abstractproperty()
+    template_basename = abstractproperty()
+    interfaces_filename = abstractproperty()
+    config_filename = abstractproperty()
+
+    def __init__(self, omapi_key):
+        super(DHCPServer, self).__init__()
+        self.omapi_key = omapi_key
+
+    @abstractmethod
+    def stop(self):
+        """Stop the DHCP server."""
+
+    @abstractmethod
+    def restart(self):
+        """Restart the DHCP server."""
+
+    def configure(self, subnet_configs):
+        """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
+
+        :param subnet_configs: List of dicts with subnet parameters for each
+            subnet for which the DHCP server should serve DHCP. If no subnets
+            are defined, the DHCP server will be stopped.
+        """
+        stopping = len(subnet_configs) == 0
+
+        if stopping:
+            dhcpd_config = DISABLED_DHCP_SERVER
+        else:
+            dhcpd_config = get_config(
+                self.template_basename, omapi_key=self.omapi_key,
+                dhcp_subnets=subnet_configs)
+
+        interfaces = {subnet['interface'] for subnet in subnet_configs}
+        interfaces_config = ' '.join(sorted(interfaces))
+
         try:
-            control.stop_dhcpv6()
+            sudo_write_file(self.config_filename, dhcpd_config)
+            sudo_write_file(self.interfaces_filename, interfaces_config)
         except ExternalProcessError as e:
-            maaslog.error("DHCPv6 server failed to stop: %s", unicode(e))
-            raise CannotConfigureDHCP(
-                "DHCPv6 server failed to stop: %s" % e.output_as_unicode)
-    else:
-        try:
-            control.restart_dhcpv6()
-        except ExternalProcessError as e:
+            # ExternalProcessError.__unicode__ contains a generic failure
+            # message as well as the command and its error output. On the
+            # other hand, ExternalProcessError.output_as_unicode contains just
+            # the error output which is probably the best information on what
+            # went wrong. Log the full error information, but keep the
+            # exception message short and to the point.
             maaslog.error(
-                "DHCPv6 server failed to restart "
-                "(for network interfaces %s): %s",
-                ', '.join(interfaces), unicode(e))
+                "Could not rewrite %s server configuration (for network "
+                "interfaces %s): %s", self.descriptive_name,
+                interfaces_config, unicode(e))
             raise CannotConfigureDHCP(
-                "DHCPv6 server failed to restart: %s" % e.output_as_unicode)
+                "Could not rewrite %s server configuration: %s" % (
+                    self.descriptive_name, e.output_as_unicode))
+
+        if stopping:
+            try:
+                self.stop()
+            except ExternalProcessError as e:
+                maaslog.error(
+                    "%s server failed to stop: %s", self.descriptive_name,
+                    unicode(e))
+                raise CannotConfigureDHCP(
+                    "%s server failed to stop: %s" % (
+                        self.descriptive_name, e.output_as_unicode))
+        else:
+            try:
+                self.restart()
+            except ExternalProcessError as e:
+                maaslog.error(
+                    "%s server failed to restart (for network interfaces "
+                    "%s): %s", self.descriptive_name, interfaces_config,
+                    unicode(e))
+                raise CannotConfigureDHCP(
+                    "%s server failed to restart: %s" % (
+                        self.descriptive_name, e.output_as_unicode))
+
+
+class DHCPv4Server(DHCPServer):
+    """Represents the settings and controls for a DHCPv4 server.
+
+    See `DHCPServer`.
+    """
+
+    descriptive_name = "DHCPv4"
+    template_basename = 'dhcpd.conf.template'
+    interfaces_filename = DHCPv4_INTERFACES_FILE
+    config_filename = DHCPv4_CONFIG_FILE
+
+    def stop(self):
+        """Stop the DHCPv4 server."""
+        control.stop_dhcpv4()
+
+    def restart(self):
+        """Restart the DHCPv4 server."""
+        control.restart_dhcpv4()
+
+
+class DHCPv6Server(DHCPServer):
+    """Represents the settings and controls for a DHCPv6 server.
+
+    See `DHCPServer`.
+    """
+
+    descriptive_name = "DHCPv6"
+    template_basename = 'dhcpd6.conf.template'
+    interfaces_filename = DHCPv6_INTERFACES_FILE
+    config_filename = DHCPv6_CONFIG_FILE
+
+    def stop(self):
+        """Stop the DHCPv6 server."""
+        control.stop_dhcpv6()
+
+    def restart(self):
+        """Restart the DHCPv6 server."""
+        control.restart_dhcpv6()
+
+
+def configure_dhcpv4(omapi_key, subnet_configs):
+    server = DHCPv4Server(omapi_key)
+    return server.configure(subnet_configs)
+
+
+def configure_dhcpv6(omapi_key, subnet_configs):
+    server = DHCPv6Server(omapi_key)
+    return server.configure(subnet_configs)
 
 
 def create_host_maps(mappings, shared_key):
@@ -139,48 +238,3 @@ def remove_host_maps(ip_addresses, shared_key):
                 ip_address, unicode(e))
             raise CannotRemoveHostMap("%s: %s" % (
                 ip_address, e.output_as_unicode))
-
-
-# Message to put in the DHCP config file when the DHCP server gets stopped.
-DISABLED_DHCP_SERVER = "# DHCP server stopped and disabled."
-
-
-def stop_and_disable_dhcp_server(config_file, stop_server):
-    """Write a blank config file and stop the DHCP server.
-
-    :param config_file: The configuration file to clear in order to disable
-        the server.
-    :param stop_server: The function to call to stop the server. It's expected
-        that this will, at worst, raise `ExternalProcessError`.
-    :raises: `CannotConfigureDHCP` if writing the configuration file fails.
-    :raises: `CannotStopDHCP` if stopping the DHCP server fails.
-    """
-    # Empty out the configuration file, leaving a message behind as to why.
-    # The empty config file avoids having outdated config lying around.
-    try:
-        sudo_write_file(config_file, DISABLED_DHCP_SERVER)
-    except ExternalProcessError as error:
-        raise CannotConfigureDHCP(unicode(error))
-    # Stop the server using the given function.
-    try:
-        stop_server()
-    except ExternalProcessError as error:
-        raise CannotStopDHCP(unicode(error))
-
-
-def stop_and_disable_dhcpv4():
-    """Stop the DHCPv4 server, and disable it to prevent accidental restarts.
-
-    See `stop_and_disable_dhcp_server`.
-    """
-    return stop_and_disable_dhcp_server(
-        DHCPv4_CONFIG_FILE, control.stop_dhcpv4)
-
-
-def stop_and_disable_dhcpv6():
-    """Stop the DHCPv6 server, and disable it to prevent accidental starts.
-
-    See `stop_and_disable_dhcp_server`.
-    """
-    return stop_and_disable_dhcp_server(
-        DHCPv6_CONFIG_FILE, control.stop_dhcpv6)

@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ConfigureDHCPv4",
     "ConfigureDHCPv6",
     "CreateHostMaps",
     "DescribePowerTypes",
@@ -27,8 +28,6 @@ __all__ = [
     "PowerOff",
     "PowerOn",
     "PowerQuery",
-    "StopDHCPv4",
-    "StopDHCPv6",
     "ValidateLicenseKey",
 ]
 
@@ -216,8 +215,8 @@ class PowerQuery(_Power):
     ]
 
 
-class ConfigureDHCPv6(amp.Command):
-    """Configure the DHCPv6 server, and restart it.
+class _ConfigureDHCP(amp.Command):
+    """Configure a DHCP server.
 
     :since: 1.7
     """
@@ -239,6 +238,20 @@ class ConfigureDHCPv6(amp.Command):
         ]
     response = []
     errors = {exceptions.CannotConfigureDHCP: b"CannotConfigureDHCP"}
+
+
+class ConfigureDHCPv4(_ConfigureDHCP):
+    """Configure the DHCPv4 server.
+
+    :since: 1.7
+    """
+
+
+class ConfigureDHCPv6(_ConfigureDHCP):
+    """Configure the DHCPv6 server.
+
+    :since: 1.7
+    """
 
 
 class CreateHostMaps(amp.Command):
@@ -275,34 +288,6 @@ class RemoveHostMaps(amp.Command):
     errors = {
         exceptions.CannotRemoveHostMap: (
             "CannotRemoveHostMap"),
-    }
-
-
-class StopDHCPv4(amp.Command):
-    """Stop (and disable) the DHCPv4 server.
-
-    :since: 1.7
-    """
-
-    arguments = []
-    response = []
-    errors = {
-        exceptions.CannotConfigureDHCP: "CannotConfigureDHCP",
-        exceptions.CannotStopDHCP: "CannotStopDHCP",
-    }
-
-
-class StopDHCPv6(amp.Command):
-    """Stop (and disable) the DHCPv6 server.
-
-    :since: 1.7
-    """
-
-    arguments = []
-    response = []
-    errors = {
-        exceptions.CannotConfigureDHCP: "CannotConfigureDHCP",
-        exceptions.CannotStopDHCP: "CannotStopDHCP",
     }
 
 

@@ -85,7 +85,6 @@ from provisioningserver.rpc.timers import (
     )
 from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,
     Equals,
@@ -989,40 +988,54 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         return d.addErrback(check)
 
 
-class TestClusterProtocol_ConfigureDHCPv6(MAASTestCase):
+class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
+
+    scenarios = (
+        ("DHCPv4", {
+            "configure": (clusterservice, "configure_dhcpv4"),
+            "command": cluster.ConfigureDHCPv4,
+            "make_network": factory.make_ipv4_network,
+        }),
+        ("DHCPv6", {
+            "configure": (clusterservice, "configure_dhcpv6"),
+            "command": cluster.ConfigureDHCPv6,
+            "make_network": factory.make_ipv6_network,
+        }),
+    )
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test__is_registered(self):
         self.assertIsNotNone(
-            Cluster().locateResponder(cluster.ConfigureDHCPv6.commandName))
+            Cluster().locateResponder(self.command.commandName))
 
     @inlineCallbacks
-    def test__executes_configure_dhcpv6(self):
-        configure_dhcpv6 = self.patch(clusterservice, 'configure_dhcpv6')
+    def test__executes_configure_dhcp(self):
+        configure_dhcp = self.patch_autospec(*self.configure)
         omapi_key = factory.make_name('key')
         subnet_configs = [make_subnet_config()]
 
-        yield call_responder(Cluster(), cluster.ConfigureDHCPv6, {
+        yield call_responder(Cluster(), self.command, {
             'omapi_key': omapi_key,
             'subnet_configs': subnet_configs,
             })
 
         self.assertThat(
-            configure_dhcpv6,
+            configure_dhcp,
             MockCalledOnceWith(omapi_key, subnet_configs))
 
     @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):
-        self.patch(clusterservice, 'configure_dhcpv6').side_effect = (
+        configure_dhcp = self.patch_autospec(*self.configure)
+        configure_dhcp.side_effect = (
             exceptions.CannotConfigureDHCP("Deliberate failure"))
         omapi_key = factory.make_name('key')
-        network = factory.make_ipv6_network()
+        network = self.make_network()
         ip_low, ip_high = factory.make_ip_range(network)
         subnet_configs = [make_subnet_config()]
 
         with ExpectedException(exceptions.CannotConfigureDHCP):
-            yield call_responder(Cluster(), cluster.ConfigureDHCPv6, {
+            yield call_responder(Cluster(), self.command, {
                 'omapi_key': omapi_key,
                 'subnet_configs': subnet_configs,
                 })
@@ -1078,43 +1091,6 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
                 ip_addresses, shared_key))
-
-
-class TestClusterProtocol_StopDHCP(MAASTestCase):
-
-    scenarios = (
-        ("DHCPv4", {
-            "stop_dhcp": (clusterservice, "stop_and_disable_dhcpv4"),
-            "command": cluster.StopDHCPv4,
-        }),
-        ("DHCPv6", {
-            "stop_dhcp": (clusterservice, "stop_and_disable_dhcpv6"),
-            "command": cluster.StopDHCPv6,
-        }),
-    )
-
-    def test__is_registered(self):
-        protocol = Cluster()
-        responder = protocol.locateResponder(self.command.commandName)
-        self.assertIsNot(responder, None)
-
-    def test__executes_stop_and_disable_dhcp(self):
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-        d = call_responder(Cluster(), self.command, {})
-        self.assertEqual({}, extract_result(d))
-        self.assertThat(stop_dhcp, MockCalledOnceWith())
-
-    def test__propagates_CannotConfigureDHCP(self):
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-        stop_dhcp.side_effect = exceptions.CannotConfigureDHCP()
-        d = call_responder(Cluster(), self.command, {})
-        self.assertRaises(exceptions.CannotConfigureDHCP, extract_result, d)
-
-    def test__propagates_CannotStopDHCP(self):
-        stop_dhcp = self.patch_autospec(*self.stop_dhcp)
-        stop_dhcp.side_effect = exceptions.CannotStopDHCP()
-        d = call_responder(Cluster(), self.command, {})
-        self.assertRaises(exceptions.CannotStopDHCP, extract_result, d)
 
 
 class TestClusterProtocol_StartTimers(MAASTestCase):
