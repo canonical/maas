@@ -80,14 +80,13 @@ class VirshSSH(pexpect.spawn):
             # it changes it will fail to login.
             self.sendline("yes")
             i = self.expect(self.PROMPTS)
-        elif i == self.I_PROMPT_PASSWORD:
+        if i == self.I_PROMPT_PASSWORD:
             # Requesting password, give it if available.
             if password is None:
                 self.close()
                 return False
             self.sendline(password)
             i = self.expect(self.PROMPTS)
-
         if i != self.I_PROMPT:
             # Something bad happened, either disconnect,
             # timeout, wrong password.
