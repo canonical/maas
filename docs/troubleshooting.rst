@@ -127,9 +127,9 @@ password to your images::
  sudo apt-get install --assume-yes bzr
  bzr branch lp:~maas-maintainers/maas/backdoor-image backdoor-image
 
- imgs=$(echo /var/lib/maas/boot-resources/*/*/*/*/*/root-image)
+ imgs=$(echo /var/lib/maas/boot-resources/*/*/*/*/*/*/root-image)
  for img in $imgs; do
-     [ -f "$img.dist" ] || cp -a --sparse=always $img $img.dist
+     [ -f "$img.dist" ] || sudo cp -a --sparse=always $img $img.dist
  done
 
  for img in $imgs; do
