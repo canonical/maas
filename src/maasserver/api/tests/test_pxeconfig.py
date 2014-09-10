@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 import json
 
+from crochet import TimeoutError
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
 from maasserver import (
@@ -26,10 +27,12 @@ from maasserver import (
 from maasserver.api import pxeconfig as pxeconfig_module
 from maasserver.api.pxeconfig import (
     find_nodegroup_for_pxeconfig_request,
+    get_boot_image,
     get_boot_purpose,
     )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    BOOT_RESOURCE_TYPE,
     NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -47,10 +50,12 @@ from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
+from mock import sentinel
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -60,12 +65,70 @@ from testtools.matchers import (
     )
 
 
+class TestGetBootImage(MAASServerTestCase):
+
+    def test__returns_None_when_connection_unavailable(self):
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').side_effect = NoConnectionsAvailable
+        self.assertEqual(
+            None,
+            get_boot_image(
+                sentinel.nodegroup, sentinel.osystem,
+                sentinel.architecture, sentinel.subarchitecture,
+                sentinel.series, sentinel.purpose))
+
+    def test__returns_None_when_timeout_error(self):
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').side_effect = TimeoutError
+        self.assertEqual(
+            None,
+            get_boot_image(
+                sentinel.nodegroup, sentinel.osystem,
+                sentinel.architecture, sentinel.subarchitecture,
+                sentinel.series, sentinel.purpose))
+
+    def test__returns_matching_image(self):
+        subarch = factory.make_name('subarch')
+        purpose = factory.make_name('purpose')
+        boot_image = make_rpc_boot_image(
+            subarchitecture=subarch, purpose=purpose)
+        other_images = [make_rpc_boot_image() for _ in range(3)]
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').return_value = other_images + [boot_image]
+        self.assertEqual(
+            boot_image,
+            get_boot_image(
+                sentinel.nodegroup, sentinel.osystem,
+                sentinel.architecture, subarch,
+                sentinel.series, purpose))
+
+    def test__returns_None_on_no_matching_image(self):
+        subarch = factory.make_name('subarch')
+        purpose = factory.make_name('purpose')
+        other_images = [make_rpc_boot_image() for _ in range(3)]
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').return_value = other_images
+        self.assertEqual(
+            None,
+            get_boot_image(
+                sentinel.nodegroup, sentinel.osystem,
+                sentinel.architecture, subarch,
+                sentinel.series, purpose))
+
+
 class TestPXEConfigAPI(MAASServerTestCase):
 
-    def get_default_params(self):
+    def get_default_params(self, nodegroup=None):
+        if nodegroup is None:
+            nodegroup = factory.make_NodeGroup()
         return {
             "local": factory.getRandomIPAddress(),
             "remote": factory.getRandomIPAddress(),
+            "cluster_uuid": nodegroup.uuid,
             }
 
     def get_mac_params(self):
@@ -81,8 +144,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         return json.loads(response.content)
 
     def test_pxeconfig_returns_json(self):
+        params = self.get_default_params()
         response = self.client.get(
-            reverse('pxeconfig'), self.get_default_params())
+            reverse('pxeconfig'), params)
         self.assertThat(
             (
                 response.status_code,
@@ -100,8 +164,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
             response)
 
     def test_pxeconfig_returns_all_kernel_parameters(self):
+        params = self.get_default_params()
         self.assertThat(
-            self.get_pxeconfig(),
+            self.get_pxeconfig(params),
             ContainsAll(KernelParameters._fields))
 
     def test_pxeconfig_returns_success_for_known_node(self):
@@ -117,11 +182,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_returns_success_for_detailed_but_unknown_node(self):
         architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
+        nodegroup = factory.make_NodeGroup()
         params = dict(
             self.get_default_params(),
             mac=factory.getRandomMACAddress(delimiter='-'),
             arch=arch,
-            subarch=subarch)
+            subarch=subarch,
+            cluster_uuid=nodegroup.uuid)
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.OK, response.status_code)
 
@@ -133,11 +200,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
         Config.objects.set_config("kernel_opts", value)
         architecture = make_usable_architecture(self)
         arch, subarch = architecture.split('/')
+        nodegroup = factory.make_NodeGroup()
         params = dict(
             self.get_default_params(),
             mac=factory.getRandomMACAddress(delimiter='-'),
             arch=arch,
-            subarch=subarch)
+            subarch=subarch,
+            cluster_uuid=nodegroup.uuid)
         response = self.client.get(reverse('pxeconfig'), params)
         response_dict = json.loads(response.content)
         self.assertEqual(value, response_dict['extra_opts'])
@@ -145,13 +214,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
     def test_pxeconfig_uses_present_boot_image(self):
         osystem = Config.objects.get_config('commissioning_osystem')
         release = Config.objects.get_config('commissioning_distro_series')
-        nodegroup = factory.make_NodeGroup()
-        factory.make_BootImage(
-            osystem=osystem,
-            architecture="amd64", release=release, nodegroup=nodegroup,
-            purpose="commissioning")
+        resource_name = '%s/%s' % (osystem, release)
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=resource_name, architecture='amd64/generic')
         params = self.get_default_params()
-        params['cluster_uuid'] = nodegroup.uuid
         params_out = self.get_pxeconfig(params)
         self.assertEqual("amd64", params_out["arch"])
 
@@ -161,17 +228,21 @@ class TestPXEConfigAPI(MAASServerTestCase):
         expected_arch = tuple(
             make_usable_architecture(
                 self, arch_name="i386", subarch_name="generic").split("/"))
-        params_out = self.get_pxeconfig()
+        params = self.get_default_params()
+        params_out = self.get_pxeconfig(params)
         observed_arch = params_out["arch"], params_out["subarch"]
         self.assertEqual(expected_arch, observed_arch)
 
     def test_pxeconfig_uses_fixed_hostname_for_enlisting_node(self):
-        self.assertEqual('maas-enlist', self.get_pxeconfig().get('hostname'))
+        params = self.get_default_params()
+        self.assertEqual(
+            'maas-enlist', self.get_pxeconfig(params).get('hostname'))
 
     def test_pxeconfig_uses_enlistment_domain_for_enlisting_node(self):
+        params = self.get_default_params()
         self.assertEqual(
             Config.objects.get_config('enlistment_domain'),
-            self.get_pxeconfig().get('domain'))
+            self.get_pxeconfig(params).get('domain'))
 
     def test_pxeconfig_splits_domain_from_node_hostname(self):
         host = factory.make_name('host')
@@ -225,6 +296,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
+        del params['cluster_uuid']
 
         # Simulate that the request originates from ip by setting
         # 'REMOTE_ADDR'.
@@ -246,6 +318,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
             maas_url=ng_url, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         params = self.get_default_params()
+        del params['cluster_uuid']
 
         # Simulate that the request originates from ip by setting
         # 'REMOTE_ADDR'.
@@ -346,8 +419,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.patch(
             pxeconfig_module, "get_boot_purpose"
             ).return_value = fake_boot_purpose
-        response = self.client.get(reverse('pxeconfig'),
-                                   self.get_default_params())
+        params = self.get_default_params()
+        response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             fake_boot_purpose,
             json.loads(response.content)["purpose"])
@@ -398,14 +471,20 @@ class TestPXEConfigAPI(MAASServerTestCase):
         osystem = 'ubuntu'
         release = Config.objects.get_config('default_distro_series')
         nodegroup = factory.make_NodeGroup()
-        boot_image = make_rpc_boot_image(purpose='install')
-        self.patch(
-            preseed_module, 'get_boot_images_for').return_value = [boot_image]
-        factory.make_BootImage(
-            osystem=osystem,
+        generic_image = make_rpc_boot_image(
+            osystem=osystem, release=release,
             architecture="amd64", subarchitecture="generic",
-            supported_subarches="hwe-s", release=release, nodegroup=nodegroup,
-            purpose="install")
+            purpose='install')
+        hwe_s_image = make_rpc_boot_image(
+            osystem=osystem, release=release,
+            architecture="amd64", subarchitecture="hwe-s",
+            purpose='install')
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [generic_image, hwe_s_image]
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').return_value = [generic_image, hwe_s_image]
         node = factory.make_Node(
             mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
             architecture="amd64/hwe-s")
@@ -416,4 +495,4 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params['subarch'] = "hwe-s"
 
         params_out = self.get_pxeconfig(params)
-        self.assertEqual("generic", params_out["subarch"])
+        self.assertEqual("hwe-s", params_out["subarch"])

@@ -19,17 +19,20 @@ __all__ = [
 
 import httplib
 
+from crochet import TimeoutError
 from django.http import HttpResponse
+from maasserver import logger
 from maasserver.api.utils import (
     get_mandatory_param,
     get_optional_param,
     )
+from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.enum import (
     NODE_STATUS,
     PRESEED_TYPE,
     )
 from maasserver.models import (
-    BootImage,
+    BootResource,
     Config,
     MACAddress,
     NodeGroup,
@@ -47,6 +50,7 @@ from maasserver.utils import (
     )
 from maasserver.utils.orm import get_one
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
 
 
@@ -110,6 +114,35 @@ def get_boot_purpose(node):
         return "poweroff"
 
 
+def get_boot_image(
+        nodegroup, osystem, architecture, subarchitecture, series, purpose):
+    """Obtain the first available boot image for this cluster for the given
+    osystem, architecture, subarchitecute, series, and purpose."""
+    try:
+        images = get_boot_images_for(
+            nodegroup, osystem, architecture, subarchitecture, series)
+    except (NoConnectionsAvailable, TimeoutError):
+        logger.error(
+            "Unable to identify boot image for (%s/%s/%s/%s/%s): "
+            "no RPC connection to cluster '%s'",
+            osystem, architecture, subarchitecture, series, purpose,
+            nodegroup.name)
+        return None
+    for image in images:
+        # get_boot_images_for returns all images that match the subarchitecure
+        # and its supporting subarches. Only want to return the image with
+        # the exact subarchitecture.
+        if (image['subarchitecture'] == subarchitecture and
+                image['purpose'] == purpose):
+            return image
+    logger.error(
+        "Unable to identify boot image for (%s/%s/%s/%s/%s): "
+        "cluster '%s' does not have matching boot image.",
+        osystem, architecture, subarchitecture, series, purpose,
+        nodegroup.name)
+    return None
+
+
 def pxeconfig(request):
     """Get the PXE configuration given a node's details.
 
@@ -168,15 +201,16 @@ def pxeconfig(request):
                 # to pxelinux.cfg/default-<arch>-<subarch> for arch detection.
                 return HttpResponse(status=httplib.NO_CONTENT)
             else:
-                # Look in BootImage for an image that actually exists for the
-                # current series. If nothing is found, fall back to i386 like
-                # we used to. LP #1181334
-                image = BootImage.objects.get_default_arch_image_in_nodegroup(
-                    nodegroup, osystem, series, purpose='commissioning')
-                if image is None:
+                # Look in BootResource for an resource that actually exists for
+                # the current series. If nothing is found, fall back to i386
+                # like we used to. LP #1181334
+                resource = (
+                    BootResource.objects.get_default_commissioning_resource(
+                        osystem, series))
+                if resource is None:
                     arch = 'i386'
                 else:
-                    arch = image.architecture
+                    arch, _ = resource.split_arch()
 
         subarch = get_optional_param(request.GET, 'subarch', 'generic')
 
@@ -191,7 +225,7 @@ def pxeconfig(request):
     # the criteria we've assembled above. If there is no latest image
     # (which should never happen in reality but may happen in tests), we
     # fall back to using 'no-such-image' as our default.
-    latest_image = BootImage.objects.get_latest_image(
+    latest_image = get_boot_image(
         nodegroup, osystem, arch, subarch, series, purpose)
     if latest_image is None:
         # XXX 2014-03-18 gmb bug=1294131:
@@ -201,13 +235,13 @@ def pxeconfig(request):
         #     ways.
         latest_label = 'no-such-image'
     else:
-        latest_label = latest_image.label
+        latest_label = latest_image['label']
         # subarch may be different from the request because newer images
         # support older hardware enablement, e.g. trusty/generic
         # supports trusty/hwe-s. We must override the subarch to the one
         # on the image otherwise the config path will be wrong if
         # get_latest_image() returned an image with a different subarch.
-        subarch = latest_image.subarchitecture
+        subarch = latest_image['subarchitecture']
     label = get_optional_param(request.GET, 'label', latest_label)
 
     if node is not None:

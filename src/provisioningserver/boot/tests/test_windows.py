@@ -15,11 +15,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import httplib
 import json
 import os
 import shutil
-import urllib2
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
@@ -40,7 +38,10 @@ from provisioningserver.boot.windows import (
 from provisioningserver.config import Config
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from tftp.backend import FilesystemReader
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    inlineCallbacks,
+    succeed,
+    )
 from twisted.python import context
 
 
@@ -158,22 +159,6 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         self.patch(windows_module, 'get_hivex_module')
         super(TestWindowsPXEBootMethod, self).setUp()
 
-    def test_get_page_sync(self):
-        data = [factory.make_name('response') for _ in range(3)]
-        mock_urlopen = self.patch(urllib2, 'urlopen')
-        mock_urlopen.return_value.getcode.return_value = httplib.OK
-        mock_urlopen.return_value.read.return_value = json.dumps(data)
-        method = WindowsPXEBootMethod()
-        expected = method.get_page_sync(None)
-        self.assertEqual(data, expected)
-
-    def test_get_page_sync_not_OK(self):
-        mock_urlopen = self.patch(urllib2, 'urlopen')
-        mock_urlopen.return_value.getcode.return_value = httplib.NOT_FOUND
-        method = WindowsPXEBootMethod()
-        expected = method.get_page_sync(None)
-        self.assertEqual(None, expected)
-
     def test_clean_path(self):
         method = WindowsPXEBootMethod()
         parts = [factory.make_string() for _ in range(3)]
@@ -194,11 +179,6 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         mock_mac = factory.getRandomMACAddress()
         mock_purpose = factory.make_name('install')
         mock_release = factory.make_name('release')
-        mock_get_page = self.patch(method, 'get_page_sync')
-        mock_get_page.return_value = {
-            'purpose': mock_purpose,
-            'release': mock_release,
-            }
         self.patch(windows_module, 'get_remote_mac').return_value = mock_mac
 
         cluster_uuid = factory.make_UUID()
@@ -208,6 +188,11 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         mock_backend = mock.MagicMock()
         mock_backend.get_cluster_uuid.return_value = factory.make_name('uuid')
         mock_backend.get_generator_url.return_value = factory.make_name('url')
+        mock_backend.get_page.return_value = succeed(
+            json.dumps({
+                'purpose': mock_purpose,
+                'release': mock_release,
+                }))
 
         call_context = {
             "local": (
@@ -221,13 +206,11 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         data = yield context.call(
             call_context, method.get_node_info, mock_backend)
 
-        self.assertThat(
-            mock_get_page,
-            MockCalledOnceWith(mock_backend.get_generator_url.return_value))
         self.assertEqual(mock_purpose, data['purpose'])
         self.assertEqual(mock_release, data['release'])
         self.assertEqual(mock_mac, data['mac'])
 
+    @inlineCallbacks
     def test_match_path_pxelinux(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
@@ -239,10 +222,11 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             'mac': mock_mac,
             }
 
-        params = method.match_path(None, 'pxelinux.0')
+        params = yield method.match_path(None, 'pxelinux.0')
         self.assertEqual(mock_mac, params['mac'])
         self.assertEqual(method.bootloader_path, params['path'])
 
+    @inlineCallbacks
     def test_match_path_pxelinux_only_on_install(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
@@ -254,9 +238,10 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             'mac': mock_mac,
             }
 
-        params = method.match_path(None, 'pxelinux.0')
+        params = yield method.match_path(None, 'pxelinux.0')
         self.assertEqual(params, None)
 
+    @inlineCallbacks
     def test_match_path_pxelinux_missing_hivex(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
@@ -269,9 +254,10 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             }
 
         self.patch(windows_module, 'HAVE_HIVEX', )
-        params = method.match_path(None, 'pxelinux.0')
+        params = yield method.match_path(None, 'pxelinux.0')
         self.assertEqual(params, None)
 
+    @inlineCallbacks
     def test_match_path_pxelinux_only_on_windows(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
@@ -283,35 +269,38 @@ class TestWindowsPXEBootMethod(MAASTestCase):
             'mac': mock_mac,
             }
 
-        params = method.match_path(None, 'pxelinux.0')
+        params = yield method.match_path(None, 'pxelinux.0')
         self.assertEqual(params, None)
 
+    @inlineCallbacks
     def test_match_path_pxelinux_get_node_info_None(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = None
 
-        params = method.match_path(None, 'pxelinux.0')
+        params = yield method.match_path(None, 'pxelinux.0')
         self.assertEqual(params, None)
 
+    @inlineCallbacks
     def test_match_path_static_file(self):
         method = WindowsPXEBootMethod()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(windows_module, 'get_remote_mac')
         mock_get_node_info.return_value = mock_mac
 
-        params = method.match_path(None, 'bootmgr.exe')
+        params = yield method.match_path(None, 'bootmgr.exe')
         self.assertEqual(mock_mac, params['mac'])
         self.assertEqual('bootmgr.exe', params['path'])
 
+    @inlineCallbacks
     def test_match_path_static_file_clean_path(self):
         method = WindowsPXEBootMethod()
         mock_mac = factory.getRandomMACAddress()
         mock_get_node_info = self.patch(windows_module, 'get_remote_mac')
         mock_get_node_info.return_value = mock_mac
 
-        params = method.match_path(None, '\\Boot\\BCD')
+        params = yield method.match_path(None, '\\Boot\\BCD')
         self.assertEqual(mock_mac, params['mac'])
         self.assertEqual('bcd', params['path'])
 

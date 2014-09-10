@@ -17,6 +17,7 @@ __all__ = [
     "TFTPService",
     ]
 
+from functools import partial
 import httplib
 import json
 from socket import (
@@ -46,6 +47,11 @@ from twisted.internet.abstract import isIPv6Address
 from twisted.internet.address import (
     IPv4Address,
     IPv6Address,
+    )
+from twisted.internet.defer import (
+    inlineCallbacks,
+    maybeDeferred,
+    returnValue,
     )
 from twisted.python.context import get
 from twisted.web.client import getPage
@@ -104,13 +110,14 @@ class TFTPBackend(FilesystemSynchronousBackend):
         # apiclient.utils.ascii_url() for inspiration.
         return url.geturl().encode("ascii")
 
+    @inlineCallbacks
     def get_boot_method(self, file_name):
         """Finds the correct boot method."""
         for _, method in BootMethodRegistry:
-            params = method.match_path(self, file_name)
+            params = yield maybeDeferred(method.match_path, self, file_name)
             if params is not None:
-                return method, params
-        return None, None
+                returnValue((method, params))
+        returnValue((None, None))
 
     @deferred
     def get_kernel_params(self, params):
@@ -166,14 +173,8 @@ class TFTPBackend(FilesystemSynchronousBackend):
             return failure
 
     @deferred
-    def get_reader(self, file_name):
-        """See `IBackend.get_reader()`.
-
-        If `file_name` matches a boot method then the response is obtained
-        from that boot method. Otherwise the filesystem is used to service
-        the response.
-        """
-        boot_method, params = self.get_boot_method(file_name)
+    def handle_boot_method(self, file_name, result):
+        boot_method, params = result
         if boot_method is None:
             return super(TFTPBackend, self).get_reader(file_name)
 
@@ -191,6 +192,18 @@ class TFTPBackend(FilesystemSynchronousBackend):
         params["remote"] = remote_host
         params["cluster_uuid"] = get_cluster_uuid()
         d = self.get_boot_method_reader(boot_method, params)
+        return d
+
+    @deferred
+    def get_reader(self, file_name):
+        """See `IBackend.get_reader()`.
+
+        If `file_name` matches a boot method then the response is obtained
+        from that boot method. Otherwise the filesystem is used to service
+        the response.
+        """
+        d = self.get_boot_method(file_name)
+        d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.get_page_errback, file_name)
         return d
 

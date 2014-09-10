@@ -17,13 +17,11 @@ __all__ = [
     'WindowsPXEBootMethod',
     ]
 
-import httplib
 import json
 import os.path
 import re
 import shutil
 import sys
-import urllib2
 
 from provisioningserver.boot import (
     BootMethod,
@@ -34,7 +32,12 @@ from provisioningserver.boot import (
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
 from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.twisted import deferred
 from tftp.backend import FilesystemReader
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
 from twisted.python.context import get
 from twisted.python.filepath import FilePath
 
@@ -167,14 +170,7 @@ class WindowsPXEBootMethod(BootMethod):
     bootloader_path = "pxeboot.0"
     arch_octet = None
 
-    def get_page_sync(self, url):
-        """Make url request synchronous, instead of twisted getPage async."""
-        request = urllib2.urlopen(url)
-        code = request.getcode()
-        if code != httplib.OK:
-            return None
-        return json.loads(request.read())
-
+    @deferred
     def get_node_info(self, backend):
         """Gets node information from the backend."""
         local_host, local_port = get("local", (None, None))
@@ -189,12 +185,16 @@ class WindowsPXEBootMethod(BootMethod):
             }
 
         url = backend.get_generator_url(params)
-        data = self.get_page_sync(url)
-        if data is None:
-            return None
 
-        data['mac'] = remote_mac
-        return data
+        def set_remote_mac(data):
+            if data is not None:
+                data['mac'] = remote_mac
+            return data
+
+        d = backend.get_page(url)
+        d.addCallback(json.loads)
+        d.addCallback(set_remote_mac)
+        return d
 
     def clean_path(self, path):
         """Converts Windows path into a unix path and strips the
@@ -205,6 +205,7 @@ class WindowsPXEBootMethod(BootMethod):
             path = path[6:]
         return path
 
+    @inlineCallbacks
     def match_path(self, backend, path):
         """Checks path to see if the boot method should handle
         the requested file.
@@ -217,15 +218,15 @@ class WindowsPXEBootMethod(BootMethod):
         # need to see if this node is set to boot Windows first.
         local_host, local_port = get("local", (None, None))
         if path == 'pxelinux.0':
-            data = self.get_node_info(backend)
+            data = yield self.get_node_info(backend)
             if data is None:
-                return None
+                returnValue(None)
 
             # Only provide the Windows bootloader when installing
             # PXELINUX chainloading will work for the rest of the time.
             purpose = data.get('purpose')
             if purpose != 'install':
-                return None
+                returnValue(None)
 
             osystem = data.get('osystem')
             if osystem == 'windows':
@@ -233,19 +234,19 @@ class WindowsPXEBootMethod(BootMethod):
                 if get_hivex_module() is None:
                     raise BootMethodError('python-hivex package is missing.')
 
-                return {
+                returnValue({
                     'mac': data.get('mac'),
                     'path': self.bootloader_path,
                     'local_host': local_host,
-                    }
+                    })
         # Fix the paths for the other static files, Windows requests.
         elif path.lower() in STATIC_FILES:
-            return {
+            returnValue({
                 'mac': get_remote_mac(),
                 'path': self.clean_path(path),
                 'local_host': local_host,
-                }
-        return None
+                })
+        returnValue(None)
 
     def get_reader(self, backend, kernel_params, **extra):
         """Render a configuration file as a unicode string.
