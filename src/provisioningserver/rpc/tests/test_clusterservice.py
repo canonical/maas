@@ -1175,3 +1175,82 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
                 poweraddr, None))
+
+
+class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.AddSeaMicro15k.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__calls_find_ip_via_arp(self):
+        # Prevent any actual probing from happing.
+        self.patch_autospec(
+            clusterservice, 'probe_seamicro15k_and_enlist')
+        find_ip_via_arp = self.patch_autospec(
+            clusterservice, 'find_ip_via_arp')
+        find_ip_via_arp.return_value = factory.getRandomIPAddress()
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        call_responder(Cluster(), cluster.AddSeaMicro15k, {
+            "mac": mac,
+            "username": username,
+            "password": password,
+            "power_control": power_control
+            })
+
+        self.assertThat(
+            find_ip_via_arp, MockCalledOnceWith(mac))
+
+    @inlineCallbacks
+    def test__raises_and_logs_warning_if_no_ip_found_for_mac(self):
+        maaslog = self.patch(clusterservice, 'maaslog')
+        find_ip_via_arp = self.patch_autospec(
+            clusterservice, 'find_ip_via_arp')
+        find_ip_via_arp.return_value = None
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+
+        with ExpectedException(exceptions.NoIPFoundForMACAddress):
+            yield call_responder(Cluster(), cluster.AddSeaMicro15k, {
+                "mac": mac,
+                "username": username,
+                "password": password,
+                "power_control": power_control
+                })
+
+        self.assertThat(
+            maaslog.warning,
+            MockCalledOnceWith(
+                "Couldn't find IP address for MAC %s" % mac))
+
+    def test__calls_probe_seamicro15k_and_enlist(self):
+        probe_seamicro15k_and_enlist = self.patch_autospec(
+            clusterservice, 'probe_seamicro15k_and_enlist')
+        find_ip_via_arp = self.patch_autospec(
+            clusterservice, 'find_ip_via_arp')
+        find_ip_via_arp.return_value = factory.getRandomIPAddress()
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        call_responder(Cluster(), cluster.AddSeaMicro15k, {
+            "mac": mac,
+            "username": username,
+            "password": password,
+            "power_control": power_control
+            })
+
+        self.assertThat(
+            probe_seamicro15k_and_enlist, MockCalledOnceWith(
+                find_ip_via_arp.return_value, username, password,
+                power_control=power_control))

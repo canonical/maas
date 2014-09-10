@@ -39,12 +39,12 @@ from piston.models import (
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
+    AddSeaMicro15k,
     AddVirsh,
     ImportBootImages,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tasks import (
-    add_seamicro15k,
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
     )
@@ -262,15 +262,30 @@ class NodeGroup(TimestampedModel):
         :param password: password for power controller
         :param power_control: optional specify the power control method,
             either ipmi (default), restapi, or restapi2.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
         """
-        args = (mac, username, password, power_control)
-        add_seamicro15k.apply_async(queue=self.uuid, args=args)
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                AddSeaMicro15k, mac=mac, username=username,
+                password=password, power_control=power_control)
 
     def add_virsh(self, poweraddr, password=None):
         """ Add all of the virtual machines inside a virsh controller.
 
         :param poweraddr: virsh connection string
         :param password: ssh password
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
         """
         try:
             client = getClientFor(self.uuid, timeout=1)

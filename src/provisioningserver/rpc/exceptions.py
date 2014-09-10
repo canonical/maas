@@ -97,3 +97,7 @@ class MultipleFailures(Exception):
 
 class NodeAlreadyExists(Exception):
     """A node already exists with a given MAC address."""
+
+
+class NoIPFoundForMACAddress(Exception):
+    """No IP was found for a given MAC address."""

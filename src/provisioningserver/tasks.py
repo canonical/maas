@@ -52,13 +52,9 @@ from provisioningserver.dns.config import (
     setup_rndc,
     )
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
-from provisioningserver.drivers.hardware.seamicro import (
-    probe_seamicro15k_and_enlist,
-    )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import sudo_write_file
-from provisioningserver.utils.network import find_ip_via_arp
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -388,20 +384,6 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
 # =====================================================================
 # Custom hardware tasks
 # =====================================================================
-
-@task
-@log_task_events()
-@log_exception_text
-def add_seamicro15k(mac, username, password, power_control=None):
-    """ See `maasserver.api.NodeGroup.add_seamicro15k`. """
-    ip = find_ip_via_arp(mac)
-    if ip is not None:
-        probe_seamicro15k_and_enlist(
-            ip, username, password,
-            power_control=power_control)
-    else:
-        maaslog.warning("Couldn't find IP address for MAC %s" % mac)
-
 
 @task
 @log_task_events()

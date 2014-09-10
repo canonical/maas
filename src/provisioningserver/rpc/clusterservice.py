@@ -29,7 +29,11 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.drivers.hardware.seamicro import (
+    probe_seamicro15k_and_enlist,
+    )
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
+from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -61,6 +65,7 @@ from provisioningserver.rpc.timers import (
     cancel_timer,
     start_timers,
     )
+from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.endpoints import (
@@ -72,6 +77,9 @@ from twisted.protocols import amp
 from twisted.python import log
 from twisted.web.client import getPage
 from zope.interface import implementer
+
+
+maaslog = get_maas_logger("rpc.cluster")
 
 
 class Cluster(RPCProtocol):
@@ -239,6 +247,24 @@ class Cluster(RPCProtocol):
         Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
         """
         probe_virsh_and_enlist(poweraddr, password)
+        return {}
+
+    @cluster.AddSeaMicro15k.responder
+    def add_seamicro15k(self, mac, username, password, power_control=None):
+        """add_virsh()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.AddSeaMicro15k`.
+        """
+        ip = find_ip_via_arp(mac)
+        if ip is not None:
+            probe_seamicro15k_and_enlist(
+                ip, username, password,
+                power_control=power_control)
+        else:
+            message = "Couldn't find IP address for MAC %s" % mac
+            maaslog.warning(message)
+            raise exceptions.NoIPFoundForMACAddress(message)
         return {}
 
 

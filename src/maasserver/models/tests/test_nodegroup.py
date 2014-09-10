@@ -47,6 +47,7 @@ from mock import (
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
+    AddSeaMicro15k,
     AddVirsh,
     ImportBootImages,
     )
@@ -459,3 +460,56 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_virsh, poweraddr,
             password)
+
+    def test_add_seamicro15k_end_to_end(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, AddSeaMicro15k)
+        protocol.AddSeaMicro15k.return_value = defer.succeed({})
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        nodegroup.add_seamicro15k(
+            mac, username, password, power_control).wait(10)
+
+        self.expectThat(
+            protocol.AddSeaMicro15k,
+            MockCalledOnceWith(
+                ANY, mac=mac, username=username, password=password,
+                power_control=power_control))
+
+    def test_add_seamicro15k_calls_client_with_resource_endpoint(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        nodegroup.add_seamicro15k(
+            mac, username, password, power_control)
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddSeaMicro15k, mac=mac, username=username,
+                password=password, power_control=power_control))
+
+    def test_add_seamicro15k_raises_if_no_connection_to_cluster(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        nodegroup = factory.make_NodeGroup()
+
+        mac = factory.getRandomMACAddress()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        self.assertRaises(
+            NoConnectionsAvailable, nodegroup.add_seamicro15k,
+            mac, username, password, power_control)

@@ -360,3 +360,20 @@ class AddVirsh(amp.Command):
     ]
     response = []
     errors = []
+
+
+class AddSeaMicro15k(amp.Command):
+    """Probe for and enlist seamicro15k machines attached to the cluster.
+
+    :since: 1.7
+    """
+    arguments = [
+        (b"mac", amp.Unicode()),
+        (b"username", amp.Unicode()),
+        (b"password", amp.Unicode()),
+        (b"power_control", amp.Unicode(optional=True)),
+    ]
+    response = []
+    errors = {
+        exceptions.NoIPFoundForMACAddress: b"NoIPFoundForMACAddress",
+    }
