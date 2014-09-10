@@ -28,7 +28,6 @@ from apiclient.testing.credentials import make_api_credentials
 import celery
 from celery import states
 from celery.app import app_or_default
-from celery.task import Task
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import (
@@ -62,16 +61,11 @@ from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     )
-from provisioningserver.import_images import boot_resources
-from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
-    import_boot_images,
     Omshell,
-    power_off,
-    power_on,
     refresh_secrets,
     remove_dhcp_host_map,
     report_boot_images,
@@ -88,12 +82,8 @@ from provisioningserver.tasks import (
     write_full_dns_config,
     )
 from provisioningserver.testing.boot_images import make_boot_image_params
-from provisioningserver.testing.config import (
-    BootSourcesFixture,
-    set_tftp_root,
-    )
+from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.utils import filter_dict
 import provisioningserver.utils.fs as fs_module
 from provisioningserver.utils.shell import ExternalProcessError
 from testresources import FixtureResource
@@ -103,10 +93,6 @@ from testtools.matchers import (
     FileExists,
     MatchesListwise,
     )
-
-# An arbitrary MAC address.  Not using a properly random one here since
-# we might accidentally affect real machines on the network.
-arbitrary_mac = "AA:BB:CC:DD:EE:FF"
 
 
 celery_config = app_or_default().conf
@@ -140,30 +126,6 @@ class TestRefreshSecrets(PservTestCase):
         nodegroup_uuid = factory.make_name('nodegroupuuid')
         refresh_secrets(nodegroup_uuid=nodegroup_uuid)
         self.assertEqual(nodegroup_uuid, cache.cache.get('nodegroup_uuid'))
-
-
-class TestPowerTasks(PservTestCase):
-
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
-
-    def test_ether_wake_power_on_with_not_enough_template_args(self):
-        # In eager test mode the assertion is raised immediately rather
-        # than being stored in the AsyncResult, so we need to test for
-        # that instead of using result.get().
-        self.assertRaises(
-            PowerActionFail, power_on.delay, "ether_wake")
-
-    def test_ether_wake_power_on(self):
-        result = power_on.delay(
-            "ether_wake", mac_address=arbitrary_mac)
-        self.assertTrue(result.successful())
-
-    def test_ether_wake_does_not_support_power_off(self):
-        self.assertRaises(
-            PowerActionFail, power_off.delay,
-            "ether_wake", mac=arbitrary_mac)
 
 
 class TestDHCPTasks(PservTestCase):
@@ -535,89 +497,6 @@ class TestTagTasks(PservTestCase):
         self.assertRaises(
             MissingCredentials, update_node_tags.delay, tag,
             '//node', tag_nsmap=None, retry=True)
-
-
-class TestImportBootImages(PservTestCase):
-
-    def make_archive_url(self, name=None):
-        if name is None:
-            name = factory.make_name('archive')
-        return 'http://%s.example.com/%s' % (name, factory.make_name('path'))
-
-    def patch_boot_resources_function(self):
-        """Patch out `boot_resources.import_images`.
-
-        Returns the installed fake.  After the fake has been called, but not
-        before, its `env` attribute will have a copy of the environment dict.
-        """
-
-        class CaptureEnv:
-            """Fake function; records a copy of the environment."""
-
-            def __call__(self, *args, **kwargs):
-                self.args = args
-                self.env = os.environ.copy()
-
-        return self.patch(boot_resources, 'import_images', CaptureEnv())
-
-    def test_import_boot_images_integrates_with_boot_resources_function(self):
-        # If the config specifies no sources, nothing will be imported.  But
-        # the task succeeds without errors.
-        fixture = self.useFixture(BootSourcesFixture([]))
-        self.patch(boot_resources, 'logger')
-        self.patch(boot_resources, 'locate_config').return_value = (
-            fixture.filename)
-        import_boot_images(sources=[])
-        self.assertIsInstance(import_boot_images, Task)
-
-    def test_import_boot_images_sets_GPGHOME(self):
-        home = self.make_dir()
-        self.patch(tasks, 'get_maas_user_gpghome').return_value = home
-        fake = self.patch_boot_resources_function()
-        import_boot_images(sources=[])
-        self.assertEqual(home, fake.env['GNUPGHOME'])
-
-    def test_import_boot_images_sets_proxy_if_given(self):
-        proxy = 'http://%s.example.com' % factory.make_name('proxy')
-        proxy_vars = ['http_proxy', 'https_proxy']
-        fake = self.patch_boot_resources_function()
-        import_boot_images(sources=[], http_proxy=proxy)
-        self.assertEqual(
-            {
-                var: proxy
-                for var in proxy_vars
-            },
-            filter_dict(fake.env, proxy_vars))
-
-    def test_import_boot_images_leaves_proxy_unchanged_if_not_given(self):
-        proxy_vars = ['http_proxy', 'https_proxy']
-        fake = self.patch_boot_resources_function()
-        import_boot_images(sources=[])
-        self.assertEqual({}, filter_dict(fake.env, proxy_vars))
-
-    def test_import_boot_images_calls_callback(self):
-        self.patch_boot_resources_function()
-        mock_callback = Mock()
-        import_boot_images(sources=[], callback=mock_callback)
-        self.assertThat(mock_callback.delay, MockCalledOnceWith())
-
-    def test_import_boot_images_accepts_sources_parameter(self):
-        fake = self.patch(boot_resources, 'import_images')
-        sources = [
-            {
-                'path': "http://example.com",
-                'selections': [
-                    {
-                        'release': "trusty",
-                        'arches': ["amd64"],
-                        'subarches': ["generic"],
-                        'labels': ["release"]
-                    },
-                ],
-            },
-        ]
-        import_boot_images(sources=sources)
-        self.assertThat(fake, MockCalledOnceWith(sources))
 
 
 class TestAddUCSM(PservTestCase):

@@ -51,10 +51,6 @@ class TestListBootImages(PservTestCase):
 
 class TestRunImport(PservTestCase):
 
-    # Cargo-culted from src/provisioningserver/tests/test_tasks.py
-    # At some point the celery task will go away and the previous code can
-    # simply be deleted.
-
     def make_archive_url(self, name=None):
         if name is None:
             name = factory.make_name('archive')

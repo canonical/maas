@@ -13,8 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'power_off',
-    'power_on',
     'refresh_secrets',
     'report_boot_images',
     'rndc_command',
@@ -27,7 +25,6 @@ __all__ = [
     'write_full_dns_config',
     ]
 
-from base64 import b64decode
 from functools import wraps
 import logging
 from subprocess import CalledProcessError
@@ -39,7 +36,6 @@ from provisioningserver import (
     tags,
     )
 from provisioningserver.auth import (
-    get_maas_user_gpghome,
     record_api_credentials,
     record_nodegroup_uuid,
     )
@@ -61,11 +57,7 @@ from provisioningserver.drivers.hardware.seamicro import (
     )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
-from provisioningserver.import_images import boot_resources
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.power.poweraction import PowerAction
-from provisioningserver.utils import warn_deprecated
-from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.network import find_ip_via_arp
 
@@ -163,39 +155,6 @@ def refresh_secrets(**kwargs):
     for key, value in kwargs.items():
         assert key in refresh_functions, "Unknown refresh item: %s" % key
         refresh_functions[key](value)
-
-
-# =====================================================================
-# Power-related tasks
-# =====================================================================
-
-
-@task
-@log_task_events()
-@log_exception_text
-def power_on(power_type, **kwargs):
-    """Turn a node on.
-
-    :deprecated: Use the RPC command
-        :py:class:`~provisioningserver.rpc.cluster.PowerOn` instead.
-    """
-    warn_deprecated("use the PowerOn RPC command instead.")
-    pa = PowerAction(power_type)
-    pa.execute(power_change='on', **kwargs)
-
-
-@task
-@log_task_events()
-@log_exception_text
-def power_off(power_type, **kwargs):
-    """Turn a node off.
-
-    :deprecated: Use the RPC command
-        :py:class:`~provisioningserver.rpc.cluster.PowerOff` instead.
-    """
-    warn_deprecated("use the PowerOff RPC command instead.")
-    pa = PowerAction(power_type)
-    pa.execute(power_change='off', **kwargs)
 
 
 # =====================================================================
@@ -425,31 +384,6 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
                 exc=exc, countdown=UPDATE_NODE_TAGS_RETRY_DELAY)
         else:
             raise
-
-
-# =====================================================================
-# Image importing-related tasks
-# =====================================================================
-
-@task
-@log_task_events()
-@log_exception_text
-def import_boot_images(sources, http_proxy=None, callback=None):
-    for source in sources:
-        # Decode any b64 keyring data to bytes.
-        data = source.get("keyring_data")
-        if data is not None:
-            source["keyring_data"] = b64decode(data)
-    variables = {
-        'GNUPGHOME': get_maas_user_gpghome(),
-        }
-    if http_proxy is not None:
-        variables['http_proxy'] = http_proxy
-        variables['https_proxy'] = http_proxy
-    with environment_variables(variables):
-        boot_resources.import_images(sources)
-    if callback is not None:
-        callback.delay()
 
 
 # =====================================================================
