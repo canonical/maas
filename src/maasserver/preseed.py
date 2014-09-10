@@ -27,8 +27,11 @@ from pipes import quote
 from urllib import urlencode
 from urlparse import urlparse
 
+from crochet import TimeoutError
 from curtin.pack import pack_install
 from django.conf import settings
+from maasserver import logger
+from maasserver.clusterrpc.boot_images import get_boot_images_for
 from maasserver.compose_preseed import (
     compose_cloud_init_preseed,
     compose_preseed,
@@ -40,9 +43,12 @@ from maasserver.enum import (
     PRESEED_TYPE,
     USERDATA_TYPE,
     )
-from maasserver.exceptions import MAASAPIException
+from maasserver.exceptions import (
+    ClusterUnavailable,
+    MissingBootImage,
+    PreseedError,
+    )
 from maasserver.models import (
-    BootImage,
     Config,
     DHCPLease,
     )
@@ -52,6 +58,7 @@ from maasserver.utils import absolute_reverse
 from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import compose_URL
 import tempita
 
@@ -93,39 +100,55 @@ def get_curtin_userdata(node):
     return pack_install(configs=[config], args=[installer_url])
 
 
+def get_curtin_image(node):
+    """Return boot image that supports 'xinstall' for the given node."""
+    osystem = node.get_osystem()
+    series = node.get_distro_series()
+    arch, subarch = node.split_arch()
+    try:
+        images = get_boot_images_for(
+            node.nodegroup, osystem, arch, subarch, series)
+    except (NoConnectionsAvailable, TimeoutError):
+        logger.error(
+            "Unable to get RPC connection for cluster '%s'",
+            node.nodegroup.name)
+        raise ClusterUnavailable(
+            "Unable to get RPC connection for cluster '%s'" % (
+                node.nodegroup.name))
+    for image in images:
+        if image['purpose'] == 'xinstall':
+            return image
+    raise MissingBootImage(
+        "Error generating the URL of curtin's image file.  "
+        "No image could be found for the given selection: "
+        "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall." % (
+            osystem,
+            arch,
+            subarch,
+            series,
+        ))
+
+
 def get_curtin_installer_url(node):
     """Return the URL where curtin on the node can download its installer."""
     osystem = node.get_osystem()
     series = node.get_distro_series()
+    arch, subarch = node.architecture.split('/')
     cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
-    arch, subarch = node.architecture.split('/')
-    purpose = 'xinstall'
-    image = BootImage.objects.get_latest_image(
-        node.nodegroup, osystem, arch, subarch, series, purpose)
-    if image is None:
-        raise MAASAPIException(
-            "Error generating the URL of curtin's image file.  "
-            "No image could be found for the given selection: "
-            "os=%s, arch=%s, subarch=%s, series=%s, purpose=%s." % (
-                osystem,
-                arch,
-                subarch,
-                series,
-                purpose
-            ))
-    if image.xinstall_type == 'tgz':
+    image = get_curtin_image(node)
+    if image['xinstall_type'] == 'tgz':
         url_prepend = ''
     else:
-        url_prepend = '%s:' % image.xinstall_type
+        url_prepend = '%s:' % image['xinstall_type']
     dyn_uri = '/'.join([
         osystem,
         arch,
         subarch,
         series,
-        image.label,
-        image.xinstall_path,
+        image['label'],
+        image['xinstall_path'],
         ])
     url = compose_URL(
         'http:///MAAS/static/images/%s' % dyn_uri, cluster_host)
@@ -168,39 +191,65 @@ def get_curtin_context(node):
     }
 
 
-def get_preseed_type_for(node):
-    """Returns the preseed type for the node.
-
-    This is determined using tags and what the booting operating system
-    supports. If the node is to boot using fast-path installer, but there is
-    no boot image that supports this method then the default installer will
-    be used. If the node is to boot using the default installer but there is
-    no boot image that supports that method then it will boot using the
-    fast-path installer.
-    """
-    if node.status == NODE_STATUS.COMMISSIONING:
-        return PRESEED_TYPE.COMMISSIONING
+def get_supported_purposes_for_node(node):
+    """Return all purposes the node currently supports based on its
+    os, architecture, and series."""
     os_name = node.get_osystem()
     series = node.get_distro_series()
     arch, subarch = node.split_arch()
+    try:
+        images = get_boot_images_for(
+            node.nodegroup, os_name, arch, subarch, series)
+    except (NoConnectionsAvailable, TimeoutError):
+        logger.error(
+            "Unable to get RPC connection for cluster '%s'",
+            node.nodegroup.name)
+        raise ClusterUnavailable(
+            "Unable to get RPC connection for cluster '%s'" % (
+                node.nodegroup.name))
+    return {image['purpose'] for image in images}
 
+
+def get_available_purpose_for_node(purposes, node):
+    """Return the best available purpose for the given purposes and images."""
+    supported_purposes = get_supported_purposes_for_node(node)
+    for purpose in purposes:
+        if purpose in supported_purposes:
+            return purpose
+    logger.error(
+        "Unable to determine purpose for node: '%s'", node.fqdn)
+    raise PreseedError(
+        "Unable to determine purpose for node: '%s'", node.fqdn)
+
+
+def get_preseed_type_for(node):
+    """Returns the preseed type for the node.
+
+    This is determined using the nodes boot_type and what supporting boot
+    images exist on the node's cluster. If the node is to boot using
+    fast-path installer, but there is no boot image that supports this
+    method then the default installer will be used. If the node is to boot
+    using the default installer but there is no boot image that supports
+    that method then it will boot using the fast-path installer.
+    """
+    if node.status == NODE_STATUS.COMMISSIONING:
+        return PRESEED_TYPE.COMMISSIONING
     if node.boot_type == NODE_BOOT.FASTPATH:
-        purpose = 'xinstall'
+        purpose_order = ['xinstall', 'install']
     elif node.boot_type == NODE_BOOT.DEBIAN:
-        purpose = 'install'
+        purpose_order = ['install', 'xinstall']
     else:
-        purpose = 'unknown'
+        purpose_order = []
 
-    image = BootImage.objects.get_latest_image(
-        node.nodegroup, os_name, arch, subarch, series, purpose)
-    if image is None:
-        if purpose == 'xinstall':
-            return PRESEED_TYPE.DEFAULT
-        else:
-            return PRESEED_TYPE.CURTIN
+    purpose = get_available_purpose_for_node(purpose_order, node)
     if purpose == 'xinstall':
         return PRESEED_TYPE.CURTIN
-    return PRESEED_TYPE.DEFAULT
+    elif purpose == 'install':
+        return PRESEED_TYPE.DEFAULT
+    logger.error(
+        "Unknown purpose '%s' for node: '%s'", purpose, node.fqdn)
+    raise PreseedError(
+        "Unknown purpose '%s' for node: '%s'", purpose, node.fqdn)
 
 
 def get_preseed(node):

@@ -17,24 +17,33 @@ __all__ = []
 import httplib
 import os
 from pipes import quote
+import random
 from urlparse import urlparse
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from maasserver import preseed as preseed_module
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     )
-from maasserver.exceptions import MAASAPIException
+from maasserver.exceptions import (
+    ClusterUnavailable,
+    MissingBootImage,
+    PreseedError,
+    )
 from maasserver.models import Config
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
     GENERIC_FILENAME,
+    get_available_purpose_for_node,
     get_curtin_config,
     get_curtin_context,
+    get_curtin_image,
     get_curtin_installer_url,
     get_curtin_userdata,
     get_enlist_preseed,
@@ -45,6 +54,7 @@ from maasserver.preseed import (
     get_preseed_filenames,
     get_preseed_template,
     get_preseed_type_for,
+    get_supported_purposes_for_node,
     load_preseed_template,
     pick_cluster_controller_address,
     PreseedTemplate,
@@ -57,6 +67,8 @@ from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.network import make_network
 from testtools.matchers import (
@@ -71,6 +83,24 @@ from testtools.matchers import (
     )
 from twisted.internet import defer
 import yaml
+
+
+class BootImageHelperMixin:
+
+    def make_rpc_boot_image_for(self, node, purpose):
+        osystem = node.get_osystem()
+        series = node.get_distro_series()
+        arch, subarch = node.split_arch()
+        return make_rpc_boot_image(
+            osystem=osystem, release=series,
+            architecture=arch, subarchitecture=subarch,
+            purpose=purpose)
+
+    def configure_get_boot_images_for_node(self, node, purpose):
+        boot_image = self.make_rpc_boot_image_for(node, purpose)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
 
 
 class TestSplitSubArch(MAASServerTestCase):
@@ -487,11 +517,13 @@ class TestPreseedContext(MAASServerTestCase):
             ))
 
 
-class TestNodePreseedContext(PreseedRPCMixin, MAASServerTestCase):
+class TestNodePreseedContext(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_node_preseed_context`."""
 
     def test_get_node_preseed_context_contains_keys(self):
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         release = factory.make_string()
         context = get_node_preseed_context(node, release)
         self.assertItemsEqual(
@@ -503,6 +535,7 @@ class TestNodePreseedContext(PreseedRPCMixin, MAASServerTestCase):
 
     def test_context_contains_third_party_drivers(self):
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         release = factory.make_string()
         enable_third_party_drivers = factory.pick_bool()
         Config.objects.set_config(
@@ -523,7 +556,8 @@ class TestPreseedTemplate(MAASServerTestCase):
         self.assertEqual(quote(var), observed)
 
 
-class TestRenderPreseed(PreseedRPCMixin, MAASServerTestCase):
+class TestRenderPreseed(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -540,6 +574,7 @@ class TestRenderPreseed(PreseedRPCMixin, MAASServerTestCase):
 
     def test_render_preseed(self):
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(node, self.preseed, "precise")
         # The test really is that the preseed is rendered without an
         # error.
@@ -552,6 +587,7 @@ class TestRenderPreseed(PreseedRPCMixin, MAASServerTestCase):
         maas_url = 'http://%s' % factory.make_hostname()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
+        self.configure_get_boot_images_for_node(node, 'install')
         self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
         preseed = render_preseed(node, self.preseed, "precise")
         self.assertThat(
@@ -590,7 +626,8 @@ class TestRenderEnlistmentPreseed(MAASServerTestCase):
             preseed, MatchesAll(*[Contains(ng_url), Not(Contains(maas_url))]))
 
 
-class TestRenderPreseedWindows(PreseedRPCMixin, MAASServerTestCase):
+class TestRenderPreseedWindows(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `render_preseed`.
 
     These tests check that the templates render (i.e. that no variable is
@@ -620,9 +657,7 @@ class TestRenderPreseedWindows(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem='windows',
             architecture='amd64/generic', distro_series=self.release)
-        factory.make_BootImage(
-            osystem='windows', architecture='amd64', subarchitecture='generic',
-            release=self.release, purpose='install', nodegroup=node.nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(
             node, '', osystem='windows', release=self.release)
         # The test really is that the preseed is rendered without an
@@ -630,7 +665,8 @@ class TestRenderPreseedWindows(PreseedRPCMixin, MAASServerTestCase):
         self.assertIsInstance(preseed, bytes)
 
 
-class TestGetCurtinUserData(PreseedRPCMixin, MAASServerTestCase):
+class TestGetCurtinUserData(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata`."""
 
     def test_get_curtin_userdata(self):
@@ -639,18 +675,14 @@ class TestGetCurtinUserData(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_BootImage(
-            osystem=node.get_osystem(),
-            architecture=arch, subarchitecture=subarch,
-            release=node.get_distro_series(), purpose='xinstall',
-            xinstall_path='root-tgz', xinstall_type='tgz',
-            nodegroup=node.nodegroup)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         user_data = get_curtin_userdata(node)
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
 
 
-class TestGetCurtinUserDataOS(PreseedRPCMixin, MAASServerTestCase):
+class TestGetCurtinUserDataOS(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_curtin_userdata` using os specific scenarios."""
 
     # Create a scenario for each possible os specific preseed.
@@ -666,23 +698,20 @@ class TestGetCurtinUserDataOS(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_BootImage(
-            osystem=node.get_osystem(),
-            architecture=arch, subarchitecture=subarch,
-            release=node.get_distro_series(), purpose='xinstall',
-            xinstall_path='root-tgz', xinstall_type='tgz',
-            nodegroup=node.nodegroup)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         user_data = get_curtin_userdata(node)
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
 
 
-class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
+class TestCurtinUtilities(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for the curtin-related utilities."""
 
     def test_get_curtin_config(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         config = get_curtin_config(node)
         self.assertThat(
             config,
@@ -729,6 +758,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
 
     def test_get_curtin_config_uses_main_archive_for_i386(self):
         node = self.make_fastpath_node('i386')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
             self.summarise_url(Config.objects.get_config('main_archive')),
@@ -736,6 +766,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
 
     def test_get_curtin_config_uses_main_archive_for_amd64(self):
         node = self.make_fastpath_node('amd64')
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
             self.summarise_url(Config.objects.get_config('main_archive')),
@@ -743,6 +774,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
 
     def test_get_curtin_config_uses_ports_archive_for_other_arch(self):
         node = self.make_fastpath_node()
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         userdata = get_curtin_config(node)
         self.assertEqual(
             self.summarise_url(Config.objects.get_config('ports_archive')),
@@ -756,6 +788,46 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
             ['reporter_token', 'reporter_url', 'curtin_preseed'], context)
         self.assertIn('cloud-init', context['curtin_preseed'])
 
+    def test_get_curtin_image_calls_get_boot_images_for(self):
+        osystem = factory.make_name('os')
+        series = factory.make_name('series')
+        architecture = make_usable_architecture(self)
+        arch, subarch = architecture.split('/')
+        node = factory.make_Node(
+            osystem=osystem, distro_series=series, architecture=architecture)
+        mock_get_boot_images_for = self.patch(
+            preseed_module, 'get_boot_images_for')
+        mock_get_boot_images_for.return_value = [
+            make_rpc_boot_image(purpose='xinstall')]
+        get_curtin_image(node)
+        self.assertThat(
+            mock_get_boot_images_for,
+            MockCalledOnceWith(node.nodegroup, osystem, arch, subarch, series))
+
+    def test_get_curtin_image_raises_ClusterUnavailable(self):
+        node = factory.make_Node()
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').side_effect = NoConnectionsAvailable
+        self.assertRaises(ClusterUnavailable, get_curtin_image, node)
+
+    def test_get_curtin_image_raises_MissingBootImage(self):
+        node = factory.make_Node()
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = []
+        self.assertRaises(MissingBootImage, get_curtin_image, node)
+
+    def test_get_curtin_image_returns_xinstall_image(self):
+        node = factory.make_Node()
+        other_images = [make_rpc_boot_image() for _ in range(3)]
+        xinstall_image = make_rpc_boot_image(purpose='xinstall')
+        images = other_images + [xinstall_image]
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = images
+        self.assertEqual(xinstall_image, get_curtin_image(node))
+
     def test_get_curtin_installer_url_returns_url(self):
         osystem = factory.pick_OS()
         series = factory.pick_release(osystem)
@@ -768,11 +840,14 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
-        boot_image = factory.make_BootImage(
-            osystem=osystem.name, architecture=arch,
-            subarchitecture=subarch, release=series,
+        boot_image = make_rpc_boot_image(
+            osystem=osystem.name, release=series,
+            architecture=arch, subarchitecture=subarch,
             purpose='xinstall', xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type, nodegroup=node.nodegroup)
+            xinstall_type=xinstall_type)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
 
         installer_url = get_curtin_installer_url(node)
 
@@ -780,7 +855,7 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         self.assertEqual(
             '%s:http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
                 xinstall_type, interface.ip, osystem.name, arch, subarch,
-                series, boot_image.label, xinstall_path),
+                series, boot_image['label'], xinstall_path),
             installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
@@ -790,16 +865,17 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=osystem.name,
             architecture=architecture, distro_series=series)
-        # Generate a boot image with a different arch/subarch.
-        factory.make_BootImage(
-            osystem=osystem.name,
-            architecture=factory.make_name('arch'),
-            subarchitecture=factory.make_name('subarch'), release=series,
-            purpose='xinstall', xinstall_path='root-tgz', xinstall_type='tgz',
-            nodegroup=node.nodegroup)
+        # Make boot image that is not xinstall
+        arch, subarch = architecture.split('/')
+        boot_image = make_rpc_boot_image(
+            osystem=osystem.name, release=series,
+            architecture=arch, subarchitecture=subarch)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
 
         error = self.assertRaises(
-            MAASAPIException, get_curtin_installer_url, node)
+            MissingBootImage, get_curtin_installer_url, node)
         arch, subarch = architecture.split('/')
         msg = (
             "No image could be found for the given selection: "
@@ -823,11 +899,14 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
-        boot_image = factory.make_BootImage(
-            osystem=osystem.name, architecture=arch,
-            subarchitecture=subarch, release=series,
+        boot_image = make_rpc_boot_image(
+            osystem=osystem.name, release=series,
+            architecture=arch, subarchitecture=subarch,
             purpose='xinstall', xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type, nodegroup=node.nodegroup)
+            xinstall_type=xinstall_type)
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
 
         installer_url = get_curtin_installer_url(node)
 
@@ -835,8 +914,70 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
         self.assertEqual(
             'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
                 interface.ip, osystem.name, arch, subarch,
-                series, boot_image.label, xinstall_path),
+                series, boot_image['label'], xinstall_path),
             installer_url)
+
+    def test_get_supported_purposes_for_node_calls_get_boot_images_for(self):
+        osystem = factory.make_name('os')
+        series = factory.make_name('series')
+        architecture = make_usable_architecture(self)
+        arch, subarch = architecture.split('/')
+        node = factory.make_Node(
+            osystem=osystem, distro_series=series, architecture=architecture)
+        mock_get_boot_images_for = self.patch(
+            preseed_module, 'get_boot_images_for')
+        mock_get_boot_images_for.return_value = [
+            make_rpc_boot_image(purpose='xinstall')]
+        get_supported_purposes_for_node(node)
+        self.assertThat(
+            mock_get_boot_images_for,
+            MockCalledOnceWith(node.nodegroup, osystem, arch, subarch, series))
+
+    def test_get_supported_purposes_for_node_raises_ClusterUnavailable(self):
+        node = factory.make_Node()
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').side_effect = NoConnectionsAvailable
+        self.assertRaises(
+            ClusterUnavailable,
+            get_supported_purposes_for_node, node)
+
+    def test_get_supported_purposes_for_node_returns_set_of_purposes(self):
+        osystem = factory.make_name('os')
+        series = factory.make_name('series')
+        architecture = make_usable_architecture(self)
+        arch, subarch = architecture.split('/')
+        node = factory.make_Node(
+            osystem=osystem, distro_series=series, architecture=architecture)
+        mock_get_boot_images_for = self.patch(
+            preseed_module, 'get_boot_images_for')
+        mock_get_boot_images_for.return_value = [
+            make_rpc_boot_image(purpose='xinstall'),
+            make_rpc_boot_image(purpose='xinstall'),
+            make_rpc_boot_image(purpose='install')]
+        self.assertItemsEqual(
+            {'xinstall', 'install'},
+            get_supported_purposes_for_node(node))
+
+    def test_get_available_purpose_for_node_raises_PreseedError(self):
+        node = factory.make_Node()
+        self.patch(
+            preseed_module,
+            'get_supported_purposes_for_node').return_value = set()
+        self.assertRaises(
+            PreseedError,
+            get_available_purpose_for_node, [], node)
+
+    def test_get_available_purpose_for_node_returns_best_purpose_match(self):
+        node = factory.make_Node()
+        purposes = [factory.make_name('purpose') for _ in range(3)]
+        purpose = random.choice(purposes)
+        self.patch(
+            preseed_module,
+            'get_supported_purposes_for_node').return_value = [purpose]
+        self.assertEqual(
+            purpose,
+            get_available_purpose_for_node(purposes, node))
 
     def test_get_preseed_type_for_commissioning(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
@@ -845,30 +986,31 @@ class TestCurtinUtilities(PreseedRPCMixin, MAASServerTestCase):
 
     def test_get_preseed_type_for_default(self):
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
-        factory.make_boot_images_for_node_with_purposes(node, ['install'])
+        self.configure_get_boot_images_for_node(node, 'install')
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin(self):
         node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
-        factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default_when_curtin_not_supported(self):
         node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
-        factory.make_boot_images_for_node_with_purposes(node, ['install'])
+        self.configure_get_boot_images_for_node(node, 'install')
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin_when_default_not_supported(self):
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
-        factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
 
-class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
+class TestRenderPreseedArchives(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Test that the default preseed contains the default mirrors."""
 
     def test_render_preseed_uses_default_archives_intel(self):
@@ -882,6 +1024,12 @@ class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
                 architecture=make_usable_architecture(
                     self, arch_name="amd64", subarch_name="generic")),
             ]
+        boot_images = [
+            self.make_rpc_boot_image_for(node, 'install')
+            for node in nodes
+            ]
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = boot_images
         default_snippets = [
             "d-i     mirror/http/hostname string archive.ubuntu.com",
             "d-i     mirror/http/directory string /ubuntu",
@@ -895,6 +1043,7 @@ class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
             nodegroup=self.rpc_nodegroup,
             architecture=make_usable_architecture(
                 self, arch_name="armhf", subarch_name="generic"))
+        self.configure_get_boot_images_for_node(node, 'install')
         default_snippets = [
             "d-i     mirror/http/hostname string ports.ubuntu.com",
             "d-i     mirror/http/directory string /ubuntu-ports",
@@ -903,7 +1052,8 @@ class TestRenderPreseedArchives(PreseedRPCMixin, MAASServerTestCase):
         self.assertThat(preseed, ContainsAll(default_snippets))
 
 
-class TestPreseedProxy(PreseedRPCMixin, MAASServerTestCase):
+class TestPreseedProxy(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
 
     def test_preseed_uses_default_proxy(self):
         server_host = factory.make_hostname()
@@ -912,8 +1062,10 @@ class TestPreseedProxy(PreseedRPCMixin, MAASServerTestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', url)
         expected_proxy_statement = (
             "mirror/http/proxy string http://%s:8000" % server_host)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(
-            factory.make_Node(nodegroup=self.rpc_nodegroup),
+            node,
             PRESEED_TYPE.DEFAULT, "precise")
         self.assertIn(expected_proxy_statement, preseed)
 
@@ -923,13 +1075,16 @@ class TestPreseedProxy(PreseedRPCMixin, MAASServerTestCase):
         Config.objects.set_config('http_proxy', http_proxy)
         expected_proxy_statement = (
             "mirror/http/proxy string %s" % http_proxy)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(
-            factory.make_Node(nodegroup=self.rpc_nodegroup),
+            node,
             PRESEED_TYPE.DEFAULT, "precise")
         self.assertIn(expected_proxy_statement, preseed)
 
 
-class TestPreseedMethods(PreseedRPCMixin, MAASServerTestCase):
+class TestPreseedMethods(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for `get_enlist_preseed` and `get_preseed`.
 
     These tests check that the preseed templates render and 'look right'.
@@ -938,14 +1093,14 @@ class TestPreseedMethods(PreseedRPCMixin, MAASServerTestCase):
     def test_get_preseed_returns_default_preseed(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.DEBIAN)
-        factory.make_boot_images_for_node_with_purposes(node, ['install'])
+        self.configure_get_boot_images_for_node(node, 'install')
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
-        factory.make_boot_images_for_node_with_purposes(node, ['xinstall'])
+        self.configure_get_boot_images_for_node(node, 'xinstall')
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')
         self.assertIn(curtin_url, preseed)
@@ -961,7 +1116,8 @@ class TestPreseedMethods(PreseedRPCMixin, MAASServerTestCase):
         self.assertIn('#cloud-config', preseed)
 
 
-class TestPreseedURLs(PreseedRPCMixin, MAASServerTestCase):
+class TestPreseedURLs(
+        PreseedRPCMixin, BootImageHelperMixin, MAASServerTestCase):
     """Tests for functions that return preseed URLs."""
 
     def test_compose_enlistment_preseed_url_links_to_enlistment_preseed(self):
@@ -978,6 +1134,7 @@ class TestPreseedURLs(PreseedRPCMixin, MAASServerTestCase):
 
     def test_compose_preseed_url_links_to_preseed_for_node(self):
         node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        self.configure_get_boot_images_for_node(node, 'install')
         response = self.client.get(compose_preseed_url(node))
         self.assertEqual(
             (httplib.OK, get_preseed(node)),

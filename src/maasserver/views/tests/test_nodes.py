@@ -30,7 +30,9 @@ from django.core.urlresolvers import reverse
 from django.utils import html
 from lxml.etree import XPath
 from lxml.html import fromstring
+from maasserver import preseed as preseed_module
 import maasserver.api
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -1634,6 +1636,9 @@ class NodePreseedViewTest(PreseedRPCMixin, MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         escaped = html.escape(get_preseed(node))
@@ -1643,6 +1648,9 @@ class NodePreseedViewTest(PreseedRPCMixin, MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         path = self.make_file(name="generic", contents="{{invalid}}")
         self.patch(
@@ -1667,6 +1675,9 @@ class NodePreseedViewTest(PreseedRPCMixin, MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, owner=self.logged_in_user)
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
         node_preseed_link = reverse('node-preseed-view', args=[node.system_id])
         response = self.client.get(node_preseed_link)
         node_link = reverse('node-view', args=[node.system_id])

@@ -28,6 +28,7 @@ from maasserver.api.boot_images import (
     summarise_boot_image_object,
     warn_if_missing_boot_images,
     )
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
@@ -115,16 +116,7 @@ class TestBootImagesAPI(APITestCase):
             reverse('boot_images_handler', args=['uuid']))
 
     def make_boot_image(self):
-        rpc_image = {
-            'osystem': factory.make_name('osystem'),
-            'release': factory.make_name('release'),
-            'architecture': factory.make_name('arch'),
-            'subarchitecture': factory.make_name('subarch'),
-            'label': factory.make_name('label'),
-            'purpose': factory.make_name('purpose'),
-            'xinstall_type': factory.make_name('xi_type'),
-            'xinstall_path': factory.make_name('xi_path'),
-            }
+        rpc_image = make_rpc_boot_image()
         api_image = rpc_image.copy()
         del api_image['xinstall_type']
         del api_image['xinstall_path']

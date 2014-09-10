@@ -25,6 +25,8 @@ import tarfile
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from maasserver import preseed as preseed_module
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -418,12 +420,10 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
-        factory.make_BootImage(
-            osystem=node.get_osystem(),
-            architecture=arch, subarchitecture=subarch,
-            release=node.get_distro_series(), purpose='xinstall',
-            xinstall_path='root-tgz', xinstall_type='tgz',
-            nodegroup=node.nodegroup)
+        boot_image = make_rpc_boot_image(purpose='xinstall')
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [boot_image]
         client = make_node_client(node)
         response = client.get(
             reverse('curtin-metadata-user-data', args=['latest']))

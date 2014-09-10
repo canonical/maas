@@ -19,12 +19,16 @@ import json
 
 from django.core.urlresolvers import reverse
 from django.test.client import RequestFactory
-from maasserver import server_address
+from maasserver import (
+    preseed as preseed_module,
+    server_address,
+    )
 from maasserver.api import pxeconfig as pxeconfig_module
 from maasserver.api.pxeconfig import (
     find_nodegroup_for_pxeconfig_request,
     get_boot_purpose,
     )
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
@@ -313,8 +317,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
             ("poweroff", {"status": NODE_STATUS.RETIRED}),
             ]
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
+        mock_get_boot_images_for = self.patch(
+            preseed_module, 'get_boot_images_for')
         for purpose, parameters in options:
-            factory.make_boot_images_for_node_with_purposes(node, [purpose])
+            boot_image = make_rpc_boot_image(purpose=purpose)
+            mock_get_boot_images_for.return_value = [boot_image]
             if purpose == "xinstall":
                 node.boot_type = NODE_BOOT.FASTPATH
             for name, value in parameters.items():
@@ -329,6 +336,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYING, netboot=True,
             osystem=osystem.name, distro_series=release,
             boot_type=NODE_BOOT.FASTPATH)
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
         self.assertEqual('install', get_boot_purpose(node))
 
     def test_pxeconfig_uses_boot_purpose(self):
@@ -388,6 +398,9 @@ class TestPXEConfigAPI(MAASServerTestCase):
         osystem = 'ubuntu'
         release = Config.objects.get_config('default_distro_series')
         nodegroup = factory.make_NodeGroup()
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
         factory.make_BootImage(
             osystem=osystem,
             architecture="amd64", subarchitecture="generic",

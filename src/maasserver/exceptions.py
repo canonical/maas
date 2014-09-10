@@ -149,3 +149,11 @@ class NodeActionError(MAASException):
 
 class UnresolvableHost(MAASException):
     """Raised when a hostname can't be resolved to an IP address."""
+
+
+class MissingBootImage(MAASException):
+    """Raised when a boot image is expected to exists."""
+
+
+class PreseedError(MAASException):
+    """Raised when issue generating the preseed."""
