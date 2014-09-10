@@ -104,6 +104,14 @@ class TestFindIPViaARP(MAASTestCase):
         self.assertIn(one_result, ips)
         self.assertEqual(one_result, other_result)
 
+    def test__ignores_case(self):
+        sample = """\
+        192.168.0.1 ether   90:f6:52:f6:17:92   C                     eth0
+        """
+        self.patch_call(sample)
+        ip_address_observed = find_ip_via_arp("90:f6:52:f6:17:92".upper())
+        self.assertEqual("192.168.0.1", ip_address_observed)
+
 
 class TestFindMACViaARP(MAASTestCase):
 

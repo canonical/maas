@@ -75,7 +75,7 @@ def find_ip_via_arp(mac):
 
     for line in sorted(output):
         columns = line.split()
-        if len(columns) == 5 and columns[2] == mac:
+        if len(columns) == 5 and columns[2].lower() == mac.lower():
             return columns[0]
     return None
 
