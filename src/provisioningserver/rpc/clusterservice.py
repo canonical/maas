@@ -29,6 +29,7 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -230,6 +231,15 @@ class Cluster(RPCProtocol):
             return {}
         else:
             return tls.get_tls_parameters_for_cluster()
+
+    @cluster.AddVirsh.responder
+    def add_virsh(self, poweraddr, password):
+        """add_virsh()
+
+        Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
+        """
+        probe_virsh_and_enlist(poweraddr, password)
+        return {}
 
 
 @implementer(IConnection)

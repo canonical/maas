@@ -292,7 +292,7 @@ class RemoveHostMaps(amp.Command):
 
 
 class ImportBootImages(amp.Command):
-    """Imports the boot images and reports the final
+    """Import boot images and report the final
     boot images that exist on the cluster.
 
     :since: 1.7
@@ -346,3 +346,17 @@ class CancelTimer(amp.Command):
         ]
     response = []
     error = []
+
+
+class AddVirsh(amp.Command):
+    """Probe for and enlist virsh VMs attached to the cluster.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"poweraddr", amp.Unicode()),
+        (b"password", amp.Unicode(optional=True)),
+    ]
+    response = []
+    errors = []

@@ -56,7 +56,6 @@ from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
-from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.network import find_ip_via_arp
@@ -402,14 +401,6 @@ def add_seamicro15k(mac, username, password, power_control=None):
             power_control=power_control)
     else:
         maaslog.warning("Couldn't find IP address for MAC %s" % mac)
-
-
-@task
-@log_task_events()
-@log_exception_text
-def add_virsh(poweraddr, password=None):
-    """ See `maasserver.api.NodeGroup.add_virsh`. """
-    probe_virsh_and_enlist(poweraddr, password=password)
 
 
 @task

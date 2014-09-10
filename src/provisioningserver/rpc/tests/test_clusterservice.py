@@ -1130,3 +1130,48 @@ class TestClusterProtocol_CancelTimer(MAASTestCase):
 
         call_responder(Cluster(), cluster.CancelTimer, {"id": timers[0]["id"]})
         self.assertThat(running_timers, Not(Contains(timers[0]["id"])))
+
+
+class TestClusterProtocol_AddVirsh(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.AddVirsh.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__calls_probe_virsh_and_enlist(self):
+        probe_virsh_and_enlist = self.patch_autospec(
+            clusterservice, 'probe_virsh_and_enlist')
+        poweraddr = factory.make_name('poweraddr')
+        password = factory.make_name('password')
+        call_responder(Cluster(), cluster.AddVirsh, {
+            "poweraddr": poweraddr,
+            "password": password,
+            })
+        self.assertThat(
+            probe_virsh_and_enlist, MockCalledOnceWith(
+                poweraddr, password))
+
+    def test__password_is_optional(self):
+        probe_virsh_and_enlist = self.patch_autospec(
+            clusterservice, 'probe_virsh_and_enlist')
+        poweraddr = factory.make_name('poweraddr')
+        call_responder(Cluster(), cluster.AddVirsh, {
+            "poweraddr": poweraddr,
+            "password": None,
+            })
+        self.assertThat(
+            probe_virsh_and_enlist, MockCalledOnceWith(
+                poweraddr, None))
+
+    def test__can_be_called_without_password_key(self):
+        probe_virsh_and_enlist = self.patch_autospec(
+            clusterservice, 'probe_virsh_and_enlist')
+        poweraddr = factory.make_name('poweraddr')
+        call_responder(Cluster(), cluster.AddVirsh, {
+            "poweraddr": poweraddr,
+            })
+        self.assertThat(
+            probe_virsh_and_enlist, MockCalledOnceWith(
+                poweraddr, None))

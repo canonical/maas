@@ -38,11 +38,13 @@ from piston.models import (
     Token,
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
-from provisioningserver.rpc.cluster import ImportBootImages
+from provisioningserver.rpc.cluster import (
+    AddVirsh,
+    ImportBootImages,
+    )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.tasks import (
     add_seamicro15k,
-    add_virsh,
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
     )
@@ -270,8 +272,16 @@ class NodeGroup(TimestampedModel):
         :param poweraddr: virsh connection string
         :param password: ssh password
         """
-        args = (poweraddr, password)
-        add_virsh.apply_async(queue=self.uuid, args=args)
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                AddVirsh, poweraddr=poweraddr, password=password)
 
     def enlist_nodes_from_ucsm(self, url, username, password):
         """ Add the servers from a Cicso UCS Manager.
