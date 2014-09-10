@@ -24,6 +24,7 @@ from Queue import Queue
 from crochet import wait_for_reactor
 from django.db import (
     close_old_connections,
+    connection,
     transaction,
     )
 from maasserver.exceptions import IteratorReusedError
@@ -151,5 +152,7 @@ def transactional(func):
             with transaction.atomic():
                 return func(*args, **kwargs)
         finally:
-            close_old_connections()
+            # Close connections if we've left the outer-most atomic block.
+            if not connection.in_atomic_block:
+                close_old_connections()
     return call_within_transaction

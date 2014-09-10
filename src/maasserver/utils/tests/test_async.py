@@ -127,7 +127,7 @@ class TestUseOnceIterator(MAASTestCase):
 
 class TestTransactional(MAASTestCase):
 
-    def test_calls_function_within_transaction_then_closes_connections(self):
+    def test__calls_function_within_transaction_then_closes_connections(self):
         close_old_connections = self.patch(async, "close_old_connections")
 
         # No transaction has been entered (what Django calls an atomic
@@ -157,4 +157,22 @@ class TestTransactional(MAASTestCase):
         # After the decorated function has returned the transaction has
         # been exited, and old connections have been closed.
         self.assertFalse(connection.in_atomic_block)
+        self.assertThat(close_old_connections, MockCalledOnceWith())
+
+    def test__closes_connections_only_when_leaving_atomic_block(self):
+        close_old_connections = self.patch(async, "close_old_connections")
+
+        @async.transactional
+        def inner():
+            # We're inside a `transactional` context here.
+            return "inner"
+
+        @async.transactional
+        def outer():
+            # We're inside a `transactional` context here too.
+            # Call `inner`, thus nesting `transactional` contexts.
+            return "outer > " + inner()
+
+        self.assertEqual("outer > inner", outer())
+        # Old connections have been closed only once.
         self.assertThat(close_old_connections, MockCalledOnceWith())
