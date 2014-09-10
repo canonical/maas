@@ -24,11 +24,9 @@ from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config
 from maasserver.rpc import getClientFor
 from netaddr import IPAddress
-from provisioningserver.rpc.cluster import ConfigureDHCPv6
-from provisioningserver.tasks import (
-    restart_dhcp_server,
-    stop_dhcp_server,
-    write_dhcp_config,
+from provisioningserver.rpc.cluster import (
+    ConfigureDHCPv4,
+    ConfigureDHCPv6,
     )
 from provisioningserver.utils.twisted import synchronous
 
@@ -67,52 +65,14 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         }
 
 
-def configure_dhcpv4(nodegroup, interfaces, ntp_server):
-    """Write DHCPv4 configuration and restart the DHCPv4 server."""
-    # Circular imports.
-    from maasserver.dns.zonegenerator import get_dns_server_address
-
-    if len(interfaces) == 0:
-        # No IPv4 interfaces are configured as being managed by this cluster.
-        # Stop the DHCP server.
-        #
-        # A config generated for this setup would not be valid.  It results in
-        # the DHCP server failing with the error: "Not configured to listen on
-        # any interfaces!"
-        stop_dhcp_server.apply_async(queue=nodegroup.work_queue)
-        return
-
-    try:
-        dns_servers = get_dns_server_address(nodegroup, ipv4=True, ipv6=False)
-    except UnresolvableHost:
-        # No IPv4 DNS server addresses found.  As a space-separated string,
-        # that becomes the empty string.
-        dns_servers = ''
-
-    dhcp_subnet_configs = [
-        make_subnet_config(interface, dns_servers, ntp_server)
-        for interface in interfaces
-        ]
-
-    reload_dhcp_server_subtask = restart_dhcp_server.subtask(
-        options={'queue': nodegroup.work_queue})
-    task_kwargs = dict(
-        dhcp_subnets=dhcp_subnet_configs,
-        omapi_key=nodegroup.dhcp_key,
-        dhcp_interfaces=' '.join(
-            [interface.interface for interface in interfaces]),
-        callback=reload_dhcp_server_subtask,
-    )
-    write_dhcp_config.apply_async(
-        queue=nodegroup.work_queue, kwargs=task_kwargs)
-
-
 @synchronous
-def configure_dhcpv6(nodegroup, interfaces, ntp_server):
-    """Write DHCPv6 configuration and restart the DHCPv6 server.
+def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server):
+    """Write DHCP configuration and restart the DHCP server.
 
     Delegates the work to the cluster controller, and waits for it
     to complete.
+
+    :param ip_version: The IP version to configure for, either 4 or 6.
 
     :raise NoConnectionsAvailable: if the region controller could not get
         an RPC connection to the cluster controller.
@@ -126,13 +86,24 @@ def configure_dhcpv6(nodegroup, interfaces, ntp_server):
     # Circular imports.
     from maasserver.dns.zonegenerator import get_dns_server_address
 
+    if ip_version == 4:
+        command = ConfigureDHCPv4
+    elif ip_version == 6:
+        command = ConfigureDHCPv6
+    else:
+        raise AssertionError(
+            "Only IPv4 and IPv6 are supported, not IPv%s."
+            % (ip_version,))
+
     try:
-        dns_servers = get_dns_server_address(nodegroup, ipv4=False, ipv6=True)
+        dns_servers = get_dns_server_address(
+            nodegroup, ipv4=(ip_version == 4), ipv6=(ip_version == 6))
     except UnresolvableHost:
         # No IPv6 DNS server addresses found.  As a space-separated string,
         # that becomes the empty string.
         dns_servers = ''
 
+    omapi_key = nodegroup.dhcp_key
     subnets = [
         make_subnet_config(interface, dns_servers, ntp_server)
         for interface in interfaces
@@ -140,10 +111,25 @@ def configure_dhcpv6(nodegroup, interfaces, ntp_server):
     client = getClientFor(nodegroup.uuid)
     # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
     # needs to be reported gracefully to the caller.
-    call = client(
-        ConfigureDHCPv6, omapi_key=nodegroup.dhcp_key, subnet_configs=subnets)
+    call = client(command, omapi_key=omapi_key, subnet_configs=subnets)
     # Keep the timeout short: the UI may be waiting for completion.
     call.wait(5)
+
+
+def configure_dhcpv4(nodegroup, interfaces, ntp_server):
+    """Call `do_configure_dhcp` for IPv4.
+
+    This serves mainly as a convenience for testing.
+    """
+    return do_configure_dhcp(4, nodegroup, interfaces, ntp_server)
+
+
+def configure_dhcpv6(nodegroup, interfaces, ntp_server):
+    """Call `do_configure_dhcp` for IPv6.
+
+    This serves mainly as a convenience for testing.
+    """
+    return do_configure_dhcp(6, nodegroup, interfaces, ntp_server)
 
 
 def configure_dhcp(nodegroup):
