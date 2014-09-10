@@ -992,12 +992,12 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     scenarios = (
         ("DHCPv4", {
-            "configure": (clusterservice, "configure_dhcpv4"),
+            "dhcp_server": (clusterservice, "DHCPv4Server"),
             "command": cluster.ConfigureDHCPv4,
             "make_network": factory.make_ipv4_network,
         }),
         ("DHCPv6", {
-            "configure": (clusterservice, "configure_dhcpv6"),
+            "dhcp_server": (clusterservice, "DHCPv6Server"),
             "command": cluster.ConfigureDHCPv6,
             "make_network": factory.make_ipv6_network,
         }),
@@ -1011,7 +1011,7 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     @inlineCallbacks
     def test__executes_configure_dhcp(self):
-        configure_dhcp = self.patch_autospec(*self.configure)
+        DHCPServer = self.patch_autospec(*self.dhcp_server)
         omapi_key = factory.make_name('key')
         subnet_configs = [make_subnet_config()]
 
@@ -1020,14 +1020,15 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             'subnet_configs': subnet_configs,
             })
 
+        self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
         self.assertThat(
-            configure_dhcp,
-            MockCalledOnceWith(omapi_key, subnet_configs))
+            DHCPServer.return_value.configure,
+            MockCalledOnceWith(subnet_configs))
 
     @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):
-        configure_dhcp = self.patch_autospec(*self.configure)
-        configure_dhcp.side_effect = (
+        DHCPServer = self.patch_autospec(*self.dhcp_server)
+        DHCPServer.return_value.configure.side_effect = (
             exceptions.CannotConfigureDHCP("Deliberate failure"))
         omapi_key = factory.make_name('key')
         network = self.make_network()

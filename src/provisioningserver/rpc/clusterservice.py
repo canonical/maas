@@ -41,9 +41,9 @@ from provisioningserver.rpc.boot_images import (
     )
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.dhcp import (
-    configure_dhcpv4,
-    configure_dhcpv6,
     create_host_maps,
+    DHCPv4Server,
+    DHCPv6Server,
     remove_host_maps,
     )
 from provisioningserver.rpc.interfaces import IConnection
@@ -186,12 +186,14 @@ class Cluster(RPCProtocol):
 
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(self, omapi_key, subnet_configs):
-        configure_dhcpv4(omapi_key, subnet_configs)
+        server = DHCPv4Server(omapi_key)
+        server.configure(subnet_configs)
         return {}
 
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(self, omapi_key, subnet_configs):
-        configure_dhcpv6(omapi_key, subnet_configs)
+        server = DHCPv6Server(omapi_key)
+        server.configure(subnet_configs)
         return {}
 
     @cluster.CreateHostMaps.responder

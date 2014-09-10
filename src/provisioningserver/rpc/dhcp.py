@@ -13,9 +13,9 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "configure_dhcpv4",
-    "configure_dhcpv6",
     "create_host_maps",
+    "DHCPv4Server",
+    "DHCPv6Server",
     "remove_host_maps",
 ]
 
@@ -187,16 +187,6 @@ class DHCPv6Server(DHCPServer):
     def restart(self):
         """Restart the DHCPv6 server."""
         control.restart_dhcpv6()
-
-
-def configure_dhcpv4(omapi_key, subnet_configs):
-    server = DHCPv4Server(omapi_key)
-    return server.configure(subnet_configs)
-
-
-def configure_dhcpv6(omapi_key, subnet_configs):
-    server = DHCPv6Server(omapi_key)
-    return server.configure(subnet_configs)
 
 
 def create_host_maps(mappings, shared_key):

@@ -45,15 +45,13 @@ from provisioningserver.utils.shell import ExternalProcessError
 class TestConfigureDHCP(MAASTestCase):
 
     scenarios = (
-        ("DHCPv4", {
-            "server": dhcp.DHCPv4Server,
-            "configure": dhcp.configure_dhcpv4,
-        }),
-        ("DHCPv6", {
-            "server": dhcp.DHCPv6Server,
-            "configure": dhcp.configure_dhcpv6,
-        }),
+        ("DHCPv4", {"server": dhcp.DHCPv4Server}),
+        ("DHCPv6", {"server": dhcp.DHCPv6Server}),
     )
+
+    def configure(self, omapi_key, subnets):
+        dhcp_server = self.server(omapi_key)
+        dhcp_server.configure(subnets)
 
     def patch_sudo_write_file(self):
         return self.patch_autospec(dhcp, 'sudo_write_file')
