@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import re
+
 from maastesting.matchers import (
     IsFiredDeferred,
     IsUnfiredDeferred,
@@ -26,6 +28,7 @@ from mock import (
     )
 from provisioningserver.rpc import common
 from provisioningserver.rpc.testing.doubles import DummyConnection
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     Is,
@@ -61,6 +64,16 @@ class TestClient(MAASTestCase):
         self.assertThat(response, Is(sentinel.response))
         self.assertThat(conn.callRemote, MockCalledOnceWith(
             sentinel.command, foo=sentinel.foo, bar=sentinel.bar))
+
+    def test_call_with_keyword_arguments_raises_useful_error(self):
+        conn = DummyConnection()
+        client = common.Client(conn)
+        expected_message = re.escape(
+            "provisioningserver.rpc.common.Client called with 3 positional "
+            "arguments, (1, 2, 3), but positional arguments are not "
+            "supported. Usage: client(command, arg1=value1, ...)")
+        with ExpectedException(TypeError, expected_message):
+            client(sentinel.command, 1, 2, 3)
 
     def test_getHostCertificate(self):
         conn, client = self.make_connection_and_client()
