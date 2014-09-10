@@ -29,29 +29,18 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'upload_leases',
-    'update_leases',
+    'check_lease_changes',
+    'record_lease_state',
     ]
 
 
 from collections import defaultdict
 import errno
-import json
 from os import (
     fstat,
     stat,
     )
 
-from apiclient.maas_client import (
-    MAASClient,
-    MAASDispatcher,
-    MAASOAuth,
-    )
-from provisioningserver.auth import (
-    get_recorded_api_credentials,
-    get_recorded_nodegroup_uuid,
-    )
-from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.dhcp.leases_parser_fast import parse_leases
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.shell import objectfork
@@ -160,71 +149,3 @@ def record_lease_state(last_change, leases):
     """
     cache[LEASES_TIME_CACHE_KEY] = last_change
     cache[LEASES_CACHE_KEY] = leases
-
-
-def list_missing_items(knowledge):
-    """Report items from dict `knowledge` that are still `None`."""
-    return sorted(name for name, value in knowledge.items() if value is None)
-
-
-def send_leases(leases):
-    """Send lease updates to the server API."""
-    # Items that the server must have sent us before we can do this.
-    knowledge = {
-        'maas_url': get_maas_url(),
-        'api_credentials': get_recorded_api_credentials(),
-        'nodegroup_uuid': get_recorded_nodegroup_uuid(),
-    }
-    if None in knowledge.values():
-        # The MAAS server hasn't sent us enough information for us to do
-        # this yet.  Leave it for another time.
-        maaslog.info(
-            "Not sending DHCP leases to server: not all required knowledge "
-            "received from server yet.  "
-            "Missing: %s"
-            % ', '.join(list_missing_items(knowledge)))
-        return
-
-    api_path = 'api/1.0/nodegroups/%s/' % knowledge['nodegroup_uuid']
-    oauth = MAASOAuth(*knowledge['api_credentials'])
-    MAASClient(oauth, MAASDispatcher(), knowledge['maas_url']).post(
-        api_path, 'update_leases', leases=json.dumps(leases))
-
-
-def process_leases(timestamp, leases):
-    """Send new leases to the MAAS server."""
-    record_lease_state(timestamp, leases)
-    send_leases(leases)
-
-
-def upload_leases():
-    """Unconditionally send the current DHCP leases to the server.
-
-    Run this periodically just so no changes slip through the cracks.
-    Examples of such cracks would be: subtle races, failure to upload,
-    server restarts, or zone-file update commands getting lost on their
-    way to the DNS server.
-    """
-    parse_result = parse_leases_file()
-    if parse_result:
-        timestamp, leases = parse_result
-        process_leases(timestamp, leases)
-    else:
-        maaslog.info(
-            "The DHCP leases file does not exist.  This is only a problem if "
-            "this cluster controller is managing its DHCP server.  If that's "
-            "the case then you need to install the 'maas-dhcp' package on "
-            "this cluster controller.")
-
-
-def update_leases():
-    """Check for DHCP lease updates, and send them to the server if needed.
-
-    Run this whenever a lease has been added, removed, or changed.  It
-    will be very cheap to run if the leases file has not been touched,
-    and it won't upload unless there have been relevant changes.
-    """
-    updated_lease_info = check_lease_changes()
-    if updated_lease_info is not None:
-        timestamp, leases = updated_lease_info
-        process_leases(timestamp, leases)
