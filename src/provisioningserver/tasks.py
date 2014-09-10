@@ -17,9 +17,6 @@ __all__ = [
     'report_boot_images',
     'rndc_command',
     'setup_rndc_configuration',
-    'restart_dhcp_server',
-    'stop_dhcp_server',
-    'write_dhcp_config',
     'write_dns_config',
     'write_dns_zone_config',
     'write_full_dns_config',
@@ -39,12 +36,6 @@ from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
     )
-from provisioningserver.dhcp import config
-from provisioningserver.dhcp.control import (
-    restart_dhcpv4,
-    stop_dhcpv4,
-    )
-from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -54,7 +45,6 @@ from provisioningserver.dns.config import (
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.fs import sudo_write_file
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -262,78 +252,6 @@ def setup_rndc_configuration(callback=None):
     setup_rndc()
     if callback is not None:
         callback.delay()
-
-
-# =====================================================================
-# DHCP-related tasks
-# =====================================================================
-
-
-@task
-@log_task_events()
-@log_exception_text
-def remove_dhcp_host_map(ip_address, server_address, omapi_key):
-    """Remove an IP to MAC mapping in the DHCP server.
-
-    Do not invoke this when DHCP is set to be managed manually.
-
-    :param ip_address: Dotted quad string
-    :param server_address: IP or hostname for the DHCP server
-    :param omapi_key: The HMAC-MD5 key that the DHCP server uses for access
-        control.
-    """
-    omshell = Omshell(server_address, omapi_key)
-    try:
-        omshell.remove(ip_address)
-    except CalledProcessError as e:
-        # TODO signal to webapp that the job failed.
-
-        # Re-raise, so the job is marked as failed.  Only currently
-        # useful for tests.
-        maaslog.error("remove_dhcp_host_map failed: %s", unicode(e))
-        raise
-
-
-@task
-@log_task_events()
-@log_exception_text
-def write_dhcp_config(callback=None, **kwargs):
-    """Write out the DHCP configuration file and restart the DHCP server.
-
-    :param dhcp_interfaces: Space-separated list of interfaces that the
-        DHCP server should listen on.
-    :param **kwargs: Keyword args passed to dhcp.config.get_config()
-    """
-    sudo_write_file(
-        celery_config.DHCP_CONFIG_FILE,
-        config.get_config('dhcpd.conf.template', **kwargs))
-    sudo_write_file(
-        celery_config.DHCP_INTERFACES_FILE, kwargs.get('dhcp_interfaces', ''))
-    if callback is not None:
-        callback.delay()
-
-
-@task
-@log_task_events()
-@log_exception_text
-def restart_dhcp_server():
-    """Restart the DHCP server."""
-    restart_dhcpv4()
-
-
-# Message to put in the DHCP config file when the DHCP server gets stopped.
-DISABLED_DHCP_SERVER = "# DHCP server stopped."
-
-
-@task
-@log_task_events()
-@log_exception_text
-def stop_dhcp_server():
-    """Write a blank config file and stop a DHCP server."""
-    # Write an empty config file to avoid having an outdated config lying
-    # around.
-    sudo_write_file(celery_config.DHCP_CONFIG_FILE, DISABLED_DHCP_SERVER)
-    stop_dhcpv4()
 
 
 # =====================================================================

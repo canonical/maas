@@ -17,10 +17,7 @@ __all__ = []
 import json
 import os
 import random
-from subprocess import (
-    CalledProcessError,
-    PIPE,
-    )
+from subprocess import CalledProcessError
 
 from apiclient.creds import convert_tuple_to_string
 from apiclient.maas_client import MAASClient
@@ -34,10 +31,7 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from maastesting.matchers import (
-    MockAnyCall,
-    MockCalledOnceWith,
-    )
+from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import (
@@ -48,8 +42,6 @@ from provisioningserver import (
     tasks,
     )
 from provisioningserver.boot import tftppath
-from provisioningserver.dhcp import config
-from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.dns.config import (
     celery_conf,
     MAAS_NAMED_CONF_NAME,
@@ -65,18 +57,13 @@ from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
     enlist_nodes_from_mscm,
     enlist_nodes_from_ucsm,
-    Omshell,
     refresh_secrets,
-    remove_dhcp_host_map,
     report_boot_images,
-    restart_dhcp_server,
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
-    stop_dhcp_server,
     update_node_tags,
     UPDATE_NODE_TAGS_MAX_RETRY,
-    write_dhcp_config,
     write_dns_config,
     write_dns_zone_config,
     write_full_dns_config,
@@ -84,11 +71,9 @@ from provisioningserver.tasks import (
 from provisioningserver.testing.boot_images import make_boot_image_params
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.testcase import PservTestCase
-import provisioningserver.utils.fs as fs_module
 from provisioningserver.utils.shell import ExternalProcessError
 from testresources import FixtureResource
 from testtools.matchers import (
-    ContainsAll,
     Equals,
     FileExists,
     MatchesListwise,
@@ -126,96 +111,6 @@ class TestRefreshSecrets(PservTestCase):
         nodegroup_uuid = factory.make_name('nodegroupuuid')
         refresh_secrets(nodegroup_uuid=nodegroup_uuid)
         self.assertEqual(nodegroup_uuid, cache.cache.get('nodegroup_uuid'))
-
-
-class TestDHCPTasks(PservTestCase):
-
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
-
-    def assertRecordedStdin(self, recorder, *args):
-        # Helper to check that the function recorder "recorder" has all
-        # of the items mentioned in "args" which are extracted from
-        # stdin.  We can just check that all the parameters that were
-        # passed are being used.
-        self.assertThat(
-            recorder.extract_args()[0][0],
-            ContainsAll(args))
-
-    def make_dhcp_config_params(self):
-        """Fake up a dict of dhcp configuration parameters."""
-        return {
-            'omapi_key': factory.make_name('key'),
-            'dhcp_subnets': [make_subnet_config()],
-            }
-
-    def test_remove_dhcp_host_map(self):
-        # We don't want to actually run omshell in the task, so we stub
-        # out the wrapper class's _run method and record what it would
-        # do.
-        ip = factory.getRandomIPAddress()
-        server_address = factory.make_string()
-        key = factory.make_string()
-        recorder = FakeMethod(result=(0, "obj: <null>"))
-        self.patch(Omshell, '_run', recorder)
-        remove_dhcp_host_map.delay(ip, server_address, key)
-
-        self.assertRecordedStdin(recorder, ip, server_address, key)
-
-    def test_remove_dhcp_host_map_failure(self):
-        # Check that task failures are caught.  Nothing much happens in
-        # the Task code right now though.
-        ip = factory.getRandomIPAddress()
-        server_address = factory.make_string()
-        key = factory.make_string()
-        self.patch(Omshell, '_run', FakeMethod(result=(0, "this_will_fail")))
-        self.assertRaises(
-            CalledProcessError, remove_dhcp_host_map.delay,
-            ip, server_address, key)
-
-    def test_write_dhcp_config_invokes_script_correctly(self):
-        mocked_proc = Mock()
-        mocked_proc.returncode = 0
-        mocked_proc.communicate = Mock(return_value=('output', 'error output'))
-        mocked_popen = self.patch(
-            fs_module, "Popen", Mock(return_value=mocked_proc))
-
-        config_params = self.make_dhcp_config_params()
-        write_dhcp_config(**config_params)
-
-        # It should construct Popen with the right parameters.
-        self.assertThat(mocked_popen, MockAnyCall(
-            ["sudo", "-n", "maas-provision", "atomic-write", "--filename",
-             celery_config.DHCP_CONFIG_FILE, "--mode", "0644"], stdin=PIPE))
-
-        # It should then pass the content to communicate().
-        content = config.get_config(
-            'dhcpd.conf.template', **config_params
-            ).encode("ascii")
-        self.assertThat(mocked_proc.communicate, MockAnyCall(content))
-
-        # Similarly, it also writes the DHCPD interfaces to
-        # /var/lib/maas/dhcpd-interfaces.
-        self.assertThat(mocked_popen, MockAnyCall(
-            [
-                "sudo", "-n", "maas-provision", "atomic-write", "--filename",
-                celery_config.DHCP_INTERFACES_FILE, "--mode", "0644",
-            ],
-            stdin=PIPE))
-
-    def test_restart_dhcp_server_sends_command(self):
-        self.patch(tasks, 'restart_dhcpv4')
-        restart_dhcp_server()
-        self.assertThat(tasks.restart_dhcpv4, MockCalledOnceWith())
-
-    def test_stop_dhcp_server_sends_command_and_writes_empty_config(self):
-        self.patch(tasks, 'stop_dhcpv4')
-        self.patch(tasks, 'sudo_write_file')
-        stop_dhcp_server()
-        self.assertThat(tasks.stop_dhcpv4, MockCalledOnceWith())
-        self.assertThat(tasks.sudo_write_file, MockCalledOnceWith(
-            celery_config.DHCP_CONFIG_FILE, tasks.DISABLED_DHCP_SERVER))
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):

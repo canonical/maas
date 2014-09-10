@@ -27,6 +27,7 @@ from crochet import wait_for_reactor
 from django.db import connection
 from django.db.utils import ProgrammingError
 from maasserver import (
+    dhcp,
     eventloop,
     locks,
     )
@@ -65,7 +66,6 @@ from mock import (
     Mock,
     )
 import netaddr
-from provisioningserver import tasks
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -1611,6 +1611,8 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
             foreign_dhcp_ip, cluster_interface.foreign_dhcp_ip)
 
     def test_does_not_trigger_update_signal(self):
+        configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
+
         foreign_dhcp_ip = factory.getRandomIPAddress()
         cluster_interface = yield deferToThread(
             self.create_cluster_interface)
@@ -1625,8 +1627,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
             })
 
         self.assertEqual({}, response)
-        self.assertThat(
-            tasks.write_dhcp_config.apply_async, MockNotCalled())
+        self.assertThat(configure_dhcp, MockNotCalled())
 
 
 class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
