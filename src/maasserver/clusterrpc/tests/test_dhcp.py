@@ -67,7 +67,7 @@ from testtools.matchers import (
 from twisted.internet import defer
 
 # Matcher for a generator that yields nothing. In the context of
-# `update_host_maps`, this means success.
+# `update_host_maps` (and `remove_host_maps`), this means success.
 UpdateSucceeded = MatchesAll(
     IsInstance(Iterator), AfterPreprocessing(list, HasLength(0)),
     first_only=True)
@@ -285,6 +285,147 @@ class TestUpdateHostMaps(MAASServerTestCase):
         _, _, kwargs = protocol.CreateHostMaps.mock_calls[0]
         observed_mappings = kwargs["mappings"]
         self.assertItemsEqual(expected_mappings, observed_mappings)
+
+
+class TestRemoveHostMaps(MAASServerTestCase):
+    """Tests for `remove_host_maps`."""
+
+    @staticmethod
+    def make_managed_node_group():
+        return factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            status=NODEGROUP_STATUS.ACCEPTED)
+
+    def prepare_rpc(self):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        nodegroup = self.make_managed_node_group()
+        rpc_fixture = self.useFixture(MockRegionToClusterRPCFixture())
+        protocol, io = rpc_fixture.makeCluster(nodegroup, RemoveHostMaps)
+        return nodegroup, protocol, io
+
+    def prepare_live_rpc(self):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        nodegroup = self.make_managed_node_group()
+        rpc_fixture = MockLiveRegionToClusterRPCFixture()
+        protocol = self.useFixture(rpc_fixture).makeCluster(
+            nodegroup, RemoveHostMaps, RemoveHostMaps)
+        return nodegroup, protocol
+
+    def test__does_nothing_when_there_are_no_host_maps(self):
+        nodegroup, protocol, io = self.prepare_rpc()
+
+        self.assertThat(
+            dhcp.remove_host_maps({}),
+            UpdateSucceeded)
+
+        # No IO was scheduled because no RPC calls were issued.
+        with reactor_sync():
+            self.assertFalse(io.pump())
+            self.assertThat(protocol.RemoveHostMaps, MockNotCalled())
+
+    @staticmethod
+    def make_example_removal_mappings(nodegroup):
+        return {nodegroup: [sentinel.ip1, sentinel.ip2]}
+
+    def test__yields_only_failures_when_removing_host_maps(self):
+        nodegroup, protocol, io = self.prepare_rpc()
+        removal_mappings = self.make_example_removal_mappings(nodegroup)
+
+        def goodbye():
+            raise RuntimeError("Goodbye cruel world")
+
+        self.patch_autospec(dhcp, "gen_calls_to_remove_host_maps")
+        dhcp.gen_calls_to_remove_host_maps.return_value = [goodbye]
+
+        self.assertThat(
+            dhcp.remove_host_maps(removal_mappings),
+            AfterPreprocessing(list, MatchesAll(
+                HasLength(1), AllMatch(FailedWith(RuntimeError)))),
+        )
+
+        self.assertThat(
+            dhcp.gen_calls_to_remove_host_maps,
+            MockCalledOnceWith(ANY, removal_mappings))
+
+    def test__yields_nothing_when_everything_is_okay(self):
+        nodegroup, protocol, io = self.prepare_rpc()
+        removal_mappings = self.make_example_removal_mappings(nodegroup)
+
+        def hello():
+            return "Hello there"
+
+        self.patch_autospec(dhcp, "gen_calls_to_remove_host_maps")
+        dhcp.gen_calls_to_remove_host_maps.return_value = [hello]
+
+        self.assertThat(
+            dhcp.remove_host_maps(removal_mappings),
+            UpdateSucceeded)
+
+        self.assertThat(
+            dhcp.gen_calls_to_remove_host_maps,
+            MockCalledOnceWith(ANY, removal_mappings))
+
+    def test__passes_in_map_of_clients_to_gen_call(self):
+        nodegroup, protocol, io = self.prepare_rpc()
+        removal_mappings = self.make_example_removal_mappings(nodegroup)
+
+        self.patch_autospec(dhcp, "gen_calls_to_remove_host_maps")
+        dhcp.gen_calls_to_remove_host_maps.return_value = []
+
+        self.assertThat(
+            dhcp.remove_host_maps(removal_mappings),
+            UpdateSucceeded)
+
+        expected_clients = {
+            nodegroup: getClientFor(nodegroup.uuid)
+            for nodegroup in removal_mappings
+        }
+        self.assertThat(
+            dhcp.gen_calls_to_remove_host_maps,
+            MockCalledOnceWith(expected_clients, ANY))
+
+    def test__end_to_nearly_end(self):
+        nodegroup, protocol = self.prepare_live_rpc()
+        nodegroup.dhcp_key = factory.make_name("dhcp-key")
+
+        # Make RemoveHostMaps report success.
+        protocol.RemoveHostMaps.return_value = defer.succeed({})
+
+        [nodegroupiface] = nodegroup.get_managed_interfaces()
+
+        # Convenience functions to create random IP addresses. The `seen`
+        # argument prevents collisions.
+        def get_random_ip(source, seen=set()):
+            ip_address = factory.pick_ip_in_network(source, but_not=seen)
+            seen.add(ip_address)
+            return ip_address
+        get_random_removal_ip = partial(
+            get_random_ip, source=nodegroupiface.get_static_ip_range())
+
+        # These are the new mappings that we want to create host maps for.
+        # Calls will be made to add these.
+        removal_mappings = {
+            nodegroup: [
+                get_random_removal_ip(),
+                get_random_removal_ip(),
+            ]
+        }
+
+        # Make the call we've all been waiting for.
+        self.assertThat(
+            dhcp.remove_host_maps(removal_mappings),
+            UpdateSucceeded)
+
+        # The host maps in the dynamic range were removed.
+        self.assertThat(
+            protocol.RemoveHostMaps, MockCalledOnceWith(
+                ANY, ip_addresses=ANY, shared_key=nodegroup.dhcp_key))
+        expected_ip_addresses = removal_mappings[nodegroup]
+        _, _, kwargs = protocol.RemoveHostMaps.mock_calls[0]
+        observed_ip_addresses = kwargs["ip_addresses"]
+        self.assertItemsEqual(expected_ip_addresses, observed_ip_addresses)
 
 
 class DummyClient:
@@ -624,3 +765,46 @@ class TestGenCallsToRemoveDynamicHostMaps(MAASTestCase):
         # the given static_mappings object.
         self.assertThat(
             gen_dynamics, MockCalledOnceWith(sentinel.static_mappings))
+
+
+class TestGenCallsToRemoveHostMaps(MAASTestCase):
+
+    def test__returns_zero_calls_when_there_are_no_removal_mappings(self):
+        self.assertItemsEqual(
+            [], dhcp.gen_calls_to_remove_host_maps(
+                clients=DummyClients(), removal_mappings={}))
+
+    def test(self):
+        clients = DummyClients()
+
+        nodegroup_alice = Mock(name="Alice", dhcp_key=sentinel.alice_key)
+        nodegroup_bob = Mock(name="Bob", dhcp_key=sentinel.bob_key)
+
+        removal_mappings = {
+            nodegroup: [
+                factory.make_ipv4_address(),
+                factory.make_ipv6_address(),
+            ]
+            for nodegroup in (nodegroup_alice, nodegroup_bob)
+        }
+
+        calls = dhcp.gen_calls_to_remove_host_maps(
+            clients=clients, removal_mappings=removal_mappings)
+        self.assertThat(calls, IsInstance(Iterator))
+        self.assertThat(
+            calls, MatchesSetwise(*(
+                # There is a call for each nodegroup, using a client
+                # specific to that nodegroup. Each calls RemoveHostMaps
+                # with "ip_addresses" and "shared_key" arguments.
+                MatchesPartialCall(
+                    clients[nodegroup_alice], RemoveHostMaps,
+                    ip_addresses=removal_mappings[nodegroup_alice],
+                    shared_key=sentinel.alice_key,
+                ),
+                MatchesPartialCall(
+                    clients[nodegroup_bob], RemoveHostMaps,
+                    ip_addresses=removal_mappings[nodegroup_bob],
+                    shared_key=sentinel.bob_key,
+                ),
+            ))
+        )

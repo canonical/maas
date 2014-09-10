@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "update_host_maps",
+    "remove_host_maps",
 ]
 
 from collections import defaultdict
@@ -144,6 +145,45 @@ def update_host_maps(static_mappings, timeout=30):
         return
     # Now create the new host maps.
     calls = gen_calls_to_create_host_maps(clients, static_mappings)
+    # Listify the calls so that database access happens in this thread.
+    for response in async.gather(list(calls), timeout=timeout):
+        if isinstance(response, Failure):
+            yield response
+
+
+def gen_calls_to_remove_host_maps(clients, removal_mappings):
+    """Generates calls to remove host maps.
+
+    :param clients: A mapping of cluster UUIDs to
+        :py:class:`~provisioningserver.rpc.common.Client` instances. There
+        must be a client for each nodegroup in the `removal_mappings`
+        argument.
+    :param removal_mappings: A mapping from `NodeGroup` model instances to
+        sequences of IP addresses.
+    :return: A generator of callables.
+    """
+    for nodegroup, ip_addresses in removal_mappings.viewitems():
+        yield partial(
+            clients[nodegroup], RemoveHostMaps, ip_addresses=ip_addresses,
+            shared_key=nodegroup.dhcp_key)
+
+
+@synchronous
+def remove_host_maps(removal_mappings, timeout=30):
+    """Remove host maps from clusters' DHCP servers.
+
+    :param removal_mappings: A mapping from `NodeGroup` model instances to
+        sequences of IP addresses.
+    :param timeout: The number of seconds before attempts to remove host maps
+        are cancelled.
+    :return: A generator of :py:class:`~Failure`s, if any.
+    """
+    clients = {
+        nodegroup: getClientFor(nodegroup.uuid)
+        for nodegroup in removal_mappings
+    }
+    # Remove old host maps first, if there are any.
+    calls = gen_calls_to_remove_host_maps(clients, removal_mappings)
     # Listify the calls so that database access happens in this thread.
     for response in async.gather(list(calls), timeout=timeout):
         if isinstance(response, Failure):
