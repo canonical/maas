@@ -342,9 +342,8 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_delete_node_updates_zone(self):
         self.patch(settings, "DNS_CONNECT", True)
+        self.patch_autospec(node_module, "remove_host_maps")
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
-        # Prevent omshell task dispatch.
-        self.patch(node_module, "remove_dhcp_host_map")
         node.delete()
         fqdn = "%s.%s" % (node.hostname, nodegroup.name)
         self.assertEqual([''], self.dig_resolve(fqdn))

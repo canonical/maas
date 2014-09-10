@@ -18,7 +18,6 @@ from datetime import timedelta
 from itertools import izip
 import random
 
-import celery
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.dns import config as dns_config
@@ -87,7 +86,6 @@ from provisioningserver.rpc.testing import (
     always_succeed_with,
     TwistedLoggerFixture,
     )
-from provisioningserver.tasks import Omshell
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     AfterPreprocessing,
@@ -358,8 +356,7 @@ class NodeTest(MAASServerTestCase):
         self.assertRaises(NodeStateViolation, node.delete)
 
     def test_delete_node_also_deletes_related_static_IPs(self):
-        # Prevent actual omshell commands from being called in tasks.
-        self.patch(Omshell, 'remove')
+        self.patch_autospec(node_module, "remove_host_maps")
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
         random_alloc_type = factory.pick_enum(
@@ -368,54 +365,43 @@ class NodeTest(MAASServerTestCase):
         node.delete()
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
-    def test_delete_node_also_runs_task_to_delete_static_dhcp_maps(self):
-        # Prevent actual omshell commands from being called in tasks.
-        self.patch(Omshell, 'remove')
+    def test_delete_node_also_deletes_static_dhcp_maps(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         primary_mac = node.get_primary_mac()
-        primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY)
-        node.delete()
-        self.assertEqual(
-            ['provisioningserver.tasks.remove_dhcp_host_map'],
-            [task['task'].name for task in self.celery.tasks])
-
-    def test_delete_node_also_deletes_dhcp_host_map(self):
-        lease = make_active_lease()
-        node = factory.make_Node(nodegroup=lease.nodegroup)
-        node.add_mac_address(lease.mac)
-        # Prevent actual omshell commands from being called in the task.
-        self.patch(Omshell, 'remove')
+        static_ip_addresses = set(
+            static_ip_address.ip for static_ip_address in
+            primary_mac.claim_static_ips(alloc_type=IPADDRESS_TYPE.STICKY))
         node.delete()
         self.assertThat(
-            self.celery.tasks[0]['kwargs'],
-            Equals({
-                'ip_address': lease.ip,
-                'server_address': "127.0.0.1",
-                'omapi_key': lease.nodegroup.dhcp_key,
-                }))
+            remove_host_maps, MockCalledOnceWith(
+                {node.nodegroup: static_ip_addresses}))
 
-    def test_delete_dynamic_host_maps_sends_to_correct_queue(self):
+    def test_delete_node_also_deletes_dhcp_host_map(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
         lease = make_active_lease()
         node = factory.make_Node(nodegroup=lease.nodegroup)
         node.add_mac_address(lease.mac)
-        # Prevent actual omshell commands from being called in the task.
-        self.patch(Omshell, 'remove')
-        option_call = self.patch(celery.canvas.Signature, 'set')
-        work_queue = node.work_queue
         node.delete()
-        args, kwargs = option_call.call_args
-        self.assertEqual(work_queue, kwargs['queue'])
+        self.assertThat(
+            remove_host_maps, MockCalledOnceWith(
+                {node.nodegroup: {lease.ip}}))
 
     def test_delete_node_removes_multiple_host_maps(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
         lease1 = make_active_lease()
         lease2 = make_active_lease(nodegroup=lease1.nodegroup)
         node = factory.make_Node(nodegroup=lease1.nodegroup)
         node.add_mac_address(lease1.mac)
         node.add_mac_address(lease2.mac)
-        # Prevent actual omshell commands from being called in the task.
-        self.patch(Omshell, 'remove')
         node.delete()
-        self.assertEqual(2, len(self.celery.tasks))
+        self.assertThat(
+            remove_host_maps, MockCalledOnceWith(
+                {node.nodegroup: {lease1.ip, lease2.ip}},
+            ))
 
     def test_set_random_hostname_set_hostname(self):
         # Blank out enlistment_domain.
@@ -667,32 +653,17 @@ class NodeTest(MAASServerTestCase):
             (node.status, node.owner, ''))
 
     def test_release_deletes_static_ip_host_maps(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
         user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
         sips = node.get_primary_mac().claim_static_ips()
-        delete_static_host_maps = self.patch(node, 'delete_static_host_maps')
         node.release()
-        expected = [sip.ip.format() for sip in sips]
-        self.assertThat(delete_static_host_maps, MockCalledOnceWith(expected))
-
-    def test_delete_static_host_maps(self):
-        user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, status=NODE_STATUS.ALLOCATED)
-        [sip] = node.get_primary_mac().claim_static_ips()
-        self.patch(Omshell, 'remove')
-        set_call = self.patch(celery.canvas.Signature, 'set')
-        node.delete_static_host_maps([sip.ip.format()])
+        expected = {sip.ip.format() for sip in sips}
         self.assertThat(
-            self.celery.tasks[0]['kwargs'],
-            Equals({
-                'ip_address': sip.ip.format(),
-                'server_address': "127.0.0.1",
-                'omapi_key': node.nodegroup.dhcp_key,
-                }))
-        args, kwargs = set_call.call_args
-        self.assertEqual(node.work_queue, kwargs['queue'])
+            remove_host_maps, MockCalledOnceWith(
+                {node.nodegroup: expected}))
 
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_Node()
@@ -881,6 +852,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_deallocates_static_ips(self):
         deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
+        deallocate.return_value = set()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
             power_type='ether_wake')

@@ -28,7 +28,6 @@ import re
 from string import whitespace
 from uuid import uuid1
 
-import celery
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -49,7 +48,10 @@ from django.db.models import (
 from django.shortcuts import get_object_or_404
 import djorm_pgarray.fields
 from maasserver import DefaultMeta
-from maasserver.clusterrpc.dhcp import update_host_maps
+from maasserver.clusterrpc.dhcp import (
+    remove_host_maps,
+    update_host_maps,
+    )
 from maasserver.clusterrpc.power import (
     power_off_nodes,
     power_on_nodes,
@@ -95,8 +97,6 @@ from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import MultipleFailures
-from provisioningserver.tasks import remove_dhcp_host_map
-from provisioningserver.utils import warn_deprecated
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import reactor_sync
 import twisted.python.log
@@ -961,101 +961,60 @@ class Node(CleanSave, TimestampedModel):
             self.save()
 
     def delete(self):
+        """Delete this node.
+
+        :raises MultipleFailures: If host maps cannot be deleted.
+        """
         # Allocated nodes can't be deleted.
         if self.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
                 "Cannot delete node %s: node is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+
         maaslog.info("%s: Deleting node", self.hostname)
-        # Delete any dynamic host maps in the DHCP server.  This is only
-        # here to cope with legacy code that used to create these, the
-        # current code does not.
-        self._delete_dynamic_host_maps()
 
-        # Delete all remaining static IPs.
+        # Ensure that all static IPs are deleted, and keep track of the IP
+        # addresses so we can delete the associated host maps.
         static_ips = StaticIPAddress.objects.delete_by_node(self)
-        self.delete_static_host_maps(static_ips)
-
-        # Delete the related mac addresses.
-        # The DHCPLease objects corresponding to these MACs will be deleted
-        # as well. See maasserver/models/dhcplease:delete_lease().
+        # Collect other IP addresses (likely in the dynamic range) that we
+        # should delete host maps for. We need to do this because MAAS used to
+        # declare host maps in the dynamic range. At some point we can stop
+        # removing host maps from the dynamic range, once we decide that
+        # enough time has passed.
+        macs = self.macaddress_set.values_list('mac_address', flat=True)
+        leases = DHCPLease.objects.filter(
+            nodegroup=self.nodegroup, mac__in=macs)
+        leased_ips = leases.values_list("ip", flat=True)
+        # Delete host maps for all addresses linked to this node.
+        self.delete_host_maps(set().union(static_ips, leased_ips))
+        # Delete the related mac addresses. The DHCPLease objects
+        # corresponding to these MACs will be deleted as well. See
+        # maasserver/models/dhcplease:delete_lease().
         self.macaddress_set.all().delete()
 
         super(Node, self).delete()
 
-    def delete_static_host_maps(self, for_ips):
-        """Delete any host maps for static IPs allocated to this node.
+    def delete_host_maps(self, for_ips):
+        """Delete any host maps for IPs allocated to this node.
 
-        :param for_ips: Delete the maps for these IP addresses only.
+        This should probably live on `NodeGroup`.
+
+        :param for_ips: The set of IP addresses to remove host maps for.
+        :type for_ips: `set`
+
+        :raises MultipleFailures: When there are failures originating from a
+            remote process. There could be one or more failures -- it's not
+            strictly *multiple* -- but they do all originate from comms with
+            remote processes.
         """
-        warn_deprecated("Celery is going away.")
-
-        tasks = []
-        for ip in for_ips:
-            task = remove_dhcp_host_map.si(
-                ip_address=ip, server_address="127.0.0.1",
-                omapi_key=self.nodegroup.dhcp_key)
-            task.set(queue=self.work_queue)
-            tasks.append(task)
-        if len(tasks) > 0:
-            maaslog.info(
-                "%s: Asking cluster to delete static host maps", self.hostname)
-            chain = celery.chain(tasks)
-            chain.apply_async()
-
-    def _build_dynamic_host_map_deletion_task(self):
-        """Create a chained celery task that will delete this node's
-        dynamic dhcp host maps.
-
-        Host maps in the DHCP server that are as a result of StaticIPAddresses
-        are not deleted here as these get deleted when nodes are released
-        (for AUTO types) or from a separate user-driven action.
-
-        Return None if there is nothing to delete.
-        """
-        warn_deprecated("Celery is going away.")
-
-        nodegroup = self.nodegroup
-        if len(nodegroup.get_managed_interfaces()) == 0:
-            return None
-
-        macs = self.macaddress_set.values_list('mac_address', flat=True)
-        static_ips = StaticIPAddress.objects.filter(
-            macaddress__mac_address__in=macs).values_list("ip", flat=True)
-        # See [1] below for a comment about this use of list():
-        leases = DHCPLease.objects.filter(
-            mac__in=macs, nodegroup=nodegroup).exclude(
-            ip__in=list(static_ips))
-        tasks = []
-        for lease in leases:
-            # XXX See bug 1039362 regarding server_address
-            task_kwargs = dict(
-                ip_address=lease.ip,
-                server_address="127.0.0.1",
-                omapi_key=nodegroup.dhcp_key)
-            task = remove_dhcp_host_map.si(**task_kwargs)
-            task.set(queue=self.work_queue)
-            tasks.append(task)
-        if len(tasks) > 0:
-            return celery.chain(tasks)
-        return None
-
-        # [1]
-        # Django has a bug (I know, you're shocked, right?) where it
-        # casts the outer part of the IN query to a string (from inet
-        # type) but fails to cast the result of the subselect arising
-        # from the ValuesQuerySet that values_list() produces. The
-        # result of that is that you get a Postgres ProgrammingError
-        # because of the type mismatch.  This bug is avoided by
-        # listifying the static_ips which vastly simplifies the generated
-        # SQL as it avoids the subselect.
-
-    def _delete_dynamic_host_maps(self):
-        """If any DHCPLeases exist for this node, remove any associated
-        host maps."""
-        chain = self._build_dynamic_host_map_deletion_task()
-        if chain is not None:
-            chain.apply_async()
+        assert isinstance(for_ips, set), "%r is not a set" % (for_ips,)
+        if len(for_ips) > 0:
+            maaslog.info("%s: Deleting DHCP host maps", self.hostname)
+            removal_mapping = {self.nodegroup: for_ips}
+            remove_host_maps_failures = list(
+                remove_host_maps(removal_mapping))
+            if len(remove_host_maps_failures) != 0:
+                raise MultipleFailures(*remove_host_maps_failures)
 
     def set_random_hostname(self):
         """Set `hostname` from a shuffled list of candidate names.
@@ -1257,11 +1216,14 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s allocated to user %s", self.hostname, user.username)
 
     def release(self):
-        """Mark allocated or reserved node as available again and power off."""
+        """Mark allocated or reserved node as available again and power off.
+
+        :raises MultipleFailures: If host maps cannot be deleted.
+        """
         maaslog.info("%s: Releasing node", self.hostname)
         Node.objects.stop_nodes([self.system_id], self.owner)
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
-        self.delete_static_host_maps(deallocated_ips)
+        self.delete_host_maps(deallocated_ips)
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
         self.status = NODE_STATUS.READY

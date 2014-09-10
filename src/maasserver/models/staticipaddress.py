@@ -187,7 +187,7 @@ class StaticIPAddressManager(Manager):
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset
         filter and return a list of IPs deleted."""
-        deallocated_ips = [record.ip.format() for record in filter]
+        deallocated_ips = {record.ip.format() for record in filter}
         filter.delete()
         return deallocated_ips
 
