@@ -81,7 +81,7 @@ from mock import (
     ANY,
     sentinel,
     )
-from provisioningserver.rpc import cluster
+from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.testing import (
     always_succeed_with,
@@ -272,6 +272,21 @@ class NodeTest(MAASServerTestCase):
         node.add_mac_address(mac)
         macs = MACAddress.objects.filter(node=node, mac_address=mac).count()
         self.assertEqual(1, macs)
+
+    def test_add_mac_address_sets_cluster_interface(self):
+        # If a DHCPLease exists for this mac, ensure the
+        # cluster_interface is set on the basis of that lease.
+        cluster = factory.make_NodeGroup()
+        cluster_interface = factory.make_NodeGroupInterface(nodegroup=cluster)
+        ip_in_range = cluster_interface.static_ip_range_low
+        mac_address = factory.getRandomMACAddress()
+        factory.make_DHCPLease(
+            mac=mac_address, ip=ip_in_range, nodegroup=cluster)
+        node = factory.make_Node(nodegroup=cluster)
+
+        node.add_mac_address(mac_address)
+        self.assertEqual(
+            cluster_interface, node.get_primary_mac().cluster_interface)
 
     def test_remove_mac_address(self):
         mac = factory.getRandomMACAddress()
@@ -1459,7 +1474,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
 
     def prepare_rpc_to_cluster(self, nodegroup):
         protocol = self.rpc_fixture.makeCluster(
-            nodegroup, cluster.CreateHostMaps, cluster.PowerOn)
+            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn)
         protocol.CreateHostMaps.side_effect = always_succeed_with({})
         protocol.PowerOn.side_effect = always_succeed_with({})
         return protocol

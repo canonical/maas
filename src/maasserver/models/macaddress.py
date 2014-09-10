@@ -35,9 +35,13 @@ from maasserver.fields import (
     )
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.managers import BulkManager
+from maasserver.models.network import Network
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.timestampedmodel import TimestampedModel
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPRange,
+    )
 from provisioningserver.logger import get_maas_logger
 
 
@@ -57,6 +61,57 @@ def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
         if ip_address in interface.network:
             return interface
     return None
+
+
+def update_mac_cluster_interfaces(leases, cluster):
+    """Calculate and store which interface a MAC is attached to."""
+    interface_ranges = {}
+    # Only consider configured interfaces.
+    interfaces = (
+        cluster.nodegroupinterface_set
+        .exclude(ip_range_low__isnull=True)
+        .exclude(ip_range_high__isnull=True)
+    )
+    for interface in interfaces:
+        ip_range = IPRange(
+            interface.ip_range_low, interface.ip_range_high)
+        if interface.static_ip_range_low and interface.static_ip_range_high:
+            static_range = IPRange(
+                interface.static_ip_range_low, interface.static_ip_range_high)
+        else:
+            static_range = []
+        interface_ranges[interface] = (ip_range, static_range)
+    for ip, mac in leases.items():
+        try:
+            mac_address = MACAddress.objects.get(mac_address=mac)
+        except MACAddress.DoesNotExist:
+            # Silently ignore MAC addresses that we don't know about.
+            continue
+        for interface, (ip_range, static_range) in interface_ranges.items():
+            ipaddress = IPAddress(ip)
+            # Set the cluster interface only if it's new/changed.
+            # This is only an optimisation to prevent repeated logging.
+            changed = mac_address.cluster_interface != interface
+            in_range = ipaddress in ip_range or ipaddress in static_range
+            if in_range and changed:
+                mac_address.cluster_interface = interface
+                mac_address.save()
+                maaslog.info(
+                    "%s %s linked to cluster interface %s",
+                    mac_address.node.hostname, mac_address, interface.name)
+
+                # Locate the Network to which this MAC belongs.
+                ipnetwork = interface.network
+                if ipnetwork is not None:
+                    try:
+                        network = Network.objects.get(ip=ipnetwork.ip.format())
+                        network.macaddress_set.add(mac_address)
+                    except Network.DoesNotExist:
+                        pass
+
+                # Cheap optimisation. No other interfaces will match, so
+                # break out of the loop.
+                break
 
 
 class MACAddress(CleanSave, TimestampedModel):

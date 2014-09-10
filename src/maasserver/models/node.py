@@ -78,6 +78,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.licensekey import LicenseKey
+from maasserver.models.macaddress import update_mac_cluster_interfaces
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressExhaustion,
@@ -882,6 +883,14 @@ class Node(CleanSave, TimestampedModel):
 
         mac = MACAddress(mac_address=mac_address, node=self)
         mac.save()
+
+        # See if there's a lease for this MAC and set its
+        # cluster_interface if so.
+        nodegroup_leases = {
+            lease.ip: lease.mac
+            for lease in DHCPLease.objects.filter(nodegroup=self.nodegroup)}
+        update_mac_cluster_interfaces(nodegroup_leases, self.nodegroup)
+
         return mac
 
     def remove_mac_address(self, mac_address):

@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from operator import attrgetter
+import random
 
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
@@ -22,25 +23,44 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.exceptions import StaticIPAddressTypeClash
+from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
-    MACAddress,
     NodeGroupInterface,
     StaticIPAddress,
     )
 from maasserver.models.macaddress import (
     find_cluster_interface_responsible_for_ip,
+    MACAddress,
+    update_mac_cluster_interfaces,
     )
+from maasserver.models.network import Network
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
+    IPRange,
     )
 from testtools.matchers import (
     Equals,
     HasLength,
+    MatchesStructure,
     )
+
+
+def get_random_ip_from_interface_range(interface, use_static_range=None):
+    """Return a random IP from the pool available to an interface.
+
+    :return: An IP address as a string."""
+    if use_static_range:
+        ip_range = IPRange(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+    else:
+        ip_range = IPRange(
+            interface.ip_range_low, interface.ip_range_high)
+    chosen_ip = random.choice(ip_range)
+    return unicode(chosen_ip)
 
 
 class MACAddressTest(MAASServerTestCase):
@@ -675,3 +695,117 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         my_mac = factory.make_MACAddress(
             node=my_node, cluster_interface=my_interface)
         self.assertItemsEqual([my_interface], my_mac.get_cluster_interfaces())
+
+
+class TestUpdateMacClusterInterfaces(MAASServerTestCase):
+    """Tests for `update_mac_cluster_interfaces`()."""
+
+    def make_cluster_with_macs_and_leases(self, use_static_range=False):
+        cluster = factory.make_NodeGroup()
+        mac_addresses = {
+            factory.make_MACAddress(): factory.make_NodeGroupInterface(
+                nodegroup=cluster)
+            for i in range(4)
+            }
+        leases = {
+            get_random_ip_from_interface_range(interface, use_static_range): (
+                mac_address.mac_address)
+            for mac_address, interface in mac_addresses.viewitems()
+        }
+        return cluster, mac_addresses, leases
+
+    def test_updates_mac_cluster_interfaces(self):
+        cluster, mac_addresses, leases = (
+            self.make_cluster_with_macs_and_leases())
+        update_mac_cluster_interfaces(leases, cluster)
+        results = {
+            mac_address: mac_address.cluster_interface
+            for mac_address in MACAddress.objects.filter(
+                mac_address__in=leases.values())
+            }
+        self.assertEqual(mac_addresses, results)
+
+    def test_considers_static_range_when_updating_interfaces(self):
+        cluster, mac_addresses, leases = (
+            self.make_cluster_with_macs_and_leases(use_static_range=True))
+        update_mac_cluster_interfaces(leases, cluster)
+        results = {
+            mac_address: mac_address.cluster_interface
+            for mac_address in MACAddress.objects.filter(
+                mac_address__in=leases.values())
+            }
+        self.assertEqual(mac_addresses, results)
+
+    def test_updates_network_relations(self):
+        # update_mac_cluster_interfaces should also associate the mac
+        # with the network on which it resides.
+        cluster, mac_addresses, leases = (
+            self.make_cluster_with_macs_and_leases())
+        expected_relations = []
+        for mac, interface in mac_addresses.viewitems():
+            net = create_Network_from_NodeGroupInterface(interface)
+            expected_relations.append((net, mac))
+        update_mac_cluster_interfaces(leases, cluster)
+        # Doing a single giant comparison here would be unintuitive and
+        # fugly, so I'm iterating.
+        for net, mac in expected_relations:
+            [observed_macddress] = net.macaddress_set.all()
+            self.expectThat(mac, Equals(observed_macddress))
+            interface = mac_addresses[mac]
+            self.expectThat(
+                net, MatchesStructure.byEquality(
+                    default_gateway=interface.router_ip,
+                    netmask=interface.subnet_mask,
+                ))
+
+    def test_does_not_overwrite_network_with_same_name(self):
+        cluster = factory.make_NodeGroup()
+        ngi = factory.make_NodeGroupInterface(nodegroup=cluster)
+        net1 = create_Network_from_NodeGroupInterface(ngi)
+
+        other_ngi = factory.make_NodeGroupInterface(nodegroup=cluster)
+        other_ngi.interface = ngi.interface
+        net2 = create_Network_from_NodeGroupInterface(ngi)
+        self.assertEqual(None, net2)
+        self.assertItemsEqual([net1], Network.objects.all())
+
+    def test_ignores_mac_not_attached_to_cluster(self):
+        cluster = factory.make_NodeGroup()
+        mac_address = factory.make_MACAddress()
+        leases = {
+            factory.getRandomIPAddress(): mac_address.mac_address
+            }
+        update_mac_cluster_interfaces(leases, cluster)
+        mac_address = MACAddress.objects.get(
+            id=mac_address.id)
+        self.assertIsNone(mac_address.cluster_interface)
+
+    def test_ignores_unknown_macs(self):
+        cluster = factory.make_NodeGroup()
+        mac_address = factory.getRandomMACAddress()
+        leases = {
+            factory.getRandomIPAddress(): mac_address
+            }
+        # This is a test to show that update_mac_cluster_interfaces()
+        # doesn't raise an Http404 when it comes across something it
+        # doesn't know, hence the lack of meaningful assertions.
+        update_mac_cluster_interfaces(leases, cluster)
+        self.assertFalse(
+            MACAddress.objects.filter(mac_address=mac_address).exists())
+
+    def test_ignores_unconfigured_interfaces(self):
+        cluster = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(
+            nodegroup=cluster, subnet_mask='', broadcast_ip='',
+            static_ip_range_low='', static_ip_range_high='',
+            ip_range_low='', ip_range_high='', router_ip='',
+            ip=factory.getRandomIPAddress(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        mac_address = factory.getRandomMACAddress()
+        leases = {
+            factory.getRandomIPAddress(): mac_address
+            }
+        self.assertIsNone(update_mac_cluster_interfaces(leases, cluster))
+        # The real test is that update_mac_cluster_interfaces() doesn't
+        # stacktrace because of the unconfigured interface (see bug
+        # 1332596).
