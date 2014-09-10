@@ -14,27 +14,30 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import httplib
 import json
 import os
-from random import randint
+from random import (
+    choice,
+    randint,
+    )
 from textwrap import dedent
 
-from apiclient.maas_client import MAASClient
-from apiclient.testing.credentials import make_api_credentials
 from fixtures import EnvironmentVariableFixture
 from maastesting import root
 from maastesting.factory import factory
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockNotCalled,
+from maastesting.matchers import MockCalledOnceWith
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
     )
-from maastesting.testcase import MAASTestCase
 from mock import (
     Mock,
     sentinel,
     )
 import provisioningserver
+from provisioningserver.rpc import region
+from provisioningserver.rpc.exceptions import NodeAlreadyExists
+from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from provisioningserver.utils import (
@@ -54,6 +57,7 @@ from testtools.matchers import (
     DirExists,
     EndsWith,
     )
+from twisted.internet import defer
 
 
 def get_branch_dir(*path):
@@ -400,10 +404,81 @@ class TestQuotePyLiteral(MAASTestCase):
 
 class TestCreateNode(PservTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def prepare_region_rpc(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(region.CreateNode)
+        return protocol, connecting
+
+    @defer.inlineCallbacks
+    def test_calls_create_node_rpc(self):
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        protocol.CreateNode.return_value = defer.succeed(
+            {"system_id": factory.make_name("system-id")})
+
+        uuid = 'node-' + factory.make_UUID()
+        macs = sorted(factory.getRandomMACAddress() for x in range(3))
+        arch = factory.make_name('architecture')
+        power_type = factory.make_name('power_type')
+        power_parameters = {
+            'power_address': factory.getRandomIPAddress(),
+            'power_user': factory.make_name('power_user'),
+            'power_pass': factory.make_name('power_pass'),
+            'power_control': None,
+            'system_id': uuid
+        }
+        get_cluster_uuid = self.patch(
+            provisioningserver.utils, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+        yield create_node(
+            macs, arch, power_type, power_parameters)
+        self.assertThat(
+            protocol.CreateNode, MockCalledOnceWith(
+                protocol, cluster_uuid=get_cluster_uuid.return_value,
+                architecture=arch, power_type=power_type,
+                power_parameters=json.dumps(power_parameters),
+                mac_addresses=macs))
+
+    @defer.inlineCallbacks
+    def test_returns_system_id_of_new_node(self):
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        system_id = factory.make_name("system-id")
+        protocol.CreateNode.return_value = defer.succeed(
+            {"system_id": system_id})
+        get_cluster_uuid = self.patch(
+            provisioningserver.utils, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+
+        uuid = 'node-' + factory.make_UUID()
+        macs = sorted(factory.getRandomMACAddress() for x in range(3))
+        arch = factory.make_name('architecture')
+        power_type = factory.make_name('power_type')
+        power_parameters = {
+            'power_address': factory.getRandomIPAddress(),
+            'power_user': factory.make_name('power_user'),
+            'power_pass': factory.make_name('power_pass'),
+            'power_control': None,
+            'system_id': uuid
+        }
+        new_system_id = yield create_node(
+            macs, arch, power_type, power_parameters)
+        self.assertEqual(system_id, new_system_id)
+
+    @defer.inlineCallbacks
     def test_passes_on_no_duplicate_macs(self):
-        url = '/api/1.0/nodes/'
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        system_id = factory.make_name("system-id")
+        protocol.CreateNode.return_value = defer.succeed(
+            {"system_id": system_id})
+        get_cluster_uuid = self.patch(
+            provisioningserver.utils, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+
         uuid = 'node-' + factory.make_UUID()
-        macs = [factory.getRandomMACAddress() for x in range(3)]
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -414,33 +489,31 @@ class TestCreateNode(PservTestCase):
             'system_id': uuid
         }
 
-        make_api_credentials()
-        provisioningserver.auth.record_api_credentials(
-            ':'.join(make_api_credentials()))
-        self.set_maas_url()
-        get = self.patch(MAASClient, 'get')
-        post = self.patch(MAASClient, 'post')
+        # Create a list of MACs with one random duplicate.
+        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
+        macs_with_duplicate = macs + [choice(macs)]
 
-        # Test for no duplicate macs
-        get_data = []
-        response = factory.make_response(
-            httplib.OK, json.dumps(get_data),
-            'application/json')
-        get.return_value = response
-        create_node(macs, arch, power_type, power_parameters)
-        post_data = {
-            'architecture': arch,
-            'power_type': power_type,
-            'power_parameters': json.dumps(power_parameters),
-            'mac_addresses': macs,
-            'autodetect_nodegroup': 'true'
-        }
-        self.assertThat(post, MockCalledOnceWith(url, 'new', **post_data))
+        yield create_node(
+            macs_with_duplicate, arch, power_type, power_parameters)
+        self.assertThat(
+            protocol.CreateNode, MockCalledOnceWith(
+                protocol, cluster_uuid=get_cluster_uuid.return_value,
+                architecture=arch, power_type=power_type,
+                power_parameters=json.dumps(power_parameters),
+                mac_addresses=macs))
 
-    def test_errors_on_duplicate_macs(self):
-        url = '/api/1.0/nodes/'
+    @defer.inlineCallbacks
+    def test_logs_error_on_duplicate_macs(self):
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        system_id = factory.make_name("system-id")
+        maaslog = self.patch(provisioningserver.utils, 'maaslog')
+        get_cluster_uuid = self.patch(
+            provisioningserver.utils, 'get_cluster_uuid')
+        get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
+
         uuid = 'node-' + factory.make_UUID()
-        macs = [factory.getRandomMACAddress() for x in range(3)]
+        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -451,31 +524,19 @@ class TestCreateNode(PservTestCase):
             'system_id': uuid
         }
 
-        make_api_credentials()
-        provisioningserver.auth.record_api_credentials(
-            ':'.join(make_api_credentials()))
-        self.set_maas_url()
-        get = self.patch(MAASClient, 'get')
-        post = self.patch(MAASClient, 'post')
+        protocol.CreateNode.side_effect = [
+            defer.succeed({"system_id": system_id}),
+            defer.fail(NodeAlreadyExists("Node already exists.")),
+            ]
 
-        # Test for a duplicate mac
-        resource_uri1 = url + "%s/macs/%s/" % (uuid, macs[0])
-        get_data = [
-            {
-                "macaddress_set": [
-                    {
-                        "resource_uri": resource_uri1,
-                        "mac_address": macs[0]
-                    }
-                ]
-            }
-        ]
-        response = factory.make_response(
-            httplib.OK, json.dumps(get_data),
-            'application/json')
-        get.return_value = response
-        create_node(macs, arch, power_type, power_parameters)
-        self.assertThat(post, MockNotCalled())
+        yield create_node(
+            macs, arch, power_type, power_parameters)
+        yield create_node(
+            macs, arch, power_type, power_parameters)
+        self.assertThat(
+            maaslog.error, MockCalledOnceWith(
+                "A node with one of the mac addressess in %s already "
+                "exists.", macs))
 
 
 class TestComposeURL(MAASTestCase):

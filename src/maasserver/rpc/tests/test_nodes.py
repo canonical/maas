@@ -25,14 +25,15 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.drivers import PowerTypeRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
+from provisioningserver.rpc.exceptions import NodeAlreadyExists
 from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
 
 
-class TestCreateNode(MAASTestCase):
+class TestCreateNode(MAASServerTestCase):
 
     def prepare_cluster_rpc(self, cluster):
         self.useFixture(RegionEventLoopFixture('rpc'))
@@ -73,7 +74,7 @@ class TestCreateNode(MAASTestCase):
                 node.power_type,
                 node.power_parameters
             ))
-        self.assertItemsEqual(
+        self.assertEqual(
             mac_addresses,
             [mac.mac_address for mac in node.macaddress_set.all()])
 
@@ -86,4 +87,22 @@ class TestCreateNode(MAASTestCase):
             ValidationError, create_node, cluster.uuid,
             architecture="spam/eggs", power_type="scrambled",
             power_parameters=dumps({}),
-            mac_addresses=["this is not a MAC address"])
+            mac_addresses=[factory.getRandomMACAddress()])
+
+    def test__raises_error_if_node_already_exists(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        mac_addresses = [
+            factory.getRandomMACAddress() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        create_node(
+            cluster.uuid, architecture, power_type, power_parameters,
+            mac_addresses)
+        self.assertRaises(
+            NodeAlreadyExists, create_node, cluster.uuid, architecture,
+            power_type, power_parameters, [mac_addresses[0]])

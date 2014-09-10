@@ -28,6 +28,7 @@ from maasserver.models import (
     )
 from maasserver.utils.async import transactional
 from provisioningserver.rpc.exceptions import (
+    NodeAlreadyExists,
     NoSuchCluster,
     NoSuchNode,
     )
@@ -92,6 +93,7 @@ def update_node_power_state(system_id, power_state):
     node.update_power_state(power_state)
 
 
+@synchronous
 @transactional
 def create_node(cluster_uuid, architecture, power_type,
                 power_parameters, mac_addresses):
@@ -106,6 +108,13 @@ def create_node(cluster_uuid, architecture, power_type,
     :param mac_addresses: An iterable of MAC addresses that belong to
         the node.
     """
+    # Check that there isn't already a node with one of our MAC
+    # addresses, and bail out early if there is.
+    nodes = Node.objects.filter(macaddress__mac_address__in=mac_addresses)
+    if nodes.count() > 0:
+        raise NodeAlreadyExists(
+            "One of the MACs %s is already in use by a node." %
+            mac_addresses)
     cluster = NodeGroup.objects.get_by_natural_key(cluster_uuid)
     data = {
         'power_type': power_type,

@@ -93,3 +93,7 @@ class MultipleFailures(Exception):
                     "All failures must be instances of twisted.python."
                     "failure.Failure, not %r" % (failure,))
         super(MultipleFailures, self).__init__(*failures)
+
+
+class NodeAlreadyExists(Exception):
+    """A node already exists with a given MAC address."""

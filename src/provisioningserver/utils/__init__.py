@@ -36,16 +36,29 @@ from urlparse import (
     )
 from warnings import warn
 
-from apiclient.maas_client import (
-    MAASClient,
-    MAASDispatcher,
-    MAASOAuth,
-    )
 import bson
-from provisioningserver.auth import get_recorded_api_credentials
-from provisioningserver.cluster_config import get_maas_url
+from provisioningserver.cluster_config import get_cluster_uuid
+from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NodeAlreadyExists,
+    )
+from provisioningserver.utils.twisted import (
+    pause,
+    retries,
+    )
 import simplejson as json
 import tempita
+from twisted.internet import reactor
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
+from twisted.protocols.amp import UnhandledCommand
+
+
+maaslog = get_maas_logger("utils")
 
 
 def node_exists(macs, url, client):
@@ -66,25 +79,56 @@ def node_exists(macs, url, client):
     return len(content) > 0
 
 
+@inlineCallbacks
 def create_node(macs, arch, power_type, power_parameters):
-    api_credentials = get_recorded_api_credentials()
-    if api_credentials is None:
-        raise Exception('Not creating node: no API key yet.')
-    client = MAASClient(
-        MAASOAuth(*api_credentials), MAASDispatcher(),
-        get_maas_url())
+    """Create a Node on the region and return its system_id.
 
-    data = {
-        'architecture': arch,
-        'power_type': power_type,
-        'power_parameters': json.dumps(power_parameters),
-        'mac_addresses': macs,
-        'autodetect_nodegroup': 'true'
-    }
-    url = '/api/1.0/nodes/'
-    if node_exists(macs, url, client):
+    :param macs: A list of MAC addresses belonging to the node.
+    :param arch: The node's architecture, in the form 'arch/subarch'.
+    :param power_type: The node's power type as a string.
+    :param power_parameters: The power parameters for the node, as a
+        dict.
+    """
+    # Avoid circular dependencies.
+    from provisioningserver.rpc.region import CreateNode
+    for elapsed, remaining, wait in retries(15, 5, reactor):
+        try:
+            client = getRegionClient()
+            break
+        except NoConnectionsAvailable:
+            yield pause(wait, reactor)
+    else:
+        maaslog.error(
+            "Can't create node, no RPC connection to region.")
         return
-    return client.post(url, 'new', **data)
+
+    # De-dupe the MAC addresses we pass. We sort here to avoid test
+    # failures.
+    macs = sorted(set(macs))
+    try:
+        response = yield client(
+            CreateNode,
+            cluster_uuid=get_cluster_uuid(),
+            architecture=arch,
+            power_type=power_type,
+            power_parameters=json.dumps(power_parameters),
+            mac_addresses=macs)
+    except NodeAlreadyExists:
+        # The node already exists on the region, so we log the error and
+        # give up.
+        maaslog.error(
+            "A node with one of the mac addressess in %s already exists.",
+            macs)
+        returnValue(None)
+    except UnhandledCommand:
+        # The region hasn't been upgraded to support this method
+        # yet, so give up.
+        maaslog.error(
+            "Unable to create node on region: Region does not "
+            "support the CreateNode RPC method.")
+        returnValue(None)
+    else:
+        returnValue(response['system_id'])
 
 
 def locate_config(*path):

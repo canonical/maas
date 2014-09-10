@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "CreateNode",
     "Identify",
     "MarkNodeFailed",
     "ReportBootImages",
@@ -29,6 +30,7 @@ from provisioningserver.rpc.arguments import (
     )
 from provisioningserver.rpc.common import Identify
 from provisioningserver.rpc.exceptions import (
+    NodeAlreadyExists,
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
@@ -291,7 +293,9 @@ class CreateNode(amp.Command):
     response = [
         (b'system_id', amp.Unicode()),
     ]
-    errors = {}
+    errors = {
+        NodeAlreadyExists: b"NodeAlreadyExists",
+    }
 
 
 class TimerExpired(amp.Command):
