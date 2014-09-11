@@ -29,6 +29,7 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
@@ -264,6 +265,16 @@ class Cluster(RPCProtocol):
             message = "Couldn't find IP address for MAC %s" % mac
             maaslog.warning(message)
             raise exceptions.NoIPFoundForMACAddress(message)
+        return {}
+
+    @cluster.EnlistNodesFromMSCM.responder
+    def enlist_nodes_from_mscm(self, host, username, password):
+        """enlist_nodes_from_mscm()
+
+        Implemention of
+        :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromMSCM`.
+        """
+        probe_and_enlist_mscm(host, username, password)
         return {}
 
 

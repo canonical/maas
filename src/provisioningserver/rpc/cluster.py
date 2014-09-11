@@ -377,3 +377,17 @@ class AddSeaMicro15k(amp.Command):
     errors = {
         exceptions.NoIPFoundForMACAddress: b"NoIPFoundForMACAddress",
     }
+
+
+class EnlistNodesFromMSCM(amp.Command):
+    """Probe for and enlist mscm machines attached to the cluster.
+
+    :since: 1.7
+    """
+    arguments = [
+        (b"host", amp.Unicode()),
+        (b"username", amp.Unicode()),
+        (b"password", amp.Unicode()),
+    ]
+    response = []
+    errors = {}

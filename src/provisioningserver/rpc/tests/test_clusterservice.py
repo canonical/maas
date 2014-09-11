@@ -1256,3 +1256,30 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             probe_seamicro15k_and_enlist, MockCalledOnceWith(
                 find_ip_via_arp.return_value, username, password,
                 power_control=power_control))
+
+
+class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.EnlistNodesFromMSCM.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__calls_probe_and_enlist_mscm(self):
+        probe_and_enlist_mscm = self.patch_autospec(
+            clusterservice, 'probe_and_enlist_mscm')
+
+        host = factory.make_name('host')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromMSCM, {
+            'host': host,
+            'username': username,
+            'password': password,
+        })
+
+        self.assertThat(
+            probe_and_enlist_mscm, MockCalledOnceWith(
+                host, username, password))

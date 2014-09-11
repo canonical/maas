@@ -41,13 +41,11 @@ from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
     AddVirsh,
+    EnlistNodesFromMSCM,
     ImportBootImages,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.tasks import (
-    enlist_nodes_from_mscm,
-    enlist_nodes_from_ucsm,
-    )
+from provisioningserver.tasks import enlist_nodes_from_ucsm
 
 
 class NodeGroupManager(Manager):
@@ -314,6 +312,18 @@ class NodeGroup(TimestampedModel):
         :param host: IP address for the MSCM.
         :param username: username for MSCM.
         :param password: password for MSCM.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
         """
-        args = (host, username, password)
-        enlist_nodes_from_mscm.apply_async(queue=self.uuid, args=args)
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                EnlistNodesFromMSCM, host=host, username=username,
+                password=password)
