@@ -27,6 +27,7 @@ from django.shortcuts import get_object_or_404
 from django.utils.html import escape
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.converters import XMLToYAML
 from metadataserver import DefaultMeta
 from metadataserver.enum import (
     RESULT_TYPE,
@@ -121,3 +122,14 @@ class NodeResult(CleanSave, TimestampedModel):
     def get_data_as_html(self):
         """More-or-less human-readable HTML representation of the output."""
         return escape(self.data.decode('utf-8', 'replace'))
+
+    def get_data_as_yaml_html(self):
+        """More-or-less human-readable Yaml HTML representation
+        of the output.
+        """
+        from metadataserver.models.commissioningscript import (
+            LLDP_OUTPUT_NAME,
+            LSHW_OUTPUT_NAME,
+        )
+        if self.name in (LLDP_OUTPUT_NAME, LSHW_OUTPUT_NAME):
+            return escape(XMLToYAML(self.data).convert())

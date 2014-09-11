@@ -19,10 +19,15 @@ from random import randint
 from django.core.exceptions import ValidationError
 from django.http import Http404
 from maasserver.testing.factory import factory
+from maasserver.utils.converters import XMLToYAML
 from maastesting.djangotestcase import DjangoTestCase
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import NodeResult
+from metadataserver.models.commissioningscript import (
+    LLDP_OUTPUT_NAME,
+    LSHW_OUTPUT_NAME,
+    )
 
 
 class TestNodeResult(DjangoTestCase):
@@ -67,6 +72,16 @@ class TestNodeResult(DjangoTestCase):
         result = factory.make_NodeResult_for_commissioning(
             data=output.encode('ascii'))
         self.assertEqual(output, result.get_data_as_html())
+
+    def test_get_data_as_yaml_html_returns_output(self):
+        data = "<data>bar</data>".encode("utf-8")
+        expected = XMLToYAML(data).convert()
+        lshw_result = factory.make_NodeResult_for_commissioning(
+            name=LSHW_OUTPUT_NAME, script_result=0, data=data)
+        lldp_result = factory.make_NodeResult_for_commissioning(
+            name=LLDP_OUTPUT_NAME, script_result=0, data=data)
+        self.assertEqual(expected, lshw_result.get_data_as_yaml_html())
+        self.assertEqual(expected, lldp_result.get_data_as_yaml_html())
 
     def test_get_data_as_html_escapes_binary(self):
         output = b'\x00\xff'
