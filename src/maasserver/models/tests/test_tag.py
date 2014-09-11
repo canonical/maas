@@ -123,6 +123,6 @@ class TestTagIsDefined(MAASServerTestCase):
         ("defined", dict(definition="//node", expected=True)),
     )
 
-    def test(self):
+    def test_is_defined(self):
         tag = Tag(name="tag", definition=self.definition)
         self.assertIs(self.expected, tag.is_defined)

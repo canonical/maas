@@ -724,7 +724,7 @@ class TestGenCallsToRemoveDynamicHostMaps(MAASTestCase):
             [], dhcp.gen_calls_to_remove_dynamic_host_maps(
                 clients=DummyClients(), static_mappings={}))
 
-    def test(self):
+    def test__generates_correct_calls(self):
         clients = DummyClients()
 
         nodegroup_alice = Mock(name="Alice", dhcp_key=sentinel.alice_key)
@@ -774,7 +774,7 @@ class TestGenCallsToRemoveHostMaps(MAASTestCase):
             [], dhcp.gen_calls_to_remove_host_maps(
                 clients=DummyClients(), removal_mappings={}))
 
-    def test(self):
+    def test__generates_correct_calls(self):
         clients = DummyClients()
 
         nodegroup_alice = Mock(name="Alice", dhcp_key=sentinel.alice_key)

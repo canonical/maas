@@ -458,7 +458,7 @@ class TestGenNodeDetails(PservTestCase):
             tags, "merge_details",
             lambda mapping: "merged:" + "+".join(mapping))
 
-    def test(self):
+    def test__generates_node_details(self):
         batches = [["s1", "s2"], ["s3"]]
         responses = [
             {"s1": {"foo": "<node>s1</node>"},
