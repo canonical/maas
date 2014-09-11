@@ -194,6 +194,11 @@ class WindowsPXEBootMethod(BootMethod):
         d = backend.get_page(url)
         d.addCallback(json.loads)
         d.addCallback(set_remote_mac)
+        # Ignore all errors. If communication to pxeconfig fails, then
+        # we don't want this boot method to be selected. If its a true error
+        # to pxeconfig the TFTPService will raise that error, as pxeconfig
+        # is called again in that service.
+        d.addErrback(lambda failure: None)
         return d
 
     def clean_path(self, path):
