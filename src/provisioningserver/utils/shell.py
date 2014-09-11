@@ -202,6 +202,9 @@ def pipefork():
 
             stdout.flush()
             stderr.flush()
+        except SystemExit as se:
+            # Exit hard, not soft.
+            os._exit(se.code)
         except:
             try:
                 # Pickle error to crash file.

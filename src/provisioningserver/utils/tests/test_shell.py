@@ -198,6 +198,16 @@ class TestPipeFork(MAASTestCase):
                 if pid == 0:
                     os._exit(exit_code)
 
+    def test__SystemExit_in_child_is_not_raised_in_parent(self):
+        # All exceptions are pickled and passed back to the parent process,
+        # except for SystemExit. It instead results in a call to os._exit().
+        exit_code = randint(1, 99)
+        expected_message = re.escape("Child exited with code %s" % exit_code)
+        with ExpectedException(PipeForkError, expected_message):
+            with pipefork() as (pid, fin, fout):
+                if pid == 0:
+                    raise SystemExit(exit_code)
+
 
 class TestObjectFork(MAASTestCase):
 
