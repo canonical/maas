@@ -33,7 +33,6 @@ from provisioningserver.utils.twisted import (
     )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import (
-    DeferredLock,
     inlineCallbacks,
     returnValue,
     )
@@ -42,7 +41,6 @@ from twisted.spread.pb import NoSuchMethod
 
 
 maaslog = get_maas_logger("boot_image_download_service")
-service_lock = DeferredLock()
 
 
 class PeriodicImageDownloadService(TimerService, object):
@@ -117,21 +115,11 @@ class PeriodicImageDownloadService(TimerService, object):
         """Check the time the last image refresh happened and initiate a new
         one if older than 15 minutes.
         """
-        # Use a DeferredLock to prevent simultaneous downloads.
-        if service_lock.locked:
-            # Don't want to block on lock release.
+        last_modified = tftppath.maas_meta_last_modified()
+        if last_modified is None:
+            yield self._start_download()
             return
-        yield service_lock.acquire()
-        try:
-            last_modified = tftppath.maas_meta_last_modified()
-            if last_modified is None:
-                # Don't auto-refresh if the user has never manually initiated
-                # a download.
-                return
 
-            age_in_seconds = self.clock.seconds() - last_modified
-            if age_in_seconds >= timedelta(minutes=15).total_seconds():
-                yield self._start_download()
-
-        finally:
-            service_lock.release()
+        age_in_seconds = self.clock.seconds() - last_modified
+        if age_in_seconds >= timedelta(minutes=15).total_seconds():
+            yield self._start_download()

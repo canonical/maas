@@ -24,8 +24,11 @@ from provisioningserver.config import Config
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import DeferredLock
 from twisted.internet.threads import deferToThread
+
+# Lock is used so more than one import is not running at the same time.
+import_lock = DeferredLock()
 
 
 def list_boot_images():
@@ -47,7 +50,7 @@ def _run_import(sources):
         boot_resources.import_images(sources)
 
 
-@inlineCallbacks
 def import_boot_images(sources):
     """Imports the boot images from the given sources."""
-    yield deferToThread(_run_import, sources)
+    if not import_lock.locked:
+        return import_lock.run(deferToThread, _run_import, sources)

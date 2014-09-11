@@ -366,8 +366,7 @@ class TestMain(MAASTestCase):
         self.assertThat(
             boot_resources.maaslog.warn,
             MockAnyCall(
-                "No boot resources found.  "
-                "Check sources specification and connectivity."))
+                "Finished importing boot images, no boot images available."))
 
     def test_raises_ioerror_when_no_sources_file_found(self):
         self.patch_maaslog()

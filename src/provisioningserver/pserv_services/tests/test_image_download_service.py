@@ -34,7 +34,6 @@ from mock import (
 from provisioningserver.boot import tftppath
 from provisioningserver.pserv_services.image_download_service import (
     PeriodicImageDownloadService,
-    service_lock,
     )
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import _run_import
@@ -45,7 +44,6 @@ from provisioningserver.rpc.region import (
     )
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.utils.twisted import pause
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
@@ -99,7 +97,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         clock.advance(service.check_interval)
         self.assertEqual(3, len(get_mock_calls(maas_meta_last_modified)))
 
-    def test_no_download_if_no_meta_file(self):
+    def test_initiates_download_if_no_meta_file(self):
         clock = Clock()
         service = PeriodicImageDownloadService(
             sentinel.service, clock, sentinel.uuid)
@@ -108,7 +106,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
             tftppath,
             'maas_meta_last_modified').return_value = None
         service.startService()
-        self.assertThat(_start_download, MockNotCalled())
+        self.assertThat(_start_download, MockCalledOnceWith())
 
     def test_initiates_download_if_15_minutes_has_passed(self):
         clock = Clock()
@@ -165,48 +163,13 @@ class TestPeriodicImageDownloadService(PservTestCase):
     def test_no_download_if_no_rpc_connections(self):
         rpc_client = Mock()
         failure = NoConnectionsAvailable()
-        rpc_client.getClient.return_value.side_effect = failure
+        rpc_client.getClient.side_effect = failure
 
         deferToThread = self.patch(boot_images, 'deferToThread')
         service = PeriodicImageDownloadService(
             rpc_client, Clock(), sentinel.uuid)
         service.startService()
         self.assertThat(deferToThread, MockNotCalled())
-
-    @defer.inlineCallbacks
-    def test_does_not_run_if_lock_taken(self):
-        maas_meta_last_modified = self.patch(
-            tftppath, 'maas_meta_last_modified')
-        yield service_lock.acquire()
-        self.addCleanup(service_lock.release)
-        service = PeriodicImageDownloadService(
-            sentinel.rpc, Clock(), sentinel.uuid)
-        service.startService()
-        self.assertThat(maas_meta_last_modified, MockNotCalled())
-
-    def test_takes_lock_when_running(self):
-        clock = Clock()
-        service = PeriodicImageDownloadService(
-            sentinel.rpc, clock, sentinel.uuid)
-
-        # Patch the download func so it's just a Deferred that waits for
-        # one second.
-        _start_download = self.patch(service, '_start_download')
-        _start_download.return_value = pause(1, clock)
-
-        # Set conditions for a required download:
-        one_week_ago = clock.seconds() - timedelta(minutes=15).total_seconds()
-        self.patch(
-            tftppath,
-            'maas_meta_last_modified').return_value = one_week_ago
-
-        # Lock is acquired for the first download after startup.
-        service.startService()
-        self.assertTrue(service_lock.locked)
-
-        # Lock is released once the download is done.
-        clock.advance(1)
-        self.assertFalse(service_lock.locked)
 
     def test_logs_other_errors(self):
         service = PeriodicImageDownloadService(

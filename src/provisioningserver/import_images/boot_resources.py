@@ -222,7 +222,7 @@ def import_images(sources):
     :param config: An iterable of dicts representing the sources from
         which boot images will be downloaded.
     """
-    maaslog.info("Importing boot resources.")
+    maaslog.info("Started importing boot images.")
     if len(sources) == 0:
         maaslog.warn("Can't import: no Simplestreams sources selected.")
         return
@@ -236,15 +236,13 @@ def import_images(sources):
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
             maaslog.warn(
-                "No boot resources found.  "
-                "Check sources specification and connectivity.")
+                "Finished importing boot images, no boot images available.")
             return
 
         storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
-            # The current maas.meta already contains the new config.  No need
-            # to rewrite anything.
+            maaslog.info("Finished importing boot images, no new images.")
             return
 
         product_mapping = map_products(image_descriptions)
@@ -252,7 +250,7 @@ def import_images(sources):
         snapshot_path = download_all_boot_resources(
             sources, storage, product_mapping)
 
-    maaslog.info("Writing metadata and iSCSI targets.")
+    maaslog.info("Writing boot image metadata and iSCSI targets.")
     write_snapshot_metadata(snapshot_path, meta_file_content)
     write_targets_conf(snapshot_path)
 
@@ -261,9 +259,9 @@ def import_images(sources):
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)
-    maaslog.info("Updating iSCSI targets.")
+    maaslog.info("Updating boot image iSCSI targets.")
     update_targets_conf(snapshot_path)
-    maaslog.info("Import done.")
+    maaslog.info("Finished importing boot images.")
 
 
 def main(args):

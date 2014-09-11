@@ -30,8 +30,8 @@ from maasserver import (
     eventloop,
     locks,
     )
+from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.rpc import (
-    bootsources,
     configuration,
     events,
     leases,
@@ -133,9 +133,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        d = deferToThread(bootsources.get_boot_sources, uuid, remove_os=True)
-        d.addCallback(lambda sources: {b"sources": sources})
-        return d
+        return {b"sources": [get_simplestream_endpoint()]}
 
     @region.GetBootSourcesV2.responder
     def get_boot_sources_v2(self, uuid):
@@ -144,9 +142,7 @@ class Region(RPCProtocol):
         Implementation of
         :py:class:`~provisioningserver.rpc.region.GetBootSources`.
         """
-        d = deferToThread(bootsources.get_boot_sources, uuid)
-        d.addCallback(lambda sources: {b"sources": sources})
-        return d
+        return {b"sources": [get_simplestream_endpoint()]}
 
     @region.GetArchiveMirrors.responder
     def get_archive_mirrors(self):

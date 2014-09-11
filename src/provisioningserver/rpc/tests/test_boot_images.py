@@ -17,7 +17,10 @@ __all__ = []
 import os
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTwistedRunTest
 from mock import sentinel
 from provisioningserver.boot import tftppath
@@ -27,11 +30,14 @@ from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
     _run_import,
     import_boot_images,
+    import_lock,
     list_boot_images,
     )
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
+from provisioningserver.utils.twisted import pause
 from twisted.internet import defer
+from twisted.internet.task import Clock
 
 
 class TestListBootImages(PservTestCase):
@@ -113,6 +119,16 @@ class TestImportBootImages(PservTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     @defer.inlineCallbacks
+    def test__does_not_run_if_lock_taken(self):
+        yield import_lock.acquire()
+        self.addCleanup(import_lock.release)
+        deferToThread = self.patch(boot_images, 'deferToThread')
+        deferToThread.return_value = defer.succeed(None)
+        yield import_boot_images(sentinel.sources)
+        self.assertThat(
+            deferToThread, MockNotCalled())
+
+    @defer.inlineCallbacks
     def test__calls__run_import_using_deferToThread(self):
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
@@ -120,3 +136,16 @@ class TestImportBootImages(PservTestCase):
         self.assertThat(
             deferToThread, MockCalledOnceWith(
                 _run_import, sentinel.sources))
+
+    def test__takes_lock_when_running(self):
+        clock = Clock()
+        deferToThread = self.patch(boot_images, 'deferToThread')
+        deferToThread.return_value = pause(1, clock)
+
+        # Lock is acquired when import is started.
+        import_boot_images(sentinel.sources)
+        self.assertTrue(import_lock.locked)
+
+        # Lock is released once the download is done.
+        clock.advance(1)
+        self.assertFalse(import_lock.locked)
