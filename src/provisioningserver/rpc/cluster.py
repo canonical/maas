@@ -270,7 +270,7 @@ class CreateHostMaps(amp.Command):
     response = []
     errors = {
         exceptions.CannotCreateHostMap: (
-            "CannotCreateHostMap"),
+            b"CannotCreateHostMap"),
     }
 
 
@@ -287,7 +287,7 @@ class RemoveHostMaps(amp.Command):
     response = []
     errors = {
         exceptions.CannotRemoveHostMap: (
-            "CannotRemoveHostMap"),
+            b"CannotRemoveHostMap"),
     }
 
 
