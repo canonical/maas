@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "configure",
     "create_host_maps",
     "DHCPv4Server",
     "DHCPv6Server",
@@ -89,64 +90,66 @@ class DHCPServer:
     def restart(self):
         """Restart the DHCP server."""
 
-    def configure(self, subnet_configs):
-        """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
-        :param subnet_configs: List of dicts with subnet parameters for each
-            subnet for which the DHCP server should serve DHCP. If no subnets
-            are defined, the DHCP server will be stopped.
-        """
-        stopping = len(subnet_configs) == 0
+def configure(server, subnet_configs):
+    """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
-        if stopping:
-            dhcpd_config = DISABLED_DHCP_SERVER
-        else:
-            dhcpd_config = get_config(
-                self.template_basename, omapi_key=self.omapi_key,
-                dhcp_subnets=subnet_configs)
+    :param server: A `DHCPServer` instance.
+    :param subnet_configs: List of dicts with subnet parameters for each
+        subnet for which the DHCP server should serve DHCP. If no subnets
+        are defined, the DHCP server will be stopped.
+    """
+    stopping = len(subnet_configs) == 0
 
-        interfaces = {subnet['interface'] for subnet in subnet_configs}
-        interfaces_config = ' '.join(sorted(interfaces))
+    if stopping:
+        dhcpd_config = DISABLED_DHCP_SERVER
+    else:
+        dhcpd_config = get_config(
+            server.template_basename, omapi_key=server.omapi_key,
+            dhcp_subnets=subnet_configs)
 
+    interfaces = {subnet['interface'] for subnet in subnet_configs}
+    interfaces_config = ' '.join(sorted(interfaces))
+
+    try:
+        sudo_write_file(server.config_filename, dhcpd_config)
+        sudo_write_file(server.interfaces_filename, interfaces_config)
+    except ExternalProcessError as e:
+        # ExternalProcessError.__unicode__ contains a generic failure
+        # message as well as the command and its error output. On the
+        # other hand, ExternalProcessError.output_as_unicode contains just
+        # the error output which is probably the best information on what
+        # went wrong. Log the full error information, but keep the
+        # exception message short and to the point.
+        maaslog.error(
+            "Could not rewrite %s server configuration (for network "
+            "interfaces %s): %s", server.descriptive_name,
+            interfaces_config, unicode(e))
+        raise CannotConfigureDHCP(
+            "Could not rewrite %s server configuration: %s" % (
+                server.descriptive_name, e.output_as_unicode))
+
+    if stopping:
         try:
-            sudo_write_file(self.config_filename, dhcpd_config)
-            sudo_write_file(self.interfaces_filename, interfaces_config)
+            server.stop()
         except ExternalProcessError as e:
-            # ExternalProcessError.__unicode__ contains a generic failure
-            # message as well as the command and its error output. On the
-            # other hand, ExternalProcessError.output_as_unicode contains just
-            # the error output which is probably the best information on what
-            # went wrong. Log the full error information, but keep the
-            # exception message short and to the point.
             maaslog.error(
-                "Could not rewrite %s server configuration (for network "
-                "interfaces %s): %s", self.descriptive_name,
-                interfaces_config, unicode(e))
+                "%s server failed to stop: %s", server.descriptive_name,
+                unicode(e))
             raise CannotConfigureDHCP(
-                "Could not rewrite %s server configuration: %s" % (
-                    self.descriptive_name, e.output_as_unicode))
-
-        if stopping:
-            try:
-                self.stop()
-            except ExternalProcessError as e:
-                maaslog.error(
-                    "%s server failed to stop: %s", self.descriptive_name,
-                    unicode(e))
-                raise CannotConfigureDHCP(
-                    "%s server failed to stop: %s" % (
-                        self.descriptive_name, e.output_as_unicode))
-        else:
-            try:
-                self.restart()
-            except ExternalProcessError as e:
-                maaslog.error(
-                    "%s server failed to restart (for network interfaces "
-                    "%s): %s", self.descriptive_name, interfaces_config,
-                    unicode(e))
-                raise CannotConfigureDHCP(
-                    "%s server failed to restart: %s" % (
-                        self.descriptive_name, e.output_as_unicode))
+                "%s server failed to stop: %s" % (
+                    server.descriptive_name, e.output_as_unicode))
+    else:
+        try:
+            server.restart()
+        except ExternalProcessError as e:
+            maaslog.error(
+                "%s server failed to restart (for network interfaces "
+                "%s): %s", server.descriptive_name, interfaces_config,
+                unicode(e))
+            raise CannotConfigureDHCP(
+                "%s server failed to restart: %s" % (
+                    server.descriptive_name, e.output_as_unicode))
 
 
 class DHCPv4Server(DHCPServer):

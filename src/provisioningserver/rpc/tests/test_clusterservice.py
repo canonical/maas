@@ -57,6 +57,7 @@ from provisioningserver.rpc import (
     cluster,
     clusterservice,
     common,
+    dhcp,
     exceptions,
     getRegionClient,
     osystems as osystems_rpc_module,
@@ -992,12 +993,12 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
     scenarios = (
         ("DHCPv4", {
-            "dhcp_server": (clusterservice, "DHCPv4Server"),
+            "dhcp_server": (dhcp, "DHCPv4Server"),
             "command": cluster.ConfigureDHCPv4,
             "make_network": factory.make_ipv4_network,
         }),
         ("DHCPv6", {
-            "dhcp_server": (clusterservice, "DHCPv6Server"),
+            "dhcp_server": (dhcp, "DHCPv6Server"),
             "command": cluster.ConfigureDHCPv6,
             "make_network": factory.make_ipv6_network,
         }),
@@ -1012,6 +1013,8 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
     @inlineCallbacks
     def test__executes_configure_dhcp(self):
         DHCPServer = self.patch_autospec(*self.dhcp_server)
+        configure = self.patch_autospec(dhcp, "configure")
+
         omapi_key = factory.make_name('key')
         subnet_configs = [make_subnet_config()]
 
@@ -1021,14 +1024,13 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             })
 
         self.assertThat(DHCPServer, MockCalledOnceWith(omapi_key))
-        self.assertThat(
-            DHCPServer.return_value.configure,
-            MockCalledOnceWith(subnet_configs))
+        self.assertThat(configure, MockCalledOnceWith(
+            DHCPServer.return_value, subnet_configs))
 
     @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):
-        DHCPServer = self.patch_autospec(*self.dhcp_server)
-        DHCPServer.return_value.configure.side_effect = (
+        configure = self.patch_autospec(dhcp, "configure")
+        configure.side_effect = (
             exceptions.CannotConfigureDHCP("Deliberate failure"))
         omapi_key = factory.make_name('key')
         network = self.make_network()

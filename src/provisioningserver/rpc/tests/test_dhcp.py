@@ -50,8 +50,8 @@ class TestConfigureDHCP(MAASTestCase):
     )
 
     def configure(self, omapi_key, subnets):
-        dhcp_server = self.server(omapi_key)
-        dhcp_server.configure(subnets)
+        server = self.server(omapi_key)
+        dhcp.configure(server, subnets)
 
     def patch_sudo_write_file(self):
         return self.patch_autospec(dhcp, 'sudo_write_file')
@@ -263,7 +263,7 @@ class TestStopAndDisableDHCP(MAASTestCase):
     def test__writes_config_and_stops_dhcp_server(self):
         omapi_key = factory.make_name('omapi-key')
         server = self.server(omapi_key)
-        server.configure([])
+        dhcp.configure(server, [])
 
         self.assertThat(self.sudo_write_file, MockCallsMatch(
             call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
@@ -280,7 +280,7 @@ class TestStopAndDisableDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi-key')
         server = self.server(omapi_key)
 
-        self.assertRaises(CannotConfigureDHCP, server.configure, [])
+        self.assertRaises(CannotConfigureDHCP, dhcp.configure, server, [])
 
         self.assertThat(self.sudo_write_file, MockCalledOnceWith(
             self.expected_config_file, dhcp.DISABLED_DHCP_SERVER))
@@ -295,7 +295,7 @@ class TestStopAndDisableDHCP(MAASTestCase):
         omapi_key = factory.make_name('omapi-key')
         server = self.server(omapi_key)
 
-        self.assertRaises(CannotConfigureDHCP, server.configure, [])
+        self.assertRaises(CannotConfigureDHCP, dhcp.configure, server, [])
 
         self.assertThat(self.sudo_write_file, MockCallsMatch(
             call(self.expected_config_file, dhcp.DISABLED_DHCP_SERVER),
