@@ -39,7 +39,9 @@ def getClientFor(uuid, timeout=0):
     try:
         service = eventloop.services.getServiceNamed("rpc")
     except KeyError:
-        raise exceptions.NoConnectionsAvailable()
+        raise exceptions.NoConnectionsAvailable(
+            "Unable to connect to cluster %s; no connections available." %
+            uuid)
     else:
         return service.getClientFor(uuid, timeout=timeout)
 

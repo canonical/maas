@@ -478,6 +478,7 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
+
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_virsh, poweraddr,
             password)
@@ -531,6 +532,7 @@ class TestNodeGroup(MAASServerTestCase):
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
+
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_seamicro15k,
             mac, username, password, power_control)
@@ -580,6 +582,7 @@ class TestNodeGroup(MAASServerTestCase):
         host = factory.make_name('host')
         username = factory.make_name('user')
         password = factory.make_name('password')
+
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_mscm,
             host, username, password)
@@ -629,6 +632,7 @@ class TestNodeGroup(MAASServerTestCase):
         url = factory.make_url()
         username = factory.make_name('user')
         password = factory.make_name('password')
+
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_ucsm,
             url, username, password)
