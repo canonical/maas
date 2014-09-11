@@ -109,9 +109,9 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
         context['current_count'] = NodeGroup.objects.filter(
             status=self.status).count()
         context['title'] = self.make_cluster_listing_title()
-        # Display warnings for clusters that have no images, but only for the
-        # display of 'accepted' clusters.
-        context['warn_no_images'] = self.status == NODEGROUP_STATUS.ACCEPTED
+        # Display warnings (no images, cluster not connected) for clusters,
+        # but only for the display of 'accepted' clusters.
+        context['display_warnings'] = self.status == NODEGROUP_STATUS.ACCEPTED
         context['status'] = self.status
         context['statuses'] = NODEGROUP_STATUS
         context['status_name'] = NODEGROUP_STATUS_CHOICES[self.status][1]

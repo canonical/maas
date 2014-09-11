@@ -229,6 +229,16 @@ class NodeGroup(TimestampedModel):
             # Persist the dhcp_key without triggering the signals.
             NodeGroup.objects.filter(id=self.id).update(dhcp_key=dhcp_key)
 
+    def is_connected(self):
+        """Is this cluster connected to his provisioning server?"""
+        try:
+            # Use a timeout of zero not to block.
+            getClientFor(self.uuid, timeout=0)
+        except NoConnectionsAvailable:
+            return False
+        else:
+            return True
+
     @property
     def work_queue(self):
         """The name of the queue for tasks specific to this nodegroup."""

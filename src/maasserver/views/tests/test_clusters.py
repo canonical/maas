@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+import random
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
@@ -143,6 +144,41 @@ class ClusterListingTest(MAASServerTestCase):
             HasLength(1),
             "Couldn't find pagination tag.")
 
+    def test_listing_displays_connection_status(self):
+        # We're using a little trick here: we create nodegroups
+        # whose name end with either '0' or '1' and we then
+        # patch nodegroup.is_connected so that it returns
+        # True or False based of the name of the nodegroup.
+        self.client_log_in(as_admin=True)
+        nodegroup_connections = {}
+        connection_representation = {
+            '&check;': True,
+            '&cross;': False,
+        }
+
+        def mock_is_connected(self):
+            # Return a boolean based on the last character in the
+            # nodegroup's name.
+            return True if self.name.endswith('0') else False
+        self.patch(NodeGroup, 'is_connected', mock_is_connected)
+
+        for _ in range(3):
+            # Create a name with a random value of '0' or '1' at the end.
+            name = "nodegroup-%s-%s" % (
+                factory.make_name(), random.choice(['0', '1']))
+            nodegroup = factory.make_NodeGroup(
+                status=self.status, name=name)
+            nodegroup_connections[nodegroup.uuid] = nodegroup.is_connected()
+        response = self.client.get(self.get_url())
+        document = fromstring(response.content)
+        connection_displayed = {}
+        for uuid in nodegroup_connections:
+            connection_row = document.xpath(
+                "//td[@id='%s_connection']" % uuid)[0]
+            connection_displayed[uuid] = connection_representation[
+                connection_row.text.strip()]
+        self.assertEqual(nodegroup_connections, connection_displayed)
+
 
 class ClusterListingAccess(MAASServerTestCase):
 
@@ -226,8 +262,29 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
         warning_elems = (
             nodegroup_row.xpath(
                 "//img[@title='Warning: this cluster has no boot images.']"))
-        self.assertEqual(
-            1, len(warning_elems), "No warning about missing boot images.")
+        self.assertThat(
+            warning_elems, HasLength(1),
+            "No warning about missing boot images.")
+
+    def test_warning_is_displayed_if_a_cluster_is_not_connected(self):
+        self.client_log_in(as_admin=True)
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED)
+        # Create a boot image so that the warning about the missing boot images
+        # isn't displayed.
+        factory.make_BootImage(nodegroup=nodegroup)
+
+        self.patch(NodeGroup, 'is_connected', lambda _: False)
+        response = self.client.get(reverse('cluster-list'))
+        document = fromstring(response.content)
+        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
+        self.assertIn('warning', nodegroup_row.get('class'))
+        warning_elems = (
+            nodegroup_row.xpath(
+                """//img[@title="Warning: this cluster isn't connected."]"""))
+        self.assertThat(
+            warning_elems, HasLength(1),
+            "No warning about disconnected cluster.")
 
 
 class ClusterDeleteTest(MAASServerTestCase):

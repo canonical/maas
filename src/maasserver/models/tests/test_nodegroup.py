@@ -44,6 +44,7 @@ from mock import (
     ANY,
     call,
     Mock,
+    sentinel,
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
@@ -419,6 +420,24 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertThat(
             protocol.ImportBootImages,
             MockCalledOnceWith(ANY, sources=[get_simplestream_endpoint()]))
+
+    def test_is_connected_returns_true_if_connection(self):
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        mock_getClientFor.return_value = sentinel
+        nodegroup = factory.make_NodeGroup()
+        connected = nodegroup.is_connected()
+        self.assertThat(
+            mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=0))
+        self.assertTrue(connected)
+
+    def test_is_connected_returns_true_if_no_connection(self):
+        mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        mock_getClientFor.side_effect = NoConnectionsAvailable
+        nodegroup = factory.make_NodeGroup()
+        connected = nodegroup.is_connected()
+        self.assertThat(
+            mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=0))
+        self.assertFalse(connected)
 
     def test_add_virsh_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)

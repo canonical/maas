@@ -1,13 +1,28 @@
-<tr class="cluster {{ cycle }} {% if warning_no_images and cluster.bootimage_set.count == 0 %}warning{% endif %}"
+  <tr class="cluster {{ cycle }}
+                     {% if display_warnings %}
+                       {% if cluster.bootimage_set.count == 0 or not cluster.is_connected %}
+                         warning
+                       {% endif %}
+                     {% endif %}"
     id="{{ cluster.uuid }}">
   <td>
     <a href="{% url 'cluster-edit' cluster.uuid %}">{{ cluster.cluster_name }}</a>
+  </td>
+  <td id="{{ cluster.uuid }}_connection">
+  {% if cluster.is_connected %}
+    &check;
+  {% else %}
+    &cross;
+    {% if display_warnings%}
+      <img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster isn't connected."/>
+    {% endif %}
+  {% endif %}
   </td>
   <td>
   {{ cluster.get_managed_interfaces|length }}
   </td>
   <td>
-  {% if warning_no_images and cluster.bootimage_set.count == 0 %}
+  {% if display_warnings and cluster.bootimage_set.count == 0 %}
     0 <img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster has no boot images."/>
   {% else %}
     {% if cluster.bootimage_set.count == 0 %}

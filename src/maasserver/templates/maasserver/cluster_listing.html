@@ -14,7 +14,7 @@
   <tbody>
     {% for cluster in cluster_list %}
       {% cycle 'even' 'odd' as cycle silent %}
-      {% include "maasserver/cluster_listing_row.html" with cycle=cycle warning_no_images=warn_no_images %}
+      {% include "maasserver/cluster_listing_row.html" with cycle=cycle display_warnings=display_warnings %}
     {% endfor %}
   </tbody>
 </table>
