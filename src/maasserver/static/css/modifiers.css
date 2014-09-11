@@ -88,3 +88,7 @@ a.icon:hover {
 .warning {
     color: #9F6000;
     }
+
+.align-right {
+    text-align: right;
+    }

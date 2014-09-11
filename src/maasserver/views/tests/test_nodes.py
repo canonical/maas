@@ -883,7 +883,7 @@ class NodeViewsTest(MAASServerTestCase):
         doc = fromstring(response.content)
         self.assertItemsEqual([], doc.cssselect('#details-output'))
 
-    def test_view_node_shows_probed_details_output_if_set(self):
+    def test_view_node_shows_probed_details_xml_output_if_set(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
         lldp_data = "<foo>bar</foo>".encode("utf-8")
@@ -904,7 +904,31 @@ class NodeViewsTest(MAASServerTestCase):
         # defensive, and gives better output on failure.
         observed_content = "\n---\n".join(
             element.text for element in
-            doc.cssselect('#details-output > pre'))
+            doc.cssselect('#xml > pre'))
+        self.assertDocTestMatches(expected_content, observed_content)
+
+    def test_view_node_shows_probed_details_yaml_output_if_set(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        factory.make_NodeResult_for_commissioning(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        expected_content = dedent("""\
+        - list:
+          - lldp:foo:
+            bar
+        """)
+        # We expect only one matched element, so this join is
+        # defensive, and gives better output on failure.
+        observed_content = "\n---\n".join(
+            element.text for element in
+            doc.cssselect('#yaml > pre'))
         self.assertDocTestMatches(expected_content, observed_content)
 
     def test_view_node_POST_commission(self):

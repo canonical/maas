@@ -87,6 +87,7 @@ from maasserver.preseed import (
     get_preseed,
     )
 from maasserver.third_party_drivers import get_third_party_driver
+from maasserver.utils.converters import XMLToYAML
 from maasserver.views import (
     HelpfulDeleteView,
     PaginatedListView,
@@ -557,10 +558,15 @@ class NodeView(NodeViewMixin, UpdateView):
         # the call to get_single_probed_details() because here the
         # details will be guaranteed well-formed.
         if len(probed_details.xpath('/*/*')) == 0:
-            context['probed_details'] = None
+            context['probed_details_xml'] = None
+            context['probed_details_yaml'] = None
         else:
-            context['probed_details'] = etree.tostring(
+            context['probed_details_xml'] = etree.tostring(
                 probed_details, encoding=unicode, pretty_print=True)
+            context['probed_details_yaml'] = XMLToYAML(
+                etree.tostring(
+                    probed_details, encoding=unicode,
+                    pretty_print=True)).convert()
 
         commissioning_results = NodeResult.objects.filter(
             node=node, result_type=RESULT_TYPE.COMMISSIONING).count()

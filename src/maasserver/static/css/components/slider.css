@@ -12,3 +12,11 @@
     -webkit-border-radius: 4px;
     border-radius: 4px;
     }
+
+.slider .content.normal {
+    white-space: normal;
+    }
+
+.slider .content.no-background {
+    background: none !important;
+    }

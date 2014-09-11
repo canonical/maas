@@ -40,13 +40,25 @@
           {# Update the widget's expander icon. #}
           expander.on('revealing', function() {
             trigger.replaceClass(hidden_class, shown_class);
+            expander.get('targetNode').setStyle('overflow', '');
+          });
+          expander.on('revealed', function() {
+            expander.get('targetNode').setStyle('overflow', 'inherit');
           });
           expander.on('hiding', function() {
             trigger.replaceClass(shown_class, hidden_class);
+            expander.get('targetNode').setStyle('overflow', '');
+          });
+          expander.on('revealed', function() {
+            expander.get('targetNode').setStyle('overflow', 'inherit');
           });
           {# The widget renders in its hidden state. #}
           expander.render();
         });
+      });
+      YUI().use('tabview', function (Y) {
+        var tabview = new Y.TabView({srcNode: '#details-output'});
+        tabview.render();
       });
     // -->
   </script>
@@ -246,18 +258,28 @@
         </a>
       {% endif %}
     </li>
-    {% if probed_details %}
+    {% if probed_details_xml %}
       <li class="block first separate">
-        <h2>Raw discovery data</h2>
+        <h2 class="first size6">Discovery data</h2>
+        {# Button link for the Reveal widget that shows/hides LLDP output. #}
+        <a class="last size6 align-right space-top" href="#" id="details-trigger"></a>
+        {# Content div for the probed details output. #}
       </li>
       <li class="block first pad-top-small">
-        {# Button link for the Reveal widget that shows/hides LLDP output. #}
-        <a href="#" id="details-trigger"></a>
-        {# Content div for the probed details output. #}
-        <div id="details-output">
-          {# The Reveal widget needs a content tag inside the content div. #}
-          <pre>{{ probed_details }}</pre>
-        </div>
+        <div class="block first" id="details-output">
+          <ul class="list size2 no-background normal">
+	    <li><a href="#yaml">Discovery YAML</a></li>
+	    <li><a href="#xml">Discovery XML</a></li>
+	  </ul>
+          <div class="last size8 no-background normal">
+	    <div id="yaml">
+	      <pre>{{ probed_details_yaml }}</pre>
+	    </div>
+	    <div id="xml">
+	      <pre>{{ probed_details_xml }}</pre>	
+	    </div>
+	  </div>
+	</div>
       </li>
     {% endif %}
   </ul>
