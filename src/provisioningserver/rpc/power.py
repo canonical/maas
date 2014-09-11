@@ -45,7 +45,7 @@ from twisted.internet.threads import deferToThread
 # state for these power types.
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
-QUERY_POWER_TYPES = ['amt', 'ipmi']
+QUERY_POWER_TYPES = ['amt', 'ipmi', 'virsh']
 
 
 maaslog = get_maas_logger("power")

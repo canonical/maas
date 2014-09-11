@@ -347,3 +347,61 @@ class TestVirshPowerControl(MAASTestCase):
         self.assertRaises(
             virsh.VirshError, virsh.power_control_virsh,
             poweraddr, machine, 'off')
+
+
+class TestVirshPowerState(MAASTestCase):
+    """Tests for `power_state_virsh`."""
+
+    def test_power_state_login_failure(self):
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = False
+        self.assertRaises(
+            virsh.VirshError, virsh.power_state_virsh,
+            factory.make_name('poweraddr'), factory.make_name('machine'),
+            password=factory.make_string())
+
+    def test_power_state_get_on(self):
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = True
+        mock_state = self.patch(virsh.VirshSSH, 'get_state')
+        mock_state.return_value = virsh.VirshVMState.ON
+
+        poweraddr = factory.make_name('poweraddr')
+        machine = factory.make_name('machine')
+        self.assertEqual(
+            'on', virsh.power_state_virsh(poweraddr, machine))
+
+    def test_power_state_get_off(self):
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = True
+        mock_state = self.patch(virsh.VirshSSH, 'get_state')
+        mock_state.return_value = virsh.VirshVMState.OFF
+
+        poweraddr = factory.make_name('poweraddr')
+        machine = factory.make_name('machine')
+        self.assertEqual(
+            'off', virsh.power_state_virsh(poweraddr, machine))
+
+    def test_power_control_bad_domain(self):
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = True
+        mock_state = self.patch(virsh.VirshSSH, 'get_state')
+        mock_state.return_value = None
+
+        poweraddr = factory.make_name('poweraddr')
+        machine = factory.make_name('machine')
+        self.assertRaises(
+            virsh.VirshError, virsh.power_state_virsh,
+            poweraddr, machine)
+
+    def test_power_state_error_on_unknown_state(self):
+        mock_login = self.patch(virsh.VirshSSH, 'login')
+        mock_login.return_value = True
+        mock_state = self.patch(virsh.VirshSSH, 'get_state')
+        mock_state.return_value = 'unknown'
+
+        poweraddr = factory.make_name('poweraddr')
+        machine = factory.make_name('machine')
+        self.assertRaises(
+            virsh.VirshError, virsh.power_state_virsh,
+            poweraddr, machine)

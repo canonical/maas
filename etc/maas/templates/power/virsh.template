@@ -3,6 +3,13 @@
 # Control virtual system's "power" through virsh.
 #
 
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
+}
+
 issue_virsh_command() {
 python - << END
 from provisioningserver.drivers.hardware.virsh import power_control_virsh
@@ -15,4 +22,28 @@ power_control_virsh(
 END
 }
 
-issue_virsh_command
+query_state() {
+python - << END
+from provisioningserver.drivers.hardware.virsh import power_state_virsh
+print(power_state_virsh(
+    {{repr(power_address).decode("ascii") | safe}},
+    {{repr(power_id).decode("ascii") | safe}},
+    {{repr(power_pass).decode("ascii") | safe}},
+))
+END
+}
+
+main() {
+    case $1 in
+    'on'|'off')
+        issue_virsh_command
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 1 "Unknown power command: '$1'"
+    esac
+}
+
+main "{{power_change}}"

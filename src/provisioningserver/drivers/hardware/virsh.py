@@ -220,3 +220,26 @@ def power_control_virsh(poweraddr, machine, power_change, password=None):
         if power_change == 'off':
             if conn.poweroff(machine) is False:
                 raise VirshError('Failed to power off domain: %s' % machine)
+
+
+def power_state_virsh(poweraddr, machine, password=None):
+    """Return the power state for the virtual machine using virsh."""
+
+    # Force password to None if blank, as the power control
+    # script will send a blank password if one is not set.
+    if password == '':
+        password = None
+
+    conn = VirshSSH()
+    if not conn.login(poweraddr, password):
+        raise VirshError('Failed to login to virsh console.')
+
+    state = conn.get_state(machine)
+    if state is None:
+        raise VirshError('Failed to get domain: %s' % machine)
+
+    if state == VirshVMState.OFF:
+        return 'off'
+    elif state == VirshVMState.ON:
+        return 'on'
+    raise VirshError('Unknown state: %s' % state)
