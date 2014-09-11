@@ -391,3 +391,17 @@ class EnlistNodesFromMSCM(amp.Command):
     ]
     response = []
     errors = {}
+
+
+class EnlistNodesFromUCSM(amp.Command):
+    """Probe for and enlist ucsm machines attached to the cluster.
+
+    :since: 1.7
+    """
+    arguments = [
+        (b"url", amp.Unicode()),
+        (b"username", amp.Unicode()),
+        (b"password", amp.Unicode()),
+    ]
+    response = []
+    errors = {}

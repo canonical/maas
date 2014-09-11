@@ -42,10 +42,10 @@ from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
     AddVirsh,
     EnlistNodesFromMSCM,
+    EnlistNodesFromUCSM,
     ImportBootImages,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.tasks import enlist_nodes_from_ucsm
 
 
 class NodeGroupManager(Manager):
@@ -302,9 +302,21 @@ class NodeGroup(TimestampedModel):
         :param URL: URL of the Cisco UCS Manager HTTP-XML API.
         :param username: username for UCS Manager.
         :param password: password for UCS Manager.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
         """
-        args = (url, username, password)
-        enlist_nodes_from_ucsm.apply_async(queue=self.uuid, args=args)
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                EnlistNodesFromUCSM, url=url, username=username,
+                password=password)
 
     def enlist_nodes_from_mscm(self, host, username, password):
         """ Add the servers from a Moonshot HP iLO Chassis Manager.

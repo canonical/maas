@@ -31,7 +31,6 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import (
@@ -55,7 +54,6 @@ from provisioningserver.dns.zoneconfig import (
     )
 from provisioningserver.tags import MissingCredentials
 from provisioningserver.tasks import (
-    enlist_nodes_from_ucsm,
     refresh_secrets,
     report_boot_images,
     rndc_command,
@@ -391,14 +389,3 @@ class TestTagTasks(PservTestCase):
         self.assertRaises(
             MissingCredentials, update_node_tags.delay, tag,
             '//node', tag_nsmap=None, retry=True)
-
-
-class TestAddUCSM(PservTestCase):
-
-    def test_enlist_nodes_from_ucsm(self):
-        url = 'url'
-        username = 'username'
-        password = 'password'
-        mock = self.patch(tasks, 'probe_and_enlist_ucsm')
-        enlist_nodes_from_ucsm(url, username, password)
-        self.assertThat(mock, MockCalledOnceWith(url, username, password))

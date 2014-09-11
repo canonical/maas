@@ -42,7 +42,6 @@ from provisioningserver.dns.config import (
     set_up_options_conf,
     setup_rndc,
     )
-from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.logger import get_maas_logger
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
@@ -296,15 +295,3 @@ def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
                 exc=exc, countdown=UPDATE_NODE_TAGS_RETRY_DELAY)
         else:
             raise
-
-
-# =====================================================================
-# Custom hardware tasks
-# =====================================================================
-
-@task
-@log_task_events()
-@log_exception_text
-def enlist_nodes_from_ucsm(url, username, password):
-    """ See `maasserver.api.NodeGroupHandler.enlist_nodes_from_ucsm`. """
-    probe_and_enlist_ucsm(url, username, password)

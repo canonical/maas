@@ -1283,3 +1283,30 @@ class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
         self.assertThat(
             probe_and_enlist_mscm, MockCalledOnceWith(
                 host, username, password))
+
+
+class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.EnlistNodesFromUCSM.commandName)
+        self.assertIsNot(responder, None)
+
+    def test__calls_probe_and_enlist_ucsm(self):
+        probe_and_enlist_ucsm = self.patch_autospec(
+            clusterservice, 'probe_and_enlist_ucsm')
+
+        url = factory.make_url()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromUCSM, {
+            'url': url,
+            'username': username,
+            'password': password,
+        })
+
+        self.assertThat(
+            probe_and_enlist_ucsm, MockCalledOnceWith(
+                url, username, password))

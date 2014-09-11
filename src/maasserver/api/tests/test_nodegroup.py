@@ -57,6 +57,7 @@ from mock import Mock
 from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.rpc.cluster import (
     EnlistNodesFromMSCM,
+    EnlistNodesFromUCSM,
     ImportBootImages,
     )
 from testresources import FixtureResource
@@ -347,7 +348,9 @@ class TestNodeGroupAPI(APITestCase):
         password = factory.make_name('password')
         self.become_admin()
 
-        mock = self.patch(nodegroup_module, 'enlist_nodes_from_ucsm')
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
 
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -362,9 +365,11 @@ class TestNodeGroupAPI(APITestCase):
             httplib.OK, response.status_code,
             explain_unexpected_response(httplib.OK, response))
 
-        args = (url, username, password)
-        matcher = MockCalledOnceWith(queue=nodegroup.uuid, args=args)
-        self.assertThat(mock.apply_async, matcher)
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                EnlistNodesFromUCSM, url=url, username=username,
+                password=password))
 
     def test_probe_and_enlist_mscm_adds_mscm(self):
         nodegroup = factory.make_NodeGroup()

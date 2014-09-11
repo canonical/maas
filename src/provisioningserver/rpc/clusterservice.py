@@ -33,6 +33,7 @@ from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
+from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import (
@@ -275,6 +276,16 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromMSCM`.
         """
         probe_and_enlist_mscm(host, username, password)
+        return {}
+
+    @cluster.EnlistNodesFromUCSM.responder
+    def enlist_nodes_from_ucsm(self, url, username, password):
+        """enlist_nodes_from_ucsm()
+
+        Implemention of
+        :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromUCSM`.
+        """
+        probe_and_enlist_ucsm(url, username, password)
         return {}
 
 

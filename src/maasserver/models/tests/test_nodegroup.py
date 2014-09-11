@@ -50,6 +50,7 @@ from provisioningserver.rpc.cluster import (
     AddSeaMicro15k,
     AddVirsh,
     EnlistNodesFromMSCM,
+    EnlistNodesFromUCSM,
     ImportBootImages,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -563,3 +564,52 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_mscm,
             host, username, password)
+
+    def test_enlist_nodes_from_ucsm_end_to_end(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, EnlistNodesFromUCSM)
+        protocol.EnlistNodesFromUCSM.return_value = defer.succeed({})
+
+        url = factory.make_url()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        nodegroup.enlist_nodes_from_ucsm(
+            url, username, password).wait(10)
+
+        self.expectThat(
+            protocol.EnlistNodesFromUCSM,
+            MockCalledOnceWith(
+                ANY, url=url, username=username, password=password))
+
+    def test_enlist_nodes_from_ucsm_calls_client_with_resource_endpoint(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        url = factory.make_url()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        nodegroup.enlist_nodes_from_ucsm(
+            url, username, password).wait(10)
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                EnlistNodesFromUCSM, url=url, username=username,
+                password=password))
+
+    def test_enlist_nodes_from_ucsm_raises_if_no_connection_to_cluster(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        nodegroup = factory.make_NodeGroup()
+
+        url = factory.make_url()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        self.assertRaises(
+            NoConnectionsAvailable, nodegroup.enlist_nodes_from_ucsm,
+            url, username, password)
