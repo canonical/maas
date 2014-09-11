@@ -26,6 +26,8 @@ from maasserver.models import StaticIPAddress
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from netaddr import IPAddress
+from testtools.matchers import Equals
 
 
 class TestNetworksAPI(APITestCase):
@@ -34,11 +36,13 @@ class TestNetworksAPI(APITestCase):
         cluster = factory.make_NodeGroup(status=status, **kwargs)
         return factory.make_NodeGroupInterface(cluster)
 
-    def post_reservation_request(self, net):
+    def post_reservation_request(self, net, requested_address=None):
         params = {
             'op': 'reserve',
             'network': unicode(net),
         }
+        if requested_address is not None:
+            params["requested_address"] = requested_address
         return self.client.post(reverse('ipaddresses_handler'), params)
 
     def post_release_request(self, ip):
@@ -102,6 +106,40 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             "Invalid network parameter %s" % net,
             response.content)
+
+    def test_POST_reserve_creates_requested_address(self):
+        interface = self.make_interface()
+        net = interface.network
+        ip_in_network = interface.static_ip_range_low
+        response = self.post_reservation_request(net, ip_in_network)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        returned_address = json.loads(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            returned_address["alloc_type"],
+            Equals(IPADDRESS_TYPE.USER_RESERVED))
+        self.expectThat(returned_address["ip"], Equals(ip_in_network))
+        self.expectThat(staticipaddress.ip, Equals(ip_in_network))
+
+    def test_POST_reserve_requested_address_detects_in_use_address(self):
+        interface = self.make_interface()
+        net = interface.network
+        ip_in_network = interface.static_ip_range_low
+        response = self.post_reservation_request(net, ip_in_network)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        # Do same request again and check it is rejected.
+        response = self.post_reservation_request(net, ip_in_network)
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
+    def test_POST_reserve_requested_address_detects_out_of_range_addr(self):
+        interface = self.make_interface()
+        net = interface.network
+        ip_not_in_network = unicode(
+            IPAddress(interface.static_ip_range_low) - 1)
+        response = self.post_reservation_request(net, ip_not_in_network)
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
 
     def test_GET_returns_ipaddresses(self):
         original_ipaddress = factory.make_StaticIPAddress(

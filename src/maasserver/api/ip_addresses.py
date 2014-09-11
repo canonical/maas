@@ -21,7 +21,10 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api.utils import get_mandatory_param
+from maasserver.api.utils import (
+    get_mandatory_param,
+    get_optional_param,
+    )
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
@@ -32,6 +35,10 @@ from maasserver.models import (
     StaticIPAddress,
     )
 import netaddr
+from provisioningserver.logger import get_maas_logger
+
+
+maaslog = get_maas_logger("ip_addresses")
 
 
 class IPAddressesHandler(OperationsHandler):
@@ -46,17 +53,20 @@ class IPAddressesHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         return ('ipaddresses_handler', [])
 
-    def claim_ip(self, user, interface):
+    def claim_ip(self, user, interface, requested_address):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
         `interface`.
 
         :raises StaticIPAddressExhaustion: If no IPs available.
         """
-        return StaticIPAddress.objects.allocate_new(
+        sip = StaticIPAddress.objects.allocate_new(
             range_low=interface.static_ip_range_low,
             range_high=interface.static_ip_range_high,
             alloc_type=IPADDRESS_TYPE.USER_RESERVED,
+            requested_address=requested_address,
             user=user)
+        maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
+        return sip
 
     @operation(idempotent=False)
     def reserve(self, request):
@@ -71,6 +81,8 @@ class IPAddressesHandler(OperationsHandler):
         :type network: unicode
         """
         network = get_mandatory_param(request.POST, "network")
+        requested_address = get_optional_param(
+            request.POST, "requested_address")
         # Validate the passed network.
         try:
             valid_network = netaddr.IPNetwork(network)
@@ -87,7 +99,8 @@ class IPAddressesHandler(OperationsHandler):
         for interface in interfaces:
             if valid_network == interface.network:
                 # Winner winner chicken dinner.
-                return self.claim_ip(request.user, interface)
+                return self.claim_ip(
+                    request.user, interface, requested_address)
         raise MAASAPIBadRequest("No network found matching %s" % network)
 
     @operation(idempotent=False)
@@ -101,6 +114,7 @@ class IPAddressesHandler(OperationsHandler):
         staticaddress = get_object_or_404(
             StaticIPAddress, ip=ip, user=request.user)
         staticaddress.deallocate()
+        maaslog.info("User %s released IP %s", request.user.username, ip)
 
     def read(self, request):
         """List IPAddresses.
