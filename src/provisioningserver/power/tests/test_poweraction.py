@@ -119,7 +119,8 @@ class TestPowerAction(MAASTestCase):
             lambda: pa.render_template(template, pa.update_context({})),
             Raises(MatchesException(
                 PowerActionFail,
-                ".*name 'mac' is not defined at line \d+ column \d+ "
+                "ether_wake failed:\n"
+                "name 'mac' is not defined at line \d+ column \d+ "
                 "in file %s" % re.escape(template_name))))
 
     def _create_template_file(self, template):
@@ -153,7 +154,7 @@ class TestPowerAction(MAASTestCase):
         self.assertThat(
             lambda: self.run_action(path),
             Raises(MatchesException(
-                PowerActionFail, "ether_wake failed.* return.* 127")))
+                PowerActionFail, "ether_wake failed with return code 127")))
 
     def test_execute_raises_PowerActionFail_with_output(self):
         path = self._create_template_file("echo reason for failure; exit 1")

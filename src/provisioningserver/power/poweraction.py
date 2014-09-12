@@ -39,11 +39,17 @@ class PowerActionFail(Exception):
 
     @classmethod
     def from_action(cls, power_action, err):
-        message = "%s failed: %s" % (power_action.power_type, err)
+        message = "%s failed" % power_action.power_type
         is_process_error = isinstance(err, subprocess.CalledProcessError)
-        if is_process_error and err.output:
-            # Add error output to the message.
-            message += ":\n" + err.output.strip()
+        # If the failure is a CalledProcessError, be careful not to call
+        # its __str__ as this will include the actual template text
+        # (which is the 'command' that was run).
+        if is_process_error:
+            message += " with return code %s" % err.returncode
+            if err.output:
+                message += ":\n" + err.output.strip()
+        else:
+            message += ":\n%s" % err
         return cls(message)
 
 
