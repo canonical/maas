@@ -164,15 +164,15 @@ def get_distro_series_initial(instance, with_key_required=True):
     :param with_key_required: When true includes the release_requires_key in
         the choice.
     """
-    osystem = instance.osystem
+    osystem_name = instance.osystem
     series = instance.distro_series
-    os_obj = OperatingSystemRegistry.get_item(osystem)
+    osystem = OperatingSystemRegistry.get_item(osystem_name)
     if not with_key_required:
         key_required = ''
-    elif os_obj is not None:
-        key_required = get_release_requires_key(os_obj, series)
-    if osystem is not None and osystem != '':
+    elif osystem is not None:
+        key_required = get_release_requires_key(osystem, series)
+    if osystem_name is not None and osystem_name != '':
         if series is None:
             series = ''
-        return '%s/%s%s' % (osystem, series, key_required)
+        return '%s/%s%s' % (osystem_name, series, key_required)
     return None

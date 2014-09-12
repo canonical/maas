@@ -182,7 +182,7 @@ class TestNodeForm(MAASServerTestCase):
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
-    def test_rejects_missing_license_key(self):
+    def test_rejects_missing_license_key_without_global_key(self):
         osystem = make_usable_osystem(self)
         release = osystem.get_default_release()
         self.patch(osystem, 'requires_license_key').return_value = True
@@ -196,6 +196,21 @@ class TestNodeForm(MAASServerTestCase):
             })
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['license_key'], form._errors.keys())
+
+    def test_accepts_missing_license_key_with_global_key(self):
+        osystem = make_usable_osystem(self)
+        release = osystem.get_default_release()
+        factory.make_license_key(distro_series=release)
+        self.patch(osystem, 'requires_license_key').return_value = True
+        mock_validate = self.patch(osystem, 'validate_license_key')
+        mock_validate.return_value = True
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem.name,
+            'distro_series': '%s/%s*' % (osystem.name, release),
+            })
+        self.assertTrue(form.is_valid())
 
     def test_calls_validate_license_key(self):
         osystem = make_usable_osystem(self)

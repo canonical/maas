@@ -391,18 +391,24 @@ class NodeForm(ModelForm):
 
     def clean_license_key(self):
         key = self.cleaned_data.get('license_key')
-        osystem = self.cleaned_data.get('osystem')
+        osystem_name = self.cleaned_data.get('osystem')
         distro = self.cleaned_data.get('distro_series')
-        if osystem != '':
-            os_obj = OperatingSystemRegistry.get_item(osystem)
-            if os_obj is not None and os_obj.requires_license_key(distro):
-                if not key or len(key) == 0:
+        if osystem_name == '':
+            return ''
+
+        osystem = OperatingSystemRegistry.get_item(osystem_name)
+        if osystem is not None and osystem.requires_license_key(distro):
+            if not key or len(key) == 0:
+                global_key = get_one(
+                    LicenseKey.objects.filter(distro_series=distro))
+                if global_key is None:
                     raise ValidationError(
-                        "This OS/Release requires a license_key")
-                if not os_obj.validate_license_key(distro, key):
-                    raise ValidationError(
-                        "Invalid license key.")
-                return key
+                        "This OS/Release requires a license_key, "
+                        "and no global license key is set.")
+                return ''
+            if not osystem.validate_license_key(distro, key):
+                raise ValidationError("Invalid license key.")
+            return key
         return ''
 
     def set_distro_series(self, series=''):
@@ -2189,11 +2195,11 @@ class LicenseKeyForm(ModelForm):
         cleaned_key = cleaned_data['license_key']
         cleaned_osystem = cleaned_data['osystem']
         cleaned_series = cleaned_data['distro_series']
-        os_obj = OperatingSystemRegistry.get_item(cleaned_osystem)
-        if os_obj is None:
+        osystem = OperatingSystemRegistry.get_item(cleaned_osystem)
+        if osystem is None:
             raise ValidationError(
                 "Failed to retrieve %s from os registry." % cleaned_osystem)
-        elif not os_obj.validate_license_key(cleaned_series, cleaned_key):
+        elif not osystem.validate_license_key(cleaned_series, cleaned_key):
             raise ValidationError("Invalid license key.")
 
 

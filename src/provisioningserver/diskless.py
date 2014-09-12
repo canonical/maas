@@ -169,23 +169,23 @@ def get_diskless_driver(driver):
     return driver_obj
 
 
-def compose_source_path(osystem, arch, subarch, release, label):
+def compose_source_path(osystem_name, arch, subarch, release, label):
     """Return path to the source file for the diskless boot image.
 
     Each diskless driver will use this source to initialize the disk.
     """
-    os_obj = OperatingSystemRegistry.get_item(osystem)
-    if os_obj is None:
+    osystem = OperatingSystemRegistry.get_item(osystem_name)
+    if osystem is None:
         raise DisklessError(
-            "OS doesn't exist in operating system registry: %s" % osystem)
-    purposes = os_obj.get_boot_image_purposes(arch, subarch, release, label)
+            "OS doesn't exist in operating system registry: %s" % osystem_name)
+    purposes = osystem.get_boot_image_purposes(arch, subarch, release, label)
     if BOOT_IMAGE_PURPOSE.DISKLESS not in purposes:
         raise DisklessError(
-            "OS doesn't support diskless booting: %s" % osystem)
-    root_path, _ = os_obj.get_xinstall_parameters()
+            "OS doesn't support diskless booting: %s" % osystem_name)
+    root_path, _ = osystem.get_xinstall_parameters()
     return os.path.join(
         config.BOOT_RESOURCES_STORAGE, 'current',
-        osystem, arch, subarch, release, label, root_path)
+        osystem_name, arch, subarch, release, label, root_path)
 
 
 def create_diskless_disk(driver, driver_options, system_id,
