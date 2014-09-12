@@ -59,26 +59,18 @@ issue_ipmi_command() {
 
     if [ "$power_change" != "query" ]
     then
-        # Use C locale to force English error messages.
-        result=$(echo workaround |\
-        LC_ALL=C ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config} 2>&
-1)
-
-        if echo $result | grep -q "password invalid"
-        then
-            echo "Invalid password" >&2
-            exit 2
-        fi
+        echo workaround |\
+        ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config}
     fi
 
     # Use C locale to force English error messages.
     result=$(echo workaround |\
     LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
 
-    if echo $result | grep -q "password invalid"
+    if [ $(echo $result | grep -q "password invalid") ]
     then
         echo "Invalid password" >&2
-        exit 2
+        exit 1
     fi
 
     case "$result" in
