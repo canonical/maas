@@ -823,6 +823,45 @@ class NodeTest(MAASServerTestCase):
             ]
         self.assertEqual([ipv6_address], node.ip_addresses())
 
+    def test_get_static_ip_mappings_returns_static_ip_and_mac(self):
+        node = factory.make_Node(mac=True, disable_ipv4=False)
+        [mac] = node.macaddress_set.all()
+        sip = factory.make_StaticIPAddress(mac=mac)
+        self.assertEqual(
+            [(sip.ip, mac.mac_address)],
+            node.get_static_ip_mappings())
+
+    def test_get_static_ip_mappings_returns_mappings_for_all_macs(self):
+        node = factory.make_Node(disable_ipv4=False)
+        mac1 = factory.make_MACAddress(node=node)
+        mac2 = factory.make_MACAddress(node=node)
+        sip1 = factory.make_StaticIPAddress(mac=mac1)
+        sip2 = factory.make_StaticIPAddress(mac=mac2)
+        self.assertItemsEqual(
+            [
+                (sip1.ip, mac1.mac_address),
+                (sip2.ip, mac2.mac_address),
+            ],
+            node.get_static_ip_mappings())
+
+    def test_get_static_ip_mappings_includes_multiple_addresses(self):
+        node = factory.make_Node(mac=True, disable_ipv4=False)
+        [mac] = node.macaddress_set.all()
+        sip1 = factory.make_StaticIPAddress(mac=mac)
+        sip2 = factory.make_StaticIPAddress(mac=mac)
+        self.assertItemsEqual(
+            [
+                (sip1.ip, mac.mac_address),
+                (sip2.ip, mac.mac_address),
+            ],
+            node.get_static_ip_mappings())
+
+    def test_get_static_ip_mappings_ignores_dynamic_addresses(self):
+        node = factory.make_Node(mac=True, disable_ipv4=False)
+        [mac] = node.macaddress_set.all()
+        factory.make_DHCPLease(nodegroup=node.nodegroup, mac=mac.mac_address)
+        self.assertEqual([], node.get_static_ip_mappings())
+
     def test_release_turns_on_netboot(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())

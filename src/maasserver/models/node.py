@@ -810,6 +810,18 @@ class Node(CleanSave, TimestampedModel):
             query = dhcpleases_qs.filter(mac__in=macs)
             return query.values_list('ip', flat=True)
 
+    def get_static_ip_mappings(self):
+        """Return node's static addresses, and their MAC addresses.
+
+        :return: A list of (IP, MAC) tuples, both in string form.
+        """
+        macs = self.macaddress_set.all().prefetch_related('ip_addresses')
+        return [
+            (sip.ip, mac.mac_address)
+            for mac in macs
+            for sip in mac.ip_addresses.all()
+            ]
+
     def mac_addresses_on_managed_interfaces(self):
         """Return MACAddresses for this node that have a managed cluster
         interface."""
