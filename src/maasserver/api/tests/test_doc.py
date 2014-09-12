@@ -88,6 +88,18 @@ class TestFindingResources(MAASServerTestCase):
         module.urlpatterns = patterns("", url("^metal", resource))
         self.assertSetEqual({resource}, find_api_resources(module))
 
+    def test_urlpatterns_with_resource_hidden(self):
+        # Resources for handlers with resource_uri attributes are discovered
+        # in a urlconf module and returned, unless hidden = True.
+        handler = type(b"\m/", (BaseHandler,), {
+            "resource_uri": True,
+            "hidden": True,
+            })
+        resource = Resource(handler)
+        module = self.make_module()
+        module.urlpatterns = patterns("", url("^metal", resource))
+        self.assertSetEqual(set(), find_api_resources(module))
+
     def test_nested_urlpatterns_with_handler(self):
         # Resources are found in nested urlconfs.
         handler = type(b"\m/", (BaseHandler,), {"resource_uri": True})

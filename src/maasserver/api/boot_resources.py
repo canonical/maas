@@ -273,12 +273,14 @@ class BootResourceFileUploadHandler(OperationsHandler):
 
     read = create = delete = None
 
+    hidden = True
+
     @admin_method
     def update(self, request, id, file_id):
         """Upload piece of boot resource file."""
         resource = get_object_or_404(BootResource, id=id)
         rfile = get_object_or_404(BootResourceFile, id=file_id)
-        size = request.META.get('CONTENT_LENGTH', 0)
+        size = int(request.META.get('CONTENT_LENGTH', '0'))
         data = request.body
         if size == 0:
             raise MAASAPIBadRequest("Missing data.")

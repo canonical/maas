@@ -43,12 +43,14 @@ def accumulate_api_resources(resolver, accumulator):
     Handlers are of type :class:`HandlerMetaClass`, and must define a
     `resource_uri` method.
 
+    Handlers that have the attribute hidden set to True, will not be returned.
+
     :rtype: Generator, yielding handlers.
     """
     p_has_resource_uri = lambda resource: (
         getattr(resource.handler, "resource_uri", None) is not None)
-    p_is_not_deprecated = lambda resource: (
-        getattr(resource.handler, "deprecated", False))
+    p_is_not_hidden = lambda resource: (
+        getattr(resource.handler, "hidden", False))
     for pattern in resolver.url_patterns:
         if isinstance(pattern, RegexURLResolver):
             accumulate_api_resources(pattern, accumulator)
@@ -56,7 +58,7 @@ def accumulate_api_resources(resolver, accumulator):
             if isinstance(pattern.callback, Resource):
                 resource = pattern.callback
                 if p_has_resource_uri(resource) and \
-                        not p_is_not_deprecated(resource):
+                        not p_is_not_hidden(resource):
                     accumulator.add(resource)
         else:
             raise AssertionError(

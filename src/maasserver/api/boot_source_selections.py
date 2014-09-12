@@ -101,7 +101,7 @@ class BootSourceSelectionBackwardHandler(BootSourceSelectionHandler):
     be set globally for the whole region and clusters. This api is now
     deprecated, and only exists for backwards compatibility.
     """
-    deprecated = True
+    hidden = True
 
     def read(self, request, uuid, boot_source_id, id):
         """Read a boot source selection."""
@@ -175,7 +175,7 @@ class BootSourceSelectionsBackwardHandler(BootSourceSelectionsHandler):
     be set globally for the whole region and clusters. This api is now
     deprecated, and only exists for backwards compatibility.
     """
-    deprecated = True
+    hidden = True
 
     def read(self, request, uuid, boot_source_id):
         """List boot source selections.

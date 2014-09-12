@@ -24,6 +24,7 @@ from textwrap import dedent
 
 import httplib2
 from maascli import api
+from maascli.actions.boot_resources_create import BootResourcesCreateAction
 from maascli.command import CommandError
 from maascli.config import ProfileConfig
 from maascli.parser import ArgumentParser
@@ -178,6 +179,34 @@ class TestFunctions(MAASTestCase):
             "Certificate verification failed, use --insecure/-k to "
             "disable the certificate check.")
         self.assertEqual(error_expected, "%s" % error)
+
+    def test_get_action_class_returns_None_for_unknown_handler(self):
+        handler = {'name': factory.make_name('handler')}
+        action = {'name': 'create'}
+        self.assertIsNone(api.get_action_class(handler, action))
+
+    def test_get_action_class_returns_BootResourcesCreateAction_class(self):
+        # Test uses BootResourcesCreateAction as its know to exist.
+        handler = {'name': 'BootResourcesHandler'}
+        action = {'name': 'create'}
+        self.assertEqual(
+            BootResourcesCreateAction,
+            api.get_action_class(handler, action))
+
+    def test_get_action_class_bases_returns_Action(self):
+        handler = {'name': factory.make_name('handler')}
+        action = {'name': 'create'}
+        self.assertEqual(
+            (api.Action,),
+            api.get_action_class_bases(handler, action))
+
+    def test_get_action_class_bases_returns_BootResourcesCreateAction(self):
+        # Test uses BootResourcesCreateAction as its know to exist.
+        handler = {'name': 'BootResourcesHandler'}
+        action = {'name': 'create'}
+        self.assertEqual(
+            (BootResourcesCreateAction,),
+            api.get_action_class_bases(handler, action))
 
 
 class TestIsResponseTextual(MAASTestCase):

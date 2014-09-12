@@ -20,6 +20,8 @@ from django.db.models import (
     CharField,
     ForeignKey,
     )
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
@@ -70,3 +72,16 @@ class BootResourceFile(CleanSave, TimestampedModel):
 
     def __repr__(self):
         return "<BootResourceFile %s/%s>" % (self.filename, self.filetype)
+
+
+@receiver(post_delete)
+def delete_large_file(sender, instance, **kwargs):
+    """Call delete on the LargeFile, now that the relation has been removed.
+    If this was the only resource file referencing this LargeFile then it will
+    be delete.
+
+    This is done using the `post_delete` signal because only then has the
+    relation been removed.
+    """
+    if sender == BootResourceFile:
+        instance.largefile.delete()

@@ -119,7 +119,7 @@ class BootSourceBackwardHandler(BootSourceHandler):
     be set globally for the whole region and clusters. This api is now
     deprecated, and only exists for backwards compatibility.
     """
-    deprecated = True
+    hidden = True
 
     def read(self, request, uuid, id):
         """Read a boot source."""
@@ -186,7 +186,7 @@ class BootSourcesBackwardHandler(BootSourcesHandler):
     be set globally for the whole region and clusters. This api is now
     deprecated, and only exists for backwards compatibility.
     """
-    deprecated = True
+    hidden = True
 
     def read(self, request, uuid):
         """List boot sources.

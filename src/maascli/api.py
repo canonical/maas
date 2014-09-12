@@ -53,6 +53,7 @@ from maascli.utils import (
     handler_command_name,
     parse_docstring,
     safe_name,
+    try_import_module,
     )
 
 
@@ -402,12 +403,32 @@ class ActionHelp(argparse.Action):
         sys.exit(0)
 
 
+def get_action_class(handler, action):
+    """Return custom action handler class."""
+    handler_name = handler_command_name(handler["name"]).replace('-', '_')
+    action_name = '%s_%s' % (
+        handler_name,
+        safe_name(action["name"]).replace('-', '_'))
+    action_module = try_import_module('maascli.actions.%s' % action_name)
+    if action_module is not None:
+        return action_module.action_class
+    return None
+
+
+def get_action_class_bases(handler, action):
+    """Return the base classes for the dynamic class."""
+    action_class = get_action_class(handler, action)
+    if action_class is not None:
+        return (action_class,)
+    return (Action,)
+
+
 def register_actions(profile, handler, parser):
     """Register a handler's actions."""
     for action in handler["actions"]:
         help_title, help_body = parse_docstring(action["doc"])
         action_name = safe_name(action["name"]).encode("ascii")
-        action_bases = (Action,)
+        action_bases = get_action_class_bases(handler, action)
         action_ns = {
             "action": action,
             "handler": handler,

@@ -25,6 +25,7 @@ from inspect import (
     getdoc,
     )
 import re
+import sys
 from urlparse import urlparse
 
 
@@ -107,3 +108,17 @@ def api_url(string):
     if re.search("/api/[0-9.]+/?$", url.path) is None:
         url = url._replace(path=url.path + "api/1.0/")
     return url.geturl()
+
+
+def import_module(import_str):
+    """Import a module."""
+    __import__(import_str)
+    return sys.modules[import_str]
+
+
+def try_import_module(import_str, default=None):
+    """Try to import a module."""
+    try:
+        return import_module(import_str)
+    except ImportError:
+        return default
