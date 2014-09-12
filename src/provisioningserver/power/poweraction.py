@@ -47,7 +47,8 @@ class PowerActionFail(Exception):
         if is_process_error:
             message += " with return code %s" % err.returncode
             if err.output:
-                message += ":\n" + err.output.strip()
+                message += ":\n" + (
+                    err.output.decode("utf-8", "replace").strip())
         else:
             message += ":\n%s" % err
         return cls(message)

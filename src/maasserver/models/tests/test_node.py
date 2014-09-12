@@ -1145,9 +1145,9 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(description, reload_object(node).error_description)
 
     def test_mark_failed_raises_for_unauthorized_node_status(self):
-        status = factory.pick_choice(
-            NODE_STATUS_CHOICES,
-            but_not=self.failed_statuses_mapping.keys())
+        but_not = self.failed_statuses_mapping.keys()
+        but_not.extend(self.failed_statuses_mapping.viewvalues())
+        status = factory.pick_choice(NODE_STATUS_CHOICES, but_not=but_not)
         node = factory.make_Node(status=status)
         description = factory.make_name('error-description')
         self.assertRaises(NodeStateViolation, node.mark_failed, description)
