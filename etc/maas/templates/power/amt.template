@@ -5,6 +5,10 @@
 #
 # Parameters.  Don't quote these: the templating system will quote as needed,
 # so adding quotes of our own might cause double-quoting.
+# Exit code:
+# 0: success
+# 1: failure (might be temporary, worth retrying)
+# 2: fatal failure (not worth retrying, see error message for details)
 power_address={{power_address}}
 power_change={{power_change}}
 power_pass={{power_pass}}
@@ -30,6 +34,10 @@ issue_amt_command() {
   LC_ALL='C' AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@"
 }
 
+# Check that amttool is present.
+check_amt_command() {
+  command -v amttool >/dev/null 2>&1 || { fail 2 "Missing amttool (amtterm package)"; }
+}
 
 # Ask for node's power state: 'on' or 'off'.
 query_state() {
@@ -108,6 +116,7 @@ power_off() {
 
 
 main() {
+    check_amt_command
     case "${power_change}" in
     'on')
         if [ "$(query_state)" = 'on' ]
