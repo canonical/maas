@@ -165,7 +165,6 @@ def reactor_sync():
     # If we're not running in the reactor thread, we need to synchronise
     # execution, being careful to avoid deadlocks.
     sync = threading.Condition()
-    reactorThread = threadable.ioThread
 
     # When calling sync.wait() we specify a timeout of sys.maxint. The default
     # timeout of None cannot be interrupted by SIGINT, aka Ctrl-C, which can
@@ -191,6 +190,9 @@ def reactor_sync():
         # lock on `sync`. We're able to get this lock because `sync_io` goes
         # into `sync.wait()`, thus releasing its lock on it.
         sync.wait(sys.maxint)
+        # Record the reactor's thread. This is safe to do now that we're
+        # synchronised with the reactor.
+        reactorThread = threadable.ioThread
         try:
             # Mark the current thread as the IO thread. This makes the
             # `asynchronous` and `synchronous` decorators DTRT.
@@ -202,7 +204,7 @@ def reactor_sync():
             # Restore the IO thread.
             threadable.ioThread = reactorThread
             # Wake up `sync_io`, which can then run to completion, though not
-            # until we release our lock `sync` by exiting this context.
+            # until we release our lock on `sync` by exiting this context.
             sync.notify()
 
 
