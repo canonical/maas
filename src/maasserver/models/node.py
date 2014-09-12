@@ -1272,6 +1272,9 @@ class Node(CleanSave, TimestampedModel):
             self.status = failed_statuses_mapping[self.status]
             self.error_description = error_description
             self.save()
+        elif self.status in failed_statuses_mapping.viewvalues():
+            # Silently ignore a request to fail an already failed node.
+            pass
         else:
             raise NodeStateViolation(
                 "The status of the node is %s; this status cannot "

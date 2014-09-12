@@ -1152,6 +1152,14 @@ class NodeTest(MAASServerTestCase):
         description = factory.make_name('error-description')
         self.assertRaises(NodeStateViolation, node.mark_failed, description)
 
+    def test_mark_failed_ignores_if_already_failed(self):
+        status = random.choice([
+            NODE_STATUS.FAILED_DEPLOYMENT, NODE_STATUS.FAILED_COMMISSIONING])
+        node = factory.make_Node(status=status)
+        description = factory.make_name('error-description')
+        node.mark_failed(description)
+        self.assertEqual(status, node.status)
+
     def test_mark_broken_changes_status_to_broken(self):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, owner=factory.make_User())
