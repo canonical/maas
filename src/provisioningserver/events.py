@@ -31,6 +31,7 @@ from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
     )
+from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
 
 
@@ -84,6 +85,7 @@ EVENT_DETAILS = {
 }
 
 
+@asynchronous
 @inlineCallbacks
 def send_event_node(event_type, system_id, hostname, description=''):
     """Send the given node event to the region.

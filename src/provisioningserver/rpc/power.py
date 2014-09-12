@@ -32,7 +32,11 @@ from provisioningserver.rpc.region import (
     MarkNodeFailed,
     UpdateNodePowerState,
     )
-from provisioningserver.utils.twisted import pause
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    pause,
+    synchronous,
+    )
 from twisted.internet import reactor
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -51,6 +55,7 @@ QUERY_POWER_TYPES = ['amt', 'ipmi', 'virsh']
 maaslog = get_maas_logger("power")
 
 
+@asynchronous
 @inlineCallbacks
 def power_change_failure(system_id, hostname, power_change, message):
     """Deal with a node failing to be powered up or down."""
@@ -72,6 +77,7 @@ def power_change_failure(system_id, hostname, power_change, message):
     yield send_event_node(event_type, system_id, hostname, message)
 
 
+@synchronous
 def perform_power_change(system_id, hostname, power_type, power_change,
                          context):
     """Issue the given `power_change` command.
@@ -85,10 +91,12 @@ def perform_power_change(system_id, hostname, power_type, power_change,
     except PowerActionFail as error:
         message = "Node could not be powered %s: %s" % (
             power_change, error)
-        power_change_failure(system_id, hostname, power_change, message)
+        power_change_failure(
+            system_id, hostname, power_change, message).wait(15)
         raise
 
 
+@asynchronous
 @inlineCallbacks
 def power_change_success(system_id, hostname, power_change):
     assert power_change in ['on', 'off'], (
@@ -105,6 +113,7 @@ def power_change_success(system_id, hostname, power_change):
     yield send_event_node(event_type, system_id, hostname)
 
 
+@asynchronous
 @inlineCallbacks
 def power_change_starting(system_id, hostname, power_change):
     assert power_change in ['on', 'off'], (
@@ -123,6 +132,7 @@ def power_change_starting(system_id, hostname, power_change):
 default_waiting_policy = (3, 5, 10)
 
 
+@asynchronous
 @inlineCallbacks
 def change_power_state(system_id, hostname, power_type, power_change, context,
                        clock=reactor):
@@ -154,7 +164,7 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
             perform_power_change, system_id, hostname, power_type,
             'query', context)
         if new_power_state == power_change:
-            power_change_success(system_id, hostname, power_change)
+            yield power_change_success(system_id, hostname, power_change)
             return
 
     # Failure: the power state of the node hasn't changed: mark it as
@@ -163,6 +173,7 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     yield power_change_failure(system_id, hostname, power_change, message)
 
 
+@asynchronous
 @inlineCallbacks
 def power_state_update(system_id, state):
     """Update a node's power state"""
@@ -174,6 +185,7 @@ def power_state_update(system_id, state):
     )
 
 
+@asynchronous
 @inlineCallbacks
 def power_query_failure(system_id, hostname, message):
     """Deal with a node failing to be queried."""
@@ -189,6 +201,7 @@ def power_query_failure(system_id, hostname, message):
         system_id, hostname, message)
 
 
+@synchronous
 def perform_power_query(system_id, hostname, power_type, context):
     """Issue the given `power_query` command.
 
@@ -200,6 +213,7 @@ def perform_power_query(system_id, hostname, power_type, context):
     return action.execute(power_change='query', **context)
 
 
+@asynchronous
 @inlineCallbacks
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     if power_type not in QUERY_POWER_TYPES:
@@ -230,6 +244,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     returnValue('error')
 
 
+@asynchronous
 @inlineCallbacks
 def query_all_nodes(nodes, clock=reactor):
     """Performs `power_query` on all nodes. If the nodes state has changed,

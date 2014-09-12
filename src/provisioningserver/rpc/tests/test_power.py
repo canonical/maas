@@ -42,20 +42,23 @@ from provisioningserver.rpc import (
     power,
     region,
     )
-from provisioningserver.rpc.testing import MockClusterToRegionRPCFixture
-from testtools.deferredruntest import assert_fails_with
+from provisioningserver.rpc.testing import (
+    MockClusterToRegionRPCFixture,
+    MockLiveClusterToRegionRPCFixture,
+    )
+from testtools import ExpectedException
+from testtools.deferredruntest import extract_result
 from twisted.internet import reactor
 from twisted.internet.defer import (
     fail,
     inlineCallbacks,
     maybeDeferred,
+    returnValue,
     )
 from twisted.internet.task import Clock
 
 
 class TestPowerHelpers(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def patch_rpc_methods(self):
         fixture = self.useFixture(MockClusterToRegionRPCFixture())
@@ -86,7 +89,7 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 description='')
         )
-        return d
+        self.assertIsNone(extract_result(d))
 
     def test_power_change_starting_emits_event(self):
         system_id = factory.make_name('system_id')
@@ -103,7 +106,7 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 description='')
         )
-        return d
+        self.assertIsNone(extract_result(d))
 
     def test_power_change_failure_emits_event(self):
         system_id = factory.make_name('system_id')
@@ -122,7 +125,7 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 description=message)
         )
-        return d
+        self.assertIsNone(extract_result(d))
 
     def test_power_query_failure_emits_event(self):
         system_id = factory.make_name('system_id')
@@ -133,7 +136,7 @@ class TestPowerHelpers(MAASTestCase):
             system_id, hostname, message)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertIsNone(extract_result(d))
         self.assertThat(
             protocol.SendEvent,
             MockCalledOnceWith(
@@ -142,7 +145,6 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 description=message)
         )
-        return d
 
     def test_power_query_failure_marks_node_broken(self):
         system_id = factory.make_name('system_id')
@@ -153,7 +155,7 @@ class TestPowerHelpers(MAASTestCase):
             system_id, hostname, message)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertIsNone(extract_result(d))
         self.assertThat(
             protocol.MarkNodeFailed,
             MockCalledOnceWith(
@@ -161,7 +163,6 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 error_description=message)
         )
-        return d
 
     def test_power_state_update_calls_UpdateNodePowerState(self):
         system_id = factory.make_name('system_id')
@@ -171,7 +172,7 @@ class TestPowerHelpers(MAASTestCase):
             system_id, state)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertIsNone(extract_result(d))
         self.assertThat(
             protocol.UpdateNodePowerState,
             MockCalledOnceWith(
@@ -179,17 +180,11 @@ class TestPowerHelpers(MAASTestCase):
                 system_id=system_id,
                 power_state=state)
         )
-        return d
 
 
 class TestChangePowerChange(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
-
-    def setUp(self):
-        super(TestChangePowerChange, self).setUp()
-        self.patch(
-            provisioningserver.rpc.power, 'deferToThread', maybeDeferred)
 
     def patch_power_action(self, return_value=None, side_effect=None):
         """Patch the PowerAction object.
@@ -212,15 +207,18 @@ class TestChangePowerChange(MAASTestCase):
         power_action.return_value = power_action_obj
         return power_action, power_action_obj_execute
 
+    @inlineCallbacks
     def patch_rpc_methods(self, return_value={}, side_effect=None):
-        fixture = self.useFixture(MockClusterToRegionRPCFixture())
-        protocol, io = fixture.makeEventLoop(
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(
             region.MarkNodeFailed, region.UpdateNodePowerState,
             region.SendEvent)
         protocol.MarkNodeFailed.return_value = return_value
         protocol.MarkNodeFailed.side_effect = side_effect
-        return protocol.MarkNodeFailed, io
+        self.addCleanup((yield connecting))
+        returnValue(protocol.MarkNodeFailed)
 
+    @inlineCallbacks
     def test_change_power_state_changes_power_state(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -234,11 +232,10 @@ class TestChangePowerChange(MAASTestCase):
         # in the required power state.
         power_action, execute = self.patch_power_action(
             return_value=power_change)
-        markNodeBroken, io = self.patch_rpc_methods()
+        markNodeBroken = yield self.patch_rpc_methods()
 
-        d = power.change_power_state(
+        yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -250,8 +247,8 @@ class TestChangePowerChange(MAASTestCase):
         )
         # The node hasn't been marked broken.
         self.assertThat(markNodeBroken, MockNotCalled())
-        return d
 
+    @inlineCallbacks
     def test_change_power_state_doesnt_retry_for_certain_power_types(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -264,11 +261,10 @@ class TestChangePowerChange(MAASTestCase):
         self.patch(power, 'pause')
         power_action, execute = self.patch_power_action(
             return_value=random.choice(['on', 'off']))
-        markNodeBroken, io = self.patch_rpc_methods()
+        markNodeBroken = yield self.patch_rpc_methods()
 
-        d = power.change_power_state(
+        yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -278,8 +274,8 @@ class TestChangePowerChange(MAASTestCase):
         )
         # The node hasn't been marked broken.
         self.assertThat(markNodeBroken, MockNotCalled())
-        return d
 
+    @inlineCallbacks
     def test_change_power_state_retries_if_power_state_doesnt_change(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -292,11 +288,10 @@ class TestChangePowerChange(MAASTestCase):
         # Simulate a failure to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'on'])
-        markNodeBroken, io = self.patch_rpc_methods()
+        markNodeBroken = yield self.patch_rpc_methods()
 
-        d = power.change_power_state(
+        yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        io.flush()
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -308,8 +303,8 @@ class TestChangePowerChange(MAASTestCase):
         )
         # The node hasn't been marked broken.
         self.assertThat(markNodeBroken, MockNotCalled())
-        return d
 
+    @inlineCallbacks
     def test_change_power_state_marks_the_node_broken_if_failure(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -321,11 +316,10 @@ class TestChangePowerChange(MAASTestCase):
         self.patch(power, 'pause')
         # Simulate a persistent failure.
         power_action, execute = self.patch_power_action(return_value='off')
-        markNodeBroken, io = self.patch_rpc_methods()
+        markNodeBroken = yield self.patch_rpc_methods()
 
-        d = power.change_power_state(
+        yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        io.flush()
 
         # The node has been marked broken.
         msg = "Timeout after %s tries" % len(
@@ -337,8 +331,8 @@ class TestChangePowerChange(MAASTestCase):
                 system_id=system_id,
                 error_description=msg)
         )
-        return d
 
+    @inlineCallbacks
     def test_change_power_state_marks_the_node_broken_if_exception(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -352,22 +346,18 @@ class TestChangePowerChange(MAASTestCase):
         exception_message = factory.make_name('exception')
         power_action, execute = self.patch_power_action(
             side_effect=PowerActionFail(exception_message))
-        markNodeBroken, io = self.patch_rpc_methods()
+        markNodeBroken = yield self.patch_rpc_methods()
 
-        d = power.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        io.flush()
-        assert_fails_with(d, PowerActionFail)
+        with ExpectedException(PowerActionFail):
+            yield power.change_power_state(
+                system_id, hostname, power_type, power_change, context)
+
         error_message = "Node could not be powered on: %s" % exception_message
+        self.assertThat(
+            markNodeBroken, MockCalledOnceWith(
+                ANY, system_id=system_id, error_description=error_message))
 
-        def check(failure):
-            self.assertThat(
-                markNodeBroken,
-                MockCalledOnceWith(
-                    ANY, system_id=system_id, error_description=error_message))
-
-        return d.addCallback(check)
-
+    @inlineCallbacks
     def test_change_power_state_pauses_inbetween_retries(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -379,41 +369,26 @@ class TestChangePowerChange(MAASTestCase):
         # Simulate two failures to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'off', None, 'on'])
-        self.patch(power, "deferToThread", maybeDeferred)
-        markNodeBroken, io = self.patch_rpc_methods()
-        clock = Clock()
+        # Patch calls to pause() to `execute` so that we record both in the
+        # same place, and can thus see ordering.
+        self.patch(power, 'pause', execute)
 
-        calls_and_pause = [
-            ([
-                call(power_change=power_change, **context),
-            ], 3),
-            ([
-                call(power_change='query', **context),
-                call(power_change=power_change, **context),
-            ], 5),
-            ([
-                call(power_change='query', **context),
-                call(power_change=power_change, **context),
-            ], 10),
-            ([
-                call(power_change='query', **context),
-            ], 0),
-        ]
-        calls = []
-        d = power.change_power_state(
-            system_id, hostname, power_type, power_change, context,
-            clock=clock)
-        for newcalls, waiting_time in calls_and_pause:
-            calls.extend(newcalls)
-            io.flush()
-            self.assertThat(execute, MockCallsMatch(*calls))
-            clock.advance(waiting_time)
-        return d
+        yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+
+        self.assertThat(execute, MockCallsMatch(
+            call(power_change=power_change, **context),
+            call(3, reactor),  # pause(3, reactor)
+            call(power_change='query', **context),
+            call(power_change=power_change, **context),
+            call(5, reactor),  # pause(5, reactor)
+            call(power_change='query', **context),
+        ))
 
 
 class TestPowerQuery(MAASTestCase):
-
-    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def setUp(self):
         super(TestPowerQuery, self).setUp()
@@ -468,7 +443,7 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertEqual(power_state, extract_result(d))
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -476,8 +451,6 @@ class TestPowerQuery(MAASTestCase):
                 call(power_change='query', **context),
             ),
         )
-        self.assertEqual(power_state, d.result)
-        return d
 
     def test_get_power_state_returns_unknown_for_certain_power_types(self):
         system_id = factory.make_name('system_id')
@@ -493,9 +466,7 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
-        self.assertEqual('unknown', d.result)
-        return d
+        self.assertEqual('unknown', extract_result(d))
 
     def test_get_power_state_retries_if_power_query_fails(self):
         system_id = factory.make_name('system_id')
@@ -516,7 +487,7 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertEqual(power_state, extract_result(d))
         self.assertThat(
             execute,
             MockCallsMatch(
@@ -526,8 +497,6 @@ class TestPowerQuery(MAASTestCase):
         )
         # The node hasn't been marked broken.
         self.assertThat(markNodeBroken, MockNotCalled())
-        self.assertEqual(power_state, d.result)
-        return d
 
     def test_get_power_state_marks_the_node_broken_if_failure(self):
         system_id = factory.make_name('system_id')
@@ -547,7 +516,7 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertTrue(d.called)
+        self.assertEqual('error', extract_result(d))
         # The node has been marked broken.
         self.assertThat(
             markNodeBroken,
@@ -557,8 +526,6 @@ class TestPowerQuery(MAASTestCase):
                 error_description="Node could not be queried %s (%s) %s" % (
                     system_id, hostname, err_msg))
         )
-        self.assertEqual('error', d.result)
-        return d
 
     def test_get_power_state_pauses_inbetween_retries(self):
         system_id = factory.make_name('system_id')
@@ -594,7 +561,12 @@ class TestPowerQuery(MAASTestCase):
             io.flush()
             self.assertThat(execute, MockCallsMatch(*calls))
             clock.advance(waiting_time)
-        return d
+        self.assertEqual("off", extract_result(d))
+
+
+class TestPowerQueryAsync(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def make_node(self):
         system_id = factory.make_name('system_id')
