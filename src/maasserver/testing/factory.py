@@ -277,8 +277,6 @@ class Factory(maastesting.factory.Factory):
             Node.objects.filter(id=node.id).update(created=created)
         return reload_object(node)
 
-    make_node = make_Node  # DEPRECATED
-
     def get_interface_fields(self, name=None, ip=None, router_ip=None,
                              network=None, subnet_mask=None, broadcast_ip=None,
                              ip_range_low=None, ip_range_high=None,
@@ -390,8 +388,6 @@ class Factory(maastesting.factory.Factory):
             self.make_NodeGroupInterface(cluster, **interface_settings)
         return cluster
 
-    make_node_group = make_NodeGroup  # DEPRECATED
-
     def make_unrenamable_NodeGroup_with_Node(self):
         """Create a `NodeGroup` that can't be renamed, and `Node`.
 
@@ -411,9 +407,6 @@ class Factory(maastesting.factory.Factory):
         node = self.make_Node(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED)
         return nodegroup, node
-
-    make_unrenamable_nodegroup_with_node = (
-        make_unrenamable_NodeGroup_with_Node)  # DEPRECATED
 
     def make_NodeGroupInterface(self, nodegroup, name=None, ip=None,
                                 router_ip=None, network=None,
@@ -435,8 +428,6 @@ class Factory(maastesting.factory.Factory):
         interface.save()
         return interface
 
-    make_node_group_interface = make_NodeGroupInterface  # DEPRECATED
-
     def make_NodeResult_for_commissioning(
             self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from commissioning a node."""
@@ -453,9 +444,6 @@ class Factory(maastesting.factory.Factory):
             result_type=RESULT_TYPE.COMMISSIONING, data=Bin(data))
         ncr.save()
         return ncr
-
-    make_node_commission_result = (
-        make_NodeResult_for_commissioning)  # DEPRECATED
 
     def make_NodeResult_for_installing(
             self, node=None, name=None, script_result=None, data=None):
@@ -474,9 +462,6 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
-    make_node_install_result = (
-        make_NodeResult_for_installing)  # DEPRECATED
-
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""
         return MAC(self.getRandomMACAddress())
@@ -493,8 +478,6 @@ class Factory(maastesting.factory.Factory):
         if networks is not None:
             mac.networks.add(*networks)
         return mac
-
-    make_mac_address = make_MACAddress  # DEPRECATED
 
     def make_node_with_mac_attached_to_nodegroupinterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
@@ -532,8 +515,6 @@ class Factory(maastesting.factory.Factory):
                 mac_address=mac, ip_address=ipaddress).save()
         return ipaddress
 
-    make_staticipaddress = make_StaticIPAddress  # DEPRECATED
-
     def make_DHCPLease(self, nodegroup=None, ip=None, mac=None):
         """Create a :class:`DHCPLease`."""
         if nodegroup is None:
@@ -546,8 +527,6 @@ class Factory(maastesting.factory.Factory):
         lease.save()
         return lease
 
-    make_dhcp_lease = make_DHCPLease  # DEPRECATED
-
     def make_email(self):
         return '%s@example.com' % self.make_string(10)
 
@@ -559,16 +538,12 @@ class Factory(maastesting.factory.Factory):
         return User.objects.create_user(
             username=username, password=password, email=email)
 
-    make_user = make_User  # DEPRECATED
-
     def make_SSHKey(self, user, key_string=None):
         if key_string is None:
             key_string = get_data('data/test_rsa0.pub')
         key = SSHKey(key=key_string, user=user)
         key.save()
         return key
-
-    make_sshkey = make_SSHKey  # DEPRECATED
 
     def make_Tag(self, name=None, definition=None, comment='',
                  kernel_opts=None, created=None, updated=None):
@@ -588,8 +563,6 @@ class Factory(maastesting.factory.Factory):
         if created is not None:
             Tag.objects.filter(id=tag.id).update(created=created)
         return reload_object(tag)
-
-    make_tag = make_Tag  # DEPRECATED
 
     def make_user_with_keys(self, n_keys=2, user=None, **kwargs):
         """Create a user with n `SSHKey`.  If user is not None, use this user
@@ -646,8 +619,6 @@ class Factory(maastesting.factory.Factory):
     def make_FileStorage(self, filename=None, content=None, owner=None):
         fake_file = self.make_file_upload(filename, content)
         return FileStorage.objects.save_file(fake_file.name, fake_file, owner)
-
-    make_file_storage = make_FileStorage  # DEPRECATED
 
     def make_oauth_header(self, **kwargs):
         """Fake an OAuth authorization header.
@@ -706,8 +677,6 @@ class Factory(maastesting.factory.Factory):
             xinstall_type=xinstall_type,
             )
 
-    make_boot_image = make_BootImage  # DEPRECATED
-
     def make_boot_images_for_node_with_purposes(self, node, purposes):
         osystem = node.get_osystem()
         series = node.get_distro_series()
@@ -735,8 +704,6 @@ class Factory(maastesting.factory.Factory):
             content = b'content:' + self.make_string().encode('ascii')
         return CommissioningScript.objects.create(
             name=name, content=Bin(content))
-
-    make_commissioning_script = make_CommissioningScript  # DEPRECATED
 
     def make_DownloadProgress(self, nodegroup=None, filename=None,
                               size=NO_VALUE, bytes_downloaded=NO_VALUE,
@@ -775,8 +742,6 @@ class Factory(maastesting.factory.Factory):
         return DownloadProgress.objects.create(
             nodegroup=nodegroup, filename=filename, size=size,
             bytes_downloaded=bytes_downloaded)
-
-    make_download_progress = make_DownloadProgress  # DEPRECATED
 
     def make_DownloadProgress_initial(self, nodegroup=None, filename=None,
                                       size=NO_VALUE):
@@ -926,8 +891,6 @@ class Factory(maastesting.factory.Factory):
         network.save()
         return network
 
-    make_network = make_Network  # DEPRECATED
-
     def make_Networks(self, number, with_vlans=True, **kwargs):
         """Create multiple networks.
 
@@ -956,8 +919,6 @@ class Factory(maastesting.factory.Factory):
                     vlan_tag=tag, disjoint_from=networks, **kwargs))
         return networks
 
-    make_networks = make_Networks  # DEPRECATED
-
     def make_BootSource(self, url=None, keyring_filename=None,
                         keyring_data=None):
         """Create a new `BootSource`."""
@@ -975,8 +936,6 @@ class Factory(maastesting.factory.Factory):
         )
         boot_source.save()
         return boot_source
-
-    make_boot_source = make_BootSource  # DEPRECATED
 
     def make_BootSourceSelection(self, boot_source=None, os=None,
                                  release=None, arches=None, subarches=None,
@@ -1006,8 +965,6 @@ class Factory(maastesting.factory.Factory):
         boot_source_selection.save()
         return boot_source_selection
 
-    make_boot_source_selection = make_BootSourceSelection  # DEPRECATED
-
     def make_LicenseKey(self, osystem=None, distro_series=None,
                         license_key=None):
         if osystem is None:
@@ -1021,8 +978,6 @@ class Factory(maastesting.factory.Factory):
             distro_series=distro_series,
             license_key=license_key)
 
-    make_license_key = make_LicenseKey  # DEPRECATED
-
     def make_EventType(self, name=None, level=None, description=None):
         if name is None:
             name = self.make_name('name', size=20)
@@ -1034,16 +989,12 @@ class Factory(maastesting.factory.Factory):
         return EventType.objects.create(
             name=name, description=description, level=level)
 
-    make_event_type = make_EventType  # DEPRECATED
-
     def make_Event(self, node=None, type=None):
         if node is None:
             node = self.make_Node()
         if type is None:
             type = self.make_EventType()
         return Event.objects.create(node=node, type=type)
-
-    make_event = make_Event  # DEPRECATED
 
     def make_LargeFile(self, content=None, size=512):
         """Create `LargeFile`.
@@ -1064,8 +1015,6 @@ class Factory(maastesting.factory.Factory):
             stream.write(content)
         return LargeFile.objects.create(
             sha256=sha256, total_size=size, content=largeobject)
-
-    make_large_file = make_LargeFile  # DEPRECATED
 
     def make_BootResource(self, rtype=None, name=None, architecture=None,
                           extra=None):
@@ -1090,8 +1039,6 @@ class Factory(maastesting.factory.Factory):
         return BootResource.objects.create(
             rtype=rtype, name=name, architecture=architecture, extra=extra)
 
-    make_boot_resource = make_BootResource  # DEPRECATED
-
     def make_BootResourceSet(self, resource, version=None, label=None):
         if version is None:
             version = self.make_name('version')
@@ -1099,8 +1046,6 @@ class Factory(maastesting.factory.Factory):
             label = self.make_name('label')
         return BootResourceSet.objects.create(
             resource=resource, version=version, label=label)
-
-    make_boot_resource_set = make_BootResourceSet  # DEPRECATED
 
     def make_BootResourceFile(self, resource_set, largefile, filename=None,
                               filetype=None, extra=None):
@@ -1116,8 +1061,6 @@ class Factory(maastesting.factory.Factory):
         return BootResourceFile.objects.create(
             resource_set=resource_set, largefile=largefile, filename=filename,
             filetype=filetype, extra=extra)
-
-    make_boot_resource_file = make_BootResourceFile  # DEPRECATED
 
     def make_boot_resource_file_with_content(
             self, resource_set, filename=None, filetype=None, extra=None,

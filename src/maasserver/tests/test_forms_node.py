@@ -200,7 +200,7 @@ class TestNodeForm(MAASServerTestCase):
     def test_accepts_missing_license_key_with_global_key(self):
         osystem = make_usable_osystem(self)
         release = osystem.get_default_release()
-        factory.make_license_key(distro_series=release)
+        factory.make_LicenseKey(distro_series=release)
         self.patch(osystem, 'requires_license_key').return_value = True
         mock_validate = self.patch(osystem, 'validate_license_key')
         mock_validate.return_value = True
