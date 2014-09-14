@@ -56,7 +56,7 @@ class ZoneListingViewTest(MAASServerTestCase):
     def test_zone_list_displays_zone_details(self):
         # Zone listing displays the zone name and the zone description.
         self.client_log_in()
-        [factory.make_Zone() for i in range(3)]
+        [factory.make_Zone() for _ in range(3)]
         zones = Zone.objects.all()
         response = self.client.get(reverse('zone-list'))
         zone_names = [zone.name for zone in zones]
@@ -69,7 +69,7 @@ class ZoneListingViewTest(MAASServerTestCase):
     def test_zone_list_displays_sorted_list_of_zones(self):
         # Zones are alphabetically sorted on the zone list page.
         self.client_log_in()
-        [factory.make_Zone(sortable_name=True) for i in range(3)]
+        [factory.make_Zone(sortable_name=True) for _ in range(3)]
         zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
@@ -83,7 +83,7 @@ class ZoneListingViewTest(MAASServerTestCase):
 
     def test_zone_list_displays_links_to_zone_node(self):
         self.client_log_in()
-        [factory.make_Zone(sortable_name=True) for i in range(3)]
+        [factory.make_Zone(sortable_name=True) for _ in range(3)]
         zones = Zone.objects.all()
         sorted_zones = sorted(zones, key=lambda x: x.name.lower())
         response = self.client.get(reverse('zone-list'))
@@ -101,7 +101,7 @@ class ZoneListingViewTestNonAdmin(MAASServerTestCase):
 
     def test_zone_list_does_not_contain_edit_and_delete_links(self):
         self.client_log_in()
-        zones = [factory.make_Zone() for i in range(3)]
+        zones = [factory.make_Zone() for _ in range(3)]
         response = self.client.get(reverse('zone-list'))
         zone_edit_links = [
             reverse('zone-edit', args=[zone.name]) for zone in zones]
@@ -138,7 +138,7 @@ class ZoneListingViewTestAdmin(MAASServerTestCase):
 
     def test_zone_list_contains_edit_links(self):
         self.client_log_in(as_admin=True)
-        zones = [factory.make_Zone() for i in range(3)]
+        zones = [factory.make_Zone() for _ in range(3)]
         default_zone = Zone.objects.get_default_zone()
         zone_edit_links = [
             reverse('zone-edit', args=[zone.name]) for zone in zones]

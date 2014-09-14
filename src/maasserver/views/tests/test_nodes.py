@@ -333,7 +333,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_node_list_displays_fqdn_dns_not_managed(self):
         self.client_log_in()
-        nodes = [factory.make_Node() for i in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         response = self.client.get(reverse('node-list'))
         node_fqdns = [node.fqdn for node in nodes]
         self.assertThat(response.content, ContainsAll(node_fqdns))
@@ -343,7 +343,7 @@ class NodeViewsTest(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        nodes = [factory.make_Node(nodegroup=nodegroup) for i in range(3)]
+        nodes = [factory.make_Node(nodegroup=nodegroup) for _ in range(3)]
         response = self.client.get(reverse('node-list'))
         node_fqdns = [node.fqdn for node in nodes]
         self.assertThat(response.content, ContainsAll(node_fqdns))
@@ -367,7 +367,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_node_list_displays_sorted_list_of_nodes(self):
         # Nodes are sorted on the node list page, newest first.
         self.client_log_in()
-        nodes = [factory.make_Node() for i in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         # Explicitely set node.created since all of these node will
         # be created in the same transaction and thus have the same
         # 'created' value by default.
@@ -461,8 +461,8 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node(owner=self.logged_in_user, disable_ipv4=False)
         nodegroup = node.nodegroup
         macs = [
-            factory.make_MACAddress(node=node).mac_address for i in range(2)]
-        ips = [factory.getRandomIPAddress() for i in range(2)]
+            factory.make_MACAddress(node=node).mac_address for _ in range(2)]
+        ips = [factory.getRandomIPAddress() for _ in range(2)]
         for mac, ip in zip(macs, ips):
             factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=ip)
         node_link = reverse('node-view', args=[node.system_id])
@@ -744,7 +744,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         macs = [
             unicode(factory.make_MACAddress(node=node).mac_address)
-            for i in range(3)
+            for _ in range(3)
         ]
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)
@@ -755,7 +755,7 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node(owner=self.logged_in_user)
         macs = [
             factory.make_MACAddress(node=node).mac_address
-            for i in range(3)
+            for _ in range(3)
         ]
         node_edit_link = reverse('node-edit', args=[node.system_id])
         response = self.client.get(node_edit_link)

@@ -186,18 +186,18 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertItemsEqual(nodes, form.filter_nodes(Node.objects.all()))
 
     def test_no_constraints(self):
-        nodes = [factory.make_Node() for i in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         form = AcquireNodeForm(data={})
         self.assertTrue(form.is_valid())
         self.assertItemsEqual(nodes, Node.objects.all())
 
     def test_hostname(self):
-        nodes = [factory.make_Node() for i in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         self.assertConstrainedNodes([nodes[0]], {'name': nodes[0].hostname})
         self.assertConstrainedNodes([], {'name': 'unknown-name'})
 
     def test_hostname_with_domain_part(self):
-        nodes = [factory.make_Node() for i in range(3)]
+        nodes = [factory.make_Node() for _ in range(3)]
         self.assertConstrainedNodes(
             [nodes[0]],
             {'name': '%s.%s' % (nodes[0].hostname, nodes[0].nodegroup.name)})

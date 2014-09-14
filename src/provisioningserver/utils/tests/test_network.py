@@ -301,8 +301,8 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
             list(get_all_interface_addresses()))
 
     def test_returns_all_addresses_for_all_interfaces(self):
-        v4_ips = [factory.getRandomIPAddress() for i in range(2)]
-        v6_ips = [factory.make_ipv6_address() for i in range(2)]
+        v4_ips = [factory.getRandomIPAddress() for _ in range(2)]
+        v6_ips = [factory.make_ipv6_address() for _ in range(2)]
         ips = zip(v4_ips, v6_ips)
         interfaces = {
             factory.make_name('eth', sep=''): {

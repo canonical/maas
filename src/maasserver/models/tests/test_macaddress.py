@@ -705,7 +705,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         mac_addresses = {
             factory.make_MACAddress(): factory.make_NodeGroupInterface(
                 nodegroup=cluster)
-            for i in range(4)
+            for _ in range(4)
             }
         leases = {
             get_random_ip_from_interface_range(interface, use_static_range): (

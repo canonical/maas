@@ -419,7 +419,7 @@ class TestCreateNode(PservTestCase):
             {"system_id": factory.make_name("system-id")})
 
         uuid = 'node-' + factory.make_UUID()
-        macs = sorted(factory.getRandomMACAddress() for x in range(3))
+        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -453,7 +453,7 @@ class TestCreateNode(PservTestCase):
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
 
         uuid = 'node-' + factory.make_UUID()
-        macs = sorted(factory.getRandomMACAddress() for x in range(3))
+        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {

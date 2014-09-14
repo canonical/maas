@@ -199,7 +199,7 @@ class TestNodeGroupAPI(APITestCase):
             parsed_result['name'][0])
 
     def test_accept_accepts_nodegroup(self):
-        nodegroups = [factory.make_NodeGroup() for i in range(3)]
+        nodegroups = [factory.make_NodeGroup() for _ in range(3)]
         uuids = [nodegroup.uuid for nodegroup in nodegroups]
         self.become_admin()
         response = self.client.post(
@@ -226,7 +226,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_reject_rejects_nodegroup(self):
-        nodegroups = [factory.make_NodeGroup() for i in range(3)]
+        nodegroups = [factory.make_NodeGroup() for _ in range(3)]
         uuids = [nodegroup.uuid for nodegroup in nodegroups]
         self.become_admin()
         response = self.client.post(

@@ -42,7 +42,7 @@ class SettingsTest(MAASServerTestCase):
         # delete or edit each user. Note that the link to delete the the
         # logged-in user is not display.
         self.client_log_in(as_admin=True)
-        [factory.make_User() for i in range(3)]
+        [factory.make_User() for _ in range(3)]
         users = UserProfile.objects.all_users()
         response = self.client.get(reverse('settings'))
         doc = fromstring(response.content)

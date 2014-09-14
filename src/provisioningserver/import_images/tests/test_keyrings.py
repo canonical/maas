@@ -41,7 +41,7 @@ class TestCalculateKeyringName(MAASTestCase):
     """Tests for `calculate_keyring_name()`."""
 
     def test_creates_name_from_url(self):
-        parts = [self.getUniqueString() for i in range(1, 5)]
+        parts = [self.getUniqueString() for _ in range(1, 5)]
         source_url = "http://example.com/%s/" % "/".join(parts)
         expected_keyring_name = "example.com-%s.gpg" % "-".join(parts)
         self.assertEqual(
@@ -58,7 +58,7 @@ class TestWriteAllKeyrings(MAASTestCase):
         sources = [{
             'url': "http://%s" % self.getUniqueString(),
             'keyring_data': factory.make_bytes(),
-            } for i in range(5)]
+            } for _ in range(5)]
 
         keyring_path = self.make_dir()
 
@@ -78,7 +78,7 @@ class TestWriteAllKeyrings(MAASTestCase):
         sources = [{
             'url': "http://%s" % self.getUniqueString(),
             'keyring_data': factory.make_bytes(),
-            } for i in range(5)]
+            } for _ in range(5)]
 
         keyring_path = self.make_dir()
 

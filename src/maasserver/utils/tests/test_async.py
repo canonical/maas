@@ -108,7 +108,7 @@ class TestGatherScenarios(MAASTestCase):
 class TestUseOnceIterator(MAASTestCase):
 
     def test_returns_correct_items_for_list(self):
-        expected_values = [i for i in range(10)]
+        expected_values = list(range(10))
         iterator = async.UseOnceIterator(expected_values)
         actual_values = [val for val in iterator]
         self.assertEqual(expected_values, actual_values)
@@ -121,7 +121,7 @@ class TestUseOnceIterator(MAASTestCase):
         iterator = async.UseOnceIterator([])
         # Loop over the iterator to get to the point where we might try
         # and reuse it.
-        [i for i in iterator]
+        list(iterator)
         self.assertRaises(IteratorReusedError, iterator.next)
 
 

@@ -238,7 +238,7 @@ class NetworkDetailViewTest(MAASServerTestCase):
     def test_network_detail_displays_node_count(self):
         self.client_log_in()
         network = factory.make_Network()
-        [factory.make_MACAddress(networks=[network]) for i in range(5)]
+        [factory.make_MACAddress(networks=[network]) for _ in range(5)]
         response = self.client.get(
             reverse('network-view', args=[network.name]))
         document = fromstring(response.content)

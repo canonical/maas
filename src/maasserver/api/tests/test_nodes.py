@@ -216,8 +216,8 @@ class TestNodesAPI(APITestCase):
             extract_system_ids(parsed_result))
 
     def create_nodes(self, nodegroup, nb):
-        [factory.make_Node(nodegroup=nodegroup, mac=True)
-            for i in range(nb)]
+        for _ in range(nb):
+            factory.make_Node(nodegroup=nodegroup, mac=True)
 
     def test_GET_list_nodes_issues_constant_number_of_queries(self):
         nodegroup = factory.make_NodeGroup()
@@ -380,7 +380,7 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_without_agent_name_does_not_filter(self):
         nodes = [
             factory.make_Node(agent_name=factory.make_name('agent-name'))
-            for i in range(3)]
+            for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -406,7 +406,7 @@ class TestNodesAPI(APITestCase):
     def test_GET_list_without_zone_does_not_filter(self):
         nodes = [
             factory.make_Node(zone=factory.make_Zone())
-            for i in range(3)]
+            for _ in range(3)]
         response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
@@ -1043,7 +1043,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_release_fails_if_nodes_do_not_exist(self):
          # Make sure there is a node, it just isn't among the ones to release
         factory.make_Node()
-        node_ids = {factory.make_string() for i in xrange(5)}
+        node_ids = {factory.make_string() for _ in xrange(5)}
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'release',
@@ -1062,7 +1062,7 @@ class TestNodesAPI(APITestCase):
             factory.make_Node(
                 status=NODE_STATUS.ALLOCATED,
                 owner=self.logged_in_user).system_id
-            for i in xrange(3)
+            for _ in xrange(3)
             }
         # And one with no owner
         another_node = factory.make_Node(status=NODE_STATUS.RESERVED)

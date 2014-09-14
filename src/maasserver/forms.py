@@ -708,7 +708,7 @@ class SSLKeyForm(KeyForm):
 class MultipleMACAddressField(forms.MultiValueField):
 
     def __init__(self, nb_macs=1, *args, **kwargs):
-        fields = [MACAddressFormField() for i in range(nb_macs)]
+        fields = [MACAddressFormField() for _ in range(nb_macs)]
         super(MultipleMACAddressField, self).__init__(fields, *args, **kwargs)
 
     def compress(self, data_list):

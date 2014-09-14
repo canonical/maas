@@ -949,16 +949,16 @@ class Factory(maastesting.factory.Factory):
             release = self.make_name('release')
         if arches is None:
             arch_count = random.randint(1, 10)
-            arches = [self.make_name("arch") for i in range(arch_count)]
+            arches = [self.make_name("arch") for _ in range(arch_count)]
         if subarches is None:
             subarch_count = random.randint(1, 10)
             subarches = [
                 self.make_name("subarch")
-                for i in range(subarch_count)
+                for _ in range(subarch_count)
                 ]
         if labels is None:
             label_count = random.randint(1, 10)
-            labels = [self.make_name("label") for i in range(label_count)]
+            labels = [self.make_name("label") for _ in range(label_count)]
         boot_source_selection = BootSourceSelection(
             boot_source=boot_source, release=release, arches=arches,
             subarches=subarches, labels=labels)

@@ -73,7 +73,7 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
         self.assertEqual([data_value], results.getlist(key))
 
     def test_takes_multiple_values_in_default_parameters(self):
-        values = [factory.make_name('value') for i in range(2)]
+        values = [factory.make_name('value') for _ in range(2)]
         key = factory.make_name('key')
         defaults = {key: values}
         results = get_overridden_query_dict(defaults, {}, [key])
@@ -82,7 +82,7 @@ class TestGetOverridedQueryDict(MAASServerTestCase):
     def test_querydict_data_values_override_defaults(self):
         key = factory.make_name('key')
         defaults = {key: factory.make_name('name')}
-        data_values = [factory.make_name('value') for i in range(2)]
+        data_values = [factory.make_name('value') for _ in range(2)]
         data = QueryDict('').copy()
         data.setlist(key, data_values)
         results = get_overridden_query_dict(defaults, data, [key])

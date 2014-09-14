@@ -667,7 +667,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
         leases = [
             factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -680,7 +680,7 @@ class NodeTest(MAASServerTestCase):
         # the node group's set of DHCP leases is already cached in Django's
         # ORM.  This test exercises that code path.
         node = factory.make_Node()
-        macs = [factory.make_MACAddress(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
         leases = [
             factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -715,7 +715,7 @@ class NodeTest(MAASServerTestCase):
         # that tells ip_addresses what nodes these leases belong to are their
         # MAC addresses.
         other_node = factory.make_Node(nodegroup=node.nodegroup)
-        macs = [factory.make_MACAddress(node=node) for i in range(2)]
+        macs = [factory.make_MACAddress(node=node) for _ in range(2)]
         for mac in macs:
             factory.make_DHCPLease(
                 nodegroup=node.nodegroup, mac=mac.mac_address)
@@ -726,7 +726,7 @@ class NodeTest(MAASServerTestCase):
     def test_static_ip_addresses_returns_static_ip_addresses(self):
         node = factory.make_Node()
         [mac2, mac3] = [
-            factory.make_MACAddress(node=node) for i in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         ip1 = factory.make_StaticIPAddress(mac=mac2)
         ip2 = factory.make_StaticIPAddress(mac=mac3)
         # Create another node with a static IP address.
@@ -740,7 +740,7 @@ class NodeTest(MAASServerTestCase):
         # test exercises that code path.
         node = factory.make_Node()
         [mac2, mac3] = [
-            factory.make_MACAddress(node=node) for i in range(2)]
+            factory.make_MACAddress(node=node) for _ in range(2)]
         ip1 = factory.make_StaticIPAddress(mac=mac2)
         ip2 = factory.make_StaticIPAddress(mac=mac3)
 

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test :class:`Sequence`."""
@@ -81,4 +81,4 @@ class TestSequence(MAASServerTestCase):
         seq = Sequence(name)
         seq.create()
         self.assertSequenceEqual(
-            range(1, 11), [seq.nextval() for i in range(10)])
+            range(1, 11), [seq.nextval() for _ in range(10)])

@@ -97,7 +97,7 @@ class UserProfileTest(MAASServerTestCase):
         self.assertRaises(CannotDeleteUserException, profile.delete)
 
     def test_manager_all_users(self):
-        users = set(factory.make_User() for i in range(3))
+        users = set(factory.make_User() for _ in range(3))
         all_users = set(UserProfile.objects.all_users())
         self.assertEqual(users, all_users)
 

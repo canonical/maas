@@ -62,8 +62,10 @@ class TagViewsTest(MAASServerTestCase):
         tag = factory.make_Tag()
         tag_link = reverse('tag-view', args=[tag.name])
         nodegroup = factory.make_NodeGroup()
-        nodes = [factory.make_Node(nodegroup=nodegroup, mac=True)
-                 for i in range(20)]
+        nodes = [
+            factory.make_Node(nodegroup=nodegroup, mac=True)
+            for _ in range(20)
+            ]
         for node in nodes[:10]:
             node.tags.add(tag)
         num_queries, response = count_queries(self.client.get, tag_link)

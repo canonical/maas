@@ -85,7 +85,7 @@ class TestDNSUtilities(MAASServerTestCase):
         initial = int(next_zone_serial())
         self.assertSequenceEqual(
             ['%0.10d' % i for i in range(initial + 1, initial + 11)],
-            [next_zone_serial() for i in range(initial, initial + 10)])
+            [next_zone_serial() for _ in range(initial, initial + 10)])
 
 
 class TestDNSServer(MAASServerTestCase):

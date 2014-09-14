@@ -335,7 +335,7 @@ class TestMAASClient(MAASTestCase):
     def test_post_as_json(self):
         param = factory.make_string()
         method = factory.make_string()
-        list_param = [factory.make_string() for i in range(10)]
+        list_param = [factory.make_string() for _ in range(10)]
         client = make_client()
         client.post(make_path(), method, as_json=True,
                     param=param, list_param=list_param)

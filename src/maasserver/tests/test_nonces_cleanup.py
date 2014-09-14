@@ -57,11 +57,11 @@ class TestCleanupOldNonces(MAASServerTestCase):
         # they were created now - timestamp_threshold seconds ago.
         timemod = self.patch(module_time, "time")
         timemod.return_value = now - timestamp_threshold
-        old_nonces = [Nonce.objects.create() for i in range(3)]
+        old_nonces = [Nonce.objects.create() for _ in range(3)]
         self.assertEquals(0, cleanup_old_nonces())
         # Patch the module's time module back.
         timemod.return_value = now
-        new_nonces = [Nonce.objects.create() for i in range(3)]
+        new_nonces = [Nonce.objects.create() for _ in range(3)]
 
         cleanup_count = cleanup_old_nonces()
 
@@ -95,9 +95,9 @@ class TestUtilities(MAASServerTestCase):
 
     def test_delete_old_nonces_delete_nonces(self):
         # Create old nonces.
-        [Nonce.objects.create() for i in range(3)]
+        [Nonce.objects.create() for _ in range(3)]
         checkpoint = Nonce.objects.create()
-        new_nonces = [Nonce.objects.create() for i in range(3)]
+        new_nonces = [Nonce.objects.create() for _ in range(3)]
         delete_old_nonces(checkpoint)
         self.assertItemsEqual(new_nonces, Nonce.objects.all())
 

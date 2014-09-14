@@ -38,7 +38,7 @@ class TestPopulateTags(MAASServerTestCase):
         self.assertEqual(nodegroup.work_queue, kwargs['queue'])
 
     def test_populate_tags_task_routed_to_all_nodegroup_workers(self):
-        nodegroups = [factory.make_NodeGroup() for i in range(5)]
+        nodegroups = [factory.make_NodeGroup() for _ in range(5)]
         tag = factory.make_Tag()
         refresh = self.patch(populate_tags_module, 'refresh_worker')
         task = self.patch(populate_tags_module, 'update_node_tags')
