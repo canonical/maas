@@ -173,8 +173,7 @@ class TestVirshSSH(MAASTestCase):
         output = SAMPLE_IFLIST % (macs[0], macs[1])
         conn = self.configure_virshssh(output)
         expected = conn.get_mac_addresses('')
-        for i in range(2):
-            self.assertEqual(macs[i], expected[i])
+        self.assertEqual(macs, expected)
 
     def test_get_arch_returns_valid(self):
         arch = factory.make_name('arch')

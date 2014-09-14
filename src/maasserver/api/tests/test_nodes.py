@@ -450,7 +450,7 @@ class TestNodesAPI(APITestCase):
         # filter returned results.
         current_token = get_auth_tokens(self.logged_in_user)[0]
         nodes = []
-        for i in range(3):
+        for _ in range(3):
             nodes.append(factory.make_Node(
                 status=NODE_STATUS.ALLOCATED,
                 owner=self.logged_in_user, token=current_token))

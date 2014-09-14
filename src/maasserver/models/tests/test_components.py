@@ -70,7 +70,7 @@ class PersistentErrorsUtilitiesTest(MAASServerTestCase):
 
     def get_persistent_errors_returns_text_for_error_codes(self):
         errors, components = [], []
-        for i in range(3):
+        for _ in range(3):
             error_message = factory.make_string()
             component = get_random_component()
             register_persistent_error(component, error_message)

@@ -463,9 +463,8 @@ class NodeViewsTest(MAASServerTestCase):
         macs = [
             factory.make_MACAddress(node=node).mac_address for i in range(2)]
         ips = [factory.getRandomIPAddress() for i in range(2)]
-        for i in range(2):
-            factory.make_DHCPLease(
-                nodegroup=nodegroup, mac=macs[i], ip=ips[i])
+        for mac, ip in zip(macs, ips):
+            factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=ip)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         self.assertThat(response.content, ContainsAll(ips))

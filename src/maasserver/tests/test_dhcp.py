@@ -569,11 +569,11 @@ class TestDHCPConnect(MAASServerTestCase):
         # nodegroups get their DHCP config re-written.
         num_active_nodegroups = random.randint(1, 10)
         num_inactive_nodegroups = random.randint(1, 10)
-        for x in range(num_active_nodegroups):
+        for _ in range(num_active_nodegroups):
             factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.ACCEPTED,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        for x in range(num_inactive_nodegroups):
+        for _ in range(num_inactive_nodegroups):
             factory.make_NodeGroup(
                 status=NODEGROUP_STATUS.PENDING,
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)

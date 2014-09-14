@@ -1601,7 +1601,7 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
     @transactional
     def create_cluster_and_interfaces(self):
         cluster = factory.make_NodeGroup()
-        for i in range(3):
+        for _ in range(3):
             factory.make_NodeGroupInterface(cluster)
         interfaces = [
             {

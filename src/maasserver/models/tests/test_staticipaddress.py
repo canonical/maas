@@ -235,7 +235,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
     def test_get_hostname_ip_mapping_returns_mapping(self):
         nodegroup = factory.make_NodeGroup()
         expected_mapping = {}
-        for i in range(3):
+        for _ in range(3):
             node = factory.make_node_with_mac_attached_to_nodegroupinterface(
                 nodegroup=nodegroup)
             staticip = factory.make_StaticIPAddress(mac=node.get_primary_mac())

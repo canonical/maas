@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for the BIND fixture."""
@@ -133,7 +133,7 @@ class TestBINDServerResources(MAASTestCase):
     def test_defaults_reallocated_after_teardown(self):
         seen_homedirs = set()
         resources = BINDServerResources()
-        for i in range(2):
+        for _ in range(2):
             with resources:
                 self.assertTrue(os.path.exists(resources.homedir))
                 self.assertNotIn(resources.homedir, seen_homedirs)

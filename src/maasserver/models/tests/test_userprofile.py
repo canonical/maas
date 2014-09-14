@@ -82,7 +82,7 @@ class UserProfileTest(MAASServerTestCase):
         profile = factory.make_User().get_profile()
         token_ids = []
         consumer_ids = []
-        for i in range(3):
+        for _ in range(3):
             token, consumer = profile.create_authorisation_token()
             token_ids.append(token.id)
             consumer_ids.append(consumer.id)
@@ -102,7 +102,7 @@ class UserProfileTest(MAASServerTestCase):
         self.assertEqual(users, all_users)
 
     def test_manager_all_users_no_system_user(self):
-        for i in range(3):
+        for _ in range(3):
             factory.make_User()
         usernames = set(
             user.username for user in UserProfile.objects.all_users())

@@ -54,7 +54,7 @@ class UserPrefsViewTest(MAASServerTestCase):
         self.client_log_in()
         user = self.logged_in_user
         # Create a few tokens.
-        for i in range(3):
+        for _ in range(3):
             user.get_profile().create_authorisation_token()
         response = self.client.get('/account/prefs/')
         doc = fromstring(response.content)

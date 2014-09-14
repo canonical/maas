@@ -174,7 +174,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
     def test_get_hostname_ip_mapping_returns_mapping(self):
         nodegroup = factory.make_NodeGroup()
         expected_mapping = {}
-        for i in range(3):
+        for _ in range(3):
             status = random.choice(
                 [NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])
             node = factory.make_Node(
@@ -190,7 +190,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
     def test_get_hostname_ip_mapping_ignores_non_deployed_nodes(self):
         nodegroup = factory.make_NodeGroup()
         # Create non-allocated nodes with leases.
-        for i in range(10):
+        for _ in range(10):
             status = factory.pick_choice(
                 NODE_STATUS_CHOICES,
                 but_not=[NODE_STATUS.DEPLOYED, NODE_STATUS.DEPLOYING])

@@ -1,4 +1,4 @@
-# Copyright 2012, 2013 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test maasserver model managers."""
@@ -28,9 +28,9 @@ class BulkManagerTest(TestModelMixin, MAASServerTestCase):
 
     def test_manager_iterator_uses_cache(self):
         parents = set()
-        for i in range(3):
+        for _ in range(3):
             parents.add(BulkManagerParentTestModel.objects.create())
-        for i in range(10):
+        for _ in range(10):
             for parent in parents:
                 BulkManagerTestModel.objects.create(parent=parent)
         parents = BulkManagerParentTestModel.objects.all().prefetch_related(
