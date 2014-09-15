@@ -59,8 +59,9 @@ class NODE_STATUS:
     READY = 4
     #: The node is ready for named deployment.
     RESERVED = 5
-    #: The node has been allocated to a user and is ready for deployment.
-    ALLOCATED = 6
+    #: The node has booted into the operating system of its owner's choice
+    #: and is ready for use.
+    DEPLOYED = 6
     #: The node has been removed from service manually until an admin
     #: overrides the retirement.
     RETIRED = 7
@@ -69,9 +70,8 @@ class NODE_STATUS:
     BROKEN = 8
     #: The node is being installed.
     DEPLOYING = 9
-    #: The node is powering a service from a charm or is ready for use with
-    #: a fresh Ubuntu install.
-    DEPLOYED = 10
+    #: The node has been allocated to a user and is ready for deployment.
+    ALLOCATED = 10
     #: The deployment of the node failed.
     FAILED_DEPLOYMENT = 11
 
