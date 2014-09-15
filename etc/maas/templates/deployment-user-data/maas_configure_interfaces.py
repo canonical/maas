@@ -37,7 +37,7 @@ from random import randint
 from subprocess import check_call
 
 
-logger = getLogger('configure_interfaces')
+logger = getLogger('maas_configure_interfaces')
 
 
 class BadArgument(Exception):

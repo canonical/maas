@@ -34,7 +34,7 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
-import metadataserver.deployment.configure_interfaces as script
+import metadataserver.deployment.maas_configure_interfaces as script
 from mock import (
     ANY,
     call,

@@ -674,7 +674,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
     def test__skips_if_script_not_installed(self):
         no_script = os.path.join(
             self.make_dir(), factory.make_name('nosuchdir'),
-            'configure_interfaces.py')
+            'maas_configure_interfaces.py')
         self.patch(preseed_module, 'locate_config').return_value = no_script
         node = factory.make_Node()
         self.assertEqual([], compose_curtin_network_preseed(node))
@@ -698,10 +698,11 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         [file_spec] = list(write_files['write_files'].values())
         self.expectThat(
             file_spec['path'],
-            Equals('/usr/local/bin/configure_interfaces.py'))
+            Equals('/usr/local/bin/maas_configure_interfaces.py'))
         self.expectThat(file_spec['permissions'], Equals('0755'))
         script = locate_config(
-            'templates', 'deployment-user-data', 'configure_interfaces.py')
+            'templates', 'deployment-user-data',
+            'maas_configure_interfaces.py')
         self.expectThat(file_spec['content'], Equals(read_text_file(script)))
 
     def test__runs_script(self):
@@ -713,7 +714,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         self.assertEqual(
             ['curtin', 'in-target', '--'],
             command[:3])
-        self.assertIn('/usr/local/bin/configure_interfaces.py', command)
+        self.assertIn('/usr/local/bin/maas_configure_interfaces.py', command)
         self.assertIn('--update-interfaces', command)
 
     def test__includes_static_IPv6_addresses(self):

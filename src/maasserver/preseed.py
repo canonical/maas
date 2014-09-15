@@ -100,13 +100,13 @@ def compose_curtin_network_preseed(node):
     are returned as a list of strings, each holding a YAML section.
 
     The configuration currently only sets static IPv6 addresses, by uploading
-    the `configure_interfaces` script to the node during installation, and
+    the `maas_configure_interfaces` script to the node during installation, and
     running it.
     """
     # Read the script that we will run on the node.  It really isn't a
     # template; it's a simple Python module and it has tests.
     script = locate_config(
-        'templates/deployment-user-data/configure_interfaces.py')
+        'templates/deployment-user-data/maas_configure_interfaces.py')
 
     # Deal with transitional issue: the packaging doesn't install this script
     # just yet.  Once the packaging has been updated, we can just assume that
@@ -119,8 +119,8 @@ def compose_curtin_network_preseed(node):
     # Preseed: upload the script to the node's installed filesystem.
     write_files = {
         'write_files': {
-            'configure_interfaces': {
-                'path': '/usr/local/bin/configure_interfaces.py',
+            'maas_configure_interfaces': {
+                'path': '/usr/local/bin/maas_configure_interfaces.py',
                 'owner': 'root:root',
                 'permissions': '0755',
                 'content': configure_script,
@@ -140,7 +140,7 @@ def compose_curtin_network_preseed(node):
                 'curtin',
                 'in-target',
                 '--',
-                '/usr/local/bin/configure_interfaces.py',
+                '/usr/local/bin/maas_configure_interfaces.py',
                 '--update-interfaces',
                 ] + static_ip_args,
             },
