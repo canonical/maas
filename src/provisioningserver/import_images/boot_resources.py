@@ -13,6 +13,7 @@ __metaclass__ = type
 __all__ = [
     'import_images',
     'main',
+    'main_with_services',
     'make_arg_parser',
     ]
 
@@ -34,6 +35,7 @@ from provisioningserver.import_images.download_resources import (
 from provisioningserver.import_images.helpers import maaslog
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
+from provisioningserver.utils import get_cluster_config
 from provisioningserver.utils.fs import (
     atomic_write,
     read_text_file,
@@ -273,3 +275,79 @@ def main(args):
     """
     sources = read_sources(args.sources_file)
     import_images(sources=sources)
+
+
+def main_with_services(args):
+    """The *real* entry point for the command-line import script.
+
+    This sets up the necessary RPC services before calling `main`, then clears
+    up behind itself.
+
+    :param args: Command-line arguments as parsed by the `ArgumentParser`
+        returned by `make_arg_parser`.
+    :raise NoConfigFile: If a config file is specified but doesn't exist.
+
+    """
+    from sys import stderr
+    import traceback
+
+    from provisioningserver import services
+    from provisioningserver.rpc import getRegionClient
+    from provisioningserver.rpc.clusterservice import ClusterClientService
+    from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+    from provisioningserver.utils.twisted import retries, pause
+    from twisted.internet import reactor
+    from twisted.internet.defer import inlineCallbacks
+    from twisted.internet.threads import deferToThread
+
+    @inlineCallbacks
+    def start_services():
+        rpc_service = ClusterClientService(reactor)
+        rpc_service.setName("rpc")
+        rpc_service.setServiceParent(services)
+
+        yield services.startService()
+
+        for elapsed, remaining, wait in retries(15, 1, reactor):
+            try:
+                yield getRegionClient()
+            except NoConnectionsAvailable:
+                yield pause(wait, reactor)
+            else:
+                break
+        else:
+            print("Can't connect to the region.", file=stderr)
+            raise SystemExit(1)
+
+    @inlineCallbacks
+    def stop_services():
+        yield services.stopService()
+
+    exit_codes = {0}
+
+    @inlineCallbacks
+    def run_main():
+        try:
+            yield start_services()
+            try:
+                yield deferToThread(main, args)
+            finally:
+                yield stop_services()
+        except SystemExit as se:
+            exit_codes.add(se.code)
+        except:
+            exit_codes.add(2)
+            print("Failed to import boot resources", file=stderr)
+            traceback.print_exc()
+        finally:
+            reactor.callLater(0, reactor.stop)
+
+    cluster_config = get_cluster_config('/etc/maas/maas_cluster.conf')
+    os.environ['MAAS_URL'] = cluster_config['MAAS_URL']
+    os.environ['CLUSTER_UUID'] = cluster_config['CLUSTER_UUID']
+
+    reactor.callWhenRunning(run_main)
+    reactor.run()
+
+    exit_code = max(exit_codes)
+    raise SystemExit(exit_code)

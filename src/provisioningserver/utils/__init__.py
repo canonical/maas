@@ -16,6 +16,7 @@ __all__ = [
     "compose_URL",
     "create_node",
     "filter_dict",
+    "get_cluster_config",
     "import_settings",
     "locate_config",
     "parse_key_value_file",
@@ -152,6 +153,24 @@ def locate_config(*path):
         config_dir = env_setting
 
     return os.path.abspath(os.path.join(config_dir, *path))
+
+
+setting_expression = r"""
+    ^([A-Z0-9_]+)    # Variable name is all caps, alphanumeric and _.
+    =                # Assignment operator.
+    (?:"|\')?        # Optional leading single or double quote.
+    (.*)             # Value
+    (?:"|\')?        # Optional trailing single or double quote.
+    """
+
+
+def get_cluster_config(config_path):
+    contents = open(config_path).read()
+
+    results = re.findall(
+        setting_expression, contents, re.MULTILINE | re.VERBOSE)
+
+    return dict(results)
 
 
 def find_settings(whence):

@@ -21,6 +21,7 @@ import os.path
 import re
 from textwrap import dedent
 import urllib2
+from urlparse import urljoin
 
 from provisioningserver.boot import (
     BootMethod,
@@ -33,11 +34,17 @@ from provisioningserver.boot.install_bootloader import (
     install_bootloader,
     make_destination,
     )
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.region import GetArchiveMirrors
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import call_and_check
+from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.defer import (
+    inlineCallbacks,
+    returnValue,
+    )
 
 
-ARCHIVE_URL = "http://archive.ubuntu.com/ubuntu/dists/"
 ARCHIVE_PATH = "/main/uefi/grub2-amd64/current/grubnetx64.efi.signed"
 
 CONFIG_FILE = dedent("""
@@ -81,7 +88,21 @@ re_config_file = re_config_file.format(
 re_config_file = re.compile(re_config_file, re.VERBOSE)
 
 
-def archive_grubnet_urls():
+@asynchronous
+def get_archive_mirrors():
+    client = getRegionClient()
+    return client(GetArchiveMirrors)
+
+
+@asynchronous(timeout=10)
+@inlineCallbacks
+def get_main_archive_url():
+    mirrors = yield get_archive_mirrors()
+    main_url = mirrors['main'].geturl()
+    returnValue(main_url)
+
+
+def archive_grubnet_urls(main_url):
     """Paths to try to download grubnetx64.efi.signed."""
     release = utils.get_distro_release()
     # grubnetx64 will not work below version trusty, as efinet is broken
@@ -89,16 +110,19 @@ def archive_grubnet_urls():
     # this should not block any of the previous release from running.
     if release in ['lucid', 'precise', 'quantal', 'saucy']:
         release = 'trusty'
+    if not main_url.endswith('/'):
+        main_url = main_url + '/'
+    dists_url = urljoin(main_url, 'dists')
     for dist in ['%s-updates' % release, release]:
         yield "%s/%s/%s" % (
-            ARCHIVE_URL.rstrip("/"),
+            dists_url.rstrip("/"),
             dist,
             ARCHIVE_PATH.rstrip("/"))
 
 
-def download_grubnet(destination):
+def download_grubnet(main_url, destination):
     """Downloads grubnetx64.efi.signed from the archive."""
-    for url in archive_grubnet_urls():
+    for url in archive_grubnet_urls(main_url):
         try:
             response = urllib2.urlopen(url)
         # Okay, if it fails as the updates area might not hold
@@ -158,10 +182,11 @@ class UEFIBootMethod(BootMethod):
         """Installs the required files for UEFI booting into the
         tftproot.
         """
+        archive_url = get_main_archive_url()
         with tempdir() as tmp:
             # Download the shim-signed package
             data, filename = utils.get_updates_package(
-                'shim-signed', 'http://archive.ubuntu.com/ubuntu',
+                'shim-signed', archive_url,
                 'main', 'amd64')
             if data is None:
                 raise BootMethodInstallError(
@@ -179,7 +204,7 @@ class UEFIBootMethod(BootMethod):
 
             # Download grubnetx64 from the archive and install
             grub_tmp = os.path.join(tmp, 'grubnetx64.efi.signed')
-            if download_grubnet(grub_tmp) is False:
+            if download_grubnet(archive_url, grub_tmp) is False:
                 raise BootMethodInstallError(
                     'Failed to download grubnetx64.efi.signed '
                     'from the archive.')

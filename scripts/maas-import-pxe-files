@@ -18,7 +18,7 @@ __metaclass__ = type
 import logging
 from provisioningserver.import_images.boot_resources import (
     maaslog,
-    main,
+    main_with_services,
     make_arg_parser,
     NoConfigFile,
     )
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     parser = make_arg_parser(__doc__)
     args = parser.parse_args()
     try:
-        main(args)
+        main_with_services(args)
     except NoConfigFile:
         maaslog.error("Config file %s not found." % args.config_file)
         raise SystemExit(1)

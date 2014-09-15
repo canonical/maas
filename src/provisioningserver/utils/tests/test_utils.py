@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from cStringIO import StringIO
 import json
 import os
 from random import (
@@ -46,6 +47,7 @@ from provisioningserver.utils import (
     create_node,
     escape_py_literal,
     filter_dict,
+    get_cluster_config,
     locate_config,
     maas_custom_config_markers,
     parse_key_value_file,
@@ -623,3 +625,34 @@ class TestComposeURL(MAASTestCase):
         self.assertEqual(
             'https://%s:%s/' % (hostname, port),
             compose_URL('https://:%s/' % port, hostname))
+
+
+class TestGetClusterConfig(MAASTestCase):
+    scenarios = [
+        ('Variable with quoted value', dict(
+            contents='MAAS_URL="http://site/MAAS"',
+            expected={'MAAS_URL': "http://site/MAAS"})),
+        ('Variable with quoted value, comment', dict(
+            contents="# Ignore this\nMAAS_URL=\"http://site/MAAS\"",
+            expected={'MAAS_URL': "http://site/MAAS"})),
+        ('Two Variables', dict(
+            contents="CLUSTER_UUID=\"uuid\"\nMAAS_URL=\"http://site/MAAS\"",
+            expected={
+                'MAAS_URL': "http://site/MAAS",
+                'CLUSTER_UUID': "uuid",
+            })),
+        ('Variable with single quoted value', dict(
+            contents="MAAS_URL='http://site/MAAS'",
+            expected={'MAAS_URL': "http://site/MAAS"})),
+        ('Variable with unquoted valued', dict(
+            contents="MAAS_URL=http://site/MAAS",
+            expected={'MAAS_URL': "http://site/MAAS"})),
+    ]
+
+    def test_parses_config_file(self):
+        open_mock = self.patch(provisioningserver.utils, "open")
+        open_mock.return_value = StringIO(self.contents)
+        path = factory.make_name('path')
+        result = get_cluster_config(path)
+        self.assertThat(open_mock, MockCalledOnceWith(path))
+        self.assertItemsEqual(self.expected, result)
