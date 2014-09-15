@@ -19,7 +19,10 @@ from errno import (
     EACCES,
     ENOENT,
     )
-from os import makedirs
+from os import (
+    makedirs,
+    remove,
+    )
 import os.path
 from random import randint
 from textwrap import dedent
@@ -28,6 +31,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
+    MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 import metadataserver.deployment.configure_interfaces as script
@@ -308,21 +312,45 @@ class TestWriteFile(MAASTestCase):
 
 class TestConfigureStaticAddresses(MAASTestCase):
 
+    def make_config_dir(self, interfaces_content=''):
+        """Create an `/etc/network` lookalike directory.
+
+        The directory will contain an `interfaces` file (with the given
+        contents), and an `interfaces.d` directory.
+        """
+        config_dir = self.make_dir()
+        makedirs(os.path.join(config_dir, 'interfaces.d'))
+        factory.make_file(config_dir, 'interfaces', interfaces_content)
+        return config_dir
+
     def patch_write_file(self):
         return self.patch_autospec(script, 'write_file')
 
     def patch_interfaces_by_mac(self, mapping):
-        patch = self.patch(script, 'map_interfaces_by_mac')
+        patch = self.patch_autospec(script, 'map_interfaces_by_mac')
         patch.return_value = mapping
         return patch
 
+    def test__skips_if_network_interfaces_does_not_exist(self):
+        config_dir = self.make_config_dir()
+        remove(os.path.join(config_dir, 'interfaces'))
+        write_file = self.patch_write_file()
+        result = script.configure_static_addresses(config_dir, [])
+        self.expectThat(result, Equals([]))
+        self.expectThat(write_file, MockNotCalled())
+
+    def test__skips_if_config_dir_does_not_exist(self):
+        config_dir = os.path.join(self.make_dir(), factory.make_name('nondir'))
+        write_file = self.patch_write_file()
+        result = script.configure_static_addresses(config_dir, [])
+        self.expectThat(result, Equals([]))
+        self.expectThat(write_file, MockNotCalled())
+
     def test__writes_to_interfaces_d(self):
-        config_dir = self.make_dir()
-        interfaces_d = os.path.join(config_dir, 'interfaces.d')
-        makedirs(interfaces_d)
+        config_dir = self.make_config_dir()
         script.configure_static_addresses(config_dir, [])
         self.assertThat(
-            os.path.join(interfaces_d, 'maas-config'),
+            os.path.join(config_dir, 'interfaces.d', 'maas-config'),
             FileExists())
 
     def test__writes_network_config(self):
@@ -331,9 +359,9 @@ class TestConfigureStaticAddresses(MAASTestCase):
         mac = factory.getRandomMACAddress()
         interface = factory.make_name('eth')
         self.patch_interfaces_by_mac({mac: [interface]})
+        config_dir = self.make_config_dir()
 
-        script.configure_static_addresses(
-            factory.make_name('dir'), [(ip, mac)])
+        script.configure_static_addresses(config_dir, [(ip, mac)])
 
         self.assertThat(write_file, MockCalledOnceWith(ANY, ANY))
         [mock_call] = write_file.mock_calls
@@ -345,7 +373,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
         ip = factory.make_ipv6_address()
         mac = factory.getRandomMACAddress()
         interface = factory.make_name('eth')
-        config_dir = factory.make_name('dir')
+        config_dir = self.make_config_dir()
         self.patch_write_file()
         self.patch_interfaces_by_mac({mac: [interface]})
         self.assertEqual(
@@ -355,7 +383,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
     def test__ignores_interfaces_without_addresses(self):
         ip = factory.make_ipv6_address()
         mac = factory.getRandomMACAddress()
-        config_dir = factory.make_name('dir')
+        config_dir = self.make_config_dir()
         self.patch_write_file()
         self.patch_interfaces_by_mac({})
         self.assertEqual(

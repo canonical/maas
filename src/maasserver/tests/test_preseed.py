@@ -37,6 +37,7 @@ from maasserver.exceptions import (
     )
 from maasserver.models import Config
 from maasserver.preseed import (
+    compose_curtin_network_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
     GENERIC_FILENAME,
@@ -69,12 +70,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.utils import locate_config
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.fs import read_text_file
 from provisioningserver.utils.network import make_network
 from testtools.matchers import (
     AllMatch,
     Contains,
     ContainsAll,
+    Equals,
     HasLength,
     IsInstance,
     MatchesAll,
@@ -663,6 +667,78 @@ class TestRenderPreseedWindows(
         # The test really is that the preseed is rendered without an
         # error.
         self.assertIsInstance(preseed, bytes)
+
+
+class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
+
+    def test__skips_if_script_not_installed(self):
+        no_script = os.path.join(
+            self.make_dir(), factory.make_name('nosuchdir'),
+            'configure_interfaces.py')
+        self.patch(preseed_module, 'locate_config').return_value = no_script
+        node = factory.make_Node()
+        self.assertEqual([], compose_curtin_network_preseed(node))
+
+    def test__returns_list_of_yaml_strings(self):
+        preseeds = compose_curtin_network_preseed(factory.make_Node())
+        self.assertIsInstance(preseeds, list)
+        self.assertThat(preseeds, HasLength(2))
+        [write_files_yaml, late_commands_yaml] = preseeds
+        write_files = yaml.safe_load(write_files_yaml)
+        self.assertIsInstance(write_files, dict)
+        self.assertEqual(['write_files'], list(write_files.keys()))
+        late_commands = yaml.safe_load(late_commands_yaml)
+        self.assertIsInstance(late_commands, dict)
+        self.assertEqual(['late_commands'], list(late_commands.keys()))
+
+    def test__uploads_script(self):
+        [write_files_yaml, _] = compose_curtin_network_preseed(
+            factory.make_Node())
+        write_files = yaml.safe_load(write_files_yaml)
+        [file_spec] = list(write_files['write_files'].values())
+        self.expectThat(
+            file_spec['path'],
+            Equals('/usr/local/bin/configure_interfaces.py'))
+        self.expectThat(file_spec['permissions'], Equals('0755'))
+        script = locate_config(
+            'templates', 'deployment-user-data', 'configure_interfaces.py')
+        self.expectThat(file_spec['content'], Equals(read_text_file(script)))
+
+    def test__runs_script(self):
+        [_, late_commands_yaml] = compose_curtin_network_preseed(
+            factory.make_Node())
+        late_commands = yaml.safe_load(late_commands_yaml)
+        [command] = list(late_commands['late_commands'].values())
+        self.assertIsInstance(command, list)
+        self.assertEqual(
+            ['curtin', 'in-target', '--'],
+            command[:3])
+        self.assertIn('/usr/local/bin/configure_interfaces.py', command)
+        self.assertIn('--update-interfaces', command)
+
+    def test__includes_static_IPv6_addresses(self):
+        network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        ip = factory.pick_ip_in_network(network)
+        factory.make_StaticIPAddress(mac=mac, ip=ip)
+        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
+        late_commands = yaml.safe_load(late_commands_yaml)
+        [command] = list(late_commands['late_commands'].values())
+        self.assertIn('--static-ip=%s=%s' % (ip, mac), command)
+
+    def test__ignores_static_IPv4_addresses(self):
+        network = factory.make_ipv4_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        ip = factory.pick_ip_in_network(network)
+        factory.make_StaticIPAddress(mac=mac, ip=ip)
+        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
+        late_commands = yaml.safe_load(late_commands_yaml)
+        [command] = list(late_commands['late_commands'].values())
+        self.assertNotIn(ip, ' '.join(command))
 
 
 class TestGetCurtinUserData(

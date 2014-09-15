@@ -88,6 +88,8 @@ setup(
         ('/etc/maas/templates/commissioning-user-data/snippets',
             glob('etc/maas/templates/commissioning-user-data/snippets/*.py') +
             glob('etc/maas/templates/commissioning-user-data/snippets/*.sh')),
+        ('/etc/maas/templates/deployment-user-data',
+            glob('etc/maas/templates/deployment-user-data/*.py')),
         ('/usr/share/maas',
             ['contrib/wsgi.py',
              'contrib/maas-rsyslog.conf',

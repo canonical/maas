@@ -22,7 +22,7 @@ __all__ = [
     ]
 
 from collections import namedtuple
-from os.path import join
+import os.path
 from pipes import quote
 from urllib import urlencode
 from urlparse import urlparse
@@ -59,8 +59,13 @@ from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
 from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import compose_URL
+from provisioningserver.utils import (
+    compose_URL,
+    locate_config,
+    )
+from provisioningserver.utils.fs import read_text_file
 import tempita
+import yaml
 
 
 GENERIC_FILENAME = 'generic'
@@ -88,6 +93,61 @@ def get_enlist_userdata(nodegroup=None):
         USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
 
 
+def compose_curtin_network_preseed(node):
+    """Return a list of curtin preseeds for configuring a node's networking.
+
+    These can then be appended to the main Curtin configuration.  The preseeds
+    are returned as a list of strings, each holding a YAML section.
+
+    The configuration currently only sets static IPv6 addresses, by uploading
+    the `configure_interfaces` script to the node during installation, and
+    running it.
+    """
+    # Read the script that we will run on the node.  It really isn't a
+    # template; it's a simple Python module and it has tests.
+    script = locate_config(
+        'templates/deployment-user-data/configure_interfaces.py')
+
+    # Deal with transitional issue: the packaging doesn't install this script
+    # just yet.  Once the packaging has been updated, we can just assume that
+    # the file is present.
+    if not os.path.isfile(script):
+        return []
+
+    configure_script = read_text_file(script)
+
+    # Preseed: upload the script to the node's installed filesystem.
+    write_files = {
+        'write_files': {
+            'configure_interfaces': {
+                'path': '/usr/local/bin/configure_interfaces.py',
+                'owner': 'root:root',
+                'permissions': '0755',
+                'content': configure_script,
+                },
+            },
+        }
+    # Compile static IPv6 addresses to be passed to the script.
+    static_ip_args = [
+        '--static-ip=%s=%s' % (ip, mac)
+        for ip, mac in node.get_static_ip_mappings()
+        if IPAddress(ip).version == 6
+        ]
+    # Preseed: run the script, from within the installed filesystem.
+    configure = {
+        'late_commands': {
+            '90_maas_configure_interfaces': [
+                'curtin',
+                'in-target',
+                '--',
+                '/usr/local/bin/configure_interfaces.py',
+                '--update-interfaces',
+                ] + static_ip_args,
+            },
+        }
+    return [yaml.safe_dump(write_files), yaml.safe_dump(configure)]
+
+
 def get_curtin_userdata(node):
     """Return the curtin user-data.
 
@@ -96,8 +156,10 @@ def get_curtin_userdata(node):
     :rtype: unicode.
     """
     installer_url = get_curtin_installer_url(node)
-    config = get_curtin_config(node)
-    return pack_install(configs=[config], args=[installer_url])
+    main_config = get_curtin_config(node)
+    network_config = compose_curtin_network_preseed(node)
+    return pack_install(
+        configs=[main_config] + network_config, args=[installer_url])
 
 
 def get_curtin_image(node):
@@ -342,7 +404,7 @@ def get_preseed_template(filenames):
     assert all(isinstance(filename, unicode) for filename in filenames)
     for location in settings.PRESEED_TEMPLATE_LOCATIONS:
         for filename in filenames:
-            filepath = join(location, filename)
+            filepath = os.path.join(location, filename)
             try:
                 with open(filepath, "rb") as stream:
                     content = stream.read()
