@@ -15,6 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from argparse import ArgumentParser
+from errno import (
+    EACCES,
+    ENOENT,
+    )
 from os import makedirs
 import os.path
 from random import randint
@@ -119,56 +123,36 @@ class TestNormaliseMAC(MAASTestCase):
             script.normalise_mac(mac),
             script.normalise_mac(script.normalise_mac(mac)))
 
+    def test__strips_whitespace(self):
+        mac = factory.getRandomMACAddress()
+        self.assertEqual(mac, script.normalise_mac(' %s\n' % mac))
+
 
 class TestMapInterfacesByMAC(MAASTestCase):
 
-    def patch_ip_link(self, output):
-        patch = self.patch(script, 'check_output')
-        patch.return_value = output
-        return patch
+    def patch_listdir(self, listings):
+        """Replace `os.listdir` with a fake that returns the given listings.
 
-    def test__calls_ip_link(self):
-        ip_link = self.patch_ip_link('')
-        script.map_interfaces_by_mac()
-        self.assertThat(
-            ip_link, MockCalledOnceWith([
-                'ip',
-                '-f', 'link',
-                'link',
-                ],
-                env={'LC_ALL': 'C'}))
+        :param listings: A dict mapping directory paths to their contents.
+        """
+        self.patch(script, 'listdir', listings.__getitem__)
 
-    def test__integrates_with_ip_link(self):
-        result = script.map_interfaces_by_mac()
-        self.assertIsInstance(result, dict)
+    def patch_read_file(self, files):
+        """Replace `read_file` with a fake that returns the given files.
+
+        :param files: A dict mapping file paths to their contents.
+        """
+        self.patch(script, 'read_file', files.__getitem__)
 
     def test__parses_realistic_output(self):
-        realistic_output = '\n'.join([
-            (
-                "1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue "
-                "state UNKNOWN mode DEFAULT group default "
-            ),
-            "    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00",
-            (
-                "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 "
-                "qdisc pfifo_fast state UP mode DEFAULT group default "
-                "qlen 1000"
-            ),
-            "    link/ether cc:5d:2e:6a:e5:eb brd ff:ff:ff:ff:ff:ff",
-            (
-                "3: eth1: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 "
-                "qdisc pfifo_fast state UP mode DEFAULT group default "
-                "qlen 1000"
-            ),
-            "    link/ether 00:1e:0b:a1:6c:7b brd ff:ff:ff:ff:ff:ff",
-            (
-                "4: virbr0: <NO-CARRIER,BROADCAST,MULTICAST,UP> mtu 1500 "
-                "qdisc noqueue state DOWN mode DEFAULT group default "
-            ),
-            "    link/ether c6:13:5d:51:42:ca brd ff:ff:ff:ff:ff:ff",
-            ])
-        self.patch_ip_link(realistic_output)
-
+        self.patch_listdir(
+            {'/sys/class/net': ['eth0', 'eth1', 'lo', 'virbr0']})
+        self.patch_read_file({
+            '/sys/class/net/eth0/address': b'cc:5d:2e:6a:e5:eb',
+            '/sys/class/net/eth1/address': b'00:1e:0b:a1:6c:7b',
+            '/sys/class/net/lo/address': b'00:00:00:00:00:00',
+            '/sys/class/net/virbr0/address': b'c6:13:5d:51:42:ca',
+            })
         expected_mapping = {
             '00:00:00:00:00:00': ['lo'],
             'cc:5d:2e:6a:e5:eb': ['eth0'],
@@ -178,18 +162,43 @@ class TestMapInterfacesByMAC(MAASTestCase):
 
         self.assertEqual(expected_mapping, script.map_interfaces_by_mac())
 
+    def test__integrates_with_real_sys_class_net(self):
+        real_interfaces = script.map_interfaces_by_mac()
+        self.assertIsInstance(real_interfaces, dict)
+        self.assertNotEqual({}, real_interfaces)
+
     def test__normalises_macs(self):
         interface = factory.make_name('eth')
         mac = factory.getRandomMACAddress().upper()
         self.assertNotEqual(script.normalise_mac(mac), mac)
-        output = dedent("""\
-            2: %s: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 state UP
-                link/ether %s brd ff:ff:ff:ff:ff:ff
-            """) % (interface, mac)
-        self.patch_ip_link(output)
+        self.patch_listdir({'/sys/class/net': [interface]})
+        self.patch_read_file({'/sys/class/net/%s/address' % interface: mac})
         self.assertEqual(
             [script.normalise_mac(mac)],
             list(script.map_interfaces_by_mac().keys()))
+
+    def test__ignores_interfaces_without_addresses(self):
+        interface = factory.make_name('eth')
+        self.patch_listdir({'/sys/class/net': [interface]})
+        self.patch_autospec(script, 'read_file').side_effect = (
+            IOError(ENOENT, "Deliberate error: No such file or directory."))
+        self.assertEqual({}, script.map_interfaces_by_mac())
+
+    def test__propagates_other_IOErrors(self):
+        interface = factory.make_name('eth')
+        self.patch_listdir({'/sys/class/net': [interface]})
+        self.patch_autospec(script, 'read_file').side_effect = (
+            IOError(EACCES, "Deliberate error: Permission denied."))
+        self.assertRaises(IOError, script.map_interfaces_by_mac)
+
+    def test__propagates_other_exceptions(self):
+        class FakeError(Exception):
+            """Some other type of exception that the script isn't expecting."""
+
+        interface = factory.make_name('eth')
+        self.patch_listdir({'/sys/class/net': [interface]})
+        self.patch_autospec(script, 'read_file').side_effect = FakeError()
+        self.assertRaises(FakeError, script.map_interfaces_by_mac)
 
 
 class TestMapAddressesByInterface(MAASTestCase):

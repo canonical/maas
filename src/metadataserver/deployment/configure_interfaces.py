@@ -21,14 +21,14 @@ str = None
 __metaclass__ = type
 
 from argparse import ArgumentParser
-from os import rename
+from errno import ENOENT
+from os import (
+    listdir,
+    rename,
+    )
 import os.path
 from random import randint
-import re
-from subprocess import (
-    check_call,
-    check_output,
-    )
+from subprocess import check_call
 
 
 class BadArgument(Exception):
@@ -37,7 +37,7 @@ class BadArgument(Exception):
 
 def normalise_mac(mac):
     """Normalise the "spelling" of a MAC address."""
-    return mac.lower()
+    return mac.lower().strip()
 
 
 def split_ip_mac_pair(argument_string):
@@ -73,6 +73,12 @@ def prepare_parser():
     return parser
 
 
+def read_file(path):
+    """Return the contents of the file at `path`."""
+    with open(path, 'rb') as infile:
+        return infile.read()
+
+
 def map_interfaces_by_mac():
     """Map network interfaces' MAC addresses to interface names.
 
@@ -82,28 +88,25 @@ def map_interfaces_by_mac():
     :return: A dict mapping each normalised MAC address to a list of network
         interfaces that have that MAC address.
     """
-    # Query network interfaces by running "ip link".  This script runs in a
+    # Query network interfaces based on /sys/class/net/.  This script runs in a
     # very limited environment, so pulling in external dependencies like the
     # netifaces package is undesirable.
-    output = check_output(['ip', '-f', 'link', 'link'], env={'LC_ALL': 'C'})
-    current_interface = None
-    interfaces_to_macs = {}
-    for line in output.splitlines():
-        interface_header = re.match("[0-9]+:\s+(\S+):\s", line)
-        if interface_header is None:
-            address_line = re.match("\s+link/\S+\s+([0-9a-fA-F:]+)\s", line)
-            if address_line is not None:
-                mac = normalise_mac(address_line.groups(0)[0])
-                interfaces_to_macs[current_interface].append(mac)
-        else:
-            current_interface = interface_header.groups(0)[0]
-            interfaces_to_macs[current_interface] = []
-
+    interfaces = listdir('/sys/class/net')
     macs_to_interfaces = {}
-    for interface, macs in interfaces_to_macs.items():
-        for mac in macs:
+    for interface in interfaces:
+        try:
+            mac = read_file(
+                os.path.join('/sys/class/net', interface, 'address'))
+        except IOError as e:
+            # Tolerate file-not-found errors, to absorb any variability in
+            # the /sys/class/net API that doesn't concern us.
+            if e.errno != ENOENT:
+                raise
+        else:
+            mac = normalise_mac(mac)
             macs_to_interfaces.setdefault(mac, [])
             macs_to_interfaces[mac].append(interface)
+
     return macs_to_interfaces
 
 
