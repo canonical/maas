@@ -112,8 +112,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.pick_ip_in_network(network)
         ipv4_mapping = {
-            factory.make_name('host'): factory.getRandomIPAddress(),
-            factory.make_name('host'): factory.getRandomIPAddress(),
+            factory.make_name('host'): factory.make_ipv4_address(),
+            factory.make_name('host'): factory.make_ipv4_address(),
         }
         ipv6_mapping = {
             factory.make_name('host'): factory.make_ipv6_address(),
@@ -133,8 +133,8 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         network = IPNetwork('192.12.0.1/30')
         dns_ip = factory.pick_ip_in_network(network)
         ipv4_mapping = {
-            factory.make_name('host'): factory.getRandomIPAddress(),
-            factory.make_name('host'): factory.getRandomIPAddress(),
+            factory.make_name('host'): factory.make_ipv4_address(),
+            factory.make_name('host'): factory.make_ipv4_address(),
         }
         ipv6_mapping = {
             factory.make_name('host'): factory.make_ipv6_address(),
@@ -164,7 +164,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             DNSForwardZoneConfig.get_srv_mapping([srv]))
 
     def test_get_srv_mapping_handles_ip_address_target(self):
-        target = factory.getRandomIPAddress()
+        target = factory.make_ipv4_address()
         srv = self.make_srv_record(target=target)
         item = self.get_srv_item_output(srv)
         item = item.rstrip('.')
@@ -215,7 +215,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
-        dns_ip = factory.getRandomIPAddress()
+        dns_ip = factory.make_ipv4_address()
         dns_zone_config = DNSForwardZoneConfig(
             factory.make_string(), serial=random.randint(1, 100),
             dns_ip=dns_ip)
@@ -233,7 +233,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         patch_dns_config_path(self)
         dns_zone_config = DNSForwardZoneConfig(
             factory.make_string(), serial=random.randint(1, 100),
-            dns_ip=factory.getRandomIPAddress())
+            dns_ip=factory.make_ipv4_address())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)
         self.assertTrue(filepath.getPermissions().other.read)

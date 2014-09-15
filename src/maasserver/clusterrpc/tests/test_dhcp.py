@@ -491,7 +491,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
         # in to gen_calls_to_create_host_maps().
         static_mappings = {
             nodegroup: {
-                factory.getRandomIPAddress(): factory.getRandomMACAddress()
+                factory.make_ipv4_address(): factory.getRandomMACAddress()
                 for _ in xrange(3)
             }
             for nodegroup in nodegroups

@@ -781,7 +781,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_ip_addresses_includes_static_ipv4_addresses_by_default(self):
         node = factory.make_Node(disable_ipv4=False)
-        ipv4_address = factory.getRandomIPAddress()
+        ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'static_ip_addresses').return_value = [
             ipv4_address,
@@ -793,7 +793,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_ip_addresses_includes_dynamic_ipv4_addresses_by_default(self):
         node = factory.make_Node(disable_ipv4=False)
-        ipv4_address = factory.getRandomIPAddress()
+        ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'dynamic_ip_addresses').return_value = [
             ipv4_address,
@@ -805,7 +805,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_ip_addresses_strips_static_ipv4_addresses_if_ipv4_disabled(self):
         node = factory.make_Node(disable_ipv4=True)
-        ipv4_address = factory.getRandomIPAddress()
+        ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'static_ip_addresses').return_value = [
             ipv4_address,
@@ -815,7 +815,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_ip_addresses_strips_dynamic_ipv4_addresses_if_ipv4_disabled(self):
         node = factory.make_Node(disable_ipv4=True)
-        ipv4_address = factory.getRandomIPAddress()
+        ipv4_address = factory.make_ipv4_address()
         ipv6_address = factory.make_ipv6_address()
         self.patch(node, 'dynamic_ip_addresses').return_value = [
             ipv4_address,

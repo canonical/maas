@@ -83,8 +83,8 @@ class TestNetwork(APITestCase):
             'netmask': '%s' % new_net.netmask,
             'vlan_tag': factory.make_vlan_tag(),
             'description': "Changed description",
-            'default_gateway': factory.getRandomIPAddress(),
-            'dns_servers': factory.getRandomIPAddress(),
+            'default_gateway': factory.make_ipv4_address(),
+            'dns_servers': factory.make_ipv4_address(),
             }
 
         response = self.client_put(self.get_url(network.name), new_values)

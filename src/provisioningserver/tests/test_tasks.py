@@ -299,7 +299,7 @@ class TestDNSTasks(PservTestCase):
         result = write_full_dns_config.delay(
             zones=zones,
             callback=rndc_command.subtask(args=[command]),
-            upstream_dns=factory.getRandomIPAddress())
+            upstream_dns=factory.make_ipv4_address())
 
         forward_file_name = 'zone.%s' % domain
         reverse_file_name = 'zone.0.168.192.in-addr.arpa'

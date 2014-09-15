@@ -66,10 +66,10 @@ class TestBootMethod(MAASTestCase):
 
     @inlineCallbacks
     def test_get_remote_mac(self):
-        remote_host = factory.getRandomIPAddress()
+        remote_host = factory.make_ipv4_address()
         call_context = {
             "local": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             "remote": (
                 remote_host,

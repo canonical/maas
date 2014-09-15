@@ -53,7 +53,7 @@ class TestNameSpecifier(MAASServerTestCase):
 class TestIPSpecifier(MAASServerTestCase):
 
     def test_accepts_IPv4_address(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.assertEqual(IPAddress(ip), IPSpecifier('ip:' + unicode(ip)).ip)
 
     def test_accepts_IPv6_address(self):
@@ -330,13 +330,13 @@ class TestNetwork(MAASServerTestCase):
 
     def test_netmask_validation_accepts_netmask(self):
         netmask = '255.255.255.128'
-        network = make_network(factory.getRandomIPAddress(), netmask)
+        network = make_network(factory.make_ipv4_address(), netmask)
         self.assertEqual(
             unicode(network.netmask),
             factory.make_Network(network=network).netmask)
 
     def test_netmask_validation_does_not_allow_extreme_cases(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.assertRaises(
             ValidationError, factory.make_Network,
             network=make_network(ip, '255.255.255.255'))

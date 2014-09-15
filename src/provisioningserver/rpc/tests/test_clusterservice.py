@@ -1055,7 +1055,7 @@ class TestClusterProtocol_CreateHostMaps(MAASTestCase):
     def test_executes_create_host_maps(self):
         create_host_maps = self.patch(clusterservice, "create_host_maps")
         mappings = [
-            {"ip_address": factory.getRandomIPAddress(),
+            {"ip_address": factory.make_ipv4_address(),
              "mac_address": factory.getRandomMACAddress()}
             for _ in range(2)
         ]
@@ -1082,7 +1082,7 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
 
     def test_executes_remove_host_maps(self):
         remove_host_maps = self.patch(clusterservice, "remove_host_maps")
-        ip_addresses = [factory.getRandomIPAddress() for _ in range(2)]
+        ip_addresses = [factory.make_ipv4_address() for _ in range(2)]
         shared_key = factory.make_name("shared_key")
 
         d = call_responder(Cluster(), cluster.RemoveHostMaps, {
@@ -1193,7 +1193,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'probe_seamicro15k_and_enlist')
         find_ip_via_arp = self.patch_autospec(
             clusterservice, 'find_ip_via_arp')
-        find_ip_via_arp.return_value = factory.getRandomIPAddress()
+        find_ip_via_arp.return_value = factory.make_ipv4_address()
 
         mac = factory.getRandomMACAddress()
         username = factory.make_name('user')
@@ -1239,7 +1239,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'probe_seamicro15k_and_enlist')
         find_ip_via_arp = self.patch_autospec(
             clusterservice, 'find_ip_via_arp')
-        find_ip_via_arp.return_value = factory.getRandomIPAddress()
+        find_ip_via_arp.return_value = factory.make_ipv4_address()
 
         mac = factory.getRandomMACAddress()
         username = factory.make_name('user')

@@ -507,7 +507,7 @@ class Factory(maastesting.factory.Factory):
         given MAC Address.
         """
         if ip is None:
-            ip = self.getRandomIPAddress()
+            ip = self.make_ipv4_address()
         ipaddress = StaticIPAddress(ip=ip, alloc_type=alloc_type, user=user)
         ipaddress.save()
         if mac is not None:
@@ -520,7 +520,7 @@ class Factory(maastesting.factory.Factory):
         if nodegroup is None:
             nodegroup = self.make_NodeGroup()
         if ip is None:
-            ip = self.getRandomIPAddress()
+            ip = self.make_ipv4_address()
         if mac is None:
             mac = self.getRandomMACAddress()
         lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=MAC(mac))
@@ -876,7 +876,7 @@ class Factory(maastesting.factory.Factory):
             default_gateway = self.pick_ip_in_network(network)
         if dns_servers is None and self.pick_bool():
             dns_servers = " ".join(
-                self.getRandomIPAddress()
+                self.make_ipv4_address()
                 for _ in range(random.choice((1, 2))))
         ip = unicode(network.ip)
         netmask = unicode(network.netmask)

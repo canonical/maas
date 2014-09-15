@@ -42,7 +42,7 @@ def fake_parsed_lease(ip=None, mac=None, ends=None,
                       entry_type='lease'):
     """Fake a lease as produced by the parser."""
     if ip is None:
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
     if mac is None:
         mac = factory.getRandomMACAddress()
     Hardware = namedtuple('Hardware', ['mac'])
@@ -59,7 +59,7 @@ def fake_parsed_host(ip=None, mac=None):
 def fake_parsed_rubout(ip=None):
     """Fake a "rubout" host declaration."""
     if ip is None:
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
     Rubout = namedtuple('Rubout', ['lease_or_host', 'ip'])
     return Rubout('host', ip)
 
@@ -138,7 +138,7 @@ class TestLeasesParsers(MAASTestCase):
         self.assertEqual({}, self.parse(""))
 
     def test_parse_leases_parses_IPv4_lease(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         leases = self.parse(self.make_lease_entry(ip, mac))
         self.assertEqual({ip: mac}, leases)
@@ -150,7 +150,7 @@ class TestLeasesParsers(MAASTestCase):
         self.assertEqual({ip: mac}, leases)
 
     def test_parse_leases_parses_IPv4_host(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         leases = self.parse(self.make_lease_entry(ip, mac))
         self.assertEqual({ip: mac}, leases)
@@ -168,9 +168,9 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_copes_with_misleading_values(self):
         params = {
-            'ip1': factory.getRandomIPAddress(),
+            'ip1': factory.make_ipv4_address(),
             'mac1': factory.getRandomMACAddress(),
-            'ip2': factory.getRandomIPAddress(),
+            'ip2': factory.make_ipv4_address(),
             'mac2': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -199,14 +199,14 @@ class TestLeasesParsers(MAASTestCase):
             host %s {
                 deleted;
             }
-            """ % factory.getRandomIPAddress()))
+            """ % factory.make_ipv4_address()))
         self.assertEqual({}, leases)
 
     def test_parse_leases_ignores_incomplete_lease_at_end(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
-            'incomplete_ip': factory.getRandomIPAddress(),
+            'incomplete_ip': factory.make_ipv4_address(),
         }
         leases = self.parse(dedent("""\
             lease %(ip)s {
@@ -219,7 +219,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_ignores_comments(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -234,7 +234,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_ignores_expired_leases(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -247,7 +247,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_treats_never_as_eternity(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -260,7 +260,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_treats_missing_end_date_as_eternity(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -272,7 +272,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_takes_latest_lease_for_address(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'old_owner': factory.getRandomMACAddress(),
             'new_owner': factory.getRandomMACAddress(),
         }
@@ -288,7 +288,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_parse_leases_recognizes_host_deleted_statement_as_rubout(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -303,7 +303,7 @@ class TestLeasesParsers(MAASTestCase):
 
     def test_host_declaration_is_like_an_unexpired_lease(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases = self.parse(dedent("""\
@@ -319,7 +319,7 @@ class TestLeasesParserFast(MAASTestCase):
 
     def test_expired_lease_does_not_shadow_earlier_host_stanza(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac1': factory.getRandomMACAddress(),
             'mac2': factory.getRandomMACAddress(),
         }
@@ -341,7 +341,7 @@ class TestLeasesParserFast(MAASTestCase):
 
     def test_active_lease_shadows_earlier_host_stanza(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac1': factory.getRandomMACAddress(),
             'mac2': factory.getRandomMACAddress(),
         }
@@ -361,7 +361,7 @@ class TestLeasesParserFast(MAASTestCase):
 
     def test_host_stanza_shadows_earlier_active_lease(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac1': factory.getRandomMACAddress(),
             'mac2': factory.getRandomMACAddress(),
         }
@@ -426,7 +426,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_gather_leases_combines_expired_and_current_leases(self):
         earlier = '1 2001/01/01 00:00:00'
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         old_owner = factory.getRandomMACAddress()
         new_owner = factory.getRandomMACAddress()
         leases = [
@@ -437,7 +437,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_gather_leases_ignores_ordering(self):
         earlier = '1 2001/01/01 00:00:00'
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         old_owner = factory.getRandomMACAddress()
         new_owner = factory.getRandomMACAddress()
         leases = [
@@ -457,7 +457,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({}, gather_hosts([fake_parsed_rubout()]))
 
     def test_gather_hosts_ignores_rubbed_out_entries(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         hosts = [
             fake_parsed_host(ip=ip),
             fake_parsed_rubout(ip=ip),
@@ -465,7 +465,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({}, gather_hosts(hosts))
 
     def test_gather_hosts_follows_reassigned_host(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         new_owner = factory.getRandomMACAddress()
         hosts = [
             fake_parsed_host(ip=ip),
@@ -476,7 +476,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_is_lease_and_is_host_recognize_lease(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         [parsed_lease] = lease_parser.searchString(dedent("""\
@@ -490,7 +490,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_is_lease_and_is_host_recognize_host(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         [parsed_host] = lease_parser.searchString(dedent("""\
@@ -504,7 +504,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_get_host_mac_returns_None_for_host(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         [parsed_host] = lease_parser.searchString(dedent("""\
@@ -515,7 +515,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual(params['mac'], get_host_mac(parsed_host))
 
     def test_get_host_mac_returns_None_for_rubout(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         [parsed_host] = lease_parser.searchString(dedent("""\
             host %s {
                 deleted;
@@ -525,7 +525,7 @@ class TestLeasesParserFunctions(MAASTestCase):
 
     def test_get_host_mac_returns_None_for_rubout_even_with_mac(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         [parsed_host] = lease_parser.searchString(dedent("""\
@@ -537,7 +537,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertIsNone(get_host_mac(parsed_host))
 
     def test_combine_entries_accepts_host_followed_by_expired_lease(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         earlier = '1 2001/01/01 00:00:00'
         entries = [
@@ -547,7 +547,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({ip: mac}, combine_entries(entries))
 
     def test_combine_entries_accepts_expired_lease_followed_by_host(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         earlier = '1 2001/01/01 00:00:00'
         entries = [
@@ -557,7 +557,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({ip: mac}, combine_entries(entries))
 
     def test_combine_entries_accepts_rubout_followed_by_current_lease(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         entries = [
             fake_parsed_host(ip=ip),
@@ -567,7 +567,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({ip: mac}, combine_entries(entries))
 
     def test_combine_entries_ignores_rubout_followed_by_expired_lease(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         earlier = '1 2001/01/01 00:00:00'
         entries = [
@@ -578,7 +578,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({}, combine_entries(entries))
 
     def test_combine_entries_ignores_expired_lease_followed_by_rubout(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         earlier = '1 2001/01/01 00:00:00'
         entries = [
@@ -589,7 +589,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({}, combine_entries(entries))
 
     def test_combine_entries_accepts_valid_lease_followed_by_rubout(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         entries = [
             fake_parsed_host(ip=ip),
@@ -599,7 +599,7 @@ class TestLeasesParserFunctions(MAASTestCase):
         self.assertEqual({ip: mac}, combine_entries(entries))
 
     def test_combine_entries_accepts_reassigned_host(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
         entries = [
             fake_parsed_host(ip=ip),

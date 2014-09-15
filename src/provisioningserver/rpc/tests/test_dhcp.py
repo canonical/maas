@@ -164,7 +164,7 @@ class TestCreateHostMaps(MAASTestCase):
     def test_calls_omshell_create(self):
         omshell_create = self.patch(Omshell, "create")
         mappings = [
-            {"ip_address": factory.getRandomIPAddress(),
+            {"ip_address": factory.make_ipv4_address(),
              "mac_address": factory.getRandomMACAddress()}
             for _ in range(5)
         ]
@@ -179,7 +179,7 @@ class TestCreateHostMaps(MAASTestCase):
         omshell_create = self.patch(Omshell, "create")
         omshell_create.side_effect = ExternalProcessError(
             returncode=2, cmd=("omshell",), output=error_message)
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         mac_address = factory.getRandomMACAddress()
         mappings = [{"ip_address": ip_address, "mac_address": mac_address}]
         with FakeLogger("maas.dhcp") as logger:
@@ -209,7 +209,7 @@ class TestRemoveHostMaps(MAASTestCase):
 
     def test_calls_omshell_remove(self):
         omshell_remove = self.patch(Omshell, "remove")
-        ip_addresses = [factory.getRandomIPAddress() for _ in range(5)]
+        ip_addresses = [factory.make_ipv4_address() for _ in range(5)]
         dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
         self.assertThat(omshell_remove, MockCallsMatch(*(
             call(ip_address) for ip_address in ip_addresses
@@ -220,7 +220,7 @@ class TestRemoveHostMaps(MAASTestCase):
         omshell_remove = self.patch(Omshell, "remove")
         omshell_remove.side_effect = ExternalProcessError(
             returncode=2, cmd=("omshell",), output=error_message)
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         with FakeLogger("maas.dhcp") as logger:
             error = self.assertRaises(
                 exceptions.CannotRemoveHostMap, dhcp.remove_host_maps,

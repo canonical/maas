@@ -127,7 +127,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         interface = factory.make_NodeGroupInterface(
             factory.make_NodeGroup())
         dns = '%s %s' % (
-            factory.getRandomIPAddress(),
+            factory.make_ipv4_address(),
             factory.make_ipv6_address(),
             )
         ntp = factory.make_name('ntp')
@@ -379,7 +379,7 @@ class TestConfigureDHCP(MAASServerTestCase):
 
     def test__configures_dhcpv4(self):
         getClientFor = self.patch_autospec(dhcp, "getClientFor")
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         cluster = self.make_cluster(maas_url='http://%s/' % ip)
         self.make_ipv4_interface(cluster)
         self.patch(settings, "DHCP_CONNECT", True)
@@ -579,7 +579,7 @@ class TestDHCPConnect(MAASServerTestCase):
                 management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.patch(settings, "DHCP_CONNECT", True)
 
-        Config.objects.set_config("ntp_server", factory.getRandomIPAddress())
+        Config.objects.set_config("ntp_server", factory.make_ipv4_address())
 
         # Every nodegroup is updated, including those that are PENDING.
         expected_call_one_nodegroup = [call(ANY)]

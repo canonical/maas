@@ -122,7 +122,7 @@ class TestAddress(MAASTestCase):
         # We add a deliberately low v6 address to show that the v4
         # address is always preferred.
         ipv6_address = "::1"
-        ipv4_address = factory.getRandomIPAddress()
+        ipv4_address = factory.make_ipv4_address()
         addresses.append(ipv6_address)
         addresses.append(ipv4_address)
         self.patch(

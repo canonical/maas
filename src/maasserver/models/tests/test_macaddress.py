@@ -122,7 +122,7 @@ class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
     """Tests for `find_cluster_interface_responsible_for_ip`."""
 
     def test__returns_None_if_no_interfaces(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.assertIsNone(find_cluster_interface_responsible_for_ip([], ip))
 
     def test__finds_responsible_IPv4_interface(self):
@@ -773,7 +773,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         cluster = factory.make_NodeGroup()
         mac_address = factory.make_MACAddress()
         leases = {
-            factory.getRandomIPAddress(): mac_address.mac_address
+            factory.make_ipv4_address(): mac_address.mac_address
             }
         update_mac_cluster_interfaces(leases, cluster)
         mac_address = MACAddress.objects.get(
@@ -784,7 +784,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
         cluster = factory.make_NodeGroup()
         mac_address = factory.getRandomMACAddress()
         leases = {
-            factory.getRandomIPAddress(): mac_address
+            factory.make_ipv4_address(): mac_address
             }
         # This is a test to show that update_mac_cluster_interfaces()
         # doesn't raise an Http404 when it comes across something it
@@ -799,11 +799,11 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
             nodegroup=cluster, subnet_mask='', broadcast_ip='',
             static_ip_range_low='', static_ip_range_high='',
             ip_range_low='', ip_range_high='', router_ip='',
-            ip=factory.getRandomIPAddress(),
+            ip=factory.make_ipv4_address(),
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         mac_address = factory.getRandomMACAddress()
         leases = {
-            factory.getRandomIPAddress(): mac_address
+            factory.make_ipv4_address(): mac_address
             }
         self.assertIsNone(update_mac_cluster_interfaces(leases, cluster))
         # The real test is that update_mac_cluster_interfaces() doesn't

@@ -53,13 +53,13 @@ from twisted.internet.task import Clock
 
 
 def make_random_lease():
-    ip = factory.getRandomIPAddress()
+    ip = factory.make_ipv4_address()
     mac = factory.getRandomMACAddress()
     return {ip: mac}
 
 
 def make_random_mapping():
-    ip = factory.getRandomIPAddress()
+    ip = factory.make_ipv4_address()
     mac = factory.getRandomMACAddress()
     mapping = {"ip": ip, "mac": mac}
     return mapping

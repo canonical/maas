@@ -240,7 +240,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         :returns: py:class:`twisted.test.iosim.IOPump`
         """
         eventloop = self.getEventLoopName(protocol)
-        address = factory.getRandomIPAddress(), factory.pick_port()
+        address = factory.make_ipv4_address(), factory.pick_port()
         client = ClusterClient(address, eventloop, self.rpc_service)
         return self.connect(client, protocol)
 

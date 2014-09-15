@@ -284,7 +284,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         uuid = factory.make_name("uuid")
         nodegroup = yield deferToThread(self.make_node_group, uuid)
         mapping = {
-            "ip": factory.getRandomIPAddress(),
+            "ip": factory.make_ipv4_address(),
             "mac": factory.getRandomMACAddress()
         }
 
@@ -1384,8 +1384,8 @@ class TestRegionAdvertisingService(MAASTestCase):
 
     def test_update(self):
         example_addresses = [
-            (factory.getRandomIPAddress(), factory.pick_port()),
-            (factory.getRandomIPAddress(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
         ]
 
         service = RegionAdvertisingService()
@@ -1436,8 +1436,8 @@ class TestRegionAdvertisingService(MAASTestCase):
 
     def test_dump(self):
         example_addresses = [
-            (factory.getRandomIPAddress(), factory.pick_port()),
-            (factory.getRandomIPAddress(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
+            (factory.make_ipv4_address(), factory.pick_port()),
         ]
 
         service = RegionAdvertisingService()
@@ -1488,8 +1488,8 @@ class TestRegionAdvertisingService(MAASTestCase):
         getPort.side_effect = asynchronous(lambda: example_port)
 
         example_ipv4_addrs = {
-            factory.getRandomIPAddress(),
-            factory.getRandomIPAddress(),
+            factory.make_ipv4_address(),
+            factory.make_ipv4_address(),
         }
         example_ipv6_addrs = {
             factory.make_ipv6_address(),
@@ -1526,8 +1526,8 @@ class TestRegionAdvertisingService(MAASTestCase):
         get_all_interface_addresses = self.patch(
             regionservice, "get_all_interface_addresses")
         get_all_interface_addresses.return_value = [
-            factory.getRandomIPAddress(),
-            factory.getRandomIPAddress(),
+            factory.make_ipv4_address(),
+            factory.make_ipv4_address(),
         ]
 
         # If the RPC service is down, _get_addresses() returns nothing.
@@ -1550,7 +1550,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_sets_foreign_dhcp_value(self):
-        foreign_dhcp_ip = factory.getRandomIPAddress()
+        foreign_dhcp_ip = factory.make_ipv4_address()
         cluster_interface = yield deferToThread(
             self.create_cluster_interface)
         cluster = cluster_interface.nodegroup
@@ -1573,7 +1573,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
     def test_does_not_trigger_update_signal(self):
         configure_dhcp = self.patch_autospec(dhcp, "configure_dhcp")
 
-        foreign_dhcp_ip = factory.getRandomIPAddress()
+        foreign_dhcp_ip = factory.make_ipv4_address()
         cluster_interface = yield deferToThread(
             self.create_cluster_interface)
         cluster = cluster_interface.nodegroup

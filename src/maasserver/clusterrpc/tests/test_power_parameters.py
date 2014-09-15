@@ -62,7 +62,7 @@ class TestPowerActionRendering(MAASServerTestCase):
         params.update(node.get_effective_power_parameters())
         # ip_address is determined by querying the ARP cache,
         # hence in this test the value does not matter.
-        params.update(ip_address=factory.getRandomIPAddress())
+        params.update(ip_address=factory.make_ipv4_address())
         # power_off_mode is provided via the API, and isn't a
         # built in parameter.
         params.update(power_off_mode=factory.make_name('power_off_mode'))

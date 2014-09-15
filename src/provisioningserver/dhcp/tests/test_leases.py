@@ -134,7 +134,7 @@ class TestUpdateLeases(PservTestCase):
             check_lease_changes())
 
     def test_check_lease_changes_returns_tuple_if_lease_changed(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         leases = {ip: factory.getRandomMACAddress()}
         self.set_lease_state(
             datetime.utcnow() - timedelta(seconds=10), leases.copy())
@@ -171,7 +171,7 @@ class TestUpdateLeases(PservTestCase):
         leases = factory.make_random_leases()
         self.set_lease_state(
             datetime.utcnow() - timedelta(seconds=10), leases.copy())
-        leases[factory.getRandomIPAddress()] = factory.getRandomMACAddress()
+        leases[factory.make_ipv4_address()] = factory.getRandomMACAddress()
         leases_file = self.fake_leases_file(leases)
         self.assertEqual(
             (get_write_time(leases_file), leases),
@@ -204,7 +204,7 @@ class TestUpdateLeases(PservTestCase):
 
     def test_parse_leases_file_parses_leases(self):
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
         }
         leases_file = self.write_leases_file("""\

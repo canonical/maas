@@ -185,7 +185,7 @@ class TestRequestDHCP(MAASTestCase):
 
     def patch_interface_IP(self):
         """Patch `get_interface_IP` to return a fixed value."""
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.patch(detect_module, 'get_interface_IP').return_value = ip
         return ip
 
@@ -259,7 +259,7 @@ class TestReceiveOffers(MAASTestCase):
         transaction_id = factory.make_bytes(4)
         packet = mock.MagicMock()
         packet.transaction_ID = transaction_id
-        packet.dhcp_server_ID = factory.getRandomIPAddress()
+        packet.dhcp_server_ID = factory.make_ipv4_address()
         self.patch(detect_module, 'DHCPOfferPacket').return_value = packet
         return packet
 
@@ -382,8 +382,8 @@ class TestPeriodicTask(PservTestCase):
             httplib.OK, interfaces_json)
 
     def test_determine_cluster_interfaces_returns_interface_names(self):
-        eth0_addr = factory.getRandomIPAddress()
-        wlan0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
+        wlan0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list(
             [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
         self.assertEqual(
@@ -391,7 +391,7 @@ class TestPeriodicTask(PservTestCase):
             determine_cluster_interfaces(self.knowledge))
 
     def test_probe_interface_returns_empty_set_when_nothing_detected(self):
-        eth0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         self.patch(detect_module, 'probe_dhcp').return_value = set()
         interfaces = determine_cluster_interfaces(self.knowledge)
@@ -402,7 +402,7 @@ class TestPeriodicTask(PservTestCase):
         # If the interface being probed has no IP address, the
         # request_dhcr() method will raise IOError with errno 99. Make
         # sure this is caught and ignored.
-        eth0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         ioerror = IOError(
             errno.EADDRNOTAVAIL, "Cannot assign requested address")
@@ -415,7 +415,7 @@ class TestPeriodicTask(PservTestCase):
         # If the interface being probed does not exist, the
         # request_dhcp() method will raise IOError with errno 19. Make
         # sure this is caught and ignored.
-        eth0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         ioerror = IOError(errno.ENODEV, "No such device")
         self.patch(fcntl, 'ioctl').side_effect = ioerror
@@ -425,7 +425,7 @@ class TestPeriodicTask(PservTestCase):
 
     def test_probe_interface_returns_populated_set(self):
         # Test that the detected DHCP server is returned.
-        eth0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         self.patch(
             detect_module, 'probe_dhcp').return_value = {'10.2.2.2'}
@@ -436,7 +436,7 @@ class TestPeriodicTask(PservTestCase):
     def test_probe_interface_filters_interface_own_ip(self):
         # Test that the interface shows the detected DHCP server except
         # if it is the same IP as the interface's.
-        eth0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list([("eth0", eth0_addr)])
         detected_dhcp = eth0_addr
         self.patch(detect_module, 'probe_dhcp').return_value = {detected_dhcp}
@@ -470,7 +470,7 @@ class TestPeriodicTask(PservTestCase):
     def test_update_region_controller_sets_detected_dhcp(self):
         mocked_post = self.patch(MAASClient, 'post')
         mocked_post.return_value = MockResponse()
-        detected_server = factory.getRandomIPAddress()
+        detected_server = factory.make_ipv4_address()
         update_region_controller(self.knowledge, "eth0", detected_server)
         uuid = self.knowledge['nodegroup_uuid']
         self.assertThat(mocked_post, MockCalledOnceWith(
@@ -518,9 +518,9 @@ class TestPeriodicTask(PservTestCase):
         self.assertFalse(mocked.called)
 
     def test_periodic_probe_task_updates_region_with_detected_server(self):
-        eth0_addr = factory.getRandomIPAddress()
-        wlan0_addr = factory.getRandomIPAddress()
-        detected_server = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
+        wlan0_addr = factory.make_ipv4_address()
+        detected_server = factory.make_ipv4_address()
         self.patch_fake_interfaces_list(
             [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
         self.patch(
@@ -534,8 +534,8 @@ class TestPeriodicTask(PservTestCase):
         mocked_update.assert_has_calls(calls, any_order=True)
 
     def test_periodic_probe_task_updates_region_with_no_detected_server(self):
-        eth0_addr = factory.getRandomIPAddress()
-        wlan0_addr = factory.getRandomIPAddress()
+        eth0_addr = factory.make_ipv4_address()
+        wlan0_addr = factory.make_ipv4_address()
         self.patch_fake_interfaces_list(
             [("eth0", eth0_addr), ("wlan0", wlan0_addr)])
         self.patch(

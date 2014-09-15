@@ -159,10 +159,10 @@ class TestTFTPBackend(MAASTestCase):
         # more about the environment in which they're running.
         call_context = {
             "local": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             "remote": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             }
 
@@ -237,10 +237,10 @@ class TestTFTPBackend(MAASTestCase):
         # more about the environment in which they're running.
         call_context = {
             "local": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             "remote": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             }
 
@@ -262,7 +262,7 @@ class TestTFTPService(MAASTestCase):
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.
         interfaces = [
-            factory.getRandomIPAddress(),
+            factory.make_ipv4_address(),
             factory.make_ipv6_address(),
             ]
         self.patch(

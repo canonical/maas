@@ -90,7 +90,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_login_with_password(self):
         virsh_outputs = [
-            "ubuntu@%s's password: " % factory.getRandomIPAddress(),
+            "ubuntu@%s's password: " % factory.make_ipv4_address(),
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         fake_password = factory.make_name('password')
@@ -100,7 +100,7 @@ class TestVirshSSH(MAASTestCase):
 
     def test_login_missing_password(self):
         virsh_outputs = [
-            "ubuntu@%s's password: " % factory.getRandomIPAddress(),
+            "ubuntu@%s's password: " % factory.make_ipv4_address(),
         ]
         conn = self.configure_virshssh_pexpect(virsh_outputs)
         mock_close = self.patch(conn, 'close')

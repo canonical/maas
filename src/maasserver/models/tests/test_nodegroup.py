@@ -76,7 +76,7 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_new_assigns_token_and_key_for_worker_user(self):
         nodegroup = NodeGroup.objects.new(
             factory.make_name('nodegroup'), factory.make_name('uuid'),
-            factory.getRandomIPAddress())
+            factory.make_ipv4_address())
         self.assertIsNotNone(nodegroup.api_token)
         self.assertIsNotNone(nodegroup.api_key)
         self.assertEqual(get_worker_user(), nodegroup.api_token.user)
@@ -85,14 +85,14 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_new_creates_nodegroup_with_empty_dhcp_key(self):
         nodegroup = NodeGroup.objects.new(
             factory.make_name('nodegroup'), factory.make_name('uuid'),
-            factory.getRandomIPAddress())
+            factory.make_ipv4_address())
         self.assertEqual('', nodegroup.dhcp_key)
 
     def test_new_stores_dhcp_key_on_nodegroup(self):
         key = generate_omapi_key()
         nodegroup = NodeGroup.objects.new(
             factory.make_name('nodegroup'), factory.make_name('uuid'),
-            factory.getRandomIPAddress(),
+            factory.make_ipv4_address(),
             dhcp_key=key)
         self.assertEqual(key, nodegroup.dhcp_key)
 
@@ -113,10 +113,10 @@ class TestNodeGroupManager(MAASServerTestCase):
     def test_ensure_master_returns_oldest_nodegroup(self):
         first_nodegroup = NodeGroup.objects.new(
             factory.make_name('nodegroup'), factory.make_name('uuid'),
-            factory.getRandomIPAddress())
+            factory.make_ipv4_address())
         NodeGroup.objects.new(
             factory.make_name('nodegroup'), factory.make_name('uuid'),
-            factory.getRandomIPAddress())
+            factory.make_ipv4_address())
         self.assertEqual(first_nodegroup, NodeGroup.objects.ensure_master())
 
     def test_ensure_master_preserves_existing_attributes(self):

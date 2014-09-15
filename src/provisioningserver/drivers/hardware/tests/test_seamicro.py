@@ -260,7 +260,7 @@ class TestSeaMicro(MAASTestCase):
         self.assertEqual(['v2.0'], versions)
 
     def configure_get_seamicro15k_api(self, return_value=None):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
         mock = self.patch(
@@ -306,7 +306,7 @@ class TestSeaMicro(MAASTestCase):
 
     def test_probe_seamicro15k_and_enlist_v09(self):
         self.configure_api_v09_login()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
         result = {
@@ -358,7 +358,7 @@ class TestSeaMicro(MAASTestCase):
 
     def test_power_control_seamicro15k_v09(self):
         self.configure_api_v09_login()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
         mock = self.patch(
@@ -372,7 +372,7 @@ class TestSeaMicro(MAASTestCase):
 
     def test_power_control_seamicro15k_v09_retry_failure(self):
         self.configure_api_v09_login()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
         mock = self.patch(
@@ -387,7 +387,7 @@ class TestSeaMicro(MAASTestCase):
 
     def test_power_control_seamicro15k_v09_exception_failure(self):
         self.configure_api_v09_login()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
         mock = self.patch(
@@ -400,7 +400,7 @@ class TestSeaMicro(MAASTestCase):
             ip, username, password, '25', 'on')
 
     def test_probe_seamicro15k_and_enlist_v2(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
 
@@ -449,7 +449,7 @@ class TestSeaMicro(MAASTestCase):
                     })))
 
     def test_power_control_seamicro15k_v2(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         username = factory.make_string()
         password = factory.make_string()
 

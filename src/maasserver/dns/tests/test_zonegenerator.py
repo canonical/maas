@@ -72,7 +72,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
             settings, 'DEFAULT_MAAS_URL', factory.make_url(netloc=hostname))
 
     def test_get_dns_server_address_resolves_hostname(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         resolver = self.patch(server_address, 'resolve_hostname')
         resolver.return_value = {ip}
         hostname = factory.make_hostname()
@@ -86,7 +86,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
         ipv4 = factory.pick_bool()
         ipv6 = factory.pick_bool()
         patch = self.patch(zonegenerator, 'get_maas_facing_server_address')
-        patch.return_value = factory.getRandomIPAddress()
+        patch.return_value = factory.make_ipv4_address()
 
         get_dns_server_address(ipv4=ipv4, ipv6=ipv6)
 
@@ -110,7 +110,7 @@ class TestGetDNSServerAddress(MAASServerTestCase):
             logger.warn.call_args)
 
     def test_get_dns_server_address_uses_nodegroup_maas_url(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         resolver = self.patch(server_address, 'resolve_hostname')
         resolver.return_value = {ip}
         hostname = factory.make_hostname()
@@ -230,7 +230,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             status=NODE_STATUS.ALLOCATED, disable_ipv4=False)
         mac = node.get_primary_mac()
-        ipv4 = factory.getRandomIPAddress()
+        ipv4 = factory.make_ipv4_address()
         ipv6 = factory.make_ipv6_address()
         factory.make_StaticIPAddress(mac=mac, ip=ipv4)
         factory.make_StaticIPAddress(mac=mac, ip=ipv6)
@@ -243,7 +243,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             status=NODE_STATUS.ALLOCATED, disable_ipv4=True)
         mac = node.get_primary_mac()
-        ipv4 = factory.getRandomIPAddress()
+        ipv4 = factory.make_ipv4_address()
         ipv6 = factory.make_ipv6_address()
         factory.make_StaticIPAddress(mac=mac, ip=ipv4)
         factory.make_StaticIPAddress(mac=mac, ip=ipv6)
@@ -262,7 +262,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
             factory.make_node_with_mac_attached_to_nodegroupinterface(
                 nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
                 disable_ipv4=True))
-        ipv4 = factory.getRandomIPAddress()
+        ipv4 = factory.make_ipv4_address()
         factory.make_StaticIPAddress(
             mac=node_with_ipv4.get_primary_mac(), ip=ipv4)
         factory.make_StaticIPAddress(

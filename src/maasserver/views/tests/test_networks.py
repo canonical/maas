@@ -199,8 +199,8 @@ class NetworkAddTestAdmin(MAASServerTestCase):
             'ip': "%s" % network.cidr.ip,
             'netmask': "%s" % network.netmask,
             'vlan_tag': factory.make_vlan_tag(),
-            'default_gateway': factory.getRandomIPAddress(),
-            'dns_servers': factory.getRandomIPAddress(),
+            'default_gateway': factory.make_ipv4_address(),
+            'dns_servers': factory.make_ipv4_address(),
         }
         response = self.client.post(reverse('network-add'), definition)
         self.assertEqual(httplib.FOUND, response.status_code)
@@ -315,8 +315,8 @@ class NetworkEditAdminTest(MAASServerTestCase):
         new_macs = [
             factory.make_MACAddress()
             for _ in range(3)]
-        new_gateway = factory.getRandomIPAddress()
-        new_dns_servers = factory.getRandomIPAddress()
+        new_gateway = factory.make_ipv4_address()
+        new_dns_servers = factory.make_ipv4_address()
         response = self.client.post(
             reverse('network-edit', args=[network.name]),
             data={

@@ -607,7 +607,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]),
-            {'ip_range_high': factory.getRandomIPAddress()})
+            {'ip_range_high': factory.make_ipv4_address()})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
 

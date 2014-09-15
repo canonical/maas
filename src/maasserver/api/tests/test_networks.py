@@ -38,8 +38,8 @@ class TestNetworksAPI(APITestCase):
             'netmask': '%s' % net.netmask,
             'vlan_tag': factory.make_vlan_tag(),
             'description': factory.make_string(),
-            'default_gateway': factory.getRandomIPAddress(),
-            'dns_servers': factory.getRandomIPAddress(),
+            'default_gateway': factory.make_ipv4_address(),
+            'dns_servers': factory.make_ipv4_address(),
         }
         response = self.client.post(reverse('networks_handler'), params)
         self.assertEqual(httplib.OK, response.status_code)

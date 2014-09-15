@@ -96,7 +96,7 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_set_up_options_conf_writes_configuration(self):
         dns_conf_dir = patch_dns_config_path(self)
-        fake_dns = factory.getRandomIPAddress()
+        fake_dns = factory.make_ipv4_address()
         set_up_options_conf(upstream_dns=fake_dns)
         target_file = os.path.join(
             dns_conf_dir, MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME)

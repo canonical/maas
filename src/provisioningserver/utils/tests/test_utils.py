@@ -423,7 +423,7 @@ class TestCreateNode(PservTestCase):
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
-            'power_address': factory.getRandomIPAddress(),
+            'power_address': factory.make_ipv4_address(),
             'power_user': factory.make_name('power_user'),
             'power_pass': factory.make_name('power_pass'),
             'power_control': None,
@@ -457,7 +457,7 @@ class TestCreateNode(PservTestCase):
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
-            'power_address': factory.getRandomIPAddress(),
+            'power_address': factory.make_ipv4_address(),
             'power_user': factory.make_name('power_user'),
             'power_pass': factory.make_name('power_pass'),
             'power_control': None,
@@ -482,7 +482,7 @@ class TestCreateNode(PservTestCase):
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
-            'power_address': factory.getRandomIPAddress(),
+            'power_address': factory.make_ipv4_address(),
             'power_user': factory.make_name('power_user'),
             'power_pass': factory.make_name('power_pass'),
             'power_control': None,
@@ -517,7 +517,7 @@ class TestCreateNode(PservTestCase):
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
-            'power_address': factory.getRandomIPAddress(),
+            'power_address': factory.make_ipv4_address(),
             'power_user': factory.make_name('power_user'),
             'power_pass': factory.make_name('power_pass'),
             'power_control': None,
@@ -549,7 +549,7 @@ class TestComposeURL(MAASTestCase):
         return 'eth%d' % randint(0, 100)
 
     def test__inserts_IPv4(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         path = self.make_path()
         self.assertEqual(
             'http://%s/%s' % (ip, path),
@@ -596,7 +596,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL('http:///%s' % path, hostname))
 
     def test__preserves_query(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         key = factory.make_name('key')
         value = factory.make_name('value')
         self.assertEqual(
@@ -604,7 +604,7 @@ class TestComposeURL(MAASTestCase):
             compose_URL('https://?%s=%s' % (key, value), ip))
 
     def test__preserves_port_with_IPv4(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         port = factory.pick_port()
         self.assertEqual(
             'https://%s:%s/' % (ip, port),

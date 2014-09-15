@@ -58,7 +58,7 @@ class TestDHCPProbeService(PservTestCase):
     def make_cluster_interface_values(self, ip=None):
         """Return a dict describing a cluster interface."""
         if ip is None:
-            ip = factory.getRandomIPAddress()
+            ip = factory.make_ipv4_address()
         return {
             'name': factory.make_name('interface'),
             'interface': factory.make_name('eth'),
@@ -192,7 +192,7 @@ class TestDHCPProbeService(PservTestCase):
 
         deferToThread = self.patch(
             dhcp_probe_service, 'deferToThread')
-        foreign_dhcp_ip = factory.getRandomIPAddress()
+        foreign_dhcp_ip = factory.make_ipv4_address()
         deferToThread.return_value = defer.succeed(
             [foreign_dhcp_ip])
 

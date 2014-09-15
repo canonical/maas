@@ -126,8 +126,8 @@ class TestPXEConfigAPI(MAASServerTestCase):
         if nodegroup is None:
             nodegroup = factory.make_NodeGroup()
         return {
-            "local": factory.getRandomIPAddress(),
-            "remote": factory.getRandomIPAddress(),
+            "local": factory.make_ipv4_address(),
+            "remote": factory.make_ipv4_address(),
             "cluster_uuid": nodegroup.uuid,
             }
 

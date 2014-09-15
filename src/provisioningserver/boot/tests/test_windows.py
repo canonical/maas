@@ -196,10 +196,10 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
         call_context = {
             "local": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             "remote": (
-                factory.getRandomIPAddress(),
+                factory.make_ipv4_address(),
                 factory.pick_port()),
             }
 
@@ -307,7 +307,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_get_reader_bcd(self):
         method = WindowsPXEBootMethod()
         mock_compose_bcd = self.patch(method, 'compose_bcd')
-        local_host = factory.getRandomIPAddress()
+        local_host = factory.make_ipv4_address()
         kernel_params = make_kernel_parameters(osystem='windows')
 
         method.get_reader(
@@ -335,7 +335,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
 
     def test_compose_bcd(self):
         method = WindowsPXEBootMethod()
-        local_host = factory.getRandomIPAddress()
+        local_host = factory.make_ipv4_address()
         kernel_params = make_kernel_parameters()
 
         fake_output = factory.make_string().encode('utf-8')
@@ -354,7 +354,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_compose_bcd_missing_template(self):
         method = WindowsPXEBootMethod()
         self.patch(method, 'get_resource_path').return_value = ''
-        local_host = factory.getRandomIPAddress()
+        local_host = factory.make_ipv4_address()
         kernel_params = make_kernel_parameters()
 
         self.assertRaises(

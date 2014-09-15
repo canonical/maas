@@ -42,7 +42,7 @@ class TestDHCPLease(MAASServerTestCase):
 
     def test_init(self):
         nodegroup = factory.make_NodeGroup()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         mac = factory.getRandomMACAddress()
 
         lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=mac)
@@ -99,7 +99,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
 
     def test_update_leases_replaces_reassigned_ip(self):
         nodegroup = factory.make_NodeGroup()
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, ip=ip)
         new_mac = factory.getRandomMACAddress()
         DHCPLease.objects.update_leases(nodegroup, {ip: new_mac})
@@ -115,8 +115,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
     def test_update_leases_adds_new_ip_to_mac(self):
         nodegroup = factory.make_NodeGroup()
         mac = factory.getRandomMACAddress()
-        ip1 = factory.getRandomIPAddress()
-        ip2 = factory.getRandomIPAddress()
+        ip1 = factory.make_ipv4_address()
+        ip2 = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=ip1)
         DHCPLease.objects.update_leases(nodegroup, {ip1: mac, ip2: mac})
         self.assertEqual({ip1: mac, ip2: mac}, map_leases(nodegroup))
@@ -124,8 +124,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
     def test_update_leases_deletes_only_obsolete_ips(self):
         nodegroup = factory.make_NodeGroup()
         mac = factory.getRandomMACAddress()
-        obsolete_ip = factory.getRandomIPAddress()
-        current_ip = factory.getRandomIPAddress()
+        obsolete_ip = factory.make_ipv4_address()
+        current_ip = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=obsolete_ip)
         factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=current_ip)
         DHCPLease.objects.update_leases(nodegroup, {current_ip: mac})
@@ -151,7 +151,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             nodegroup=nodegroup, mac=mac1)
         reassigned_lease = factory.make_DHCPLease(
             nodegroup=nodegroup, mac=mac1)
-        new_ip = factory.getRandomIPAddress()
+        new_ip = factory.make_ipv4_address()
         DHCPLease.objects.update_leases(nodegroup, {
             reassigned_lease.ip: mac2,
             unchanged_lease.ip: mac1,

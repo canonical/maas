@@ -124,7 +124,7 @@ class TestFindMACViaARP(MAASTestCase):
     def make_output_line(self, ip=None, mac=None, dev=None):
         """Compose an `ip neigh` output line for given `ip` and `mac`."""
         if ip is None:
-            ip = factory.getRandomIPAddress()
+            ip = factory.make_ipv4_address()
         if mac is None:
             mac = factory.getRandomMACAddress()
         if dev is None:
@@ -137,24 +137,24 @@ class TestFindMACViaARP(MAASTestCase):
 
     def test__calls_ip_neigh(self):
         call_and_check = self.patch_call('')
-        find_mac_via_arp(factory.getRandomIPAddress())
+        find_mac_via_arp(factory.make_ipv4_address())
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(['ip', 'neigh'], env={'LC_ALL': 'C'}))
 
     def test__works_with_real_call(self):
-        find_mac_via_arp(factory.getRandomIPAddress())
+        find_mac_via_arp(factory.make_ipv4_address())
         # No error.
         pass
 
     def test__fails_on_nonsensical_output(self):
         self.patch_call("Weird output...")
         self.assertRaises(
-            Exception, find_mac_via_arp, factory.getRandomIPAddress())
+            Exception, find_mac_via_arp, factory.make_ipv4_address())
 
     def test__returns_None_if_not_found(self):
         self.patch_call(self.make_output_line())
-        self.assertIsNone(find_mac_via_arp(factory.getRandomIPAddress()))
+        self.assertIsNone(find_mac_via_arp(factory.make_ipv4_address()))
 
     def test__resolves_IPv4_address_to_MAC(self):
         sample = "10.55.60.9 dev eth0 lladdr 3c:41:92:68:2e:00 REACHABLE\n"
@@ -171,7 +171,7 @@ class TestFindMACViaARP(MAASTestCase):
         self.assertEqual('3c:41:92:6b:2e:00', mac_address_observed)
 
     def test__ignores_failed_neighbours(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.patch_call("%s dev eth0  FAILED\n" % ip)
         self.assertIsNone(find_mac_via_arp(ip))
 
@@ -186,7 +186,7 @@ class TestFindMACViaARP(MAASTestCase):
         self.assertEqual(mac, find_mac_via_arp('09:0::5'))
 
     def test__returns_consistent_output(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         macs = [
             '52:54:00:02:86:4b',
             '90:f6:52:f6:17:92',
@@ -220,7 +220,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         ('ipv4', {
             'inet_class': AF_INET,
             'network_factory': factory.getRandomNetwork,
-            'ip_address_factory': factory.getRandomIPAddress,
+            'ip_address_factory': factory.make_ipv4_address,
             'loopback_address': '127.0.0.1',
             }),
         ('ipv6', {
@@ -301,7 +301,7 @@ class TestGetAllInterfaceAddresses(MAASTestCase):
             list(get_all_interface_addresses()))
 
     def test_returns_all_addresses_for_all_interfaces(self):
-        v4_ips = [factory.getRandomIPAddress() for _ in range(2)]
+        v4_ips = [factory.make_ipv4_address() for _ in range(2)]
         v6_ips = [factory.make_ipv6_address() for _ in range(2)]
         ips = zip(v4_ips, v6_ips)
         interfaces = {
@@ -331,7 +331,7 @@ class TestGetAllInterfaceAddressesWithMultipleClasses(MAASTestCase):
         self.patch(netifaces, 'ifaddresses', interfaces.get)
 
     def test_returns_all_addresses_for_interface(self):
-        v4_ip = factory.getRandomIPAddress()
+        v4_ip = factory.make_ipv4_address()
         v6_ip = factory.make_ipv6_address()
         interface = factory.make_name('eth', sep='')
         patch_interfaces(self, {
@@ -349,7 +349,7 @@ class TestCleanUpNetifacesAddress(MAASTestCase):
     """Tests for `clean_up_netifaces_address`."""
 
     def test__leaves_IPv4_intact(self):
-        ip = unicode(factory.getRandomIPAddress())
+        ip = unicode(factory.make_ipv4_address())
         interface = factory.make_name('eth')
         self.assertEqual(ip, clean_up_netifaces_address(ip, interface))
 
@@ -395,7 +395,7 @@ class TestResolveHostname(MAASTestCase):
         self.assertIn(localhost, IPNetwork('127.0.0.0/8'))
 
     def test__resolves_IPv4_address(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         fake = self.patch_getaddrinfo(ip)
         hostname = factory.make_hostname()
         result = resolve_hostname(hostname, 4)

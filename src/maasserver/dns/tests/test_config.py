@@ -183,7 +183,7 @@ class TestDNSConfigModifications(TestDNSServer):
 
     def test_add_zone_preserves_trusted_networks(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
-        trusted_network = factory.getRandomIPAddress()
+        trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
         get_trusted_networks_patch.return_value = trusted_network + ';'
@@ -240,7 +240,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_write_full_dns_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
-        random_ip = factory.getRandomIPAddress()
+        random_ip = factory.make_ipv4_address()
         Config.objects.set_config("upstream_dns", random_ip)
         patched_task = self.patch(dns_tasks.write_full_dns_config, "delay")
         write_full_dns_config()
@@ -251,7 +251,7 @@ class TestDNSConfigModifications(TestDNSServer):
     def test_write_full_dns_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
-        trusted_network = factory.getRandomIPAddress()
+        trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
         get_trusted_networks_patch.return_value = trusted_network + ';'
@@ -267,7 +267,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.assertEqual(0, patched_task.call_count)
 
     def test_dns_config_has_NS_record(self):
-        ip = factory.getRandomIPAddress()
+        ip = factory.make_ipv4_address()
         self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)

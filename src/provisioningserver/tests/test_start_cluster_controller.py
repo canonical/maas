@@ -203,7 +203,7 @@ class TestStartClusterController(PservTestCase):
         self.prepare_success_response()
         interface = {
             'interface': factory.make_name('eth'),
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'subnet_mask': '255.255.255.0',
             }
         discover = self.patch(start_cluster_controller, 'discover_networks')

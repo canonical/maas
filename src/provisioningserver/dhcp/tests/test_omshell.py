@@ -55,7 +55,7 @@ class TestOmshell(MAASTestCase):
     def test_create_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         mac_address = factory.getRandomMACAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -94,7 +94,7 @@ class TestOmshell(MAASTestCase):
 
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         mac_address = factory.getRandomMACAddress()
         shell = Omshell(server_address, shared_key)
 
@@ -112,7 +112,7 @@ class TestOmshell(MAASTestCase):
         # Omshell.create swallows the error and makes it look like
         # success.
         params = {
-            'ip': factory.getRandomIPAddress(),
+            'ip': factory.make_ipv4_address(),
             'mac': factory.getRandomMACAddress(),
             'hostname': factory.make_name('hostname')
         }
@@ -139,7 +139,7 @@ class TestOmshell(MAASTestCase):
     def test_remove_calls_omshell_correctly(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
         # Instead of calling a real omshell, we'll just record the
@@ -171,7 +171,7 @@ class TestOmshell(MAASTestCase):
         # failed.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
@@ -188,7 +188,7 @@ class TestOmshell(MAASTestCase):
         # we need to test that the code still works if that's the case.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a something with our special output.
@@ -201,7 +201,7 @@ class TestOmshell(MAASTestCase):
         # We need to test that the code still works if that's the case.
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a something with our special output.
@@ -212,7 +212,7 @@ class TestOmshell(MAASTestCase):
     def test_remove_works_when_object_already_removed(self):
         server_address = factory.make_string()
         shared_key = factory.make_string()
-        ip_address = factory.getRandomIPAddress()
+        ip_address = factory.make_ipv4_address()
         shell = Omshell(server_address, shared_key)
 
         output = "obj: <null>\nobj: host\ncan't open object: not found\n"
