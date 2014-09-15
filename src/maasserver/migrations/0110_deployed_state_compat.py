@@ -33,7 +33,15 @@ class Migration(DataMigration):
 
 
     def backwards(self, orm):
-        pass
+        deployed_nodes = orm['maasserver.Node'].objects.filter(status=new_deployed_status)
+        deployed_nodes.update(status=intermediate_status)
+
+        allocated_nodes = orm['maasserver.Node'].objects.filter(status=new_allocated_status)
+        allocated_nodes.update(status=old_allocated_status)
+
+        deployed_nodes = orm['maasserver.Node'].objects.filter(status=intermediate_status)
+        deployed_nodes.update(status=old_deployed_status)
+
 
     models = {
         u'auth.group': {
