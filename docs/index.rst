@@ -58,6 +58,7 @@ Setting up a MAAS server
    nodes
    hardware-enablement-kernels
    networks
+   ipv6
    kernel-options
    installing-ubuntu
 
