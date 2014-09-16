@@ -138,8 +138,8 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
             message = (
                 "Import of boot images started. Importing the boot "
                 "images can take a long time depending on the available "
-                "bandwidth. Once complete the all clusters will download the "
-                "boot resources from the region.")
+                "bandwidth.  Once this has completed, all clusters will "
+                "download the boot resources from the region.")
             messages.info(request, message)
             return HttpResponseRedirect(reverse('cluster-list'))
 
