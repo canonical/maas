@@ -2,7 +2,7 @@
 #
 # Rudimentary lint check for the documentation.
 DOCS_WITH_TRAILING_SPACES="$(
-    find docs -name '*.rst' -print0 |
+    find docs -name '*.rst' -not -path 'docs/_autosummary/*' -print0 |
     xargs -r0 grep -l '[[:space:]]$')"
 if [ -n "$DOCS_WITH_TRAILING_SPACES" ]
 then

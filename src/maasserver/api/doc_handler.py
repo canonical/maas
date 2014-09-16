@@ -123,7 +123,7 @@ def render_api_docs():
         section_name = doc.handler.api_doc_section_name
         line(section_name)
         line('=' * len(section_name))
-        line(doc.handler.__doc__)
+        line(doc.handler.__doc__.strip())
         line()
         line()
         for (http_method, op), function in sorted(exports):
@@ -134,7 +134,12 @@ def render_api_docs():
             docstring = getdoc(function)
             if docstring is not None:
                 for docline in docstring.splitlines():
-                    line("  ", docline, sep="")
+                    if docline.strip() == '':
+                        # Blank line.  Don't indent.
+                        line()
+                    else:
+                        # Print documentation line, indented.
+                        line("  ", docline, sep="")
                 line()
 
     line()

@@ -18,8 +18,9 @@ __all__ = [
     'get_config_field',
     'get_config_form',
     'validate_config_name',
-]
+    ]
 
+import re
 from socket import gethostname
 
 from django import forms
@@ -304,4 +305,5 @@ def get_config_doc(indentation=0):
             choice_descr = describe_choices(choices)
             doc.append("Available choices are: %s." % choice_descr)
         doc.append("\n")
-    return (' ' * indentation).join(doc)
+    full_text = (' ' * indentation).join(doc)
+    return re.sub('\s+$', '', full_text, flags=re.MULTILINE)
