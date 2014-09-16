@@ -47,6 +47,7 @@ from maasserver.testing.orm import (
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
+    Equals,
     MockCalledOnceWith,
     MockNotCalled,
     )
@@ -402,7 +403,7 @@ class TestNodeAPI(APITestCase):
             [httplib.OK] * len(owned_nodes),
             [response.status_code for response in responses])
         self.assertItemsEqual(
-            [NODE_STATUS.READY] * len(owned_nodes),
+            [NODE_STATUS.RELEASING] * len(owned_nodes),
             [node.status for node in reload_objects(Node, owned_nodes)])
 
     def test_POST_release_releases_failed_node(self):
@@ -414,60 +415,8 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         owned_node = Node.objects.get(id=owned_node.id)
-        self.assertEqual(
-            (NODE_STATUS.READY, None),
-            (owned_node.status, owned_node.owner))
-
-    def test_POST_release_turns_on_netboot(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user)
-        node.set_netboot(on=False)
-        self.client.post(self.get_node_uri(node), {'op': 'release'})
-        self.assertTrue(reload_object(node).netboot)
-
-    def test_POST_release_resets_osystem_and_distro_series(self):
-        osystem = factory.pick_OS()
-        release = factory.pick_release(osystem)
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            osystem=osystem.name, distro_series=release)
-        self.client.post(self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual('', reload_object(node).osystem)
-        self.assertEqual('', reload_object(node).distro_series)
-
-    def test_POST_release_resets_license_key(self):
-        osystem = factory.pick_OS()
-        release = factory.pick_release(osystem)
-        license_key = factory.make_string()
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            osystem=osystem.name, distro_series=release,
-            license_key=license_key)
-        self.client.post(self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual('', reload_object(node).license_key)
-
-    def test_POST_release_resets_agent_name(self):
-        agent_name = factory.make_name('agent-name')
-        osystem = factory.pick_OS()
-        release = factory.pick_release(osystem)
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=self.logged_in_user,
-            osystem=osystem.name, distro_series=release,
-            agent_name=agent_name)
-        self.client.post(self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual('', reload_object(node).agent_name)
-
-    def test_POST_release_removes_token_and_user(self):
-        node = factory.make_Node(status=NODE_STATUS.READY)
-        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
-        node = Node.objects.get(system_id=node.system_id)
-        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
-        self.assertEqual(self.logged_in_user, node.owner)
-        self.assertEqual(self.client.token.key, node.token.key)
-        self.client.post(self.get_node_uri(node), {'op': 'release'})
-        node = Node.objects.get(system_id=node.system_id)
-        self.assertIs(None, node.owner)
-        self.assertIs(None, node.token)
+        self.expectThat(owned_node.status, Equals(NODE_STATUS.RELEASING))
+        self.expectThat(owned_node.owner, Equals(self.logged_in_user))
 
     def test_POST_release_does_nothing_for_unowned_node(self):
         node = factory.make_Node(
@@ -530,8 +479,8 @@ class TestNodeAPI(APITestCase):
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
@@ -540,8 +489,8 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
         node_uri = json.loads(response.content)['resource_uri']
         response = self.client.post(node_uri, {'op': 'release'})
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_commission_commissions_node(self):
         node = factory.make_Node(

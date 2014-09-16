@@ -161,6 +161,7 @@ NODE_TRANSITIONS = {
         NODE_STATUS.RETIRED,
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
+        NODE_STATUS.RELEASING,
         ],
     NODE_STATUS.ALLOCATED: [
         NODE_STATUS.READY,
@@ -168,6 +169,12 @@ NODE_TRANSITIONS = {
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
         NODE_STATUS.DEPLOYING,
+        NODE_STATUS.RELEASING,
+        ],
+    NODE_STATUS.RELEASING: [
+        NODE_STATUS.READY,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.MISSING,
         ],
     NODE_STATUS.DEPLOYING: [
         NODE_STATUS.ALLOCATED,
@@ -176,18 +183,21 @@ NODE_TRANSITIONS = {
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.DEPLOYED,
         NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
     ],
     NODE_STATUS.FAILED_DEPLOYMENT: [
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
         NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
     ],
     NODE_STATUS.DEPLOYED: [
         NODE_STATUS.ALLOCATED,
         NODE_STATUS.MISSING,
         NODE_STATUS.BROKEN,
         NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
     ],
     NODE_STATUS.MISSING: [
         NODE_STATUS.NEW,
@@ -205,6 +215,7 @@ NODE_TRANSITIONS = {
     NODE_STATUS.BROKEN: [
         NODE_STATUS.COMMISSIONING,
         NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
         ],
     }
 
@@ -1238,8 +1249,13 @@ class Node(CleanSave, TimestampedModel):
         self.delete_host_maps(deallocated_ips)
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
-        self.status = NODE_STATUS.READY
-        self.owner = None
+        if self.power_state == POWER_STATE.OFF:
+            self.status = NODE_STATUS.READY
+            self.owner = None
+        else:
+            # update_power_state() will take care of making the node READY
+            # and unowned when the power is finally off.
+            self.status = NODE_STATUS.RELEASING
         self.token = None
         self.agent_name = ''
         self.set_netboot()
@@ -1300,7 +1316,10 @@ class Node(CleanSave, TimestampedModel):
         """
         if self.status in RELEASABLE_STATUSES:
             self.release()
+        # release() normally sets the status to RELEASING and leaves the
+        # owner in place, override that here as we're broken.
         self.status = NODE_STATUS.BROKEN
+        self.owner = None
         self.error_description = error_description
         self.save()
 
@@ -1317,6 +1336,14 @@ class Node(CleanSave, TimestampedModel):
     def update_power_state(self, power_state):
         """Update a node's power state """
         self.power_state = power_state
+        mark_ready = (
+            self.status == NODE_STATUS.RELEASING and
+            power_state == POWER_STATE.OFF)
+        if mark_ready:
+            # Ensure the node is fully released after a successful power
+            # down.
+            self.status = NODE_STATUS.READY
+            self.owner = None
         self.save()
 
     def claim_static_ip_addresses(self):

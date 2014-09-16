@@ -23,6 +23,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
+    POWER_STATE,
     )
 from maasserver.exceptions import (
     NodeActionError,
@@ -50,6 +51,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
+from testtools.matchers import Equals
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -290,7 +292,8 @@ class TestStartNodeNodeAction(MAASServerTestCase):
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user)
+            status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user,
+            power_state=POWER_STATE.OFF)
         ngi = node.get_primary_mac().cluster_interface
 
         # Narrow the available IP range and pre-claim the only address.
@@ -300,10 +303,11 @@ class TestStartNodeNodeAction(MAASServerTestCase):
             ngi.static_ip_range_high, ngi.static_ip_range_low)
 
         e = self.assertRaises(NodeActionError, StartNode(node, user).execute)
-        self.assertEqual(
-            "%s: Failed to start, static IP addresses are exhausted." %
-            node.hostname, e.message)
-        self.assertEqual(NODE_STATUS.READY, node.status)
+        self.expectThat(
+            e.message, Equals(
+                "%s: Failed to start, static IP addresses are exhausted." %
+                node.hostname))
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_StartNode_requires_edit_permission(self):
         user = factory.make_User()
@@ -351,8 +355,7 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
 
         ReleaseNode(node, user).execute()
 
-        self.assertEqual(NODE_STATUS.READY, node.status)
-        self.assertIsNone(node.owner)
+        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.assertThat(
             stop_nodes, MockCalledOnceWith([node.system_id], user))
 

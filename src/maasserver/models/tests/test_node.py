@@ -91,6 +91,7 @@ from testtools.matchers import (
     AfterPreprocessing,
     Equals,
     HasLength,
+    Is,
     MatchesStructure,
     )
 from twisted.internet import defer
@@ -642,15 +643,37 @@ class NodeTest(MAASServerTestCase):
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
 
-    def test_release(self):
+    def test_release_node_that_has_power_on(self):
         agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
-            agent_name=agent_name)
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        node.power_state = POWER_STATE.ON
         node.release()
-        self.assertEqual(
-            (NODE_STATUS.READY, None, node.agent_name),
-            (node.status, node.owner, ''))
+        self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
+        self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.agent_name, Equals(''))
+        self.expectThat(node.token, Is(None))
+        self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.osystem, Equals(''))
+        self.expectThat(node.distro_series, Equals(''))
+        self.expectThat(node.license_key, Equals(''))
+
+    def test_release_node_that_has_power_off(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        node.power_state = POWER_STATE.OFF
+        node.release()
+        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.owner, Is(None))
+        self.expectThat(node.agent_name, Equals(''))
+        self.expectThat(node.token, Is(None))
+        self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.osystem, Equals(''))
+        self.expectThat(node.distro_series, Equals(''))
+        self.expectThat(node.license_key, Equals(''))
 
     def test_release_deletes_static_ip_host_maps(self):
         remove_host_maps = self.patch_autospec(
@@ -1208,10 +1231,11 @@ class NodeTest(MAASServerTestCase):
     def test_mark_broken_releases_allocated_node(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        node.mark_broken(factory.make_name('error-description'))
-        node = reload_object(node)
-        self.assertEqual(
-            (NODE_STATUS.BROKEN, None), (node.status, node.owner))
+        err_desc = factory.make_name('error-description')
+        release = self.patch(node, 'release')
+        node.mark_broken(err_desc)
+        self.expectThat(node.owner, Is(None))
+        self.assertThat(release, MockCalledOnceWith())
 
     def test_mark_fixed_changes_status(self):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
@@ -1236,6 +1260,26 @@ class NodeTest(MAASServerTestCase):
         state = factory.pick_enum(POWER_STATE)
         node.update_power_state(state)
         self.assertEqual(state, reload_object(node).power_state)
+
+    def test_update_power_state_readies_node_if_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
+            owner=None)
+        node.update_power_state(POWER_STATE.OFF)
+        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.owner, Is(None))
+
+    def test_update_power_state_does_not_change_status_if_not_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+
+    def test_update_power_state_does_not_change_status_if_not_off(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
+        node.update_power_state(POWER_STATE.ON)
+        self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
 
     def test_end_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
