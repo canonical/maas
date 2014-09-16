@@ -60,15 +60,18 @@ class TestPrepareParser(MAASTestCase):
         parser = script.prepare_parser()
         config_dir = factory.make_name('etc-network')
         ip = factory.make_ipv6_address()
+        gateway = factory.make_ipv6_address()
         mac = factory.getRandomMACAddress()
         args = parser.parse_args([
             '--config-dir=%s' % config_dir,
             '--update-interfaces',
             '--restart-interfaces',
             '--static-ip=%s=%s' % (ip, mac),
+            '--gateway=%s=%s' % (gateway, mac),
             ])
         self.expectThat(args.config_dir, Equals(config_dir))
         self.expectThat(args.static_ip, Equals([(ip, mac)]))
+        self.expectThat(args.gateway, Equals([(gateway, mac)]))
         self.assertTrue(args.update_interfaces)
         self.assertTrue(args.restart_interfaces)
 
@@ -254,14 +257,28 @@ class TestComposeConfigStanza(MAASTestCase):
             """) % (interface, ip)
         self.assertEqual(
             expected.strip(),
-            script.compose_config_stanza(interface, [ip]).strip())
+            script.compose_config_stanza(interface, [ip], []).strip())
 
     def test__includes_all_given_addresses(self):
         ips = [factory.make_ipv6_address() for _ in range(3)]
         interface = factory.make_name('eth')
         self.assertThat(
-            script.compose_config_stanza(interface, ips).strip(),
+            script.compose_config_stanza(interface, ips, []).strip(),
             ContainsAll("address %s" % ip for ip in ips))
+
+    def test__includes_gateway_if_given(self):
+        ip = factory.make_ipv6_address()
+        interface = factory.make_name('eth')
+        gateway = factory.make_ipv6_address()
+        expected = dedent("""\
+            iface %s inet6 static
+            \tnetmask 64
+            \taddress %s
+            \tgateway %s
+            """) % (interface, ip, gateway)
+        self.assertEqual(
+            expected.strip(),
+            script.compose_config_stanza(interface, [ip], [gateway]).strip())
 
 
 class TestComposeConfigFile(MAASTestCase):
@@ -271,8 +288,9 @@ class TestComposeConfigFile(MAASTestCase):
         mac = factory.getRandomMACAddress()
         interface = factory.make_name('eth')
         self.assertIn(
-            script.compose_config_stanza(interface, [ip]),
-            script.compose_config_file({mac: [interface]}, {interface: [ip]}))
+            script.compose_config_stanza(interface, [ip], []),
+            script.compose_config_file(
+                {mac: [interface]}, {interface: [ip]}, {}))
 
 
 class TestLocateMAASConfig(MAASTestCase):
@@ -335,20 +353,20 @@ class TestConfigureStaticAddresses(MAASTestCase):
         config_dir = self.make_config_dir()
         remove(os.path.join(config_dir, 'interfaces'))
         write_file = self.patch_write_file()
-        result = script.configure_static_addresses(config_dir, [])
+        result = script.configure_static_addresses(config_dir, [], [])
         self.expectThat(result, Equals([]))
         self.expectThat(write_file, MockNotCalled())
 
     def test__skips_if_config_dir_does_not_exist(self):
         config_dir = os.path.join(self.make_dir(), factory.make_name('nondir'))
         write_file = self.patch_write_file()
-        result = script.configure_static_addresses(config_dir, [])
+        result = script.configure_static_addresses(config_dir, [], [])
         self.expectThat(result, Equals([]))
         self.expectThat(write_file, MockNotCalled())
 
     def test__writes_to_interfaces_d(self):
         config_dir = self.make_config_dir()
-        script.configure_static_addresses(config_dir, [])
+        script.configure_static_addresses(config_dir, [], [])
         self.assertThat(
             os.path.join(config_dir, 'interfaces.d', 'maas-config'),
             FileExists())
@@ -361,7 +379,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
         self.patch_interfaces_by_mac({mac: [interface]})
         config_dir = self.make_config_dir()
 
-        script.configure_static_addresses(config_dir, [(ip, mac)])
+        script.configure_static_addresses(config_dir, [(ip, mac)], [])
 
         self.assertThat(write_file, MockCalledOnceWith(ANY, ANY))
         [mock_call] = write_file.mock_calls
@@ -378,7 +396,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
         self.patch_interfaces_by_mac({mac: [interface]})
         self.assertEqual(
             [interface],
-            script.configure_static_addresses(config_dir, [(ip, mac)]))
+            script.configure_static_addresses(config_dir, [(ip, mac)], []))
 
     def test__ignores_interfaces_without_addresses(self):
         ip = factory.make_ipv6_address()
@@ -388,7 +406,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
         self.patch_interfaces_by_mac({})
         self.assertEqual(
             [],
-            script.configure_static_addresses(config_dir, [(ip, mac)]))
+            script.configure_static_addresses(config_dir, [(ip, mac)], []))
 
 
 class TestUpdateInterfacesFile(MAASTestCase):

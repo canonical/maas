@@ -11,8 +11,8 @@ the network.  If not, it will log a warning and exit without error, so that
 it can be run on any operating system regardless of whether it is supported.
 
 At the moment, the script does only one job: on Ubuntu systems it writes
-`/etc/network/` configuration to set static IPv6 addresses for network
-interfaces.
+`/etc/network/` configuration to set static IPv6 addresses and gateways for
+network interfaces that connect to IPv6 networks.
 """
 
 from __future__ import (
@@ -69,6 +69,13 @@ def prepare_parser():
             "a given MAC address.  Pass an IP=MAC address pair, separated by "
             "an equals sign.  This option may be used multiple times."))
     parser.add_argument(
+        '--gateway', '-g', type=split_ip_mac_pair, action='append',
+        default=[],
+        help=(
+            "Set a router IP address for the network interface that has a "
+            "given MAC address.  Pass an IP=MAC address pair, separated by "
+            "an equals sign.  This option may be used multiple times."))
+    parser.add_argument(
         '--config-dir', '-d', default='/etc/network',
         help=(
             "Location where this script can write configuration snippets "
@@ -120,12 +127,16 @@ def map_interfaces_by_mac():
 
 
 def map_addresses_by_interface(interfaces_by_mac, ip_mac_pairs):
-    """Map network interfaces to the static addresses they should receive.
+    """Map network interfaces to IP addresses.
+
+    Use this to transform a sequence of IP/MAC pairs as given on the command
+    line into a mapping from network interface names to lists of IP addresses.
 
     :param interfaces_by_mac: A dict as produced by `map_interfaces_by_mac`.
     :param ip_mac_pairs: An iterable of IP/MAC address pairs, as tuples.
         The MAC addresses must be normalised.
-    :return: A dict mapping interface names to their static IP addresses.
+    :return: A dict mapping interface names to the lists of IP addresses that
+        correspond to those interfaces' MAC addresses.
     """
     mapping = {}
     for ip, mac in ip_mac_pairs:
@@ -136,20 +147,23 @@ def map_addresses_by_interface(interfaces_by_mac, ip_mac_pairs):
     return mapping
 
 
-def compose_config_stanza(interface, ips):
+def compose_config_stanza(interface, ips, gateways):
     """Return a configuration stanza for a given network interface.
 
     :param interface: Network interface name.
     :param ips: A list of IPv6 addresses.
+    :param gateways: A list of router IP addresses.
     :return: Text of an `/etc/network/interfaces.d` configuration stanza.
     """
     return '\n'.join(
         ["iface %s inet6 static" % interface] +
         ["\tnetmask 64"] +
-        ["\taddress %s" % ip for ip in ips])
+        ["\taddress %s" % ip for ip in ips] +
+        ["\tgateway %s" % gateway for gateway in gateways])
 
 
-def compose_config_file(interfaces_by_mac, addresses_by_interface):
+def compose_config_file(interfaces_by_mac, addresses_by_interface,
+                        gateways_by_interface):
     """Return a network interfaces configuration file.
 
     :param interfaces_by_mac: Dict mapping MAC addresses to lists of
@@ -157,10 +171,12 @@ def compose_config_file(interfaces_by_mac, addresses_by_interface):
     :param addresses_by_interface: Dict mapping MAC addresses to lists of
         static IP addresses that should be assigned to the interfaces
         associated with those MACs.
+    :param gateways_by_interface: Dict mapping interface names
     :return: Text of an `/etc/network/interfaces.d` snippet.
     """
     stanzas = '\n\n'.join(
-        compose_config_stanza(interface, ips)
+        compose_config_stanza(
+            interface, ips, gateways_by_interface.get(interface, []))
         for interface, ips in addresses_by_interface.items())
     return (
         "# MAAS-generated static interface configurations.\n\n%s\n"
@@ -185,7 +201,7 @@ def write_file(path, text, encoding='utf-8'):
     rename(temp_file, path)
 
 
-def configure_static_addresses(config_dir, ip_mac_pairs):
+def configure_static_addresses(config_dir, ip_mac_pairs, gateway_mac_pairs):
     """Write interfaces config file for static addresses.
 
     :param config_dir: Location of interfaces config directory.
@@ -199,9 +215,11 @@ def configure_static_addresses(config_dir, ip_mac_pairs):
     interfaces_by_mac = map_interfaces_by_mac()
     addresses_by_interface = map_addresses_by_interface(
         interfaces_by_mac, ip_mac_pairs)
+    gateways_by_interface = map_addresses_by_interface(
+        interfaces_by_mac, gateway_mac_pairs)
     interfaces_file = locate_maas_config(config_dir)
     config = compose_config_file(
-        addresses_by_interface, addresses_by_interface)
+        addresses_by_interface, addresses_by_interface, gateways_by_interface)
     write_file(interfaces_file, config)
     return sorted(addresses_by_interface.keys())
 
@@ -242,7 +260,8 @@ def restart_interfaces(interfaces):
 
 if __name__ == "__main__":
     args = prepare_parser().parse_args()
-    interfaces = configure_static_addresses(args.config_dir, args.static_ip)
+    interfaces = configure_static_addresses(
+        args.config_dir, args.static_ip, args.gateway)
     if len(interfaces) > 0:
         if args.update_interfaces:
             update_interfaces_file(args.config_dir)

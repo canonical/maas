@@ -56,6 +56,7 @@ from maasserver.preseed import (
     get_preseed_template,
     get_preseed_type_for,
     get_supported_purposes_for_node,
+    list_gateways_and_macs,
     load_preseed_template,
     pick_cluster_controller_address,
     PreseedTemplate,
@@ -669,6 +670,37 @@ class TestRenderPreseedWindows(
         self.assertIsInstance(preseed, bytes)
 
 
+class TestListGatewaysAndMACs(MAASServerTestCase):
+
+    def test__lists_known_gateways(self):
+        network = factory.make_ipv4_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        gateway = factory.pick_ip_in_network(network)
+        mac = node.get_primary_mac()
+        mac.cluster_interface.router_ip = gateway
+        mac.cluster_interface.save()
+        self.assertEqual(
+            [(gateway, mac.mac_address)],
+            list_gateways_and_macs(node))
+
+    def test__skips_unknown_cluster_interfaces(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        mac.cluster_interface = None
+        mac.save()
+        self.assertEqual([], list_gateways_and_macs(node))
+
+    def test__skips_unknown_routers(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac()
+        mac.cluster_interface.router_ip = None
+        mac.cluster_interface.management = (
+            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        mac.cluster_interface.save()
+        self.assertEqual([], list_gateways_and_macs(node))
+
+
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__skips_if_script_not_installed(self):
@@ -740,6 +772,33 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         late_commands = yaml.safe_load(late_commands_yaml)
         [command] = list(late_commands['late_commands'].values())
         self.assertNotIn(ip, ' '.join(command))
+
+    def test__includes_IPv6_gateway_addresses(self):
+        network = factory.make_ipv6_network()
+        gateway = factory.pick_ip_in_network(network)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        mac.cluster_interface.router_ip = gateway
+        mac.cluster_interface.save()
+        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
+        late_commands = yaml.safe_load(late_commands_yaml)
+        [command] = list(late_commands['late_commands'].values())
+        self.assertIn('--gateway=%s=%s' % (gateway, mac), command)
+
+    def test__ignores_IPv4_gateway_addresses(self):
+        network = factory.make_ipv4_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        gateway = factory.pick_ip_in_network(network)
+        mac.cluster_interface.router_ip = gateway
+        mac.cluster_interface.save()
+        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
+        late_commands = yaml.safe_load(late_commands_yaml)
+        [command] = list(late_commands['late_commands'].values())
+        self.assertNotIn('--gateway', ' '.join(command))
+        self.assertNotIn(gateway, ' '.join(command))
 
 
 class TestGetCurtinUserData(

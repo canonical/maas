@@ -93,6 +93,19 @@ def get_enlist_userdata(nodegroup=None):
         USERDATA_TYPE.ENLIST, nodegroup=nodegroup)
 
 
+def list_gateways_and_macs(node):
+    """Return a node's router addresses, as IP/MAC pairs.
+
+    In each returned pair, the MAC address is that of a network interface
+    on the node.  The IP address is a router address for that interface.
+    """
+    return [
+        (mac.cluster_interface.router_ip, mac.mac_address)
+        for mac in node.macaddress_set.filter(cluster_interface__isnull=False)
+        if mac.cluster_interface.router_ip not in (None, '')
+        ]
+
+
 def compose_curtin_network_preseed(node):
     """Return a list of curtin preseeds for configuring a node's networking.
 
@@ -133,6 +146,12 @@ def compose_curtin_network_preseed(node):
         for ip, mac in node.get_static_ip_mappings()
         if IPAddress(ip).version == 6
         ]
+    # Compile IPv6 gateway addresses to be passed to the script.
+    gateway_args = [
+        '--gateway=%s=%s' % (gateway, mac)
+        for gateway, mac in list_gateways_and_macs(node)
+        if IPAddress(gateway).version == 6
+        ]
     # Preseed: run the script, from within the installed filesystem.
     configure = {
         'late_commands': {
@@ -142,7 +161,7 @@ def compose_curtin_network_preseed(node):
                 '--',
                 '/usr/local/bin/maas_configure_interfaces.py',
                 '--update-interfaces',
-                ] + static_ip_args,
+                ] + static_ip_args + gateway_args,
             },
         }
     return [yaml.safe_dump(write_files), yaml.safe_dump(configure)]
