@@ -1937,18 +1937,24 @@ class TestClaimStaticIPAddresses(MAASTestCase):
 class TestDeploymentStatus(MAASServerTestCase):
     """Tests for node.get_deployment_status."""
 
-    def test_returns_deployed_when_deployed(self):
-        node = factory.make_Node(owner=factory.make_User(), netboot=False)
-        self.assertEqual("Deployed", node.get_deployment_status())
-
     def test_returns_deploying_when_deploying(self):
-        node = factory.make_Node(owner=factory.make_User(), netboot=True)
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         self.assertEqual("Deploying", node.get_deployment_status())
 
-    def test_returns_broken_when_broken(self):
-        node = factory.make_Node(status=NODE_STATUS.BROKEN)
-        self.assertEqual("Broken", node.get_deployment_status())
+    def test_returns_deployed_when_deployed(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.assertEqual("Deployed", node.get_deployment_status())
 
-    def test_returns_unused_when_unused(self):
-        node = factory.make_Node(owner=None)
-        self.assertEqual("Unused", node.get_deployment_status())
+    def test_returns_failed_deployment_when_failed_deployment(self):
+        node = factory.make_Node(status=NODE_STATUS.FAILED_DEPLOYMENT)
+        self.assertEqual("Failed deployment", node.get_deployment_status())
+
+    def test_returns_not_deploying_otherwise(self):
+        status = factory.pick_enum(
+            NODE_STATUS, but_not=[
+                NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED,
+                NODE_STATUS.FAILED_DEPLOYMENT
+                ]
+            )
+        node = factory.make_Node(status=status)
+        self.assertEqual("Not in deployment", node.get_deployment_status())

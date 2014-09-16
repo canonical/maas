@@ -1272,13 +1272,12 @@ class Node(CleanSave, TimestampedModel):
 
     def get_deployment_status(self):
         """Return a string repr of the deployment status of this node."""
-        if self.status == NODE_STATUS.BROKEN:
-            return "Broken"
-        if self.owner is None:
-            return "Unused"
-        if self.netboot:
-            return "Deploying"
-        return "Deployed"
+        mapping = {
+            NODE_STATUS.DEPLOYED: "Deployed",
+            NODE_STATUS.DEPLOYING: "Deploying",
+            NODE_STATUS.FAILED_DEPLOYMENT: "Failed deployment",
+        }
+        return mapping.get(self.status, "Not in deployment")
 
     def split_arch(self):
         """Return architecture and subarchitecture, as a tuple."""
