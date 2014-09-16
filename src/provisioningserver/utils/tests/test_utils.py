@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from collections import Iterator
 from cStringIO import StringIO
 import json
 import os
@@ -47,6 +48,7 @@ from provisioningserver.utils import (
     create_node,
     escape_py_literal,
     filter_dict,
+    flatten,
     get_cluster_config,
     locate_config,
     maas_custom_config_markers,
@@ -58,6 +60,7 @@ from provisioningserver.utils import (
 from testtools.matchers import (
     DirExists,
     EndsWith,
+    IsInstance,
     )
 from twisted.internet import defer
 
@@ -656,3 +659,41 @@ class TestGetClusterConfig(MAASTestCase):
         result = get_cluster_config(path)
         self.assertThat(open_mock, MockCalledOnceWith(path))
         self.assertItemsEqual(self.expected, result)
+
+
+class TestFlatten(MAASTestCase):
+
+    def test__returns_iterator(self):
+        self.assertThat(flatten(()), IsInstance(Iterator))
+
+    def test__returns_empty_when_nothing_provided(self):
+        self.assertItemsEqual([], flatten([]))
+        self.assertItemsEqual([], flatten(()))
+        self.assertItemsEqual([], flatten({}))
+        self.assertItemsEqual([], flatten(set()))
+        self.assertItemsEqual([], flatten(([], (), {}, set())))
+        self.assertItemsEqual([], flatten(([[]], ((),))))
+
+    def test__flattens_list(self):
+        self.assertItemsEqual(
+            [1, 2, 3, "abc"], flatten([1, 2, 3, "abc"]))
+
+    def test__flattens_nested_lists(self):
+        self.assertItemsEqual(
+            [1, 2, 3, "abc"], flatten([[[1, 2, 3, "abc"]]]))
+
+    def test__flattens_arbitrarily_nested_lists(self):
+        self.assertItemsEqual(
+            [1, "two", "three", 4, 5, 6], flatten(
+                [[1], ["two", "three"], [4], [5, 6]]))
+
+    def test__flattens_other_iterables(self):
+        self.assertItemsEqual(
+            [1, 2, 3.3, 4, 5, 6], flatten([1, 2, {3.3, 4, (5, 6)}]))
+
+    def test__treats_string_like_objects_as_leaves(self):
+        # Strings are iterable, but we know they cannot be flattened further.
+        self.assertItemsEqual(["abcdef"], flatten("abcdef"))
+
+    def test__takes_star_args(self):
+        self.assertItemsEqual("abcdef", flatten("a", "b", "c", "d", "e", "f"))

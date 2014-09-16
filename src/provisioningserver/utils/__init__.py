@@ -16,6 +16,7 @@ __all__ = [
     "compose_URL",
     "create_node",
     "filter_dict",
+    "flatten",
     "get_cluster_config",
     "import_settings",
     "locate_config",
@@ -25,6 +26,11 @@ __all__ = [
     "write_custom_config_section",
     ]
 
+from collections import Iterable
+from itertools import (
+    chain,
+    imap,
+    )
 import os
 from pipes import quote
 import re
@@ -415,3 +421,30 @@ def warn_deprecated(alternative=None):
     else:
         message = "%s; %s" % (message, alternative)
     warn(message, DeprecationWarning, 1)
+
+
+def flatten(*things):
+    """Recursively flatten iterable parts of `things`.
+
+    For example::
+
+      >>> sorted(flatten([1, 2, {3, 4, (5, 6)}]))
+      [1, 2, 3, 4, 5, 6]
+
+    :returns: An iterator.
+    """
+    def _flatten(things):
+        if isinstance(things, basestring):
+            # String-like objects are treated as leaves; iterating through a
+            # string yields more strings, each of which is also iterable, and
+            # so on, until the heat-death of the universe.
+            return iter((things,))
+        elif isinstance(things, Iterable):
+            # Recurse and merge in order to flatten nested structures.
+            return chain.from_iterable(imap(_flatten, things))
+        else:
+            # This is a leaf; return an single-item iterator so that it can be
+            # chained with any others.
+            return iter((things,))
+
+    return _flatten(things)
