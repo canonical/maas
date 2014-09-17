@@ -461,8 +461,10 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node(owner=self.logged_in_user, disable_ipv4=False)
         nodegroup = node.nodegroup
         macs = [
-            factory.make_MACAddress(node=node).mac_address for _ in range(2)]
-        ips = [factory.getRandomIPAddress() for _ in range(2)]
+            factory.make_MACAddress(node=node).mac_address
+            for _ in range(2)
+            ]
+        ips = [factory.make_ipv4_address() for _ in range(2)]
         for mac, ip in zip(macs, ips):
             factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=ip)
         node_link = reverse('node-view', args=[node.system_id])
