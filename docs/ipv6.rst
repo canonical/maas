@@ -82,12 +82,12 @@ whether they should request a stateful IP address from a DHCP server.  Since a
 network interface can have any number of IPv6 addresses even on a single
 subnet, several of these address assignment mechanisms can be combined.
 
-MAAS relies on RAs to inform nodes about available routes on your IPv6 network,
-even if you have configured a default gateway in MAAS.  So, if you want IPv6
-routing outside the local network for your nodes, make sure that routes are
-being advertised.  If your router does not provide RAs, another option is to
-install and configure ``radvd`` somewhere on the network to advertise its
-route.
+MAAS configures your nodes' default IPv6 route to use the router configured on
+the cluster interface, if you have one.  If that is not what you want, or if
+you have multiple routers, you may still want route advertisements configured
+to make nodes obtain configuration over DHCPv6.  If your router does not
+provide RAs, another option is to install and configure ``radvd`` somewhere on
+the network to advertise its route.
 
 
 Other installers and operating systems
