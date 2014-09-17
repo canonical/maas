@@ -681,7 +681,32 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
         mac.cluster_interface.router_ip = gateway
         mac.cluster_interface.save()
         self.assertEqual(
-            [(gateway, mac.mac_address)],
+            {(gateway, mac.mac_address)},
+            list_gateways_and_macs(node))
+
+    def test__lists_gateways_from_all_associated_cluster_interfaces(self):
+        # XXX jtv 2014-09-16 bug=1358130: There's a quick-and-dirty solution
+        # where all cluster interfaces on the same cluster network interface
+        # are all considered connected to the same node MACs.  And so,
+        # list_gateways_and_macs must respect that association, rather than
+        # just query MACAddress.cluster_interface.
+        ipv4_network = factory.make_ipv4_network()
+        ipv6_network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=ipv4_network)
+        ipv4_gateway = factory.pick_ip_in_network(ipv4_network)
+        mac = node.get_primary_mac()
+        mac.cluster_interface.router_ip = ipv4_gateway
+        mac.cluster_interface.save()
+        ipv6_gateway = factory.pick_ip_in_network(ipv6_network)
+        factory.make_NodeGroupInterface(
+            node.nodegroup, interface=mac.cluster_interface.interface,
+            network=ipv6_network, router_ip=ipv6_gateway)
+        self.assertEqual(
+            {
+                (ipv4_gateway, mac.mac_address),
+                (ipv6_gateway, mac.mac_address),
+            },
             list_gateways_and_macs(node))
 
     def test__skips_unknown_cluster_interfaces(self):
@@ -689,7 +714,7 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
         mac = node.get_primary_mac()
         mac.cluster_interface = None
         mac.save()
-        self.assertEqual([], list_gateways_and_macs(node))
+        self.assertEqual(set(), list_gateways_and_macs(node))
 
     def test__skips_unknown_routers(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
@@ -698,7 +723,7 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
         mac.cluster_interface.management = (
             NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         mac.cluster_interface.save()
-        self.assertEqual([], list_gateways_and_macs(node))
+        self.assertEqual(set(), list_gateways_and_macs(node))
 
 
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):

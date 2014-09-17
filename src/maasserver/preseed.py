@@ -94,16 +94,17 @@ def get_enlist_userdata(nodegroup=None):
 
 
 def list_gateways_and_macs(node):
-    """Return a node's router addresses, as IP/MAC pairs.
+    """Return a node's router addresses, as a set of IP/MAC pairs.
 
     In each returned pair, the MAC address is that of a network interface
     on the node.  The IP address is a router address for that interface.
     """
-    return [
-        (mac.cluster_interface.router_ip, mac.mac_address)
-        for mac in node.macaddress_set.filter(cluster_interface__isnull=False)
-        if mac.cluster_interface.router_ip not in (None, '')
-        ]
+    result = set()
+    for mac in node.macaddress_set.filter(cluster_interface__isnull=False):
+        for cluster_interface in mac.get_cluster_interfaces():
+            if cluster_interface.router_ip not in (None, ''):
+                result.add((cluster_interface.router_ip, mac.mac_address))
+    return result
 
 
 def compose_curtin_network_preseed(node):
