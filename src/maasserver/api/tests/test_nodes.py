@@ -49,6 +49,7 @@ from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Contains,
     Equals,
+    HasLength,
     MatchesListwise,
     )
 
@@ -1293,3 +1294,69 @@ class TestDeploymentStatus(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual("Unknown node(s): foo, bar.", response.content)
+
+
+class TestBackwardCompatiblityFixNodesAPI(APITestCase):
+    """Tests for backward-compatibility fixes of the node and nodes API.
+
+    Before adding the 'Deploying', 'Deployed' and 'Failed deployment' states
+    all of this different states were folded into the state 'Allocated'.
+    In the 1.0 API, we continue exposing these statuses as one status to
+    be backward compatible.
+
+    All the API methods returning a node or list of nodes should obey this
+    rule but here we only test some chosen methods as proof that the fix
+    is applied across the board.
+    """
+
+    scenarios = [
+        ('allocated', dict(status=NODE_STATUS.ALLOCATED)),
+        ('deploying', dict(status=NODE_STATUS.DEPLOYING)),
+        ('deployed', dict(status=NODE_STATUS.DEPLOYED)),
+        ('failed_deployment', dict(status=NODE_STATUS.FAILED_DEPLOYMENT)),
+        ]
+
+    old_allocated_status = 6
+
+    def get_node_uri(self, node):
+        """Get the API URI for a node."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def get_nodes_uri(self):
+        """Get the API URI for nodes."""
+        return reverse('nodes_handler')
+
+    def test_GET_list_allocated_folds_status(self):
+        node = factory.make_Node(
+            status=self.status, owner=self.logged_in_user,
+            token=get_auth_tokens(self.logged_in_user)[0])
+
+        response = self.client.get(self.get_nodes_uri(), {
+            'op': 'list_allocated'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertThat(parsed_result, HasLength(1))
+        result_node = parsed_result[0]
+        self.assertEqual(node.system_id, result_node.get('system_id'))
+        self.assertEqual(self.old_allocated_status, result_node.get('status'))
+
+    def test_GET_node_folds_status(self):
+        node = factory.make_Node(status=self.status)
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(node.system_id, parsed_result['system_id'])
+        self.assertEqual(self.old_allocated_status, parsed_result['status'])
+
+    def test_PUT_updates_node_folds_status(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=self.status,
+            architecture=make_usable_architecture(self))
+        response = self.client_put(
+            self.get_node_uri(node), {'hostname': factory.make_name('host')})
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(self.old_allocated_status, parsed_result['status'])

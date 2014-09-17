@@ -135,6 +135,23 @@ class NodeHandler(OperationsHandler):
     model = Node
     fields = DISPLAYED_NODE_FIELDS
 
+    @classmethod
+    def status(handler, node):
+        """Backward-compatibility layer: fold deployment-related statuses.
+
+        Before the lifecycle of a node got reworked, 'allocated' meant a lot
+        of things (allocated, deploying and deployed).  This is a backward
+        compatiblity layer so that clients relying on the old behavior won't
+        break.
+        """
+        old_allocated_status_aliases = [
+            NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYING,
+            NODE_STATUS.DEPLOYED, NODE_STATUS.FAILED_DEPLOYMENT]
+        if node.status in old_allocated_status_aliases:
+            return 6  # Old allocated status.
+        else:
+            return node.status
+
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.
     @classmethod
