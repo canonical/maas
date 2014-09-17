@@ -18,6 +18,7 @@ __all__ = [
     ]
 
 
+from apiclient.creds import convert_tuple_to_string
 from django.db.models import (
     CharField,
     ForeignKey,
@@ -31,6 +32,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.models.user import get_creds_tuple
 from maasserver.refresh_worker import refresh_worker
 from maasserver.rpc import getClientFor
 from piston.models import (
@@ -127,6 +129,10 @@ class NodeGroupManager(Manager):
         for nodegroup in accepted_nodegroups:
             nodegroup.import_boot_images()
 
+    def all_accepted(self):
+        """Return the set of all accepted node-groups."""
+        return self.filter(status=NODEGROUP_STATUS.ACCEPTED)
+
 
 NODEGROUP_CLUSTER_NAME_TEMPLATE = "Cluster %(uuid)s"
 
@@ -166,6 +172,11 @@ class NodeGroup(TimestampedModel):
     # controller.
     maas_url = CharField(
         blank=True, editable=False, max_length=255, default='')
+
+    @property
+    def api_credentials(self):
+        """Return a string containing credentials for this nodegroup."""
+        return convert_tuple_to_string(get_creds_tuple(self.api_token))
 
     def __repr__(self):
         return "<NodeGroup %s>" % self.uuid

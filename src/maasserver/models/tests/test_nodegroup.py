@@ -15,11 +15,13 @@ __metaclass__ = type
 __all__ = []
 
 
+from apiclient.creds import convert_string_to_tuple
 from django.db.models.signals import post_save
 import django.dispatch
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODEGROUP_STATUS,
+    NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
@@ -59,7 +61,9 @@ from provisioningserver.utils.enum import map_enum
 from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
+    Equals,
     GreaterThan,
+    IsInstance,
     )
 from twisted.internet import defer
 
@@ -243,6 +247,15 @@ class TestNodeGroupManager(MAASServerTestCase):
                 factory.make_NodeGroup(status=status)
         NodeGroup.objects.refresh_workers()
         self.assertEqual(0, nodegroup_module.refresh_worker.call_count)
+
+    def test_all_accepted_only_includes_accepted_nodegroups(self):
+        nodegroups = {
+            status: factory.make_NodeGroup(status=status)
+            for status, _ in NODEGROUP_STATUS_CHOICES
+        }
+        self.assertItemsEqual(
+            [nodegroups[NODEGROUP_STATUS.ACCEPTED]],
+            NodeGroup.objects.all_accepted())
 
 
 class TestNodeGroup(MAASServerTestCase):
@@ -636,3 +649,12 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_ucsm,
             url, username, password)
+
+    def test_api_credentials(self):
+        nodegroup = factory.make_NodeGroup()
+        self.assertThat(nodegroup.api_credentials, IsInstance(unicode))
+        consumer_key, token_key, token_secret = (
+            convert_string_to_tuple(nodegroup.api_credentials))
+        self.expectThat(consumer_key, Equals(nodegroup.api_token.consumer.key))
+        self.expectThat(token_key, Equals(nodegroup.api_token.key))
+        self.expectThat(token_secret, Equals(nodegroup.api_token.secret))
