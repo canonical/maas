@@ -16,14 +16,41 @@ __all__ = [
     'Event',
     ]
 
+import logging
 
 from django.db.models import (
     ForeignKey,
+    Manager,
     TextField,
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.eventtype import EventType
+from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+class EventManager(Manager):
+    """A utility to manage the collection of Events."""
+
+    def register_event_and_event_type(self, system_id, type_name,
+                                      type_description='',
+                                      type_level=logging.INFO,
+                                      event_description=''):
+        """Register EventType if it does not exist, then register the Event."""
+        # Check if event type is registered.
+        try:
+            event_type = EventType.objects.get(name=type_name)
+        except EventType.DoesNotExist:
+            # Create the event type.
+            event_type = EventType.objects.create(
+                name=type_name, description=type_description,
+                level=type_level)
+
+        node = Node.objects.get(system_id=system_id)
+
+        Event.objects.create(
+            node=node, type=event_type, description=event_description)
 
 
 class Event(CleanSave, TimestampedModel):
@@ -39,6 +66,8 @@ class Event(CleanSave, TimestampedModel):
     node = ForeignKey('Node', null=False, editable=False)
 
     description = TextField(default='', blank=True, editable=False)
+
+    objects = EventManager()
 
     class Meta(DefaultMeta):
         verbose_name = "Event record"

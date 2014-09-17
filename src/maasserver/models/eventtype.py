@@ -41,7 +41,7 @@ class EventType(CleanSave, TimestampedModel):
     """A type for events.
 
     :ivar name: The event type's identifier.
-    :ivar name: A human-readable description of the event type.
+    :ivar description: A human-readable description of the event type.
     :ivar level: Severity of the event.  These match the standard
         Python log levels; higher values are more significant.
     """
