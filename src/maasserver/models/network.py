@@ -250,7 +250,7 @@ class Network(CleanSave, Model):
 
     dns_servers = CharField(
         blank=True, editable=True, null=True, max_length=255,
-        help_text="Space separated list of DNS server addresses that this "
+        help_text="Space-separated list of DNS server addresses that this "
                   "network may use.")
 
     vlan_tag = PositiveSmallIntegerField(
@@ -349,10 +349,21 @@ class Network(CleanSave, Model):
             raise ValidationError(
                 {'netmask': ["This netmask leaves no room for IP addresses."]})
 
+    def clean_default_gateway(self):
+        if self.default_gateway not in (None, ''):
+            gateway_addr = IPAddress(self.default_gateway)
+            ip_addr = IPAddress(self.ip)
+            if gateway_addr.version != ip_addr.version:
+                message = (
+                    "You can't mix IPv4 and IPv6 anywhere in the same network "
+                    "definition.")
+                raise ValidationError({'default_gateway': [message]})
+
     def clean_fields(self, *args, **kwargs):
         super(Network, self).clean_fields(*args, **kwargs)
         self.clean_vlan_tag()
         self.clean_netmask()
+        self.clean_default_gateway()
 
     def clean(self):
         super(Network, self).clean()

@@ -1167,6 +1167,7 @@ class NodeTest(MAASServerTestCase):
     def test_mac_addresses_on_managed_interfaces_returns_only_managed(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac_with_interface = node.get_primary_mac()
 
         mac_with_no_interface = factory.make_MACAddress(node=node)
         unmanaged_interface = factory.make_NodeGroupInterface(
@@ -1177,7 +1178,7 @@ class NodeTest(MAASServerTestCase):
         ignore_unused(mac_with_no_interface, mac_with_unmanaged_interface)
 
         observed = node.mac_addresses_on_managed_interfaces()
-        self.assertItemsEqual([node.get_primary_mac()], observed)
+        self.assertItemsEqual([mac_with_interface], observed)
 
     def test_mac_addresses_on_managed_interfaces_returns_empty_if_none(self):
         node = factory.make_Node(mac=True)

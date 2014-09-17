@@ -28,6 +28,7 @@ from maasserver.models.network import (
     VLANSpecifier,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from mock import sentinel
 from netaddr import (
@@ -383,6 +384,17 @@ class TestNetwork(MAASServerTestCase):
         network.ip = unicode(factory.make_ipv6_address())
         network.netmask = '255.255.255.0'
         self.assertRaises(ValidationError, network.save)
+
+    def test_default_gateway_validation_errors_on_mixed_IPv4_and_IPv6(self):
+        network = factory.make_Network(network=factory.make_ipv6_network())
+        network.default_gateway = factory.make_ipv4_address()
+        self.assertRaises(ValidationError, network.save)
+
+    def test_default_gateway_validation_accepts_blank(self):
+        network = factory.make_Network(network=factory.make_ipv6_network())
+        network.default_gateway = None
+        network.save()
+        self.assertIsNone(reload_object(network).default_gateway)
 
     def test_unicode_returns_cidr_if_tag_is_zero(self):
         cidr = '10.9.0.0/16'
