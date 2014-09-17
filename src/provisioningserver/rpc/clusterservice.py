@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 import json
+import logging
 import random
 from urlparse import urlparse
 
@@ -66,6 +67,7 @@ from provisioningserver.rpc.timers import (
     cancel_timer,
     start_timers,
     )
+from provisioningserver.tasks import log_call
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
@@ -171,6 +173,7 @@ class Cluster(RPCProtocol):
                 consumer_key, token_key, token_secret, metadata_url),
         }
 
+    @log_call(level=logging.DEBUG)
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):
         """Turn a node on."""
@@ -179,6 +182,7 @@ class Cluster(RPCProtocol):
             context=context)
         return {}
 
+    @log_call(level=logging.DEBUG)
     @cluster.PowerOff.responder
     def power_off(self, system_id, hostname, power_type, context):
         """Turn a node off."""

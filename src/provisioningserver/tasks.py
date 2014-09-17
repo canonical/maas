@@ -56,7 +56,7 @@ celery_config = app_or_default().conf
 maaslog = get_maas_logger("tasks")
 
 
-def log_task_events(level=logging.INFO):
+def log_call(level=logging.INFO):
     """Log to the maaslog that something happened with a task.
 
     :param event: The event that we want to log.
@@ -97,7 +97,7 @@ def log_exception_text(func):
 
 
 @task
-@log_task_events()
+@log_call()
 @log_exception_text
 def refresh_secrets(**kwargs):
     """Update the worker's knowledge of various secrets it needs.
@@ -152,7 +152,7 @@ RNDC_COMMAND_RETRY_DELAY = 2
 
 
 @task(max_retries=RNDC_COMMAND_MAX_RETRY, queue=celery_config.WORKER_QUEUE_DNS)
-@log_task_events()
+@log_call()
 @log_exception_text
 def rndc_command(arguments, retry=False, callback=None):
     """Use rndc to execute a command.
@@ -177,7 +177,7 @@ def rndc_command(arguments, retry=False, callback=None):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
-@log_task_events()
+@log_call()
 @log_exception_text
 def write_full_dns_config(zones=None, callback=None, **kwargs):
     """Write out the DNS configuration files: the main configuration
@@ -201,7 +201,7 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
-@log_task_events()
+@log_call()
 @log_exception_text
 def write_dns_config(zones=(), callback=None, **kwargs):
     """Write out the DNS configuration file.
@@ -220,7 +220,7 @@ def write_dns_config(zones=(), callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
-@log_task_events()
+@log_call()
 @log_exception_text
 def write_dns_zone_config(zones, callback=None, **kwargs):
     """Write out DNS zones.
@@ -238,7 +238,7 @@ def write_dns_zone_config(zones, callback=None, **kwargs):
 
 
 @task(queue=celery_config.WORKER_QUEUE_DNS)
-@log_task_events()
+@log_call()
 @log_exception_text
 def setup_rndc_configuration(callback=None):
     """Write out the two rndc configuration files (rndc.conf and
@@ -258,7 +258,7 @@ def setup_rndc_configuration(callback=None):
 
 
 @task
-@log_task_events(level=logging.DEBUG)
+@log_call(level=logging.DEBUG)
 @log_exception_text
 def report_boot_images():
     """For master worker only: report available netboot images."""
@@ -278,7 +278,7 @@ UPDATE_NODE_TAGS_RETRY_DELAY = 2
 
 
 @task(max_retries=UPDATE_NODE_TAGS_MAX_RETRY)
-@log_task_events()
+@log_call()
 @log_exception_text
 def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
     """Update the nodes for a new/changed tag definition.

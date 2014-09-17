@@ -52,7 +52,7 @@ def power_nodes(command, nodes):
     deferreds = {}
     for node in nodes:
         system_id, hostname, cluster_uuid, power_info = node
-        maaslog.debug("%s: Asking cluster to power on", hostname)
+        maaslog.debug("%s: Asking cluster to power on node.", hostname)
         deferreds[system_id] = getClientFor(cluster_uuid).addCallback(
             call_power_command, system_id=system_id, hostname=hostname,
             power_type=power_info.power_type,

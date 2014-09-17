@@ -965,7 +965,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         # The commissioning profile is handled in start_nodes.
         maaslog.info(
-            "%s: Starting commissioning for", self.hostname)
+            "%s: Starting commissioning.", self.hostname)
         Node.objects.start_nodes(
             [self.system_id], user, user_data=commissioning_user_data)
 
