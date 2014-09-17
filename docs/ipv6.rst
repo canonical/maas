@@ -14,7 +14,7 @@ MAAS has limited IPv6 support for networking nodes.  It works much like IPv4
 support, but with a number of limitations:
 
 * Nodes still boot, register, and install using the IPv4 network.
-* IPv6 addresses are only configured when using the Ubuntu fast installer.
+* IPv6 addresses are only configured when using the Ubuntu "fast" installer.
 * Most BMCs can only be controlled (e.g. to power nodes on/off) using IPv4.
 * MAAS still uses IPv4 for its internal operation.
 * For now, MAAS only supports IPv6 on networks where it also manages IPv4 DHCP.
@@ -52,12 +52,14 @@ Configuring your IPv6 subnet
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When you configure your IPv6 cluster interface, be sure to define a static IP
-address range.  This is where deployed nodes on the subnet will get their
-static addresses.
+address range.  Deployed nodes on the subnet will get static addresses in this
+range.
 
 IPv6 networks are normally 64 bits wide, so you can be generous with the
 ranges' sizes.  It also means that you can leave the netmask field blank.
-Leave the broadcast address field blank as well.
+
+(There are no broadcast addresses in IPv6, so leave the broadcast address field
+blank as well.)
 
 You may want MAAS to manage DHCP and DNS, but it's not required.  In fact nodes
 do not need a DHCP server at all for IPv6; MAAS configures static IPv6
