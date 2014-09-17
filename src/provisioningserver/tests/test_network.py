@@ -197,6 +197,19 @@ class TestNetworks(MAASTestCase):
             [ipv4_addr, ipv6_addr],
             [interface['ip'] for interface in interfaces])
 
+    def test_discover_networks_ignores_link_local_IPv4_addresses(self):
+        interface = factory.make_name('eth')
+        ip = factory.pick_ip_in_network(IPNetwork('169.254.0.0/16'))
+        self.patch_netifaces({interface: {AF_INET: [make_inet_address(ip)]}})
+        self.assertEqual([], network.discover_networks())
+
+    def test_discover_networks_ignores_link_local_IPv6_addresses(self):
+        interface = factory.make_name('eth')
+        ip = factory.pick_ip_in_network(IPNetwork('fe80::/10'))
+        self.patch(network, 'REVEAL_IPv6', True)
+        self.patch_netifaces({interface: {AF_INET6: [make_inet_address(ip)]}})
+        self.assertEqual([], network.discover_networks())
+
     def test_discover_networks_runs_in_real_life(self):
         self.reveal_IPv6(True)
         interfaces = network.discover_networks()

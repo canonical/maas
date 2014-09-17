@@ -60,8 +60,12 @@ class AttachedNetwork:
         if self.ip is None:
             # Interface has no address.  Not usable.
             return False
-        if IPAddress(self.ip).version == 4 and not self.subnet_mask:
+        ipaddress = IPAddress(self.ip)
+        if ipaddress.version == 4 and not self.subnet_mask:
             # IPv4 network has no broadcast address configured.  Not usable.
+            return False
+        if ipaddress.is_link_local():
+            # Link-local address.  MAAS doesn't know how to manage these.
             return False
         # Met all these requirements?  Then this is a relevant network.
         return True
