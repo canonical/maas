@@ -30,6 +30,7 @@ from maasserver import (
     dhcp,
     eventloop,
     locks,
+    timer_connect,
     )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
@@ -483,6 +484,8 @@ class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
+        self.patch(timer_connect, 'TIMER_CANCEL_CONNECT', False)
+
         system_id = yield deferToThread(self.create_deploying_node)
 
         error_description = factory.make_name('error-description')

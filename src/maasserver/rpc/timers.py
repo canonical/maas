@@ -42,5 +42,7 @@ def handle_timer_expired(id, context):
             pass
         else:
             node.handle_timer_expired(context)
-    # Unknown timer, log and exit.
-    maaslog.error("Timer of an unknown type (%s) expired", context['type'])
+    else:
+        # Unknown timer, log and exit.
+        maaslog.error(
+            "Timer of an unknown type (%s) expired", context['type'])

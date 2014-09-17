@@ -390,7 +390,7 @@ class TestMetadataUserData(DjangoTestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
-class TestMetadataUserDataStateChanges(DjangoTestCase):
+class TestMetadataUserDataStateChanges(MAASServerTestCase):
     """Tests for the metadata user-data API endpoint."""
 
     def test_request_does_not_cause_status_change_if_not_deploying(self):

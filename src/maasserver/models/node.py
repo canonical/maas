@@ -107,7 +107,10 @@ from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.enum import TIMER_TYPE
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.rpc.cluster import StartTimers
+from provisioningserver.rpc.cluster import (
+    CancelTimer,
+    StartTimers,
+    )
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import reactor_sync
@@ -769,7 +772,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
     def start_transition_timer(self, timeout):
-        """Start cluster-side monitoring."""
+        """Start cluster-side transition timer."""
         context = {
             'node_status': self.status,
             'type': TIMER_TYPE.NODE_STATE_CHANGE,
@@ -788,6 +791,17 @@ class Node(CleanSave, TimestampedModel):
         except crochet.TimeoutError as error:
             maaslog.error(
                 "%s: Unable to start transition timer: %s",
+                self.hostname, error)
+
+    def stop_transition_timer(self):
+        """Stop cluster-side transition timer."""
+        client = getClientFor(self.nodegroup.uuid)
+        call = client(CancelTimer, id=self.system_id)
+        try:
+            call.wait(5)
+        except crochet.TimeoutError as error:
+            maaslog.error(
+                "%s: Unable to stop transition timer: %s",
                 self.hostname, error)
 
     def handle_timer_expired(self, context):
