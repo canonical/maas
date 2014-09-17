@@ -267,12 +267,12 @@ class Factory:
             network = self.make_ipv6_network()
         return self.make_ip_range(network=network, but_not=but_not)
 
-    def make_random_mac_address(self, delimiter=":"):
+    def make_mac_address(self, delimiter=":"):
         assert isinstance(delimiter, unicode)
         octets = islice(self.random_octets, 6)
         return delimiter.join(format(octet, "02x") for octet in octets)
 
-    getRandomMACAddress = make_random_mac_address  # DEPRECATED.
+    getRandomMACAddress = make_mac_address  # DEPRECATED.
 
     def make_random_leases(self, num_leases=1):
         """Create a dict of arbitrary ip-to-mac address mappings."""

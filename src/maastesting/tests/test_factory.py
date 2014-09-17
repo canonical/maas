@@ -166,16 +166,16 @@ class TestFactory(MAASTestCase):
     def test_make_date_returns_datetime(self):
         self.assertIsInstance(factory.make_date(), datetime)
 
-    def test_make_random_mac_address(self):
-        mac_address = factory.make_random_mac_address()
+    def test_make_mac_address(self):
+        mac_address = factory.make_mac_address()
         self.assertIsInstance(mac_address, unicode)
         self.assertEqual(17, len(mac_address))
         for hex_octet in mac_address.split(":"):
             self.assertTrue(0 <= int(hex_octet, 16) <= 255)
 
-    def test_make_random_mac_address_alternative_delimiter(self):
+    def test_make_mac_address_alternative_delimiter(self):
         self.patch(factory, "random_octets", count(0x3a))
-        mac_address = factory.make_random_mac_address(delimiter="-")
+        mac_address = factory.make_mac_address(delimiter="-")
         self.assertEqual("3a-3b-3c-3d-3e-3f", mac_address)
 
     def test_make_random_leases_maps_ips_to_macs(self):
