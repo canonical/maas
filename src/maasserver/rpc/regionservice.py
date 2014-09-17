@@ -42,6 +42,7 @@ from maasserver.rpc.nodegroupinterface import (
     update_foreign_dhcp_ip,
     )
 from maasserver.rpc.nodes import create_node
+from maasserver.rpc.timers import handle_timer_expired
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
 from netaddr import IPAddress
@@ -248,6 +249,18 @@ class Region(RPCProtocol):
         d = deferToThread(
             get_cluster_interfaces_as_dicts, cluster_uuid)
         d.addCallback(lambda interfaces: {b'interfaces': interfaces})
+        return d
+
+    @region.TimerExpired.responder
+    def timer_expired(self, id, context):
+        """timer_expired()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.TimerExpired`.
+        """
+        d = deferToThread(
+            handle_timer_expired, id, context)
+        d.addCallback(lambda _: {})
         return d
 
     @region.CreateNode.responder

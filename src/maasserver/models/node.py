@@ -23,11 +23,16 @@ from collections import (
     defaultdict,
     namedtuple,
     )
+from datetime import (
+    datetime,
+    timedelta,
+    )
 from itertools import chain
 import re
 from string import whitespace
 from uuid import uuid1
 
+import crochet
 from django.contrib.auth.models import User
 from django.core.exceptions import (
     PermissionDenied,
@@ -88,6 +93,11 @@ from maasserver.models.staticipaddress import (
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
+from maasserver.node_status import (
+    get_failed_status,
+    NODE_FAILURE_STATUS_TRANSITIONS,
+    )
+from maasserver.rpc import getClientFor
 from maasserver.utils import (
     get_db_state,
     strip_domain,
@@ -95,10 +105,13 @@ from maasserver.utils import (
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.enum import TIMER_TYPE
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.cluster import StartTimers
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import reactor_sync
+from twisted.protocols import amp
 import twisted.python.log
 
 
@@ -737,15 +750,57 @@ class Node(CleanSave, TimestampedModel):
             return nodegroup_fqdn(self.hostname, self.nodegroup.name)
         return self.hostname
 
+    def get_deployment_time(self):
+        """Return the deployment time of this node (in seconds)."""
+        # Return a *very* conservative estimate for now.
+        # Something that shouldn't conflict with any deployment.
+        return timedelta(minutes=40).total_seconds()
+
     def start_deployment(self):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
         self.save()
+        deployment_time = self.get_deployment_time()
+        self.start_transition_timer(deployment_time)
 
     def end_deployment(self):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
+
+    def start_transition_timer(self, timeout):
+        """Start cluster-side monitoring."""
+        context = {
+            'node_status': self.status,
+            'type': TIMER_TYPE.NODE_STATE_CHANGE,
+            'timeout': timeout,
+            }
+        deadline = datetime.now(tz=amp.utc) + timedelta(seconds=timeout)
+        timers = [{
+            'deadline': deadline,
+            'id': self.system_id,
+            'context': context,
+        }]
+        client = getClientFor(self.nodegroup.uuid)
+        call = client(StartTimers, timers=timers)
+        try:
+            call.wait(5)
+        except crochet.TimeoutError as error:
+            maaslog.error(
+                "%s: Unable to start transition timer: %s",
+                self.hostname, error)
+
+    def handle_timer_expired(self, context):
+        """Handle a node-level timer expired event."""
+        failed_status = get_failed_status(self.status)
+        if failed_status is not None:
+            timeout_timedelta = timedelta(seconds=context['timeout'])
+            self.mark_failed(
+                "Node operation '%s' timed out after %s." % (
+                    (
+                        NODE_STATUS_CHOICES_DICT[self.status],
+                        timeout_timedelta
+                    )))
 
     def ip_addresses(self):
         """IP addresses allocated to this node.
@@ -1290,16 +1345,12 @@ class Node(CleanSave, TimestampedModel):
         The actual 'failed' state depends on the current status of the
         node.
         """
-        # Mapping: status -> corresponding failed status.
-        failed_statuses_mapping = {
-            NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
-            NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
-        }
-        if self.status in failed_statuses_mapping:
-            self.status = failed_statuses_mapping[self.status]
+        new_status = get_failed_status(self.status)
+        if new_status is not None:
+            self.status = new_status
             self.error_description = error_description
             self.save()
-        elif self.status in failed_statuses_mapping.viewvalues():
+        elif self.status in NODE_FAILURE_STATUS_TRANSITIONS.values():
             # Silently ignore a request to fail an already failed node.
             pass
         else:

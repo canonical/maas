@@ -92,6 +92,7 @@ from provisioningserver.rpc.region import (
     ReportBootImages,
     ReportForeignDHCPServer,
     SendEvent,
+    TimerExpired,
     UpdateLeases,
     UpdateNodePowerState,
     )
@@ -1667,3 +1668,31 @@ class TestRegionProtocol_CreateNode(MAASTestCase):
         self.assertEqual(
             create_node_function.return_value.system_id,
             response['system_id'])
+
+
+class TestRegionProtocol_TimerExpired(MAASTestCase):
+
+    def test_timer_expired_node_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            CreateNode.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_handle_timer_expired(self):
+        handle_timer_expired = self.patch(
+            regionservice, 'handle_timer_expired')
+
+        params = {
+            'id': factory.make_name('id'),
+            'context': factory.make_name("ctx"),
+        }
+
+        response = yield call_responder(
+            Region(), TimerExpired, params)
+        self.assertIsNotNone(response)
+
+        self.assertThat(
+            handle_timer_expired,
+            MockCalledOnceWith(params['id'], params['context']))

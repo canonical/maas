@@ -858,6 +858,9 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertNotIn("Error output", content_text)
 
     def test_view_node_POST_performs_action(self):
+        # Don't start the monitoring thread.
+        self.patch(node_module, "getClientFor")
+
         # Stub-out real-world RPC calls.
         self.patch(node_module, "update_host_maps").return_value = []
 

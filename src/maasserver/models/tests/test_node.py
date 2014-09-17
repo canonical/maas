@@ -14,10 +14,14 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from datetime import timedelta
+from datetime import (
+    datetime,
+    timedelta,
+    )
 from itertools import izip
 import random
 
+import crochet
 from django.core.exceptions import ValidationError
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.dns import config as dns_config
@@ -54,6 +58,10 @@ from maasserver.models.staticipaddress import (
     StaticIPAddressManager,
     )
 from maasserver.models.user import create_auth_token
+from maasserver.node_status import (
+    get_failed_status,
+    MONITORED_STATUSES,
+    )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
@@ -78,9 +86,12 @@ from metadataserver.models import (
     )
 from mock import (
     ANY,
+    Mock,
     sentinel,
     )
+from provisioningserver.enum import TIMER_TYPE
 from provisioningserver.rpc import cluster as cluster_module
+from provisioningserver.rpc.cluster import StartTimers
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.testing import (
     always_succeed_with,
@@ -96,6 +107,7 @@ from testtools.matchers import (
     )
 from twisted.internet import defer
 from twisted.internet.defer import Deferred
+from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 
@@ -1289,8 +1301,44 @@ class NodeTest(MAASServerTestCase):
 
     def test_start_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        # Do not start the transaction timer.
+        self.patch(node, 'start_transition_timer')
         node.start_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
+
+    def test_start_deployment_starts_monitor(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        monitor_timeout = random.randint(1, 100)
+        self.patch(node, 'get_deployment_time').return_value = monitor_timeout
+        mock_start_transition_timer = self.patch(
+            node, 'start_transition_timer')
+        node.start_deployment()
+        self.assertThat(
+            mock_start_transition_timer, MockCalledOnceWith(monitor_timeout))
+
+    def test_handle_timer_expired_marks_node_as_failed(self):
+        status = random.choice(MONITORED_STATUSES)
+        node = factory.make_Node(status=status)
+        timeout = random.randint(1, 100)
+        timer_context = {
+            'timeout': timeout,
+        }
+        node.handle_timer_expired(timer_context)
+        node = reload_object(node)
+        self.assertEqual(get_failed_status(status), node.status)
+        error_msg = (
+            "Node operation '%s' timed out after %s." % (
+                NODE_STATUS_CHOICES_DICT[status],
+                timedelta(seconds=timeout))
+        )
+        self.assertEqual(error_msg, node.error_description)
+
+    def test_handle_timer_expired_ignores_event_if_node_state_changed(self):
+        status = factory.pick_enum(NODE_STATUS, but_not=MONITORED_STATUSES)
+        node = factory.make_Node(status=status)
+        node.handle_timer_expired({})
+        node = reload_object(node)
+        self.assertEqual(status, node.status)
 
 
 class NodeRoutersTest(MAASServerTestCase):
@@ -1538,8 +1586,10 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
 
     def prepare_rpc_to_cluster(self, nodegroup):
         protocol = self.rpc_fixture.makeCluster(
-            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn)
+            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn,
+            cluster_module.StartTimers)
         protocol.CreateHostMaps.side_effect = always_succeed_with({})
+        protocol.StartTimers.side_effect = always_succeed_with({})
         protocol.PowerOn.side_effect = always_succeed_with({})
         return protocol
 
@@ -1857,6 +1907,52 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
 
         nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
         self.assertItemsEqual([], nodes_stopped)
+
+
+class TestNodeTransitionTimers(MAASServerTestCase):
+
+    def prepare_rpc(self):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        return self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def patch_datetime_now(self, nowish_timestamp):
+        mock_datetime = self.patch(node_module, "datetime")
+        mock_datetime.now.return_value = nowish_timestamp
+
+    def test__start_transition_timer_starts_timer(self):
+        rpc_fixture = self.prepare_rpc()
+        now = datetime.now(tz=amp.utc)
+        self.patch_datetime_now(now)
+        node = factory.make_Node()
+        cluster = rpc_fixture.makeCluster(node.nodegroup, StartTimers)
+        monitor_timeout = random.randint(1, 100)
+        node.start_transition_timer(monitor_timeout)
+        timers = [{
+            'deadline': now + timedelta(seconds=monitor_timeout),
+            'id': node.system_id,
+            'context': {
+                'timeout': monitor_timeout,
+                'node_status': node.status,
+                'type': TIMER_TYPE.NODE_STATE_CHANGE,
+                },
+            }]
+        self.assertThat(
+            cluster.StartTimers, MockCalledOnceWith(ANY, timers=timers)
+        )
+
+    def test__start_transition_timer_copes_with_timeouterror(self):
+        now = datetime.now(tz=amp.utc)
+        self.patch_datetime_now(now)
+        node = factory.make_Node()
+        mock_client = Mock()
+        mock_client.wait.side_effect = crochet.TimeoutError("error")
+        mock_getClientFor = self.patch(node_module, 'getClientFor')
+        mock_getClientFor.return_value = mock_client
+        monitor_timeout = random.randint(1, 100)
+        # The real test is that node.start_transition_timer doesn't raise
+        # an exception.
+        self.assertIsNone(node.start_transition_timer(monitor_timeout))
 
 
 class TestClaimStaticIPAddresses(MAASTestCase):
