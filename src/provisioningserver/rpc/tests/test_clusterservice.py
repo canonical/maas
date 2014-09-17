@@ -69,6 +69,10 @@ from provisioningserver.rpc.clusterservice import (
     ClusterClientService,
     )
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.monitors import (
+    cancel_monitor,
+    running_monitors,
+    )
 from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
@@ -79,10 +83,6 @@ from provisioningserver.rpc.testing import (
 from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
     StubOS,
-    )
-from provisioningserver.rpc.timers import (
-    cancel_timer,
-    running_timers,
     )
 from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
@@ -1096,42 +1096,45 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
                 ip_addresses, shared_key))
 
 
-class TestClusterProtocol_StartTimers(MAASTestCase):
+class TestClusterProtocol_StartMonitors(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.StartTimers.commandName)
+            cluster.StartMonitors.commandName)
         self.assertIsNot(responder, None)
 
-    def test__executes_start_timers(self):
+    def test__executes_start_monitors(self):
         deadline = datetime.now(amp.utc) + timedelta(seconds=10)
-        timers = [{
+        monitors = [{
             "deadline": deadline, "context": factory.make_name("ctx"),
             "id": factory.make_name("id")}]
-        d = call_responder(Cluster(), cluster.StartTimers, {"timers": timers})
-        self.addCleanup(cancel_timer, timers[0]["id"])
+        d = call_responder(
+            Cluster(), cluster.StartMonitors, {"monitors": monitors})
+        self.addCleanup(cancel_monitor, monitors[0]["id"])
         self.assertTrue(d.called)
-        self.assertThat(running_timers, Contains(timers[0]["id"]))
+        self.assertThat(running_monitors, Contains(monitors[0]["id"]))
 
 
-class TestClusterProtocol_CancelTimer(MAASTestCase):
+class TestClusterProtocol_CancelMonitor(MAASTestCase):
 
     def test__is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
-            cluster.CancelTimer.commandName)
+            cluster.CancelMonitor.commandName)
         self.assertIsNot(responder, None)
 
-    def test__executes_cancel_timer(self):
+    def test__executes_cancel_monitor(self):
         deadline = datetime.now(amp.utc) + timedelta(seconds=10)
-        timers = [{
+        monitors = [{
             "deadline": deadline, "context": factory.make_name("ctx"),
             "id": factory.make_name("id")}]
-        call_responder(Cluster(), cluster.StartTimers, {"timers": timers})
+        call_responder(
+            Cluster(), cluster.StartMonitors, {"monitors": monitors})
 
-        call_responder(Cluster(), cluster.CancelTimer, {"id": timers[0]["id"]})
-        self.assertThat(running_timers, Not(Contains(timers[0]["id"])))
+        call_responder(
+            Cluster(), cluster.CancelMonitor, {"id": monitors[0]["id"]})
+        self.assertThat(running_monitors, Not(Contains(monitors[0]["id"])))
 
 
 class TestClusterProtocol_AddVirsh(MAASTestCase):

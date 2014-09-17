@@ -95,7 +95,7 @@ from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
 from maasserver.node_status import (
     get_failed_status,
-    NODE_FAILURE_STATUS_TRANSITIONS,
+    is_failed_status,
     )
 from maasserver.rpc import getClientFor
 from maasserver.utils import (
@@ -105,11 +105,10 @@ from maasserver.utils import (
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
-from provisioningserver.enum import TIMER_TYPE
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.cluster import (
-    CancelTimer,
-    StartTimers,
+    CancelMonitor,
+    StartMonitors,
     )
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.utils.enum import map_enum_reverse
@@ -764,48 +763,49 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.DEPLOYING
         self.save()
         deployment_time = self.get_deployment_time()
-        self.start_transition_timer(deployment_time)
+        self.start_transition_monitor(deployment_time)
 
     def end_deployment(self):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
 
-    def start_transition_timer(self, timeout):
-        """Start cluster-side transition timer."""
+    def start_transition_monitor(self, timeout):
+        """Start cluster-side transition monitor."""
         context = {
             'node_status': self.status,
-            'type': TIMER_TYPE.NODE_STATE_CHANGE,
             'timeout': timeout,
             }
         deadline = datetime.now(tz=amp.utc) + timedelta(seconds=timeout)
-        timers = [{
+        monitors = [{
             'deadline': deadline,
             'id': self.system_id,
             'context': context,
         }]
         client = getClientFor(self.nodegroup.uuid)
-        call = client(StartTimers, timers=timers)
+        call = client(StartMonitors, monitors=monitors)
         try:
             call.wait(5)
         except crochet.TimeoutError as error:
             maaslog.error(
-                "%s: Unable to start transition timer: %s",
+                "%s: Unable to start transition monitor: %s",
                 self.hostname, error)
+        maaslog.info("%s: Starting monitor: %s", self.hostname, monitors[0])
 
-    def stop_transition_timer(self):
-        """Stop cluster-side transition timer."""
+    def stop_transition_monitor(self):
+        """Stop cluster-side transition monitor."""
         client = getClientFor(self.nodegroup.uuid)
-        call = client(CancelTimer, id=self.system_id)
+        call = client(CancelMonitor, id=self.system_id)
         try:
             call.wait(5)
         except crochet.TimeoutError as error:
             maaslog.error(
-                "%s: Unable to stop transition timer: %s",
+                "%s: Unable to stop transition monitor: %s",
                 self.hostname, error)
+        maaslog.info("%s: Stopping monitor: %s", self.hostname, self.system_id)
 
-    def handle_timer_expired(self, context):
-        """Handle a node-level timer expired event."""
+    def handle_monitor_expired(self, context):
+        """Handle a monitor expired event."""
         failed_status = get_failed_status(self.status)
         if failed_status is not None:
             timeout_timedelta = timedelta(seconds=context['timeout'])
@@ -1034,7 +1034,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         # The commissioning profile is handled in start_nodes.
         maaslog.info(
-            "%s: Starting commissioning.", self.hostname)
+            "%s: Starting commissioning", self.hostname)
         Node.objects.start_nodes(
             [self.system_id], user, user_data=commissioning_user_data)
 
@@ -1364,7 +1364,10 @@ class Node(CleanSave, TimestampedModel):
             self.status = new_status
             self.error_description = error_description
             self.save()
-        elif self.status in NODE_FAILURE_STATUS_TRANSITIONS.values():
+            maaslog.error(
+                "%s: Marking node failed: %s", self.hostname,
+                error_description)
+        elif is_failed_status(self.status):
             # Silently ignore a request to fail an already failed node.
             pass
         else:

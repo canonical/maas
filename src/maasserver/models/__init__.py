@@ -190,5 +190,5 @@ ignore_unused(dns_connect)
 from maasserver import dhcp_connect
 ignore_unused(dhcp_connect)
 
-from maasserver import timer_connect
-ignore_unused(timer_connect)
+from maasserver import monitor_connect
+ignore_unused(monitor_connect)

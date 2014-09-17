@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "get_failed_status",
+    "is_failed_status",
     ]
 
 
@@ -31,6 +32,8 @@ NODE_FAILURE_STATUS_TRANSITIONS = {
 # monitors that the status changes after a fixed period of time.
 MONITORED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.keys()
 
+FAILED_STATUSES = NODE_FAILURE_STATUS_TRANSITIONS.values()
+
 
 def get_failed_status(status):
     """Returns the failed status corresponding to the given status.
@@ -38,3 +41,8 @@ def get_failed_status(status):
     If no corresponding failed status exists, return None.
     """
     return NODE_FAILURE_STATUS_TRANSITIONS.get(status, None)
+
+
+def is_failed_status(status):
+    """Returns if the status is a 'failed' status."""
+    return status in FAILED_STATUSES

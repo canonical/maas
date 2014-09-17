@@ -298,10 +298,10 @@ class CreateNode(amp.Command):
     }
 
 
-class TimerExpired(amp.Command):
-    """Called by a cluster when a running timer hits its deadline.
+class MonitorExpired(amp.Command):
+    """Called by a cluster when a running monitor hits its deadline.
 
-    The original context parameter from the StartTimers call is returned.
+    The original context parameter from the StartMonitors call is returned.
 
     :since: 1.7
     """

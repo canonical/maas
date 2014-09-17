@@ -30,7 +30,7 @@ from maasserver import (
     dhcp,
     eventloop,
     locks,
-    timer_connect,
+    monitor_connect,
     )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
@@ -89,11 +89,11 @@ from provisioningserver.rpc.region import (
     Identify,
     ListNodePowerParameters,
     MarkNodeFailed,
+    MonitorExpired,
     RegisterEventType,
     ReportBootImages,
     ReportForeignDHCPServer,
     SendEvent,
-    TimerExpired,
     UpdateLeases,
     UpdateNodePowerState,
     )
@@ -484,7 +484,7 @@ class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_mark_node_failed_changes_status_and_updates_error_msg(self):
-        self.patch(timer_connect, 'TIMER_CANCEL_CONNECT', False)
+        self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
 
         system_id = yield deferToThread(self.create_deploying_node)
 
@@ -1683,9 +1683,9 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_calls_handle_timer_expired(self):
-        handle_timer_expired = self.patch(
-            regionservice, 'handle_timer_expired')
+    def test_calls_handle_monitor_expired(self):
+        handle_monitor_expired = self.patch(
+            regionservice, 'handle_monitor_expired')
 
         params = {
             'id': factory.make_name('id'),
@@ -1693,9 +1693,9 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
         }
 
         response = yield call_responder(
-            Region(), TimerExpired, params)
+            Region(), MonitorExpired, params)
         self.assertIsNotNone(response)
 
         self.assertThat(
-            handle_timer_expired,
+            handle_monitor_expired,
             MockCalledOnceWith(params['id'], params['context']))

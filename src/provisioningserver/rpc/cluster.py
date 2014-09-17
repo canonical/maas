@@ -313,19 +313,14 @@ class ImportBootImages(amp.Command):
     errors = []
 
 
-class StartTimers(amp.Command):
-    """Starts timer(s) on the cluster.
-
-    The region controller invokes this on a cluster controller and the
-    cluster will call the region back with TimerExpired if the deadline
-    is reached before the region calls CancelTimer.  It is the region's
-    responsibility to provide an ID for the timers.
+class StartMonitors(amp.Command):
+    """Starts monitors(s) on the cluster.
 
     :since: 1.7
     """
 
     arguments = [
-        (b"timers", amp.AmpList(
+        (b"monitors", amp.AmpList(
             [(b"deadline", amp.DateTime()),
              (b"context", StructureAsJSON()),
              (b"id", amp.Unicode()),
@@ -335,8 +330,8 @@ class StartTimers(amp.Command):
     errors = []
 
 
-class CancelTimer(amp.Command):
-    """Cancels an existing timer on the cluster.
+class CancelMonitor(amp.Command):
+    """Cancels an existing monitor on the cluster.
 
     :since: 1.7
     """

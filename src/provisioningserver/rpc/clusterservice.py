@@ -55,6 +55,10 @@ from provisioningserver.rpc.dhcp import (
     remove_host_maps,
     )
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.rpc.monitors import (
+    cancel_monitor,
+    start_monitors,
+    )
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
     get_preseed_data,
@@ -63,10 +67,6 @@ from provisioningserver.rpc.osystems import (
 from provisioningserver.rpc.power import (
     change_power_state,
     get_power_state,
-    )
-from provisioningserver.rpc.timers import (
-    cancel_timer,
-    start_timers,
     )
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
@@ -220,14 +220,14 @@ class Cluster(RPCProtocol):
         remove_host_maps(ip_addresses, shared_key)
         return {}
 
-    @cluster.StartTimers.responder
-    def start_timers(self, timers):
-        start_timers(timers)
+    @cluster.StartMonitors.responder
+    def start_monitors(self, monitors):
+        start_monitors(monitors)
         return {}
 
-    @cluster.CancelTimer.responder
+    @cluster.CancelMonitor.responder
     def cancel_timer(self, id):
-        cancel_timer(id)
+        cancel_monitor(id)
         return {}
 
     @amp.StartTLS.responder

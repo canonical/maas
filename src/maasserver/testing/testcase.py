@@ -29,7 +29,7 @@ from django.core.urlresolvers import reverse
 from django.db import connection
 from django.test.client import encode_multipart
 from fixtures import Fixture
-from maasserver import timer_connect
+from maasserver import monitor_connect
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
@@ -75,8 +75,8 @@ class MAASServerTestCase(DjangoTestCase):
         self.patch(
             power_parameters,
             'get_all_power_types_from_clusters').return_value = static_params
-        # Disconnect the timer cancelation as it's triggered by a signal.
-        self.patch(timer_connect, 'TIMER_CANCEL_CONNECT', False)
+        # Disconnect the monitor cancellation as it's triggered by a signal.
+        self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
 
     def client_log_in(self, as_admin=False):
         """Log `self.client` into MAAS.
