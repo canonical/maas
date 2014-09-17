@@ -43,6 +43,7 @@ from provisioningserver.dns.config import (
     setup_rndc,
     )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.logger.utils import log_call
 
 # For each item passed to refresh_secrets, a refresh function to give it to.
 refresh_functions = {
@@ -54,28 +55,6 @@ refresh_functions = {
 celery_config = app_or_default().conf
 
 maaslog = get_maas_logger("tasks")
-
-
-def log_call(level=logging.INFO):
-    """Log to the maaslog that something happened with a task.
-
-    :param event: The event that we want to log.
-    :param task_name: The name of the task.
-    :**kwargs: A dict of args passed to the task.
-    """
-    def _decorator(func):
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            arg_string = "%s %s" % (args, kwargs)
-            maaslog.log(
-                level, "Starting task '%s' with args: %s" %
-                (func.__name__, arg_string))
-            func(*args, **kwargs)
-            maaslog.log(
-                level, "Finished task '%s' with args: %s" %
-                (func.__name__, arg_string))
-        return wrapper
-    return _decorator
 
 
 # The tasks catch bare exceptions in an attempt to circumvent Celery's

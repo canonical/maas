@@ -37,6 +37,7 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.logger.utils import log_call
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -67,7 +68,6 @@ from provisioningserver.rpc.timers import (
     cancel_timer,
     start_timers,
     )
-from provisioningserver.tasks import log_call
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
