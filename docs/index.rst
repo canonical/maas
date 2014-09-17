@@ -54,11 +54,11 @@ Setting up a MAAS server
    install
    configure
    cluster-configuration
+   ipv6
    bootsources
    nodes
    hardware-enablement-kernels
    networks
-   ipv6
    kernel-options
    installing-ubuntu
 

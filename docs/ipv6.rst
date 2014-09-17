@@ -8,7 +8,9 @@ Managing IPv6 Networks
 .. note::
 
   This feature is available in MAAS versions 1.7 and above, starting with
-  lp:maas revision 2992.
+  lp:maas revision 2992.  If you're writing a client application that makes use
+  of this feature, you can query the region-server API for the
+  ``ipv6-deployment-ubuntu`` :ref:`capability<cap-ipv6-deployment-ubuntu>`.
 
 MAAS has limited IPv6 support for networking nodes.  It works much like IPv4
 support, but with a number of limitations:

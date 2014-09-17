@@ -24,10 +24,12 @@ from maasserver.api.support import AnonymousOperationsHandler
 # MAAS capabilities. See docs/capabilities.rst for documentation.
 CAP_NETWORKS_MANAGEMENT = 'networks-management'
 CAP_STATIC_IPADDRESSES = 'static-ipaddresses'
+CAP_IPv6_DEPLOYMENT_UBUNTU = 'ipv6-deployment-ubuntu'
 
 API_CAPABILITIES_LIST = [
     CAP_NETWORKS_MANAGEMENT,
     CAP_STATIC_IPADDRESSES,
+    CAP_IPv6_DEPLOYMENT_UBUNTU,
     ]
 
 

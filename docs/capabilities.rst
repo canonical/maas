@@ -29,3 +29,9 @@ the version when creating a client application.
   Passive modelling of the network environment that cluster controllers
   nodes are in, including network interfaces, subnets, VLAN tags, and
   connectivity between them. See :ref:`networks` for more information.
+
+.. _cap-ipv6-deployment-ubuntu:
+
+``ipv6-deployment-ubuntu``
+  Deploy Ubuntu nodes with IPv6 networking enabled.  See :ref:`ipv6` for more
+  about this feature.
