@@ -5,3 +5,12 @@ apt_proxy: {{http_proxy}}
 apt_proxy: http://{{server_host}}:8000/
 {{endif}}
 
+{{if node.split_arch()[0] in {'i386', 'amd64'} }}
+apt_mirrors:
+  ubuntu_archive: http://{{main_archive_hostname}}/{{main_archive_directory}}
+  ubuntu_security: http://{{main_archive_hostname}}/{{main_archive_directory}}
+{{else}}
+apt_mirrors:
+  ubuntu_archive: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
+  ubuntu_security: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
+{{endif}}

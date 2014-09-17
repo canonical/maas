@@ -38,7 +38,7 @@ import tempita
 ENCODING = 'utf-8'
 
 
-def generate_user_data(nodegroup=None):
+def generate_user_data(node):
     """Produce the main commissioning script.
 
     The main template file contains references to so-called ``snippets''
@@ -64,7 +64,9 @@ def generate_user_data(nodegroup=None):
         config_template_file, encoding=ENCODING)
     # The preseed context is a dict containing various configs that the
     # templates can use.
+    nodegroup = node.nodegroup
     preseed_context = get_preseed_context(nodegroup=nodegroup)
+    preseed_context['node'] = node
 
     # Render the snippets in the main template.
     snippets = get_snippet_context(encoding=ENCODING)

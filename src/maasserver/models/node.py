@@ -959,7 +959,7 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.commissioning.user_data import generate_user_data
         from metadataserver.models import NodeResult
 
-        commissioning_user_data = generate_user_data(nodegroup=self.nodegroup)
+        commissioning_user_data = generate_user_data(node=self)
         NodeResult.objects.clear_results(self)
         self.status = NODE_STATUS.COMMISSIONING
         self.save()
