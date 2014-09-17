@@ -120,6 +120,32 @@ class TestNetworkForm(MAASServerTestCase):
         network = reload_object(network)
         self.assertItemsEqual(new_macs, network.macaddress_set.all())
 
+    def test_deletes_macaddresses_by_default_if_not_specified(self):
+        network = factory.make_Network()
+        [factory.make_MACAddress(networks=[network]) for _ in range(3)]
+        form = NetworkForm(
+            data={
+                'name': "foo",
+            },
+            instance=network)
+        form.save()
+        network = reload_object(network)
+        self.assertItemsEqual([], network.macaddress_set.all())
+
+    def test_does_not_delete_unspecified_macaddresses_if_told_not_to(self):
+        network = factory.make_Network()
+        macs = [factory.make_MACAddress(networks=[network]) for _ in range(3)]
+        form = NetworkForm(
+            data={
+                'name': "foo",
+            },
+            instance=network,
+            delete_macs_if_not_present=False,
+            )
+        form.save()
+        network = reload_object(network)
+        self.assertItemsEqual(macs, network.macaddress_set.all())
+
     def test_reports_clashes(self):
         # The uniqueness test on the Network model raises a ValidationError
         # when it finds a clash, but Django is prone to crashing when the

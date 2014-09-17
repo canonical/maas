@@ -73,7 +73,9 @@ class NetworkHandler(OperationsHandler):
             of users and administrators.
         """
         network = get_object_or_404(Network, name=name)
-        form = NetworkForm(instance=network, data=request.data)
+        form = NetworkForm(
+            instance=network, data=request.data,
+            delete_macs_if_not_present=False)
         if not form.is_valid():
             raise ValidationError(form.errors)
         return form.save()

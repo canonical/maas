@@ -1933,10 +1933,22 @@ class NetworkForm(ModelForm):
         widget=forms.SelectMultiple(attrs={'size': 10}),
         )
 
-    def __init__(self, data=None, instance=None, **kwargs):
+    def __init__(self, data=None, instance=None,
+                 delete_macs_if_not_present=True, **kwargs):
+        """
+        :param data: The web request.data
+        :param instance: the Network instance
+        :param delete_macs_if_not_present: If there's no mac_addresses present
+            in the data, then assume that the caller wants to delete them.
+            Override with True if you don't want that to happen. Yes, this
+            is a horrible kludge so the same form works in the API and the
+            web view.
+        """
         super(NetworkForm, self).__init__(
             data=data, instance=instance, **kwargs)
+        self.macs_in_request = data.get("mac_addresses") if data else None
         self.set_up_initial_macaddresses(instance)
+        self.delete_macs_if_not_present = delete_macs_if_not_present
 
     def set_up_initial_macaddresses(self, instance):
         """Set the initial value for the field 'macaddresses'.
@@ -1954,7 +1966,13 @@ class NetworkForm(ModelForm):
         """Persist the network into the database."""
         network = super(NetworkForm, self).save(*args, **kwargs)
         macaddresses = self.cleaned_data.get('mac_addresses')
-        if macaddresses is not None:
+        # Because the form is used in the web view AND the API we need a
+        # hack. The API uses separate ops to amend the mac_addresses
+        # list, however the web UI does not. To preserve the API
+        # behaviour, its handler passes delete_macs_if_not_present as False.
+        if self.delete_macs_if_not_present and self.macs_in_request is None:
+            network.macaddress_set.clear()
+        elif macaddresses is not None:
             network.macaddress_set.clear()
             network.macaddress_set.add(*macaddresses)
         return network
