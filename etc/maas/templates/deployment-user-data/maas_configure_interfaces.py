@@ -201,10 +201,17 @@ def write_file(path, text, encoding='utf-8'):
     rename(temp_file, path)
 
 
-def configure_static_addresses(config_dir, ip_mac_pairs, gateway_mac_pairs):
+def configure_static_addresses(config_dir, ip_mac_pairs, gateway_mac_pairs,
+                               interfaces_by_mac):
     """Write interfaces config file for static addresses.
 
     :param config_dir: Location of interfaces config directory.
+    :param ip_mac_pairs: List of pairs, each of a static IP address and the
+        MAC address for the network interface that should have that address.
+    :param gateway_mac_pairs: List of pairs, each of a gateway address and a
+        MAC address for the network interface that should use that gateway.
+    :param interfaces_by_mac: Dict mapping each MAC address on the system to
+        a list of network interfaces that have that MAC address.
     :return: The list of affected network interfaces.
     """
     if not os.path.isfile(os.path.join(config_dir, 'interfaces')):
@@ -212,7 +219,6 @@ def configure_static_addresses(config_dir, ip_mac_pairs, gateway_mac_pairs):
             "Not supported yet: This does not look like a "
             "Debian/Ubuntu system.  Not configuring networking.")
         return []
-    interfaces_by_mac = map_interfaces_by_mac()
     addresses_by_interface = map_addresses_by_interface(
         interfaces_by_mac, ip_mac_pairs)
     gateways_by_interface = map_addresses_by_interface(
@@ -260,8 +266,10 @@ def restart_interfaces(interfaces):
 
 if __name__ == "__main__":
     args = prepare_parser().parse_args()
+    interfaces_by_mac = map_interfaces_by_mac()
     interfaces = configure_static_addresses(
-        args.config_dir, args.static_ip, args.gateway)
+        args.config_dir, ip_mac_pairs=args.static_ip,
+        gateway_mac_pairs=args.gateway, interfaces_by_mac=interfaces_by_mac)
     if len(interfaces) > 0:
         if args.update_interfaces:
             update_interfaces_file(args.config_dir)
