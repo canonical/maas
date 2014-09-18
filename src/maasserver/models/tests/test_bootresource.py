@@ -163,6 +163,23 @@ class TestBootResourceManager(MAASServerTestCase):
         self.assertItemsEqual(
             arches, usable_arches)
 
+    def test_get_usable_architectures_combines_subarches(self):
+        arches = set()
+        for _ in range(3):
+            arch = factory.make_name('arch')
+            subarches = [factory.make_name('subarch') for _ in range(3)]
+            architecture = '%s/%s' % (arch, subarches.pop())
+            arches.add(architecture)
+            for subarch in subarches:
+                arches.add('%s/%s' % (arch, subarch))
+            factory.make_usable_boot_resource(
+                architecture=architecture,
+                extra={'subarches': ','.join(subarches)})
+        usable_arches = BootResource.objects.get_usable_architectures()
+        self.assertIsInstance(usable_arches, set)
+        self.assertItemsEqual(
+            arches, usable_arches)
+
     def test_get_commissionable_resource_returns_iterable(self):
         os = factory.make_name('os')
         series = factory.make_name('series')

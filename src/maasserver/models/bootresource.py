@@ -119,6 +119,10 @@ class BootResourceManager(Manager):
             resource_set = resource.get_latest_set()
             if resource_set.commissionable and resource_set.installable:
                 arches.add(resource.architecture)
+                if 'subarches' in resource.extra:
+                    arch, _ = resource.split_arch()
+                    for subarch in resource.extra['subarches'].split(','):
+                        arches.add('%s/%s' % (arch, subarch.strip()))
         return arches
 
     def get_commissionable_resource(self, osystem, series):
