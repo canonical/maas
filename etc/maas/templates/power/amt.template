@@ -39,6 +39,16 @@ check_amt_command() {
   command -v amttool >/dev/null 2>&1 || { fail 2 "Missing amttool (amtterm package)"; }
 }
 
+# Check that a node host has been passed.
+check_bmc_host() {
+  if [ -z "$ip_address" ]; then
+    # This usually happens when the MAC address of the BMC is being used
+    # and the ARP cache (used to find the BMC IP) isn't primed.
+    # See https://bugs.launchpad.net/maas/+bug/1279460 for details.
+    fail 2 "No host provided"
+  fi
+}
+
 # Ask for node's power state: 'on' or 'off'.
 query_state() {
     # Retry the state if it fails because it often fails the first time.
@@ -116,6 +126,7 @@ power_off() {
 
 
 main() {
+    check_bmc_host
     check_amt_command
     case "${power_change}" in
     'on')
