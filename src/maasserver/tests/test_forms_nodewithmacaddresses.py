@@ -41,7 +41,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
     def make_params(self, mac_addresses=None, architecture=None,
                     hostname=None, nodegroup=None):
         if mac_addresses is None:
-            mac_addresses = [factory.getRandomMACAddress()]
+            mac_addresses = [factory.make_mac_address()]
         if architecture is None:
             architecture = factory.make_name('arch')
         if hostname is None:
@@ -104,7 +104,7 @@ class NodeWithMACAddressesFormTest(MAASServerTestCase):
         # Empty values in the list of MAC addresses are simply ignored.
         form = NodeWithMACAddressesForm(
             data=self.make_params(
-                mac_addresses=[factory.getRandomMACAddress(), '']))
+                mac_addresses=[factory.make_mac_address(), '']))
 
         self.assertTrue(form.is_valid())
 

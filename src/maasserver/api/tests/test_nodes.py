@@ -87,7 +87,7 @@ class NodeHostnameTest(MultipleUsersScenarios,
 class AnonymousIsRegisteredAPITest(MAASServerTestCase):
 
     def test_is_registered_returns_True_if_node_registered(self):
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         factory.make_MACAddress(mac_address)
         response = self.client.get(
             reverse('nodes_handler'),
@@ -97,7 +97,7 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_is_registered_returns_False_if_mac_registered_node_retired(self):
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         mac = factory.make_MACAddress(mac_address)
         mac.node.status = NODE_STATUS.RETIRED
         mac.node.save()
@@ -124,7 +124,7 @@ class AnonymousIsRegisteredAPITest(MAASServerTestCase):
             (response.status_code, response.content))
 
     def test_is_registered_returns_False_if_node_not_registered(self):
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         response = self.client.get(
             reverse('nodes_handler'),
             {'op': 'is_registered', 'mac_address': mac_address})

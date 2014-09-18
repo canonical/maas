@@ -52,7 +52,7 @@ class TestCreateNode(MAASServerTestCase):
         self.prepare_cluster_rpc(cluster)
 
         mac_addresses = [
-            factory.getRandomMACAddress() for _ in range(3)]
+            factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
         power_type = random.choice(self.power_types)['name']
         power_parameters = dumps({})
@@ -87,7 +87,7 @@ class TestCreateNode(MAASServerTestCase):
             ValidationError, create_node, cluster.uuid,
             architecture="spam/eggs", power_type="scrambled",
             power_parameters=dumps({}),
-            mac_addresses=[factory.getRandomMACAddress()])
+            mac_addresses=[factory.make_mac_address()])
 
     def test__raises_error_if_node_already_exists(self):
         cluster = factory.make_NodeGroup()
@@ -95,7 +95,7 @@ class TestCreateNode(MAASServerTestCase):
         self.prepare_cluster_rpc(cluster)
 
         mac_addresses = [
-            factory.getRandomMACAddress() for _ in range(3)]
+            factory.make_mac_address() for _ in range(3)]
         architecture = make_usable_architecture(self)
         power_type = random.choice(self.power_types)['name']
         power_parameters = dumps({})

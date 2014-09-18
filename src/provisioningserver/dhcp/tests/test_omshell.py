@@ -56,7 +56,7 @@ class TestOmshell(MAASTestCase):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ipv4_address()
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         shell = Omshell(server_address, shared_key)
 
         # Instead of calling a real omshell, we'll just record the
@@ -95,7 +95,7 @@ class TestOmshell(MAASTestCase):
         server_address = factory.make_string()
         shared_key = factory.make_string()
         ip_address = factory.make_ipv4_address()
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         shell = Omshell(server_address, shared_key)
 
         # Fake a call that results in a failure with random output.
@@ -113,7 +113,7 @@ class TestOmshell(MAASTestCase):
         # success.
         params = {
             'ip': factory.make_ipv4_address(),
-            'mac': factory.getRandomMACAddress(),
+            'mac': factory.make_mac_address(),
             'hostname': factory.make_name('hostname')
         }
         shell = Omshell(factory.make_name('server'), factory.make_name('key'))

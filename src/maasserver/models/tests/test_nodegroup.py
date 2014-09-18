@@ -505,7 +505,7 @@ class TestNodeGroup(MAASServerTestCase):
         protocol = fixture.makeCluster(nodegroup, AddSeaMicro15k)
         protocol.AddSeaMicro15k.return_value = defer.succeed({})
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
@@ -523,7 +523,7 @@ class TestNodeGroup(MAASServerTestCase):
         client = getClientFor.return_value
         nodegroup = factory.make_NodeGroup()
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
@@ -541,7 +541,7 @@ class TestNodeGroup(MAASServerTestCase):
         getClientFor.side_effect = NoConnectionsAvailable()
         nodegroup = factory.make_NodeGroup()
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')

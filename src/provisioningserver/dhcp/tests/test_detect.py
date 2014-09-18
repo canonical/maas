@@ -73,19 +73,19 @@ class TestDHCPDiscoverPacket(MAASTestCase):
         self.patch(detect_module, 'make_transaction_ID').return_value = (
             transaction_id)
 
-        discover = DHCPDiscoverPacket(factory.getRandomMACAddress())
+        discover = DHCPDiscoverPacket(factory.make_mac_address())
 
         self.assertEqual(transaction_id, discover.transaction_ID)
 
     def test_init_sets_packed_mac(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         discover = DHCPDiscoverPacket(mac)
         self.assertEqual(
             discover.string_mac_to_packed(mac),
             discover.packed_mac)
 
     def test_init_sets_packet(self):
-        discover = DHCPDiscoverPacket(factory.getRandomMACAddress())
+        discover = DHCPDiscoverPacket(factory.make_mac_address())
         self.assertIsNotNone(discover.packet)
 
     def test_string_mac_to_packed(self):
@@ -95,7 +95,7 @@ class TestDHCPDiscoverPacket(MAASTestCase):
         self.assertEqual(expected, discover.string_mac_to_packed(input))
 
     def test__build(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         discover = DHCPDiscoverPacket(mac)
         discover._build()
 
@@ -179,7 +179,7 @@ class TestRequestDHCP(MAASTestCase):
 
     def patch_interface_MAC(self):
         """Patch `get_interface_MAC` to return a fixed value."""
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.patch(detect_module, 'get_interface_MAC').return_value = mac
         return mac
 

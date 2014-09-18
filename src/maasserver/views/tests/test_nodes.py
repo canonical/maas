@@ -1725,7 +1725,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
         # with a nice error message because the node could not be found.
         self.client_log_in()
         node_id = factory.make_string()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         mac_delete_link = reverse('mac-delete', args=[node_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
@@ -1735,7 +1735,7 @@ class NodeDeleteMacTest(MAASServerTestCase):
         # to the node edit page.
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         mac_delete_link = reverse('mac-delete', args=[node.system_id, mac])
         response = self.client.get(mac_delete_link)
         self.assertEqual(
@@ -1809,7 +1809,7 @@ class NodeAddMacTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
         mac_add_link = reverse('mac-add', args=[node.system_id])
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         response = self.client.post(mac_add_link, {'mac_address': mac})
         self.assertEqual(
             reverse('node-edit', args=[node.system_id]),
@@ -1821,7 +1821,7 @@ class NodeAddMacTest(MAASServerTestCase):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)
         mac_add_link = reverse('mac-add', args=[node.system_id])
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         response = self.client.post(mac_add_link, {'mac_address': mac})
         redirect = extract_redirect(response)
         response = self.client.get(redirect)

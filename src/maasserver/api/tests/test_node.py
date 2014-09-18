@@ -622,7 +622,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         # Create a power_parameter valid for the selected power_type.
-        new_power_address = factory.getRandomMACAddress()
+        new_power_address = factory.make_mac_address()
         response = self.client_put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
@@ -1040,7 +1040,7 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_catches_bad_mac_address_parameter(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        random_mac = factory.getRandomMACAddress()
+        random_mac = factory.make_mac_address()
 
         response = self.client.post(
             self.get_node_uri(node),

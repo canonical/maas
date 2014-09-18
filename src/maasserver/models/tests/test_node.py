@@ -278,7 +278,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(token, node.token)
 
     def test_add_mac_address(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         node = factory.make_Node()
         node.add_mac_address(mac)
         macs = MACAddress.objects.filter(node=node, mac_address=mac).count()
@@ -290,7 +290,7 @@ class NodeTest(MAASServerTestCase):
         cluster = factory.make_NodeGroup()
         cluster_interface = factory.make_NodeGroupInterface(nodegroup=cluster)
         ip_in_range = cluster_interface.static_ip_range_low
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         factory.make_DHCPLease(
             mac=mac_address, ip=ip_in_range, nodegroup=cluster)
         node = factory.make_Node(nodegroup=cluster)
@@ -300,7 +300,7 @@ class NodeTest(MAASServerTestCase):
             cluster_interface, node.get_primary_mac().cluster_interface)
 
     def test_remove_mac_address(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         node = factory.make_Node()
         node.add_mac_address(mac)
         node.remove_mac_address(mac)
@@ -310,7 +310,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_primary_mac_returns_mac_address(self):
         node = factory.make_Node()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         node.add_mac_address(mac)
         self.assertEqual(mac, node.get_primary_mac().mac_address)
 
@@ -320,7 +320,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_primary_mac_returns_oldest_mac(self):
         node = factory.make_Node()
-        macs = [factory.getRandomMACAddress() for counter in range(3)]
+        macs = [factory.make_mac_address() for counter in range(3)]
         offset = timedelta(0)
         for mac in macs:
             mac_address = node.add_mac_address(mac)
@@ -478,14 +478,14 @@ class NodeTest(MAASServerTestCase):
 
     def test_get_effective_power_parameters_adds_mac_if_no_params_set(self):
         node = factory.make_Node()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         node.add_mac_address(mac)
         self.assertEqual(
             mac, node.get_effective_power_parameters()['mac_address'])
 
     def test_get_effective_power_parameters_adds_no_mac_if_params_set(self):
         node = factory.make_Node(power_parameters={'foo': 'bar'})
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         node.add_mac_address(mac)
         self.assertNotIn('mac', node.get_effective_power_parameters())
 

@@ -287,7 +287,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         nodegroup = yield deferToThread(self.make_node_group, uuid)
         mapping = {
             "ip": factory.make_ipv4_address(),
-            "mac": factory.getRandomMACAddress()
+            "mac": factory.make_mac_address()
         }
 
         response = yield call_responder(Region(), UpdateLeases, {
@@ -1655,7 +1655,7 @@ class TestRegionProtocol_CreateNode(MAASTestCase):
             'architecture': make_usable_architecture(self),
             'power_type': factory.make_name("power_type"),
             'power_parameters': dumps({}),
-            'mac_addresses': [factory.getRandomMACAddress()],
+            'mac_addresses': [factory.make_mac_address()],
         }
 
         response = yield call_responder(

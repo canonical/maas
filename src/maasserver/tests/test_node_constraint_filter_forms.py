@@ -701,8 +701,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'not_tags': [factory.make_Tag().name],
             'networks': [factory.make_Network().name],
             'not_networks': [factory.make_Network().name],
-            'connected_to': [factory.getRandomMACAddress()],
-            'not_connected_to': [factory.getRandomMACAddress()],
+            'connected_to': [factory.make_mac_address()],
+            'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
             }

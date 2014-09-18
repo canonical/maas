@@ -80,7 +80,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         parsed_result = json.loads(response.content)
 
@@ -108,7 +108,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'hostname': hostname,
                 'architecture': architecture,
                 'power_type': 'ether_wake',
-                'mac_addresses': factory.getRandomMACAddress(),
+                'mac_addresses': factory.make_mac_address(),
                 'power_parameters': json.dumps(power_parameters),
                 'power_type': power_type,
             })
@@ -206,7 +206,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'autodetect_nodegroup': '1',
                 'hostname': hostname,
                 'architecture': make_usable_architecture(self),
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(
             NodeGroup.objects.ensure_master(),
@@ -221,7 +221,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'autodetect_nodegroup': '1',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
@@ -255,7 +255,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 'op': 'new',
                 'architecture': architecture,
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
@@ -369,7 +369,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': hostname_with_domain,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -392,7 +392,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': hostname_without_domain,
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(httplib.OK, response.status_code, response.content)
         parsed_result = json.loads(response.content)
@@ -415,7 +415,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': factory.make_name('hostname'),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             },
             REMOTE_ADDR=origin_ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -433,7 +433,7 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                 'hostname': factory.make_name('hostname'),
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
             },
             HTTP_HOST=unknown_host)
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -633,7 +633,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
         # The api allows the setting of a Node's power_parameters field.
         # Create a power_parameter valid for the selected power_type.
         self.client_log_in(as_admin=True)
-        new_mac_address = factory.getRandomMACAddress()
+        new_mac_address = factory.make_mac_address()
         response = self.client.post(
             reverse('nodes_handler'), {
                 'op': 'new',
@@ -662,7 +662,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'architecture': make_usable_architecture(self),
                 'power_type': 'ether_wake',
                 'power_parameters_unknown_param': factory.make_string(),
-                'mac_addresses': [factory.getRandomMACAddress()],
+                'mac_addresses': [factory.make_mac_address()],
                 })
 
         self.assertEqual(

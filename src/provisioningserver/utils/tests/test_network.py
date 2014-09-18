@@ -90,7 +90,7 @@ class TestFindIPViaARP(MAASTestCase):
         self.assertEqual("192.168.0.1", ip_address_observed)
 
     def test__returns_consistent_output(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         ips = [
             '10.0.0.11',
             '10.0.0.99',
@@ -126,7 +126,7 @@ class TestFindMACViaARP(MAASTestCase):
         if ip is None:
             ip = factory.make_ipv4_address()
         if mac is None:
-            mac = factory.getRandomMACAddress()
+            mac = factory.make_mac_address()
         if dev is None:
             dev = factory.make_name('eth', sep='')
         return "%(ip)s dev %(dev)s lladdr %(mac)s\n" % {
@@ -181,7 +181,7 @@ class TestFindMACViaARP(MAASTestCase):
         self.assertIsNone(find_mac_via_arp('10.1.1.100'))
 
     def test__is_not_fooled_by_different_notations(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.patch_call(self.make_output_line('9::0:05', mac=mac))
         self.assertEqual(mac, find_mac_via_arp('09:0::5'))
 
@@ -262,8 +262,8 @@ class TestGetAllAddressesForInterface(MAASTestCase):
         patch_interfaces(self, {
             interface: {
                 AF_LINK: [{
-                    'addr': unicode(factory.getRandomMACAddress()),
-                    'peer': unicode(factory.getRandomMACAddress()),
+                    'addr': unicode(factory.make_mac_address()),
+                    'peer': unicode(factory.make_mac_address()),
                     }],
                 },
             })

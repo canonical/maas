@@ -782,7 +782,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
 
     def test_ignores_unknown_macs(self):
         cluster = factory.make_NodeGroup()
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         leases = {
             factory.make_ipv4_address(): mac_address
             }
@@ -801,7 +801,7 @@ class TestUpdateMacClusterInterfaces(MAASServerTestCase):
             ip_range_low='', ip_range_high='', router_ip='',
             ip=factory.make_ipv4_address(),
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         leases = {
             factory.make_ipv4_address(): mac_address
             }

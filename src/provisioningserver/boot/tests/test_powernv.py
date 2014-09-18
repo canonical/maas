@@ -68,7 +68,7 @@ def get_example_path_and_components():
     The path is intended to match `re_config_file`, and the components are
     the expected groups from a match.
     """
-    components = {"mac": factory.getRandomMACAddress("-")}
+    components = {"mac": factory.make_mac_address("-")}
     config_path = compose_config_path(components["mac"])
     return config_path, components
 
@@ -136,7 +136,7 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
 
     def test_match_path_pxe_config_without_mac(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.getRandomMACAddress()
+        fake_mac = factory.make_mac_address()
         self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
         config_path = 'ppc64el/pxelinux.cfg/default'
         params = method.match_path(None, config_path)
@@ -148,7 +148,7 @@ class TestPowerNVBootMethodMatchPath(MAASTestCase):
 
     def test_match_path_pxe_prefix_request(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.getRandomMACAddress()
+        fake_mac = factory.make_mac_address()
         self.patch(powernv_module, 'get_remote_mac').return_value = fake_mac
         file_path = 'ppc64el/file'
         params = method.match_path(None, file_path)
@@ -223,7 +223,7 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
 
     def test_get_reader_appends_bootif(self):
         method = PowerNVBootMethod()
-        fake_mac = factory.getRandomMACAddress()
+        fake_mac = factory.make_mac_address()
         params = make_kernel_parameters(self, purpose="install")
         output = method.get_reader(
             backend=None, kernel_params=params, arch='ppc64el', mac=fake_mac)
@@ -233,13 +233,13 @@ class TestPowerNVBootMethodRenderConfig(MAASTestCase):
         self.assertIn(expected, config['execute']['APPEND'])
 
     def test_format_bootif_replaces_colon(self):
-        fake_mac = factory.getRandomMACAddress()
+        fake_mac = factory.make_mac_address()
         self.assertEqual(
             '01-%s' % fake_mac.replace(':', '-').lower(),
             format_bootif(fake_mac))
 
     def test_format_bootif_makes_mac_address_lower(self):
-        fake_mac = factory.getRandomMACAddress()
+        fake_mac = factory.make_mac_address()
         fake_mac = fake_mac.upper()
         self.assertEqual(
             '01-%s' % fake_mac.replace(':', '-').lower(),

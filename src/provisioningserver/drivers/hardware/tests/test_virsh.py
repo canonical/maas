@@ -169,7 +169,7 @@ class TestVirshSSH(MAASTestCase):
         self.assertEqual(None, expected)
 
     def test_mac_addresses_returns_list(self):
-        macs = [factory.getRandomMACAddress() for _ in range(2)]
+        macs = [factory.make_mac_address() for _ in range(2)]
         output = SAMPLE_IFLIST % (macs[0], macs[1])
         conn = self.configure_virshssh(output)
         expected = conn.get_mac_addresses('')
@@ -220,7 +220,7 @@ class TestVirsh(MAASTestCase):
         called_params = []
         fake_macs = []
         for machine in machines:
-            macs = [factory.getRandomMACAddress() for _ in range(3)]
+            macs = [factory.make_mac_address() for _ in range(3)]
             fake_macs.append(macs)
             called_params.append({
                 'power_address': poweraddr,

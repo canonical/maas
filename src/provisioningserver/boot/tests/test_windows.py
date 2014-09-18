@@ -176,7 +176,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     @inlineCallbacks
     def test_get_node_info(self):
         method = WindowsPXEBootMethod()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_purpose = factory.make_name('install')
         mock_release = factory.make_name('release')
         self.patch(windows_module, 'get_remote_mac').return_value = mock_mac
@@ -214,7 +214,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_match_path_pxelinux(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
             'purpose': 'install',
@@ -230,7 +230,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_match_path_pxelinux_only_on_install(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
             'purpose': factory.make_string(),
@@ -245,7 +245,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_match_path_pxelinux_missing_hivex(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
             'purpose': factory.make_string(),
@@ -261,7 +261,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     def test_match_path_pxelinux_only_on_windows(self):
         method = WindowsPXEBootMethod()
         method.remote_path = factory.make_string()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(method, 'get_node_info')
         mock_get_node_info.return_value = {
             'purpose': 'install',
@@ -285,7 +285,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     @inlineCallbacks
     def test_match_path_static_file(self):
         method = WindowsPXEBootMethod()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(windows_module, 'get_remote_mac')
         mock_get_node_info.return_value = mock_mac
 
@@ -296,7 +296,7 @@ class TestWindowsPXEBootMethod(MAASTestCase):
     @inlineCallbacks
     def test_match_path_static_file_clean_path(self):
         method = WindowsPXEBootMethod()
-        mock_mac = factory.getRandomMACAddress()
+        mock_mac = factory.make_mac_address()
         mock_get_node_info = self.patch(windows_module, 'get_remote_mac')
         mock_get_node_info.return_value = mock_mac
 

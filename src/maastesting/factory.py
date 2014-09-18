@@ -278,7 +278,7 @@ class Factory:
         # guards against shortfalls as random IP addresses collide.
         leases = {}
         while len(leases) < num_leases:
-            leases[self.make_ipv4_address()] = self.getRandomMACAddress()
+            leases[self.make_ipv4_address()] = self.make_mac_address()
         return leases
 
     def make_date(self, year=2011):

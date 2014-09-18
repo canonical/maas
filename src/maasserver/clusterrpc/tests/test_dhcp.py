@@ -244,8 +244,8 @@ class TestUpdateHostMaps(MAASServerTestCase):
         # Calls will be made to add these.
         static_mappings = {
             nodegroup: {
-                get_random_static_ip(): factory.getRandomMACAddress(),
-                get_random_static_ip(): factory.getRandomMACAddress(),
+                get_random_static_ip(): factory.make_mac_address(),
+                get_random_static_ip(): factory.make_mac_address(),
             }
         }
 
@@ -491,7 +491,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
         # in to gen_calls_to_create_host_maps().
         static_mappings = {
             nodegroup: {
-                factory.make_ipv4_address(): factory.getRandomMACAddress()
+                factory.make_ipv4_address(): factory.make_mac_address()
                 for _ in xrange(3)
             }
             for nodegroup in nodegroups
@@ -524,7 +524,7 @@ class TestGenCallsToCreateHostMaps(MAASServerTestCase):
 
         static_mapping = {
             nodegroup: {
-                factory.make_ipv6_address(): factory.getRandomMACAddress()
+                factory.make_ipv6_address(): factory.make_mac_address()
             }
         }
 

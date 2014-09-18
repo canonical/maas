@@ -66,7 +66,7 @@ class FakeServer(object):
         self.nic = {}
 
     def add_fake_nic(self, id):
-        self.nic[id] = {'macAddr': factory.getRandomMACAddress()}
+        self.nic[id] = {'macAddr': factory.make_mac_address()}
 
     def get_fake_macs(self):
         return [nic['macAddr'] for nic in self.nic.values()]
@@ -313,22 +313,22 @@ class TestSeaMicro(MAASTestCase):
             0: {
                 'serverId': '0/0',
                 'serverNIC': '0',
-                'serverMacAddr': factory.getRandomMACAddress(),
+                'serverMacAddr': factory.make_mac_address(),
                 },
             1: {
                 'serverId': '1/0',
                 'serverNIC': '0',
-                'serverMacAddr': factory.getRandomMACAddress(),
+                'serverMacAddr': factory.make_mac_address(),
                 },
             2: {
                 'serverId': '2/0',
                 'serverNIC': '0',
-                'serverMacAddr': factory.getRandomMACAddress(),
+                'serverMacAddr': factory.make_mac_address(),
                 },
             3: {
                 'serverId': '3/1',
                 'serverNIC': '1',
-                'serverMacAddr': factory.getRandomMACAddress(),
+                'serverMacAddr': factory.make_mac_address(),
                 },
             }
         self.patch(

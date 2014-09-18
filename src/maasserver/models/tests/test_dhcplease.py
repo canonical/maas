@@ -43,7 +43,7 @@ class TestDHCPLease(MAASServerTestCase):
     def test_init(self):
         nodegroup = factory.make_NodeGroup()
         ip = factory.make_ipv4_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
 
         lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=mac)
         lease.save()
@@ -101,7 +101,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         ip = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, ip=ip)
-        new_mac = factory.getRandomMACAddress()
+        new_mac = factory.make_mac_address()
         DHCPLease.objects.update_leases(nodegroup, {ip: new_mac})
         self.assertEqual({ip: new_mac}, map_leases(nodegroup))
 
@@ -114,7 +114,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
 
     def test_update_leases_adds_new_ip_to_mac(self):
         nodegroup = factory.make_NodeGroup()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         ip1 = factory.make_ipv4_address()
         ip2 = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=ip1)
@@ -123,7 +123,7 @@ class TestDHCPLeaseManager(MAASServerTestCase):
 
     def test_update_leases_deletes_only_obsolete_ips(self):
         nodegroup = factory.make_NodeGroup()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         obsolete_ip = factory.make_ipv4_address()
         current_ip = factory.make_ipv4_address()
         factory.make_DHCPLease(nodegroup=nodegroup, mac=mac, ip=obsolete_ip)
@@ -141,8 +141,8 @@ class TestDHCPLeaseManager(MAASServerTestCase):
 
     def test_update_leases_combines_additions_deletions_and_replacements(self):
         nodegroup = factory.make_NodeGroup()
-        mac1 = factory.getRandomMACAddress()
-        mac2 = factory.getRandomMACAddress()
+        mac1 = factory.make_mac_address()
+        mac2 = factory.make_mac_address()
         obsolete_lease = factory.make_DHCPLease(
             nodegroup=nodegroup, mac=mac1)
         # The obsolete lease won't be in the update, so it'll disappear.

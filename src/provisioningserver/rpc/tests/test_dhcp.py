@@ -165,7 +165,7 @@ class TestCreateHostMaps(MAASTestCase):
         omshell_create = self.patch(Omshell, "create")
         mappings = [
             {"ip_address": factory.make_ipv4_address(),
-             "mac_address": factory.getRandomMACAddress()}
+             "mac_address": factory.make_mac_address()}
             for _ in range(5)
         ]
         dhcp.create_host_maps(mappings, sentinel.shared_key)
@@ -180,7 +180,7 @@ class TestCreateHostMaps(MAASTestCase):
         omshell_create.side_effect = ExternalProcessError(
             returncode=2, cmd=("omshell",), output=error_message)
         ip_address = factory.make_ipv4_address()
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         mappings = [{"ip_address": ip_address, "mac_address": mac_address}]
         with FakeLogger("maas.dhcp") as logger:
             error = self.assertRaises(

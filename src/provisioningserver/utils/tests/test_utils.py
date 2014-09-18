@@ -424,7 +424,7 @@ class TestCreateNode(PservTestCase):
             {"system_id": factory.make_name("system-id")})
 
         uuid = 'node-' + factory.make_UUID()
-        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
+        macs = sorted(factory.make_mac_address() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -458,7 +458,7 @@ class TestCreateNode(PservTestCase):
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
 
         uuid = 'node-' + factory.make_UUID()
-        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
+        macs = sorted(factory.make_mac_address() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {
@@ -495,7 +495,7 @@ class TestCreateNode(PservTestCase):
         }
 
         # Create a list of MACs with one random duplicate.
-        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
+        macs = sorted(factory.make_mac_address() for _ in range(3))
         macs_with_duplicate = macs + [choice(macs)]
 
         yield create_node(
@@ -518,7 +518,7 @@ class TestCreateNode(PservTestCase):
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
 
         uuid = 'node-' + factory.make_UUID()
-        macs = sorted(factory.getRandomMACAddress() for _ in range(3))
+        macs = sorted(factory.make_mac_address() for _ in range(3))
         arch = factory.make_name('architecture')
         power_type = factory.make_name('power_type')
         power_parameters = {

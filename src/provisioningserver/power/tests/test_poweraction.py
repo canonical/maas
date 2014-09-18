@@ -167,7 +167,7 @@ class TestPowerAction(MAASTestCase):
         pa = PowerAction('ether_wake')
         self.assertRaises(
             PowerActionFail,
-            pa.execute, power_change='off', mac=factory.getRandomMACAddress())
+            pa.execute, power_change='off', mac=factory.make_mac_address())
 
     def test_fence_cdu_checks_state(self):
         # We can't test the fence_cdu template in detail (and it may be
@@ -309,7 +309,7 @@ class TestTemplateContext(MAASTestCase):
         find_ip_via_arp.return_value = sentinel.ip_address_from_mac
 
         power_action = self.make_stubbed_power_action()
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         result = power_action.execute(mac_address=mac_address)
         self.assertEqual("done", result)
         self.assertThat(

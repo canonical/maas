@@ -52,7 +52,7 @@ def make_show_node_list(length=10):
 
 def make_show_node_macaddr(length=10):
     """Make a fake return value for get_node_macaddr."""
-    return ''.join((factory.getRandomMACAddress() + ' ')
+    return ''.join((factory.make_mac_address() + ' ')
                    for _ in xrange(length))
 
 

@@ -116,7 +116,7 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_generator_url(self):
         # get_generator_url() merges the parameters obtained from the request
         # file path (arch, subarch, name) into the configured generator URL.
-        mac = factory.getRandomMACAddress("-")
+        mac = factory.make_mac_address("-")
         dummy = factory.make_name("dummy").encode("ascii")
         backend_url = b"http://example.com/?" + urlencode({b"dummy": dummy})
         backend = TFTPBackend(self.make_dir(), backend_url)
@@ -152,7 +152,7 @@ class TestTFTPBackend(MAASTestCase):
         cluster_uuid = factory.make_UUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
-        mac = factory.getRandomMACAddress("-")
+        mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
@@ -193,7 +193,7 @@ class TestTFTPBackend(MAASTestCase):
         # `PXEBootMethod.get_reader`.
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # Fake configuration parameters, as discovered from the file path.
-        fake_params = {"mac": factory.getRandomMACAddress("-")}
+        fake_params = {"mac": factory.make_mac_address("-")}
         # Fake kernel configuration parameters, as returned from the API call.
         fake_kernel_params = make_kernel_parameters()
 

@@ -175,7 +175,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_pxeconfig_returns_no_content_for_unknown_node(self):
-        params = dict(mac=factory.getRandomMACAddress(delimiter='-'))
+        params = dict(mac=factory.make_mac_address(delimiter='-'))
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
 
@@ -185,7 +185,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         params = dict(
             self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter='-'),
+            mac=factory.make_mac_address(delimiter='-'),
             arch=arch,
             subarch=subarch,
             cluster_uuid=nodegroup.uuid)
@@ -203,7 +203,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup()
         params = dict(
             self.get_default_params(),
-            mac=factory.getRandomMACAddress(delimiter='-'),
+            mac=factory.make_mac_address(delimiter='-'),
             arch=arch,
             subarch=subarch,
             cluster_uuid=nodegroup.uuid)

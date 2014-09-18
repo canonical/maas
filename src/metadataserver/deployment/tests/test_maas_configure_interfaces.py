@@ -61,7 +61,7 @@ class TestPrepareParser(MAASTestCase):
         config_dir = factory.make_name('etc-network')
         ip = factory.make_ipv6_address()
         gateway = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         args = parser.parse_args([
             '--config-dir=%s' % config_dir,
             '--update-interfaces',
@@ -86,7 +86,7 @@ class TestPrepareParser(MAASTestCase):
     def test__parses_multiple_ip_mac_pairs(self):
         parser = script.prepare_parser()
         pairs = [
-            (factory.make_ipv6_address(), factory.getRandomMACAddress())
+            (factory.make_ipv6_address(), factory.make_mac_address())
             for _ in range(randint(2, 4))
             ]
         args = ['--static-ip=%s=%s' % pair for pair in pairs]
@@ -94,7 +94,7 @@ class TestPrepareParser(MAASTestCase):
 
     def test__checks_for_obviously_malformed_ip_mac_pairs(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         parser = script.prepare_parser()
         self.assertRaises(
             script.BadArgument,
@@ -103,7 +103,7 @@ class TestPrepareParser(MAASTestCase):
 
 def make_denormalised_mac():
     """Create a MAC address that is not in its normalised form."""
-    mac = factory.getRandomMACAddress()
+    mac = factory.make_mac_address()
     if mac.upper() == mac.lower():
         # This is not denormalised.  Inject an upper-case letter to ensure
         # that we get something denormalised.
@@ -115,7 +115,7 @@ class TestSplitIPPair(MAASTestCase):
 
     def test__splits_ip_mac_pairs(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(
             (ip, mac),
             script.split_ip_mac_pair('%s=%s' % (ip, mac)))
@@ -132,19 +132,19 @@ class TestSplitIPPair(MAASTestCase):
 class TestNormaliseMAC(MAASTestCase):
 
     def test__normalises(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(
             script.normalise_mac(mac.lower()),
             script.normalise_mac(mac.upper()))
 
     def test__is_idempotent(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(
             script.normalise_mac(mac),
             script.normalise_mac(script.normalise_mac(mac)))
 
     def test__strips_whitespace(self):
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(mac, script.normalise_mac(' %s\n' % mac))
 
 
@@ -225,7 +225,7 @@ class TestMapAddressesByInterface(MAASTestCase):
 
     def test__combines_mappings(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         interface = factory.make_name('eth')
         self.assertEqual(
             {interface: [ip]},
@@ -235,14 +235,14 @@ class TestMapAddressesByInterface(MAASTestCase):
 
     def test__ignores_unknown_macs(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(
             {},
             script.map_addresses_by_interface({}, [(ip, mac)]))
 
     def test__ignores_unknown_interfaces(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         self.assertEqual(
             {},
             script.map_addresses_by_interface({mac: []}, [(ip, mac)]))
@@ -250,7 +250,7 @@ class TestMapAddressesByInterface(MAASTestCase):
     def test__combines_addresses_per_interface(self):
         ip1 = factory.make_ipv6_address()
         ip2 = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         interface = factory.make_name('eth')
         mapping = script.map_addresses_by_interface(
             {mac: [interface]},
@@ -298,7 +298,7 @@ class TestComposeConfigFile(MAASTestCase):
 
     def test__returns_config_file_text(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         interface = factory.make_name('eth')
         self.assertIn(
             script.compose_config_stanza(interface, [ip], []),
@@ -388,7 +388,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
     def test__writes_network_config(self):
         write_file = self.patch_write_file()
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         interface = factory.make_name('eth')
         config_dir = self.make_config_dir()
 
@@ -404,7 +404,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
 
     def test__returns_interfaces_with_addresses(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         interface = factory.make_name('eth')
         config_dir = self.make_config_dir()
         self.patch_write_file()
@@ -416,7 +416,7 @@ class TestConfigureStaticAddresses(MAASTestCase):
 
     def test__ignores_interfaces_without_addresses(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         config_dir = self.make_config_dir()
         self.patch_write_file()
         self.assertEqual(
@@ -468,7 +468,7 @@ class TestGenerateUdevRule(MAASTestCase):
 
     def test__generates_udev_rule(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         expected_rule = (
             'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '
             'ATTR{address}=="%(mac)s", NAME="%(interface)s"'
@@ -485,7 +485,7 @@ class TestNameInterfaces(MAASTestCase):
 
     def test__writes_udev_file(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         write_file = self.patch_write_file()
         script.name_interfaces({mac: [interface]})
         self.assertThat(
@@ -495,7 +495,7 @@ class TestNameInterfaces(MAASTestCase):
 
     def test__writes_udev_rules(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         write_file = self.patch_write_file()
         script.name_interfaces({mac: [interface]})
         [call] = write_file.mock_calls
@@ -513,7 +513,7 @@ class TestNameInterfaces(MAASTestCase):
         lo_interface = 'lo'
         lo_mac = '00:00:00:00:00:00'
         proper_interface = factory.make_name('eth')
-        proper_mac = factory.getRandomMACAddress()
+        proper_mac = factory.make_mac_address()
         generate_udev_rule = self.patch_autospec(script, 'generate_udev_rule')
         generate_udev_rule.return_value = "(udev rule)"
         script.name_interfaces(
@@ -527,7 +527,7 @@ class TestNameInterfaces(MAASTestCase):
 
     def test__skips_if_udev_rules_d_does_not_exist(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         write_file = self.patch_write_file()
         write_file.side_effect = IOError(
             ENOENT, "Deliberate error: No such file or directory.")
@@ -537,7 +537,7 @@ class TestNameInterfaces(MAASTestCase):
 
     def test__propagates_similar_but_different_errors_writing_file(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         write_file = self.patch_write_file()
         write_file.side_effect = IOError(
             EACCES, "Deliberate error: Permission denied.")

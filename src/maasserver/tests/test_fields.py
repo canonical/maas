@@ -141,22 +141,22 @@ class TestMAC(MAASServerTestCase):
         self.assertIsNone(MAC(None).get_raw())
 
     def test_get_raw_returns_wrapped_address(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertEqual(addr, MAC(addr).get_raw())
 
     def test_get_raw_punches_through_double_wrapping(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertEqual(addr, MAC(MAC(addr)).get_raw())
 
     def test_getquoted_returns_NULL_for_None(self):
         self.assertEqual("NULL", MAC(None).getquoted())
 
     def test_getquoted_returns_SQL_for_MAC(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertEqual("'%s'::macaddr" % addr, MAC(addr).getquoted())
 
     def test_getquoted_punches_through_double_wrapping(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertEqual("'%s'::macaddr" % addr, MAC(MAC(addr)).getquoted())
 
     def test_mac_equals_self(self):
@@ -164,7 +164,7 @@ class TestMAC(MAASServerTestCase):
         self.assertTrue(mac == mac)
 
     def test_mac_equals_identical_mac(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertTrue(MAC(addr) == MAC(addr))
 
     def test_eq_punches_through_double_wrapping_on_self(self):
@@ -215,7 +215,7 @@ class TestMAC(MAASServerTestCase):
         self.assertItemsEqual(set([mac1, mac2]), [mac1, mac2])
 
     def test_identical_macs_hash_identically(self):
-        addr = factory.getRandomMACAddress()
+        addr = factory.make_mac_address()
         self.assertItemsEqual(
             set([MAC(addr), MAC(addr), MAC(MAC(addr)), addr]),
             [addr])

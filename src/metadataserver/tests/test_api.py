@@ -124,11 +124,11 @@ class TestHelpers(DjangoTestCase):
     def test_get_node_for_mac_refuses_if_anonymous_access_disabled(self):
         self.patch(settings, 'ALLOW_UNSAFE_METADATA_ACCESS', False)
         self.assertRaises(
-            PermissionDenied, get_node_for_mac, factory.getRandomMACAddress())
+            PermissionDenied, get_node_for_mac, factory.make_mac_address())
 
     def test_get_node_for_mac_raises_404_for_unknown_mac(self):
         self.assertRaises(
-            MAASAPINotFound, get_node_for_mac, factory.getRandomMACAddress())
+            MAASAPINotFound, get_node_for_mac, factory.make_mac_address())
 
     def test_get_node_for_mac_finds_node_by_mac(self):
         mac = factory.make_MACAddress()

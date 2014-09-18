@@ -163,7 +163,7 @@ class TestUEFIBootMethodRegex(MAASTestCase):
         The path is intended to match `re_config_file`, and
         the components are the expected groups from a match.
         """
-        components = {"mac": factory.getRandomMACAddress(":"),
+        components = {"mac": factory.make_mac_address(":"),
                       "arch": None,
                       "subarch": None}
         config_path = compose_config_path(components["mac"])

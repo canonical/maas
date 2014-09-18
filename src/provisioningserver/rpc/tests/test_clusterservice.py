@@ -1056,7 +1056,7 @@ class TestClusterProtocol_CreateHostMaps(MAASTestCase):
         create_host_maps = self.patch(clusterservice, "create_host_maps")
         mappings = [
             {"ip_address": factory.make_ipv4_address(),
-             "mac_address": factory.getRandomMACAddress()}
+             "mac_address": factory.make_mac_address()}
             for _ in range(2)
         ]
         shared_key = factory.make_name("shared_key")
@@ -1198,7 +1198,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
@@ -1219,7 +1219,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = None
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
@@ -1244,7 +1244,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
 
-        mac = factory.getRandomMACAddress()
+        mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')

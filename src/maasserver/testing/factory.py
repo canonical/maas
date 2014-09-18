@@ -464,7 +464,7 @@ class Factory(maastesting.factory.Factory):
 
     def make_MAC(self):
         """Generate a random MAC address, in the form of a MAC object."""
-        return MAC(self.getRandomMACAddress())
+        return MAC(self.make_mac_address())
 
     def make_MACAddress(self, address=None, node=None, networks=None,
                         **kwargs):
@@ -472,7 +472,7 @@ class Factory(maastesting.factory.Factory):
         if node is None:
             node = self.make_Node()
         if address is None:
-            address = self.getRandomMACAddress()
+            address = self.make_mac_address()
         mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)
         mac.save()
         if networks is not None:
@@ -522,7 +522,7 @@ class Factory(maastesting.factory.Factory):
         if ip is None:
             ip = self.make_ipv4_address()
         if mac is None:
-            mac = self.getRandomMACAddress()
+            mac = self.make_mac_address()
         lease = DHCPLease(nodegroup=nodegroup, ip=ip, mac=MAC(mac))
         lease.save()
         return lease
