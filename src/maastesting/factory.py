@@ -127,8 +127,6 @@ class Factory:
         octets = islice(self.random_octets, 4)
         return '%d.%d.%d.%d' % tuple(octets)
 
-    getRandomIPAddress = make_ipv4_address  # DEPRECATED.
-
     def make_ipv6_address(self):
         # We return from the fc00::/7 space because that's a private
         # space and shouldn't cause problems of addressing the outside
