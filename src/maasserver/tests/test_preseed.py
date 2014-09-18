@@ -773,6 +773,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
             command[:3])
         self.assertIn('/usr/local/bin/maas_configure_interfaces.py', command)
         self.assertIn('--update-interfaces', command)
+        self.assertIn('--name-interfaces', command)
 
     def test__includes_static_IPv6_addresses(self):
         network = factory.make_ipv6_network()

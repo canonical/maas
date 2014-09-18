@@ -68,17 +68,20 @@ class TestPrepareParser(MAASTestCase):
             '--restart-interfaces',
             '--static-ip=%s=%s' % (ip, mac),
             '--gateway=%s=%s' % (gateway, mac),
+            '--name-interfaces',
             ])
         self.expectThat(args.config_dir, Equals(config_dir))
         self.expectThat(args.static_ip, Equals([(ip, mac)]))
         self.expectThat(args.gateway, Equals([(gateway, mac)]))
         self.assertTrue(args.update_interfaces)
         self.assertTrue(args.restart_interfaces)
+        self.assertTrue(args.name_interfaces)
 
     def test__leaves_dangerous_options_off_by_default(self):
         defaults = script.prepare_parser().parse_args([])
         self.assertFalse(defaults.update_interfaces)
         self.assertFalse(defaults.restart_interfaces)
+        self.assertFalse(defaults.name_interfaces)
 
     def test__parses_multiple_ip_mac_pairs(self):
         parser = script.prepare_parser()
@@ -98,6 +101,16 @@ class TestPrepareParser(MAASTestCase):
             parser.parse_args, ['--static-ip', '%s+%s' % (ip, mac)])
 
 
+def make_denormalised_mac():
+    """Create a MAC address that is not in its normalised form."""
+    mac = factory.getRandomMACAddress()
+    if mac.upper() == mac.lower():
+        # This is not denormalised.  Inject an upper-case letter to ensure
+        # that we get something denormalised.
+        mac[-1] = 'D'
+    return mac.upper()
+
+
 class TestSplitIPPair(MAASTestCase):
 
     def test__splits_ip_mac_pairs(self):
@@ -109,7 +122,7 @@ class TestSplitIPPair(MAASTestCase):
 
     def test__normalises_macs(self):
         ip = factory.make_ipv6_address()
-        mac = factory.getRandomMACAddress().upper()
+        mac = make_denormalised_mac()
         self.assertNotEqual(script.normalise_mac(mac), mac)
         self.assertEqual(
             (ip, script.normalise_mac(mac)),
@@ -176,7 +189,7 @@ class TestMapInterfacesByMAC(MAASTestCase):
 
     def test__normalises_macs(self):
         interface = factory.make_name('eth')
-        mac = factory.getRandomMACAddress().upper()
+        mac = make_denormalised_mac()
         self.assertNotEqual(script.normalise_mac(mac), mac)
         self.patch_listdir({'/sys/class/net': [interface]})
         self.patch_read_file({'/sys/class/net/%s/address' % interface: mac})
@@ -449,3 +462,85 @@ class TestRestartInterfaces(MAASTestCase):
                 call(['ifdown', interface]),
                 call(['ifup', interface]),
                 ))
+
+
+class TestGenerateUdevRule(MAASTestCase):
+
+    def test__generates_udev_rule(self):
+        interface = factory.make_name('eth')
+        mac = factory.getRandomMACAddress()
+        expected_rule = (
+            'SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '
+            'ATTR{address}=="%(mac)s", NAME="%(interface)s"'
+            ) % {'mac': mac, 'interface': interface}
+        self.assertEqual(
+            expected_rule,
+            script.generate_udev_rule(interface, mac).strip())
+
+
+class TestNameInterfaces(MAASTestCase):
+
+    def patch_write_file(self):
+        return self.patch_autospec(script, 'write_file')
+
+    def test__writes_udev_file(self):
+        interface = factory.make_name('eth')
+        mac = factory.getRandomMACAddress()
+        write_file = self.patch_write_file()
+        script.name_interfaces({mac: [interface]})
+        self.assertThat(
+            write_file,
+            MockCalledOnceWith(
+                '/etc/udev/rules.d/10-maas-network-interfaces.rules', ANY))
+
+    def test__writes_udev_rules(self):
+        interface = factory.make_name('eth')
+        mac = factory.getRandomMACAddress()
+        write_file = self.patch_write_file()
+        script.name_interfaces({mac: [interface]})
+        [call] = write_file.mock_calls
+        _, args, _ = call
+        _, content = args
+        self.assertIn('NAME="%s"' % interface, content)
+
+    def test__skips_loopback_but_names_other_interfaces(self):
+        # Testing the loopback interface together with a "regular" network
+        # interface.  Without the regular interface, a code change could
+        # accidentally cause the patched generate_udev_rule never to be called
+        # at all.  If it weren't for the extra interface, the test wouldn't
+        # notice.
+        self.patch_write_file()
+        lo_interface = 'lo'
+        lo_mac = '00:00:00:00:00:00'
+        proper_interface = factory.make_name('eth')
+        proper_mac = factory.getRandomMACAddress()
+        generate_udev_rule = self.patch_autospec(script, 'generate_udev_rule')
+        generate_udev_rule.return_value = "(udev rule)"
+        script.name_interfaces(
+            {
+                lo_mac: [lo_interface],
+                proper_mac: [proper_interface],
+            })
+        self.assertThat(
+            generate_udev_rule,
+            MockCalledOnceWith(proper_interface, proper_mac))
+
+    def test__skips_if_udev_rules_d_does_not_exist(self):
+        interface = factory.make_name('eth')
+        mac = factory.getRandomMACAddress()
+        write_file = self.patch_write_file()
+        write_file.side_effect = IOError(
+            ENOENT, "Deliberate error: No such file or directory.")
+        # The exception occurs but does not get propagated.
+        script.name_interfaces({mac: [interface]})
+        self.assertThat(write_file, MockCalledOnceWith(ANY, ANY))
+
+    def test__propagates_similar_but_different_errors_writing_file(self):
+        interface = factory.make_name('eth')
+        mac = factory.getRandomMACAddress()
+        write_file = self.patch_write_file()
+        write_file.side_effect = IOError(
+            EACCES, "Deliberate error: Permission denied.")
+        self.assertRaises(
+            IOError,
+            script.name_interfaces, {mac: [interface]})

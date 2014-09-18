@@ -86,6 +86,12 @@ def prepare_parser():
     parser.add_argument(
         '--restart-interfaces', '-r', action='store_true',
         help="Restart network interfaces after configuring.")
+    parser.add_argument(
+        '--name-interfaces', '-n', action='store_true',
+        help=(
+            "Set fixed names for network interfaces, so that each will keep "
+            "its name across reboots.  On Linux systems this writes udev "
+            "rules to prevent interfaces from switching names arbitrarily."))
     return parser
 
 
@@ -264,14 +270,75 @@ def restart_interfaces(interfaces):
         check_call(['ifup', interface])
 
 
+def compose_udev_equality(key, value):
+    """Return a udev comparison clause, like `ACTION=="add"`."""
+    assert key == key.upper()
+    return '%s=="%s"' % (key, value)
+
+
+def compose_udev_attr_equality(attribute, value):
+    """Return a udev attribute comparison clause, like `ATTR{type}=="1"`."""
+    assert attribute == attribute.lower()
+    return 'ATTR{%s}=="%s"' % (attribute, value)
+
+
+def compose_udev_setting(key, value):
+    """Return a udev assignment clause, like `NAME="eth0"`."""
+    assert key == key.upper()
+    return '%s="%s"' % (key, value)
+
+
+def generate_udev_rule(interface, mac):
+    """Return a udev rule to set the name of network interface with `mac`.
+
+    The rule ends up as a single line looking something like:
+
+    SUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*",
+    ATTR{address}="ff:ee:dd:cc:bb:aa", NAME="eth0"
+    """
+    rule = ', '.join([
+        compose_udev_equality('SUBSYSTEM', 'net'),
+        compose_udev_equality('ACTION', 'add'),
+        compose_udev_equality('DRIVERS', '?*'),
+        compose_udev_attr_equality('address', mac),
+        compose_udev_setting('NAME', interface),
+        ])
+    return '%s\n' % rule
+
+
+def name_interfaces(interfaces_by_mac):
+    """Configure fixed names for network interfaces."""
+    # Write to a udev file with a sequence number below 70.  Otherwise,
+    # the node will write its own 70-persistent-net.rules during boot.
+    # That file will do the same thing, but only after bringing up the
+    # interfaces on the installed system, possibly with the wrong names.
+    udev_file = '/etc/udev/rules.d/10-maas-network-interfaces.rules'
+    header = "# MAAS-generated fixed names for network interfaces.\n\n"
+    udev_content = header + '\n\n'.join(
+        generate_udev_rule(interface, mac)
+        for mac, interfaces in interfaces_by_mac.items()
+        for interface in interfaces
+        if mac != '00:00:00:00:00:00')
+    try:
+        write_file(udev_file, udev_content)
+    except IOError as e:
+        if e.errno == ENOENT:
+            logger.warn(
+                "No udev rules directory.  Not naming network interfaces.")
+        else:
+            raise
+
+
 if __name__ == "__main__":
     args = prepare_parser().parse_args()
     interfaces_by_mac = map_interfaces_by_mac()
-    interfaces = configure_static_addresses(
+    configured_interfaces = configure_static_addresses(
         args.config_dir, ip_mac_pairs=args.static_ip,
         gateway_mac_pairs=args.gateway, interfaces_by_mac=interfaces_by_mac)
-    if len(interfaces) > 0:
+    if len(configured_interfaces) > 0:
         if args.update_interfaces:
             update_interfaces_file(args.config_dir)
         if args.restart_interfaces:
-            restart_interfaces(interfaces)
+            restart_interfaces(configured_interfaces)
+        if args.name_interfaces:
+            name_interfaces(interfaces_by_mac)

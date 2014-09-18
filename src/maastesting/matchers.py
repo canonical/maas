@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """testtools custom matchers"""
@@ -131,10 +131,14 @@ class MockCalledWith(Matcher):
 
 
 class MockCalledOnceWith(MockCalledWith):
-    """Matches if the matchee Mock was called once with the provided args.
+    """Matches if the matchee `Mock` was called once, with the provided args.
 
-    Use of Mock.assert_called_once_with is discouraged as it passes if you typo
-    the function name.
+    To pass the match, the mock must have been called exactly once, and with
+    the given arguments.  Use `mock.ANY` for any parameters whose values don't
+    matter for the match.
+
+    Use this instead of `Mock.assert_called_once_with`, which just always
+    passes blindly if you mis-spell the name.
     """
 
     def match(self, mock):

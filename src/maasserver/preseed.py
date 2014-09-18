@@ -162,6 +162,7 @@ def compose_curtin_network_preseed(node):
                 '--',
                 '/usr/local/bin/maas_configure_interfaces.py',
                 '--update-interfaces',
+                '--name-interfaces',
                 ] + static_ip_args + gateway_args,
             },
         }
