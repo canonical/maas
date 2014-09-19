@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "always_fail_with",
     "always_succeed_with",
     "are_valid_tls_parameters",
     "call_responder",
@@ -467,3 +468,14 @@ def always_succeed_with(result):
     def always_succeed(*args, **kwargs):
         return defer.succeed(copy(result))
     return always_succeed
+
+
+def always_fail_with(result):
+    """Return a callable that always returns a failed Deferred.
+
+    The callable allows (and ignores) all arguments, and returns a shallow
+    `copy` of `result`.
+    """
+    def always_fail(*args, **kwargs):
+        return defer.fail(copy(result))
+    return always_fail

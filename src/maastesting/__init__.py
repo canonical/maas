@@ -17,6 +17,7 @@ __all__ = [
     "root",
     ]
 
+import copy
 from os.path import (
     abspath,
     dirname,
@@ -27,6 +28,8 @@ from os.path import (
 import re
 from sys import executable
 from warnings import filterwarnings
+
+import mock
 
 # The root of the source tree.
 root = abspath(join(dirname(realpath(__file__)), pardir, pardir))
@@ -52,6 +55,11 @@ packages_expr = r"^(?:%s)\b" % "|".join(
 filterwarnings('default', category=BytesWarning, module=packages_expr)
 filterwarnings('default', category=DeprecationWarning, module=packages_expr)
 filterwarnings('default', category=ImportWarning, module=packages_expr)
+
+# Make sure that sentinel objects are not copied.
+sentinel_type = type(mock.sentinel.foo)
+copy._copy_dispatch[sentinel_type] = copy._copy_immutable
+copy._deepcopy_dispatch[sentinel_type] = copy._copy_immutable
 
 try:
     import maasfascist
