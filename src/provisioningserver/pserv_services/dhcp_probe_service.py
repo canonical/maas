@@ -52,7 +52,7 @@ class PeriodicDHCPProbeService(TimerService, object):
     :param cluster_uuid: This cluster's UUID.
     """
 
-    check_interval = timedelta(minutes=1).total_seconds()
+    check_interval = timedelta(minutes=10).total_seconds()
 
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.try_probe_dhcp() every self.check_interval.
@@ -141,7 +141,7 @@ class PeriodicDHCPProbeService(TimerService, object):
 
     @inlineCallbacks
     def try_probe_dhcp(self):
-        maaslog.info("Running periodic DHCP probe.")
+        maaslog.debug("Running periodic DHCP probe.")
         try:
             yield self.probe_dhcp()
         except Exception as error:
@@ -149,4 +149,4 @@ class PeriodicDHCPProbeService(TimerService, object):
                 "Unable to probe for rogue DHCP servers: %s",
                 unicode(error))
         else:
-            maaslog.info("Finished periodic DHCP probe.")
+            maaslog.debug("Finished periodic DHCP probe.")

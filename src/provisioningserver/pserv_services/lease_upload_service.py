@@ -131,15 +131,17 @@ class PeriodicLeaseUploadService(TimerService, object):
 
     @inlineCallbacks
     def _start_upload(self, client):
-        maaslog.info("Scanning DHCP leases...")
+        maaslog.debug("Scanning DHCP leases...")
         updated_lease_info = yield deferToThread(check_lease_changes)
         if updated_lease_info is None:
-            maaslog.info("No leases changed since last scan")
+            maaslog.debug("No leases changed since last scan")
         else:
             timestamp, leases = updated_lease_info
             record_lease_state(timestamp, leases)
             mappings = convert_leases_to_mappings(leases)
-            maaslog.info("Uploading DHCP leases to region controller.")
+            maaslog.info(
+                "Uploading %d DHCP leases to region controller.",
+                len(mappings))
             yield client(
                 UpdateLeases, uuid=self.uuid, mappings=mappings)
-            maaslog.info("Lease upload complete.")
+            maaslog.debug("Lease upload complete.")
