@@ -37,11 +37,14 @@ from maasserver.enum import (
     NODE_STATUS,
     POWER_STATE,
     )
-from maasserver.models.config import Config
-from maasserver.models.dhcplease import DHCPLease
-from maasserver.models.event import Event
-from maasserver.models.eventtype import EventType
-from maasserver.models.node import Node
+from maasserver.models import (
+    Config,
+    DHCPLease,
+    Event,
+    EventType,
+    MACAddress,
+    Node,
+    )
 from maasserver.rpc import regionservice
 from maasserver.rpc.regionservice import (
     Region,
@@ -94,6 +97,7 @@ from provisioningserver.rpc.region import (
     ReportBootImages,
     ReportForeignDHCPServer,
     SendEvent,
+    SendEventMACAddress,
     UpdateLeases,
     UpdateNodePowerState,
     )
@@ -746,6 +750,106 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
             Region(), SendEvent,
             {
                 b'system_id': system_id,
+                b'type_name': name,
+                b'description': event_description,
+            })
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchNode)
+
+        yield d.addErrback(check)
+
+
+class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
+
+    def test_send_event_mac_address_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            SendEventMACAddress.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def get_event(self, mac_address, type_name):
+        # Pre-fetch the related 'node' and 'type' because the caller
+        # runs in the event-loop and this can't dereference related
+        # objects (unless they have been prefetched).
+        all_events_qs = Event.objects.all().select_related(
+            'node', 'type')
+        node = MACAddress.objects.get(mac_address=mac_address).node
+        event = all_events_qs.get(node=node, type__name=type_name)
+        return event
+
+    @transactional
+    def create_event_type(self, name, description, level):
+        EventType.objects.create(
+            name=name, description=description, level=level)
+
+    @transactional
+    def make_mac_address(self):
+        return factory.make_MACAddress()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_send_event_mac_address_stores_event(self):
+        name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        level = random.randint(0, 100)
+        yield deferToThread(self.create_event_type, name, description, level)
+        MAC_address = yield deferToThread(self.make_mac_address)
+        mac_address = MAC_address.mac_address.get_raw()
+
+        event_description = factory.make_name('description')
+        response = yield call_responder(
+            Region(), SendEventMACAddress,
+            {
+                b'mac_address': mac_address,
+                b'type_name': name,
+                b'description': event_description,
+            }
+        )
+
+        self.assertEqual({}, response)
+        event = yield deferToThread(self.get_event, mac_address, name)
+        self.assertEquals(
+            (MAC_address.node.system_id, event_description, name),
+            (event.node.system_id, event.description, event.type.name)
+        )
+
+    @wait_for_reactor
+    def test_create_node_raises_if_unknown_type(self):
+        name = factory.make_name('type_name')
+        mac_address = factory.getRandomMACAddress()
+        description = factory.make_name('description')
+
+        d = call_responder(
+            Region(), SendEventMACAddress,
+            {
+                b'mac_address': mac_address,
+                b'type_name': name,
+                b'description': description,
+            })
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchEventType)
+
+        return d.addErrback(check)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_create_node_raises_if_unknown_node(self):
+        name = factory.make_name('type_name')
+        description = factory.make_name('description')
+        level = random.randint(0, 100)
+        yield deferToThread(self.create_event_type, name, description, level)
+
+        mac_address = factory.getRandomMACAddress()
+        event_description = factory.make_name('event-description')
+        d = call_responder(
+            Region(), SendEventMACAddress,
+            {
+                b'mac_address': mac_address,
                 b'type_name': name,
                 b'description': event_description,
             })

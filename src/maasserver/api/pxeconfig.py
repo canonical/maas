@@ -105,12 +105,10 @@ def get_boot_purpose(node):
             else:
                 return "install"
         else:
-            return "local"  # TODO: Investigate.
+            return "local"
     elif node.status == NODE_STATUS.DEPLOYED:
         return "local"
     else:
-        # Just poweroff? TODO: Investigate. Perhaps even send an IPMI signal
-        # to turn off power.
         return "poweroff"
 
 

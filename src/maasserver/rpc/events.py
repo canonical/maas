@@ -15,12 +15,14 @@ __metaclass__ = type
 __all__ = [
     "register_event_type",
     "send_event",
+    "send_event_mac_address",
 ]
 
 
 from maasserver.models import (
     Event,
     EventType,
+    MACAddress,
     Node,
     )
 from maasserver.utils.async import transactional
@@ -58,6 +60,27 @@ def send_event(system_id, type_name, description=''):
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
+
+    Event.objects.create(
+        node=node, type=event_type, description=description)
+
+
+@synchronous
+@transactional
+def send_event_mac_address(mac_address, type_name, description=''):
+    """Send an event.
+
+    for :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
+    """
+    try:
+        event_type = EventType.objects.get(name=type_name)
+    except EventType.DoesNotExist:
+        raise NoSuchEventType.from_name(type_name)
+
+    try:
+        node = MACAddress.objects.get(mac_address=mac_address).node
+    except MACAddress.DoesNotExist:
+        raise NoSuchNode.from_mac_address(mac_address)
 
     Event.objects.create(
         node=node, type=event_type, description=description)

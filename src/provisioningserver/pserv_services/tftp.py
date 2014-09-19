@@ -31,9 +31,16 @@ from urlparse import (
     )
 
 from netaddr import IPAddress
-from provisioningserver.boot import BootMethodRegistry
+from provisioningserver.boot import (
+    BootMethodRegistry,
+    get_remote_mac,
+    )
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.drivers import ArchitectureRegistry
+from provisioningserver.events import (
+    EVENT_TYPES,
+    send_event_node_mac_address,
+    )
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import deferred
@@ -202,6 +209,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
         from that boot method. Otherwise the filesystem is used to service
         the response.
         """
+        send_event_node_mac_address(
+            event_type=EVENT_TYPES.NODE_PXE_REQUEST_TFTP,
+            mac_address=get_remote_mac(),
+            description=file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.get_page_errback, file_name)

@@ -135,6 +135,8 @@ class TestTFTPBackend(MAASTestCase):
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
         # paths not matching re_config_file.
+        self.patch(tftp_module, 'send_event_node_mac_address')
+        self.patch(tftp_module, 'get_remote_mac')
         data = factory.make_string().encode("ascii")
         temp_file = self.make_file(name="example", contents=data)
         temp_dir = path.dirname(temp_file)
@@ -152,6 +154,7 @@ class TestTFTPBackend(MAASTestCase):
         cluster_uuid = factory.make_UUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
+        self.patch(tftp_module, 'send_event_node_mac_address')
         mac = factory.make_mac_address("-")
         config_path = compose_config_path(mac)
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
@@ -231,6 +234,7 @@ class TestTFTPBackend(MAASTestCase):
         cluster_uuid = factory.make_UUID()
         self.patch(tftp_module, 'get_cluster_uuid').return_value = (
             cluster_uuid)
+        self.patch(tftp_module, 'send_event_node_mac_address')
         config_path = "pxelinux.cfg/default-arm"
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover

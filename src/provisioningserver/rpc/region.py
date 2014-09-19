@@ -244,6 +244,24 @@ class SendEvent(amp.Command):
     }
 
 
+class SendEventMACAddress(amp.Command):
+    """Send an event.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"mac_address", amp.Unicode()),
+        (b"type_name", amp.Unicode()),
+        (b"description", amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+        NoSuchEventType: b"NoSuchEventType"
+    }
+
+
 class ReportForeignDHCPServer(amp.Command):
     """Report a foreign DHCP server on the cluster's network.
 

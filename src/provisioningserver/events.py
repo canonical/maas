@@ -26,10 +26,14 @@ from logging import (
 
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import NoSuchEventType
+from provisioningserver.rpc.exceptions import (
+    NoSuchEventType,
+    NoSuchNode,
+    )
 from provisioningserver.rpc.region import (
     RegisterEventType,
     SendEvent,
+    SendEventMACAddress,
     )
 from provisioningserver.utils.twisted import asynchronous
 from twisted.internet.defer import inlineCallbacks
@@ -47,6 +51,8 @@ class EVENT_TYPES:
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
+    # PXE-related events.
+    NODE_PXE_REQUEST_TFTP = 'NODE_PXE_REQUEST_TFTP'
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -81,6 +87,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_POWER_QUERY_FAILED: EventDetail(
         description="Failed to query node's BMC",
         level=WARN,
+    ),
+    EVENT_TYPES.NODE_PXE_REQUEST_TFTP: EventDetail(
+        description="PXE Request",
+        level=INFO,
     ),
 }
 
@@ -119,3 +129,46 @@ def send_event_node(event_type, system_id, hostname, description=''):
     maaslog.debug(
         "Node event %s sent for node: %s (%s)",
         event_type, hostname, system_id)
+
+
+@asynchronous
+@inlineCallbacks
+def send_event_node_mac_address(event_type, mac_address, description=''):
+    """Send the given node event to the region for the given mac address.
+
+    Also register the event type if it's not registered yet.
+
+    :param event_type: The type of the event.
+    :type event_type: unicode
+    :param mac_address: The MAC Address of the node of the event.
+    :type mac_address: unicode
+    :param description: An optional description of the event.
+    :type description: unicode
+    """
+    client = getRegionClient()
+    try:
+        yield client(
+            SendEventMACAddress, mac_address=mac_address, type_name=event_type,
+            description=description)
+    except NoSuchEventType:
+        # The event type doesn't exist, register it and re-send the event.
+        event_detail = EVENT_DETAILS[event_type]
+        yield client(
+            RegisterEventType, name=event_type,
+            description=event_detail.description, level=event_detail.level
+        )
+        try:
+            yield client(
+                SendEventMACAddress, mac_address=mac_address,
+                type_name=event_type, description=description)
+        except NoSuchNode:
+            # Enlistment will raise NoSuchNode,
+            # potentially too much noise for maaslog
+            pass
+    except NoSuchNode:
+        # Enlistment will raise NoSuchNode,
+        # potentially too much noise for maaslog
+        pass
+    maaslog.debug(
+        "Node event %s sent for MAC address: %s",
+        event_type, mac_address)

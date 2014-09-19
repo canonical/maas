@@ -50,6 +50,12 @@ class NoSuchNode(Exception):
             "Node with system_id=%s could not be found." % system_id
         )
 
+    @classmethod
+    def from_mac_address(cls, mac_address):
+        return cls(
+            "Node with mac_address=%s could not be found." % mac_address
+        )
+
 
 class NoSuchCluster(Exception):
     """The specified cluster (a.k.a. node-group) was not found."""

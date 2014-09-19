@@ -225,6 +225,18 @@ class Region(RPCProtocol):
         d.addCallback(lambda args: {})
         return d
 
+    @region.SendEventMACAddress.responder
+    def send_event_mac_address(self, mac_address, type_name, description):
+        """send_event_mac_address()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.SendEventMACAddress`.
+        """
+        d = deferToThread(
+            events.send_event_mac_address, mac_address, type_name, description)
+        d.addCallback(lambda args: {})
+        return d
+
     @region.ReportForeignDHCPServer.responder
     def report_foreign_dhcp_server(self, cluster_uuid, interface_name,
                                    foreign_dhcp_ip):
