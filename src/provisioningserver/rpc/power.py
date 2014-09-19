@@ -129,7 +129,7 @@ def power_change_starting(system_id, hostname, power_change):
     yield send_event_node(event_type, system_id, hostname)
 
 
-default_waiting_policy = (3, 5, 10)
+default_waiting_policy = (1, 1, 1, 1, 1, 3, 5)
 
 
 @asynchronous
@@ -221,7 +221,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
 
     # Use increasing waiting times to work around race conditions that could
     # arise when power querying the node.
-    for waiting_time in (3, 5, 10):
+    for waiting_time in default_waiting_policy:
         error = None
         # Perform power query.
         try:

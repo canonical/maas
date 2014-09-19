@@ -380,10 +380,10 @@ class TestChangePowerChange(MAASTestCase):
 
         self.assertThat(execute, MockCallsMatch(
             call(power_change=power_change, **context),
-            call(3, reactor),  # pause(3, reactor)
+            call(1, reactor),  # pause(1, reactor)
             call(power_change='query', **context),
             call(power_change=power_change, **context),
-            call(5, reactor),  # pause(5, reactor)
+            call(1, reactor),  # pause(1, reactor)
             call(power_change='query', **context),
         ))
 
