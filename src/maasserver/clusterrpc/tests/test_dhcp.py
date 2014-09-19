@@ -637,7 +637,7 @@ class TestGenDynamicIPAddressesWithHostMaps(MAASServerTestCase):
         leases_without_static_range = list(self.make_leases_in_network(
             nodegroup, nodegroupiface.get_dynamic_ip_range()))
         # Change the IP addresses for these leases to be in another network.
-        other_network = factory.getRandomNetwork(but_not={
+        other_network = factory.make_ipv4_network(but_not={
             nodegroupiface.get_dynamic_ip_range(),
             nodegroupiface.get_static_ip_range()})
         for lease in leases_without_static_range:

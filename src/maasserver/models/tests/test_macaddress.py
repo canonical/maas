@@ -207,7 +207,7 @@ def make_node_attached_to_cluster_interfaces(ipv4_network=None,
                                              ipv6_network=None):
     """Return a `Node` with a `MACAddress` on IPv4 & IPv6 interfaces."""
     if ipv4_network is None:
-        ipv4_network = factory.getRandomNetwork()
+        ipv4_network = factory.make_ipv4_network()
     if ipv6_network is None:
         ipv6_network = factory.make_ipv6_network()
     node = factory.make_node_with_mac_attached_to_nodegroupinterface(
@@ -238,7 +238,7 @@ class TestMapAllocatedAddresses(MAASServerTestCase):
 
     def test__maps_interface_to_allocated_static_IPv4_address(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=factory.getRandomNetwork())
+            network=factory.make_ipv4_network())
         interface = find_cluster_interface(node.nodegroup, 4)
         mac = node.get_primary_mac()
         sip = factory.make_StaticIPAddress(
@@ -278,7 +278,7 @@ class TestAllocateStaticAddress(MAASServerTestCase):
 
     def test__allocates_static_IPv4_address(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=factory.getRandomNetwork())
+            network=factory.make_ipv4_network())
         mac = node.get_primary_mac()
         ipv4_interface = find_cluster_interface(node.nodegroup, 4)
         iptype = factory.pick_enum(
@@ -351,7 +351,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
             IPADDRESS_TYPE.AUTO, StaticIPAddress.objects.all()[0].alloc_type)
 
     def test__allocates_on_all_relevant_cluster_interfaces(self):
-        ipv4_network = factory.getRandomNetwork()
+        ipv4_network = factory.make_ipv4_network()
         ipv6_network = factory.make_ipv6_network()
         node = make_node_attached_to_cluster_interfaces(
             ipv4_network=ipv4_network, ipv6_network=ipv6_network)
@@ -468,7 +468,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         # If the MAC is attached to IPv4 and IPv6 cluster interfaces, a clash
         # with an existing IPv6 address is ignored as long as an IPv4 address
         # can still be allocated.  No IPv4 address is returned.
-        ipv4_network = factory.getRandomNetwork()
+        ipv4_network = factory.make_ipv4_network()
         node = make_node_attached_to_cluster_interfaces(
             ipv4_network=ipv4_network)
         mac = node.get_primary_mac()
@@ -487,8 +487,8 @@ class TestClaimStaticIPs(MAASServerTestCase):
     def test__raises_if_IPv4_and_IPv6_both_clash(self):
         # A double clash for both IPv4 and IPv6 addresses raises
         # StaticIPAddressTypeClash.
-        ipv4_network = factory.getRandomNetwork()
-        ipv6_network = factory.getRandomNetwork()
+        ipv4_network = factory.make_ipv4_network()
+        ipv6_network = factory.make_ipv4_network()
         node = make_node_attached_to_cluster_interfaces(
             ipv4_network=ipv4_network, ipv6_network=ipv6_network)
         mac = node.get_primary_mac()
@@ -661,7 +661,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         cluster = factory.make_NodeGroup()
         network_interface = factory.make_name('eth', sep='')
         ipv4_interface = factory.make_NodeGroupInterface(
-            nodegroup=cluster, network=factory.getRandomNetwork(),
+            nodegroup=cluster, network=factory.make_ipv4_network(),
             interface=network_interface)
         ipv6_interface = factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.make_ipv6_network(),
@@ -674,7 +674,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
     def test__ignores_other_cluster_interfaces(self):
         cluster = factory.make_NodeGroup()
         factory.make_NodeGroupInterface(
-            nodegroup=cluster, network=factory.getRandomNetwork())
+            nodegroup=cluster, network=factory.make_ipv4_network())
         factory.make_NodeGroupInterface(
             nodegroup=cluster, network=factory.make_ipv6_network())
         node = factory.make_Node(nodegroup=cluster)
@@ -686,7 +686,7 @@ class TestGetClusterInterfaces(MAASServerTestCase):
         my_cluster = factory.make_NodeGroup()
         unrelated_cluster = factory.make_NodeGroup()
         my_interface = factory.make_NodeGroupInterface(
-            my_cluster, network=factory.getRandomNetwork(),
+            my_cluster, network=factory.make_ipv4_network(),
             name='eth0', interface='eth0')
         factory.make_NodeGroupInterface(
             unrelated_cluster, network=factory.make_ipv6_network(),

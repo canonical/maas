@@ -31,7 +31,7 @@ from testtools.matchers import HasLength
 def make_inet_address(subnet=None):
     """Fake an `AF_INET` or `AF_INET6` address."""
     if subnet is None:
-        subnet = factory.getRandomNetwork()
+        subnet = factory.make_ipv4_network()
     subnet = IPNetwork(subnet)
     addr = {
         'netmask': unicode(subnet.netmask),
@@ -178,7 +178,7 @@ class TestNetworks(MAASTestCase):
     def test_discover_networks_discovers_IPv4_and_IPv6_on_same_interface(self):
         self.reveal_IPv6(True)
         eth = factory.make_name('eth')
-        ipv4_net = factory.getRandomNetwork()
+        ipv4_net = factory.make_ipv4_network()
         ipv6_net = factory.make_ipv6_network()
         ipv4_addr = factory.pick_ip_in_network(ipv4_net)
         ipv6_addr = factory.pick_ip_in_network(ipv6_net)

@@ -192,7 +192,7 @@ class NetworkAddTestAdmin(MAASServerTestCase):
 
     def test_adds_network(self):
         self.client_log_in(as_admin=True)
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         definition = {
             'name': factory.make_name('network'),
             'description': factory.make_string(),

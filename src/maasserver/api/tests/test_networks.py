@@ -31,7 +31,7 @@ class TestNetworksAPI(APITestCase):
 
     def test_POST_creates_network(self):
         self.become_admin()
-        net = factory.getRandomNetwork()
+        net = factory.make_ipv4_network()
         params = {
             'name': factory.make_name('net'),
             'ip': '%s' % net.cidr.ip,

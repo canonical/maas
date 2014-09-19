@@ -183,7 +183,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
             interface.full_clean()
 
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         nodegroup = factory.make_NodeGroup(
             network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
@@ -192,7 +192,7 @@ class TestNodeGroupInterface(MAASServerTestCase):
         self.assertEqual(unicode(network.broadcast), interface.broadcast_ip)
 
     def test_clean_network_config_sets_no_broadcast_without_netmask(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         nodegroup = factory.make_NodeGroup(
             network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)

@@ -195,7 +195,7 @@ class Factory:
         """
         if slash is None:
             slash = random.randint(16, 29)
-        return self.getRandomNetwork(
+        return self._make_random_network(
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv4_address)
 
@@ -216,7 +216,7 @@ class Factory:
         """
         if slash is None:
             slash = random.randint(112, 125)
-        return self.getRandomNetwork(
+        return self._make_random_network(
             slash=slash, but_not=but_not, disjoint_from=disjoint_from,
             random_address_factory=self.make_ipv6_address)
 
@@ -239,7 +239,7 @@ class Factory:
         :return: A pair of `IPAddress`.
         """
         if network is None:
-            network = self.getRandomNetwork()
+            network = self.make_ipv4_network()
         if but_not is not None:
             low, high = but_not
             but_not = (IPAddress(low), IPAddress(high))

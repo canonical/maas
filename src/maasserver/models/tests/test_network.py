@@ -218,7 +218,7 @@ class TestNetwork(MAASServerTestCase):
 
     def test_instantiation(self):
         name = factory.make_name('net')
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         vlan_tag = factory.make_vlan_tag(allow_none=True)
         description = factory.make_string()
 
@@ -289,7 +289,7 @@ class TestNetwork(MAASServerTestCase):
             list(Network.objects.filter(vlan_tag=None).order_by('id')))
 
     def test_get_network_returns_network(self):
-        net = factory.getRandomNetwork()
+        net = factory.make_ipv4_network()
         self.assertEqual(net, factory.make_Network(network=net).get_network())
 
     def test_accepts_ipv6_network(self):

@@ -31,7 +31,7 @@ class TestNetworkForm(MAASServerTestCase):
     """Tests for `NetworkForm`."""
 
     def test_creates_network(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         name = factory.make_name('network')
         definition = {
             'name': name,
@@ -172,7 +172,7 @@ class TestNetworkForm(MAASServerTestCase):
     def test_writes_dns_when_network_edited(self):
         write_full_dns_config = self.patch(
             dns_config_module, "write_full_dns_config")
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         name = factory.make_name('network')
         definition = {
             'name': name,

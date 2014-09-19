@@ -76,7 +76,7 @@ class TestNetwork(APITestCase):
     def test_PUT_updates_network(self):
         self.become_admin()
         network = factory.make_Network()
-        new_net = factory.getRandomNetwork()
+        new_net = factory.make_ipv4_network()
         new_values = {
             'name': factory.make_name('new'),
             'ip': '%s' % new_net.cidr.ip,

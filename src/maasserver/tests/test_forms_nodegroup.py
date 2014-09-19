@@ -256,7 +256,7 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
 
     def test_gives_disambuation_preference_to_IPv4(self):
         network_interface = factory.make_name('eth', sep='')
-        ipv4_network = factory.getRandomNetwork()
+        ipv4_network = factory.make_ipv4_network()
         # We'll be creating a cluster with 3 interfaces, all using the same
         # network interface: an IPv4 one and two IPv6 ones.
         # The IPv4 one is in the middle here to rule out special treatment

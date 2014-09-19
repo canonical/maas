@@ -288,7 +288,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         mac = node.get_primary_mac()
         ipv4_address = factory.make_StaticIPAddress(
             mac=mac,
-            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+            ip=factory.pick_ip_in_network(factory.make_ipv4_network()))
         ipv6_address = factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
@@ -304,7 +304,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         node = factory.make_Node(disable_ipv4=False)
         ipv4_address = factory.make_StaticIPAddress(
             mac=factory.make_MACAddress(node=node),
-            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+            ip=factory.pick_ip_in_network(factory.make_ipv4_network()))
         ipv6_address = factory.make_StaticIPAddress(
             mac=factory.make_MACAddress(node=node),
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))
@@ -319,7 +319,7 @@ class StaticIPAddressManagerMappingTest(MAASServerTestCase):
         mac = node.get_primary_mac()
         factory.make_StaticIPAddress(
             mac=mac,
-            ip=factory.pick_ip_in_network(factory.getRandomNetwork()))
+            ip=factory.pick_ip_in_network(factory.make_ipv4_network()))
         ipv6_address = factory.make_StaticIPAddress(
             mac=mac,
             ip=factory.pick_ip_in_network(factory.make_ipv6_network()))

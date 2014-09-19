@@ -284,7 +284,7 @@ class TestFindNodegroup(MAASServerTestCase):
     def test_handles_mixed_IPv4_and_IPv6(self):
         matching_network = self.network_factory()
         requesting_ip = factory.pick_ip_in_network(matching_network)
-        self.make_cluster_interface(factory.getRandomNetwork())
+        self.make_cluster_interface(factory.make_ipv4_network())
         self.make_cluster_interface(factory.make_ipv6_network())
         matching_interface = self.make_cluster_interface(matching_network)
         self.assertEqual(

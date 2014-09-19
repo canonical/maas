@@ -86,7 +86,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_string()
         serial = random.randint(1, 200)
         hostname = factory.make_string()
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         ip = factory.pick_ip_in_network(network)
         mapping = {hostname: [ip]}
         dns_zone_config = DNSForwardZoneConfig(
@@ -184,7 +184,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
     def test_writes_dns_zone_config(self):
         target_dir = patch_dns_config_path(self)
         domain = factory.make_string()
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         dns_ip = factory.pick_ip_in_network(network)
         ipv4_hostname = factory.make_name('host')
         ipv4_ip = factory.pick_ip_in_network(network)
@@ -245,7 +245,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
     def test_fields(self):
         domain = factory.make_string()
         serial = random.randint(1, 200)
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         dns_zone_config = DNSReverseZoneConfig(
             domain, serial=serial, network=network)
         self.assertThat(
@@ -342,7 +342,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
 
     def test_writes_dns_zone_config_with_NS_record(self):
         target_dir = patch_dns_config_path(self)
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         dns_zone_config = DNSReverseZoneConfig(
             factory.make_string(), serial=random.randint(1, 100),
             network=network)
@@ -371,7 +371,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         patch_dns_config_path(self)
         dns_zone_config = DNSReverseZoneConfig(
             factory.make_string(), serial=random.randint(1, 100),
-            network=factory.getRandomNetwork())
+            network=factory.make_ipv4_network())
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)
         self.assertTrue(filepath.getPermissions().other.read)

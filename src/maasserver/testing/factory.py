@@ -297,7 +297,7 @@ class Factory(maastesting.factory.Factory):
         if name is None:
             name = factory.make_name('ngi')
         if network is None:
-            network = factory.getRandomNetwork()
+            network = factory.make_ipv4_network()
         # Split the network into dynamic and static ranges.
         if network.size > 2:
             middle = network.size // 2
@@ -871,7 +871,7 @@ class Factory(maastesting.factory.Factory):
             for entry in disjoint_from
             ]
         if network is None:
-            network = self.getRandomNetwork(disjoint_from=disjoint_from)
+            network = self.make_ipv4_network(disjoint_from=disjoint_from)
         if default_gateway is None and self.pick_bool():
             default_gateway = self.pick_ip_in_network(network)
         if dns_servers is None and self.pick_bool():

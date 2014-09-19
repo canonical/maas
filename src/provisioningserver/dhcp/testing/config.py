@@ -23,7 +23,7 @@ from netaddr import IPAddress
 def make_subnet_config(network=None):
     """Return complete DHCP configuration dict for a subnet."""
     if network is None:
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
     ip_low, ip_high = factory.make_ip_range(network)
     return {
         'interface': factory.make_name('eth', sep=''),

@@ -127,7 +127,7 @@ class TestScript(MAASTestCase):
 
     def test_run(self):
         self.patch(sys, "stdout", BytesIO())
-        args = self.make_args(factory.getRandomNetwork())
+        args = self.make_args(factory.make_ipv4_network())
 
         writer.run(args)
 

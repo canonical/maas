@@ -85,7 +85,7 @@ class TestNetworksAPI(APITestCase):
 
     def test_POST_reserve_errors_for_no_matching_interface(self):
         interface = self.make_interface()
-        net = factory.getRandomNetwork(but_not=[interface.network])
+        net = factory.make_ipv4_network(but_not=[interface.network])
         response = self.post_reservation_request(net)
         self.assertNoMatchingNetworkError(response, net)
 

@@ -142,7 +142,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
     def test__disambiguates_IPv4_interface_with_ipv4_suffix(self):
         cluster = factory.make_NodeGroup()
         existing_interface = factory.make_NodeGroupInterface(
-            cluster, network=factory.getRandomNetwork())
+            cluster, network=factory.make_ipv4_network())
         int_settings = factory.get_interface_fields()
         del int_settings['name']
         int_settings['interface'] = existing_interface.name
@@ -166,7 +166,7 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             StartsWith('%s-ipv6-' % int_settings['interface']))
 
     def test__requires_netmask_on_managed_IPv4_interface(self):
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
         int_settings = factory.get_interface_fields(
             network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         del int_settings['subnet_mask']

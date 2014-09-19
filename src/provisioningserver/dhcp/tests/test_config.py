@@ -53,7 +53,7 @@ sample_template = dedent("""\
 def make_sample_params():
     """Return a dict of arbitrary DHCP configuration parameters."""
     if factory.pick_bool():
-        network = factory.getRandomNetwork()
+        network = factory.make_ipv4_network()
     else:
         network = factory.make_ipv6_network()
     return {

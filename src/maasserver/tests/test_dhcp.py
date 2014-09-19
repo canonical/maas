@@ -71,7 +71,7 @@ class TestSplitIPv4IPv6Interfaces(MAASServerTestCase):
 
     def make_ipv4_interface(self, nodegroup):
         return factory.make_NodeGroupInterface(
-            nodegroup, network=factory.getRandomNetwork())
+            nodegroup, network=factory.make_ipv4_network())
 
     def make_ipv6_interface(self, nodegroup):
         return factory.make_NodeGroupInterface(
@@ -343,7 +343,7 @@ class TestConfigureDHCP(MAASServerTestCase):
         The interface defaults to being managed.
         """
         return self.make_cluster_interface(
-            factory.getRandomNetwork(), cluster, **kwargs)
+            factory.make_ipv4_network(), cluster, **kwargs)
 
     def make_ipv6_interface(self, cluster=None, **kwargs):
         """Create an IPv6 `NodeGroupInterface` for `cluster`.
@@ -512,7 +512,7 @@ class TestDHCPConnect(MAASServerTestCase):
         self.assertThat(dhcp.configure_dhcp, MockCalledOnceWith(nodegroup))
 
     def test_dhcp_config_gets_written_when_netmask_changes(self):
-        network = factory.getRandomNetwork(slash='255.255.255.0')
+        network = factory.make_ipv4_network(slash='255.255.255.0')
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED, network=network,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
