@@ -527,6 +527,32 @@ class TestPowerQuery(MAASTestCase):
                     system_id, hostname, err_msg))
         )
 
+    def test_get_power_state_marks_node_broken_if_template_returns_crap(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        template_return_gibberish = factory.make_name('gibberish')
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        power_action, execute = self.patch_power_action(
+            return_value=template_return_gibberish)
+        _, markNodeBroken, io = self.patch_rpc_methods()
+        d = power.get_power_state(
+            system_id, hostname, power_type, context)
+        io.flush()
+        self.assertEqual('error', extract_result(d))
+
+        self.assertThat(
+            markNodeBroken,
+            MockCalledOnceWith(
+                ANY,
+                system_id=system_id,
+                error_description="Node could not be queried %s (%s) %s" % (
+                    system_id, hostname, template_return_gibberish))
+        )
+
     def test_get_power_state_pauses_inbetween_retries(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')

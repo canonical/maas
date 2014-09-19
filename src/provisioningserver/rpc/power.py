@@ -227,6 +227,9 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         try:
             power_state = yield deferToThread(
                 perform_power_query, system_id, hostname, power_type, context)
+            if power_state not in ("on", "off"):
+                # This is considered an error.
+                raise PowerActionFail(power_state)
         except PowerActionFail as e:
             # Hold the error so if failure after retries, we can
             # log the reason.
