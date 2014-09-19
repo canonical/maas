@@ -15,9 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 from django.core.exceptions import ValidationError
+from maasserver import populate_tags as populate_tags_module
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models.commissioningscript import inject_lshw_result
 
 
@@ -126,3 +128,43 @@ class TestTagIsDefined(MAASServerTestCase):
     def test_is_defined(self):
         tag = Tag(name="tag", definition=self.definition)
         self.assertIs(self.expected, tag.is_defined)
+
+
+class TestTagPopulateNodes(MAASServerTestCase):
+
+    def test__does_nothing_if_tag_is_not_defined(self):
+        tag = factory.make_Tag(definition="")
+        self.assertFalse(tag.is_defined)
+        nodes = [factory.make_Node() for _ in xrange(3)]
+        tag.node_set.add(*nodes)
+        tag.populate_nodes()
+        # The set of related nodes is unchanged.
+        self.assertItemsEqual(nodes, tag.node_set.all())
+
+    def test__checks_definition_before_proceeding(self):
+        tag = factory.make_Tag(definition="")
+        tag.definition = "invalid::definition"
+        self.assertRaises(ValidationError, tag.populate_nodes)
+
+    def test__clears_node_set(self):
+        self.patch_autospec(populate_tags_module, "populate_tags")
+
+        tag = factory.make_Tag(definition="")
+        # Define the tag now but don't save because .save() calls
+        # populate_nodes(), but we want to do it explicitly here.
+        tag.definition = "//foo"
+        nodes = [factory.make_Node() for _ in xrange(3)]
+        tag.node_set.add(*nodes)
+        tag.populate_nodes()
+        self.assertItemsEqual([], tag.node_set.all())
+
+    def test__calls_populate_tags(self):
+        populate_tags = self.patch_autospec(
+            populate_tags_module, "populate_tags")
+
+        tag = factory.make_Tag(definition="")
+        # Define the tag now but don't save because .save() calls
+        # populate_nodes(), but we want to do it explicitly here.
+        tag.definition = "//foo"
+        tag.populate_nodes()
+        self.assertThat(populate_tags, MockCalledOnceWith(tag))
