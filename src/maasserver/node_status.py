@@ -15,10 +15,128 @@ __metaclass__ = type
 __all__ = [
     "get_failed_status",
     "is_failed_status",
+    "NODE_TRANSITIONS",
     ]
 
 
 from maasserver.enum import NODE_STATUS
+
+# Define valid node status transitions. This is enforced in the code, so
+# get it right.
+#
+# The format is:
+# {
+#  old_status1: [
+#      new_status11,
+#      new_status12,
+#      new_status13,
+#      ],
+# ...
+# }
+#
+NODE_TRANSITIONS = {
+    None: [
+        NODE_STATUS.NEW,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.RETIRED,
+        ],
+    NODE_STATUS.NEW: [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.READY,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.COMMISSIONING: [
+        NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.READY,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.NEW,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.FAILED_COMMISSIONING: [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.READY: [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.RESERVED,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.FAILED_READY_POWER,
+        ],
+    NODE_STATUS.RESERVED: [
+        NODE_STATUS.READY,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.RELEASING,
+        ],
+    NODE_STATUS.ALLOCATED: [
+        NODE_STATUS.READY,
+        NODE_STATUS.RETIRED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.RELEASING,
+        ],
+    NODE_STATUS.RELEASING: [
+        NODE_STATUS.READY,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.MISSING,
+        ],
+    NODE_STATUS.DEPLOYING: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.DEPLOYED,
+        NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
+    ],
+    NODE_STATUS.FAILED_DEPLOYMENT: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
+    ],
+    NODE_STATUS.DEPLOYED: [
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
+    ],
+    NODE_STATUS.MISSING: [
+        NODE_STATUS.NEW,
+        NODE_STATUS.READY,
+        NODE_STATUS.ALLOCATED,
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.RETIRED: [
+        NODE_STATUS.NEW,
+        NODE_STATUS.READY,
+        NODE_STATUS.MISSING,
+        NODE_STATUS.BROKEN,
+        ],
+    NODE_STATUS.BROKEN: [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.READY,
+        NODE_STATUS.RELEASING,
+        ],
+    NODE_STATUS.FAILED_READY_POWER: [
+        NODE_STATUS.READY,
+        NODE_STATUS.BROKEN,
+        ],
+    }
 
 # State transitions for when a node fails:
 # Mapping between in-progress statuses and the corresponding failed
@@ -26,6 +144,7 @@ from maasserver.enum import NODE_STATUS
 NODE_FAILURE_STATUS_TRANSITIONS = {
     NODE_STATUS.COMMISSIONING: NODE_STATUS.FAILED_COMMISSIONING,
     NODE_STATUS.DEPLOYING: NODE_STATUS.FAILED_DEPLOYMENT,
+    NODE_STATUS.READY: NODE_STATUS.FAILED_READY_POWER,
 }
 
 # Statuses that correspond to managed steps for which MAAS actively

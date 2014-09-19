@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "NODE_TRANSITIONS",
     "Node",
     "fqdn_is_duplicate",
     "nodegroup_fqdn",
@@ -96,6 +95,7 @@ from maasserver.models.zone import Zone
 from maasserver.node_status import (
     get_failed_status,
     is_failed_status,
+    NODE_TRANSITIONS,
     )
 from maasserver.rpc import getClientFor
 from maasserver.utils import (
@@ -122,117 +122,6 @@ maaslog = get_maas_logger("node")
 
 def generate_node_system_id():
     return 'node-%s' % uuid1()
-
-
-# Information about valid node status transitions.
-# The format is:
-# {
-#  old_status1: [
-#      new_status11,
-#      new_status12,
-#      new_status13,
-#      ],
-# ...
-# }
-#
-NODE_TRANSITIONS = {
-    None: [
-        NODE_STATUS.NEW,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.RETIRED,
-        ],
-    NODE_STATUS.NEW: [
-        NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.READY,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.COMMISSIONING: [
-        NODE_STATUS.FAILED_COMMISSIONING,
-        NODE_STATUS.READY,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.NEW,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.FAILED_COMMISSIONING: [
-        NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.READY: [
-        NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.RESERVED,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.RESERVED: [
-        NODE_STATUS.READY,
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.RELEASING,
-        ],
-    NODE_STATUS.ALLOCATED: [
-        NODE_STATUS.READY,
-        NODE_STATUS.RETIRED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.DEPLOYING,
-        NODE_STATUS.RELEASING,
-        ],
-    NODE_STATUS.RELEASING: [
-        NODE_STATUS.READY,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.MISSING,
-        ],
-    NODE_STATUS.DEPLOYING: [
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.FAILED_DEPLOYMENT,
-        NODE_STATUS.DEPLOYED,
-        NODE_STATUS.READY,
-        NODE_STATUS.RELEASING,
-    ],
-    NODE_STATUS.FAILED_DEPLOYMENT: [
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.READY,
-        NODE_STATUS.RELEASING,
-    ],
-    NODE_STATUS.DEPLOYED: [
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        NODE_STATUS.READY,
-        NODE_STATUS.RELEASING,
-    ],
-    NODE_STATUS.MISSING: [
-        NODE_STATUS.NEW,
-        NODE_STATUS.READY,
-        NODE_STATUS.ALLOCATED,
-        NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.RETIRED: [
-        NODE_STATUS.NEW,
-        NODE_STATUS.READY,
-        NODE_STATUS.MISSING,
-        NODE_STATUS.BROKEN,
-        ],
-    NODE_STATUS.BROKEN: [
-        NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.READY,
-        NODE_STATUS.RELEASING,
-        ],
-    }
 
 
 class UnknownPowerType(Exception):
@@ -1411,6 +1300,12 @@ class Node(CleanSave, TimestampedModel):
             # down.
             self.status = NODE_STATUS.READY
             self.owner = None
+        elif self.status == NODE_STATUS.FAILED_READY_POWER:
+            # The power op worked having previously failed.
+            self.status = NODE_STATUS.READY
+            maaslog.info(
+                "%s power problem was cleared and is now ready.",
+                self.hostname)
         self.save()
 
     def claim_static_ip_addresses(self):

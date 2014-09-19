@@ -76,6 +76,8 @@ class NODE_STATUS:
     FAILED_DEPLOYMENT = 11
     #: The node is powering down after a release request.
     RELEASING = 12
+    #: The node failed a power check in the READY status.
+    FAILED_READY_POWER = 13
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -94,6 +96,7 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.BROKEN, "Broken"),
     (NODE_STATUS.FAILED_DEPLOYMENT, "Failed deployment"),
     (NODE_STATUS.RELEASING, "Releasing"),
+    (NODE_STATUS.FAILED_READY_POWER, "Power controller problem"),
 )
 
 

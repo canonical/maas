@@ -49,10 +49,7 @@ from maasserver.models import (
     Node,
     node as node_module,
     )
-from maasserver.models.node import (
-    NODE_TRANSITIONS,
-    validate_hostname,
-    )
+from maasserver.models.node import validate_hostname
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressManager,
@@ -62,6 +59,7 @@ from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
     NODE_FAILURE_STATUS_TRANSITIONS,
+    NODE_TRANSITIONS,
     )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.eventloop import (
@@ -1288,6 +1286,11 @@ class NodeTest(MAASServerTestCase):
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
         node.update_power_state(POWER_STATE.ON)
         self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+
+    def test_update_power_status_marks_ready_if_recovered_from_failure(self):
+        node = factory.make_Node(status=NODE_STATUS.FAILED_READY_POWER)
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.status, Equals(NODE_STATUS.READY))
 
     def test_end_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)

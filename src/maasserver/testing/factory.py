@@ -70,7 +70,7 @@ from maasserver.models.bootresourceset import (
     INSTALL_SET,
     XINSTALL_TYPES,
     )
-from maasserver.models.node import NODE_TRANSITIONS
+from maasserver.node_status import NODE_TRANSITIONS
 from maasserver.testing import get_data
 from maasserver.testing.orm import reload_object
 import maastesting.factory
