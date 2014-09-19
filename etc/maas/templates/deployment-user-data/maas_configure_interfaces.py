@@ -308,11 +308,17 @@ def generate_udev_rule(interface, mac):
 
 def name_interfaces(interfaces_by_mac):
     """Configure fixed names for network interfaces."""
-    # Write to a udev file with a sequence number below 70.  Otherwise,
-    # the node will write its own 70-persistent-net.rules during boot.
-    # That file will do the same thing, but only after bringing up the
-    # interfaces on the installed system, possibly with the wrong names.
-    udev_file = '/etc/udev/rules.d/10-maas-network-interfaces.rules'
+    # Write to the same udev file that would otherwise be automatically
+    # populated with similar rules on the node's first boot.  This provides
+    # the least surprise to the node's user, who would expect to see the
+    # rules in its standard location.
+    #
+    # (We can't wait for the rules to be written on first boot, because by
+    # then two or more network interfaces might have switched names.)
+    #
+    # Writing the rules to a file with a sequence number below 70 would also
+    # work, but a higher one does not.
+    udev_file = '/etc/udev/rules.d/70-persistent-net.rules'
     header = "# MAAS-generated fixed names for network interfaces.\n\n"
     udev_content = header + '\n\n'.join(
         generate_udev_rule(interface, mac)

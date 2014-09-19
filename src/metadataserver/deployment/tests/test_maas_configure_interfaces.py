@@ -491,7 +491,7 @@ class TestNameInterfaces(MAASTestCase):
         self.assertThat(
             write_file,
             MockCalledOnceWith(
-                '/etc/udev/rules.d/10-maas-network-interfaces.rules', ANY))
+                '/etc/udev/rules.d/70-persistent-net.rules', ANY))
 
     def test__writes_udev_rules(self):
         interface = factory.make_name('eth')
