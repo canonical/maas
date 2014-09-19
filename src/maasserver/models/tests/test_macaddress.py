@@ -488,7 +488,7 @@ class TestClaimStaticIPs(MAASServerTestCase):
         # A double clash for both IPv4 and IPv6 addresses raises
         # StaticIPAddressTypeClash.
         ipv4_network = factory.make_ipv4_network()
-        ipv6_network = factory.make_ipv4_network()
+        ipv6_network = factory.make_ipv6_network()
         node = make_node_attached_to_cluster_interfaces(
             ipv4_network=ipv4_network, ipv6_network=ipv6_network)
         mac = node.get_primary_mac()

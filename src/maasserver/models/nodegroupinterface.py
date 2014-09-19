@@ -73,7 +73,7 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         # The API identifies a NodeGroupInterface by cluster and name.
         unique_together = ('nodegroup', 'name')
 
-    # Static IP of the interface.
+    # Static IP of the network interface.
     ip = MAASIPAddressField(
         null=False, editable=True,
         help_text="Static IP Address of the interface",
@@ -162,6 +162,64 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     def is_managed(self):
         """Return true if this interface is managed by MAAS."""
         return self.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+
+    def check_for_network_interface_clashes(self, exclude):
+        """Validate uniqueness rules for network interfaces.
+
+        This enforces the rules that there can be only one IPv4 cluster
+        interface on a given network interface on the cluster controller, and
+        that there can be only one IPv6 cluster interface with a static range
+        on a given network interface on the cluster controller.  Aliases and
+        VLANs count as separate network interfaces.
+
+        The IPv4 rule is inherent: a network interface (as seen in userspace)
+        can only be on one IPv4 subnet.  The IPv6 rule is needed because our
+        current way of configuring IPv6 addresses on nodes, in `/etc/network`,
+        does not support multiple addresses.  So a network interface on a node
+        can only be on one IPv6 subnet.  Since the node's network interface is
+        connected to the same network segment as the cluster controller's, that
+        means that the cluster controller can only manage static IP addresses
+        on one IPv6 subnet per network interface.
+        """
+        if 'ip' in exclude or 'nodegroup' in exclude or 'interface' in exclude:
+            return
+        ip_version = IPAddress(self.ip).version
+        similar_interfaces = self.nodegroup.nodegroupinterface_set.filter(
+            interface=self.interface)
+        if self.id is not None:
+            similar_interfaces = similar_interfaces.exclude(id=self.id)
+        potential_clashes = [
+            itf
+            for itf in similar_interfaces
+            if IPAddress(itf.ip).version == ip_version
+            ]
+        if ip_version == 4:
+            if potential_clashes != []:
+                raise ValidationError(
+                    "Another cluster interface already connects "
+                    "network interface %s to an IPv4 network."
+                    % self.interface)
+        elif self.static_ip_range_low and self.static_ip_range_high:
+            # Nullness checks for these IP addresses are deliberately vague
+            # because Django may represent them as either empty strings or
+            # None.
+            clashes = [
+                itf
+                for itf in potential_clashes
+                if itf.static_ip_range_low and itf.static_ip_range_high
+                ]
+            if clashes != []:
+                raise ValidationError(
+                    "Another cluster interface with a static address range "
+                    "already connects network interface %s to an IPv6 network."
+                    % self.interface)
+
+    def validate_unique(self, exclude=None):
+        """Validate against conflicting `NodeGroupInterface` objects."""
+        super(NodeGroupInterface, self).validate_unique(exclude=exclude)
+        if exclude is None:
+            exclude = []
+        self.check_for_network_interface_clashes(exclude)
 
     def get_dynamic_ip_range(self):
         if self.ip_range_low and self.ip_range_high:

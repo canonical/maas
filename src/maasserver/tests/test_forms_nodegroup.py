@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import json
+from random import randint
 
 from maasserver.enum import (
     NODE_STATUS,
@@ -254,23 +255,22 @@ class TestNodeGroupDefineForm(MAASServerTestCase):
                 uuid_nodegroup.nodegroupinterface_set.all()
             ])
 
-    def test_gives_disambuation_preference_to_IPv4(self):
+    def test_gives_disambiguation_preference_to_IPv4(self):
         network_interface = factory.make_name('eth', sep='')
         ipv4_network = factory.make_ipv4_network()
-        # We'll be creating a cluster with 3 interfaces, all using the same
-        # network interface: an IPv4 one and two IPv6 ones.
-        # The IPv4 one is in the middle here to rule out special treatment
-        # based on ordering of this list.
-        interfaces = [
-            factory.get_interface_fields(
-                network=factory.make_ipv6_network(slash=64),
-                interface=network_interface),
-            factory.get_interface_fields(
-                network=ipv4_network, interface=network_interface),
-            factory.get_interface_fields(
-                network=factory.make_ipv6_network(slash=64),
-                interface=network_interface),
-            ]
+        # We'll be creating a cluster with two interfaces, both using the same
+        # network interface: an IPv4 one and an IPv6 one.
+        # We randomise the ordering of this list to rule out special treatment
+        # based on definition order.
+        interfaces = sorted(
+            [
+                factory.get_interface_fields(
+                    network=factory.make_ipv6_network(slash=64),
+                    interface=network_interface),
+                factory.get_interface_fields(
+                    network=ipv4_network, interface=network_interface),
+            ],
+            cmp=lambda left, right: randint(-1, 1))
         # We're not going to pass names for these cluster interfaces, so the
         # form will have to make some up based on the network interface name.
         for definition in interfaces:

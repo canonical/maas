@@ -18,9 +18,10 @@ support, but with a number of limitations:
 * Nodes still boot, register, and install using the IPv4 network.
 * IPv6 addresses are only configured when using the Ubuntu "fast" installer.
 * Most BMCs can only be controlled (e.g. to power nodes on/off) using IPv4.
-* MAAS still uses IPv4 for its internal operation.
+* MAAS still uses IPv4 for its internal operation, installing nodes, etc.
 * For now, MAAS only supports IPv6 on networks where it also manages IPv4 DHCP.
 * A network interface on a node can only be on one IPv6 subnet.
+* A network interface on a cluster controller can manage only one IPv6 subnet.
 
 The web user interface and REST API can be accessed in the same way on both
 IPv4 and IPv6.  To use an IPv6 address as the hostname in a URL, in your
