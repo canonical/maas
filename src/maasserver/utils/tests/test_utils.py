@@ -188,7 +188,7 @@ def make_request(origin_ip):
 class TestFindNodegroup(MAASServerTestCase):
 
     scenarios = [
-        ('ipv4', {'network_factory': factory.getRandomNetwork}),
+        ('ipv4', {'network_factory': factory.make_ipv4_network}),
         ('ipv6', {'network_factory': factory.make_ipv6_network}),
         ]
 

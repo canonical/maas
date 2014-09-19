@@ -135,7 +135,7 @@ class TestSendEventMACAddress(MAASTestCase):
         protocol, connecting = self.patch_rpc_methods()
         self.addCleanup((yield connecting))
 
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 
@@ -155,7 +155,7 @@ class TestSendEventMACAddress(MAASTestCase):
             side_effect=[NoSuchEventType, {}])
         self.addCleanup((yield connecting))
 
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         description = factory.make_name('description')
         event_name = random.choice(map_enum(EVENT_TYPES).keys())
 

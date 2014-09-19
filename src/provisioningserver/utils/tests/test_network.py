@@ -219,7 +219,7 @@ class TestGetAllAddressesForInterface(MAASTestCase):
     scenarios = [
         ('ipv4', {
             'inet_class': AF_INET,
-            'network_factory': factory.getRandomNetwork,
+            'network_factory': factory.make_ipv4_network,
             'ip_address_factory': factory.make_ipv4_address,
             'loopback_address': '127.0.0.1',
             }),

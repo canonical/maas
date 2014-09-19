@@ -819,7 +819,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
     @wait_for_reactor
     def test_create_node_raises_if_unknown_type(self):
         name = factory.make_name('type_name')
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         description = factory.make_name('description')
 
         d = call_responder(
@@ -844,7 +844,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
         level = random.randint(0, 100)
         yield deferToThread(self.create_event_type, name, description, level)
 
-        mac_address = factory.getRandomMACAddress()
+        mac_address = factory.make_mac_address()
         event_description = factory.make_name('event-description')
         d = call_responder(
             Region(), SendEventMACAddress,
