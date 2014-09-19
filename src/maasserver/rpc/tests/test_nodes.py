@@ -74,7 +74,7 @@ class TestCreateNode(MAASServerTestCase):
                 node.power_type,
                 node.power_parameters
             ))
-        self.assertEqual(
+        self.assertItemsEqual(
             mac_addresses,
             [mac.mac_address for mac in node.macaddress_set.all()])
 
