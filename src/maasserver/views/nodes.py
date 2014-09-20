@@ -54,6 +54,7 @@ from lxml import etree
 from maasserver import logger
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     )
@@ -72,6 +73,7 @@ from maasserver.messages import MESSAGING
 from maasserver.models import (
     MACAddress,
     Node,
+    StaticIPAddress,
     Tag,
     )
 from maasserver.models.config import Config
@@ -96,6 +98,7 @@ from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import (
     EUI,
+    IPAddress,
     NotRegisteredError,
     )
 from provisioningserver.tags import merge_details_cleanly
@@ -497,6 +500,12 @@ THIRD_PARTY_DRIVERS_ADMIN_NOTICE = dedent("""
     href="%s#third_party_drivers">settings</a> page.
     """)
 
+UNCONFIGURED_IPS_NOTICE = dedent("""
+    Automatic configuration of IPv6 addresses is currently only supported on
+    Ubuntu, using the fast installer.  To activate the IPv6 address(es) shown
+    here, configure them in the installed operating system.
+    """)
+
 
 def construct_third_party_drivers_notice(user_is_admin):
     """Build and return the notice about third party drivers.
@@ -529,6 +538,29 @@ class NodeView(NodeViewMixin, UpdateView):
     # The number of events shown on the node view page.
     number_of_events_shown = 5
 
+    def warn_unconfigured_ip_addresses(self, node):
+        """Should the UI warn about unconfigured IPv6 addresses on the node?
+
+        Static IPv6 addresses are configured on the node using Curtin.  But
+        this is not yet supported for all operating systems and installers.
+        If a node has IPv6 addresses assigned but is not being deployed in a
+        way that supports configuring them, the node page should show a warning
+        to say that the user will need to configure the node to use those
+        addresses.
+
+        :return: Bool: should the UI show this warning?
+        """
+        if node.osystem == 'ubuntu' and node.boot_type == NODE_BOOT.FASTPATH:
+            # MAAS knows how to configure IPv6 addresses on an Ubuntu node
+            # installed with the fast installer.  No warning needed.
+            return False
+        # For other installs, we need the warning if and only if the node has
+        # static IPv6 addresses.
+        static_ips = StaticIPAddress.objects.filter(macaddress__node=node)
+        return any(
+            IPAddress(static_ip.ip).version == 6
+            for static_ip in static_ips)
+
     def get_context_data(self, **kwargs):
         context = super(NodeView, self).get_context_data(**kwargs)
         node = self.get_object()
@@ -538,6 +570,10 @@ class NodeView(NodeViewMixin, UpdateView):
             messages.info(self.request, NODE_BOOT_INFO)
         if node.power_type == '':
             messages.error(self.request, NO_POWER_SET)
+        if self.warn_unconfigured_ip_addresses(node):
+            messages.warning(self.request, UNCONFIGURED_IPS_NOTICE)
+            context['unconfigured_ips_warning'] = UNCONFIGURED_IPS_NOTICE
+
         context['error_text'] = (
             node.error if node.status == NODE_STATUS.FAILED_COMMISSIONING
             else None)

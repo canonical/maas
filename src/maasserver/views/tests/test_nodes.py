@@ -18,7 +18,10 @@ from cgi import escape
 import httplib
 from operator import attrgetter
 import os
-from random import randint
+from random import (
+    choice,
+    randint,
+    )
 from textwrap import dedent
 from urlparse import (
     parse_qsl,
@@ -34,6 +37,7 @@ from maasserver import preseed as preseed_module
 import maasserver.api
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
+    NODE_BOOT,
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -86,7 +90,11 @@ from metadataserver.models.commissioningscript import (
     )
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.text import normalise_whitespace
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    ContainsAll,
+    HasLength,
+    Not,
+    )
 
 
 class TestGenerateJSPowerTypes(MAASServerTestCase):
@@ -477,6 +485,34 @@ class NodeViewsTest(MAASServerTestCase):
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         self.assertNotIn("IP addresses", response.content)
+
+    def test_view_node_warns_about_unconfigured_IPv6_addresses(self):
+        self.client_log_in()
+        ipv6_network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=self.logged_in_user, network=ipv6_network,
+            osystem='windows')
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(ipv6_network),
+            mac=node.get_primary_mac())
+        node_link = reverse('node-view', args=[node.system_id])
+        page = fromstring(self.client.get(node_link).content)
+        [addresses_section] = page.cssselect('#ip-addresses')
+        self.expectThat(
+            addresses_section.cssselect('#unconfigured-ips-warning'),
+            Not(HasLength(0)))
+
+    def test_view_node_does_not_warn_if_no_unconfigured_IPv6_addresses(self):
+        self.client_log_in()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=self.logged_in_user)
+        factory.make_StaticIPAddress(mac=node.get_primary_mac())
+        node_link = reverse('node-view', args=[node.system_id])
+        page = fromstring(self.client.get(node_link).content)
+        [addresses_section] = page.cssselect('#ip-addresses')
+        self.assertEqual(
+            [],
+            addresses_section.cssselect('#unconfigured-ip-warning'))
 
     def test_view_node_displays_node_info_no_owner(self):
         # If the node has no owner, the Owner 'slot' does not exist.
@@ -1274,6 +1310,49 @@ class NodeViewsTest(MAASServerTestCase):
         node_event_list = reverse(
             'node-event-list-view', args=[node.system_id])
         self.assertIn(node_event_list, get_content_links(response))
+
+
+class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
+
+    def test__warns_for_IPv6_address_on_non_ubuntu_OS(self):
+        network = factory.make_ipv6_network()
+        osystem = choice(['windows', 'centos', 'suse'])
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem=osystem, network=network)
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
+        self.assertTrue(NodeView().warn_unconfigured_ip_addresses(node))
+
+    def test__warns_for_IPv6_address_on_debian_installer(self):
+        network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem='ubuntu', network=network, boot_type=NODE_BOOT.DEBIAN)
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
+        self.assertTrue(NodeView().warn_unconfigured_ip_addresses(node))
+
+    def test__does_not_warn_for_ubuntu_fast_installer(self):
+        network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem='ubuntu', network=network, boot_type=NODE_BOOT.FASTPATH)
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
+        self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
+
+    def test__does_not_warn_for_just_IPv4_address(self):
+        network = factory.make_ipv4_network()
+        osystem = choice(['windows', 'centos', 'suse'])
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem=osystem, network=network)
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
+        self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
+
+    def test__does_not_warn_without_static_address(self):
+        osystem = choice(['windows', 'centos', 'suse'])
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem=osystem)
+        self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
 
 
 class NodeEventLogTest(MAASServerTestCase):

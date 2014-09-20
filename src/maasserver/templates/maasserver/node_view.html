@@ -159,8 +159,15 @@
     </li>
     {% with ip_addresses=node.ip_addresses %}
     {% if ip_addresses|length %}
-    <li class="block size3">
-      <h4>IP addresses</h4>
+    <li class="block size3" id="ip-addresses">
+      <h4>IP addresses
+          {% if unconfigured_ips_warning %}
+          <img
+            src="{{ STATIC_URL }}img/warning.png"
+            title="This node's IPv6 addresses are not automatically configured."
+            id="unconfigured-ips-warning" />
+          {% endif %}
+      </h4>
       <span>
           {% for ip in ip_addresses %}
           {{ ip }}{% if not forloop.last %}, {% endif %}
