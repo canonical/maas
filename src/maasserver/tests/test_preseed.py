@@ -728,14 +728,6 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
 
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
-    def test__skips_if_script_not_installed(self):
-        no_script = os.path.join(
-            self.make_dir(), factory.make_name('nosuchdir'),
-            'maas_configure_interfaces.py')
-        self.patch(preseed_module, 'locate_config').return_value = no_script
-        node = factory.make_Node()
-        self.assertEqual([], compose_curtin_network_preseed(node))
-
     def test__returns_list_of_yaml_strings(self):
         preseeds = compose_curtin_network_preseed(factory.make_Node())
         self.assertIsInstance(preseeds, list)

@@ -122,12 +122,6 @@ def compose_curtin_network_preseed(node):
     script = locate_config(
         'templates/deployment-user-data/maas_configure_interfaces.py')
 
-    # Deal with transitional issue: the packaging doesn't install this script
-    # just yet.  Once the packaging has been updated, we can just assume that
-    # the file is present.
-    if not os.path.isfile(script):
-        return []
-
     configure_script = read_text_file(script)
 
     # Preseed: upload the script to the node's installed filesystem.
