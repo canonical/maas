@@ -20,6 +20,7 @@ __all__ = [
 
 from apiclient.creds import convert_tuple_to_string
 from django.db.models import (
+    BooleanField,
     CharField,
     ForeignKey,
     IntegerField,
@@ -58,7 +59,8 @@ class NodeGroupManager(Manager):
     """
 
     def new(self, name, uuid, subnet_mask=None, dhcp_key='',
-            status=NODEGROUP_STATUS.DEFAULT, cluster_name=None, maas_url=''):
+            status=NODEGROUP_STATUS.DEFAULT, cluster_name=None, maas_url='',
+            default_disable_ipv4=False):
         """Create a :class:`NodeGroup` with the given parameters.
 
         Also generates API credentials for the nodegroup's worker to use.
@@ -67,7 +69,8 @@ class NodeGroupManager(Manager):
             cluster_name = NODEGROUP_CLUSTER_NAME_TEMPLATE % {'uuid': uuid}
         nodegroup = NodeGroup(
             name=name, uuid=uuid, cluster_name=cluster_name, dhcp_key=dhcp_key,
-            status=status, maas_url=maas_url)
+            status=status, maas_url=maas_url,
+            default_disable_ipv4=default_disable_ipv4)
         nodegroup.save()
         return nodegroup
 
@@ -172,6 +175,15 @@ class NodeGroup(TimestampedModel):
     # controller.
     maas_url = CharField(
         blank=True, editable=False, max_length=255, default='')
+
+    # Should nodes on this cluster be configured to disable IPv4 on deployment
+    # by default?
+    default_disable_ipv4 = BooleanField(
+        default=False,
+        verbose_name="Disable IPv4 by default when deploying nodes",
+        help_text=(
+            "Default setting for setting on new nodes: disable IPv4 when "
+            "deploying, on operating systems where this is supported."))
 
     @property
     def api_credentials(self):

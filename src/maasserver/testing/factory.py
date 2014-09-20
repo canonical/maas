@@ -351,7 +351,8 @@ class Factory(maastesting.factory.Factory):
                        subnet_mask=None, broadcast_ip=None, ip_range_low=None,
                        ip_range_high=None, interface=None, management=None,
                        status=None, maas_url='', static_ip_range_low=None,
-                       static_ip_range_high=None, **kwargs):
+                       static_ip_range_high=None, default_disable_ipv4=None,
+                       **kwargs):
         """Create a :class:`NodeGroup`.
 
         If `management` is set (to a `NODEGROUPINTERFACE_MANAGEMENT` value),
@@ -373,9 +374,12 @@ class Factory(maastesting.factory.Factory):
         if dhcp_key is None:
             # TODO: Randomise this properly.
             dhcp_key = ''
+        if default_disable_ipv4 is None:
+            default_disable_ipv4 = factory.pick_bool()
         cluster = NodeGroup.objects.new(
             name=name, uuid=uuid, cluster_name=cluster_name, status=status,
-            dhcp_key=dhcp_key, maas_url=maas_url)
+            dhcp_key=dhcp_key, maas_url=maas_url,
+            default_disable_ipv4=default_disable_ipv4)
         if management is not None:
             interface_settings = dict(
                 ip=ip, router_ip=router_ip, network=network,
