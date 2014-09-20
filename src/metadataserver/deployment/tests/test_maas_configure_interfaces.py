@@ -103,12 +103,7 @@ class TestPrepareParser(MAASTestCase):
 
 def make_denormalised_mac():
     """Create a MAC address that is not in its normalised form."""
-    mac = factory.make_mac_address()
-    if mac.upper() == mac.lower():
-        # This is not denormalised.  Inject an upper-case letter to ensure
-        # that we get something denormalised.
-        mac[-1] = 'D'
-    return mac.upper()
+    return " %s " % factory.make_mac_address().upper()
 
 
 class TestSplitIPPair(MAASTestCase):
