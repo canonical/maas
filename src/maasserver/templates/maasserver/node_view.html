@@ -29,36 +29,44 @@
           hidden_class = "expander-hidden";
       YUI().use('maas.reveal', function (Y) {
         Y.on('domready', function() {
-          {# Set up a Reveal widget for the probed details output. #}
-          var trigger = Y.one('#details-trigger');
-          var expander = new Y.maas.reveal.Reveal({
-            targetNode: Y.one('#details-output'),
-            linkNode: trigger,
-            showText: show_text,
-            hideText: hide_text
-          });
-          {# Update the widget's expander icon. #}
-          expander.on('revealing', function() {
-            trigger.replaceClass(hidden_class, shown_class);
-            expander.get('targetNode').setStyle('overflow', '');
-          });
-          expander.on('revealed', function() {
-            expander.get('targetNode').setStyle('overflow', 'inherit');
-          });
-          expander.on('hiding', function() {
-            trigger.replaceClass(shown_class, hidden_class);
-            expander.get('targetNode').setStyle('overflow', '');
-          });
-          expander.on('revealed', function() {
-            expander.get('targetNode').setStyle('overflow', 'inherit');
-          });
-          {# The widget renders in its hidden state. #}
-          expander.render();
+          var details_selector = '#details-output';
+          if (Y.one(details_selector)) {
+            {# Set up a Reveal widget for the probed details output. #}
+            var trigger = Y.one('#details-trigger');
+            var expander = new Y.maas.reveal.Reveal({
+              targetNode: Y.one(details_selector),
+              linkNode: trigger,
+              showText: show_text,
+              hideText: hide_text
+            });
+            {# Update the widget expander icon. #}
+            expander.on('revealing', function() {
+              trigger.replaceClass(hidden_class, shown_class);
+              expander.get('targetNode').setStyle('overflow', '');
+            });
+            expander.on('revealed', function() {
+              expander.get('targetNode').setStyle('overflow', 'inherit');
+            });
+            expander.on('hiding', function() {
+              trigger.replaceClass(shown_class, hidden_class);
+              expander.get('targetNode').setStyle('overflow', '');
+            });
+            expander.on('revealed', function() {
+              expander.get('targetNode').setStyle('overflow', 'inherit');
+            });
+            {# The widget renders in its hidden state. #}
+            expander.render();
+          }
         });
       });
       YUI().use('tabview', function (Y) {
-        var tabview = new Y.TabView({srcNode: '#details-output'});
-        tabview.render();
+        Y.on('domready', function() {
+          var details_selector = '#details-output';
+          if (Y.one(details_selector)) {
+            var tabview = new Y.TabView({srcNode: details_selector});
+            tabview.render();
+          }
+        });
       });
     // -->
   </script>
