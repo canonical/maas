@@ -47,7 +47,10 @@ from provisioningserver.rpc.testing import (
     MockLiveClusterToRegionRPCFixture,
     )
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
+from testtools.deferredruntest import (
+    assert_fails_with,
+    extract_result,
+    )
 from twisted.internet import reactor
 from twisted.internet.defer import (
     fail,
@@ -464,9 +467,8 @@ class TestPowerQuery(MAASTestCase):
 
         d = power.get_power_state(
             system_id, hostname, power_type, context)
-        # This blocks until the deferred is complete
-        io.flush()
-        self.assertEqual('unknown', extract_result(d))
+
+        return assert_fails_with(d, PowerActionFail)
 
     def test_get_power_state_retries_if_power_query_fails(self):
         system_id = factory.make_name('system_id')
@@ -516,7 +518,11 @@ class TestPowerQuery(MAASTestCase):
             system_id, hostname, power_type, context)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertEqual('error', extract_result(d))
+        d.addCallback(self.fail)
+
+        error = self.assertRaises(PowerActionFail, extract_result, d)
+        self.assertEqual(err_msg, unicode(error))
+
         # The node has been marked broken.
         self.assertThat(
             markNodeBroken,
@@ -542,7 +548,9 @@ class TestPowerQuery(MAASTestCase):
         d = power.get_power_state(
             system_id, hostname, power_type, context)
         io.flush()
-        self.assertEqual('error', extract_result(d))
+
+        error = self.assertRaises(PowerActionFail, extract_result, d)
+        self.assertEqual(template_return_gibberish, unicode(error))
 
         self.assertThat(
             markNodeBroken,
@@ -660,6 +668,30 @@ class TestPowerQueryAsync(MAASTestCase):
             call(node['system_id'], state)
             for node, state in izip(nodes, power_states)
         )))
+
+    @inlineCallbacks
+    def test_query_all_nodes_swallows_PowerActionFail(self):
+        node1, node2 = self.make_nodes(2)
+        new_state_2 = self.pick_alternate_state(node2['power_state'])
+        get_power_state = self.patch(power, 'get_power_state')
+        error_msg = factory.make_name("error")
+        get_power_state.side_effect = [
+            PowerActionFail(error_msg), new_state_2]
+
+        # Capture calls to power_state_update.
+        power_state_update = self.patch_autospec(power, 'power_state_update')
+
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query_all_nodes([node1, node2])
+
+        self.assertThat(power_state_update, MockCalledOnceWith(
+            node2['system_id'], new_state_2))
+        self.assertDocTestMatches(
+            """\
+            hostname-...: Failed to query power state: %s.
+            hostname-...: Power state has changed from ... to ...
+            """ % error_msg,
+            maaslog.output)
 
     @inlineCallbacks
     def test_query_all_nodes_suppresses_NoSuchNode_when_rpting_status(self):

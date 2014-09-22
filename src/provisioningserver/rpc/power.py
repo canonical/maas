@@ -217,7 +217,7 @@ def perform_power_query(system_id, hostname, power_type, context):
 @inlineCallbacks
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     if power_type not in QUERY_POWER_TYPES:
-        returnValue('unknown')
+        raise PowerActionFail("Unknown power_type '%s'" % power_type)
 
     # Use increasing waiting times to work around race conditions that could
     # arise when power querying the node.
@@ -244,7 +244,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     message = "Node could not be queried %s (%s) %s" % (
         system_id, hostname, error)
     power_query_failure(system_id, hostname, message)
-    returnValue('error')
+    raise PowerActionFail(error)
 
 
 @asynchronous
@@ -256,9 +256,14 @@ def query_all_nodes(nodes, clock=reactor):
         system_id = node['system_id']
         hostname = node['hostname']
         power_state_recorded = node['power_state']
-        power_state_observed = yield get_power_state(
-            system_id, hostname, node['power_type'], node['context'],
-            clock=clock)
+        try:
+            power_state_observed = yield get_power_state(
+                system_id, hostname, node['power_type'], node['context'],
+                clock=clock)
+        except PowerActionFail as e:
+            maaslog.error(
+                "%s: Failed to query power state: %s.", hostname, e)
+            continue
         if power_state_observed != power_state_recorded:
             maaslog.info(
                 "%s: Power state has changed from %s to %s.", hostname,
