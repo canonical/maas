@@ -107,3 +107,9 @@ class NodeAlreadyExists(Exception):
 
 class NoIPFoundForMACAddress(Exception):
     """No IP was found for a given MAC address."""
+
+
+class PowerActionAlreadyInProgress(Exception):
+    """A power action was requested on a node where a power action is
+    already in progress.
+    """

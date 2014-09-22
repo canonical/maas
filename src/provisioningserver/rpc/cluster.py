@@ -188,6 +188,8 @@ class _Power(amp.Command):
             b"NotImplementedError"),
         PowerActionFail: (
             b"PowerActionFail"),
+        exceptions.PowerActionAlreadyInProgress: (
+            "PowerActionAlreadyInProgress"),
     }
 
 

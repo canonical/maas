@@ -27,7 +27,10 @@ from provisioningserver.power.poweraction import (
     PowerActionFail,
     )
 from provisioningserver.rpc import getRegionClient
-from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.exceptions import (
+    NoSuchNode,
+    PowerActionAlreadyInProgress,
+    )
 from provisioningserver.rpc.region import (
     MarkNodeFailed,
     UpdateNodePowerState,
@@ -53,6 +56,10 @@ QUERY_POWER_TYPES = ['amt', 'ipmi', 'virsh']
 
 
 maaslog = get_maas_logger("power")
+
+
+# We could use a Registry here, but it seems kind of like overkill.
+power_action_registry = {}
 
 
 @asynchronous
@@ -145,32 +152,50 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
 
-    yield power_change_starting(system_id, hostname, power_change)
-    # Use increasing waiting times to work around race conditions that could
-    # arise when power-cycling the node.
-    for waiting_time in default_waiting_policy:
-        # Perform power change.
-        yield deferToThread(
-            perform_power_change, system_id, hostname, power_type,
-            power_change, context)
-        # If the power_type doesn't support querying the power state:
-        # exit now.
-        if power_type not in QUERY_POWER_TYPES:
-            return
-        # Wait to let the node some time to change its power state.
-        yield pause(waiting_time, clock)
-        # Check current power state.
-        new_power_state = yield deferToThread(
-            perform_power_change, system_id, hostname, power_type,
-            'query', context)
-        if new_power_state == power_change:
-            yield power_change_success(system_id, hostname, power_change)
-            return
+    # There should be one and only one power change for each system ID.
+    # If there's one already, raise an error.
+    registered_power_action = power_action_registry.get(system_id, None)
+    if registered_power_action is not None:
+        raise PowerActionAlreadyInProgress(
+            "Power action %s is already in progress for node %s" %
+            (registered_power_action, system_id))
+    power_action_registry[system_id] = power_change
 
-    # Failure: the power state of the node hasn't changed: mark it as
-    # broken.
-    message = "Timeout after %s tries" % len(default_waiting_policy)
-    yield power_change_failure(system_id, hostname, power_change, message)
+    try:
+        yield power_change_starting(system_id, hostname, power_change)
+        # Use increasing waiting times to work around race conditions
+        # that could arise when power-cycling the node.
+        for waiting_time in default_waiting_policy:
+            # Perform power change.
+            try:
+                yield deferToThread(
+                    perform_power_change, system_id, hostname, power_type,
+                    power_change, context)
+            except PowerActionFail:
+                raise
+            # If the power_type doesn't support querying the power state:
+            # exit now.
+            if power_type not in QUERY_POWER_TYPES:
+                return
+            # Wait to let the node some time to change its power state.
+            yield pause(waiting_time, clock)
+            # Check current power state.
+            new_power_state = yield deferToThread(
+                perform_power_change, system_id, hostname, power_type,
+                'query', context)
+            if new_power_state == power_change:
+                yield power_change_success(system_id, hostname, power_change)
+                return
+
+        # Failure: the power state of the node hasn't changed: mark it as
+        # broken.
+        message = "Timeout after %s tries" % len(default_waiting_policy)
+        yield power_change_failure(system_id, hostname, power_change, message)
+    finally:
+        # Whether we succeeded or failed, we need to remove the action
+        # from the registry of actions, otherwise every subsequent
+        # action will fail.
+        del power_action_registry[system_id]
 
 
 @asynchronous

@@ -390,6 +390,138 @@ class TestChangePowerChange(MAASTestCase):
             call(power_change='query', **context),
         ))
 
+    @inlineCallbacks
+    def test_change_power_state_adds_action_to_registry(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        self.patch(power, 'power_action_registry')
+        # You'd think we could just patch __setitem___ but on a dict
+        # that's read-only, so we just make get() act like there's
+        # nothing there instead. We need get to return None since we
+        # want it to behave like there's no power action already in the
+        # registry.
+        power.power_action_registry.get.return_value = None
+        # Patch the power action utility so that it doesn't actually try
+        # to do anything.
+        power_action, execute = self.patch_power_action(
+            return_value=power_change)
+        yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertThat(
+            power.power_action_registry.__setitem__,
+            MockCalledOnceWith(system_id, power_change))
+
+    @inlineCallbacks
+    def test_change_power_state_removes_action_from_registry_on_success(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        self.patch(power, 'power_action_registry')
+        # You'd think we could just patch __setitem___ but on a dict
+        # that's read-only, so we just make get() act like there's
+        # nothing there instead. We need get to return None since we
+        # want it to behave like there's no power action already in the
+        # registry.
+        power.power_action_registry.get.return_value = None
+        # Patch the power action utility so that it doesn't actually try
+        # to do anything.
+        power_action, execute = self.patch_power_action(
+            return_value=power_change)
+        yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertThat(
+            power.power_action_registry.__delitem__,
+            MockCalledOnceWith(system_id))
+
+    @inlineCallbacks
+    def test_change_power_state_removes_action_from_registry_on_failure(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'on'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        self.patch(power, 'power_action_registry')
+        # You'd think we could just patch __setitem___ but on a dict
+        # that's read-only, so we just make get() act like there's
+        # nothing there instead.
+        power.power_action_registry.get.return_value = None
+        # Simulate a persistent failure.
+        power_action, execute = self.patch_power_action(return_value='off')
+        yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertThat(
+            power.power_action_registry.__delitem__,
+            MockCalledOnceWith(system_id))
+
+    @inlineCallbacks
+    def test_change_power_state_removes_action_from_registry_on_error(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = 'on'
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        self.patch(power, 'power_action_registry')
+        # Can't patch __setitem__ - dict won't allow it - so patch get()
+        # instead.
+        power.power_action_registry.get.return_value = None
+        # Simulate an exception.
+        exception_message = factory.make_name('exception')
+        power_action, execute = self.patch_power_action(
+            side_effect=PowerActionFail(exception_message))
+        yield self.patch_rpc_methods()
+
+        with ExpectedException(PowerActionFail):
+            yield power.change_power_state(
+                system_id, hostname, power_type, power_change, context)
+
+        self.assertThat(
+            power.power_action_registry.__delitem__,
+            MockCalledOnceWith(system_id))
+
+    @inlineCallbacks
+    def test_change_power_state_errors_when_change_already_registered(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        # Patch the power action utility so that it says the node is
+        # in the required power state.
+        power_action, execute = self.patch_power_action(
+            return_value=power_change)
+        yield self.patch_rpc_methods()
+
+        power.power_action_registry[system_id] = power_change
+        with ExpectedException(exceptions.PowerActionAlreadyInProgress):
+            yield power.change_power_state(
+                system_id, hostname, power_type, power_change, context)
+
 
 class TestPowerQuery(MAASTestCase):
 
