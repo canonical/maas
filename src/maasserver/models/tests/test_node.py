@@ -88,6 +88,7 @@ from mock import (
     Mock,
     sentinel,
     )
+from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import MultipleFailures
@@ -439,7 +440,7 @@ class NodeTest(MAASServerTestCase):
     def test_get_effective_power_type_raises_if_not_set(self):
         node = factory.make_Node(power_type='')
         self.assertRaises(
-            node_module.UnknownPowerType, node.get_effective_power_type)
+            UnknownPowerType, node.get_effective_power_type)
 
     def test_get_effective_power_type_reads_node_field(self):
         power_types = list(get_power_types().keys())  # Python3 proof.

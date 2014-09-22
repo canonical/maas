@@ -18,8 +18,10 @@ import httplib
 import json
 import random
 
+import crochet
 from django.core.urlresolvers import reverse
 from maasserver import forms
+from maasserver.api import nodes as nodes_module
 from maasserver.enum import (
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -34,17 +36,27 @@ from maasserver.models.user import (
     create_auth_token,
     get_auth_tokens,
     )
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.api import (
     APITestCase,
     MultipleUsersScenarios,
     )
 from maasserver.testing.architecture import make_usable_architecture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import count_queries
+from mock import Mock
+from provisioningserver.power.poweraction import PowerActionFail
+from provisioningserver.rpc import cluster as cluster_module
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Contains,
@@ -1360,3 +1372,75 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
 
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
+
+
+class TestPowerState(APITestCase):
+
+    def get_node_uri(self, node):
+        """Get the API URI for a node."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def prepare_rpc(self, nodegroup, side_effect=None):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = self.rpc_fixture.makeCluster(
+            nodegroup, cluster_module.PowerQuery)
+        if side_effect is None:
+            protocol.PowerQuery.side_effect = always_succeed_with({})
+        else:
+            protocol.PowerQuery.side_effect = side_effect
+
+    def test__catches_no_connection_error(self):
+        self.patch(
+            nodes_module,
+            'getClientFor').side_effect = NoConnectionsAvailable()
+        node = factory.make_Node()
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn(
+            "Unable to connect to cluster controller", response.content)
+
+    def test__catches_timeout_error(self):
+        mock_client = Mock()
+        self.patch(
+            nodes_module, 'getClientFor').return_value = mock_client
+        mock_client().wait.side_effect = crochet.TimeoutError("error")
+        node = factory.make_Node(power_type="ipmi")
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn("Timed out waiting for power response", response.content)
+
+    def test__catches_unknown_power_type(self):
+        self.patch(nodes_module, 'getClientFor')
+        node = factory.make_Node(power_type="")
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn("Power state is not queryable", response.content)
+
+    def test__catches_poweraction_fail(self):
+        node = factory.make_Node(power_type="ipmi")
+        error_message = factory.make_name("error")
+        self.prepare_rpc(
+            node.nodegroup, side_effect=PowerActionFail(error_message))
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn(error_message, response.content)
+
+    def test__returns_actual_state(self):
+        node = factory.make_Node(power_type="ipmi")
+        random_state = random.choice(["on", "off", "error"])
+        self.prepare_rpc(
+            node.nodegroup,
+            side_effect=always_succeed_with({"state": random_state}))
+        response = self.client.get(
+            self.get_node_uri(node), {"op": "query_power_state"})
+        self.assertResponseCode(httplib.OK, response)
+        response = json.loads(response.content)
+        self.assertEqual(
+            {"state": random_state},
+            response)

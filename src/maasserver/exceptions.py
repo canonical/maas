@@ -22,6 +22,7 @@ __all__ = [
     "NodeStateViolation",
     "NodeGroupMisconfiguration",
     "IteratorReusedError",
+    "PowerProblem",
     "StaticIPAddressExhaustion",
     "StaticIPAddressTypeClash",
     "UnresolvableHost",
@@ -157,3 +158,13 @@ class MissingBootImage(MAASException):
 
 class PreseedError(MAASException):
     """Raised when issue generating the preseed."""
+
+
+class PowerProblem(MAASAPIException):
+    """Raised when there's a problem with a power operation.
+
+    This could be a problem with parameters, a problem with the power
+    controller, or something else.  The exception text will contain more
+    information.
+    """
+    api_error = httplib.SERVICE_UNAVAILABLE

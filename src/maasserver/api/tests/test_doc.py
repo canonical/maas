@@ -268,6 +268,7 @@ class TestDescribingAPI(MAASServerTestCase):
             "GET read op=None restful=True",
             "GET details op=details restful=False",
             "GET power_parameters op=power_parameters restful=False",
+            "GET query_power_state op=query_power_state restful=False",
             "POST start op=start restful=False",
             "POST stop op=stop restful=False",
             "POST release op=release restful=False",

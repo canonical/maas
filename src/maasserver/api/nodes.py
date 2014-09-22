@@ -20,6 +20,7 @@ __all__ = [
 from base64 import b64decode
 
 import bson
+import crochet
 from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
@@ -50,6 +51,7 @@ from maasserver.exceptions import (
     MAASAPIBadRequest,
     NodesNotAvailable,
     NodeStateViolation,
+    PowerProblem,
     StaticIPAddressExhaustion,
     Unauthorized,
     )
@@ -69,10 +71,17 @@ from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import Commission
 from maasserver.node_constraint_filter_forms import AcquireNodeForm
+from maasserver.rpc import getClientFor
 from maasserver.utils import find_nodegroup
 from maasserver.utils.orm import get_first
 from piston.utils import rc
+from provisioningserver.power.poweraction import (
+    PowerActionFail,
+    UnknownPowerType,
+    )
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
+from provisioningserver.rpc.cluster import PowerQuery
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
 
 # Node's fields exposed on the API.
@@ -453,6 +462,58 @@ class NodeHandler(OperationsHandler):
         """
         node = get_object_or_404(Node, system_id=system_id)
         return node.power_parameters
+
+    @operation(idempotent=True)
+    def query_power_state(self, request, system_id):
+        """Query the power state of a node.
+
+        Send a request to the node's power controller which asks it about
+        the node's state.  The reply to this could be delayed by up to
+        30 seconds while waiting for the power controller to respond.
+        Use this method sparingly as it ties up an appserver thread
+        while waiting.
+
+        If there is a problem, SERVICE_UNAVAILABLE is returned with text
+        explaining why.
+
+        :param system_id: The node to query.
+        :return: a dict whose key is "state" with a value of one of
+            'on' or 'off'.
+        """
+        node = get_object_or_404(Node, system_id=system_id)
+        ng = node.nodegroup
+
+        try:
+            client = getClientFor(ng.uuid)
+        except NoConnectionsAvailable:
+            maaslog.error(
+                "Unable to get RPC connection for cluster '%s'", ng.name)
+            raise PowerProblem("Unable to connect to cluster controller")
+
+        try:
+            power_info = node.get_effective_power_info()
+        except UnknownPowerType as e:
+            raise PowerProblem(e)
+        if not power_info.can_be_started:
+            raise PowerProblem("Power state is not queryable")
+
+        call = client(
+            PowerQuery, system_id=system_id, hostname=node.hostname,
+            power_type=power_info.power_type,
+            context=power_info.power_parameters)
+        try:
+            # Allow 30 seconds for the power query max as we're holding
+            # up an appserver thread here.
+            state = call.wait(30)
+        except crochet.TimeoutError:
+            maaslog.error(
+                "%s: Timed out waiting for power response in Node.power_state",
+                node.hostname)
+            raise PowerProblem("Timed out waiting for power response")
+        except (NotImplementedError, PowerActionFail) as e:
+            raise PowerProblem(e)
+
+        return state
 
 
 def create_node(request):

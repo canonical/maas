@@ -106,6 +106,7 @@ from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
@@ -122,10 +123,6 @@ maaslog = get_maas_logger("node")
 
 def generate_node_system_id():
     return 'node-%s' % uuid1()
-
-
-class UnknownPowerType(Exception):
-    """Raised when a node has an unknown power type."""
 
 
 def validate_hostname(hostname):
