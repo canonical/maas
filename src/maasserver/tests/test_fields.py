@@ -499,12 +499,18 @@ class TestLargeObjectField(TestModelMixin, MAASServerTestCase):
     def test_to_python_returns_LargeObjectFile_when_value_int(self):
         oid = randint(1, 100)
         field = LargeObjectField()
+        # South normally substitutes a FakeModel here, but with a baseline
+        # schema, we can skip the migration that creates LargeObjectField.
+        self.patch(field, 'model')
         obj_file = field.to_python(oid)
         self.assertEqual(oid, obj_file.oid)
 
     def test_to_python_returns_LargeObjectFile_when_value_long(self):
         oid = long(randint(1, 100))
         field = LargeObjectField()
+        # South normally substitutes a FakeModel here, but with a baseline
+        # schema, we can skip the migration that creates LargeObjectField.
+        self.patch(field, 'model')
         obj_file = field.to_python(oid)
         self.assertEqual(oid, obj_file.oid)
 

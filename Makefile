@@ -209,6 +209,13 @@ syncdb: bin/maas-region-admin bin/database
 	$(dbrun) bin/maas-region-admin migrate maasserver --noinput
 	$(dbrun) bin/maas-region-admin migrate metadataserver --noinput
 
+# (Re)write the baseline schema.
+schema/baseline.sql: bin/database
+	$(dbrun) pg_dump -h $(PWD)/db/ -d maas --no-owner --no-privileges -f $@
+
+# Synchronise the database, and update the baseline schema.
+baseline-schema: syncdb schema/baseline.sql
+
 define phony_targets
   build
   check

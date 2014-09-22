@@ -22,6 +22,7 @@ from maas import (
     import_settings,
     settings,
     )
+from maas.customise_test_db import patch_db_creation
 from metadataserver.address import guess_server_host
 import provisioningserver.config
 from provisioningserver.utils import compose_URL
@@ -106,6 +107,9 @@ PRESEED_TEMPLATE_LOCATIONS = (
 # The root directory of the MAAS project for this dev instance.
 DEV_ROOT_DIRECTORY = os.path.join(
     os.path.dirname(__file__), os.pardir, os.pardir)
+
+# Inject custom code for setting up the test database.
+patch_db_creation(DEV_ROOT_DIRECTORY)
 
 # Override the default provisioning config filename.
 provisioningserver.config.Config.DEFAULT_FILENAME = abspath(
