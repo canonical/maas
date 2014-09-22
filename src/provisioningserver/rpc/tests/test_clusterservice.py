@@ -21,6 +21,7 @@ from datetime import (
 from itertools import product
 import json
 import os.path
+import random
 from random import randint
 from urlparse import urlparse
 
@@ -61,6 +62,7 @@ from provisioningserver.rpc import (
     exceptions,
     getRegionClient,
     osystems as osystems_rpc_module,
+    power as power_module,
     region,
     )
 from provisioningserver.rpc.clusterservice import (
@@ -74,6 +76,7 @@ from provisioningserver.rpc.monitors import (
     running_monitors,
     )
 from provisioningserver.rpc.osystems import gen_operating_systems
+from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
     are_valid_tls_parameters,
     call_responder,
@@ -987,6 +990,39 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         def check(failure):
             failure.trap(PowerActionFail)
         return d.addErrback(check)
+
+
+class TestClusterProtocol_PowerQuery(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.PowerQuery.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_returns_power_state(self):
+        state = random.choice(['on', 'off'])
+        perform_power_query = self.patch(
+            power_module, "perform_power_query")
+        perform_power_query.return_value = state
+
+        arguments = {
+            'system_id': factory.make_name(''),
+            'hostname': factory.make_name(''),
+            'power_type': random.choice(QUERY_POWER_TYPES),
+            'context': factory.make_name(''),
+        }
+        observed = yield call_responder(
+            Cluster(), cluster.PowerQuery, arguments)
+        self.assertEqual({'state': state}, observed)
+        self.assertThat(
+            perform_power_query,
+            MockCalledOnceWith(
+                arguments['system_id'], arguments['hostname'],
+                arguments['power_type'], arguments['context']))
 
 
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):

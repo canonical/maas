@@ -193,10 +193,10 @@ class Cluster(RPCProtocol):
 
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):
-        state = get_power_state(
-            system_id, hostname, power_type, power_change='query',
-            context=context)
-        return {'state': state}
+        d = get_power_state(
+            system_id, hostname, power_type, context=context)
+        d.addCallback(lambda x: {'state': x})
+        return d
 
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(self, omapi_key, subnet_configs):
