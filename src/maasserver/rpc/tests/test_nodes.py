@@ -25,6 +25,7 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.drivers import PowerTypeRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
@@ -66,7 +67,7 @@ class TestCreateNode(MAASServerTestCase):
                 cluster,
                 architecture,
                 power_type,
-                ''
+                {},
             ),
             (
                 node.nodegroup,
@@ -106,3 +107,26 @@ class TestCreateNode(MAASServerTestCase):
         self.assertRaises(
             NodeAlreadyExists, create_node, cluster.uuid, architecture,
             power_type, power_parameters, [mac_addresses[0]])
+
+    def test__saves_power_parameters(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = {
+            factory.make_name('key'): factory.make_name('value')
+            for _ in range(3)
+        }
+
+        node = create_node(
+            cluster.uuid, architecture, power_type, dumps(power_parameters),
+            mac_addresses)
+
+        # Reload the object from the DB so that we're sure its power
+        # parameters are being persisted.
+        node = reload_object(node)
+        self.assertEqual(power_parameters, node.power_parameters)

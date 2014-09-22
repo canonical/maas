@@ -33,6 +33,7 @@ from provisioningserver.rpc.exceptions import (
     NoSuchNode,
     )
 from provisioningserver.utils.twisted import synchronous
+import simplejson as json
 
 
 @synchronous
@@ -128,6 +129,10 @@ def create_node(cluster_uuid, architecture, power_type,
     form = AdminNodeWithMACAddressesForm(data_query_dict)
     if form.is_valid():
         node = form.save()
+        # We have to explicitly save the power parameters; the form
+        # won't do it for us.
+        node.power_parameters = json.loads(power_parameters)
+        node.save()
         return node
     else:
         raise ValidationError(form.errors)
