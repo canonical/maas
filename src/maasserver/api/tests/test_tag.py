@@ -28,7 +28,21 @@ from maasserver.testing.api import (
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    )
 from metadataserver.models.commissioningscript import inject_lshw_result
+from mock import (
+    ANY,
+    call,
+    )
+from testtools.matchers import MatchesStructure
+
+
+def patch_populate_tags(test):
+    from maasserver import populate_tags
+    return test.patch_autospec(populate_tags, "populate_tags")
 
 
 class TestTagAPI(APITestCase):
@@ -104,22 +118,15 @@ class TestTagAPI(APITestCase):
         self.assertTrue(Tag.objects.filter(name='new-tag-name').exists())
 
     def test_PUT_updates_node_associations(self):
-        self.skip("Tag evaluation is being ported to RPC.")
-
-        node1 = factory.make_Node()
-        inject_lshw_result(node1, b'<node><foo/></node>')
-        node2 = factory.make_Node()
-        inject_lshw_result(node2, b'<node><bar/></node>')
+        populate_tags = patch_populate_tags(self)
         tag = factory.make_Tag(definition='//node/foo')
-        self.assertItemsEqual([tag.name], node1.tag_names())
-        self.assertItemsEqual([], node2.tag_names())
+        self.expectThat(populate_tags, MockCalledOnceWith(tag))
         self.become_admin()
         response = self.client_put(
             self.get_tag_uri(tag),
             {'definition': '//node/bar'})
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertItemsEqual([], node1.tag_names())
-        self.assertItemsEqual([tag.name], node2.tag_names())
+        self.expectThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
 
     def test_GET_nodes_with_no_nodes(self):
         tag = factory.make_Tag()
@@ -143,14 +150,13 @@ class TestTagAPI(APITestCase):
                          [r['system_id'] for r in parsed_result])
 
     def test_GET_nodes_hides_invisible_nodes(self):
-        self.skip("Tag evaluation is being ported to RPC.")
-
         user2 = factory.make_User()
         node1 = factory.make_Node()
-        inject_lshw_result(node1, b'<node><foo/></node>')
         node2 = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user2)
-        inject_lshw_result(node2, b'<node><bar/></node>')
-        tag = factory.make_Tag(definition='//node')
+        tag = factory.make_Tag()
+        node1.tags.add(tag)
+        node2.tags.add(tag)
+
         response = self.client.get(self.get_tag_uri(tag), {'op': 'nodes'})
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -166,12 +172,11 @@ class TestTagAPI(APITestCase):
                               [r['system_id'] for r in parsed_result])
 
     def test_PUT_invalid_definition(self):
-        self.skip("Tag evaluation is being ported to RPC.")
-
         self.become_admin()
         node = factory.make_Node()
         inject_lshw_result(node, b'<node ><child/></node>')
         tag = factory.make_Tag(definition='//child')
+        node.tags.add(tag)
         self.assertItemsEqual([tag.name], node.tag_names())
         response = self.client_put(
             self.get_tag_uri(tag), {'definition': 'invalid::tag'})
@@ -338,24 +343,15 @@ class TestTagAPI(APITestCase):
         self.assertItemsEqual([], node.tags.all())
 
     def test_POST_rebuild_rebuilds_node_mapping(self):
-        self.skip("Tag evaluation is being ported to RPC.")
-
+        populate_tags = patch_populate_tags(self)
         tag = factory.make_Tag(definition='//foo/bar')
-        # Only one node matches the tag definition, rebuilding should notice
-        node_matching = factory.make_Node()
-        inject_lshw_result(node_matching, b'<foo><bar/></foo>')
-        node_bogus = factory.make_Node()
-        inject_lshw_result(node_bogus, b'<foo/>')
-        node_matching.tags.add(tag)
-        node_bogus.tags.add(tag)
-        self.assertItemsEqual(
-            [node_matching, node_bogus], tag.node_set.all())
         self.become_admin()
+        self.assertThat(populate_tags, MockCalledOnceWith(tag))
         response = self.client.post(self.get_tag_uri(tag), {'op': 'rebuild'})
         self.assertEqual(httplib.OK, response.status_code)
         parsed_result = json.loads(response.content)
         self.assertEqual({'rebuilding': tag.name}, parsed_result)
-        self.assertItemsEqual([node_matching], tag.node_set.all())
+        self.assertThat(populate_tags, MockCallsMatch(call(tag), call(tag)))
 
     def test_POST_rebuild_leaves_manual_tags(self):
         tag = factory.make_Tag(definition='')
@@ -491,16 +487,8 @@ class TestTagsAPI(APITestCase):
             extra_kernel_opts, Tag.objects.filter(name=name)[0].kernel_opts)
 
     def test_POST_new_populates_nodes(self):
-        self.skip("Tag evaluation is being ported to RPC.")
-
+        populate_tags = patch_populate_tags(self)
         self.become_admin()
-        node1 = factory.make_Node()
-        inject_lshw_result(node1, b'<node><child/></node>')
-        # Create another node that doesn't have a 'child'
-        node2 = factory.make_Node()
-        inject_lshw_result(node2, b'<node/>')
-        self.assertItemsEqual([], node1.tag_names())
-        self.assertItemsEqual([], node2.tag_names())
         name = factory.make_string()
         definition = '//node/child'
         comment = factory.make_string()
@@ -513,5 +501,8 @@ class TestTagsAPI(APITestCase):
                 'definition': definition,
             })
         self.assertEqual(httplib.OK, response.status_code)
-        self.assertItemsEqual([name], node1.tag_names())
-        self.assertItemsEqual([], node2.tag_names())
+        self.assertThat(populate_tags, MockCalledOnceWith(ANY))
+        # The tag passed to populate_tags() is the one created above.
+        [tag], _ = populate_tags.call_args
+        self.assertThat(tag, MatchesStructure.byEquality(
+            name=name, comment=comment, definition=definition))

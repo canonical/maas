@@ -111,9 +111,9 @@ class Tag(CleanSave, TimestampedModel):
             raise ValidationError({'definition': [msg]})
         # Now delete the existing tags
         self.node_set.clear()
-        # Being ported to RPC.
-        # from maasserver.populate_tags import populate_tags
-        # populate_tags(self)
+        # Avoid circular imports.
+        from maasserver.populate_tags import populate_tags
+        populate_tags(self)
 
     def save(self, *args, **kwargs):
         super(Tag, self).save(*args, **kwargs)
