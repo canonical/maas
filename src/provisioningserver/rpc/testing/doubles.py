@@ -54,6 +54,9 @@ class StubOS(OperatingSystem):
         self.title = name.capitalize()
         self.releases = releases
 
+    def is_release_supported(self, release):
+        return release in self.releases
+
     def get_supported_releases(self):
         return [name for name, _ in self.releases]
 

@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
+import random
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -43,12 +44,6 @@ class TestSUSEOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
-    def test_get_supported_releases(self):
-        osystem = SUSEOS()
-        expected = osystem.get_supported_releases()
-        self.assertIsInstance(expected, list)
-        self.assertItemsEqual(expected, list(DISTRO_SERIES_CHOICES.keys()))
-
     def test_get_default_release(self):
         osystem = SUSEOS()
         expected = osystem.get_default_release()
@@ -56,13 +51,7 @@ class TestSUSEOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = SUSEOS()
+        release = random.choice(DISTRO_SERIES_CHOICES.keys())
         self.assertEqual(
-            {release: osystem.get_release_title(release)
-             for release in osystem.get_supported_releases()},
-            DISTRO_SERIES_CHOICES)
-
-    def test_format_release_choices(self):
-        osystem = SUSEOS()
-        releases = osystem.get_supported_releases()
-        formatted = osystem.format_release_choices(releases)
-        self.assertEqual(DISTRO_SERIES_CHOICES, dict(formatted))
+            DISTRO_SERIES_CHOICES[release],
+            osystem.get_release_title(release))

@@ -104,7 +104,6 @@ from maasserver.utils import (
     )
 from netaddr import IPAddress
 from piston.models import Token
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.rpc.cluster import (
@@ -1076,9 +1075,6 @@ class Node(CleanSave, TimestampedModel):
             self.distro_series == '')
         if use_default_osystem and use_default_distro_series:
             return Config.objects.get_config('default_distro_series')
-        elif use_default_distro_series:
-            osystem = OperatingSystemRegistry[self.osystem]
-            return osystem.get_default_release()
         else:
             return self.distro_series
 

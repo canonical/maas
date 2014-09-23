@@ -15,17 +15,22 @@ __metaclass__ = type
 __all__ = []
 
 from collections import Iterable
+import random
 
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from provisioningserver.drivers.osystem import (
+    BOOT_IMAGE_PURPOSE,
+    OperatingSystemRegistry,
+    )
 from provisioningserver.rpc import (
     exceptions,
     osystems,
     )
 from provisioningserver.rpc.testing.doubles import StubOS
+from provisioningserver.testing.os import make_osystem
 
 
 class TestListOperatingSystemHelpers(MAASTestCase):
@@ -112,22 +117,18 @@ class TestValidateLicenseKeyErrors(MAASTestCase):
 
 class TestValidateLicenseKey(MAASTestCase):
 
-    # Check for every OS and release.
-    scenarios = [
-        ("%s/%s" % (osystem.name, release),
-         {"osystem": osystem, "release": release})
-        for _, osystem in OperatingSystemRegistry
-        for release in osystem.get_supported_releases()
-    ]
-
     def test_validates_key(self):
+        os_name = factory.make_name('os')
+        purposes = [BOOT_IMAGE_PURPOSE.XINSTALL]
+        osystem = make_osystem(self, os_name, purposes)
+        release = random.choice(osystem.get_supported_releases())
         os_specific_validate_license_key = self.patch(
-            self.osystem, "validate_license_key")
+            osystem, "validate_license_key")
         osystems.validate_license_key(
-            self.osystem.name, self.release, sentinel.key)
+            osystem.name, release, sentinel.key)
         self.assertThat(
             os_specific_validate_license_key,
-            MockCalledOnceWith(self.release, sentinel.key))
+            MockCalledOnceWith(release, sentinel.key))
 
 
 class TestGetPreseedDataErrors(MAASTestCase):

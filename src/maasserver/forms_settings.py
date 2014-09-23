@@ -24,6 +24,7 @@ import re
 from socket import gethostname
 
 from django import forms
+from django.core.exceptions import ValidationError
 from maasserver.models.config import (
     Config,
     DEFAULT_OS,
@@ -32,6 +33,7 @@ from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
     list_all_usable_releases,
+    list_commissioning_choices,
     list_osystem_choices,
     list_release_choices,
     )
@@ -40,19 +42,26 @@ from maasserver.utils.osystems import (
 INVALID_URL_MESSAGE = "Enter a valid url (e.g. http://host.example.com)."
 
 
-def list_commisioning_choices():
-    releases = DEFAULT_OS.get_supported_commissioning_releases()
-    options = DEFAULT_OS.format_release_choices(releases)
-    return list(options)
+def validate_missing_boot_images(value):
+    """Raise `ValidationError` when the value is equal to '---'. This is
+    used when no boot images exist on all clusters, so the config value cannot
+    be changed."""
+    if value == '---':
+        raise ValidationError(
+            "Unable to determine supported operating systems, "
+            "due to missing boot images.")
 
 
 def make_default_osystem_field(*args, **kwargs):
     """Build and return the default_osystem field."""
     usable_oses = list_all_usable_osystems()
-    os_choices = list_osystem_choices(usable_oses)
+    os_choices = list_osystem_choices(usable_oses, include_default=False)
+    if len(os_choices) == 0:
+        os_choices = [('---', '--- No Usable Operating System ---')]
     field = forms.ChoiceField(
         initial=Config.objects.get_config('default_osystem'),
         choices=os_choices,
+        validators=[validate_missing_boot_images],
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'osystem', os_choices)
@@ -62,15 +71,37 @@ def make_default_osystem_field(*args, **kwargs):
 
 
 def make_default_distro_series_field(*args, **kwargs):
+    """Build and return the default_distro_series field."""
     usable_oses = list_all_usable_osystems()
     release_choices = list_release_choices(
-        list_all_usable_releases(usable_oses))
+        list_all_usable_releases(usable_oses), include_default=False)
+    if len(release_choices) == 0:
+        release_choices = [('---', '--- No Usable Release ---')]
     field = forms.ChoiceField(
         initial=Config.objects.get_config('default_distro_series'),
         choices=release_choices,
+        validators=[validate_missing_boot_images],
         error_messages={
             'invalid_choice': compose_invalid_choice_text(
                 'release', release_choices)
+        },
+        **kwargs)
+    return field
+
+
+def make_commissioning_distro_series_field(*args, **kwargs):
+    """Build and return the commissioning_distro_series field."""
+    usable_oses = list_all_usable_osystems()
+    commissioning_choices = list_commissioning_choices(usable_oses)
+    if len(commissioning_choices) == 0:
+        commissioning_choices = [('---', '--- No Usable Release ---')]
+    field = forms.ChoiceField(
+        initial=Config.objects.get_config('commissioning_distro_series'),
+        choices=commissioning_choices,
+        validators=[validate_missing_boot_images],
+        error_messages={
+            'invalid_choice': compose_invalid_choice_text(
+                'commissioning_distro_series', commissioning_choices)
         },
         **kwargs)
     return field
@@ -197,15 +228,12 @@ CONFIG_ITEMS = {
     },
     'commissioning_distro_series': {
         'default': DEFAULT_OS.get_default_commissioning_release(),
-        'form': forms.ChoiceField,
+        'form': make_commissioning_distro_series_field,
         'form_kwargs': {
             'label': "Default Ubuntu release used for commissioning",
-            'choices': list_commisioning_choices(),
             'required': False,
-            'error_messages': {
-                'invalid_choice': compose_invalid_choice_text(
-                    'commissioning_distro_series',
-                    list_commisioning_choices())},
+            # This field's `choices` and `error_messages` are populated
+            # at run-time to avoid a race condition.
         }
     },
     'enable_third_party_drivers': {

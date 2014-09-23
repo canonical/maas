@@ -20,18 +20,24 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
+from maasserver.clusterrpc.testing.osystems import (
+    make_rpc_osystem,
+    make_rpc_release,
+    )
 from maasserver.models import (
     Config,
     UserProfile,
     )
-from maasserver.models.config import DEFAULT_OS
 from maasserver.testing import (
     extract_redirect,
     get_prefixed_form_data,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.osystems import make_usable_osystem
+from maasserver.testing.osystems import (
+    make_usable_osystem,
+    patch_usable_osystems,
+    )
 from maasserver.testing.testcase import MAASServerTestCase
 
 
@@ -109,8 +115,12 @@ class SettingsTest(MAASServerTestCase):
 
     def test_settings_commissioning_POST(self):
         self.client_log_in(as_admin=True)
+        release = make_rpc_release(can_commission=True)
+        osystem = make_rpc_osystem('ubuntu', releases=[release])
+        patch_usable_osystems(self, [osystem])
+
         new_check_compatibility = factory.pick_bool()
-        new_commissioning = factory.pick_commissioning_release(DEFAULT_OS)
+        new_commissioning = release['name']
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(
@@ -156,8 +166,8 @@ class SettingsTest(MAASServerTestCase):
     def test_settings_deploy_POST(self):
         self.client_log_in(as_admin=True)
         osystem = make_usable_osystem(self)
-        osystem_name = osystem.name
-        release_name = factory.pick_release(osystem)
+        osystem_name = osystem['name']
+        release_name = osystem['default_release']
         response = self.client.post(
             reverse('settings'),
             get_prefixed_form_data(

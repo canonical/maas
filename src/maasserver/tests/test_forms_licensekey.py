@@ -14,76 +14,54 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from operator import itemgetter
+
+from maasserver import forms
+from maasserver.clusterrpc.testing.osystems import (
+    make_rpc_osystem,
+    make_rpc_release,
+    )
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maasserver.testing.osystems import make_usable_osystem
+from maasserver.testing.osystems import patch_usable_osystems
 from maasserver.testing.testcase import MAASServerTestCase
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 
 
 class TestLicenseKeyForm(MAASServerTestCase):
     """Tests for `LicenseKeyForm`."""
 
-    def make_os_with_license_key(self, osystem=None, has_key=True,
-                                 key_is_valid=True, patch_registry=True):
-        """Makes a fake operating system that requires a license key, and
-        validates to key_is_valid."""
-        if osystem is None:
-            osystem = make_usable_osystem(self)
-        self.patch(osystem, 'requires_license_key').return_value = has_key
-        self.patch(osystem, 'validate_license_key').return_value = key_is_valid
-        if patch_registry:
-            self.patch(
-                OperatingSystemRegistry, 'get_item').return_value = osystem
-        return osystem
-
-    def make_all_osystems_require_key(self, key_is_valid=True):
-        """Patches all operating systems in the registry, to require a key."""
-        for _, osystem in OperatingSystemRegistry:
-            self.patch(
-                osystem, 'requires_license_key').return_value = True
-            self.patch(
-                osystem, 'validate_license_key').return_value = key_is_valid
-
-    def make_only_one_osystem_require_key(self, key_is_valid=True):
-        """Patches a random operating system from the registry, to require a
-        key. Patches the remaining operating systems to not require a key."""
-        osystem = factory.pick_OS()
-        self.patch(
-            osystem, 'requires_license_key').return_value = True
-        self.patch(
-            osystem, 'validate_license_key').return_value = key_is_valid
-        for _, other_osystem in OperatingSystemRegistry:
-            if osystem == other_osystem:
-                continue
-            self.patch(
-                other_osystem, 'requires_license_key').return_value = False
-        return osystem
+    def make_os_with_license_key(self):
+        """Makes a fake operating system that has a release that requires a
+        license key."""
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        return osystem, release
 
     def test_creates_license_key(self):
-        osystem = self.make_os_with_license_key()
-        series = factory.pick_release(osystem)
+        osystem, release = self.make_os_with_license_key()
         key = factory.make_name('key')
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
         definition = {
-            'osystem': osystem.name,
-            'distro_series': series,
+            'osystem': osystem['name'],
+            'distro_series': release['name'],
             'license_key': key,
             }
         data = definition.copy()
-        data['distro_series'] = '%s/%s' % (osystem.name, series)
+        data['distro_series'] = '%s/%s' % (osystem['name'], release['name'])
         form = LicenseKeyForm(data=data)
         form.save()
         license_key_obj = LicenseKey.objects.get(
-            osystem=osystem.name, distro_series=series)
+            osystem=osystem['name'], distro_series=release['name'])
         self.assertAttributes(license_key_obj, definition)
 
     def test_updates_license_key(self):
-        osystem = self.make_os_with_license_key()
-        series = factory.pick_release(osystem)
+        osystem, release = self.make_os_with_license_key()
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
         license_key = factory.make_LicenseKey(
-            osystem=osystem.name, distro_series=series,
+            osystem=osystem['name'], distro_series=release['name'],
             license_key=factory.make_name('key'))
         new_key = factory.make_name('key')
         form = LicenseKeyForm(
@@ -93,10 +71,10 @@ class TestLicenseKeyForm(MAASServerTestCase):
         self.assertEqual(new_key, license_key.license_key)
 
     def test_validates_license_key(self):
-        osystem = self.make_os_with_license_key(key_is_valid=False)
-        series = factory.pick_release(osystem)
+        osystem, release = self.make_os_with_license_key()
+        self.patch_autospec(forms, 'validate_license_key').return_value = False
         license_key = factory.make_LicenseKey(
-            osystem=osystem.name, distro_series=series,
+            osystem=osystem['name'], distro_series=release['name'],
             license_key=factory.make_name('key'))
         new_key = factory.make_name('key')
         form = LicenseKeyForm(
@@ -107,18 +85,18 @@ class TestLicenseKeyForm(MAASServerTestCase):
             form.errors)
 
     def test_handles_missing_osystem_in_distro_series(self):
-        osystem = self.make_os_with_license_key()
-        series = factory.pick_release(osystem)
+        osystem, release = self.make_os_with_license_key()
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
         key = factory.make_name('key')
         definition = {
-            'osystem': osystem.name,
-            'distro_series': series,
+            'osystem': osystem['name'],
+            'distro_series': release['name'],
             'license_key': key,
             }
         form = LicenseKeyForm(data=definition.copy())
         form.save()
         license_key_obj = LicenseKey.objects.get(
-            osystem=osystem.name, distro_series=series)
+            osystem=osystem['name'], distro_series=release['name'])
         self.assertAttributes(license_key_obj, definition)
 
     def test_requires_all_fields(self):
@@ -129,14 +107,15 @@ class TestLicenseKeyForm(MAASServerTestCase):
             form.errors.keys())
 
     def test_errors_on_not_unique(self):
-        osystem = self.make_os_with_license_key()
-        series = factory.pick_release(osystem)
+        osystem, release = self.make_os_with_license_key()
+        self.patch_autospec(forms, 'validate_license_key').return_value = True
         key = factory.make_name('key')
         factory.make_LicenseKey(
-            osystem=osystem.name, distro_series=series, license_key=key)
+            osystem=osystem['name'], distro_series=release['name'],
+            license_key=key)
         definition = {
-            'osystem': osystem.name,
-            'distro_series': series,
+            'osystem': osystem['name'],
+            'distro_series': release['name'],
             'license_key': key,
             }
         form = LicenseKeyForm(data=definition)
@@ -151,32 +130,44 @@ class TestLicenseKeyForm(MAASServerTestCase):
         form = LicenseKeyForm()
         self.assertNotIn(('', 'Default OS'), form.fields['osystem'].choices)
 
-    def test_includes_all_osystems(self):
-        self.make_all_osystems_require_key()
-        osystems = [osystem for _, osystem in OperatingSystemRegistry]
-        expected = [
-            (osystem.name, osystem.title)
+    def test_includes_osystem_in_choices(self):
+        osystems = []
+        for _ in range(3):
+            release = make_rpc_release(requires_license_key=True)
+            osystems.append(make_rpc_osystem(releases=[release]))
+        patch_usable_osystems(self, osystems=osystems)
+        choices = [
+            (osystem['name'], osystem['title'])
             for osystem in osystems
             ]
         form = LicenseKeyForm()
-        self.assertItemsEqual(expected, form.fields['osystem'].choices)
+        self.assertItemsEqual(choices, form.fields['osystem'].choices)
 
     def test_includes_all_osystems_sorted(self):
-        self.make_all_osystems_require_key()
-        osystems = [osystem for _, osystem in OperatingSystemRegistry]
-        osystems = sorted(osystems, key=lambda osystem: osystem.title)
-        expected = [
-            (osystem.name, osystem.title)
-            for osystem in osystems
+        osystems = []
+        for _ in range(3):
+            release = make_rpc_release(requires_license_key=True)
+            osystems.append(make_rpc_osystem(releases=[release]))
+        patch_usable_osystems(self, osystems=osystems)
+        choices = [
+            (osystem['name'], osystem['title'])
+            for osystem in sorted(osystems, key=itemgetter('title'))
             ]
         form = LicenseKeyForm()
-        self.assertEqual(expected, form.fields['osystem'].choices)
+        self.assertEqual(choices, form.fields['osystem'].choices)
 
     def test_includes_only_osystems_that_require_license_keys(self):
-        osystem = self.make_only_one_osystem_require_key()
-        expected = [(osystem.name, osystem.title)]
+        osystems = []
+        for _ in range(2):
+            release = make_rpc_release(requires_license_key=True)
+            osystems.append(make_rpc_osystem(releases=[release]))
+        patch_usable_osystems(self, osystems=osystems + [make_rpc_osystem()])
+        choices = [
+            (osystem['name'], osystem['title'])
+            for osystem in sorted(osystems, key=itemgetter('title'))
+            ]
         form = LicenseKeyForm()
-        self.assertEquals(expected, form.fields['osystem'].choices)
+        self.assertEquals(choices, form.fields['osystem'].choices)
 
     def test_doesnt_include_default_distro_series(self):
         form = LicenseKeyForm()
@@ -184,25 +175,26 @@ class TestLicenseKeyForm(MAASServerTestCase):
             ('', 'Default OS Release'), form.fields['distro_series'].choices)
 
     def test_includes_all_distro_series(self):
-        self.make_all_osystems_require_key()
-        osystems = [osystem for _, osystem in OperatingSystemRegistry]
-        expected = []
-        for osystem in osystems:
-            releases = osystem.get_supported_releases()
-            for name, title in osystem.format_release_choices(releases):
-                expected.append((
-                    '%s/%s' % (osystem.name, name),
-                    title
-                    ))
-        form = LicenseKeyForm()
-        self.assertItemsEqual(expected, form.fields['distro_series'].choices)
-
-    def test_includes_only_distro_series_that_require_license_keys(self):
-        osystem = self.make_only_one_osystem_require_key()
-        releases = osystem.get_supported_releases()
-        expected = [
-            ('%s/%s' % (osystem.name, name), title)
-            for name, title in osystem.format_release_choices(releases)
+        releases = [
+            make_rpc_release(requires_license_key=True) for _ in range(3)]
+        osystem = make_rpc_osystem(releases=releases)
+        patch_usable_osystems(self, osystems=[osystem])
+        choices = [
+            ('%s/%s' % (osystem['name'], release['name']), release['title'])
+            for release in releases
             ]
         form = LicenseKeyForm()
-        self.assertEquals(expected, form.fields['distro_series'].choices)
+        self.assertItemsEqual(choices, form.fields['distro_series'].choices)
+
+    def test_includes_only_distro_series_that_require_license_keys(self):
+        releases = [
+            make_rpc_release(requires_license_key=True) for _ in range(3)]
+        no_key_release = make_rpc_release()
+        osystem = make_rpc_osystem(releases=releases + [no_key_release])
+        patch_usable_osystems(self, osystems=[osystem])
+        choices = [
+            ('%s/%s' % (osystem['name'], release['name']), release['title'])
+            for release in releases
+            ]
+        form = LicenseKeyForm()
+        self.assertItemsEqual(choices, form.fields['distro_series'].choices)

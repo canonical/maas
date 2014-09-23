@@ -68,6 +68,7 @@ from maasserver.preseed import (
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
@@ -983,19 +984,19 @@ class TestCurtinUtilities(
         self.assertEqual(xinstall_image, get_curtin_image(node))
 
     def test_get_curtin_installer_url_returns_url(self):
-        osystem = factory.pick_OS()
-        series = factory.pick_release(osystem)
+        osystem = make_usable_osystem(self)
+        series = osystem['default_release']
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = factory.make_name('xi_type')
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem.name,
+            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
             architecture=architecture, distro_series=series)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = make_rpc_boot_image(
-            osystem=osystem.name, release=series,
+            osystem=osystem['name'], release=series,
             architecture=arch, subarchitecture=subarch,
             purpose='xinstall', xinstall_path=xinstall_path,
             xinstall_type=xinstall_type)
@@ -1008,21 +1009,21 @@ class TestCurtinUtilities(
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             '%s:http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
-                xinstall_type, interface.ip, osystem.name, arch, subarch,
+                xinstall_type, interface.ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
 
     def test_get_curtin_installer_url_fails_if_no_boot_image(self):
-        osystem = factory.pick_OS()
-        series = factory.pick_release(osystem)
+        osystem = make_usable_osystem(self)
+        series = osystem['default_release']
         architecture = make_usable_architecture(self)
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem.name,
+            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
             architecture=architecture, distro_series=series)
         # Make boot image that is not xinstall
         arch, subarch = architecture.split('/')
         boot_image = make_rpc_boot_image(
-            osystem=osystem.name, release=series,
+            osystem=osystem['name'], release=series,
             architecture=arch, subarchitecture=subarch)
         self.patch(
             preseed_module,
@@ -1034,7 +1035,7 @@ class TestCurtinUtilities(
         msg = (
             "No image could be found for the given selection: "
             "os=%s, arch=%s, subarch=%s, series=%s, purpose=xinstall." % (
-                osystem.name,
+                osystem['name'],
                 arch,
                 subarch,
                 node.get_distro_series(),
@@ -1042,19 +1043,19 @@ class TestCurtinUtilities(
         self.assertIn(msg, "%s" % error)
 
     def test_get_curtin_installer_url_doesnt_append_on_tgz(self):
-        osystem = factory.pick_OS()
-        series = factory.pick_release(osystem)
+        osystem = make_usable_osystem(self)
+        series = osystem['default_release']
         architecture = make_usable_architecture(self)
         xinstall_path = factory.make_name('xi_path')
         xinstall_type = 'tgz'
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, osystem=osystem.name,
+            nodegroup=self.rpc_nodegroup, osystem=osystem['name'],
             architecture=architecture, distro_series=series)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = architecture.split('/')
         boot_image = make_rpc_boot_image(
-            osystem=osystem.name, release=series,
+            osystem=osystem['name'], release=series,
             architecture=arch, subarchitecture=subarch,
             purpose='xinstall', xinstall_path=xinstall_path,
             xinstall_type=xinstall_type)
@@ -1067,7 +1068,7 @@ class TestCurtinUtilities(
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
             'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
-                interface.ip, osystem.name, arch, subarch,
+                interface.ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
 

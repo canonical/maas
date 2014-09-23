@@ -50,6 +50,7 @@ import pipes
 from random import randint
 import re
 
+from crochet import TimeoutError
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.forms import (
@@ -70,6 +71,10 @@ from django.forms import (
 from django.utils.safestring import mark_safe
 from lxml import etree
 from maasserver.api.utils import get_overridden_query_dict
+from maasserver.clusterrpc.osystems import (
+    validate_license_key,
+    validate_license_key_for,
+    )
 from maasserver.clusterrpc.power_parameters import (
     get_power_type_choices,
     get_power_type_parameters,
@@ -96,7 +101,6 @@ from maasserver.forms_settings import (
     CONFIG_ITEMS_KEYS,
     get_config_field,
     INVALID_SETTING_MSG_TEMPLATE,
-    list_commisioning_choices,
     )
 from maasserver.models import (
     BootResource,
@@ -145,9 +149,12 @@ from maasserver.utils.osystems import (
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import IPAddress
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.network import REVEAL_IPv6
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NoSuchOperatingSystem,
+    )
 from provisioningserver.utils.network import make_network
 
 
@@ -268,12 +275,14 @@ def clean_distro_series_field(form, field, os_field):
     return release
 
 
-def get_osystem_from_release(release):
-    """Returns the operating system that supports that release."""
-    for _, osystem in OperatingSystemRegistry:
-        if release in osystem.get_supported_releases():
-            return osystem
-    return None
+def find_osystem_and_release_from_release_name(name):
+    """Return os and release for the given release name."""
+    osystems = list_all_usable_osystems()
+    for osystem in osystems:
+        for release in osystem['releases']:
+            if release['name'] == name:
+                return osystem, release
+    return None, None
 
 
 class NodeForm(ModelForm):
@@ -343,7 +352,7 @@ class NodeForm(ModelForm):
             required=False, initial='',
             error_messages={'invalid_choice': invalid_distro_series_message})
         if instance is not None:
-            initial_value = get_distro_series_initial(instance)
+            initial_value = get_distro_series_initial(osystems, instance)
             if instance is not None:
                 self.initial['distro_series'] = initial_value
 
@@ -394,25 +403,37 @@ class NodeForm(ModelForm):
 
     def clean_license_key(self):
         key = self.cleaned_data.get('license_key')
-        osystem_name = self.cleaned_data.get('osystem')
-        distro = self.cleaned_data.get('distro_series')
-        if osystem_name == '':
+        if key == '':
             return ''
 
-        osystem = OperatingSystemRegistry.get_item(osystem_name)
-        if osystem is not None and osystem.requires_license_key(distro):
-            if not key or len(key) == 0:
-                global_key = get_one(
-                    LicenseKey.objects.filter(distro_series=distro))
-                if global_key is None:
-                    raise ValidationError(
-                        "This OS/Release requires a license_key, "
-                        "and no global license key is set.")
-                return ''
-            if not osystem.validate_license_key(distro, key):
+        os_name = self.cleaned_data.get('osystem')
+        series = self.cleaned_data.get('distro_series')
+        if os_name == '':
+            return ''
+
+        # Without a nodegroup then all nodegroups need to be used to validate
+        # the license key.
+        if self.instance.nodegroup is None:
+            if not validate_license_key(os_name, series, key):
                 raise ValidationError("Invalid license key.")
             return key
-        return ''
+
+        # Validate the license key for the specific nodegroup.
+        try:
+            is_valid = validate_license_key_for(
+                self.instance.nodegroup, os_name, series, key)
+        except (NoConnectionsAvailable, TimeoutError):
+            raise ValidationError(
+                "Could not contact cluster '%s' to validate license key; "
+                "please try again later." %
+                self.instance.nodegroup.name)
+        except NoSuchOperatingSystem:
+            raise ValidationError(
+                "Cluster '%s' does not support the operating system '%s'" % (
+                    self.instance.nodegroup.name, os_name))
+        if not is_valid:
+            raise ValidationError("Invalid license key.")
+        return key
 
     def set_distro_series(self, series=''):
         """Sets the osystem and distro_series, from the provided
@@ -426,12 +447,13 @@ class NodeForm(ModelForm):
         self.data['osystem'] = ''
         self.data['distro_series'] = ''
         if series is not None and series != '':
-            osystem = get_osystem_from_release(series)
+            osystem, release = find_osystem_and_release_from_release_name(
+                series)
             if osystem is not None:
-                key_required = get_release_requires_key(osystem, series)
-                self.data['osystem'] = osystem.name
+                key_required = get_release_requires_key(release)
+                self.data['osystem'] = osystem['name']
                 self.data['distro_series'] = '%s/%s%s' % (
-                    osystem.name,
+                    osystem['name'],
                     series,
                     key_required,
                     )
@@ -1066,18 +1088,22 @@ class ThirdPartyDriversForm(ConfigForm):
 class CommissioningForm(ConfigForm):
     """Settings page, Commissioning section."""
     check_compatibility = get_config_field('check_compatibility')
-    commissioning_distro_series = forms.ChoiceField(
-        choices=list_commisioning_choices(), required=False,
-        label="Default Ubuntu release used for commissioning",
-        error_messages={'invalid_choice': compose_invalid_choice_text(
-            'commissioning_distro_series',
-            list_commisioning_choices())})
+
+    def __init__(self, *args, **kwargs):
+        # Skip ConfigForm.__init__ because we need the form intialized but
+        # don't want _load_initial called until the field has been added.
+        Form.__init__(self, *args, **kwargs)
+        self.fields['commissioning_distro_series'] = get_config_field(
+            'commissioning_distro_series')
+        self._load_initials()
 
 
 class DeployForm(ConfigForm):
     """Settings page, Deploy section."""
 
     def __init__(self, *args, **kwargs):
+        # Skip ConfigForm.__init__ because we need the form intialized but
+        # don't want _load_initial called until the field has been added.
         Form.__init__(self, *args, **kwargs)
         self.fields['default_osystem'] = get_config_field('default_osystem')
         self.fields['default_distro_series'] = get_config_field(
@@ -2138,7 +2164,7 @@ class LicenseKeyForm(ModelForm):
         This needs to be done on the fly so that we can pass a dynamic list of
         usable operating systems and distro_series.
         """
-        osystems = list_all_usable_osystems(have_images=False)
+        osystems = list_all_usable_osystems()
         releases = list_all_releases_requiring_keys(osystems)
 
         # Remove the operating systems that do not have any releases that
@@ -2147,13 +2173,12 @@ class LicenseKeyForm(ModelForm):
         osystems = [
             osystem
             for osystem in osystems
-            if osystem.name in releases
+            if osystem['name'] in releases
             ]
 
         os_choices = list_osystem_choices(osystems, include_default=False)
         distro_choices = list_release_choices(
-            releases, include_default=False, include_latest=False,
-            with_key_required=False)
+            releases, include_default=False, with_key_required=False)
         invalid_osystem_message = compose_invalid_choice_text(
             'osystem', os_choices)
         invalid_distro_series_message = compose_invalid_choice_text(
@@ -2166,7 +2191,7 @@ class LicenseKeyForm(ModelForm):
             error_messages={'invalid_choice': invalid_distro_series_message})
         if instance is not None:
             initial_value = get_distro_series_initial(
-                instance, with_key_required=False)
+                osystems, instance, with_key_required=False)
             if instance is not None:
                 self.initial['distro_series'] = initial_value
 
@@ -2216,11 +2241,8 @@ class LicenseKeyForm(ModelForm):
         cleaned_key = cleaned_data['license_key']
         cleaned_osystem = cleaned_data['osystem']
         cleaned_series = cleaned_data['distro_series']
-        osystem = OperatingSystemRegistry.get_item(cleaned_osystem)
-        if osystem is None:
-            raise ValidationError(
-                "Failed to retrieve %s from os registry." % cleaned_osystem)
-        elif not osystem.validate_license_key(cleaned_series, cleaned_key):
+        if not validate_license_key(
+                cleaned_osystem, cleaned_series, cleaned_key):
             raise ValidationError("Invalid license key.")
 
 

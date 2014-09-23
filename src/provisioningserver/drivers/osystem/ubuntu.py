@@ -16,26 +16,11 @@ __all__ = [
     "UbuntuOS",
     ]
 
+from distro_info import UbuntuDistroInfo
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
     )
-
-
-DISTRO_SERIES_CHOICES = {
-    'precise': 'Ubuntu 12.04 LTS "Precise Pangolin"',
-    'quantal': 'Ubuntu 12.10 "Quantal Quetzal"',
-    'raring': 'Ubuntu 13.04 "Raring Ringtail"',
-    'saucy': 'Ubuntu 13.10 "Saucy Salamander"',
-    'trusty': 'Ubuntu 14.04 LTS "Trusty Tahr"',
-}
-
-COMMISIONING_DISTRO_SERIES = [
-    'trusty',
-]
-
-DISTRO_SERIES_DEFAULT = 'trusty'
-COMMISIONING_DISTRO_SERIES_DEFAULT = 'trusty'
 
 
 class UbuntuOS(OperatingSystem):
@@ -53,32 +38,46 @@ class UbuntuOS(OperatingSystem):
             BOOT_IMAGE_PURPOSE.DISKLESS,
             ]
 
-    def get_supported_releases(self):
-        """Gets list of supported releases for Ubuntu."""
-        # To make this data better, could pull this information from
-        # simplestreams. So only need to update simplestreams for a
-        # new release.
-        return DISTRO_SERIES_CHOICES.keys()
+    def is_release_supported(self, release):
+        """Return True when the release is supported, False otherwise."""
+        row = self.get_distro_series_info_row(release)
+        return row is not None
+
+    def get_lts_release(self):
+        """Return the latest Ubuntu LTS release."""
+        return UbuntuDistroInfo().lts()
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
         explicit."""
-        return DISTRO_SERIES_DEFAULT
+        return self.get_lts_release()
 
     def get_supported_commissioning_releases(self):
         """Gets the supported commissioning releases for Ubuntu. This
         only exists on Ubuntu, because that is the only operating
         system that supports commissioning.
         """
-        return COMMISIONING_DISTRO_SERIES
+        return [self.get_lts_release()]
 
     def get_default_commissioning_release(self):
         """Gets the default commissioning release for Ubuntu. This only exists
         on Ubuntu, because that is the only operating system that supports
         commissioning.
         """
-        return COMMISIONING_DISTRO_SERIES_DEFAULT
+        return self.get_lts_release()
+
+    def get_distro_series_info_row(self, release):
+        """Returns the distro series row information from python-distro-info.
+        """
+        info = UbuntuDistroInfo()
+        for row in info._avail(info._date):
+            if row['series'] == release:
+                return row
+        return None
 
     def get_release_title(self, release):
         """Return the title for the given release."""
-        return DISTRO_SERIES_CHOICES.get(release)
+        row = self.get_distro_series_info_row(release)
+        if row is None:
+            return None
+        return UbuntuDistroInfo()._format("fullname", row)

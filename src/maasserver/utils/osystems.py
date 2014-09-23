@@ -19,40 +19,23 @@ __all__ = [
     'list_all_usable_releases',
     'list_osystem_choices',
     'list_release_choices',
+    'list_commissioning_choices',
     ]
 
 
-from maasserver.models import (
-    BootImage,
-    NodeGroup,
-    )
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
+from operator import itemgetter
+
+from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 
 
-def list_all_usable_osystems(have_images=True):
-    """Return all operating systems that can be used for nodes.
-
-    :param have_images: If set to true then its only the operating systems for
-    which any nodegroup has the boot images available for that operating
-    system.
-    """
-    if not have_images:
-        osystems = set([osystem for _, osystem in OperatingSystemRegistry])
-    else:
-        # The Node edit form offers all usable operating systems as options for
-        # the osystem field.  Not all of these may be available in the node's
-        # nodegroup, but to represent that accurately in the UI would depend on
-        # the currently selected nodegroup.  Narrowing the options down further
-        # would have to happen browser-side.
-        osystems = set()
-        for nodegroup in NodeGroup.objects.all():
-            osystems = osystems.union(
-                BootImage.objects.get_usable_osystems(nodegroup))
-        osystems = [
-            OperatingSystemRegistry[osystem] for osystem in osystems
-            if osystem in OperatingSystemRegistry
-            ]
-    return sorted(osystems, key=lambda osystem: osystem.title)
+def list_all_usable_osystems():
+    """Return all operating systems that can be used for nodes."""
+    osystems = [
+        osystem
+        for osystem in gen_all_known_operating_systems()
+        if len(osystem['releases']) > 0
+        ]
+    return sorted(osystems, key=itemgetter('title'))
 
 
 def list_osystem_choices(osystems, include_default=True):
@@ -66,30 +49,19 @@ def list_osystem_choices(osystems, include_default=True):
     else:
         choices = []
     choices += [
-        (osystem.name, osystem.title)
+        (osystem['name'], osystem['title'])
         for osystem in osystems
         ]
     return choices
 
 
-def list_all_usable_releases(osystems, have_images=True):
-    """Return dictionary of usable `releases` for each operating system.
-
-    :param have_images: If set to true then its only the releases for
-    which any nodegroup has the boot images available for that release.
-    """
+def list_all_usable_releases(osystems):
+    """Return dictionary of usable `releases` for each operating system."""
     distro_series = {}
-    nodegroups = list(NodeGroup.objects.all())
     for osystem in osystems:
-        releases = set()
-        if not have_images:
-            releases = releases.union(osystem.get_supported_releases())
-        else:
-            for nodegroup in nodegroups:
-                releases = releases.union(
-                    BootImage.objects.get_usable_releases(
-                        nodegroup, osystem.name))
-        distro_series[osystem.name] = sorted(releases)
+        distro_series[osystem['name']] = sorted(
+            [release for release in osystem['releases']],
+            key=itemgetter('title'))
     return distro_series
 
 
@@ -100,32 +72,31 @@ def list_all_releases_requiring_keys(osystems):
     for osystem in osystems:
         releases = [
             release
-            for release in osystem.get_supported_releases()
-            if osystem.requires_license_key(release)
+            for release in osystem['releases']
+            if release['requires_license_key']
             ]
         if len(releases) > 0:
-            distro_series[osystem.name] = sorted(releases)
+            distro_series[osystem['name']] = sorted(
+                releases, key=itemgetter('title'))
     return distro_series
 
 
-def get_release_requires_key(osystem, release):
-    """Return astrisk for any release that requires
+def get_release_requires_key(release):
+    """Return asterisk for any release that requires
     a license key.
 
     This is used by the JS, to display the licese_key field.
     """
-    if osystem.requires_license_key(release):
+    if release['requires_license_key']:
         return '*'
     return ''
 
 
-def list_release_choices(releases, include_default=True, include_latest=True,
+def list_release_choices(releases, include_default=True,
                          with_key_required=True):
     """Return Django "choices" list for `releases`.
 
     :param include_default: When true includes the 'Default OS Release' in
-        choice selection.
-    :param include_latest: When true includes the 'Latest OS Release' in
         choice selection.
     :param with_key_required: When true includes the release_requires_key in
         the choice.
@@ -134,31 +105,36 @@ def list_release_choices(releases, include_default=True, include_latest=True,
         choices = [('', 'Default OS Release')]
     else:
         choices = []
-    for key, value in releases.items():
-        osystem = OperatingSystemRegistry[key]
-        options = osystem.format_release_choices(value)
-        if with_key_required:
-            requires_key = get_release_requires_key(osystem, '')
-        else:
-            requires_key = ''
-        if include_latest:
-            choices.append((
-                '%s/%s' % (osystem.name, requires_key),
-                'Latest %s Release' % osystem.title
-                ))
-        for name, title in options:
+    for os_name, os_releases in releases.items():
+        for release in os_releases:
             if with_key_required:
-                requires_key = get_release_requires_key(osystem, name)
+                requires_key = get_release_requires_key(release)
             else:
                 requires_key = ''
             choices.append((
-                '%s/%s%s' % (osystem.name, name, requires_key),
-                title
+                '%s/%s%s' % (os_name, release['name'], requires_key),
+                release['title']
                 ))
     return choices
 
 
-def get_distro_series_initial(instance, with_key_required=True):
+def get_osystem_from_osystems(osystems, name):
+    """Return osystem from osystems with the given name."""
+    for osystem in osystems:
+        if osystem['name'] == name:
+            return osystem
+    return None
+
+
+def get_release_from_osystem(osystem, name):
+    """Return release from osystem with the given release name."""
+    for release in osystem['releases']:
+        if release['name'] == name:
+            return release
+    return None
+
+
+def get_distro_series_initial(osystems, instance, with_key_required=True):
     """Returns the distro_series initial value for the instance.
 
     :param with_key_required: When true includes the release_requires_key in
@@ -166,13 +142,32 @@ def get_distro_series_initial(instance, with_key_required=True):
     """
     osystem_name = instance.osystem
     series = instance.distro_series
-    osystem = OperatingSystemRegistry.get_item(osystem_name)
+    osystem = get_osystem_from_osystems(osystems, osystem_name)
     if not with_key_required:
         key_required = ''
     elif osystem is not None:
-        key_required = get_release_requires_key(osystem, series)
+        release = get_release_from_osystem(osystem, series)
+        if release is not None:
+            key_required = get_release_requires_key(release)
+        else:
+            key_required = ''
     if osystem_name is not None and osystem_name != '':
         if series is None:
             series = ''
         return '%s/%s%s' % (osystem_name, series, key_required)
     return None
+
+
+def list_commissioning_choices(osystems):
+    """Return Django "choices" list for releases that can be used for
+    commissioning."""
+    ubuntu = get_osystem_from_osystems(osystems, 'ubuntu')
+    if ubuntu is None:
+        return []
+    else:
+        releases = sorted(ubuntu['releases'], key=itemgetter('title'))
+        return [
+            (release['name'], release['title'])
+            for release in releases
+            if release['can_commission']
+            ]

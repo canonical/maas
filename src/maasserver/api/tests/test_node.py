@@ -22,6 +22,7 @@ import sys
 
 import bson
 from django.core.urlresolvers import reverse
+from maasserver import forms
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -270,7 +271,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
-        distro_series = factory.pick_release(osystem)
+        distro_series = osystem['default_release']
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
@@ -280,7 +281,7 @@ class TestNodeAPI(APITestCase):
             (httplib.OK, node.system_id),
             (response.status_code, json.loads(response.content)['system_id']))
         self.assertEqual(
-            osystem.name, reload_object(node).osystem)
+            osystem['name'], reload_object(node).osystem)
         self.assertEqual(
             distro_series, reload_object(node).distro_series)
 
@@ -309,14 +310,13 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
-        distro_series = osystem.get_default_release()
+        distro_series = osystem['default_release']
         license_key = factory.make_string()
-        self.patch(osystem, 'requires_license_key').return_value = True
-        self.patch(osystem, 'validate_license_key').return_value = True
+        self.patch(forms, 'validate_license_key_for').return_value = True
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
-                'osystem': osystem.name,
+                'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
                 })
@@ -332,14 +332,13 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             architecture=make_usable_architecture(self))
         osystem = make_usable_osystem(self)
-        distro_series = osystem.get_default_release()
+        distro_series = osystem['default_release']
         license_key = factory.make_string()
-        self.patch(osystem, 'requires_license_key').return_value = True
-        self.patch(osystem, 'validate_license_key').return_value = False
+        self.patch(forms, 'validate_license_key_for').return_value = False
         response = self.client.post(
             self.get_node_uri(node), {
                 'op': 'start',
-                'osystem': osystem.name,
+                'osystem': osystem['name'],
                 'distro_series': distro_series,
                 'license_key': license_key,
                 })

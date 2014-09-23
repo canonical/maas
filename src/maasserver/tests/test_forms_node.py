@@ -14,7 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from crochet import TimeoutError
+from maasserver import forms
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
+from maasserver.clusterrpc.testing.osystems import (
+    make_rpc_osystem,
+    make_rpc_release,
+    )
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -38,6 +44,11 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
     )
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    NoSuchOperatingSystem,
+    )
 
 
 class TestNodeForm(MAASServerTestCase):
@@ -116,7 +127,7 @@ class TestNodeForm(MAASServerTestCase):
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
+            'osystem': osystem['name'],
             })
         self.assertTrue(form.is_valid(), form._errors)
 
@@ -140,12 +151,12 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_accepts_osystem_distro_series(self):
         osystem = make_usable_osystem(self)
-        release = osystem.get_default_release()
+        release = osystem['default_release']
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
-            'distro_series': '%s/%s' % (osystem.name, release),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s' % (osystem['name'], release),
             })
         self.assertTrue(form.is_valid(), form._errors)
 
@@ -155,8 +166,8 @@ class TestNodeForm(MAASServerTestCase):
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
-            'distro_series': '%s/%s' % (osystem.name, release),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s' % (osystem['name'], release),
             })
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
@@ -171,62 +182,145 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_rejects_mismatch_osystem_distro_series(self):
         osystem = make_usable_osystem(self)
-        release = osystem.get_default_release()
+        release = osystem['default_release']
         invalid = factory.make_name('invalid_os')
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
+            'osystem': osystem['name'],
             'distro_series': '%s/%s' % (invalid, release),
             })
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
-    def test_rejects_missing_license_key_without_global_key(self):
-        osystem = make_usable_osystem(self)
-        release = osystem.get_default_release()
-        self.patch(osystem, 'requires_license_key').return_value = True
-        mock_validate = self.patch(osystem, 'validate_license_key')
+    def test_calls_validate_license_key_without_nodegroup(self):
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate = self.patch(forms, 'validate_license_key')
         mock_validate.return_value = True
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
-            'distro_series': '%s/%s*' % (osystem.name, release),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            })
+        self.assertTrue(form.is_valid())
+        self.assertThat(
+            mock_validate,
+            MockCalledOnceWith(osystem['name'], release['name'], license_key))
+
+    def test_rejects_when_validate_license_key_returns_False(self):
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate = self.patch(forms, 'validate_license_key')
+        mock_validate.return_value = False
+        form = NodeForm(data={
+            'hostname': factory.make_name('host'),
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
             })
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
-    def test_accepts_missing_license_key_with_global_key(self):
-        osystem = make_usable_osystem(self)
-        release = osystem.get_default_release()
-        factory.make_LicenseKey(distro_series=release)
-        self.patch(osystem, 'requires_license_key').return_value = True
-        mock_validate = self.patch(osystem, 'validate_license_key')
-        mock_validate.return_value = True
+    def test_calls_validate_license_key_for_with_nodegroup(self):
+        node = factory.make_Node()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate_for = self.patch(forms, 'validate_license_key_for')
+        mock_validate_for.return_value = True
         form = NodeForm(data={
-            'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
-            'distro_series': '%s/%s*' % (osystem.name, release),
-            })
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            },
+            instance=node)
         self.assertTrue(form.is_valid())
+        self.assertThat(
+            mock_validate_for,
+            MockCalledOnceWith(
+                node.nodegroup, osystem['name'], release['name'], license_key))
 
-    def test_calls_validate_license_key(self):
-        osystem = make_usable_osystem(self)
-        release = osystem.get_default_release()
-        self.patch(osystem, 'requires_license_key').return_value = True
-        mock_validate = self.patch(osystem, 'validate_license_key')
-        mock_validate.return_value = True
+    def test_rejects_when_validate_license_key_for_returns_False(self):
+        node = factory.make_Node()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate_for = self.patch(forms, 'validate_license_key_for')
+        mock_validate_for.return_value = False
         form = NodeForm(data={
-            'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
-            'osystem': osystem.name,
-            'distro_series': '%s/%s*' % (osystem.name, release),
-            'license_key': factory.make_string(),
-            })
-        self.assertTrue(form.is_valid())
-        mock_validate.assert_called_once()
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            },
+            instance=node)
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['license_key'], form._errors.keys())
+
+    def test_rejects_when_validate_license_key_for_raise_no_connection(self):
+        node = factory.make_Node()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate_for = self.patch(forms, 'validate_license_key_for')
+        mock_validate_for.side_effect = NoConnectionsAvailable()
+        form = NodeForm(data={
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            },
+            instance=node)
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['license_key'], form._errors.keys())
+
+    def test_rejects_when_validate_license_key_for_raise_timeout(self):
+        node = factory.make_Node()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate_for = self.patch(forms, 'validate_license_key_for')
+        mock_validate_for.side_effect = TimeoutError()
+        form = NodeForm(data={
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            },
+            instance=node)
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['license_key'], form._errors.keys())
+
+    def test_rejects_when_validate_license_key_for_raise_no_os(self):
+        node = factory.make_Node()
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        patch_usable_osystems(self, osystems=[osystem])
+        license_key = factory.make_name('key')
+        mock_validate_for = self.patch(forms, 'validate_license_key_for')
+        mock_validate_for.side_effect = NoSuchOperatingSystem()
+        form = NodeForm(data={
+            'architecture': make_usable_architecture(self),
+            'osystem': osystem['name'],
+            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
+            'license_key': license_key,
+            },
+            instance=node)
+        self.assertFalse(form.is_valid())
+        self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_duplicate_fqdn_with_unmanaged_dns_on_one_nodegroup(self):
         # If a host with a given hostname exists on a managed nodegroup,

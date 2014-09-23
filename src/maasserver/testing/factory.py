@@ -85,9 +85,6 @@ from netaddr import (
     IPAddress,
     IPRange,
     )
-# XXX 2014-05-13 blake-rouse bug=1319143
-# Need to not import directly, use RPC to info from cluster.
-from provisioningserver.drivers.osystem import OperatingSystemRegistry
 from provisioningserver.utils.enum import map_enum
 
 # We have a limited number of public keys:
@@ -198,16 +195,6 @@ class Factory(maastesting.factory.Factory):
         return random.choice(
             [choice for choice in list(get_power_types().keys())
                 if choice not in but_not])
-
-    def pick_OS(self):
-        """Pick a random operating system from the registry."""
-        osystems = [obj for _, obj in OperatingSystemRegistry]
-        return random.choice(osystems)
-
-    def pick_release(self, osystem):
-        """Pick a random release from operating system."""
-        releases = osystem.get_supported_releases()
-        return random.choice(releases)
 
     def pick_commissioning_release(self, osystem):
         """Pick a random commissioning release from operating system."""

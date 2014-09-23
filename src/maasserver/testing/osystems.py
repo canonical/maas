@@ -19,39 +19,31 @@ __all__ = [
 
 from random import randint
 
-from maasserver import (
-    forms,
-    forms_settings,
+from maasserver.clusterrpc.testing.osystems import (
+    make_rpc_osystem,
+    make_rpc_release,
     )
 from maasserver.testing.factory import factory
-from provisioningserver.boot.tests.test_tftppath import make_osystem
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
+from maasserver.utils import osystems as osystems_module
 
 
-def make_osystem_with_releases(testcase, osystem_name=None, releases=None,
-                               purposes=None):
+def make_osystem_with_releases(testcase, osystem_name=None, releases=None):
     """Generate an arbitrary operating system.
 
     :param osystem_name: The operating system name. Useful in cases where
         we need to test that not supplying an os works correctly.
     :param releases: The list of releases name. Useful in cases where
         we need to test that not supplying a release works correctly.
-    :param purposes: The purpose's of the boot images.
     """
     if osystem_name is None:
         osystem_name = factory.make_name('os')
     if releases is None:
         releases = [factory.make_name('release') for _ in range(3)]
-    if purposes is None:
-        purposes = [BOOT_IMAGE_PURPOSE.INSTALL, BOOT_IMAGE_PURPOSE.XINSTALL]
-
-    osystem = make_osystem(
-        testcase,
-        osystem_name,
-        purposes)
-    if releases is not None and releases != []:
-        osystem.fake_list = releases
-    return osystem
+    rpc_releases = [
+        make_rpc_release(release)
+        for release in releases
+        ]
+    return make_rpc_osystem(osystem_name, releases=rpc_releases)
 
 
 def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
@@ -71,24 +63,16 @@ def patch_usable_osystems(testcase, osystems=None, allow_empty=True):
             make_osystem_with_releases(testcase)
             for _ in range(randint(start, 2))
             ]
-    distro_series = {}
-    for osystem in osystems:
-        distro_series[osystem.name] = osystem.get_supported_releases()
-    testcase.patch(forms, 'list_all_usable_osystems').return_value = osystems
     testcase.patch(
-        forms_settings, 'list_all_usable_osystems').return_value = osystems
-    testcase.patch(
-        forms, 'list_all_usable_releases').return_value = distro_series
-    testcase.patch(
-        forms_settings,
-        'list_all_usable_releases').return_value = distro_series
+        osystems_module,
+        'gen_all_known_operating_systems').return_value = osystems
 
 
-def make_usable_osystem(testcase, osystem_name=None, releases=None,
-                        purposes=None):
+def make_usable_osystem(testcase, osystem_name=None, releases=None):
     """Return arbitrary operating system, and make it "usable."
 
-    A usable operating system is one for which boot images are available.
+    A usable operating system is one that is returned from the
+    RPC call ListOperatingSystems.
 
     :param testcase: A `TestCase` whose `patch` this function can pass to
         `patch_usable_osystems`.
@@ -96,11 +80,8 @@ def make_usable_osystem(testcase, osystem_name=None, releases=None,
         we need to test that not supplying an os works correctly.
     :param releases: The list of releases name. Useful in cases where
         we need to test that not supplying a release works correctly.
-    :param purposse: The list of purposes. Useful in cases where
-        we need to test that not supplying a purpose works correctly.
     """
     osystem = make_osystem_with_releases(
-        testcase, osystem_name=osystem_name, releases=releases,
-        purposes=purposes)
+        testcase, osystem_name=osystem_name, releases=releases)
     patch_usable_osystems(testcase, [osystem])
     return osystem

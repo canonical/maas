@@ -53,7 +53,6 @@ from maastesting.fakemethod import FakeMethod
 from mock import sentinel
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
-from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from testtools.matchers import (
@@ -402,12 +401,11 @@ class TestPXEConfigAPI(MAASServerTestCase):
             self.assertEqual(purpose, get_boot_purpose(node))
 
     def test_get_boot_purpose_osystem_no_xinstall_support(self):
-        osystem = make_usable_osystem(
-            self, purposes=[BOOT_IMAGE_PURPOSE.INSTALL])
-        release = factory.pick_release(osystem)
+        osystem = make_usable_osystem(self)
+        release = osystem['default_release']
         node = factory.make_Node(
             status=NODE_STATUS.DEPLOYING, netboot=True,
-            osystem=osystem.name, distro_series=release,
+            osystem=osystem['name'], distro_series=release,
             boot_type=NODE_BOOT.FASTPATH)
         boot_image = make_rpc_boot_image(purpose='install')
         self.patch(

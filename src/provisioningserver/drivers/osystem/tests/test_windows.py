@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+import random
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
@@ -83,12 +84,6 @@ class TestWindowsOS(MAASTestCase):
             [BOOT_IMAGE_PURPOSE.INSTALL],
             osystem.get_boot_image_purposes(arch, subarch, release, label))
 
-    def test_get_supported_releases(self):
-        osystem = WindowsOS()
-        expected = osystem.get_supported_releases()
-        self.assertIsInstance(expected, list)
-        self.assertItemsEqual(expected, list(WINDOWS_CHOICES.keys()))
-
     def test_get_default_release(self):
         osystem = WindowsOS()
         expected = osystem.get_default_release()
@@ -96,16 +91,10 @@ class TestWindowsOS(MAASTestCase):
 
     def test_get_release_title(self):
         osystem = WindowsOS()
+        release = random.choice(WINDOWS_CHOICES.keys())
         self.assertEqual(
-            {release: osystem.get_release_title(release)
-             for release in osystem.get_supported_releases()},
-            WINDOWS_CHOICES)
-
-    def test_format_release_choices(self):
-        osystem = WindowsOS()
-        releases = osystem.get_supported_releases()
-        formatted = osystem.format_release_choices(releases)
-        self.assertEqual(WINDOWS_CHOICES, dict(formatted))
+            WINDOWS_CHOICES[release],
+            osystem.get_release_title(release))
 
     def test_requires_license_key_True(self):
         osystem = WindowsOS()

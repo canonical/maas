@@ -25,7 +25,6 @@ from maasserver.models import BootSourceSelection
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from testtools.matchers import MatchesStructure
 
 
@@ -116,8 +115,7 @@ class TestBootSourceSelectionAPI(APITestCase):
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         new_values = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -215,8 +213,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         new_values = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -279,8 +276,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -301,8 +297,7 @@ class TestBootSourceSelectionsAPI(APITestCase):
 
     def test_POST_requires_admin(self):
         boot_source = factory.make_BootSource()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -375,8 +370,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
     def test_POST_creates_boot_source_selection(self):
         self.become_admin()
         boot_source = factory.make_BootSource()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
@@ -394,8 +388,7 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
 
     def test_POST_requires_admin(self):
         boot_source = factory.make_BootSource()
-        ubuntu_os = UbuntuOS()
-        new_release = factory.pick_release(ubuntu_os)
+        new_release = factory.make_name('release')
         params = {
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],

@@ -22,6 +22,8 @@ from collections import (
 from maasserver.clusterrpc.osystems import (
     gen_all_known_operating_systems,
     get_preseed_data,
+    validate_license_key,
+    validate_license_key_for,
     )
 from maasserver.enum import PRESEED_TYPE
 from maasserver.rpc import getAllClients
@@ -162,3 +164,125 @@ class TestGetPreseedData(MAASServerTestCase):
             NoSuchOperatingSystem, get_preseed_data, PRESEED_TYPE.CURTIN,
             node, token=NodeKey.objects.get_token_for_node(node),
             metadata_url=factory.make_url())
+
+
+class TestValidateLicenseKeyFor(MAASServerTestCase):
+    """Tests for `validate_license_key_for`."""
+
+    def test_propagates_NoSuchOperatingSystem(self):
+        nodegroup = factory.make_NodeGroup()
+        nodegroup.accept()
+        osystem = factory.make_name('os')
+        release = factory.make_name('release')
+        key = factory.make_name('key')
+        self.useFixture(RunningClusterRPCFixture())
+        self.assertRaises(
+            NoSuchOperatingSystem, validate_license_key_for, nodegroup,
+            osystem, release, key)
+
+    def test_returns_True(self):
+        # The Windows driver is known accept a license key in the format of
+        # 00000-00000-00000-00000-00000.
+        nodegroup = factory.make_NodeGroup()
+        nodegroup.accept()
+        key = "00000-00000-00000-00000-00000"
+        self.useFixture(RunningClusterRPCFixture())
+        is_valid = validate_license_key_for(
+            nodegroup, "windows", "win2012", key)
+        self.assertTrue(is_valid)
+
+    def test_returns_False(self):
+        nodegroup = factory.make_NodeGroup()
+        nodegroup.accept()
+        key = factory.make_name('invalid-key')
+        self.useFixture(RunningClusterRPCFixture())
+        is_valid = validate_license_key_for(
+            nodegroup, "windows", "win2012", key)
+        self.assertFalse(is_valid)
+
+
+class TestValidateLicenseKey(MAASServerTestCase):
+    """Tests for `validate_license_key`."""
+
+    def test_returns_True_with_one_cluster(self):
+        # The Windows driver is known accept a license key in the format of
+        # 00000-00000-00000-00000-00000.
+        factory.make_NodeGroup().accept()
+        key = "00000-00000-00000-00000-00000"
+        self.useFixture(RunningClusterRPCFixture())
+        is_valid = validate_license_key("windows", "win2012", key)
+        self.assertTrue(is_valid)
+
+    def test_returns_True_with_two_cluster(self):
+        # The Windows driver is known accept a license key in the format of
+        # 00000-00000-00000-00000-00000.
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
+        key = "00000-00000-00000-00000-00000"
+        self.useFixture(RunningClusterRPCFixture())
+        is_valid = validate_license_key("windows", "win2012", key)
+        self.assertTrue(is_valid)
+
+    def test_returns_True_when_only_one_cluster_returns_True(self):
+        # The Windows driver is known accept a license key in the format of
+        # 00000-00000-00000-00000-00000.
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
+        self.useFixture(RunningClusterRPCFixture())
+
+        clients = getAllClients()
+        for index, client in enumerate(clients):
+            callRemote = self.patch(client._conn, "callRemote")
+            if index == 0:
+                # The first client returns True.
+                callRemote.return_value = succeed({"is_valid": True})
+            else:
+                # All clients but the first return False.
+                callRemote.return_value = succeed({"is_valid": False})
+
+        is_valid = validate_license_key(
+            "windows", "win2012", factory.make_name("key"))
+        self.assertTrue(is_valid)
+
+    def test_returns_True_when_only_one_cluster_returns_True_others_fail(self):
+        # The Windows driver is known accept a license key in the format of
+        # 00000-00000-00000-00000-00000.
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
+        self.useFixture(RunningClusterRPCFixture())
+
+        clients = getAllClients()
+        for index, client in enumerate(clients):
+            callRemote = self.patch(client._conn, "callRemote")
+            if index == 0:
+                # The first client returns True.
+                callRemote.return_value = succeed({"is_valid": True})
+            else:
+                # All clients but the first raise an exception.
+                callRemote.side_effect = ZeroDivisionError()
+
+        is_valid = validate_license_key(
+            "windows", "win2012", factory.make_name("key"))
+        self.assertTrue(is_valid)
+
+    def test_returns_False_with_one_cluster(self):
+        factory.make_NodeGroup().accept()
+        key = factory.make_name('invalid-key')
+        self.useFixture(RunningClusterRPCFixture())
+        is_valid = validate_license_key("windows", "win2012", key)
+        self.assertFalse(is_valid)
+
+    def test_returns_False_when_all_clusters_fail(self):
+        factory.make_NodeGroup().accept()
+        factory.make_NodeGroup().accept()
+        self.useFixture(RunningClusterRPCFixture())
+
+        clients = getAllClients()
+        for index, client in enumerate(clients):
+            # All clients raise an exception.
+            callRemote = self.patch(client._conn, "callRemote")
+            callRemote.side_effect = ZeroDivisionError()
+
+        is_valid = validate_license_key(
+            "windows", "win2012", factory.make_name('key'))
+        self.assertFalse(is_valid)

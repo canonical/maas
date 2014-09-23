@@ -906,10 +906,8 @@ class NodeTest(MAASServerTestCase):
     def test_release_clears_osystem_and_distro_series(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        osystem = factory.pick_OS()
-        release = factory.pick_release(osystem)
-        node.osystem = osystem.name
-        node.distro_series = release
+        node.osystem = factory.make_name('os')
+        node.distro_series = factory.make_name('series')
         node.release()
         self.assertEqual("", node.osystem)
         self.assertEqual("", node.distro_series)

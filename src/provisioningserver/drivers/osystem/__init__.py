@@ -51,6 +51,17 @@ Node = namedtuple("Node", ("system_id", "hostname"))
 Token = namedtuple("Token", ("consumer_key", "token_key", "token_secret"))
 
 
+def list_boot_images_for(osystem):
+    """List all boot images for the given osystem."""
+    # Circular import
+    from provisioningserver.rpc.boot_images import list_boot_images
+    return [
+        image
+        for image in list_boot_images()
+        if image['osystem'] == osystem.name
+        ]
+
+
 class OperatingSystem:
     """Skeleton for an operating system."""
 
@@ -65,11 +76,8 @@ class OperatingSystem:
         """Title of the operating system."""
 
     @abstractmethod
-    def get_supported_releases(self):
-        """Gets list of supported releases for Ubuntu.
-
-        :returns: list of supported releases
-        """
+    def is_release_supported(self, release):
+        """Return True when the release is supported, False otherwise."""
 
     @abstractmethod
     def get_default_release(self):
@@ -87,6 +95,17 @@ class OperatingSystem:
         :returns: unicode
         """
 
+    @abstractmethod
+    def get_boot_image_purposes(self, arch, subarch, release, label):
+        """Returns the supported purposes of a boot image.
+
+        :param arch: Architecture of boot image.
+        :param subarch: Sub-architecture of boot image.
+        :param release: Release of boot image.
+        :param label: Label of boot image.
+        :returns: list of supported purposes
+        """
+
     def format_release_choices(self, releases):
         """Formats the release choices that are presented to the user.
 
@@ -101,16 +120,26 @@ class OperatingSystem:
                 choices.append((release, title))
         return choices
 
-    @abstractmethod
-    def get_boot_image_purposes(self, arch, subarch, release, label):
-        """Returns the supported purposes of a boot image.
+    def gen_supported_releases(self):
+        """Generate supported releases for operating system.
 
-        :param arch: Architecture of boot image.
-        :param subarch: Sub-architecture of boot image.
-        :param release: Release of boot image.
-        :param label: Label of boot image.
-        :returns: list of supported purposes
+        This is based off the boot images that the cluster currently has
+        for this operating system.
         """
+        for image in list_boot_images_for(self):
+            release = image['release']
+            if self.is_release_supported(release):
+                yield release
+
+    def get_supported_releases(self):
+        """Get set of supported releases for operating system.
+
+        This is based off the boot images that the cluster currently has
+        for this operating system.
+
+        :returns: set of supported releases
+        """
+        return set(self.gen_supported_releases())
 
     def get_supported_commissioning_releases(self):
         """Gets the supported commissioning releases.

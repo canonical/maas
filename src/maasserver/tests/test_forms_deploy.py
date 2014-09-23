@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = []
 
 from maasserver.forms import DeployForm
-from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -27,8 +26,8 @@ class TestDeployForm(MAASServerTestCase):
         # The DeployForm uses the database rather than just relying on
         # hard-coded stuff.
         osystem = make_usable_osystem(self)
-        os_name = osystem.name
-        release_name = factory.pick_release(osystem)
+        os_name = osystem['name']
+        release_name = osystem['default_release']
         release_name = "%s/%s" % (os_name, release_name)
         deploy_form = DeployForm()
         os_choices = deploy_form.fields['default_osystem'].choices
@@ -40,8 +39,8 @@ class TestDeployForm(MAASServerTestCase):
 
     def test_accepts_new_values(self):
         osystem = make_usable_osystem(self)
-        os_name = osystem.name
-        release_name = factory.pick_release(osystem)
+        os_name = osystem['name']
+        release_name = osystem['default_release']
         params = {
             'default_osystem': os_name,
             'default_distro_series': "%s/%s" % (os_name, release_name),

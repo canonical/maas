@@ -60,9 +60,9 @@ class WindowsOS(OperatingSystem):
             purposes.append(BOOT_IMAGE_PURPOSE.INSTALL)
         return purposes
 
-    def get_supported_releases(self):
-        """Gets list of supported releases for Windows."""
-        return WINDOWS_CHOICES.keys()
+    def is_release_supported(self, release):
+        """Return True when the release is supported, False otherwise."""
+        return release in WINDOWS_CHOICES
 
     def get_default_release(self):
         """Gets the default release to use when a release is not

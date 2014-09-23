@@ -15,20 +15,26 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
+import random
 
+from distro_info import UbuntuDistroInfo
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from provisioningserver.drivers.osystem.ubuntu import (
-    BOOT_IMAGE_PURPOSE,
-    COMMISIONING_DISTRO_SERIES,
-    COMMISIONING_DISTRO_SERIES_DEFAULT,
-    DISTRO_SERIES_CHOICES,
-    DISTRO_SERIES_DEFAULT,
-    UbuntuOS,
-    )
+from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
+from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 
 
 class TestUbuntuOS(MAASTestCase):
+
+    def get_lts_release(self):
+        return UbuntuDistroInfo().lts()
+
+    def get_release_title(self, release):
+        info = UbuntuDistroInfo()
+        for row in info._avail(info._date):
+            if row['series'] == release:
+                return info._format("fullname", row)
+        return None
 
     def test_get_boot_image_purposes(self):
         osystem = UbuntuOS()
@@ -48,38 +54,26 @@ class TestUbuntuOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.DISKLESS,
                 ])
 
-    def test_get_supported_releases(self):
-        osystem = UbuntuOS()
-        expected = osystem.get_supported_releases()
-        self.assertIsInstance(expected, list)
-        self.assertEqual(expected, DISTRO_SERIES_CHOICES.keys())
-
     def test_get_default_release(self):
         osystem = UbuntuOS()
         expected = osystem.get_default_release()
-        self.assertEqual(expected, DISTRO_SERIES_DEFAULT)
+        self.assertEqual(expected, self.get_lts_release())
 
     def test_get_supported_commissioning_releases(self):
         osystem = UbuntuOS()
         expected = osystem.get_supported_commissioning_releases()
         self.assertIsInstance(expected, list)
-        self.assertEqual(expected, COMMISIONING_DISTRO_SERIES)
+        self.assertEqual(expected, [self.get_lts_release()])
 
     def test_default_commissioning_release(self):
         osystem = UbuntuOS()
         expected = osystem.get_default_commissioning_release()
-        self.assertEqual(expected, COMMISIONING_DISTRO_SERIES_DEFAULT)
+        self.assertEqual(expected, self.get_lts_release())
 
     def test_get_release_title(self):
         osystem = UbuntuOS()
+        info = UbuntuDistroInfo()
+        release = random.choice(info.all)
         self.assertEqual(
-            {release: osystem.get_release_title(release)
-             for release in osystem.get_supported_releases()},
-            DISTRO_SERIES_CHOICES)
-
-    def test_format_release_choices(self):
-        osystem = UbuntuOS()
-        releases = osystem.get_supported_releases()
-        formatted = osystem.format_release_choices(releases)
-        for name, title in formatted:
-            self.assertEqual(DISTRO_SERIES_CHOICES[name], title)
+            osystem.get_release_title(release),
+            self.get_release_title(release))

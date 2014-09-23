@@ -42,9 +42,9 @@ class SUSEOS(OperatingSystem):
             BOOT_IMAGE_PURPOSE.XINSTALL
             ]
 
-    def get_supported_releases(self):
-        """Gets list of supported releases for SUSE."""
-        return list(DISTRO_SERIES_CHOICES.keys())
+    def is_release_supported(self, release):
+        """Return True when the release is supported, False otherwise."""
+        return release in DISTRO_SERIES_CHOICES
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
