@@ -25,6 +25,7 @@ import random
 from random import randint
 from urlparse import urlparse
 
+from apiclient.creds import convert_tuple_to_string
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -64,6 +65,7 @@ from provisioningserver.rpc import (
     osystems as osystems_rpc_module,
     power as power_module,
     region,
+    tags,
     )
 from provisioningserver.rpc.clusterservice import (
     Cluster,
@@ -1183,6 +1185,70 @@ class TestClusterProtocol_CancelMonitor(MAASTestCase):
         call_responder(
             Cluster(), cluster.CancelMonitor, {"id": monitors[0]["id"]})
         self.assertThat(running_monitors, Not(Contains(monitors[0]["id"])))
+
+
+class TestClusterProtocol_EvaluateTag(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.EvaluateTag.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_happy_path(self):
+        get_maas_url = self.patch_autospec(tags, "get_maas_url")
+        get_maas_url.return_value = sentinel.maas_url
+        get_cluster_uuid = self.patch_autospec(tags, "get_cluster_uuid")
+        get_cluster_uuid.return_value = sentinel.cluster_uuid
+
+        # Prevent real work being done, which would involve HTTP calls.
+        self.patch_autospec(tags, "process_node_tags")
+
+        response = yield call_responder(
+            Cluster(), cluster.EvaluateTag, {
+                "tag_name": "all-nodes",
+                "tag_definition": "//*",
+                "tag_nsmap": [
+                    {"prefix": "foo",
+                     "uri": "http://foo.example.com/"},
+                ],
+                "credentials": "abc:def:ghi",
+            })
+
+        self.assertEqual({}, response)
+
+    @inlineCallbacks
+    def test__calls_through_to_evaluate_tag_helper(self):
+        evaluate_tag = self.patch_autospec(clusterservice, "evaluate_tag")
+
+        tag_name = factory.make_name("tag-name")
+        tag_definition = factory.make_name("tag-definition")
+        tag_ns_prefix = factory.make_name("tag-ns-prefix")
+        tag_ns_uri = factory.make_name("tag-ns-uri")
+
+        consumer_key = factory.make_name("ckey")
+        resource_token = factory.make_name("rtok")
+        resource_secret = factory.make_name("rsec")
+        credentials = convert_tuple_to_string(
+            (consumer_key, resource_token, resource_secret))
+
+        yield call_responder(
+            Cluster(), cluster.EvaluateTag, {
+                "tag_name": tag_name,
+                "tag_definition": tag_definition,
+                "tag_nsmap": [
+                    {"prefix": tag_ns_prefix, "uri": tag_ns_uri},
+                ],
+                "credentials": credentials,
+            })
+
+        self.assertThat(evaluate_tag, MockCalledOnceWith(
+            tag_name, tag_definition, {tag_ns_prefix: tag_ns_uri},
+            (consumer_key, resource_token, resource_secret),
+        ))
 
 
 class TestClusterProtocol_AddVirsh(MAASTestCase):

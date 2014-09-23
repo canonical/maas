@@ -28,10 +28,7 @@ from subprocess import CalledProcessError
 
 from celery.app import app_or_default
 from celery.task import task
-from provisioningserver import (
-    boot_images,
-    tags,
-    )
+from provisioningserver import boot_images
 from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
@@ -242,35 +239,3 @@ def setup_rndc_configuration(callback=None):
 def report_boot_images():
     """For master worker only: report available netboot images."""
     boot_images.report_to_server()
-
-
-# How many times should a update node tags task be retried?
-UPDATE_NODE_TAGS_MAX_RETRY = 10
-
-# How long to wait between update node tags task retries (in seconds)?
-UPDATE_NODE_TAGS_RETRY_DELAY = 2
-
-
-# =====================================================================
-# Tags-related tasks
-# =====================================================================
-
-
-@task(max_retries=UPDATE_NODE_TAGS_MAX_RETRY)
-@log_call()
-@log_exception_text
-def update_node_tags(tag_name, tag_definition, tag_nsmap, retry=True):
-    """Update the nodes for a new/changed tag definition.
-
-    :param tag_name: Name of the tag to update nodes for
-    :param tag_definition: Tag definition
-    :param retry: Whether to retry on failure
-    """
-    try:
-        tags.process_node_tags(tag_name, tag_definition, tag_nsmap)
-    except tags.MissingCredentials, exc:
-        if retry:
-            return update_node_tags.retry(
-                exc=exc, countdown=UPDATE_NODE_TAGS_RETRY_DELAY)
-        else:
-            raise

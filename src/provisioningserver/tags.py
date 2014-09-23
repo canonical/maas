@@ -17,7 +17,6 @@ __metaclass__ = type
 __all__ = [
     'merge_details',
     'merge_details_cleanly',
-    'MissingCredentials',
     'process_node_tags',
     ]
 
@@ -27,18 +26,8 @@ from functools import partial
 import httplib
 import urllib2
 
-from apiclient.maas_client import (
-    MAASClient,
-    MAASDispatcher,
-    MAASOAuth,
-    )
 import bson
 from lxml import etree
-from provisioningserver.auth import (
-    get_recorded_api_credentials,
-    get_recorded_nodegroup_uuid,
-    )
-from provisioningserver.cluster_config import get_maas_url
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
@@ -48,35 +37,12 @@ import simplejson as json
 maaslog = get_maas_logger("tag_processing")
 
 
-class MissingCredentials(Exception):
-    """The MAAS URL or credentials are not yet set."""
-
-
 # An example laptop's lshw XML dump was 135kB. An example lab's LLDP
 # XML dump was 1.6kB. A batch size of 100 would mean downloading ~14MB
 # from the region controller, which seems workable. The previous batch
 # size of 1000 would have resulted in a ~140MB download, which, on the
 # face of it, appears excessive.
 DEFAULT_BATCH_SIZE = 100
-
-
-def get_cached_knowledge():
-    """Get all the information that we need to know, or raise an error.
-
-    :return: (client, nodegroup_uuid)
-    """
-    api_credentials = get_recorded_api_credentials()
-    if api_credentials is None:
-        maaslog.error("Not updating tags: don't have API key yet.")
-        return None, None
-    nodegroup_uuid = get_recorded_nodegroup_uuid()
-    if nodegroup_uuid is None:
-        maaslog.error("Not updating tags: don't have UUID yet.")
-        return None, None
-    client = MAASClient(
-        MAASOAuth(*api_credentials), MAASDispatcher(),
-        get_maas_url())
-    return client, nodegroup_uuid
 
 
 # A content-type: function mapping that can decode data of that type.
@@ -346,20 +312,18 @@ def process_all(client, tag_name, tag_definition, nodegroup_uuid, system_ids,
         nodes_matched, nodes_unmatched)
 
 
-def process_node_tags(tag_name, tag_definition, tag_nsmap, batch_size=None):
+def process_node_tags(
+        tag_name, tag_definition, tag_nsmap,
+        client, nodegroup_uuid, batch_size=None):
     """Update the nodes for a new/changed tag definition.
 
+    :param client: A `MAASClient` used to fetch the node's details via
+        calls to the web API.
+    :param nodegroup_uuid: The UUID for this cluster.
     :param tag_name: Name of the tag to update nodes for
     :param tag_definition: Tag definition
     :param batch_size: Size of batch
     """
-    client, nodegroup_uuid = get_cached_knowledge()
-    if not all([client, nodegroup_uuid]):
-        maaslog.error(
-            "Unable to update tag: %s for definition %r. "
-            "Please refresh secrets, then rebuild this tag."
-            % (tag_name, tag_definition))
-        raise MissingCredentials()
     # We evaluate this early, so we can fail before sending a bunch of data to
     # the server
     xpath = etree.XPath(tag_definition, namespaces=tag_nsmap)

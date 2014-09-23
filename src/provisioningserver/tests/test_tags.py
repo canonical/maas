@@ -37,7 +37,6 @@ from mock import (
     sentinel,
     )
 from provisioningserver import tags
-from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.testing.testcase import PservTestCase
 from testtools.matchers import (
     DocTestMatches,
@@ -484,29 +483,6 @@ class TestTagUpdating(PservTestCase):
         super(TestTagUpdating, self).setUp()
         self.useFixture(FakeLogger())
 
-    def test_get_cached_knowledge_knows_nothing(self):
-        # If we haven't given it any secrets, we should get back nothing
-        self.assertEqual((None, None), tags.get_cached_knowledge())
-
-    def test_get_cached_knowledge_with_only_url(self):
-        self.set_maas_url()
-        self.assertEqual((None, None), tags.get_cached_knowledge())
-
-    def test_get_cached_knowledge_with_only_url_creds(self):
-        self.set_maas_url()
-        self.set_api_credentials()
-        self.assertEqual((None, None), tags.get_cached_knowledge())
-
-    def test_get_cached_knowledge_with_all_info(self):
-        self.set_maas_url()
-        self.set_api_credentials()
-        self.set_node_group_uuid()
-        client, uuid = tags.get_cached_knowledge()
-        self.assertIsNot(None, client)
-        self.assertIsInstance(client, MAASClient)
-        self.assertIsNot(None, uuid)
-        self.assertEqual(get_recorded_nodegroup_uuid(), uuid)
-
     def fake_client(self):
         return MAASClient(None, None, self.make_maas_url())
 
@@ -615,16 +591,6 @@ class TestTagUpdating(PservTestCase):
             (['a', 'c'], ['b']),
             tags.classify(xpath, node_details))
 
-    def test_process_node_tags_no_secrets(self):
-        self.patch(MAASClient, 'get')
-        self.patch(MAASClient, 'post')
-        tag_name = factory.make_name('tag')
-        self.assertRaises(
-            tags.MissingCredentials,
-            tags.process_node_tags, tag_name, '//node', None)
-        self.assertFalse(MAASClient.get.called)
-        self.assertFalse(MAASClient.post.called)
-
     def test_process_node_tags_integration(self):
         self.set_secrets()
         get_nodes = FakeMethod(
@@ -653,10 +619,12 @@ class TestTagUpdating(PservTestCase):
         self.patch(MAASClient, 'get', get_fake)
         self.patch(MAASClient, 'post', post_fake)
         tag_name = factory.make_name('tag')
-        nodegroup_uuid = get_recorded_nodegroup_uuid()
+        nodegroup_uuid = factory.make_name("nodegroup-uuid")
         tag_definition = '//lshw:node'
         tag_nsmap = {"lshw": "lshw"}
-        tags.process_node_tags(tag_name, tag_definition, tag_nsmap=tag_nsmap)
+        tags.process_node_tags(
+            tag_name, tag_definition, tag_nsmap,
+            self.fake_client(), nodegroup_uuid)
         nodegroup_url = '/api/1.0/nodegroups/%s/' % (nodegroup_uuid,)
         tag_url = '/api/1.0/tags/%s/' % (tag_name,)
         self.assertEqual(
@@ -687,9 +655,6 @@ class TestTagUpdating(PservTestCase):
         client = object()
         uuid = factory.make_name('nodegroupuuid')
         self.patch(
-            tags, 'get_cached_knowledge',
-            MagicMock(return_value=(client, uuid)))
-        self.patch(
             tags, 'get_nodes_for_node_group',
             MagicMock(return_value=['a', 'b', 'c']))
         fake_first = FakeMethod(result={
@@ -706,8 +671,8 @@ class TestTagUpdating(PservTestCase):
         tag_name = factory.make_name('tag')
         tag_definition = '//node'
         tags.process_node_tags(
-            tag_name, tag_definition, tag_nsmap=None, batch_size=2)
-        tags.get_cached_knowledge.assert_called_once_with()
+            tag_name, tag_definition, tag_nsmap=None, client=client,
+            nodegroup_uuid=uuid, batch_size=2)
         tags.get_nodes_for_node_group.assert_called_once_with(client, uuid)
         self.assertEqual([((client, uuid, ['a', 'c']), {})], fake_first.calls)
         self.assertEqual([((client, uuid, ['b']), {})], fake_second.calls)

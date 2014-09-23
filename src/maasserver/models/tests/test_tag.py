@@ -67,6 +67,8 @@ class TagTest(MAASServerTestCase):
             self.assertRaises(ValidationError, factory.make_Tag, name=invalid)
 
     def test_applies_tags_to_nodes(self):
+        self.skip("Tag evaluation is being ported to RPC.")
+
         node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><child /></node>')
         node2 = factory.make_Node()
@@ -76,6 +78,8 @@ class TagTest(MAASServerTestCase):
         self.assertItemsEqual([], node2.tag_names())
 
     def test_removes_old_values(self):
+        self.skip("Tag evaluation is being ported to RPC.")
+
         node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo /></node>')
         node2 = factory.make_Node()
@@ -94,6 +98,8 @@ class TagTest(MAASServerTestCase):
         self.assertItemsEqual([], node2.tag_names())
 
     def test_doesnt_touch_other_tags(self):
+        self.skip("Tag evaluation is being ported to RPC.")
+
         node1 = factory.make_Node()
         inject_lshw_result(node1, b'<node><foo /></node>')
         node2 = factory.make_Node()
@@ -106,6 +112,8 @@ class TagTest(MAASServerTestCase):
         self.assertItemsEqual([tag2.name], node2.tag_names())
 
     def test_rollsback_invalid_xpath(self):
+        self.skip("Tag evaluation is being ported to RPC.")
+
         node = factory.make_Node()
         inject_lshw_result(node, b'<node><foo /></node>')
         tag = factory.make_Tag(definition='//node/foo')
@@ -159,6 +167,8 @@ class TestTagPopulateNodes(MAASServerTestCase):
         self.assertItemsEqual([], tag.node_set.all())
 
     def test__calls_populate_tags(self):
+        self.skip("Tag evaluation is being ported to RPC.")
+
         populate_tags = self.patch_autospec(
             populate_tags_module, "populate_tags")
 

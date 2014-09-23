@@ -101,7 +101,6 @@ class Tag(CleanSave, TimestampedModel):
 
     def populate_nodes(self):
         """Find all nodes that match this tag, and update them."""
-        from maasserver.populate_tags import populate_tags
         if not self.is_defined:
             return
         # before we pass off any work, ensure the definition is valid XPATH
@@ -112,7 +111,9 @@ class Tag(CleanSave, TimestampedModel):
             raise ValidationError({'definition': [msg]})
         # Now delete the existing tags
         self.node_set.clear()
-        populate_tags(self)
+        # Being ported to RPC.
+        # from maasserver.populate_tags import populate_tags
+        # populate_tags(self)
 
     def save(self, *args, **kwargs):
         super(Tag, self).save(*args, **kwargs)

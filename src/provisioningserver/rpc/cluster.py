@@ -345,6 +345,26 @@ class CancelMonitor(amp.Command):
     error = []
 
 
+class EvaluateTag(amp.Command):
+    """Evaluate a tag against all of the cluster's nodes.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"tag_name", amp.Unicode()),
+        (b"tag_definition", amp.Unicode()),
+        (b"tag_nsmap", amp.AmpList([
+            (b"prefix", amp.Unicode()),
+            (b"uri", amp.Unicode()),
+        ])),
+        # A 3-part credential string for the web API.
+        (b"credentials", amp.Unicode()),
+    ]
+    response = []
+    errors = []
+
+
 class AddVirsh(amp.Command):
     """Probe for and enlist virsh VMs attached to the cluster.
 

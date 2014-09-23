@@ -21,6 +21,7 @@ import logging
 import random
 from urlparse import urlparse
 
+from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
@@ -68,6 +69,7 @@ from provisioningserver.rpc.power import (
     change_power_state,
     get_power_state,
     )
+from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
@@ -76,6 +78,7 @@ from twisted.internet.endpoints import (
     TCP4ClientEndpoint,
     )
 from twisted.internet.error import ConnectError
+from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
 from twisted.web.client import getPage
@@ -244,6 +247,22 @@ class Cluster(RPCProtocol):
             return {}
         else:
             return tls.get_tls_parameters_for_cluster()
+
+    @cluster.EvaluateTag.responder
+    def evaluate_tag(self, tag_name, tag_definition, tag_nsmap, credentials):
+        """evaluate_tag()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.EvaluateTag`.
+        """
+        # It's got to run in a thread because it does blocking IO.
+        d = deferToThread(
+            evaluate_tag, tag_name, tag_definition,
+            # Transform tag_nsmap into a format that LXML likes.
+            {entry["prefix"]: entry["uri"] for entry in tag_nsmap},
+            # Parse the credential string into a 3-tuple.
+            convert_string_to_tuple(credentials))
+        return d.addCallback(lambda _: {})
 
     @cluster.AddVirsh.responder
     def add_virsh(self, poweraddr, password):

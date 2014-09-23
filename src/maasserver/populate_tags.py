@@ -28,7 +28,6 @@ from maasserver.models.nodeprobeddetails import (
     )
 from maasserver.refresh_worker import refresh_worker
 from provisioningserver.tags import merge_details
-from provisioningserver.tasks import update_node_tags
 from provisioningserver.utils import classify
 from provisioningserver.utils.xpath import try_match_xpath
 
@@ -56,7 +55,8 @@ def populate_tags(tag):
     logger.debug('Refreshing tag definition for %s' % (items,))
     for nodegroup in NodeGroup.objects.all():
         refresh_worker(nodegroup)
-        update_node_tags.apply_async(queue=nodegroup.work_queue, kwargs=items)
+        raise NotImplementedError(
+            "Tag evaluation is being ported to RPC.")
 
 
 def populate_tags_for_single_node(tags, node):
