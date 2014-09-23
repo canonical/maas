@@ -324,7 +324,7 @@ Filter the list using specific key/value pairs::
 node-groups
 ^^^^^^^^^^^
 Usage: maas <profile> node-groups [-d --debug] [-h --help] [-k
---insecure] register | list | refresh-workers | accept | reject
+--insecure] register | list | accept | reject
 
 .. program:: maas node-groups
 
@@ -353,14 +353,6 @@ Usage: maas <profile> node-groups [-d --debug] [-h --help] [-k
 :samp:`list`
 
    Returns a JSON list of all currently defined node groups.
-
-:samp:`refresh_workers`
-
-   It sounds a bit like they will get a cup of tea and a
-   biscuit. Actually this just sends each node-group worker an update
-   of its credentials (API key, node-group name). This command is
-   usually not needed at a user level, but is often used by worker
-   nodes.
 
 :samp:`accept <uuid>`
 

@@ -23,10 +23,7 @@ from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
     )
-from maasserver.enum import (
-    COMPONENT,
-    NODEGROUP_STATUS,
-    )
+from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootSource,
     NodeGroup,
@@ -40,11 +37,7 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     )
-from mock import (
-    ANY,
-    Mock,
-    )
-from provisioningserver import tasks
+from mock import ANY
 from testresources import FixtureResource
 from testtools.matchers import (
     HasLength,
@@ -80,12 +73,6 @@ class TestStartUp(MAASServerTestCase):
         super(TestStartUp, self).tearDown()
         # start_up starts the Twisted event loop, so we need to stop it.
         eventloop.reset().wait(5)
-
-    def test_start_up_refreshes_workers_outside_lock(self):
-        lock_checker = LockChecker()
-        self.patch(NodeGroup.objects, 'refresh_workers', lock_checker)
-        start_up.start_up()
-        self.assertEquals(False, lock_checker.lock_was_held)
 
     def test_start_up_runs_in_exclusion(self):
         lock_checker = LockChecker()
@@ -165,21 +152,3 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertThat(
             recorder,
             Not(MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY)))
-
-
-class TestPostStartUp(MAASServerTestCase):
-    """Tests for `post_start_up`."""
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
-
-    def test__refreshes_workers(self):
-        patched_handlers = tasks.refresh_functions.copy()
-        patched_handlers['nodegroup_uuid'] = Mock()
-        self.patch(tasks, 'refresh_functions', patched_handlers)
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
-        start_up.post_start_up()
-        self.assertThat(
-            patched_handlers['nodegroup_uuid'],
-            MockCalledOnceWith(NodeGroup.objects.ensure_master().uuid))

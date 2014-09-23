@@ -41,7 +41,7 @@ build: \
     bin/test.config \
     bin/maas-probe-dhcp \
     bin/twistd.txlongpoll \
-    bin/celeryd.cluster bin/celeryd.region \
+    bin/celeryd.region \
     bin/py bin/ipy \
     $(js_enums)
 
@@ -90,7 +90,7 @@ bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install maastesting-test
 	@touch --no-create $@
 
-bin/maas-provision bin/twistd.pserv bin/celeryd.cluster: \
+bin/maas-provision bin/twistd.pserv: \
     bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install pserv
 	@touch --no-create $@
@@ -245,7 +245,7 @@ endef
 #
 
 service_names_region := database dns region-worker reloader txlongpoll web webapp
-service_names_cluster := cluster-worker pserv reloader
+service_names_cluster := pserv reloader
 service_names_all := $(service_names_region) $(service_names_cluster)
 
 # The following template is intended to be used with `call`, and it
@@ -328,8 +328,6 @@ services/%/@supervise: services/%/@deps
 # Dependencies for individual services.
 
 services/dns/@deps: bin/py
-
-services/cluster-worker/@deps: bin/celeryd.cluster
 
 services/region-worker/@deps: bin/celeryd.region
 

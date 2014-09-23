@@ -234,20 +234,6 @@ class TestNodeGroupManager(MAASServerTestCase):
             ]
         self.assertItemsEqual(expected_uuids, called_uuids)
 
-    def test_refresh_workers_refreshes_accepted_cluster_controllers(self):
-        self.patch(nodegroup_module, 'refresh_worker')
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
-        NodeGroup.objects.refresh_workers()
-        nodegroup_module.refresh_worker.assert_called_once_with(nodegroup)
-
-    def test_refresh_workers_skips_unaccepted_cluster_controllers(self):
-        self.patch(nodegroup_module, 'refresh_worker')
-        for status in map_enum(NODEGROUP_STATUS).values():
-            if status != NODEGROUP_STATUS.ACCEPTED:
-                factory.make_NodeGroup(status=status)
-        NodeGroup.objects.refresh_workers()
-        self.assertEqual(0, nodegroup_module.refresh_worker.call_count)
-
     def test_all_accepted_only_includes_accepted_nodegroups(self):
         nodegroups = {
             status: factory.make_NodeGroup(status=status)

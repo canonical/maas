@@ -62,8 +62,6 @@ def start_up():
 
     eventloop.start().wait(10)
 
-    post_start_up()
-
 
 def update_boot_resource_error():
     import_script = COMPONENT.IMPORT_PXE_FILES
@@ -99,9 +97,3 @@ def inner_start_up():
 
     # Check whether we have boot images yet.
     update_boot_resource_error()
-
-
-def post_start_up():
-    """Startup jobs that can run after the critical section."""
-    # Send secrets etc. to workers.
-    NodeGroup.objects.refresh_workers()

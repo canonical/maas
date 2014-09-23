@@ -34,8 +34,7 @@ This config file generally contains two items like this::
   CLUSTER_UUID="adfd3977-f251-4f2c-8d61-745dbd690bf2"
 
 The values here are the defaults in the development environment.  MAAS_URL
-tells the cluster controller where to find the region controller, and is
-sourced as a shell script by ``services/cluster-worker/run``.
+tells the cluster controller where to find the region controller.
 
 ``CLUSTER_UUID`` is what the region uses to tell clusters apart when they
 connect.  Each cluster is free to generate its own UUID but the development

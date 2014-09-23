@@ -156,20 +156,6 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
         return ('nodegroups_handler', [])
 
     @operation(idempotent=False)
-    def refresh_workers(self, request):
-        """Request an update of all node groups' configurations.
-
-        This sends each node-group worker an update of its API credentials,
-        OMAPI key, node-group name, and so on.
-
-        Anyone can request this (for example, a bootstrapping worker that
-        does not know its node-group name or API credentials yet) but the
-        information will be sent only to the known workers.
-        """
-        NodeGroup.objects.refresh_workers()
-        return HttpResponse("Sending worker refresh.", status=httplib.OK)
-
-    @operation(idempotent=False)
     def register(self, request):
         """Register a new cluster controller.
 

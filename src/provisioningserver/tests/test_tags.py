@@ -592,7 +592,7 @@ class TestTagUpdating(PservTestCase):
             tags.classify(xpath, node_details))
 
     def test_process_node_tags_integration(self):
-        self.set_secrets()
+        self.set_maas_url()
         get_nodes = FakeMethod(
             result=factory.make_response(
                 httplib.OK,

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "MAAS" "8" "May 22, 2014" "1.6" "MAAS"
+.TH "MAAS" "8" "September 23, 2014" "1.7" "MAAS"
 .SH NAME
 maas \- MAAS API commandline utility
 .
@@ -443,7 +443,7 @@ $ maas maas nodes list architecture="i386/generic"
 .SH NODE-GROUPS
 .sp
 Usage: maas <profile> node\-groups [\-d \-\-debug] [\-h \-\-help] [\-k
-\-\-insecure] register | list | refresh\-workers | accept | reject
+\-\-insecure] register | list | accept | reject
 .sp
 \fB\-d, \-\-debug\fP
 .INDENT 0.0
@@ -480,17 +480,6 @@ example: interface=\(aq["ip":"192.168.21.5","interface":"eth1", "subnet_mask":"2
 .INDENT 0.0
 .INDENT 3.5
 Returns a JSON list of all currently defined node groups.
-.UNINDENT
-.UNINDENT
-.sp
-\fBrefresh_workers\fP
-.INDENT 0.0
-.INDENT 3.5
-It sounds a bit like they will get a cup of tea and a
-biscuit. Actually this just sends each node\-group worker an update
-of its credentials (API key, node\-group name). This command is
-usually not needed at a user level, but is often used by worker
-nodes.
 .UNINDENT
 .UNINDENT
 .sp

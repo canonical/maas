@@ -18,8 +18,6 @@ import os
 import random
 from subprocess import CalledProcessError
 
-from apiclient.creds import convert_tuple_to_string
-from apiclient.testing.credentials import make_api_credentials
 import celery
 from celery import states
 from celery.app import app_or_default
@@ -30,11 +28,7 @@ from maastesting.fakemethod import (
     MultiFakeMethod,
     )
 from netaddr import IPNetwork
-from provisioningserver import (
-    auth,
-    cache,
-    tasks,
-    )
+from provisioningserver import tasks
 from provisioningserver.dns.config import (
     celery_conf,
     MAAS_NAMED_CONF_NAME,
@@ -47,7 +41,6 @@ from provisioningserver.dns.zoneconfig import (
     DNSReverseZoneConfig,
     )
 from provisioningserver.tasks import (
-    refresh_secrets,
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
@@ -57,7 +50,6 @@ from provisioningserver.tasks import (
     )
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import ExternalProcessError
-from testresources import FixtureResource
 from testtools.matchers import (
     Equals,
     FileExists,
@@ -66,36 +58,6 @@ from testtools.matchers import (
 
 
 celery_config = app_or_default().conf
-
-
-class TestRefreshSecrets(PservTestCase):
-    """Tests for the `refresh_secrets` task."""
-
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
-
-    def test_does_not_require_arguments(self):
-        refresh_secrets()
-        # Nothing is refreshed, but there is no error either.
-        pass
-
-    def test_breaks_on_unknown_item(self):
-        self.assertRaises(AssertionError, refresh_secrets, not_an_item=None)
-
-    def test_works_as_a_task(self):
-        self.assertTrue(refresh_secrets.delay().successful())
-
-    def test_updates_api_credentials(self):
-        credentials = make_api_credentials()
-        refresh_secrets(
-            api_credentials=convert_tuple_to_string(credentials))
-        self.assertEqual(credentials, auth.get_recorded_api_credentials())
-
-    def test_updates_nodegroup_uuid(self):
-        nodegroup_uuid = factory.make_name('nodegroupuuid')
-        refresh_secrets(nodegroup_uuid=nodegroup_uuid)
-        self.assertEqual(nodegroup_uuid, cache.cache.get('nodegroup_uuid'))
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):

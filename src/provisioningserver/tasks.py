@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'refresh_secrets',
     'rndc_command',
     'setup_rndc_configuration',
     'write_dns_config',
@@ -26,10 +25,6 @@ from subprocess import CalledProcessError
 
 from celery.app import app_or_default
 from celery.task import task
-from provisioningserver.auth import (
-    record_api_credentials,
-    record_nodegroup_uuid,
-    )
 from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
@@ -38,12 +33,6 @@ from provisioningserver.dns.config import (
     )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.logger.utils import log_call
-
-# For each item passed to refresh_secrets, a refresh function to give it to.
-refresh_functions = {
-    'api_credentials': record_api_credentials,
-    'nodegroup_uuid': record_nodegroup_uuid,
-}
 
 
 celery_config = app_or_default().conf
@@ -67,50 +56,6 @@ def log_exception_text(func):
             maaslog.error("%s: %s", func.__name__, unicode(e))
             raise
     return wrapper
-
-
-@task
-@log_call()
-@log_exception_text
-def refresh_secrets(**kwargs):
-    """Update the worker's knowledge of various secrets it needs.
-
-    The worker shares some secrets with the MAAS server, such as its
-    omapi key for talking to the DHCP server, and its MAAS API credentials.
-    When the server sends tasks to the worker, the tasks will include these
-    secrets as needed.  But not everything the worker does is initiated by
-    a server request, so it needs copies of these secrets at hand.
-
-    We don't store these secrets in the worker, but we hold copies in
-    memory.  The worker won't perform jobs that require secrets it does
-    not have yet, waiting instead for the next chance to catch up.
-
-    To make sure that the worker does not have to wait too long, the server
-    can send periodic `refresh_secrets` messages with the required
-    information.
-
-    Tasks can also call `refresh_secrets` to record information they receive
-    from the server.
-
-    All refreshed items are passed as keyword arguments, to avoid confusion
-    and allow for easy reordering.  All refreshed items are optional.  An
-    item that is not passed will not be refreshed, so it's entirely valid to
-    call this for just a single item.  However `None` is a value like any
-    other, so passing `foo=None` will cause item `foo` to be refreshed with
-    value `None`.
-
-    To help catch simple programming mistakes, passing an unknown argument
-    will result in an assertion failure.
-
-    :param api_credentials: A colon separated string containing this
-        worker's credentials for accessing the MAAS API: consumer key,
-        resource token, resource secret.
-    :param nodegroup_uuid: The uuid of the node group that this worker
-        manages.
-    """
-    for key, value in kwargs.items():
-        assert key in refresh_functions, "Unknown refresh item: %s" % key
-        refresh_functions[key](value)
 
 
 # =====================================================================

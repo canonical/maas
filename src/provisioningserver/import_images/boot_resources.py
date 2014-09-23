@@ -222,7 +222,7 @@ def parse_sources(sources_yaml):
 
 
 def import_images(sources):
-    """Import images.  Callable from both command line and Celery task.
+    """Import images.  Callable from the command line.
 
     :param config: An iterable of dicts representing the sources from
         which boot images will be downloaded.

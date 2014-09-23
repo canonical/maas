@@ -48,16 +48,11 @@ from provisioningserver.utils.shell import objectfork
 
 maaslog = get_maas_logger("dhcp.leases")
 
-# This used to be the cache in provisioningserver.cache, but that
-# unfortunately makes Twisted fail in ways we can't work out, probably
-# because of its use of multiprocessing.  Instead it's now using a
-# simple dict, because there are no plans to make pserv multi-process.
+# Cache for leases, and lease times.
 cache = defaultdict()
-
 
 # Cache key for the modification time on last-processed leases file.
 LEASES_TIME_CACHE_KEY = 'leases_time'
-
 
 # Cache key for the leases as last parsed.
 LEASES_CACHE_KEY = 'recorded_leases'
@@ -65,11 +60,10 @@ LEASES_CACHE_KEY = 'recorded_leases'
 
 def get_leases_file():
     """Return the location of the DHCP leases file."""
-    # This used to be celery config-based so that the development env could
-    # have a different location.  However, nobody seems to be
-    # provisioning from a dev environment so it's hard-coded until that
-    # need arises, as converting to the pserv config would be wasted
-    # work right now.
+    # This used to be configuration-based so that the development env could
+    # have a different location. However, nobody seems to be provisioning from
+    # a dev environment so it's hard-coded until that need arises, as
+    # converting to the pserv config would be wasted work right now.
     return "/var/lib/maas/dhcp/dhcpd.leases"
 
 

@@ -48,7 +48,6 @@ CELERYD_LOG_LEVEL = 'INFO'
 CELERYBEAT_SCHEDULE_FILENAME = '/var/lib/maas/celerybeat-cluster-schedule'
 
 WORKER_QUEUE_DNS = 'celery'
-WORKER_QUEUE_REGION = 'celery'
 
 # Each cluster should have its own queue created automatically by Celery.
 CELERY_CREATE_MISSING_QUEUES = True
@@ -56,10 +55,6 @@ CELERY_CREATE_MISSING_QUEUES = True
 CELERY_IMPORTS = (
     # Tasks.
     "provisioningserver.tasks",
-
-    # This import is needed for its side effect: it initializes the
-    # cache that allows workers to share data.
-    "provisioningserver.initialize_cache",
     )
 
 CELERY_ACKS_LATE = True

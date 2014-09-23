@@ -34,7 +34,6 @@ from maasserver.enum import (
     )
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
-from maasserver.refresh_worker import refresh_worker
 from maasserver.rpc import getClientFor
 from piston.models import (
     KEY_SIZE,
@@ -99,11 +98,6 @@ class NodeGroupManager(Manager):
     def get_by_natural_key(self, uuid):
         """For Django, a node group's uuid is a natural key."""
         return self.get(uuid=uuid)
-
-    def refresh_workers(self):
-        """Send refresh tasks to all node-group workers."""
-        for nodegroup in self.filter(status=NODEGROUP_STATUS.ACCEPTED):
-            refresh_worker(nodegroup)
 
     def _mass_change_status(self, old_status, new_status):
         nodegroups = self.filter(status=old_status)

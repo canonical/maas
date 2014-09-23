@@ -54,7 +54,6 @@ from metadataserver.models import (
     NodeResult,
     )
 from mock import Mock
-from provisioningserver.auth import get_recorded_nodegroup_uuid
 from provisioningserver.rpc.cluster import (
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
@@ -101,30 +100,6 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
                 'cluster_name': nodegroup.cluster_name,
             }],
             json.loads(response.content))
-
-
-class TestAnonNodeGroupsAPI(MAASServerTestCase):
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
-
-    def test_refresh_calls_refresh_worker(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
-        response = self.client.post(
-            reverse('nodegroups_handler'), {'op': 'refresh_workers'})
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertEqual(nodegroup.uuid, get_recorded_nodegroup_uuid())
-
-    def test_refresh_does_not_return_secrets(self):
-        # The response from "refresh" contains only an innocuous
-        # confirmation.  Anyone can call this method, so it mustn't
-        # reveal anything sensitive.
-        response = self.client.post(
-            reverse('nodegroups_handler'), {'op': 'refresh_workers'})
-        self.assertEqual(
-            (httplib.OK, "Sending worker refresh."),
-            (response.status_code, response.content))
 
 
 class TestNodeGroupAPI(APITestCase):

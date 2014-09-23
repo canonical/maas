@@ -32,7 +32,6 @@ from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
-from maasserver.testing.tags import TagCachedKnowledgeFixture
 from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
     cleanup_db,
@@ -45,7 +44,6 @@ from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
-from provisioningserver.testing.worker_cache import WorkerCacheFixture
 
 
 MIME_BOUNDARY = 'BoUnDaRyStRiNg'
@@ -67,8 +65,6 @@ class MAASServerTestCase(DjangoTestCase):
         from maasserver import monitor_connect
 
         super(MAASServerTestCase, self).setUp()
-        self.useFixture(WorkerCacheFixture())
-        self.useFixture(TagCachedKnowledgeFixture())
         self.celery = self.useFixture(CeleryFixture())
         # This patch prevents communication with a non-existent cluster
         # controller when fetching power types.

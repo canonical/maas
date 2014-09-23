@@ -29,8 +29,6 @@ from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 import mock
-from provisioningserver import cache
-from provisioningserver.auth import NODEGROUP_UUID_CACHE_KEY
 from provisioningserver.dhcp.detect import (
     BOOTP_CLIENT_PORT,
     BOOTP_SERVER_PORT,
@@ -344,9 +342,7 @@ class TestPeriodicTask(PservTestCase):
             )
         api_credentials = make_api_credentials()
 
-        cache.cache.set(NODEGROUP_UUID_CACHE_KEY, uuid)
         os.environ["MAAS_URL"] = maas_url
-        cache.cache.set('api_credentials', ':'.join(api_credentials))
 
         self.knowledge = dict(
             nodegroup_uuid=uuid,

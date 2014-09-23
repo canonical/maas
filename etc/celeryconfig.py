@@ -20,9 +20,7 @@ __metaclass__ = type
 import celeryconfig_common
 from maas import import_settings
 
-# Region worker queue.  Will be overridden by the customized setting in the
-# local MAAS Celery config.
-WORKER_QUEUE_REGION = None
+
 CELERY_IMPORTS = None
 
 import_settings(celeryconfig_common)
