@@ -44,7 +44,7 @@ class Bin(bytes):
         my_model_object.binary_data = Bin(b"\x01\x02\x03")
     """
 
-    def __init__(self, initializer):
+    def __new__(cls, initializer):
         """Wrap a bytes.
 
         :param initializer: Binary string of data for this Bin.  This must
@@ -52,10 +52,15 @@ class Bin(bytes):
             this constructor will refuse to render None as b'None'.
         :type initializer: bytes
         """
+        # We can't do this in __init__, because it passes its argument into
+        # the upcall.  It ends up in object.__init__, which sometimes issues
+        # a DeprecationWarning because it doesn't want any arguments.
+        # Those warnings would sometimes make their way into logs, breaking
+        # tests that checked those logs.
         if not isinstance(initializer, bytes):
             raise AssertionError(
                 "Not a binary string: '%s'" % repr(initializer))
-        super(Bin, self).__init__(initializer)
+        return super(Bin, cls).__new__(cls, initializer)
 
     def __emittable__(self):
         """Emit base-64 encoded bytes.
