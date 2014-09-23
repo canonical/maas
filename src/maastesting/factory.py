@@ -177,8 +177,6 @@ class Factory:
                 return network
         raise TooManyRandomRetries("Could not find available network")
 
-    getRandomNetwork = _make_random_network  # DEPRECATED.
-
     def make_ipv4_network(self, slash=None, but_not=None, disjoint_from=None):
         """Generate a random IPv4 network.
 
@@ -269,8 +267,6 @@ class Factory:
         assert isinstance(delimiter, unicode)
         octets = islice(self.random_octets, 6)
         return delimiter.join(format(octet, "02x") for octet in octets)
-
-    getRandomMACAddress = make_mac_address  # DEPRECATED.
 
     def make_random_leases(self, num_leases=1):
         """Create a dict of arbitrary ip-to-mac address mappings."""
