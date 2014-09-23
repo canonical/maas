@@ -26,6 +26,9 @@ import provisioningserver
 from provisioningserver.boot import BootMethodRegistry
 from provisioningserver.boot.tftppath import list_boot_images
 from provisioningserver.config import BootSources
+from provisioningserver.import_images.cleanup import (
+    cleanup_snapshots_and_cache,
+    )
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
@@ -263,6 +266,12 @@ def import_images(sources):
     update_current_symlink(storage, snapshot_path)
     maaslog.info("Updating boot image iSCSI targets.")
     update_targets_conf(snapshot_path)
+
+    # Now cleanup the old snapshots and cache.
+    maaslog.info('Cleaning up old snapshots and cache.')
+    cleanup_snapshots_and_cache(storage)
+
+    # Import is now finished.
     maaslog.info("Finished importing boot images.")
 
 
