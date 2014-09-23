@@ -21,18 +21,6 @@
   <td>
   {{ cluster.get_managed_interfaces|length }}
   </td>
-  <td>
-  {% if display_warnings and cluster.bootimage_set.count == 0 %}
-    0 <img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster has no boot images."/>
-  {% else %}
-    {% if cluster.bootimage_set.count == 0 %}
-      0
-    {% else %}
-      <a title="View boot images"
-         href="{% url 'cluster-bootimages-list' cluster.uuid %}">{{ cluster.bootimage_set.count }}</a>
-    {% endif %}
-  {% endif %}
-  </td>
   <td>{{ cluster.node_set.count }}</td>
   <td class="icon-controls">
     <a href="{% url 'cluster-edit' cluster.uuid %}"

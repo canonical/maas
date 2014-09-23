@@ -35,10 +35,7 @@ from maasserver.testing import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.views import clusters
 from maasserver.views.clusters import ClusterListView
-from maastesting.matchers import MockCalledOnceWith
-from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     ContainsAll,
@@ -242,37 +239,10 @@ class ClusterPendingListingTest(MAASServerTestCase):
 
 class ClusterAcceptedListingTest(MAASServerTestCase):
 
-    def test_accepted_listing_import_boot_images_calls_import_resources(self):
-        self.client_log_in(as_admin=True)
-        fake_import = self.patch(clusters, 'import_resources')
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
-        response = self.client.post(
-            reverse('cluster-list'), {'import_all_boot_images': 1})
-        self.assertEqual(httplib.FOUND, response.status_code)
-        self.assertThat(fake_import, MockCalledOnceWith())
-
-    def test_a_warning_is_displayed_if_the_cluster_has_no_boot_images(self):
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_NodeGroup(
-            status=NODEGROUP_STATUS.ACCEPTED)
-        response = self.client.get(reverse('cluster-list'))
-        document = fromstring(response.content)
-        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
-        self.assertIn('warning', nodegroup_row.get('class'))
-        warning_elems = (
-            nodegroup_row.xpath(
-                "//img[@title='Warning: this cluster has no boot images.']"))
-        self.assertThat(
-            warning_elems, HasLength(1),
-            "No warning about missing boot images.")
-
     def test_warning_is_displayed_if_a_cluster_is_not_connected(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED)
-        # Create a boot image so that the warning about the missing boot images
-        # isn't displayed.
-        factory.make_BootImage(nodegroup=nodegroup)
 
         self.patch(NodeGroup, 'is_connected', lambda _: False)
         response = self.client.get(reverse('cluster-list'))
@@ -350,41 +320,6 @@ class ClusterEditTest(MAASServerTestCase):
             self.client.get(reverse('cluster-edit', args=[nodegroup.uuid])))
         self.assertIn(
             reverse('cluster-interface-create', args=[nodegroup.uuid]), links)
-
-    def test_contains_link_to_boot_image_list(self):
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_NodeGroup()
-        boot_images = [
-            factory.make_BootImage(nodegroup=nodegroup)
-            for _ in range(3)
-            ]
-        for bi in boot_images:
-            make_osystem(self, bi.osystem, ['install'])
-        response = self.client.get(
-            reverse('cluster-edit', args=[nodegroup.uuid]))
-        self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        links = get_content_links(response)
-        self.assertIn(
-            reverse('cluster-bootimages-list', args=[nodegroup.uuid]), links)
-
-    def test_displays_warning_if_boot_image_list_is_empty(self):
-        # Create boot images in another nodegroup.
-        boot_images = [factory.make_BootImage() for _ in range(3)]
-        for bi in boot_images:
-            make_osystem(self, bi.osystem, ['install'])
-        self.client_log_in(as_admin=True)
-        nodegroup = factory.make_NodeGroup()
-        response = self.client.get(
-            reverse('cluster-edit', args=[nodegroup.uuid]))
-        self.assertEqual(httplib.OK, response.status_code)
-        doc = fromstring(response.content)
-        self.assertEqual(
-            1, len(doc.cssselect('#no_boot_images_warning')),
-            "Warning about missing images not present")
-        links = get_content_links(response)
-        self.assertNotIn(
-            reverse('cluster-bootimages-list', args=[nodegroup.uuid]), links)
 
 
 class ClusterInterfaceDeleteTest(MAASServerTestCase):

@@ -40,7 +40,6 @@ from maasserver.fields import (
     MAC,
     )
 from maasserver.models import (
-    BootImage,
     BootResource,
     BootResourceFile,
     BootResourceSet,
@@ -630,63 +629,6 @@ class Factory(maastesting.factory.Factory):
         items.update(kwargs)
         return "OAuth " + ", ".join([
             '%s="%s"' % (key, value) for key, value in items.items()])
-
-    def make_BootImage(self, osystem=None, architecture=None,
-                       subarchitecture=None, release=None, purpose=None,
-                       nodegroup=None, label=None, supported_subarches=None,
-                       xinstall_path=None, xinstall_type=None):
-        if osystem is None:
-            osystem = self.make_name('os')
-        if architecture is None:
-            architecture = self.make_name('architecture')
-        if subarchitecture is None:
-            subarchitecture = self.make_name('subarchitecture')
-        if release is None:
-            release = self.make_name('release')
-        if purpose is None:
-            purpose = self.make_name('purpose')
-        if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
-        if label is None:
-            label = self.make_name('label')
-        if supported_subarches is None:
-            supported_subarches = [
-                self.make_name("supportedsubarch1"),
-                self.make_name("supportedsubarch2")]
-        if isinstance(supported_subarches, list):
-            supported_subarches = ",".join(supported_subarches)
-        return BootImage.objects.create(
-            nodegroup=nodegroup,
-            osystem=osystem,
-            architecture=architecture,
-            subarchitecture=subarchitecture,
-            release=release,
-            purpose=purpose,
-            label=label,
-            supported_subarches=supported_subarches,
-            xinstall_path=xinstall_path,
-            xinstall_type=xinstall_type,
-            )
-
-    def make_boot_images_for_node_with_purposes(self, node, purposes):
-        osystem = node.get_osystem()
-        series = node.get_distro_series()
-        arch, subarch = node.split_arch()
-        images = []
-        for purpose in purposes:
-            if purpose == 'xinstall':
-                xinstall_path = self.make_name('xi_path')
-                xinstall_type = self.make_name('xi_type')
-            else:
-                xinstall_path = None
-                xinstall_type = None
-            images.append(
-                self.make_BootImage(
-                    osystem=osystem, architecture=arch,
-                    subarchitecture=subarch, release=series, purpose=purpose,
-                    nodegroup=node.nodegroup, xinstall_path=xinstall_path,
-                    xinstall_type=xinstall_type))
-        return images
 
     def make_CommissioningScript(self, name=None, content=None):
         if name is None:

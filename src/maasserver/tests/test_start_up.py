@@ -28,7 +28,6 @@ from maasserver.enum import (
     NODEGROUP_STATUS,
     )
 from maasserver.models import (
-    BootImage,
     BootSource,
     NodeGroup,
     )
@@ -157,7 +156,6 @@ class TestInnerStartUp(MAASServerTestCase):
     def test__does_not_warn_if_already_warning(self):
         # If there already is a warning about missing boot resources, it will
         # not be replaced.
-        BootImage.objects.all().delete()
         register_persistent_error(
             COMPONENT.IMPORT_PXE_FILES, factory.make_string())
         recorder = self.patch(start_up, 'register_persistent_error')

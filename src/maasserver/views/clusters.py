@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "BootImagesListView",
     "ClusterDelete",
     "ClusterEdit",
     "ClusterInterfaceCreate",
@@ -38,7 +37,6 @@ from django.views.generic.edit import (
     FormMixin,
     ProcessFormView,
     )
-from maasserver.bootresources import import_resources
 from maasserver.enum import (
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
@@ -129,18 +127,6 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
             # Process reject clusters en masse.
             number = NodeGroup.objects.reject_all_pending()
             messages.info(request, "Rejected %d cluster(s)." % number)
-            return HttpResponseRedirect(reverse('cluster-list'))
-
-        elif 'import_all_boot_images' in request.POST:
-            # Import boot resources on the region. The completed import
-            # process will tell the clusters to sync.
-            import_resources()
-            message = (
-                "Import of boot images started. Importing the boot "
-                "images can take a long time depending on the available "
-                "bandwidth.  Once this has completed, all clusters will "
-                "download the boot resources from the region.")
-            messages.info(request, message)
             return HttpResponseRedirect(reverse('cluster-list'))
 
         else:
@@ -262,26 +248,3 @@ class ClusterInterfaceCreate(CreateView):
             ClusterInterfaceCreate, self).get_context_data(**kwargs)
         context['nodegroup'] = self.get_nodegroup()
         return context
-
-
-class BootImagesListView(PaginatedListView):
-
-    template_name = 'maasserver/bootimage-list.html'
-    context_object_name = 'bootimage_list'
-
-    def get_nodegroup(self):
-        nodegroup_uuid = self.kwargs.get('uuid', None)
-        return get_object_or_404(NodeGroup, uuid=nodegroup_uuid)
-
-    def get_context_data(self, **kwargs):
-        context = super(
-            BootImagesListView, self).get_context_data(**kwargs)
-        context['nodegroup'] = self.get_nodegroup()
-        return context
-
-    def get_queryset(self):
-        nodegroup = self.get_nodegroup()
-        # A sorted bootimages list.
-        return nodegroup.bootimage_set.all().order_by(
-            'osystem', '-release', 'architecture', 'subarchitecture',
-            'purpose', 'label')

@@ -13,7 +13,6 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'BootImage',
     'BootResource',
     'BootResourceFile',
     'BootResourceSet',
@@ -50,7 +49,6 @@ from django.core.urlresolvers import (
 from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
-from maasserver.models.bootimage import BootImage
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
@@ -85,7 +83,7 @@ from piston.doc import HandlerDocumentation
 # Suppress warning about symbols being imported, but only used for
 # export in __all__.
 ignore_unused(
-    BootImage, BootResource, BootResourceFile, BootResourceSet, CandidateName,
+    BootResource, BootResourceFile, BootResourceSet, CandidateName,
     ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
     FileStorage, LargeFile, LicenseKey, StaticIPAddress, MACAddress,
     MACStaticIPAddressLink, Network, NodeGroup, SSHKey, Tag, UserProfile,

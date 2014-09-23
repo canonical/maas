@@ -20,14 +20,6 @@
 </table>
 {% include "maasserver/pagination.html" %}
 <div>
-  {% if status == statuses.ACCEPTED %}
-    <form method="POST"
-          action="{% url 'cluster-list' %}">
-      {% csrf_token %}
-      <input type="hidden" name="import_all_boot_images" value="1" />
-      <input type="submit" class="button right" value="Import boot images" />
-    </form>
-  {% endif %}
   {% if status == statuses.PENDING %}
     <form id="reject_all_pending_nodegroups"
           method="POST"
