@@ -262,6 +262,43 @@ class TestNodeForm(MAASServerTestCase):
         form.instance.nodegroup = nodegroup
         self.assertFalse(form.is_valid())
 
+    def test_obeys_disable_ipv4_if_given(self):
+        setting = factory.pick_bool()
+        cluster = factory.make_NodeGroup(default_disable_ipv4=(not setting))
+        form = NodeForm(
+            data={
+                'nodegroup': cluster,
+                'architecture': make_usable_architecture(self),
+                'disable_ipv4': setting,
+                })
+        form.instance.nodegroup = cluster
+        node = form.save()
+        self.assertEqual(setting, node.disable_ipv4)
+
+    def test_takes_True_disable_ipv4_from_cluster_by_default(self):
+        setting = True
+        cluster = factory.make_NodeGroup(default_disable_ipv4=setting)
+        form = NodeForm(
+            data={
+                'nodegroup': cluster,
+                'architecture': make_usable_architecture(self),
+                })
+        form.instance.nodegroup = cluster
+        node = form.save()
+        self.assertEqual(setting, node.disable_ipv4)
+
+    def test_takes_False_disable_ipv4_from_cluster_by_default(self):
+        setting = False
+        cluster = factory.make_NodeGroup(default_disable_ipv4=setting)
+        form = NodeForm(
+            data={
+                'nodegroup': cluster,
+                'architecture': make_usable_architecture(self),
+                })
+        form.instance.nodegroup = cluster
+        node = form.save()
+        self.assertEqual(setting, node.disable_ipv4)
+
 
 class TestAdminNodeForm(MAASServerTestCase):
 

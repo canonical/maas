@@ -283,8 +283,11 @@ class NodeForm(ModelForm):
         # Even though it doesn't need it and doesn't use it, this form accepts
         # a parameter named 'request' because it is used interchangingly
         # with NodeAdminForm which actually uses this parameter.
-        if kwargs.get('instance') is None:
-            # Creating a new node.  Offer choice of nodegroup.
+
+        # Are we creating a new node object?
+        self.new_node = (kwargs.get('instance') is None)
+        if self.new_node:
+            # Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
         self.set_up_architecture_field()
@@ -371,6 +374,15 @@ class NodeForm(ModelForm):
 
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
+
+    def clean(self):
+        cleaned_data = super(NodeForm, self).clean()
+        if self.new_node and self.data.get('disable_ipv4') is None:
+            # Creating a new node, without a value for disable_ipv4 given.
+            # Take the default value from the node's cluster.
+            nodegroup = cleaned_data['nodegroup']
+            cleaned_data['disable_ipv4'] = nodegroup.default_disable_ipv4
+        return cleaned_data
 
     def is_valid(self):
         is_valid = super(NodeForm, self).is_valid()

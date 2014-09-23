@@ -30,7 +30,10 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MAC
-from maasserver.models import Node
+from maasserver.models import (
+    Node,
+    NodeGroup,
+    )
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.models.user import (
     create_auth_token,
@@ -159,17 +162,29 @@ class TestNodesAPI(APITestCase):
 
     def test_POST_new_creates_node(self):
         # The API allows a non-admin logged-in user to create a Node.
+        hostname = factory.make_name('host')
+        architecture = make_usable_architecture(self)
+        macs = {
+            factory.make_mac_address()
+            for _ in range(random.randint(1, 2))
+            }
         response = self.client.post(
             reverse('nodes_handler'),
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.make_string(),
-                'architecture': make_usable_architecture(self),
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff', '22:bb:cc:dd:ee:ff'],
+                'hostname': hostname,
+                'architecture': architecture,
+                'mac_addresses': macs,
             })
-
         self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        node = Node.objects.get(system_id=system_id)
+        self.expectThat(node.hostname, Equals(hostname))
+        self.expectThat(node.architecture, Equals(architecture))
+        self.expectThat(
+            {mac.mac_address for mac in node.macaddress_set.all()},
+            Equals(macs))
 
     def test_POST_new_when_logged_in_creates_node_in_declared_state(self):
         # When a user enlists a node, it goes into the New state.
@@ -179,15 +194,50 @@ class TestNodesAPI(APITestCase):
             {
                 'op': 'new',
                 'autodetect_nodegroup': '1',
-                'hostname': factory.make_string(),
+                'hostname': factory.make_name('host'),
                 'architecture': make_usable_architecture(self),
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'mac_addresses': [factory.make_mac_address()],
             })
         self.assertEqual(httplib.OK, response.status_code)
         system_id = json.loads(response.content)['system_id']
         self.assertEqual(
             NODE_STATUS.NEW,
             Node.objects.get(system_id=system_id).status)
+
+    def test_POST_new_takes_default_for_disable_ipv4_from_given_cluster(self):
+        default_disable_ipv4 = factory.pick_bool()
+        cluster = factory.make_NodeGroup(
+            default_disable_ipv4=default_disable_ipv4)
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'nodegroup': cluster.id,
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': [factory.make_mac_address()],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        node = Node.objects.get(system_id=system_id)
+        self.assertEqual(default_disable_ipv4, node.disable_ipv4)
+
+    def test_POST_new_takes_default_disable_ipv4_from_guessed_cluster(self):
+        default_disable_ipv4 = factory.pick_bool()
+        master_cluster = NodeGroup.objects.ensure_master()
+        master_cluster.default_disable_ipv4 = default_disable_ipv4
+        master_cluster.save()
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'autodetect_nodegroup': '1',
+                'architecture': make_usable_architecture(self),
+                'mac_addresses': [factory.make_mac_address()],
+            })
+        self.assertEqual(httplib.OK, response.status_code)
+        system_id = json.loads(response.content)['system_id']
+        node = Node.objects.get(system_id=system_id)
+        self.assertEqual(default_disable_ipv4, node.disable_ipv4)
 
     def test_POST_new_when_no_RPC_to_cluster_defaults_empty_power(self):
         # Test for bug 1305061, if there is no cluster RPC connection
