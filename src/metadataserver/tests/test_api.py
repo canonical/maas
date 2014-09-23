@@ -890,23 +890,6 @@ class TestNetbootOperationAPI(DjangoTestCase):
         node = reload_object(node)
         self.assertTrue(node.netboot, response)
 
-    def test_netboot_off_adds_installation_finished_event(self):
-        node = factory.make_Node(netboot=True)
-        client = make_node_client(node=node)
-        url = reverse('metadata-version', args=['latest'])
-        client.post(url, {'op': 'netboot_off'})
-        latest_event = Event.objects.filter(node=node).last()
-        self.assertEqual(
-            (
-                EVENT_TYPES.NODE_INSTALLATION_FINISHED,
-                EVENT_DETAILS[
-                    EVENT_TYPES.NODE_INSTALLATION_FINISHED].description
-            ),
-            (
-                latest_event.type.name,
-                latest_event.description,
-            ))
-
 
 class TestAnonymousAPI(DjangoTestCase):
 
@@ -973,6 +956,26 @@ class TestAnonymousAPI(DjangoTestCase):
              response["Content-Type"],
              response.content),
             response)
+
+    def test_anoymous_netboot_off_adds_installation_finished_event(self):
+        node = factory.make_Node(netboot=True)
+        anon_netboot_off_url = reverse(
+            'metadata-node-by-id', args=['latest', node.system_id])
+        self.client.post(
+            anon_netboot_off_url, {'op': 'netboot_off'})
+        latest_event = Event.objects.filter(node=node).last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.NODE_INSTALLATION_FINISHED,
+                EVENT_DETAILS[
+                    EVENT_TYPES.NODE_INSTALLATION_FINISHED].description,
+                "Node disabled netboot",
+            ),
+            (
+                latest_event.type.name,
+                latest_event.type.description,
+                latest_event.description,
+            ))
 
 
 class TestEnlistViews(DjangoTestCase):
