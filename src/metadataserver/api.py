@@ -52,6 +52,7 @@ from maasserver.models import (
     SSHKey,
     SSLKey,
     )
+from maasserver.models.event import Event
 from maasserver.models.tag import Tag
 from maasserver.populate_tags import populate_tags_for_single_node
 from maasserver.preseed import (
@@ -78,6 +79,10 @@ from metadataserver.models.commissioningscript import (
     BUILTIN_COMMISSIONING_SCRIPTS,
     )
 from piston.utils import rc
+from provisioningserver.events import (
+    EVENT_DETAILS,
+    EVENT_TYPES,
+    )
 
 
 class UnknownMetadataVersion(MAASAPINotFound):
@@ -299,6 +304,16 @@ class VersionIndexHandler(MetadataViewHandler):
         """
         node = get_queried_node(request, for_mac=mac)
         node.set_netboot(False)
+
+        # Build and register an event for "node installation finished".
+        # This is a best-guess. At the moment, netboot_off() only gets
+        # called when the node has finished installing, so it's an
+        # accurate predictor of the end of the install process.
+        type_name = EVENT_TYPES.NODE_INSTALLATION_FINISHED
+        event_details = EVENT_DETAILS[type_name]
+        Event.objects.register_event_and_event_type(
+            node.system_id, type_name, type_level=event_details.level,
+            event_description=event_details.description)
         return rc.ALL_OK
 
     @operation(idempotent=False)

@@ -37,6 +37,7 @@ from maasserver.exceptions import (
     Unauthorized,
     )
 from maasserver.models import (
+    Event,
     SSHKey,
     Tag,
     )
@@ -71,6 +72,10 @@ from mock import (
     Mock,
     )
 from netaddr import IPNetwork
+from provisioningserver.events import (
+    EVENT_DETAILS,
+    EVENT_TYPES,
+    )
 from testtools.matchers import (
     Contains,
     ContainsAll,
@@ -884,6 +889,23 @@ class TestNetbootOperationAPI(DjangoTestCase):
         response = client.post(url, {'op': 'netboot_on'})
         node = reload_object(node)
         self.assertTrue(node.netboot, response)
+
+    def test_netboot_off_adds_installation_finished_event(self):
+        node = factory.make_Node(netboot=True)
+        client = make_node_client(node=node)
+        url = reverse('metadata-version', args=['latest'])
+        client.post(url, {'op': 'netboot_off'})
+        latest_event = Event.objects.filter(node=node).last()
+        self.assertEqual(
+            (
+                EVENT_TYPES.NODE_INSTALLATION_FINISHED,
+                EVENT_DETAILS[
+                    EVENT_TYPES.NODE_INSTALLATION_FINISHED].description
+            ),
+            (
+                latest_event.type.name,
+                latest_event.description,
+            ))
 
 
 class TestAnonymousAPI(DjangoTestCase):

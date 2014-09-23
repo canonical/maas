@@ -53,6 +53,8 @@ class EVENT_TYPES:
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
     # PXE-related events.
     NODE_PXE_REQUEST_TFTP = 'NODE_PXE_REQUEST_TFTP'
+    # Other installation-related event types.
+    NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -90,6 +92,10 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_PXE_REQUEST_TFTP: EventDetail(
         description="PXE Request",
+        level=INFO,
+    ),
+    EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
+        description="Installation complete",
         level=INFO,
     ),
 }
