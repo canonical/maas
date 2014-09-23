@@ -834,6 +834,12 @@ def hold_lock_thread(kill_event, run_event):
     `run_event` will be set once the lock is held. No database operations
     should occur until the `run_event` is set.
     """
+    # Check that by the time this thread has started that the lock is
+    # not already held by another thread.
+    if locks.import_images.is_locked():
+        return
+
+    # Hold the lock until the kill_event is set.
     with locks.import_images:
         run_event.set()
         kill_event.wait()
@@ -850,6 +856,10 @@ def _import_resources(force=False):
         exist. This is used because we want the user to start the first import
         action, not let it run automatically.
     """
+    # If the lock is already held, then import is already running.
+    if locks.import_images.is_locked():
+        return
+
     # If we're not being forced, don't sync unless we've already done it once
     # before, i.e. we've been asked to explicitly sync by a user.
     if not force and not has_synced_resources():
@@ -875,7 +885,7 @@ def _import_resources(force=False):
         # Timeout occurred, kill the thread and exit.
         kill_event.set()
         lock_thread.join()
-        maaslog.error("Failed to grab import images database lock.")
+        maaslog.error("Another import task is already running.")
         return
 
     try:

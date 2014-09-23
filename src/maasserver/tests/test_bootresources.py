@@ -1031,6 +1031,16 @@ class TestImportImages(MAASTestCase):
         factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
         self.assertFalse(bootresources.has_synced_resources())
 
+    def test__import_resources_exits_early_if_lock_held(self):
+        has_synced_resources = self.patch_autospec(
+            bootresources, "has_synced_resources")
+        with transaction.atomic():
+            with bootresources.locks.import_images:
+                bootresources._import_resources(force=True)
+        # The test for already-synced resources is not called if the
+        # lock is already held.
+        self.assertThat(has_synced_resources, MockNotCalled())
+
     def test__import_resources_exists_early_without_force(self):
         has_synced_resources = self.patch(
             bootresources, "has_synced_resources")
