@@ -910,7 +910,7 @@ class Node(CleanSave, TimestampedModel):
     def start_commissioning(self, user):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
-        from metadataserver.commissioning.user_data import generate_user_data
+        from metadataserver.user_data.commissioning import generate_user_data
         from metadataserver.models import NodeResult
 
         commissioning_user_data = generate_user_data(node=self)

@@ -18,7 +18,7 @@ import os.path
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from metadataserver.commissioning.snippets import (
+from metadataserver.user_data.snippets import (
     get_snippet_context,
     is_snippet,
     list_snippets,

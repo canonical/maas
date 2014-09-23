@@ -18,8 +18,8 @@ from maasserver.preseed import get_preseed_context
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledWith
-from metadataserver.commissioning import user_data
-from metadataserver.commissioning.user_data import generate_user_data
+from metadataserver.user_data import utils
+from metadataserver.user_data.commissioning import generate_user_data
 from mock import Mock
 from testtools.matchers import ContainsAll
 
@@ -43,14 +43,14 @@ class TestUserData(MAASServerTestCase):
         # I don't care about what effect it has, I just want to know
         # that it was passed as it can affect the contents of
         # `server_host` in the context.
-        user_data.get_preseed_context = Mock(
+        utils.get_preseed_context = Mock(
             # Use the real return value as it contains data necessary to
             # render the template.
             return_value=get_preseed_context())
         node = factory.make_Node()
         generate_user_data(node)
         self.assertThat(
-            user_data.get_preseed_context,
+            utils.get_preseed_context,
             MockCalledWith(nodegroup=node.nodegroup))
 
     def test_generate_user_data_generates_mime_multipart(self):

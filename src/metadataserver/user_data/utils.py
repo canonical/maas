@@ -28,18 +28,17 @@ from email.mime.text import MIMEText
 import os.path
 
 from maasserver.preseed import get_preseed_context
-from metadataserver.commissioning.snippets import (
-    get_snippet_context,
-    get_userdata_template_dir,
-    )
+from metadataserver.user_data.snippets import get_snippet_context
 import tempita
 
 
 ENCODING = 'utf-8'
 
 
-def generate_user_data(node):
-    """Produce the main commissioning script.
+def generate_user_data(node, userdata_dir,
+                       userdata_template_name, config_template_name):
+    """Produce a user_data script for use by commissioning and other
+    operations.
 
     The main template file contains references to so-called ``snippets''
     which are read in here, and substituted.  In addition, the regular
@@ -53,11 +52,10 @@ def generate_user_data(node):
 
     :rtype: `bytes`
     """
-    commissioning_dir = get_userdata_template_dir()
     userdata_template_file = os.path.join(
-        commissioning_dir, 'user_data.template')
+        userdata_dir, userdata_template_name)
     config_template_file = os.path.join(
-        commissioning_dir, 'user_data_config.template')
+        userdata_dir, config_template_name)
     userdata_template = tempita.Template.from_filename(
         userdata_template_file, encoding=ENCODING)
     config_template = tempita.Template.from_filename(

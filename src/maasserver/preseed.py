@@ -55,8 +55,8 @@ from maasserver.models import (
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
-from metadataserver.commissioning.snippets import get_snippet_context
 from metadataserver.models import NodeKey
+from metadataserver.user_data.snippets import get_snippet_context
 from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import (

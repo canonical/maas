@@ -76,13 +76,13 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     )
 from maastesting.testcase import MAASTestCase
-from metadataserver import commissioning
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
     NodeResult,
     NodeUserData,
     )
+from metadataserver.user_data import commissioning
 from mock import (
     ANY,
     Mock,
@@ -1035,7 +1035,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
-            commissioning.user_data, 'generate_user_data')
+            commissioning, 'generate_user_data')
         generate_user_data.return_value = user_data
         admin = factory.make_admin()
         node.start_commissioning(admin)
