@@ -29,7 +29,6 @@ from django.core.urlresolvers import reverse
 from django.db import connection
 from django.test.client import encode_multipart
 from fixtures import Fixture
-from maasserver import monitor_connect
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
@@ -64,6 +63,9 @@ class MAASServerTestCase(DjangoTestCase):
         register_mac_type(connection.cursor())
 
     def setUp(self):
+        # Avoid circular imports.
+        from maasserver import monitor_connect
+
         super(MAASServerTestCase, self).setUp()
         self.useFixture(WorkerCacheFixture())
         self.useFixture(TagCachedKnowledgeFixture())
