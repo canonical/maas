@@ -39,6 +39,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
     )
 from mock import (
+    ANY,
     call,
     Mock,
     sentinel,
@@ -71,6 +72,7 @@ from provisioningserver.rpc.clusterservice import (
     Cluster,
     ClusterClient,
     ClusterClientService,
+    PatchedURI,
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.monitors import (
@@ -105,7 +107,10 @@ from testtools.matchers import (
     Not,
     )
 from twisted.application.internet import TimerService
-from twisted.internet import error
+from twisted.internet import (
+    error,
+    reactor,
+    )
 from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
@@ -305,6 +310,60 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
             JSON_POWER_TYPE_PARAMETERS, response["power_types"])
 
 
+class TestPatchedURI(MAASTestCase):
+
+    def test__parses_URL_with_hostname(self):
+        hostname = factory.make_name('host').encode('ascii')
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://%s/%s' % (hostname, path))
+        self.expectThat(uri.host, Equals(hostname))
+        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.port, Equals(80))
+
+    def test__parses_URL_with_hostname_and_port(self):
+        hostname = factory.make_name('host').encode('ascii')
+        port = factory.pick_port()
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (hostname, port, path))
+        self.expectThat(uri.host, Equals(hostname))
+        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.port, Equals(port))
+
+    def test__parses_URL_with_IPv4_address(self):
+        ip = factory.make_ipv4_address().encode('ascii')
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://%s/%s' % (ip, path))
+        self.expectThat(uri.host, Equals(ip.encode('ascii')))
+        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.port, Equals(80))
+
+    def test__parses_URL_with_IPv4_address_and_port(self):
+        ip = factory.make_ipv4_address().encode('ascii')
+        port = factory.pick_port()
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://%s:%d/%s' % (ip, port, path))
+        self.expectThat(uri.host, Equals(ip))
+        self.expectThat(uri.path, Equals('/%s' % path))
+        self.expectThat(uri.port, Equals(port))
+
+    def test__parses_URL_with_IPv6_address(self):
+        ip = factory.make_ipv6_address().encode('ascii')
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://[%s]/%s' % (ip, path))
+        self.expectThat(uri.host, Equals(b'[%s]' % ip))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.port, Equals(80))
+
+    def test__parses_URL_with_IPv6_address_and_port(self):
+        ip = factory.make_ipv6_address().encode('ascii')
+        port = factory.pick_port()
+        path = factory.make_name('path').encode('ascii')
+        uri = PatchedURI.fromBytes(b'http://[%s]:%d/%s' % (ip, port, path))
+        self.expectThat(uri.host, Equals(b'[%s]' % ip))
+        self.expectThat(uri.path, Equals(b'/%s' % path))
+        self.expectThat(uri.port, Equals(port))
+
+
 class TestClusterClientService(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -339,6 +398,13 @@ class TestClusterClientService(MAASTestCase):
         self.assertEqual(
             "Region not available: Connection was refused by other side.",
             logger.dump())
+
+    def test__get_rpc_info_accepts_IPv6_url(self):
+        connect_tcp = self.patch_autospec(reactor, 'connectTCP')
+        url = factory.make_url(
+            scheme='http', netloc='[%s]' % factory.make_ipv6_address())
+        ClusterClientService(Clock())._fetch_rpc_info(url.encode('ascii'))
+        self.assertThat(connect_tcp, MockCalledOnceWith(ANY, ANY, ANY))
 
     # The following represents an example response from the RPC info
     # view in maasserver. Event-loops listen on ephemeral ports, and

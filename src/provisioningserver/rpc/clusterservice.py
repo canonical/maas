@@ -19,6 +19,7 @@ __all__ = [
 import json
 import logging
 import random
+import re
 from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
@@ -81,6 +82,8 @@ from twisted.internet.error import ConnectError
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
+from twisted.web import http
+import twisted.web.client
 from twisted.web.client import getPage
 from zope.interface import implementer
 
@@ -380,6 +383,49 @@ class ClusterClient(Cluster):
         log.msg("Peer certificate: %r" % self.peerCertificate)
 
 
+class PatchedURI(twisted.web.client._URI):
+
+    @classmethod
+    def fromBytes(cls, uri, defaultPort=None):
+        """Patched replacement for `twisted.web.client._URI.fromBytes`.
+
+        The Twisted version of this function breaks when you give it a URL
+        whose netloc is based on an IPv6 address.
+        """
+        uri = uri.strip()
+        scheme, netloc, path, params, query, fragment = http.urlparse(uri)
+
+        if defaultPort is None:
+            scheme_ports = {
+                'https': 443,
+                'http': 80,
+                }
+            defaultPort = scheme_ports.get(scheme, 80)
+
+        if '[' in netloc:
+            # IPv6 address.  This is complicated.
+            parsed_netloc = re.match(
+                '(?P<host>\\[[0-9A-Fa-f:.]+\\])([:](?P<port>[0-9]+))?$',
+                netloc)
+            host, port = parsed_netloc.group('host', 'port')
+        elif ':' in netloc:
+            # IPv4 address or hostname, with port spec.  This is easy.
+            host, port = netloc.split(':')
+        else:
+            # IPv4 address or hostname, without port spec.  This is trivial.
+            host = netloc
+            port = None
+
+        if port is None:
+            port = defaultPort
+        try:
+            port = int(port)
+        except ValueError:
+            port = defaultPort
+
+        return cls(scheme, netloc, host, port, path, params, query, fragment)
+
+
 class ClusterClientService(TimerService, object):
     """A cluster controller RPC client service.
 
@@ -401,6 +447,14 @@ class ClusterClientService(TimerService, object):
             self._calculate_interval(None, None), self.update)
         self.connections = {}
         self.clock = reactor
+
+        # XXX jtv 2014-09-23, bug=1372767: Fix
+        # twisted.web.client._URI.fromBytes to handle IPv6 addresses.
+        # A `getPage` call on Twisted's web client breaks if you give it a
+        # URL with an IPv6 address, at the point where `_makeGetterFactory`
+        # calls `fromBytes`.  That last function assumes that a colon can only
+        # occur in the URL's netloc portion as part of a port specification.
+        twisted.web.client._URI = PatchedURI
 
     def getClient(self):
         """Returns a :class:`common.Client` connected to a region.
