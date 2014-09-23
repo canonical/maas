@@ -97,6 +97,10 @@ from testtools.matchers import (
     )
 
 
+def normalize_text(text):
+    return ' '.join(text.split())
+
+
 class TestGenerateJSPowerTypes(MAASServerTestCase):
     def patch_power_types(self, enum):
         """Make `get_power_types` return the given `enum` dict."""
@@ -1245,13 +1249,19 @@ class NodeViewsTest(MAASServerTestCase):
             for _ in range(NodeView.number_of_events_shown)
         ]
         response = self.client.get(reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content)
+        self.assertIn("Latest node events", response.content.decode('utf8'))
         document = fromstring(response.content)
         events_displayed = document.xpath(
             "//div[@id='node_event_list']//td[@class='event_description']")
         self.assertItemsEqual(
-            [event.type.description for event in events],
-            [display.text_content().strip() for display in events_displayed]
+            [
+                event.type.description + ' \u2014 ' + event.description
+                for event in events
+            ],
+            [
+                normalize_text(display.text_content())
+                for display in events_displayed
+            ]
         )
 
     def test_node_view_doesnt_show_events_from_other_nodes(self):
@@ -1275,7 +1285,7 @@ class NodeViewsTest(MAASServerTestCase):
         factory.make_Event(node=node)
         response = self.client.get(
             reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content)
+        self.assertIn("Latest node events", response.content.decode('utf8'))
         document = fromstring(response.content)
         [events_section] = document.xpath("//li[@id='node-events']")
         self.assertIn(
@@ -1290,7 +1300,7 @@ class NodeViewsTest(MAASServerTestCase):
             factory.make_Event(node=node)
         response = self.client.get(
             reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content)
+        self.assertIn("Latest node events", response.content.decode('utf8'))
         document = fromstring(response.content)
         [events_section] = document.xpath("//li[@id='node-events']")
         self.assertIn(
@@ -1370,8 +1380,14 @@ class NodeEventLogTest(MAASServerTestCase):
         events_displayed = document.xpath(
             "//div[@id='node_event_list']//td[@class='event_description']")
         self.assertItemsEqual(
-            [event.type.description for event in events],
-            [display.text_content().strip() for display in events_displayed]
+            [
+                event.type.description + ' \u2014 ' + event.description
+                for event in events
+            ],
+            [
+                normalize_text(display.text_content())
+                for display in events_displayed
+            ]
         )
 
     def test_event_log_is_paginated(self):
