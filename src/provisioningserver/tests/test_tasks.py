@@ -14,13 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import json
 import os
 import random
 from subprocess import CalledProcessError
 
 from apiclient.creds import convert_tuple_to_string
-from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
 import celery
 from celery import states
@@ -31,15 +29,12 @@ from maastesting.fakemethod import (
     FakeMethod,
     MultiFakeMethod,
     )
-from mock import Mock
 from netaddr import IPNetwork
 from provisioningserver import (
     auth,
-    boot_images,
     cache,
     tasks,
     )
-from provisioningserver.boot import tftppath
 from provisioningserver.dns.config import (
     celery_conf,
     MAAS_NAMED_CONF_NAME,
@@ -53,7 +48,6 @@ from provisioningserver.dns.zoneconfig import (
     )
 from provisioningserver.tasks import (
     refresh_secrets,
-    report_boot_images,
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
     setup_rndc_configuration,
@@ -61,8 +55,6 @@ from provisioningserver.tasks import (
     write_dns_zone_config,
     write_full_dns_config,
     )
-from provisioningserver.testing.boot_images import make_boot_image_params
-from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.shell import ExternalProcessError
 from testresources import FixtureResource
@@ -323,24 +315,3 @@ class TestDNSTasks(PservTestCase):
         self.assertEqual(
             write_full_dns_config.queue,
             celery_config.WORKER_QUEUE_DNS)
-
-
-class TestBootImagesTasks(PservTestCase):
-
-    resources = (
-        ("celery", FixtureResource(CeleryFixture())),
-        )
-
-    def test_sends_boot_images_to_server(self):
-        self.useFixture(set_tftp_root(self.make_dir()))
-        self.set_maas_url()
-        auth.record_api_credentials(':'.join(make_api_credentials()))
-        image = make_boot_image_params()
-        self.patch(tftppath, 'list_boot_images', Mock(return_value=[image]))
-        self.patch(boot_images, "get_cluster_uuid")
-        self.patch(MAASClient, 'post')
-
-        report_boot_images.delay()
-
-        args, kwargs = MAASClient.post.call_args
-        self.assertItemsEqual([image], json.loads(kwargs['images']))

@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     'refresh_secrets',
-    'report_boot_images',
     'rndc_command',
     'setup_rndc_configuration',
     'write_dns_config',
@@ -23,12 +22,10 @@ __all__ = [
     ]
 
 from functools import wraps
-import logging
 from subprocess import CalledProcessError
 
 from celery.app import app_or_default
 from celery.task import task
-from provisioningserver import boot_images
 from provisioningserver.auth import (
     record_api_credentials,
     record_nodegroup_uuid,
@@ -226,16 +223,3 @@ def setup_rndc_configuration(callback=None):
     setup_rndc()
     if callback is not None:
         callback.delay()
-
-
-# =====================================================================
-# Boot images-related tasks
-# =====================================================================
-
-
-@task
-@log_call(level=logging.DEBUG)
-@log_exception_text
-def report_boot_images():
-    """For master worker only: report available netboot images."""
-    boot_images.report_to_server()
