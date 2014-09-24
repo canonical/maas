@@ -3,7 +3,7 @@
  *
  * Node model.
  *
- * @module Y.maas.node
+ * @module Y.maas.node_views
  */
 
 YUI.add('maas.node_views', function(Y) {

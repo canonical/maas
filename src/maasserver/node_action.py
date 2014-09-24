@@ -359,21 +359,24 @@ class MarkFixed(NodeAction):
 
 
 ACTION_CLASSES = (
-    AbortCommissioning,
+    # Status-changing actions.
     AcquireNode,
-    Delete,
     Commission,
+    ReleaseNode,
+    AbortCommissioning,
     MarkBroken,
     MarkFixed,
-    ReleaseNode,
+    Delete,
+    # Start / stop actions.
     StartNode,
     StopNode,
+    # Config change actions.
     UseCurtin,
     UseDI,
     )
 
 
-ACTIONS_DICT = {action.name: action for action in ACTION_CLASSES}
+ACTIONS_DICT = OrderedDict((action.name, action) for action in ACTION_CLASSES)
 
 
 def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):

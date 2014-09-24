@@ -68,6 +68,18 @@
           }
         });
       });
+      YUI().use('maas.node_check', function (Y) {
+        Y.on('domready', function() {
+          var action_form_selector = 'form#node_actions';
+          if (Y.one(action_form_selector)) {
+            var nodecheck = new Y.maas.node_check.PowerCheckWidget({
+              srcNode: action_form_selector,
+              system_id: '{{node.system_id}}'
+            });
+            nodecheck.render();
+          }
+        });
+      });
     // -->
   </script>
 {% endblock %}

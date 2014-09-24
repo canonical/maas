@@ -47,3 +47,11 @@ div.power-state {
 .power-error {
     background-color: #D00000;
     }
+
+.power-check-ok {
+    color: #33CC00;
+}
+
+.power-check-error {
+    color: #FF0000;
+}
