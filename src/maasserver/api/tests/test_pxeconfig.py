@@ -28,12 +28,10 @@ from maasserver.api import pxeconfig as pxeconfig_module
 from maasserver.api.pxeconfig import (
     find_nodegroup_for_pxeconfig_request,
     get_boot_image,
-    get_boot_purpose,
     )
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
-    NODE_BOOT,
     NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
@@ -47,7 +45,6 @@ from maasserver.preseed import (
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
-from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from mock import sentinel
@@ -367,60 +364,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
             json.loads(response.content)["preseed_url"],
             StartsWith(ng_url))
 
-    def test_get_boot_purpose_unknown_node(self):
-        # A node that's not yet known to MAAS is assumed to be enlisting,
-        # which uses a "commissioning" image.
-        self.assertEqual("commissioning", get_boot_purpose(None))
-
-    def test_get_boot_purpose_known_node(self):
-        # The following table shows the expected boot "purpose" for each set
-        # of node parameters.
-        options = [
-            ("poweroff", {"status": NODE_STATUS.NEW}),
-            ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
-            ("poweroff", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
-            ("poweroff", {"status": NODE_STATUS.MISSING}),
-            ("poweroff", {"status": NODE_STATUS.READY}),
-            ("poweroff", {"status": NODE_STATUS.RESERVED}),
-            ("install", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
-            ("xinstall", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
-            ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
-            ("local", {"status": NODE_STATUS.DEPLOYED}),
-            ("poweroff", {"status": NODE_STATUS.RETIRED}),
-            ]
-        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
-        mock_get_boot_images_for = self.patch(
-            preseed_module, 'get_boot_images_for')
-        for purpose, parameters in options:
-            boot_image = make_rpc_boot_image(purpose=purpose)
-            mock_get_boot_images_for.return_value = [boot_image]
-            if purpose == "xinstall":
-                node.boot_type = NODE_BOOT.FASTPATH
-            for name, value in parameters.items():
-                setattr(node, name, value)
-            self.assertEqual(purpose, get_boot_purpose(node))
-
-    def test_get_boot_purpose_osystem_no_xinstall_support(self):
-        osystem = make_usable_osystem(self)
-        release = osystem['default_release']
-        node = factory.make_Node(
-            status=NODE_STATUS.DEPLOYING, netboot=True,
-            osystem=osystem['name'], distro_series=release,
-            boot_type=NODE_BOOT.FASTPATH)
-        boot_image = make_rpc_boot_image(purpose='install')
-        self.patch(
-            preseed_module, 'get_boot_images_for').return_value = [boot_image]
-        self.assertEqual('install', get_boot_purpose(node))
-
-    def test_pxeconfig_uses_boot_purpose(self):
-        fake_boot_purpose = factory.make_name("purpose")
-        self.patch(
-            pxeconfig_module, "get_boot_purpose"
-            ).return_value = fake_boot_purpose
+    def test_pxeconfig_uses_boot_purpose_enlistment(self):
+        # test that purpose is set to "commissioning" for
+        # enlistment (when node is None).
         params = self.get_default_params()
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
-            fake_boot_purpose,
+            "commissioning",
             json.loads(response.content)["purpose"])
 
     def test_pxeconfig_returns_fs_host_as_cluster_controller(self):

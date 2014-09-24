@@ -23,7 +23,9 @@ import random
 
 import crochet
 from django.core.exceptions import ValidationError
+from maasserver import preseed as preseed_module
 from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.dns import config as dns_config
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -68,6 +70,7 @@ from maasserver.testing.eventloop import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maastesting.djangotestcase import count_queries
@@ -1336,6 +1339,46 @@ class NodeTest(MAASServerTestCase):
         node.handle_monitor_expired({})
         node = reload_object(node)
         self.assertEqual(status, node.status)
+
+    def test_get_boot_purpose_known_node(self):
+        # The following table shows the expected boot "purpose" for each set
+        # of node parameters.
+        options = [
+            ("poweroff", {"status": NODE_STATUS.NEW}),
+            ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
+            ("poweroff", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
+            ("poweroff", {"status": NODE_STATUS.MISSING}),
+            ("poweroff", {"status": NODE_STATUS.READY}),
+            ("poweroff", {"status": NODE_STATUS.RESERVED}),
+            ("install", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
+            ("xinstall", {"status": NODE_STATUS.DEPLOYING, "netboot": True}),
+            ("local", {"status": NODE_STATUS.DEPLOYING, "netboot": False}),
+            ("local", {"status": NODE_STATUS.DEPLOYED}),
+            ("poweroff", {"status": NODE_STATUS.RETIRED}),
+            ]
+        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
+        mock_get_boot_images_for = self.patch(
+            preseed_module, 'get_boot_images_for')
+        for purpose, parameters in options:
+            boot_image = make_rpc_boot_image(purpose=purpose)
+            mock_get_boot_images_for.return_value = [boot_image]
+            if purpose == "xinstall":
+                node.boot_type = NODE_BOOT.FASTPATH
+            for name, value in parameters.items():
+                setattr(node, name, value)
+            self.assertEqual(purpose, node.get_boot_purpose())
+
+    def test_get_boot_purpose_osystem_no_xinstall_support(self):
+        osystem = make_usable_osystem(self)
+        release = osystem['default_release']
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYING, netboot=True,
+            osystem=osystem['name'], distro_series=release,
+            boot_type=NODE_BOOT.FASTPATH)
+        boot_image = make_rpc_boot_image(purpose='install')
+        self.patch(
+            preseed_module, 'get_boot_images_for').return_value = [boot_image]
+        self.assertEqual('install', node.get_boot_purpose())
 
 
 class NodeRoutersTest(MAASServerTestCase):

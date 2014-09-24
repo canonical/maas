@@ -27,10 +27,7 @@ from maasserver.api.utils import (
     get_optional_param,
     )
 from maasserver.clusterrpc.boot_images import get_boot_images_for
-from maasserver.enum import (
-    NODE_STATUS,
-    PRESEED_TYPE,
-    )
+from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     BootResource,
     Config,
@@ -40,7 +37,6 @@ from maasserver.models import (
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
-    get_preseed_type_for,
     )
 from maasserver.server_address import get_maas_facing_server_address
 from maasserver.third_party_drivers import get_third_party_driver
@@ -80,36 +76,6 @@ def get_node_from_mac_string(mac_string):
         return None
     macaddress = get_one(MACAddress.objects.filter(mac_address=mac_string))
     return macaddress.node if macaddress else None
-
-
-def get_boot_purpose(node):
-    """Return a suitable "purpose" for this boot, e.g. "install"."""
-    # XXX: allenap bug=1031406 2012-07-31: The boot purpose is still in
-    # flux. It may be that there will just be an "ephemeral" environment and
-    # an "install" environment, and the differing behaviour between, say,
-    # enlistment and commissioning - both of which will use the "ephemeral"
-    # environment - will be governed by varying the preseed or PXE
-    # configuration.
-    if node is None:
-        # This node is enlisting, for which we use a commissioning image.
-        return "commissioning"
-    elif node.status == NODE_STATUS.COMMISSIONING:
-        # It is commissioning.
-        return "commissioning"
-    elif node.status == NODE_STATUS.DEPLOYING:
-        # Install the node if netboot is enabled, otherwise boot locally.
-        if node.netboot:
-            preseed_type = get_preseed_type_for(node)
-            if preseed_type == PRESEED_TYPE.CURTIN:
-                return "xinstall"
-            else:
-                return "install"
-        else:
-            return "local"
-    elif node.status == NODE_STATUS.DEPLOYED:
-        return "local"
-    else:
-        return "poweroff"
 
 
 def get_boot_image(
@@ -214,7 +180,10 @@ def pxeconfig(request):
 
     # If we are booting with "xinstall", then we should always return the
     # commissioning operating system and distro_series.
-    purpose = get_boot_purpose(node)
+    if node is None:
+        purpose = "commissioning"  # enlistment
+    else:
+        purpose = node.get_boot_purpose()
     if purpose == "xinstall":
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')

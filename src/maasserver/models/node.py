@@ -70,6 +70,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     POWER_STATE_CHOICES,
+    PRESEED_TYPE,
     )
 from maasserver.exceptions import (
     NodeStateViolation,
@@ -97,6 +98,7 @@ from maasserver.node_status import (
     is_failed_status,
     NODE_TRANSITIONS,
     )
+from maasserver.preseed import get_preseed_type_for
 from maasserver.rpc import getClientFor
 from maasserver.utils import (
     get_db_state,
@@ -1331,3 +1333,33 @@ class Node(CleanSave, TimestampedModel):
             # Return a list instead of yielding mappings as they're ready
             # because it's all-or-nothing (hence the atomic context).
             return mappings
+
+    def get_boot_purpose(self):
+        """
+        Return a suitable "purpose" for this boot, e.g. "install".
+        """
+        # XXX: allenap bug=1031406 2012-07-31: The boot purpose is
+        # still in flux. It may be that there will just be an
+        # "ephemeral" environment and an "install" environment, and
+        # the differing behaviour between, say, enlistment and
+        # commissioning - both of which will use the "ephemeral"
+        # environment - will be governed by varying the preseed or PXE
+        # configuration.
+        if self.status == NODE_STATUS.COMMISSIONING:
+            # It is commissioning.
+            return "commissioning"
+        elif self.status == NODE_STATUS.DEPLOYING:
+            # Install the node if netboot is enabled,
+            # otherwise boot locally.
+            if self.netboot:
+                preseed_type = get_preseed_type_for(self)
+                if preseed_type == PRESEED_TYPE.CURTIN:
+                    return "xinstall"
+                else:
+                    return "install"
+            else:
+                return "local"
+        elif self.status == NODE_STATUS.DEPLOYED:
+            return "local"
+        else:
+            return "poweroff"
