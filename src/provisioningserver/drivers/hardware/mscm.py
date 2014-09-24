@@ -36,9 +36,10 @@ cartridge_mapping = {
     'ProLiant m350 Server Cartridge': 'amd64/generic',
     'ProLiant m400 Server Cartridge': 'arm64/xgene-uboot',
     'ProLiant m500 Server Cartridge': 'amd64/generic',
+    'ProLiant m700 Server Cartridge': 'amd64/generic',
     'ProLiant m710 Server Cartridge': 'amd64/generic',
     'ProLiant m800 Server Cartridge': 'armhf/keystone',
-    'Default': 'arm64/generic',
+    'Default': 'amd64/generic',
 }
 
 
