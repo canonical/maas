@@ -112,6 +112,29 @@ def list_gateways_and_macs(node):
     return result
 
 
+def compose_curtin_maas_reporter(node):
+    """Return a list of curtin preseeds for using the MAASReporter in curtin.
+
+    This enables the ability for curtin to talk back to MAAS.
+    """
+    token = NodeKey.objects.get_token_for_node(node)
+    base_url = node.nodegroup.maas_url
+    version = 'latest'
+    reporter = {
+        'reporter': {
+            'maas': {
+                'url': absolute_reverse(
+                    'curtin-metadata-version', args=[version],
+                    query={'op': 'signal'}, base_url=base_url),
+                'consumer_key': token.consumer.key,
+                'token_key': token.key,
+                'token_secret': token.secret,
+                },
+            },
+        }
+    return [yaml.safe_dump(reporter)]
+
+
 def compose_curtin_network_preseed(node):
     """Return a list of curtin preseeds for configuring a node's networking.
 
@@ -181,9 +204,11 @@ def get_curtin_userdata(node):
     """
     installer_url = get_curtin_installer_url(node)
     main_config = get_curtin_config(node)
+    reporter_config = compose_curtin_maas_reporter(node)
     network_config = compose_curtin_network_preseed(node)
     return pack_install(
-        configs=[main_config] + network_config, args=[installer_url])
+        configs=[main_config] + reporter_config + network_config,
+        args=[installer_url])
 
 
 def get_curtin_image(node):
@@ -267,12 +292,7 @@ def get_curtin_context(node):
     """
     token = NodeKey.objects.get_token_for_node(node)
     base_url = node.nodegroup.maas_url
-    version = 'latest'
     return {
-        'reporter_token': token,
-        'reporter_url': absolute_reverse(
-            'curtin-metadata-version', args=[version],
-            query={'op': 'signal'}, base_url=base_url),
         'curtin_preseed': compose_cloud_init_preseed(token, base_url)
     }
 

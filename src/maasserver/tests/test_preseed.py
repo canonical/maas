@@ -37,6 +37,7 @@ from maasserver.exceptions import (
     )
 from maasserver.models import Config
 from maasserver.preseed import (
+    compose_curtin_maas_reporter,
     compose_curtin_network_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -70,7 +71,9 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils import absolute_reverse
 from maastesting.matchers import MockCalledOnceWith
+from metadataserver.models import NodeKey
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.enum import map_enum
@@ -727,6 +730,46 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
         self.assertEqual(set(), list_gateways_and_macs(node))
 
 
+class TestComposeCurtinMAASReporter(MAASServerTestCase):
+
+    def load_reporter(self, preseeds):
+        [reporter_yaml] = preseeds
+        return yaml.safe_load(reporter_yaml)
+
+    def test__returns_list_of_yaml_strings(self):
+        preseeds = compose_curtin_maas_reporter(factory.make_Node())
+        self.assertIsInstance(preseeds, list)
+        self.assertThat(preseeds, HasLength(1))
+        reporter = self.load_reporter(preseeds)
+        self.assertIsInstance(reporter, dict)
+        self.assertEqual(['reporter'], list(reporter.keys()))
+
+    def test__returns_reporter_url(self):
+        node = factory.make_Node()
+        preseeds = compose_curtin_maas_reporter(node)
+        reporter = self.load_reporter(preseeds)
+        self.assertEqual(
+            absolute_reverse(
+                'curtin-metadata-version', args=['latest'],
+                query={'op': 'signal'}, base_url=node.nodegroup.maas_url),
+            reporter['reporter']['maas']['url'])
+
+    def test__returns_reporter_oauth_creds(self):
+        node = factory.make_Node()
+        token = NodeKey.objects.get_token_for_node(node)
+        preseeds = compose_curtin_maas_reporter(node)
+        reporter = self.load_reporter(preseeds)
+        self.assertEqual(
+            token.consumer.key,
+            reporter['reporter']['maas']['consumer_key'])
+        self.assertEqual(
+            token.key,
+            reporter['reporter']['maas']['token_key'])
+        self.assertEqual(
+            token.secret,
+            reporter['reporter']['maas']['token_secret'])
+
+
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__returns_list_of_yaml_strings(self):
@@ -948,7 +991,7 @@ class TestCurtinUtilities(
             nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
         context = get_curtin_context(node)
         self.assertItemsEqual(
-            ['reporter_token', 'reporter_url', 'curtin_preseed'], context)
+            ['curtin_preseed'], context)
         self.assertIn('cloud-init', context['curtin_preseed'])
 
     def test_get_curtin_image_calls_get_boot_images_for(self):
