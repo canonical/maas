@@ -24,6 +24,7 @@ from maasserver import exceptions
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
+    MACAddress,
     Node,
     NodeGroup,
     )
@@ -141,3 +142,17 @@ def create_node(cluster_uuid, architecture, power_type,
         return node
     else:
         raise ValidationError(form.errors)
+
+
+@synchronous
+@transactional
+def request_node_info_by_mac_address(mac_address):
+    """Request a `Node` with given MAC Address and return it.
+
+    :param mac_addresses: MAC Address of node to request information
+        from.
+    """
+    try:
+        return MACAddress.objects.get(mac_address=mac_address).node
+    except Node.DoesNotExist:
+        raise NoSuchNode.from_mac_address(mac_address)

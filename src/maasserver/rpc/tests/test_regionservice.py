@@ -96,6 +96,7 @@ from provisioningserver.rpc.region import (
     RegisterEventType,
     ReportBootImages,
     ReportForeignDHCPServer,
+    RequestNodeInfoByMACAddress,
     SendEvent,
     SendEventMACAddress,
     UpdateLeases,
@@ -1803,3 +1804,64 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
         self.assertThat(
             handle_monitor_expired,
             MockCalledOnceWith(params['id'], params['context']))
+
+
+class TestRegionProtocol_RequestNodeInforByMACAddress(MAASTestCase):
+
+    def test_request_node_info_by_mac_address_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            RequestNodeInfoByMACAddress.commandName)
+        self.assertIsNot(responder, None)
+
+    @transactional
+    def make_mac_address(self, node):
+        return factory.make_MACAddress(node=node)
+
+    @transactional
+    def create_node(self):
+        return factory.make_Node()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_request_node_info_by_mac_address_function(self):
+        node_info_function = self.patch(
+            regionservice, 'request_node_info_by_mac_address')
+        node_info_function.return_value = (
+            yield deferToThread(self.create_node))
+        mac_address = yield deferToThread(
+            self.make_mac_address,
+            node_info_function.return_value)
+
+        params = {
+            'mac_address': mac_address.mac_address.get_raw(),
+        }
+
+        response = yield call_responder(
+            Region(), RequestNodeInfoByMACAddress, params)
+        self.assertIsNotNone(response)
+        self.assertThat(
+            node_info_function,
+            MockCalledOnceWith(params['mac_address']))
+        purpose = response.pop('purpose')
+        self.assertEqual(
+            node_info_function.return_value.get_boot_purpose(),
+            purpose)
+        self.assertAttributes(
+            node_info_function.return_value,
+            response)
+
+    @wait_for_reactor
+    def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):
+        params = {
+            'mac_address': factory.make_mac_address(),
+        }
+
+        response = yield call_responder(
+            Region(), RequestNodeInfoByMACAddress, params)
+
+        def check(error):
+            self.assertIsInstance(error, Failure)
+            self.assertIsInstance(error.value, NoSuchNode)
+
+        yield response.addErrback(check)

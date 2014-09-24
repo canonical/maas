@@ -355,3 +355,27 @@ class ReloadCluster(amp.Command):
         ]
     response = []
     errors = []
+
+
+class RequestNodeInfoByMACAddress(amp.Command):
+    """Request Node information by mac address.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"mac_address", amp.Unicode()),
+    ]
+    response = [
+        (b"system_id", amp.Unicode()),
+        (b"hostname", amp.Unicode()),
+        (b"status", amp.Integer()),
+        (b"boot_type", amp.Unicode()),
+        (b"osystem", amp.Unicode()),
+        (b"distro_series", amp.Unicode()),
+        (b"architecture", amp.Unicode()),
+        (b"purpose", amp.Unicode()),
+    ]
+    errors = {
+        NoSuchNode: b"NoSuchNode",
+    }
