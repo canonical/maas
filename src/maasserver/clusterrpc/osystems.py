@@ -23,11 +23,14 @@ from collections import defaultdict
 from functools import partial
 from urlparse import urlparse
 
+from maasserver.enum import BOOT_RESOURCE_TYPE
+from maasserver.models import BootResource
 from maasserver.rpc import (
     getAllClients,
     getClientFor,
     )
 from maasserver.utils import async
+from maasserver.utils.orm import get_one
 from provisioningserver.rpc.cluster import (
     GetPreseedData,
     ListOperatingSystems,
@@ -35,6 +38,24 @@ from provisioningserver.rpc.cluster import (
     )
 from provisioningserver.utils.twisted import synchronous
 from twisted.python.failure import Failure
+
+
+def get_uploaded_resource_with_name(resources, name):
+    """Return the `BootResource` from `resources` that has the given `name`.
+    """
+    return get_one(resources.filter(name=name))
+
+
+def fix_custom_osystem_release_titles(osystem):
+    """Fix all release titles for the custom OS."""
+    custom_resources = BootResource.objects.filter(
+        rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+    for release in osystem["releases"]:
+        resource = get_uploaded_resource_with_name(
+            custom_resources, release["name"])
+        if resource is not None and "title" in resource.extra:
+            release["title"] = resource.extra["title"]
+    return osystem
 
 
 def suppress_failures(responses):
@@ -64,6 +85,8 @@ def gen_all_known_operating_systems():
             name = osystem["name"]
             if osystem not in seen[name]:
                 seen[name].append(osystem)
+                if name == "custom":
+                    osystem = fix_custom_osystem_release_titles(osystem)
                 yield osystem
 
 

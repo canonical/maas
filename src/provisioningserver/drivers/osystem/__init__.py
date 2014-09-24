@@ -212,12 +212,14 @@ class OperatingSystemRegistry(Registry):
 
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 from provisioningserver.drivers.osystem.centos import CentOS
+from provisioningserver.drivers.osystem.custom import CustomOS
 from provisioningserver.drivers.osystem.windows import WindowsOS
 from provisioningserver.drivers.osystem.suse import SUSEOS
 
 builtin_osystems = [
     UbuntuOS(),
     CentOS(),
+    CustomOS(),
     WindowsOS(),
     SUSEOS(),
     ]

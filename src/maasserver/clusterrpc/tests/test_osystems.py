@@ -25,9 +25,13 @@ from maasserver.clusterrpc.osystems import (
     validate_license_key,
     validate_license_key_for,
     )
-from maasserver.enum import PRESEED_TYPE
+from maasserver.enum import (
+    BOOT_RESOURCE_TYPE,
+    PRESEED_TYPE,
+    )
 from maasserver.rpc import getAllClients
 from maasserver.rpc.testing.fixtures import RunningClusterRPCFixture
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from metadataserver.models import NodeKey
@@ -126,6 +130,37 @@ class TestGenAllKnownOperatingSystems(MAASServerTestCase):
         # been suppressed.
         self.assertItemsEqual(
             [{"name": clients[0].ident}],
+            gen_all_known_operating_systems())
+
+    def test_fixes_custom_osystem_release_titles(self):
+        factory.make_NodeGroup().accept()
+        self.useFixture(RunningClusterRPCFixture())
+
+        releases = [factory.make_name("release") for _ in range(3)]
+        os_releases = [
+            {"name": release, "title": release}
+            for release in releases
+            ]
+        for release in releases:
+            factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.UPLOADED, name=release,
+                architecture=make_usable_architecture(self),
+                extra={"title": release.upper()})
+
+        clients = getAllClients()
+        for index, client in enumerate(clients):
+            callRemote = self.patch(client._conn, "callRemote")
+            example = {
+                "osystems": [{"name": "custom", "releases": os_releases}]
+                }
+            callRemote.return_value = succeed(example)
+
+        releases_with_titles = [
+            {"name": release, "title": release.upper()}
+            for release in releases
+            ]
+        self.assertItemsEqual(
+            [{"name": "custom", "releases": releases_with_titles}],
             gen_all_known_operating_systems())
 
 
