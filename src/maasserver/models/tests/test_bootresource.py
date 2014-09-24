@@ -23,12 +23,14 @@ from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
     BOOT_RESOURCE_TYPE_CHOICES_DICT,
+    COMPONENT,
     )
 from maasserver.models import bootresource
 from maasserver.models.bootresource import (
     BootResource,
     RTYPE_REQUIRING_OS_SERIES_NAME,
     )
+from maasserver.models.component_error import ComponentError
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 
@@ -430,3 +432,13 @@ class TestBootResource(MAASServerTestCase):
             extra={'subarches': ','.join(subarches)})
         self.assertFalse(
             resource.supports_subarch(factory.make_name('subarch')))
+
+    def test_shows_and_hides_missing_boot_image_error(self):
+        resource = factory.make_BootResource()
+        self.assertFalse(
+            ComponentError.objects.filter(
+                component=COMPONENT.IMPORT_PXE_FILES).exists())
+        resource.delete()
+        self.assertTrue(
+            ComponentError.objects.filter(
+                component=COMPONENT.IMPORT_PXE_FILES).exists())

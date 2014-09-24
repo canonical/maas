@@ -16,8 +16,6 @@ __all__ = [
     'start_up'
     ]
 
-from textwrap import dedent
-
 from django.db import (
     connection,
     transaction,
@@ -28,11 +26,10 @@ from maasserver import (
     )
 from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.components import (
-    get_persistent_error,
-    register_persistent_error,
+    hide_missing_boot_image_error,
+    show_missing_boot_image_error,
     )
 from maasserver.dns.config import write_full_dns_config
-from maasserver.enum import COMPONENT
 from maasserver.fields import register_mac_type
 from maasserver.models import (
     BootResource,
@@ -63,18 +60,6 @@ def start_up():
     eventloop.start().wait(10)
 
 
-def update_boot_resource_error():
-    import_script = COMPONENT.IMPORT_PXE_FILES
-    have_resources = BootResource.objects.all().exists()
-    if not have_resources and get_persistent_error(import_script) is None:
-        warning = dedent("""\
-            No boot images are available. Nodes will not be able to provision
-            without boot images. Start the boot images import process to
-            resolve this issue.
-            """)
-        register_persistent_error(import_script, warning)
-
-
 def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.
@@ -95,5 +80,8 @@ def inner_start_up():
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
 
-    # Check whether we have boot images yet.
-    update_boot_resource_error()
+    # Check whether we have boot resources yet.
+    if not BootResource.objects.all().exists():
+        show_missing_boot_image_error()
+    else:
+        hide_missing_boot_image_error()

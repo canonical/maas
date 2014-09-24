@@ -22,6 +22,10 @@ from django.db.models import (
     IntegerField,
     Manager,
     )
+from django.db.models.signals import (
+    post_delete,
+    post_save,
+    )
 from maasserver import DefaultMeta
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
@@ -117,7 +121,9 @@ class BootResourceManager(Manager):
         arches = set()
         for resource in self.all():
             resource_set = resource.get_latest_set()
-            if resource_set.commissionable and resource_set.installable:
+            if (resource_set is not None and
+                    resource_set.commissionable and
+                    resource_set.installable):
                 arches.add(resource.architecture)
                 if 'subarches' in resource.extra:
                     arch, _ = resource.split_arch()
@@ -305,3 +311,22 @@ class BootResource(CleanSave, TimestampedModel):
             return False
         subarches = self.extra['subarches'].split(',')
         return subarch in subarches
+
+
+def update_boot_image_error(sender, instance, **kwargs):
+    """Show or hide missing boot image error on the UI, depending on if any
+    boot resources exist.
+    """
+    # Avoid circular import
+    from maasserver.components import (
+        hide_missing_boot_image_error,
+        show_missing_boot_image_error,
+        )
+    if BootResource.objects.all().exists():
+        hide_missing_boot_image_error()
+    else:
+        show_missing_boot_image_error()
+
+
+post_delete.connect(update_boot_image_error, BootResource)
+post_save.connect(update_boot_image_error, BootResource)

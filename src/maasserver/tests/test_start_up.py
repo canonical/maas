@@ -19,11 +19,7 @@ from maasserver import (
     locks,
     start_up,
     )
-from maasserver.components import (
-    discard_persistent_error,
-    register_persistent_error,
-    )
-from maasserver.enum import COMPONENT
+from maasserver.components import hide_missing_boot_image_error
 from maasserver.models import (
     BootSource,
     NodeGroup,
@@ -37,12 +33,8 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     )
-from mock import ANY
 from testresources import FixtureResource
-from testtools.matchers import (
-    HasLength,
-    Not,
-    )
+from testtools.matchers import HasLength
 
 
 class LockChecker:
@@ -120,35 +112,14 @@ class TestInnerStartUp(MAASServerTestCase):
     def test__warns_about_missing_boot_resources(self):
         # If no boot resources have been created, then the user has not
         # performed the import process.
-        discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        recorder = self.patch(start_up, 'register_persistent_error')
-
+        hide_missing_boot_image_error()
+        recorder = self.patch(start_up, 'show_missing_boot_image_error')
         start_up.inner_start_up()
-
-        self.assertThat(
-            recorder,
-            MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY))
+        self.assertThat(recorder, MockCalledWith())
 
     def test__does_not_warn_if_boot_resources_are_known(self):
         # If boot resources are known, there is no warning.
         factory.make_BootResource()
-        recorder = self.patch(start_up, 'register_persistent_error')
-
+        recorder = self.patch(start_up, 'hide_missing_boot_image_error')
         start_up.inner_start_up()
-
-        self.assertThat(
-            recorder,
-            Not(MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY)))
-
-    def test__does_not_warn_if_already_warning(self):
-        # If there already is a warning about missing boot resources, it will
-        # not be replaced.
-        register_persistent_error(
-            COMPONENT.IMPORT_PXE_FILES, factory.make_string())
-        recorder = self.patch(start_up, 'register_persistent_error')
-
-        start_up.inner_start_up()
-
-        self.assertThat(
-            recorder,
-            Not(MockCalledWith(COMPONENT.IMPORT_PXE_FILES, ANY)))
+        self.assertThat(recorder, MockCalledWith())
