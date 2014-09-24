@@ -7,6 +7,10 @@ This will eventually generate installer networking configuration like:
 
    https://gist.github.com/jayofdoom/b035067523defec7fb53
 
+A different version of the format is documented here:
+
+    http://bit.ly/1uqWvC8
+
 The installer running on a node will use this to set up the node's networking
 according to MAAS's specifications.
 """
@@ -25,7 +29,13 @@ __all__ = [
     ]
 
 from lxml import etree
+from maasserver.dns.zonegenerator import get_dns_server_address
+from maasserver.exceptions import UnresolvableHost
 from maasserver.models.nodeprobeddetails import get_probed_details
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 
 
 def extract_network_interface_data(element):
@@ -90,9 +100,118 @@ def generate_ethernet_link_entry(interface, mac):
     """
     return {
         'id': interface,
-        'type': 'ethernet',
+        'type': 'phy',
         'ethernet_mac_address': mac,
         }
+
+
+def generate_dns_server_entry(dns_address):
+    """Generate the `services` list entry for the given DNS server.
+
+    :param dns_address: IP address for a DNS server, in text form.
+    :return: A dict specifying the DNS server as a network service, with
+        keys `address` and `type` (and possibly more).
+    """
+    return {
+        'type': 'dns',
+        'address': dns_address,
+        }
+
+
+def list_dns_servers(node):
+    """Return DNS servers, IPv4 and IPv6 as appropriate, for use by `node`.
+
+    These are always the MAAS-controlled DNS servers.
+    """
+    cluster = node.nodegroup
+    servers = []
+    if not node.disable_ipv4:
+        try:
+            servers.append(
+                get_dns_server_address(cluster, ipv4=True, ipv6=False))
+        except UnresolvableHost:
+            # No IPv4 DNS server.
+            pass
+    try:
+        servers.append(get_dns_server_address(cluster, ipv4=False, ipv6=True))
+    except UnresolvableHost:
+        # No IPv6 DNS server.
+        pass
+    return [dns_server for dns_server in servers if dns_server is not None]
+
+
+def generate_route_entries(cluster_interface):
+    """Generate `routes` list entries for a cluster interface.
+
+    Actually this returns exactly one route (the default route) if
+    `cluster_interface` has a router set; or none otherwise.
+    """
+    if cluster_interface.router_ip in ('', None):
+        # No routes available.
+        return []
+    elif IPAddress(cluster_interface.ip).version == 4:
+        return [
+            {
+                'network': '0.0.0.0',
+                'netmask': '0.0.0.0',
+                'gateway': unicode(cluster_interface.router_ip),
+            },
+            ]
+    else:
+        return [
+            {
+                'network': '::',
+                'netmask': '::',
+                'gateway': unicode(cluster_interface.router_ip),
+            },
+            ]
+
+
+def generate_network_entry(network_interface, cluster_interface, ip=None):
+    """Generate the `networks` list entry for the given network connection.
+
+    :param network_interface: Name of the network interface (on the node) that
+        connects to this network.
+    :param cluster_interface: The `NodeGroupInterface` responsible for this
+        network.  (Do not confuse its `interface` property, which is a network
+        interface on the cluster controller, with the `network_interface`
+        parameter which is a network interface on the node.)
+    :param ip: Optional IP address.  If not given, use DHCP.
+    """
+    network_types = {
+        4: 'ipv4',
+        6: 'ipv6',
+        }
+    network = cluster_interface.network
+
+    # Still lacking a few entries that we don't have enough information about:
+    # * id -- does this need to match anything anywhere?
+    # * network_id -- what is this, and how do we compose it?
+    #
+    # It's tempting to use cluster_interface.name for the 'id,' but that
+    # could be confusing: it was probably generated based on the name of its
+    # network interface on the cluster.  Which will probably often match the
+    # name of the node cluster interface, but is completely unrelated to it.
+    entry = {
+        'link': network_interface,
+        # The example we have does not show IPv6 netmasks.  Should we pass
+        # width in bits?
+        'type': network_types[network.version],
+        'routes': generate_route_entries(cluster_interface)
+        }
+    if ip is not None:
+        # Set static IP address.
+        # How do we tell the node to request a dynamic IP address over DHCP?
+        # Is just omitting ip_address the appropriate behaviour?
+        if network.version == 4:
+            entry['ip_address'] = ip
+        else:
+            # Include network size directly in IPv6 address.
+            entry['ip_address'] = unicode(
+                IPNetwork("%s/%s" % (ip, network.netmask)))
+    if network.version == 4:
+        entry['netmask'] = unicode(network.netmask)
+    return entry
 
 
 def generate_networking_config(node):
@@ -108,7 +227,8 @@ def generate_networking_config(node):
         'provider': "MAAS",
         'network_info': {
             'services': [
-                # List DNS servers here.
+                generate_dns_server_entry(dns_server)
+                for dns_server in list_dns_servers(node)
                 ],
             'networks': [
                 # Write network specs here.

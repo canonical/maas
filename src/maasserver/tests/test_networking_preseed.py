@@ -15,16 +15,26 @@ __metaclass__ = type
 __all__ = [
     ]
 
+from random import randint
+
 from maasserver import networking_preseed
+from maasserver.dns import zonegenerator
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
+from maasserver.exceptions import UnresolvableHost
 from maasserver.networking_preseed import (
     extract_network_interfaces,
+    generate_dns_server_entry,
     generate_ethernet_link_entry,
+    generate_network_entry,
     generate_networking_config,
+    generate_route_entries,
+    list_dns_servers,
     normalise_mac,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
+from testtools.matchers import HasLength
 
 
 def make_denormalised_mac():
@@ -211,10 +221,208 @@ class TestGenerateEthernetLinkEntry(MAASServerTestCase):
         self.assertEqual(
             {
                 'id': interface,
-                'type': 'ethernet',
+                'type': 'phy',
                 'ethernet_mac_address': mac,
             },
             generate_ethernet_link_entry(interface, mac))
+
+
+class TestGenerateDNServerEntry(MAASServerTestCase):
+
+    def test__returns_dict(self):
+        address = factory.make_ipv4_address()
+        self.assertEqual(
+            {
+                'type': 'dns',
+                'address': address,
+            },
+            generate_dns_server_entry(address))
+
+
+def patch_dns_servers(testcase, ipv4_dns=None, ipv6_dns=None):
+    """Patch `get_dns_server_address` to return the given addresses.
+
+    The fake will return `ipv4_dns` or `ipv6_dns` as appropriate to the
+    arguments.  For that reason, this patch does not use a `Mock`.
+    """
+
+    def fake_get_maas_facing_server_address(cluster, ipv4=True, ipv6=True):
+        result = None
+        if ipv4:
+            result = ipv4_dns
+        if result is None and ipv6:
+            result = ipv6_dns
+        if result is None:
+            raise UnresolvableHost()
+        return result
+
+    testcase.patch(
+        zonegenerator, 'get_maas_facing_server_address',
+        fake_get_maas_facing_server_address)
+    testcase.patch(zonegenerator, 'warn_loopback')
+
+
+class ListDNSServers(MAASServerTestCase):
+
+    def test__includes_ipv4_and_ipv6_by_default(self):
+        ipv4_dns = factory.make_ipv4_address()
+        ipv6_dns = factory.make_ipv6_address()
+        patch_dns_servers(self, ipv4_dns=ipv4_dns, ipv6_dns=ipv6_dns)
+        node = factory.make_Node(disable_ipv4=False)
+        self.assertItemsEqual([ipv4_dns, ipv6_dns], list_dns_servers(node))
+
+    def test__omits_ipv4_if_disabled_for_node(self):
+        ipv4_dns = factory.make_ipv4_address()
+        ipv6_dns = factory.make_ipv6_address()
+        patch_dns_servers(self, ipv4_dns=ipv4_dns, ipv6_dns=ipv6_dns)
+        node = factory.make_Node(disable_ipv4=True)
+        self.assertItemsEqual([ipv6_dns], list_dns_servers(node))
+
+    def test__omits_ipv4_if_unvailable(self):
+        ipv6_dns = factory.make_ipv6_address()
+        patch_dns_servers(self, ipv6_dns=ipv6_dns)
+        node = factory.make_Node(disable_ipv4=False)
+        self.assertItemsEqual([ipv6_dns], list_dns_servers(node))
+
+    def test__omits_ipv6_if_unavailable(self):
+        ipv4_dns = factory.make_ipv4_address()
+        patch_dns_servers(self, ipv4_dns=ipv4_dns)
+        node = factory.make_Node(disable_ipv4=False)
+        self.assertItemsEqual([ipv4_dns], list_dns_servers(node))
+
+
+def make_cluster_interface(network=None, **kwargs):
+    return factory.make_NodeGroupInterface(
+        factory.make_NodeGroup(), network=network, **kwargs)
+
+
+class TestGenerateRouteEntries(MAASServerTestCase):
+
+    def test__generates_IPv4_default_route_if_available(self):
+        network = factory.make_ipv4_network()
+        router = factory.pick_ip_in_network(network)
+        cluster_interface = make_cluster_interface(network, router_ip=router)
+        self.assertEqual(
+            [
+                {
+                    'network': '0.0.0.0',
+                    'netmask': '0.0.0.0',
+                    'gateway': unicode(router),
+                },
+            ],
+            generate_route_entries(cluster_interface))
+
+    def test__generates_IPv6_default_route_if_available(self):
+        network = factory.make_ipv6_network()
+        router = factory.pick_ip_in_network(network)
+        cluster_interface = make_cluster_interface(network, router_ip=router)
+        self.assertEqual(
+            [
+                {
+                    'network': '::',
+                    'netmask': '::',
+                    'gateway': unicode(router),
+                },
+            ],
+            generate_route_entries(cluster_interface))
+
+    def test__generates_empty_list_if_no_route_available(self):
+        network = factory.make_ipv4_network()
+        cluster_interface = make_cluster_interface(
+            network, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            router_ip='')
+        self.assertEqual([], generate_route_entries(cluster_interface))
+
+
+class TestGenerateNetworkEntry(MAASServerTestCase):
+
+    def test__generates_IPv4_dict(self):
+        network = factory.make_ipv4_network()
+        network_interface = factory.make_name('eth')
+        cluster_interface = make_cluster_interface(network)
+        ip = factory.pick_ip_in_network(network)
+
+        entry = generate_network_entry(
+            network_interface, cluster_interface, ip=ip)
+
+        del entry['routes']
+        self.assertEqual(
+            {
+                'type': 'ipv4',
+                'link': network_interface,
+                'ip_address': unicode(ip),
+                'netmask': unicode(network.netmask),
+            },
+            entry)
+
+    def test__generates_IPv6_dict(self):
+        slash = randint(48, 64)
+        network = factory.make_ipv6_network(slash=slash)
+        network_interface = factory.make_name('eth')
+        cluster_interface = make_cluster_interface(network)
+        ip = factory.pick_ip_in_network(network)
+
+        entry = generate_network_entry(
+            network_interface, cluster_interface, ip=ip)
+
+        del entry['routes']
+        self.assertEqual(
+            {
+                'type': 'ipv6',
+                'link': network_interface,
+                'ip_address': '%s/%d' % (ip, slash),
+            },
+            entry)
+
+    def test__omits_IP_if_not_given(self):
+        network = factory.make_ipv4_network()
+        network_interface = factory.make_name('eth')
+        cluster_interface = make_cluster_interface(network)
+
+        entry = generate_network_entry(network_interface, cluster_interface)
+
+        del entry['routes']
+        self.assertEqual(
+            {
+                'type': 'ipv4',
+                'link': network_interface,
+                'netmask': unicode(network.netmask),
+            },
+            entry)
+
+    def test__tells_IPv4_from_IPv6_even_without_IP(self):
+        cluster_interface = make_cluster_interface(factory.make_ipv6_network())
+        entry = generate_network_entry(
+            factory.make_name('eth'), cluster_interface)
+        self.assertEqual('ipv6', entry['type'])
+
+    def test__includes_IPv4_routes_on_IPv4_network(self):
+        network = factory.make_ipv4_network()
+        router = factory.pick_ip_in_network(network)
+        cluster_interface = make_cluster_interface(
+            network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            router_ip=router)
+
+        entry = generate_network_entry(
+            factory.make_name('eth'), cluster_interface)
+
+        self.assertThat(entry['routes'], HasLength(1))
+        [route] = entry['routes']
+        self.assertEqual(unicode(router), route['gateway'])
+
+    def test__includes_IPv6_routes_on_IPv6_network(self):
+        network = factory.make_ipv6_network()
+        router = factory.pick_ip_in_network(network)
+        cluster_interface = make_cluster_interface(
+            network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
+            router_ip=router)
+
+        entry = generate_network_entry(
+            factory.make_name('eth'), cluster_interface)
+
+        self.assertThat(entry['routes'], HasLength(1))
+        [route] = entry['routes']
+        self.assertEqual(unicode(router), route['gateway'])
 
 
 class TestGenerateNetworkingConfig(MAASServerTestCase):
@@ -227,11 +435,13 @@ class TestGenerateNetworkingConfig(MAASServerTestCase):
 
     def test__returns_config_dict(self):
         self.patch_interfaces([])
+        patch_dns_servers(self)
         config = generate_networking_config(factory.make_Node())
         self.assertIsInstance(config, dict)
         self.assertEqual("MAAS", config['provider'])
 
     def test__includes_links(self):
+        patch_dns_servers(self)
         node = factory.make_Node()
         interface = factory.make_name('eth')
         mac = factory.make_mac_address()
@@ -244,7 +454,7 @@ class TestGenerateNetworkingConfig(MAASServerTestCase):
             [
                 {
                     'id': interface,
-                    'type': 'ethernet',
+                    'type': 'phy',
                     'ethernet_mac_address': mac,
                 },
             ],
@@ -252,12 +462,22 @@ class TestGenerateNetworkingConfig(MAASServerTestCase):
 
     def test__includes_networks(self):
         # This section is not yet implemented, so expect an empty list.
+        patch_dns_servers(self)
         self.patch_interfaces([])
         config = generate_networking_config(factory.make_Node())
         self.assertEqual([], config['network_info']['networks'])
 
     def test__includes_dns_servers(self):
-        # This section is not yet implemented, so expect an empty list.
+        dns_address = factory.make_ipv4_address()
+        patch_dns_servers(self, dns_address)
         self.patch_interfaces([])
-        config = generate_networking_config(factory.make_Node())
-        self.assertEqual([], config['network_info']['services'])
+        config = generate_networking_config(
+            factory.make_Node(disable_ipv4=False))
+        self.assertEqual(
+            [
+                {
+                    'type': 'dns',
+                    'address': dns_address,
+                },
+            ],
+            config['network_info']['services'])
