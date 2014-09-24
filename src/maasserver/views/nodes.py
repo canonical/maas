@@ -87,6 +87,7 @@ from maasserver.node_constraint_filter_forms import (
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
+    OS_WITH_IPv6_SUPPORT,
     )
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.converters import XMLToYAML
@@ -550,7 +551,8 @@ class NodeView(NodeViewMixin, UpdateView):
 
         :return: Bool: should the UI show this warning?
         """
-        if node.osystem == 'ubuntu' and node.boot_type == NODE_BOOT.FASTPATH:
+        supported_os = (node.osystem in OS_WITH_IPv6_SUPPORT)
+        if supported_os and node.boot_type == NODE_BOOT.FASTPATH:
             # MAAS knows how to configure IPv6 addresses on an Ubuntu node
             # installed with the fast installer.  No warning needed.
             return False

@@ -730,7 +730,8 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__returns_list_of_yaml_strings(self):
-        preseeds = compose_curtin_network_preseed(factory.make_Node())
+        preseeds = compose_curtin_network_preseed(
+            factory.make_Node(osystem='ubuntu'))
         self.assertIsInstance(preseeds, list)
         self.assertThat(preseeds, HasLength(2))
         [write_files_yaml, late_commands_yaml] = preseeds
@@ -741,11 +742,17 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         self.assertIsInstance(late_commands, dict)
         self.assertEqual(['late_commands'], list(late_commands.keys()))
 
-    def test__uploads_script(self):
+    def test__returns_empty_if_unsupported_OS(self):
+        self.assertEqual(
+            [],
+            compose_curtin_network_preseed(
+                factory.make_Node(osystem='windows')))
+
+    def test__uploads_script_if_supported_OS(self):
         [write_files_yaml, _] = compose_curtin_network_preseed(
-            factory.make_Node())
+            factory.make_Node(osystem='ubuntu'))
         write_files = yaml.safe_load(write_files_yaml)
-        [file_spec] = list(write_files['write_files'].values())
+        file_spec = write_files['write_files']['maas_configure_interfaces']
         self.expectThat(
             file_spec['path'],
             Equals('/usr/local/bin/maas_configure_interfaces.py'))
@@ -755,11 +762,12 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
             'maas_configure_interfaces.py')
         self.expectThat(file_spec['content'], Equals(read_text_file(script)))
 
-    def test__runs_script(self):
+    def test__runs_script_if_supported_OS(self):
         [_, late_commands_yaml] = compose_curtin_network_preseed(
-            factory.make_Node())
+            factory.make_Node(osystem='ubuntu'))
         late_commands = yaml.safe_load(late_commands_yaml)
-        [command] = list(late_commands['late_commands'].values())
+        command = (
+            late_commands['late_commands']['90_maas_configure_interfaces'])
         self.assertIsInstance(command, list)
         self.assertEqual(
             ['curtin', 'in-target', '--'],
@@ -771,7 +779,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
     def test__includes_static_IPv6_addresses(self):
         network = factory.make_ipv6_network()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=network)
+            network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         ip = factory.pick_ip_in_network(network)
         factory.make_StaticIPAddress(mac=mac, ip=ip)
@@ -783,7 +791,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
     def test__ignores_static_IPv4_addresses(self):
         network = factory.make_ipv4_network()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=network)
+            network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         ip = factory.pick_ip_in_network(network)
         factory.make_StaticIPAddress(mac=mac, ip=ip)
@@ -796,7 +804,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         network = factory.make_ipv6_network()
         gateway = factory.pick_ip_in_network(network)
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=network)
+            network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         mac.cluster_interface.router_ip = gateway
         mac.cluster_interface.save()
@@ -808,7 +816,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
     def test__ignores_IPv4_gateway_addresses(self):
         network = factory.make_ipv4_network()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            network=network)
+            network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         gateway = factory.pick_ip_in_network(network)
         mac.cluster_interface.router_ip = gateway

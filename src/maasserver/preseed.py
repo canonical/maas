@@ -19,6 +19,7 @@ __all__ = [
     'get_enlist_preseed',
     'get_preseed',
     'get_preseed_context',
+    'OS_WITH_IPv6_SUPPORT',
     ]
 
 from collections import namedtuple
@@ -71,6 +72,10 @@ import yaml
 GENERIC_FILENAME = 'generic'
 
 
+# Node operating systems which we can deploy with IPv6 networking.
+OS_WITH_IPv6_SUPPORT = ['ubuntu']
+
+
 def get_enlist_preseed(nodegroup=None):
     """Return the enlistment preseed.
 
@@ -117,6 +122,10 @@ def compose_curtin_network_preseed(node):
     the `maas_configure_interfaces` script to the node during installation, and
     running it.
     """
+    if node.osystem not in OS_WITH_IPv6_SUPPORT:
+        # Don't configure networking on this node.  It breaks.
+        return []
+
     # Read the script that we will run on the node.  It really isn't a
     # template; it's a simple Python module and it has tests.
     script = locate_config(
