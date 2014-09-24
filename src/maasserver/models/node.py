@@ -98,7 +98,6 @@ from maasserver.node_status import (
     is_failed_status,
     NODE_TRANSITIONS,
     )
-from maasserver.preseed import get_preseed_type_for
 from maasserver.rpc import getClientFor
 from maasserver.utils import (
     get_db_state,
@@ -1352,6 +1351,8 @@ class Node(CleanSave, TimestampedModel):
             # Install the node if netboot is enabled,
             # otherwise boot locally.
             if self.netboot:
+                # Avoid circular imports.
+                from maasserver.preseed import get_preseed_type_for
                 preseed_type = get_preseed_type_for(self)
                 if preseed_type == PRESEED_TYPE.CURTIN:
                     return "xinstall"
