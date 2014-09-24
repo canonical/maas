@@ -30,12 +30,12 @@ from maastesting.fakemethod import (
 from netaddr import IPNetwork
 from provisioningserver import tasks
 from provisioningserver.dns.config import (
-    celery_conf,
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
     MAAS_NAMED_RNDC_CONF_NAME,
     MAAS_RNDC_CONF_NAME,
     )
+from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -84,7 +84,7 @@ class TestDNSTasks(PservTestCase):
         # Patch DNS_CONFIG_DIR so that the configuration files will be
         # written in a temporary directory.
         self.dns_conf_dir = self.make_dir()
-        self.patch(celery_conf, 'DNS_CONFIG_DIR', self.dns_conf_dir)
+        patch_dns_config_path(self, self.dns_conf_dir)
         # Record the calls to 'execute_rndc_command' (instead of
         # executing real rndc commands).
         self.rndc_recorder = FakeMethod()

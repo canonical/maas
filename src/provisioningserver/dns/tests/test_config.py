@@ -19,7 +19,7 @@ import os.path
 import random
 from textwrap import dedent
 
-from celery.app import app_or_default
+from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.testcase import MAASTestCase
@@ -45,32 +45,69 @@ from provisioningserver.dns.config import (
     setup_rndc,
     uncomment_named_conf,
     )
+from provisioningserver.dns.testing import (
+    patch_dns_config_path,
+    patch_dns_default_controls,
+    )
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
     )
+from provisioningserver.utils import locate_config
 from testtools.matchers import (
     Contains,
     ContainsAll,
     EndsWith,
     FileContains,
     FileExists,
+    IsInstance,
     MatchesAll,
     Not,
+    SamePath,
     StartsWith,
     )
 from testtools.testcase import ExpectedException
 from twisted.python.filepath import FilePath
 
 
-celery_conf = app_or_default().conf
+class TestHelpers(MAASTestCase):
 
+    def test_get_dns_config_dir_defaults_to_etc_bind_maas(self):
+        self.useFixture(EnvironmentVariable("MAAS_DNS_CONFIG_DIR"))
+        self.assertThat(
+            config.get_dns_config_dir(), MatchesAll(
+                SamePath(locate_config("../bind/maas")),
+                IsInstance(unicode),
+            ))
 
-def patch_dns_config_path(testcase):
-    """Set the DNS config dir to a temporary directory, and return its path."""
-    config_dir = testcase.make_dir()
-    testcase.patch(celery_conf, 'DNS_CONFIG_DIR', config_dir)
-    return config_dir
+    def test_get_dns_config_dir_checks_environ_first(self):
+        directory = self.make_dir()
+        self.useFixture(EnvironmentVariable(
+            "MAAS_DNS_CONFIG_DIR", directory.encode("ascii")))
+        self.assertThat(
+            config.get_dns_config_dir(), MatchesAll(
+                SamePath(directory),
+                IsInstance(unicode),
+            ))
+
+    def test_get_dns_root_port_defaults_to_954(self):
+        self.useFixture(EnvironmentVariable("MAAS_DNS_RNDC_PORT"))
+        self.assertEqual(954, config.get_dns_rndc_port())
+
+    def test_get_dns_root_port_checks_environ_first(self):
+        port = factory.pick_port()
+        self.useFixture(EnvironmentVariable(
+            "MAAS_DNS_RNDC_PORT", b"%d" % port))
+        self.assertEqual(port, config.get_dns_rndc_port())
+
+    def test_get_dns_default_controls_defaults_to_affirmative(self):
+        self.useFixture(EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS"))
+        self.assertTrue(config.get_dns_default_controls())
+
+    def test_get_dns_default_controls_checks_environ_first(self):
+        self.useFixture(
+            EnvironmentVariable("MAAS_DNS_DEFAULT_CONTROLS", "0"))
+        self.assertFalse(config.get_dns_default_controls())
 
 
 class TestRNDCUtilities(MAASTestCase):
@@ -121,7 +158,7 @@ class TestRNDCUtilities(MAASTestCase):
 
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = patch_dns_config_path(self)
-        self.patch(celery_conf, 'DNS_DEFAULT_CONTROLS', True)
+        patch_dns_default_controls(self, enable=True)
         setup_rndc()
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
         with open(rndc_file, "rb") as stream:
@@ -359,6 +396,6 @@ class TestDNSConfig(MAASTestCase):
                 Contains(
                     'include "%s/%s"'
                     % (
-                        celery_conf.DNS_CONFIG_DIR,
+                        config.get_dns_config_dir(),
                         DNSConfig.target_file_name,
                     ))))

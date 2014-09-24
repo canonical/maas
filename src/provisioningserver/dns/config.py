@@ -24,10 +24,11 @@ from collections import namedtuple
 from contextlib import contextmanager
 from datetime import datetime
 import errno
+import os
 import os.path
 import re
+import sys
 
-from celery.app import app_or_default
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import atomic_write
 from provisioningserver.utils.shell import call_and_check
@@ -40,7 +41,28 @@ MAAS_NAMED_RNDC_CONF_NAME = 'named.conf.rndc.maas'
 MAAS_RNDC_CONF_NAME = 'rndc.conf.maas'
 
 
-celery_conf = app_or_default().conf
+def get_dns_config_dir():
+    """Location of MAAS' bind configuration files."""
+    setting = os.getenv(
+        "MAAS_DNS_CONFIG_DIR",
+        locate_config(os.path.pardir, "bind", "maas"))
+    if isinstance(setting, bytes):
+        fsenc = sys.getfilesystemencoding()
+        return setting.decode(fsenc)
+    else:
+        return setting
+
+
+def get_dns_rndc_port():
+    """RNDC port to be configured by MAAS to communicate with BIND."""
+    setting = os.getenv("MAAS_DNS_RNDC_PORT", "954")
+    return int(setting)
+
+
+def get_dns_default_controls():
+    """Include the default RNDC controls (default RNDC key on port 953)?"""
+    setting = os.getenv("MAAS_DNS_DEFAULT_CONTROLS", "1")
+    return (setting == "1")
 
 
 class DNSConfigDirectoryMissing(Exception):
@@ -125,12 +147,11 @@ def get_rndc_conf_path():
 
 def setup_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
-    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME, both stored in
-    celery_conf.DNS_CONFIG_DIR.
+    MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
     """
     rndc_content, named_content = generate_rndc(
-        port=celery_conf.DNS_RNDC_PORT,
-        include_default_controls=celery_conf.DNS_DEFAULT_CONTROLS)
+        port=get_dns_rndc_port(),
+        include_default_controls=get_dns_default_controls())
 
     target_file = get_rndc_conf_path()
     with open(target_file, "wb") as f:
@@ -166,11 +187,10 @@ def set_up_options_conf(overwrite=True, **kwargs):
         "named.conf.options.inside.maas.template")
     template = tempita.Template.from_filename(template_path)
 
-    # Make sure "upstream_dns" is set at least to None.  It's a
-    # special piece of config that can't be obtained in celery
-    # task code and we don't want to require that every call site
-    # has to specify it.  If it's not set, the substitution will
-    # fail with the default template that uses this value.
+    # Make sure "upstream_dns" is set at least to None. It's a special piece
+    # of config and we don't want to require that every call site has to
+    # specify it. If it's not set, the substitution will fail with the default
+    # template that uses this value.
     kwargs.setdefault("upstream_dns")
     try:
         rendered = template.substitute(kwargs)
@@ -183,7 +203,7 @@ def set_up_options_conf(overwrite=True, **kwargs):
 
 def compose_config_path(filename):
     """Return the full path for a DNS config or zone file."""
-    return os.path.join(celery_conf.DNS_CONFIG_DIR, filename)
+    return os.path.join(get_dns_config_dir(), filename)
 
 
 def render_dns_template(template_name, *parameters):
@@ -248,7 +268,7 @@ class DNSConfig:
         trusted_networks = kwargs.pop("trusted_networks", "")
         context = {
             'zones': self.zones,
-            'DNS_CONFIG_DIR': celery_conf.DNS_CONFIG_DIR,
+            'DNS_CONFIG_DIR': get_dns_config_dir(),
             'named_rndc_conf_path': get_named_rndc_conf_path(),
             'trusted_networks': trusted_networks,
             'modified': unicode(datetime.today()),

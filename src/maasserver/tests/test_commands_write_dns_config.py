@@ -17,7 +17,6 @@ __all__ = []
 
 import os
 
-from celery.app import app_or_default
 from django.conf import settings
 from django.core.management import call_command
 from maasserver.enum import (
@@ -28,17 +27,15 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from netaddr import IPNetwork
 from provisioningserver import tasks
+from provisioningserver.dns.testing import patch_dns_config_path
 from testtools.matchers import FileExists
-
-
-conf = app_or_default().conf
 
 
 class TestWriteDNSConfigCommand(MAASServerTestCase):
 
     def test_write_dns_config_writes_zone_file(self):
         dns_conf_dir = self.make_dir()
-        self.patch(conf, 'DNS_CONFIG_DIR', dns_conf_dir)
+        patch_dns_config_path(self, dns_conf_dir)
         self.patch(settings, 'DNS_CONNECT', True)
         # Prevent rndc task dispatch.
         self.patch(tasks, "rndc_command")

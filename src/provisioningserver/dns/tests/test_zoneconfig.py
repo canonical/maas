@@ -21,14 +21,17 @@ from collections import (
 import os.path
 import random
 
-from celery.app import app_or_default
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
     )
-from provisioningserver.dns.config import SRVRecord
+from provisioningserver.dns.config import (
+    get_dns_config_dir,
+    SRVRecord,
+    )
+from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -43,16 +46,6 @@ from testtools.matchers import (
     Not,
     )
 from twisted.python.filepath import FilePath
-
-
-celery_conf = app_or_default().conf
-
-
-def patch_dns_config_path(testcase):
-    """Set the DNS config dir to a temporary directory, and return its path."""
-    config_dir = testcase.make_dir()
-    testcase.patch(celery_conf, 'DNS_CONFIG_DIR', config_dir)
-    return config_dir
 
 
 class TestDNSForwardZoneConfig(MAASTestCase):
@@ -104,7 +97,7 @@ class TestDNSForwardZoneConfig(MAASTestCase):
         domain = factory.make_name('zone')
         dns_zone_config = DNSForwardZoneConfig(domain)
         self.assertEqual(
-            os.path.join(celery_conf.DNS_CONFIG_DIR, 'zone.%s' % domain),
+            os.path.join(get_dns_config_dir(), 'zone.%s' % domain),
             dns_zone_config.target_path)
 
     def test_get_a_mapping_returns_ipv4_mapping(self):
@@ -263,7 +256,7 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         dns_zone_config = DNSReverseZoneConfig(
             domain, network=IPNetwork("192.168.0.0/22"))
         self.assertEqual(
-            os.path.join(celery_conf.DNS_CONFIG_DIR, reverse_file_name),
+            os.path.join(get_dns_config_dir(), reverse_file_name),
             dns_zone_config.target_path)
 
     def test_reverse_zone_file(self):
