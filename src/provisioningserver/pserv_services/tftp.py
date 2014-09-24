@@ -210,7 +210,7 @@ class TFTPBackend(FilesystemSynchronousBackend):
         the response.
         """
         send_event_node_mac_address(
-            event_type=EVENT_TYPES.NODE_PXE_REQUEST_TFTP,
+            event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
             mac_address=get_remote_mac(),
             description=file_name)
         d = self.get_boot_method(file_name)

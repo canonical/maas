@@ -19,6 +19,7 @@ __all__ = [
 
 from collections import namedtuple
 from logging import (
+    DEBUG,
     ERROR,
     INFO,
     WARN,
@@ -51,8 +52,8 @@ class EVENT_TYPES:
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
-    # PXE-related events.
-    NODE_PXE_REQUEST_TFTP = 'NODE_PXE_REQUEST_TFTP'
+    # TFTP request event.
+    NODE_TFTP_REQUEST = 'NODE_TFTP_REQUEST'
     # Other installation-related event types.
     NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
 
@@ -90,9 +91,9 @@ EVENT_DETAILS = {
         description="Failed to query node's BMC",
         level=WARN,
     ),
-    EVENT_TYPES.NODE_PXE_REQUEST_TFTP: EventDetail(
-        description="PXE Request",
-        level=INFO,
+    EVENT_TYPES.NODE_TFTP_REQUEST: EventDetail(
+        description="TFTP Request",
+        level=DEBUG,
     ),
     EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
         description="Installation complete",
