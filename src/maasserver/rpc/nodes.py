@@ -20,6 +20,7 @@ __all__ = [
 
 
 from django.core.exceptions import ValidationError
+from maasserver import exceptions
 from maasserver.api.utils import get_overridden_query_dict
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
@@ -29,6 +30,7 @@ from maasserver.models import (
 from maasserver.utils.async import transactional
 from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
+    NodeStateViolation,
     NoSuchCluster,
     NoSuchNode,
     )
@@ -41,13 +43,16 @@ import simplejson as json
 def mark_node_failed(system_id, error_description):
     """Mark a node as failed.
 
-    for :py:class:`~provisioningserver.rpc.region.MarkBroken`.
+    for :py:class:`~provisioningserver.rpc.region.MarkNodeFailed`.
     """
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
         raise NoSuchNode.from_system_id(system_id)
-    node.mark_failed(error_description)
+    try:
+        node.mark_failed(error_description)
+    except exceptions.NodeStateViolation as e:
+        raise NodeStateViolation(e)
 
 
 @synchronous

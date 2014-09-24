@@ -31,6 +31,7 @@ from provisioningserver.rpc.arguments import (
 from provisioningserver.rpc.common import Identify
 from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
+    NodeStateViolation,
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
@@ -163,7 +164,10 @@ class MarkNodeFailed(amp.Command):
         (b"error_description", amp.Unicode()),
     ]
     response = []
-    errors = {NoSuchNode: b"NoSuchNode"}
+    errors = {
+        NodeStateViolation: b"NodeStateViolation",
+        NoSuchNode: b"NoSuchNode",
+    }
 
 
 class ListNodePowerParameters(amp.Command):

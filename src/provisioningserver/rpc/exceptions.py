@@ -17,6 +17,7 @@ __all__ = [
     "CannotCreateHostMap",
     "CannotRemoveHostMap",
     "MultipleFailures",
+    "NodeStateViolation",
     "NoConnectionsAvailable",
     "NoSuchCluster",
     "NoSuchEventType",
@@ -55,6 +56,10 @@ class NoSuchNode(Exception):
         return cls(
             "Node with mac_address=%s could not be found." % mac_address
         )
+
+
+class NodeStateViolation(Exception):
+    """The specified state transition cannot be performed."""
 
 
 class NoSuchCluster(Exception):

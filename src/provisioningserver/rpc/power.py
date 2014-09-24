@@ -28,6 +28,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
+    NodeStateViolation,
     NoSuchNode,
     PowerActionAlreadyInProgress,
     )
@@ -215,15 +216,15 @@ def power_state_update(system_id, state):
 def power_query_failure(system_id, hostname, message):
     """Deal with a node failing to be queried."""
     maaslog.error(message)
+    yield send_event_node(
+        EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+        system_id, hostname, message)
     client = getRegionClient()
     yield client(
         MarkNodeFailed,
         system_id=system_id,
         error_description=message,
     )
-    yield send_event_node(
-        EVENT_TYPES.NODE_POWER_QUERY_FAILED,
-        system_id, hostname, message)
 
 
 @synchronous
@@ -268,7 +269,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     # Send node is broken, since query failed after the multiple retries.
     message = "Node could not be queried %s (%s) %s" % (
         system_id, hostname, error)
-    power_query_failure(system_id, hostname, message)
+    yield power_query_failure(system_id, hostname, message)
     raise PowerActionFail(error)
 
 
@@ -288,6 +289,11 @@ def query_all_nodes(nodes, clock=reactor):
         except PowerActionFail as e:
             maaslog.error(
                 "%s: Failed to query power state: %s.", hostname, e)
+            continue
+        except NodeStateViolation:
+            maaslog.warning(
+                "%s: Cannot mark node failed (its status doesn't allow "
+                "a transition to a failed state).", hostname)
             continue
         if power_state_observed != power_state_recorded:
             maaslog.info(

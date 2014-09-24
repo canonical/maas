@@ -149,6 +149,26 @@ class TestPowerHelpers(MAASTestCase):
                 description=message)
         )
 
+    def test_power_query_failure_emits_event_if_mark_failed_fails(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        message = factory.make_name('message')
+        protocol, io = self.patch_rpc_methods()
+        protocol.MarkNodeFailed.side_effect = exceptions.NodeStateViolation
+        d = power.power_query_failure(
+            system_id, hostname, message)
+        # This blocks until the deferred is complete
+        io.flush()
+        self.assertThat(
+            protocol.SendEvent,
+            MockCalledOnceWith(
+                ANY,
+                type_name=EVENT_TYPES.NODE_POWER_QUERY_FAILED,
+                system_id=system_id,
+                description=message)
+        )
+        return assert_fails_with(d, exceptions.NodeStateViolation)
+
     def test_power_query_failure_marks_node_broken(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -823,6 +843,31 @@ class TestPowerQueryAsync(MAASTestCase):
             hostname-...: Failed to query power state: %s.
             hostname-...: Power state has changed from ... to ...
             """ % error_msg,
+            maaslog.output)
+
+    @inlineCallbacks
+    def test_query_all_nodes_swallows_NodeStateViolation(self):
+        node1, node2 = self.make_nodes(2)
+        new_state_2 = self.pick_alternate_state(node2['power_state'])
+        get_power_state = self.patch(power, 'get_power_state')
+        error_msg = factory.make_name("error")
+        get_power_state.side_effect = [
+            exceptions.NodeStateViolation(error_msg), new_state_2]
+
+        # Capture calls to power_state_update.
+        power_state_update = self.patch_autospec(power, 'power_state_update')
+
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query_all_nodes([node1, node2])
+
+        self.assertThat(power_state_update, MockCalledOnceWith(
+            node2['system_id'], new_state_2))
+        self.assertDocTestMatches(
+            """\
+            hostname-...: Cannot mark node failed (its status doesn't allow
+                a transition to a failed state).
+            hostname-...: Power state has changed from ... to ...
+            """,
             maaslog.output)
 
     @inlineCallbacks

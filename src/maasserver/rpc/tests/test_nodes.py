@@ -17,7 +17,11 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
-from maasserver.rpc.nodes import create_node
+from maasserver.enum import NODE_STATUS
+from maasserver.rpc.nodes import (
+    create_node,
+    mark_node_failed,
+    )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.eventloop import (
@@ -29,7 +33,11 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.drivers import PowerTypeRegistry
 from provisioningserver.rpc.cluster import DescribePowerTypes
-from provisioningserver.rpc.exceptions import NodeAlreadyExists
+from provisioningserver.rpc.exceptions import (
+    NodeAlreadyExists,
+    NodeStateViolation,
+    NoSuchNode,
+    )
 from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
 
@@ -130,3 +138,23 @@ class TestCreateNode(MAASServerTestCase):
         # parameters are being persisted.
         node = reload_object(node)
         self.assertEqual(power_parameters, node.power_parameters)
+
+
+class TestMarkNodeFailed(MAASServerTestCase):
+
+    def test__marks_node_as_failed(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        mark_node_failed(node.system_id, factory.make_name('error'))
+        self.assertEqual(
+            NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+
+    def test__raises_NoSuchNode_if_node_doesnt_exist(self):
+        self.assertRaises(
+            NoSuchNode,
+            mark_node_failed, factory.make_name(), factory.make_name('error'))
+
+    def test__raises_NodeStateViolation_if_wrong_transition(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.assertRaises(
+            NodeStateViolation,
+            mark_node_failed, node.system_id, factory.make_name('error'))
