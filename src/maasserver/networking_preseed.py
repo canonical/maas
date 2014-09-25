@@ -28,10 +28,13 @@ __all__ = [
     'generate_networking_config',
     ]
 
+from collections import defaultdict
+
 from lxml import etree
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.nodeprobeddetails import get_probed_details
+from maasserver.models.staticipaddress import StaticIPAddress
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -239,3 +242,130 @@ def generate_networking_config(node):
                 ],
             },
         }
+
+
+def compose_debian_network_interfaces_ipv4_stanza(interface):
+    """Return a Debian `/etc/network/interfaces` stanza for DHCPv4."""
+    return "iface %s inet dhcp" % interface
+
+
+def compose_debian_network_interfaces_ipv6_stanza(interface, ip, gateway=None):
+    """Return a Debian `/etc/network/interfaces` stanza for IPv6.
+
+    The stanza will configure a static address.
+    """
+    lines = [
+        'iface %s inet6 static' % interface,
+        '\tnetmask 64',
+        '\taddress %s' % ip,
+        ]
+    if gateway is not None:
+        lines.append('\tgateway %s' % gateway)
+    return '\n'.join(lines)
+
+
+def extract_mac_string(mac):
+    """Return normalised MAC address string from `MACAddress` model object."""
+    return normalise_mac(unicode(mac))
+
+
+def add_ip_to_mapping(mapping, macaddress, ip):
+    """Add IP address to a `defaultdict` keyed by MAC string.
+
+    :param mapping: A `defaultdict` (defaulting to the empty set) mapping
+        normalised MAC address strings to sets of `IPAddress`.
+    :param macaddress: A `MACAddress`.
+    :param ip: An IP address string.  If it is empty or `None`, it will not
+        be added to the mapping.
+    """
+    if ip in (None, ''):
+        return
+    assert isinstance(ip, (unicode, bytes, IPAddress))
+    mac = extract_mac_string(macaddress)
+    ip = IPAddress(ip)
+    mapping[mac].add(ip)
+
+
+def extract_ip(mapping, mac, ip_version):
+    """Extract IP address for `mac` and given IP version from `mapping`.
+
+    :param mapping: A mapping as returned by `map_static_ips` or
+        `map_gateways`.
+    :param mac: A normalised MAC address string.
+    :param ip_version: Either 4 or 6 (for IPv4 or IPv6 respectively).  Only a
+        static address for this version will be returned.
+    :return: A matching IP address, or `None`.
+    """
+    for ip in mapping[mac]:
+        if ip.version == ip_version:
+            return ip
+    return None
+
+
+def map_static_ips(node):
+    """Return a `defaultdict` mapping node's MAC addresses to their static IPs.
+
+    :param node: A `Node`.
+    :return: A `defaultdict` (defaulting to the empty set) mapping normalised
+        MAC address strings to sets of `IPAddress`.
+    """
+    mapping = defaultdict(set)
+    for sip in StaticIPAddress.objects.filter(macaddress__node=node):
+        for mac in sip.macaddress_set.all():
+            add_ip_to_mapping(mapping, mac, sip.ip)
+    return mapping
+
+
+def map_gateways(node):
+    """Return a `defaultdict` mapping node's MAC addresses to their gateways.
+
+    :param node: A `Node`.
+    :return: A `defaultdict` (defaulting to the empty set) mapping normalised
+        MAC address strings to sets of `IPAddress`.
+    """
+    mapping = defaultdict(set)
+    for mac in node.macaddress_set.all():
+        for cluster_interface in mac.get_cluster_interfaces():
+            if cluster_interface.manages_static_range():
+                add_ip_to_mapping(mapping, mac, cluster_interface.router_ip)
+    return mapping
+
+
+def has_static_ipv6_address(mapping):
+    """Does `mapping` contain an IPv6 address?
+
+    :param mapping: A mapping as returned by `map_static_ips`.
+    :return bool:
+    """
+    for ips in mapping.values():
+        for ip in ips:
+            if ip.version == 6:
+                return True
+    return False
+
+
+def compose_debian_network_interfaces_file(node):
+    """Return contents for a node's `/etc/network/interfaces` file."""
+    static_ips = map_static_ips(node)
+    # Should we disable IPv4 on this node?  For safety's sake, we won't do this
+    # if the node has no static IPv6 addresses.  Otherwise it might become
+    # accidentally unaddressable: it may have IPv6 addresses, but apart from
+    # being able to guess autoconfigured addresses, we won't know what they
+    # are.
+    disable_ipv4 = (node.disable_ipv4 and has_static_ipv6_address(static_ips))
+    gateways = map_gateways(node)
+    stanzas = [
+        'auto lo',
+        ]
+    for interface, mac in extract_network_interfaces(node):
+        stanzas.append('auto %s' % interface)
+        if not disable_ipv4:
+            stanzas.append(
+                compose_debian_network_interfaces_ipv4_stanza(interface))
+        static_ipv6 = extract_ip(static_ips, mac, 6)
+        if static_ipv6 is not None:
+            gateway = extract_ip(gateways, mac, 6)
+            stanzas.append(
+                compose_debian_network_interfaces_ipv6_stanza(
+                    interface, static_ipv6, gateway))
+    return '%s\n' % '\n\n'.join(stanzas)
