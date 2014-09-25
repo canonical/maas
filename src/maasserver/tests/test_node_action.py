@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import random
 from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
@@ -46,6 +47,7 @@ from maasserver.node_action import (
     UseCurtin,
     UseDI,
     )
+from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -319,7 +321,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 
 class TestStopNodeNodeAction(MAASServerTestCase):
 
-    def test_StopNode_stops_node(self):
+    def test_StopNode_stops_deployed_node(self):
         user = factory.make_User()
         params = dict(
             power_address=factory.make_string(),
@@ -336,6 +338,13 @@ class TestStopNodeNodeAction(MAASServerTestCase):
 
         self.assertThat(
             stop_nodes, MockCalledOnceWith([node.system_id], user))
+
+    def test_StopNode_actionnable_for_failed_states(self):
+        status = random.choice(FAILED_STATUSES)
+        node = factory.make_Node(status=status, power_type='ipmi')
+        actions = compile_node_actions(
+            node, factory.make_admin(), classes=[StopNode])
+        self.assertItemsEqual([StopNode.name], actions)
 
 
 class TestReleaseNodeNodeAction(MAASServerTestCase):

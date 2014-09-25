@@ -49,6 +49,7 @@ from maasserver.models import (
     Node,
     SSHKey,
     )
+from maasserver.node_status import is_failed_status
 from provisioningserver.utils.enum import map_enum
 
 # All node statuses.
@@ -297,7 +298,15 @@ class StopNode(NodeAction):
     name = "stop"
     display = "Stop node"
     display_bulk = "Stop selected nodes"
-    actionable_statuses = (NODE_STATUS.DEPLOYED, )
+    actionable_statuses = (
+        [NODE_STATUS.DEPLOYED] +
+        # Also let a user ask a failed node to shutdown: this
+        # is useful to try to recover from power failures.
+        [
+            status for status in map_enum(NODE_STATUS).values()
+            if is_failed_status(status)
+        ]
+    )
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):
