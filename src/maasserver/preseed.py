@@ -145,7 +145,7 @@ def compose_curtin_network_preseed(node):
     the `maas_configure_interfaces` script to the node during installation, and
     running it.
     """
-    if node.osystem not in OS_WITH_IPv6_SUPPORT:
+    if node.get_osystem() not in OS_WITH_IPv6_SUPPORT:
         # Don't configure networking on this node.  It breaks.
         return []
 

@@ -806,8 +806,11 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
         self.expectThat(file_spec['content'], Equals(read_text_file(script)))
 
     def test__runs_script_if_supported_OS(self):
-        [_, late_commands_yaml] = compose_curtin_network_preseed(
-            factory.make_Node(osystem='ubuntu'))
+        node = factory.make_Node()
+        # Let the node default to Ubuntu, which is supported for IPv6.
+        node.osystem = ''
+        node.save()
+        [_, late_commands_yaml] = compose_curtin_network_preseed(node)
         late_commands = yaml.safe_load(late_commands_yaml)
         command = (
             late_commands['late_commands']['90_maas_configure_interfaces'])

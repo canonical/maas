@@ -551,7 +551,7 @@ class NodeView(NodeViewMixin, UpdateView):
 
         :return: Bool: should the UI show this warning?
         """
-        supported_os = (node.osystem in OS_WITH_IPv6_SUPPORT)
+        supported_os = (node.get_osystem() in OS_WITH_IPv6_SUPPORT)
         if supported_os and node.boot_type == NODE_BOOT.FASTPATH:
             # MAAS knows how to configure IPv6 addresses on an Ubuntu node
             # installed with the fast installer.  No warning needed.

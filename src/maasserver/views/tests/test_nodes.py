@@ -1349,6 +1349,16 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
             ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
         self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
 
+    def test__does_not_warn_for_default_ubuntu_with_fast_installer(self):
+        network = factory.make_ipv6_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            osystem='ubuntu', network=network, boot_type=NODE_BOOT.FASTPATH)
+        node.osystem = ''
+        node.save()
+        factory.make_StaticIPAddress(
+            ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
+        self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
+
     def test__does_not_warn_for_just_IPv4_address(self):
         network = factory.make_ipv4_network()
         osystem = choice(['windows', 'centos', 'suse'])
