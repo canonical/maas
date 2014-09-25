@@ -35,14 +35,16 @@ from django.http import (
     )
 from django.shortcuts import get_object_or_404
 from maasserver import locks
+from maasserver.bootsources import (
+    ensure_boot_source_definition,
+    get_boot_sources,
+    )
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
-    BootSource,
-    BootSourceSelection,
     Config,
     LargeFile,
     NodeGroup,
@@ -90,20 +92,6 @@ def get_simplestream_endpoint():
         'keyring_data': b'',
         'selections': [],
         }
-
-
-def ensure_boot_source_definition():
-    """Set default boot source if none is currently defined."""
-    if not BootSource.objects.exists():
-        source = BootSource.objects.create(
-            url='http://maas.ubuntu.com/images/ephemeral-v2/releases/',
-            keyring_filename=(
-                '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'))
-        # Default is to import newest Ubuntu LTS releases, for only amd64
-        # release versions only.
-        BootSourceSelection.objects.create(
-            boot_source=source, os='ubuntu', release='trusty',
-            arches=['amd64'], subarches=['*'], labels=['release'])
 
 
 class ConnectionWrapper:
@@ -898,7 +886,7 @@ def _import_resources(force=False):
             env['https_proxy'] = http_proxy
         with environment_variables(env), tempdir('keyrings') as keyrings_path:
             maaslog.info("Started importing of boot resources.")
-            sources = [source.to_dict() for source in BootSource.objects.all()]
+            sources = get_boot_sources()
             sources = write_all_keyrings(keyrings_path, sources)
 
             image_descriptions = download_all_image_descriptions(sources)

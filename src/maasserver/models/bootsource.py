@@ -60,11 +60,11 @@ class BootSource(CleanSave, TimestampedModel):
                 "Only one of keyring_filename or keyring_data can be "
                 "specified.")
 
-    def to_dict(self):
-        """Return the current `BootSource` as a dict.
+    def to_dict_without_selections(self):
+        """Return the current `BootSource` as a dict, without including any
+        `BootSourceSelection` items.
 
-        The dict will contain the details of the `BootSource` and all
-        its `BootSourceSelection` items.
+        The dict will contain the details of the `BootSource`.
 
         If the `BootSource` has keyring_data, that data will be returned
         base64 encoded. Otherwise the `BootSource` will have a value in
@@ -79,7 +79,23 @@ class BootSource(CleanSave, TimestampedModel):
         return {
             "url": self.url,
             "keyring_data": bytes(keyring_data),
-            "selections": [
-                selection.to_dict()
-                for selection in self.bootsourceselection_set.all()],
+            "selections": [],
             }
+
+    def to_dict(self):
+        """Return the current `BootSource` as a dict.
+
+        The dict will contain the details of the `BootSource` and all
+        its `BootSourceSelection` items.
+
+        If the `BootSource` has keyring_data, that data will be returned
+        base64 encoded. Otherwise the `BootSource` will have a value in
+        its keyring_filename field, and that file's contents will be
+        base64 encoded and returned.
+        """
+        data = self.to_dict_without_selections()
+        data['selections'] = [
+            selection.to_dict()
+            for selection in self.bootsourceselection_set.all()
+            ]
+        return data

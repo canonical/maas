@@ -32,7 +32,6 @@ from maasserver.bootresources import (
     BootResourceStore,
     download_all_boot_resources,
     download_boot_resources,
-    ensure_boot_source_definition,
     get_simplestream_endpoint,
     )
 from maasserver.enum import (
@@ -43,8 +42,6 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
-    BootSource,
-    BootSourceSelection,
     Config,
     LargeFile,
     )
@@ -66,10 +63,7 @@ from mock import (
     sentinel,
     )
 from provisioningserver.import_images.product_mapping import ProductMapping
-from testtools.matchers import (
-    ContainsAll,
-    HasLength,
-    )
+from testtools.matchers import ContainsAll
 
 
 def make_boot_resource_file_with_stream():
@@ -94,41 +88,6 @@ class TestHelpers(MAASServerTestCase):
                 kwargs={'filename': 'index.json'}),
             endpoint['url'])
         self.assertEqual([], endpoint['selections'])
-
-    def test_ensure_boot_source_definition_creates_default_source(self):
-        ensure_boot_source_definition()
-        sources = BootSource.objects.all()
-        self.assertThat(sources, HasLength(1))
-        [source] = sources
-        self.assertAttributes(
-            source,
-            {
-                'url': 'http://maas.ubuntu.com/images/ephemeral-v2/releases/',
-                'keyring_filename': (
-                    '/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg'),
-            })
-        selections = BootSourceSelection.objects.filter(boot_source=source)
-        by_release = {
-            selection.release: selection
-            for selection in selections
-            }
-        self.assertItemsEqual(['trusty'], by_release.keys())
-        self.assertAttributes(
-            by_release['trusty'],
-            {
-                'release': 'trusty',
-                'arches': ['amd64'],
-                'subarches': ['*'],
-                'labels': ['release'],
-            })
-
-    def test_ensure_boot_source_definition_skips_if_already_present(self):
-        sources = [
-            factory.make_BootSource()
-            for _ in range(3)
-            ]
-        ensure_boot_source_definition()
-        self.assertItemsEqual(sources, BootSource.objects.all())
 
 
 class TestSimpleStreamsHandler(MAASServerTestCase):

@@ -84,3 +84,12 @@ class TestBootSource(MAASServerTestCase):
         self.assertEqual(
             source['keyring_data'],
             keyring_data)
+
+    def test_to_dict_with_selections_returns_dict_without_selections(self):
+        boot_source = factory.make_BootSource(
+            keyring_data=b"123445", keyring_filename='')
+        factory.make_BootSourceSelection(boot_source=boot_source)
+        boot_source_dict = boot_source.to_dict_without_selections()
+        self.assertEqual(
+            [],
+            boot_source_dict['selections'])
