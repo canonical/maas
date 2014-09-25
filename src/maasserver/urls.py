@@ -40,6 +40,7 @@ from maasserver.views.clusters import (
     ClusterInterfaceEdit,
     ClusterListView,
     )
+from maasserver.views.images import ImagesView
 from maasserver.views.networks import (
     NetworkAdd,
     NetworkDelete,
@@ -259,6 +260,12 @@ urlpatterns += patterns(
 urlpatterns += patterns(
     'maasserver.views',
     url(r'^tags/(?P<name>[\w\-]+)/view/$', TagView.as_view(), name='tag-view'),
+)
+
+# Image views.
+urlpatterns += patterns(
+    'maasserver.views',
+    url(r'^images/$', ImagesView.as_view(), name='images'),
 )
 
 # Zone views.

@@ -77,6 +77,9 @@
                     <a href="{% url 'cluster-list' %}">Clusters</a>
                   </li>
                 {% endif %}
+                <li class="{% block nav-active-images %}{% endblock %}">
+                  <a href="{% url 'images' %}">Images</a>
+                </li>
                 <li class="{% block nav-active-zone-list %}{% endblock %}">
                   <a href="{% url 'zone-list' %}">Zones</a>
                 </li>

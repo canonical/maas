@@ -44,6 +44,7 @@ def static_resources(context):
             'css/components/table_list.css',
             'css/components/title_form.css',
             'css/components/blocks.css',
+            'css/components/fluid.css',
             'css/components/yui_panel.css',
             'css/components/yui_overlay.css',
             'css/components/yui_node_add.css',

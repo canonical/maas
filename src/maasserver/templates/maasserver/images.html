@@ -1,0 +1,64 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-images %}active{% endblock %}
+{% block title %}Boot Images{% endblock %}
+{% block page-title %}Boot Images in {% include "maasserver/site_title.html" %}{% endblock %}
+
+{% block html_includes %}{% include "maasserver/snippets.html" %}
+{% endblock %}
+
+{% block head %}
+  <style type="text/css">
+    form li {
+      margin-bottom: 2px;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    .section h2 {
+      padding-bottom: 5px;
+      border-bottom: 1px solid #e5e2e0;
+    }
+    .section .content {
+      margin-left: 10px;
+    }
+    .images-warning {
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      border: 1px solid #dd4814;
+      border-radius: 5px;
+      background-color: rgba(221, 72, 20, 0.3);
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+    <div id="ubuntu-images" class="section">
+      <h2>Ubuntu</h2>
+      <div class="content">
+        <form id="ubuntu_images"
+          method="POST"
+          action="{% url 'images' %}">
+          {% csrf_token %}
+          <input type="hidden" name="ubuntu_images" value="1" />
+          <div class="row space-top">
+            {% if not ubuntu_resources|length %}
+            <div id="missing-ubuntu-images" class="images-warning">
+              No Ubuntu images have been imported. Ubuntu images are required
+              to allow nodes to enlist, commission, and install.</div>
+            {% endif %}
+          </div>
+          <div class="clear"></div>
+          <div class="row space-top">
+            {% if user.is_superuser %}
+            <div class="col12 last align-right">
+              <input type="submit" class="button" value="Import boot images">
+            </div>
+            {% endif %}
+          </div>
+          <div class="clear"></div>
+        </form>
+      </div>
+    </div>
+{% endblock %}
