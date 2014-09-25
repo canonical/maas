@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "ensure_boot_source_definition",
     "get_simplestream_endpoint",
+    "is_import_resources_running",
     "simplestreams_file_handler",
     "simplestreams_stream_handler",
     "SIMPLESTREAMS_URL_REGEXP",
@@ -915,6 +916,11 @@ def import_resources():
     complete.
     """
     reactor.callFromThread(deferToThread, _import_resources, force=True)
+
+
+def is_import_resources_running():
+    """Return True if the import process is currently running."""
+    return locks.import_images.is_locked()
 
 
 class ImportResourcesService(TimerService, object):

@@ -51,6 +51,7 @@ def static_resources(context):
             'css/components/data_list.css',
             'css/components/search_box.css',
             'css/components/slider.css',
+            'css/components/spinner.css',
             'css/ubuntu-webfonts.css',
             'css/multiselect_widget.css',
         ],

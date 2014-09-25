@@ -84,4 +84,9 @@ def delete_large_file(sender, instance, **kwargs):
     relation been removed.
     """
     if sender == BootResourceFile:
-        instance.largefile.delete()
+        try:
+            largefile = instance.largefile
+        except LargeFile.DoesNotExist:
+            largefile = None
+        if largefile is not None:
+            largefile.delete()
