@@ -51,7 +51,10 @@ from maasserver.models import (
     Node,
     node as node_module,
     )
-from maasserver.models.node import validate_hostname
+from maasserver.models.node import (
+    PowerInfo,
+    validate_hostname,
+    )
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressManager,
@@ -92,9 +95,11 @@ from mock import (
     sentinel,
     )
 from provisioningserver.power.poweraction import UnknownPowerType
+from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
 from provisioningserver.rpc.exceptions import MultipleFailures
+from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
     always_succeed_with,
     TwistedLoggerFixture,
@@ -510,7 +515,7 @@ class NodeTest(MAASServerTestCase):
     def test_get_effective_power_info_is_False_for_unset_power_type(self):
         node = factory.make_Node(power_type="")
         self.assertEqual(
-            (False, False, None, None),
+            (False, False, False, None, None),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_is_True_for_set_power_type(self):
@@ -518,7 +523,8 @@ class NodeTest(MAASServerTestCase):
         gepp = self.patch(node, "get_effective_power_parameters")
         gepp.return_value = sentinel.power_parameters
         self.assertEqual(
-            (True, True, node.power_type, sentinel.power_parameters),
+            PowerInfo(
+                True, True, False, node.power_type, sentinel.power_parameters),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_False_for_ether_wake(self):
@@ -530,7 +536,7 @@ class NodeTest(MAASServerTestCase):
         # For ether_wake the power can never be turned off.
         gepp.return_value = {}
         self.assertEqual(
-            (False, False, "ether_wake", {}),
+            (False, False, False, "ether_wake", {}),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_can_be_True_for_ether_wake(self):
@@ -541,7 +547,36 @@ class NodeTest(MAASServerTestCase):
         # never be turned off.
         gepp.return_value = {"mac_address": sentinel.mac_addr}
         self.assertEqual(
-            (True, False, "ether_wake", {"mac_address": sentinel.mac_addr}),
+            (
+                True, False, False, "ether_wake",
+                {"mac_address": sentinel.mac_addr}
+            ),
+            node.get_effective_power_info())
+
+    def test_get_effective_power_info_cant_be_queried(self):
+        all_power_types = {
+            power_type_details['name']
+            for power_type_details in JSON_POWER_TYPE_PARAMETERS
+        }
+        uncontrolled_power_types = all_power_types.difference(
+            QUERY_POWER_TYPES)
+        power_type = random.choice(list(uncontrolled_power_types))
+        node = factory.make_Node(power_type=power_type)
+        gepp = self.patch(node, "get_effective_power_parameters")
+        self.assertEqual(
+            PowerInfo(
+                True, power_type != 'ether_wake', False, power_type,
+                gepp()),
+            node.get_effective_power_info())
+
+    def test_get_effective_power_info_can_be_queried(self):
+        power_type = random.choice(QUERY_POWER_TYPES)
+        node = factory.make_Node(power_type=power_type)
+        gepp = self.patch(node, "get_effective_power_parameters")
+        self.assertEqual(
+            PowerInfo(
+                True, power_type != 'ether_wake', True,
+                power_type, gepp()),
             node.get_effective_power_info())
 
     def test_get_effective_power_info_returns_named_tuple(self):
@@ -555,6 +590,7 @@ class NodeTest(MAASServerTestCase):
             MatchesStructure.byEquality(
                 can_be_started=True,
                 can_be_stopped=False,
+                can_be_queried=False,
                 power_type="ether_wake",
                 power_parameters={
                     "mac_address": sentinel.mac_addr,
@@ -657,15 +693,45 @@ class NodeTest(MAASServerTestCase):
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
 
-    def test_release_node_that_has_power_on(self):
+    def test_release_node_that_has_power_on_and_controlled_power_type(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
+        # Use a "controlled" power type (i.e. a power type for which we
+        # can query the status of the node).
+        power_type = random.choice(QUERY_POWER_TYPES)
         node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
+            power_type=power_type)
         node.power_state = POWER_STATE.ON
         node.release()
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.agent_name, Equals(''))
+        self.expectThat(node.token, Is(None))
+        self.expectThat(node.netboot, Is(True))
+        self.expectThat(node.osystem, Equals(''))
+        self.expectThat(node.distro_series, Equals(''))
+        self.expectThat(node.license_key, Equals(''))
+
+    def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        # Use an "uncontrolled" power type (i.e. a power type for which we
+        # cannot query the status of the node).
+        all_power_types = {
+            power_type_details['name']
+            for power_type_details in JSON_POWER_TYPE_PARAMETERS
+        }
+        uncontrolled_power_types = list(
+            all_power_types.difference(QUERY_POWER_TYPES))
+        power_type = random.choice(uncontrolled_power_types)
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
+            power_type=power_type)
+        node.power_state = POWER_STATE.ON
+        node.release()
+        self.expectThat(node.status, Equals(NODE_STATUS.READY))
+        self.expectThat(node.owner, Is(None))
         self.expectThat(node.agent_name, Equals(''))
         self.expectThat(node.token, Is(None))
         self.expectThat(node.netboot, Is(True))

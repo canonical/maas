@@ -112,6 +112,7 @@ from provisioningserver.rpc.cluster import (
     StartMonitors,
     )
 from provisioningserver.rpc.exceptions import MultipleFailures
+from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import reactor_sync
 from twisted.protocols import amp
@@ -164,7 +165,8 @@ def validate_hostname(hostname):
 
 # Return type from `get_effective_power_info`.
 PowerInfo = namedtuple("PowerInfo", (
-    "can_be_started", "can_be_stopped", "power_type", "power_parameters"))
+    "can_be_started", "can_be_stopped", "can_be_queried", "power_type",
+    "power_parameters"))
 
 
 class NodeManager(Manager):
@@ -1165,7 +1167,7 @@ class Node(CleanSave, TimestampedModel):
             power_type = self.get_effective_power_type()
         except UnknownPowerType:
             maaslog.warning("%s: Unrecognised power type.", self.hostname)
-            return PowerInfo(False, False, None, None)
+            return PowerInfo(False, False, False, None, None)
         else:
             if power_type == 'ether_wake':
                 mac = power_params.get('mac_address')
@@ -1174,8 +1176,9 @@ class Node(CleanSave, TimestampedModel):
             else:
                 can_be_started = True
                 can_be_stopped = True
+            can_be_queried = power_type in QUERY_POWER_TYPES
             return PowerInfo(
-                can_be_started, can_be_stopped,
+                can_be_started, can_be_stopped, can_be_queried,
                 power_type, power_params,
             )
 
@@ -1202,12 +1205,19 @@ class Node(CleanSave, TimestampedModel):
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
         if self.power_state == POWER_STATE.OFF:
+            # Node is already off.
             self.status = NODE_STATUS.READY
             self.owner = None
-        else:
-            # update_power_state() will take care of making the node READY
-            # and unowned when the power is finally off.
+        elif self.get_effective_power_info().can_be_queried:
+            # Controlled power type (one for which we can query the power
+            # state): update_power_state() will take care of making the node
+            # READY and unowned when the power is finally off.
             self.status = NODE_STATUS.RELEASING
+        else:
+            # Uncontrolled power type (one for which we can't query the power
+            # state): mark the node ready.
+            self.status = NODE_STATUS.READY
+            self.owner = None
         self.token = None
         self.agent_name = ''
         self.set_netboot()
