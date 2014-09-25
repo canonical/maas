@@ -80,6 +80,7 @@ from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
+    MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 from metadataserver.enum import RESULT_TYPE
@@ -1694,6 +1695,28 @@ class NodeManagerTest(MAASServerTestCase):
         node = factory.make_Node(netboot=True)
         node.set_netboot(False)
         self.assertFalse(node.netboot)
+
+    def test_release_or_erase_erases_when_enabled(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        Config.objects.set_config(
+            'enable_disk_erasing_on_release', True)
+        erase_mock = self.patch_autospec(node, 'start_disk_erasing')
+        release_mock = self.patch_autospec(node, 'release')
+        node.release_or_erase()
+        self.assertThat(erase_mock, MockCalledOnceWith(owner))
+        self.assertThat(release_mock, MockNotCalled())
+
+    def test_release_or_erase_releases_when_disabled(self):
+        owner = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        Config.objects.set_config(
+            'enable_disk_erasing_on_release', False)
+        erase_mock = self.patch_autospec(node, 'start_disk_erasing')
+        release_mock = self.patch_autospec(node, 'release')
+        node.release_or_erase()
+        self.assertThat(release_mock, MockCalledOnceWith())
+        self.assertThat(erase_mock, MockNotCalled())
 
 
 class NodeManagerTest_StartNodes(MAASServerTestCase):

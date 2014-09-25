@@ -1240,6 +1240,17 @@ class Node(CleanSave, TimestampedModel):
         self.license_key = ''
         self.save()
 
+    def release_or_erase(self):
+        """Either release the node or erase the node then release it, depending
+        on settings."""
+        erase_on_release = Config.objects.get_config(
+            'enable_disk_erasing_on_release')
+        if erase_on_release:
+            self.start_disk_erasing(self.owner)
+            return
+
+        self.release()
+
     def set_netboot(self, on=True):
         """Set netboot on or off."""
         maaslog.debug("%s: Turning on netboot for node", self.hostname)

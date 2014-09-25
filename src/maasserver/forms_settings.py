@@ -257,6 +257,15 @@ CONFIG_ITEMS = {
                 "using KMS activation.)")
         }
     },
+    'enable_disk_erasing_on_release': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Erase nodes' disks prior to releasing.")
+        }
+    },
 }
 
 

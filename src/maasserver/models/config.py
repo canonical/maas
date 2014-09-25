@@ -58,6 +58,7 @@ def get_default_config():
         'rpc_region_certificate': None,
         # Third Party
         'enable_third_party_drivers': True,
+        'enable_disk_erasing_on_release': False,
         ## /settings
         }
 

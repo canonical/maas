@@ -324,7 +324,7 @@ class NodeHandler(OperationsHandler):
             # postcondition is achieved, so call this success.
             pass
         elif node.status in RELEASABLE_STATUSES:
-            node.release()
+            node.release_or_erase()
         else:
             raise NodeStateViolation(
                 "Node cannot be released in its current state ('%s')."

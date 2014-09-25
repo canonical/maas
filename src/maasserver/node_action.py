@@ -330,7 +330,7 @@ class ReleaseNode(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.release()
+        self.node.release_or_erase()
         return dedent("""\
             This node is no longer allocated to you.
             """)
