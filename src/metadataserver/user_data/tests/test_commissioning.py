@@ -24,7 +24,7 @@ from mock import Mock
 from testtools.matchers import ContainsAll
 
 
-class TestUserData(MAASServerTestCase):
+class TestCommissioningUserData(MAASServerTestCase):
 
     def test_generate_user_data_produces_commissioning_script(self):
         # generate_user_data produces a commissioning script which contains

@@ -1,0 +1,132 @@
+#!/bin/sh
+#
+# This script carries inside it multiple files.  When executed, it creates
+# the files into a temporary directory, then uses them to report status
+# back to MAAS.
+
+#### script setup ######
+TEMP_D=$(mktemp -d "${TMPDIR:-/tmp}/${0##*/}.XXXXXX")
+BIN_D="${TEMP_D}/bin"
+OUT_D="${TEMP_D}/out"
+PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+trap cleanup EXIT
+
+mkdir -p "$BIN_D" "$OUT_D"
+
+add_bin() {
+   cat > "${BIN_D}/$1"
+   chmod "${2:-755}" "${BIN_D}/$1"
+}
+
+cleanup() {
+   [ -n "${TEMP_D}" ] || rm -Rf "${TEMP_D}"
+}
+
+find_creds_cfg() {
+   local config="" file="" found=""
+
+   # If the config location is set in environment variable, trust it.
+   [ -n "${COMMISSIONING_CREDENTIALS_URL}" ] &&
+      _RET="${COMMISSIONING_CREDENTIALS_URL}" && return
+
+   # Go looking for local files written by cloud-init.
+   for file in /etc/cloud/cloud.cfg.d/*cmdline*.cfg; do
+      [ -f "$file" ] && _RET="$file" && return
+   done
+
+   local opt="" cmdline=""
+   if [ -f /proc/cmdline ] && read cmdline < /proc/cmdline; then
+      # Search through /proc/cmdline arguments:
+      # cloud-config-url trumps url=
+      for opt in $cmdline; do
+         case "$opt" in
+            url=*)
+               found=${opt#url=};;
+            cloud-config-url=*)
+               _RET="${opt#*=}"
+               return 0;;
+         esac
+      done
+      [ -n "$found" ] && _RET="$found" && return 0
+   fi
+   return 1
+}
+
+# Invoke the "signal()" API call to report progress.
+# Usage: signal <status> <message>
+signal() {
+   maas-signal "--config=${CRED_CFG}" "$@"
+}
+
+fail() {
+   [ -z "$CRED_CFG" ] || signal FAILED "$1"
+   echo "FAILED: $1" 1>&2;
+   exit 1
+}
+
+write_poweroff_job() {
+   cat >/etc/init/maas-poweroff.conf <<EOF
+   description "poweroff when maas task is done"
+   start on stopped cloud-final
+   console output
+   task
+   script
+     [ ! -e /tmp/block-poweroff ] || exit 0
+     poweroff
+   end script
+EOF
+   # reload required due to lack of inotify in overlayfs (LP: #882147)
+   initctl reload-configuration
+}
+
+erase_disks() {
+   for disk in `lsblk -d -n -oKNAME,TYPE,RO | grep '^\w*\s*disk\s*0' | awk {'print $1'}`
+   do
+      echo "Erasing $disk"
+      bytes=$(blockdev --getsize64 /dev/$disk)
+      head -c $bytes /dev/zero > /dev/$disk
+   done
+}
+
+main() {
+   write_poweroff_job
+
+   # The main function, actually execute stuff that is written below.
+   local creds=""
+
+   find_creds_cfg ||
+      fail "failed to find credential config"
+   creds="$_RET"
+
+   # Get remote credentials into a local file.
+   case "$creds" in
+      http://*|https://*)
+         wget "$creds" -O "${TEMP_D}/my.creds" ||
+            fail "failed to get credentials from $cred_cfg"
+         creds="${TEMP_D}/my.creds"
+         ;;
+   esac
+
+   # Use global name read by signal() and fail.
+   CRED_CFG="$creds"
+   
+   set -e -u
+
+   echo "Erasing disks."
+   erase_disks
+  
+   signal OK "Disks erased."
+}
+
+### begin writing files ###
+
+add_bin "maas_api_helper.py" <<"END_MAAS_API_HELPER"
+{{maas_api_helper_py}}
+END_MAAS_API_HELPER
+
+add_bin "maas-signal" <<"END_MAAS_SIGNAL"
+{{maas_signal_py}}
+END_MAAS_SIGNAL
+
+main
+exit
