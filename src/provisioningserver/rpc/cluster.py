@@ -189,7 +189,7 @@ class _Power(amp.Command):
         PowerActionFail: (
             b"PowerActionFail"),
         exceptions.PowerActionAlreadyInProgress: (
-            "PowerActionAlreadyInProgress"),
+            b"PowerActionAlreadyInProgress"),
     }
 
 

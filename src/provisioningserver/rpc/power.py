@@ -140,15 +140,22 @@ def power_change_starting(system_id, hostname, power_change):
 default_waiting_policy = (1, 1, 1, 1, 1, 3, 5)
 
 
-@asynchronous
 @inlineCallbacks
-def change_power_state(system_id, hostname, power_type, power_change, context,
-                       clock=reactor):
-    """Change the power state of a node.
+@asynchronous
+def maybe_change_power_state(system_id, hostname, power_type,
+                             power_change, context, clock=reactor):
+    """Attempt to change the power state of a node.
 
-    Monitor the result of the power change action by querying the
-    power state of the node and mark the node as failed if it doesn't
-    work.
+    If there is no power action already in progress, register this
+    action and then pass change_power_state() to the reactor to call
+    later and then return.
+
+    This function exists to guarantee that PowerActionAlreadyInProgress
+    errors will be raised promptly, before any work is done to power the
+    node on.
+
+    :raises: PowerActionAlreadyInProgress if there's already a power
+    action in progress for this node.
     """
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
@@ -162,8 +169,23 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
             (registered_power_action, system_id))
     power_action_registry[system_id] = power_change
 
+    yield power_change_starting(system_id, hostname, power_change)
+    clock.callLater(
+        0, change_power_state, system_id, hostname, power_type,
+        power_change, context, clock=clock)
+
+
+@asynchronous
+@inlineCallbacks
+def change_power_state(system_id, hostname, power_type, power_change, context,
+                       clock=reactor):
+    """Change the power state of a node.
+
+    Monitor the result of the power change action by querying the
+    power state of the node and mark the node as failed if it doesn't
+    work.
+    """
     try:
-        yield power_change_starting(system_id, hostname, power_change)
         # Use increasing waiting times to work around race conditions
         # that could arise when power-cycling the node.
         for waiting_time in default_waiting_policy:

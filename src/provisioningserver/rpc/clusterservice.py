@@ -67,8 +67,8 @@ from provisioningserver.rpc.osystems import (
     validate_license_key,
     )
 from provisioningserver.rpc.power import (
-    change_power_state,
     get_power_state,
+    maybe_change_power_state,
     )
 from provisioningserver.rpc.tags import evaluate_tag
 from provisioningserver.utils.network import find_ip_via_arp
@@ -183,7 +183,7 @@ class Cluster(RPCProtocol):
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):
         """Turn a node on."""
-        change_power_state(
+        maybe_change_power_state(
             system_id, hostname, power_type, power_change='on',
             context=context)
         return {}
@@ -192,7 +192,7 @@ class Cluster(RPCProtocol):
     @cluster.PowerOff.responder
     def power_off(self, system_id, hostname, power_type, context):
         """Turn a node off."""
-        change_power_state(
+        maybe_change_power_state(
             system_id, hostname, power_type, power_change='off',
             context=context)
         return {}

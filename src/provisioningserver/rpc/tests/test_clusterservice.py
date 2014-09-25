@@ -987,8 +987,9 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         responder = protocol.locateResponder(self.command.commandName)
         self.assertIsNot(responder, None)
 
-    def test_executes_change_power_state(self):
-        change_power_state = self.patch(clusterservice, "change_power_state")
+    def test_executes_maybe_change_power_state(self):
+        maybe_change_power_state = self.patch(
+            clusterservice, "maybe_change_power_state")
 
         system_id = factory.make_name("system_id")
         hostname = factory.make_name("hostname")
@@ -1006,14 +1007,14 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
 
         def check(response):
             self.assertThat(
-                change_power_state,
+                maybe_change_power_state,
                 MockCalledOnceWith(
                     system_id, hostname, power_type,
                     power_change=self.expected_power_change, context=context))
         return d.addCallback(check)
 
     def test_power_on_can_propagate_UnknownPowerType(self):
-        self.patch(clusterservice, "change_power_state").side_effect = (
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
             UnknownPowerType)
 
         d = call_responder(Cluster(), self.command, {
@@ -1029,7 +1030,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         return d.addErrback(check)
 
     def test_power_on_can_propagate_NotImplementedError(self):
-        self.patch(clusterservice, "change_power_state").side_effect = (
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
             NotImplementedError)
 
         d = call_responder(Cluster(), self.command, {
@@ -1045,7 +1046,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         return d.addErrback(check)
 
     def test_power_on_can_propagate_PowerActionFail(self):
-        self.patch(clusterservice, "change_power_state").side_effect = (
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
             PowerActionFail)
 
         d = call_responder(Cluster(), self.command, {
@@ -1061,7 +1062,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
         return d.addErrback(check)
 
     def test_power_on_can_propagate_PowerActionAlreadyInProgress(self):
-        self.patch(clusterservice, "change_power_state").side_effect = (
+        self.patch(clusterservice, "maybe_change_power_state").side_effect = (
             exceptions.PowerActionAlreadyInProgress)
 
         d = call_responder(Cluster(), self.command, {

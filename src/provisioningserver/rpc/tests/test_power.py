@@ -43,6 +43,7 @@ from provisioningserver.rpc import (
     region,
     )
 from provisioningserver.rpc.testing import (
+    always_succeed_with,
     MockClusterToRegionRPCFixture,
     MockLiveClusterToRegionRPCFixture,
     )
@@ -205,7 +206,7 @@ class TestPowerHelpers(MAASTestCase):
         )
 
 
-class TestChangePowerChange(MAASTestCase):
+class TestChangePowerState(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
@@ -251,6 +252,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
+        power.power_action_registry[system_id] = power_change
         # Patch the power action utility so that it says the node is
         # in the required power state.
         power_action, execute = self.patch_power_action(
@@ -281,6 +283,7 @@ class TestChangePowerChange(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        power.power_action_registry[system_id] = power_change
         self.patch(power, 'pause')
         power_action, execute = self.patch_power_action(
             return_value=random.choice(['on', 'off']))
@@ -308,6 +311,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
+        power.power_action_registry[system_id] = power_change
         # Simulate a failure to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'on'])
@@ -337,6 +341,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
+        power.power_action_registry[system_id] = power_change
         # Simulate a persistent failure.
         power_action, execute = self.patch_power_action(return_value='off')
         markNodeBroken = yield self.patch_rpc_methods()
@@ -365,6 +370,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
+        power.power_action_registry[system_id] = power_change
         # Simulate an exception.
         exception_message = factory.make_name('exception')
         power_action, execute = self.patch_power_action(
@@ -389,6 +395,7 @@ class TestChangePowerChange(MAASTestCase):
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')
         }
+        power.power_action_registry[system_id] = power_change
         # Simulate two failures to power up the node, then a success.
         power_action, execute = self.patch_power_action(
             side_effect=[None, 'off', None, 'off', None, 'on'])
@@ -411,35 +418,6 @@ class TestChangePowerChange(MAASTestCase):
         ))
 
     @inlineCallbacks
-    def test_change_power_state_adds_action_to_registry(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'pause')
-        self.patch(power, 'power_action_registry')
-        # You'd think we could just patch __setitem___ but on a dict
-        # that's read-only, so we just make get() act like there's
-        # nothing there instead. We need get to return None since we
-        # want it to behave like there's no power action already in the
-        # registry.
-        power.power_action_registry.get.return_value = None
-        # Patch the power action utility so that it doesn't actually try
-        # to do anything.
-        power_action, execute = self.patch_power_action(
-            return_value=power_change)
-        yield self.patch_rpc_methods()
-
-        yield power.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            power.power_action_registry.__setitem__,
-            MockCalledOnceWith(system_id, power_change))
-
-    @inlineCallbacks
     def test_change_power_state_removes_action_from_registry_on_success(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -449,13 +427,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        self.patch(power, 'power_action_registry')
-        # You'd think we could just patch __setitem___ but on a dict
-        # that's read-only, so we just make get() act like there's
-        # nothing there instead. We need get to return None since we
-        # want it to behave like there's no power action already in the
-        # registry.
-        power.power_action_registry.get.return_value = None
+        power.power_action_registry[system_id] = power_change
         # Patch the power action utility so that it doesn't actually try
         # to do anything.
         power_action, execute = self.patch_power_action(
@@ -464,9 +436,7 @@ class TestChangePowerChange(MAASTestCase):
 
         yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            power.power_action_registry.__delitem__,
-            MockCalledOnceWith(system_id))
+        self.assertNotIn(system_id, power.power_action_registry.keys())
 
     @inlineCallbacks
     def test_change_power_state_removes_action_from_registry_on_failure(self):
@@ -478,20 +448,14 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        self.patch(power, 'power_action_registry')
-        # You'd think we could just patch __setitem___ but on a dict
-        # that's read-only, so we just make get() act like there's
-        # nothing there instead.
-        power.power_action_registry.get.return_value = None
+        power.power_action_registry[system_id] = power_change
         # Simulate a persistent failure.
         power_action, execute = self.patch_power_action(return_value='off')
         yield self.patch_rpc_methods()
 
         yield power.change_power_state(
             system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            power.power_action_registry.__delitem__,
-            MockCalledOnceWith(system_id))
+        self.assertNotIn(system_id, power.power_action_registry.keys())
 
     @inlineCallbacks
     def test_change_power_state_removes_action_from_registry_on_error(self):
@@ -503,10 +467,7 @@ class TestChangePowerChange(MAASTestCase):
             factory.make_name('context-key'): factory.make_name('context-val')
         }
         self.patch(power, 'pause')
-        self.patch(power, 'power_action_registry')
-        # Can't patch __setitem__ - dict won't allow it - so patch get()
-        # instead.
-        power.power_action_registry.get.return_value = None
+        power.power_action_registry[system_id] = power_change
         # Simulate an exception.
         exception_message = factory.make_name('exception')
         power_action, execute = self.patch_power_action(
@@ -517,30 +478,7 @@ class TestChangePowerChange(MAASTestCase):
             yield power.change_power_state(
                 system_id, hostname, power_type, power_change, context)
 
-        self.assertThat(
-            power.power_action_registry.__delitem__,
-            MockCalledOnceWith(system_id))
-
-    @inlineCallbacks
-    def test_change_power_state_errors_when_change_already_registered(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'pause')
-        # Patch the power action utility so that it says the node is
-        # in the required power state.
-        power_action, execute = self.patch_power_action(
-            return_value=power_change)
-        yield self.patch_rpc_methods()
-
-        power.power_action_registry[system_id] = power_change
-        with ExpectedException(exceptions.PowerActionAlreadyInProgress):
-            yield power.change_power_state(
-                system_id, hostname, power_type, power_change, context)
+        self.assertNotIn(system_id, power.power_action_registry.keys())
 
 
 class TestPowerQuery(MAASTestCase):
@@ -898,3 +836,94 @@ class TestPowerQueryAsync(MAASTestCase):
             hostname-...: Could not update power status; no such node.
             """,
             maaslog.output)
+
+
+class TestMaybeChangePowerState(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def patch_methods_using_rpc(self):
+        self.patch_autospec(power, 'power_change_starting')
+        power.power_change_starting.side_effect = always_succeed_with(None)
+
+        def change_power_state(system_id, *args, **kwargs):
+            del power.power_action_registry[system_id]
+
+        self.patch_autospec(power, 'change_power_state')
+        power.change_power_state.side_effect = change_power_state
+
+    @inlineCallbacks
+    def test_adds_action_to_registry(self):
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertEqual(
+            {system_id: power_change},
+            power.power_action_registry)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertEqual({}, power.power_action_registry)
+
+    @inlineCallbacks
+    def test_errors_when_change_already_registered(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        power.power_action_registry[system_id] = power_change
+        with ExpectedException(exceptions.PowerActionAlreadyInProgress):
+            yield power.maybe_change_power_state(
+                system_id, hostname, power_type, power_change, context)
+
+    @inlineCallbacks
+    def test_calls_power_change_starting(self):
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertThat(
+            power.power_change_starting,
+            MockCalledOnceWith(system_id, hostname, power_change))
+
+        reactor.runUntilCurrent()  # Run all delayed calls.
+
+    @inlineCallbacks
+    def test_calls_change_power_state_later(self):
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertThat(
+            power.change_power_state,
+            MockCalledOnceWith(
+                system_id, hostname, power_type, power_change, context,
+                clock=power.reactor))
