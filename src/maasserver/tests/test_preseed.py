@@ -1193,6 +1193,11 @@ class TestCurtinUtilities(
         self.assertEqual(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
+    def test_get_preseed_type_for_disk_erasing(self):
+        node = factory.make_Node(status=NODE_STATUS.DISK_ERASING)
+        self.assertEqual(
+            PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
+
     def test_get_preseed_type_for_default(self):
         node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
         self.configure_get_boot_images_for_node(node, 'install')
@@ -1321,6 +1326,12 @@ class TestPreseedMethods(
     def test_get_preseed_returns_commissioning_preseed(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, status=NODE_STATUS.COMMISSIONING)
+        preseed = get_preseed(node)
+        self.assertIn('#cloud-config', preseed)
+
+    def test_get_preseed_returns_commissioning_preseed_for_disk_erasing(self):
+        node = factory.make_Node(
+            nodegroup=self.rpc_nodegroup, status=NODE_STATUS.DISK_ERASING)
         preseed = get_preseed(node)
         self.assertIn('#cloud-config', preseed)
 

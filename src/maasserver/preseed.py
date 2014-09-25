@@ -39,7 +39,6 @@ from maasserver.compose_preseed import (
     )
 from maasserver.enum import (
     NODE_BOOT,
-    NODE_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     PRESEED_TYPE,
     USERDATA_TYPE,
@@ -53,6 +52,7 @@ from maasserver.models import (
     Config,
     DHCPLease,
     )
+from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils import absolute_reverse
@@ -338,7 +338,7 @@ def get_preseed_type_for(node):
     using the default installer but there is no boot image that supports
     that method then it will boot using the fast-path installer.
     """
-    if node.status == NODE_STATUS.COMMISSIONING:
+    if node.status in COMMISSIONING_LIKE_STATUSES:
         return PRESEED_TYPE.COMMISSIONING
     if node.boot_type == NODE_BOOT.FASTPATH:
         purpose_order = ['xinstall', 'install']
@@ -359,16 +359,17 @@ def get_preseed_type_for(node):
 
 
 def get_preseed(node):
-    """Return the preseed for a given node.  Depending on the node's status
-    this will be a commissioning preseed (if the node is commissioning) or an
-    install preseed (normal installation preseed or curtin preseed).
+    """Return the preseed for a given node. Depending on the node's
+    status this will be a commissioning preseed (if the node is
+    commissioning or disk erasing) or an install preseed (normal
+    installation preseed or curtin preseed).
 
     :param node: The node to return preseed for.
     :type node: :class:`maasserver.models.Node`
     :return: The rendered preseed string.
     :rtype: unicode.
     """
-    if node.status == NODE_STATUS.COMMISSIONING:
+    if node.status in COMMISSIONING_LIKE_STATUSES:
         return render_preseed(
             node, PRESEED_TYPE.COMMISSIONING,
             osystem=Config.objects.get_config('commissioning_osystem'),

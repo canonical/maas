@@ -693,6 +693,19 @@ class NodeTest(MAASServerTestCase):
             (user, NODE_STATUS.ALLOCATED, agent_name),
             (node.owner, node.status, node.agent_name))
 
+    def test_start_disk_erasing_changes_state_and_starts_node(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        start_nodes = self.patch(Node.objects, "start_nodes")
+        node.start_disk_erasing(owner)
+        self.assertEqual(
+            (owner, NODE_STATUS.DISK_ERASING, agent_name),
+            (node.owner, node.status, node.agent_name))
+        self.assertThat(start_nodes, MockCalledOnceWith(
+            [node.system_id], owner, user_data=ANY))
+
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
@@ -1412,6 +1425,7 @@ class NodeTest(MAASServerTestCase):
         options = [
             ("poweroff", {"status": NODE_STATUS.NEW}),
             ("commissioning", {"status": NODE_STATUS.COMMISSIONING}),
+            ("commissioning", {"status": NODE_STATUS.DISK_ERASING}),
             ("poweroff", {"status": NODE_STATUS.FAILED_COMMISSIONING}),
             ("poweroff", {"status": NODE_STATUS.MISSING}),
             ("poweroff", {"status": NODE_STATUS.READY}),

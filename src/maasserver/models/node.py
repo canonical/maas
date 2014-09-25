@@ -94,6 +94,7 @@ from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
 from maasserver.node_status import (
+    COMMISSIONING_LIKE_STATUSES,
     get_failed_status,
     is_failed_status,
     NODE_TRANSITIONS,
@@ -1193,6 +1194,19 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         maaslog.info("%s allocated to user %s", self.hostname, user.username)
 
+    def start_disk_erasing(self, user):
+        """Erase the disks on a node."""
+        # Avoid circular imports.
+        from metadataserver.user_data.disk_erasing import generate_user_data
+
+        disk_erase_user_data = generate_user_data(node=self)
+        self.status = NODE_STATUS.DISK_ERASING
+        self.save()
+        maaslog.info(
+            "%s: Starting disk erasing", self.hostname)
+        Node.objects.start_nodes(
+            [self.system_id], user, user_data=disk_erase_user_data)
+
     def release(self):
         """Mark allocated or reserved node as available again and power off.
 
@@ -1354,9 +1368,13 @@ class Node(CleanSave, TimestampedModel):
         # commissioning - both of which will use the "ephemeral"
         # environment - will be governed by varying the preseed or PXE
         # configuration.
-        if self.status == NODE_STATUS.COMMISSIONING:
-            # It is commissioning.
+        if self.status in COMMISSIONING_LIKE_STATUSES:
+            # It is commissioning or disk erasing. The environment (boot
+            # images, kernel options, etc for erasing is the same as that
+            # of commissioning.
             return "commissioning"
+        elif self.status == NODE_STATUS.DISK_ERASING:
+            return "disk_erasing"
         elif self.status == NODE_STATUS.DEPLOYING:
             # Install the node if netboot is enabled,
             # otherwise boot locally.

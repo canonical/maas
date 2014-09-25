@@ -324,7 +324,8 @@ class ReleaseNode(NodeAction):
     display_bulk = "Release selected nodes"
     actionable_statuses = (
         NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
-        NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT)
+        NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.FAILED_DISK_ERASING)
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):

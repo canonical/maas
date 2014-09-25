@@ -188,7 +188,14 @@ class VersionIndexHandler(MetadataViewHandler):
         NODE_STATUS.DEPLOYING,
         NODE_STATUS.FAILED_DEPLOYMENT,
         NODE_STATUS.READY,
+        NODE_STATUS.DISK_ERASING,
         ]
+
+    effective_signalable_states = [
+        NODE_STATUS.COMMISSIONING,
+        NODE_STATUS.DEPLOYING,
+        NODE_STATUS.DISK_ERASING,
+    ]
 
     # Statuses that a commissioning node may signal, and the respective
     # state transitions that they trigger on the node.
@@ -259,12 +266,13 @@ class VersionIndexHandler(MetadataViewHandler):
                 "Node wasn't commissioning/installing (status is %s)"
                 % NODE_STATUS_CHOICES_DICT[node.status])
 
+        # These statuses are acceptable for commissioning, disk erasing,
+        # and deploying.
         if status not in self.signaling_statuses:
             raise MAASAPIBadRequest(
                 "Unknown commissioning/installing status: '%s'" % status)
 
-        if node.status != NODE_STATUS.COMMISSIONING and \
-           node.status != NODE_STATUS.DEPLOYING:
+        if node.status not in self.effective_signalable_states:
             # If commissioning, it is already registered.  Nothing to be done.
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
@@ -277,6 +285,13 @@ class VersionIndexHandler(MetadataViewHandler):
             self._store_installing_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
                 node.mark_failed("Failed to get installation result.")
+            target_status = None
+        elif node.status == NODE_STATUS.DISK_ERASING:
+            if status == SIGNAL_STATUS.OK:
+                # disk erasing complete, release node
+                node.release()
+            elif status == SIGNAL_STATUS.FAILED:
+                node.mark_failed("Failed to erase disks.")
             target_status = None
 
         if target_status in (None, node.status):

@@ -347,7 +347,19 @@ class TestStopNodeNodeAction(MAASServerTestCase):
         self.assertItemsEqual([StopNode.name], actions)
 
 
+ACTIONABLE_STATUSES = [
+    NODE_STATUS.DEPLOYING,
+    NODE_STATUS.FAILED_DEPLOYMENT,
+    NODE_STATUS.FAILED_DISK_ERASING,
+]
+
+
 class TestReleaseNodeNodeAction(MAASServerTestCase):
+
+    scenarios = [
+        (NODE_STATUS_CHOICES_DICT[status], dict(actionable_status=status))
+        for status in ACTIONABLE_STATUSES
+    ]
 
     def test_ReleaseNode_stops_and_releases_node(self):
         user = factory.make_User()
@@ -356,7 +368,7 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             power_user=factory.make_string(),
             power_pass=factory.make_string())
         node = factory.make_Node(
-            mac=True, status=NODE_STATUS.DEPLOYED,
+            mac=True, status=self.actionable_status,
             power_type='ipmi',
             owner=user, power_parameters=params)
         stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")

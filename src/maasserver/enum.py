@@ -79,6 +79,10 @@ class NODE_STATUS:
     RELEASING = 12
     #: The node failed a power check in the READY status.
     FAILED_READY_POWER = 13
+    #: The node is erasing its disks.
+    DISK_ERASING = 14
+    #: The node failed to erase its disks.
+    FAILED_DISK_ERASING = 15
 
 
 # Django choices for NODE_STATUS: sequence of tuples (key, UI
@@ -98,6 +102,8 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.FAILED_DEPLOYMENT, "Failed deployment"),
     (NODE_STATUS.RELEASING, "Releasing"),
     (NODE_STATUS.FAILED_READY_POWER, "Power controller problem"),
+    (NODE_STATUS.DISK_ERASING, "Disk erasing"),
+    (NODE_STATUS.FAILED_DISK_ERASING, "Failed disk erasing"),
 )
 
 

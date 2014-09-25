@@ -839,6 +839,27 @@ class TestCommissioningAPI(MAASServerTestCase):
             (response.status_code, response.content))
 
 
+class TestDiskErasingAPI(MAASServerTestCase):
+
+    def test_signaling_erasing_failure_makes_node_failed_erasing(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
+
+    def test_signaling_erasing_ok_releases_node(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=factory.make_User())
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.READY, reload_object(node).status)
+
+
 class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_retrieves_node_metadata_by_mac(self):
