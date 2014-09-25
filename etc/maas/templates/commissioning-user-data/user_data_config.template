@@ -5,12 +5,19 @@ apt_proxy: {{http_proxy}}
 apt_proxy: http://{{server_host}}:8000/
 {{endif}}
 
-{{if node.split_arch()[0] in {'i386', 'amd64'} }}
-apt_mirrors:
-  ubuntu_archive: http://{{main_archive_hostname}}/{{main_archive_directory}}
-  ubuntu_security: http://{{main_archive_hostname}}/{{main_archive_directory}}
-{{else}}
-apt_mirrors:
-  ubuntu_archive: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
-  ubuntu_security: http://{{ports_archive_hostname}}/{{ports_archive_directory}}
-{{endif}}
+system_info:
+   package_mirrors:
+     - arches: [i386, amd64]
+       search:
+         primary:  ["http://{{main_archive_hostname}}/{{main_archive_directory}}"]
+         security: ["http://{{main_archive_hostname}}/{{main_archive_directory}}"]
+       failsafe:
+         primary:  "http://archive.ubuntu.com/ubuntu"
+         security: "http://security.ubuntu.com/ubuntu"
+     - arches: [default]
+       search:
+         primary:  ["http://{{ports_archive_hostname}}/{{ports_archive_directory}}"]
+         security: ["http://{{ports_archive_hostname}}/{{ports_archive_directory}}"]
+       failsafe:
+         primary:  "http://ports.ubuntu.com/ubuntu-ports"
+         security: "http://ports.ubuntu.com/ubuntu-ports"
