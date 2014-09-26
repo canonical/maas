@@ -27,6 +27,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
     )
+from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -63,6 +64,19 @@ class UbuntuImagesTest(MAASServerTestCase):
         return factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture=architecture)
+
+    def make_uploaded_resource(self, name=None):
+        if name is None:
+            name = factory.make_name('name')
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=name, architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
 
     def test_shows_connection_error(self):
         self.client_log_in(as_admin=True)
@@ -311,3 +325,68 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
+
+    def test_shows_no_custom_images_message(self):
+        self.client_log_in()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        warnings = doc.cssselect('div#no-custom-images')
+        self.assertEqual(1, len(warnings))
+
+    def test_shows_uploaded_resources(self):
+        self.client_log_in()
+        names = [factory.make_name('name') for _ in range(3)]
+        [self.make_uploaded_resource(name) for name in names]
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        table_content = doc.cssselect(
+            'table#uploaded-resources')[0].text_content()
+        self.assertThat(table_content, ContainsAll(names))
+
+    def test_shows_delete_button_for_uploaded_resource(self):
+        self.client_log_in(as_admin=True)
+        self.make_uploaded_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        delete_btn = doc.cssselect(
+            'table#uploaded-resources > tbody > tr > td > '
+            'a[title="Delete image"]')
+        self.assertEqual(1, len(delete_btn))
+
+    def test_hides_delete_button_for_uploaded_resource_when_not_admin(self):
+        self.client_log_in()
+        self.make_uploaded_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        delete_btn = doc.cssselect(
+            'table#uploaded-resources > tbody > tr > td > '
+            'a[title="Delete image"]')
+        self.assertEqual(0, len(delete_btn))
+
+
+class TestImageDelete(MAASServerTestCase):
+
+    def test_non_admin_cannot_delete(self):
+        self.client_log_in()
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        response = self.client.post(
+            reverse('image-delete', args=[resource.id]))
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertIsNotNone(reload_object(resource))
+
+    def test_deletes_resource(self):
+        self.client_log_in(as_admin=True)
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        response = self.client.post(
+            reverse('image-delete', args=[resource.id]),
+            {'post': 'yes'})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertIsNone(reload_object(resource))
+
+    def test_redirects_to_images(self):
+        self.client_log_in(as_admin=True)
+        resource = factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        response = self.client.post(
+            reverse('image-delete', args=[resource.id]),
+            {'post': 'yes'})
+        self.assertEqual(reverse('images'), extract_redirect(response))

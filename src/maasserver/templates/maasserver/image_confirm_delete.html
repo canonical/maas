@@ -1,0 +1,22 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-images %}active{% endblock %}
+{% block title %}Delete custom image{% endblock %}
+{% block page-title %}Delete custom image{% endblock %}
+
+{% block content %}
+    <div class="block auto-width">
+        <h2>
+          Are you sure you want to delete custom image
+      "{{ image_to_delete.title }} ({{ image_to_delete.architecture }})"?
+        </h2>
+        <p>This action is permanent and can not be undone.</p>
+        <p>
+          <form action="." method="post">{% csrf_token %}
+            <input type="hidden" name="post" value="yes" />
+            <input type="submit" value="Delete image" class="right" />
+            <a href="{% url 'images' %}">Cancel</a>
+          </form>
+        </p>
+    </div>
+{% endblock %}

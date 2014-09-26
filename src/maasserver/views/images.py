@@ -14,15 +14,18 @@ str = None
 __metaclass__ = type
 __all__ = [
     "ImagesView",
+    "ImageDeleteView",
     ]
 
 
 from distro_info import UbuntuDistroInfo
+from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from django.shortcuts import get_object_or_404
 from django.views.generic.base import TemplateView
 from django.views.generic.edit import (
     FormMixin,
@@ -43,6 +46,7 @@ from maasserver.models import (
     Config,
     Node,
     )
+from maasserver.views import HelpfulDeleteView
 from requests import ConnectionError
 
 
@@ -116,6 +120,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         context['ubuntu_releases'] = self.format_ubuntu_releases()
         context['ubuntu_arches'] = self.format_ubuntu_arches()
         context['ubuntu_resources'] = self.get_ubuntu_resources()
+        context['uploaded_resources'] = self.get_uploaded_resources()
         return context
 
     def post(self, request, *args, **kwargs):
@@ -291,3 +296,51 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
 
         # Start the import process, now that the selections have changed.
         import_resources()
+
+    def get_uploaded_resources(self):
+        """Return all uploaded resources, for usage in the template."""
+        resources = list(BootResource.objects.filter(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED).order_by(
+            'name', 'architecture'))
+        for resource in resources:
+            if 'title' in resource.extra:
+                resource.title = resource.extra['title']
+            else:
+                resource.title = resource.name
+            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
+                resource)
+            self.add_resource_template_attributes(resource)
+        return resources
+
+
+class ImageDeleteView(HelpfulDeleteView):
+
+    template_name = 'maasserver/image_confirm_delete.html'
+    context_object_name = 'image_to_delete'
+    model = BootResource
+
+    def post(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            raise PermissionDenied()
+        return super(ImageDeleteView, self).post(request, *args, **kwargs)
+
+    def get_object(self):
+        resource_id = self.kwargs.get('resource_id', None)
+        resource = get_object_or_404(BootResource, id=resource_id)
+        if resource.rtype != BOOT_RESOURCE_TYPE.UPLOADED:
+            raise PermissionDenied()
+        if 'title' in resource.extra:
+            resource.title = resource.extra['title']
+        else:
+            resource.title = resource.name
+        return resource
+
+    def get_next_url(self):
+        return reverse('images')
+
+    def name_object(self, obj):
+        """See `HelpfulDeleteView`."""
+        if 'title' in obj.extra:
+            return "%s (%s)" % (obj.extra['title'], obj.architecture)
+        else:
+            return "%s (%s)" % (obj.name, obj.architecture)
