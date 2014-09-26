@@ -327,7 +327,7 @@ suite.add(new Y.maas.testing.TestCase({
 
         view.updateNode('updated', node);
         Y.Assert.areEqual(
-            6,
+            Y.maas.enums.NODE_STATUS.ALLOCATED,
             view.modelList.getById('sys1').get('status'),
             "The node should have been updated.");
         Y.Assert.areEqual(
