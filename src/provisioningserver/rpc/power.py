@@ -28,7 +28,6 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
-    NodeStateViolation,
     NoSuchNode,
     PowerActionAlreadyInProgress,
     )
@@ -109,7 +108,7 @@ def perform_power_change(system_id, hostname, power_type, power_change,
 def power_change_success(system_id, hostname, power_change):
     assert power_change in ['on', 'off'], (
         "Unknown power change: %s" % power_change)
-    power_state_update(system_id, power_change)
+    yield power_state_update(system_id, power_change)
     maaslog.info(
         "Changed power state (%s) of node: %s (%s)",
         power_change, hostname, system_id)
@@ -238,15 +237,10 @@ def power_state_update(system_id, state):
 def power_query_failure(system_id, hostname, message):
     """Deal with a node failing to be queried."""
     maaslog.error(message)
+    yield power_state_update(system_id, 'error')
     yield send_event_node(
         EVENT_TYPES.NODE_POWER_QUERY_FAILED,
         system_id, hostname, message)
-    client = getRegionClient()
-    yield client(
-        MarkNodeFailed,
-        system_id=system_id,
-        error_description=message,
-    )
 
 
 @synchronous
@@ -264,6 +258,11 @@ def perform_power_query(system_id, hostname, power_type, context):
 @asynchronous
 @inlineCallbacks
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
+    """Return the power state ('on', 'off', 'error') of the given node.
+
+    A side-effect of calling this method is that the power state recorded in
+    the database is updated.
+    """
     if power_type not in QUERY_POWER_TYPES:
         raise PowerActionFail("Unknown power_type '%s'" % power_type)
 
@@ -286,6 +285,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
             # Wait before trying again.
             yield pause(waiting_time, clock)
             continue
+        yield power_state_update(system_id, power_state)
         returnValue(power_state)
 
     # Send node is broken, since query failed after the multiple retries.
@@ -312,18 +312,12 @@ def query_all_nodes(nodes, clock=reactor):
             maaslog.error(
                 "%s: Failed to query power state: %s.", hostname, e)
             continue
-        except NodeStateViolation:
-            maaslog.warning(
-                "%s: Cannot mark node failed (its status doesn't allow "
-                "a transition to a failed state).", hostname)
+        except NoSuchNode:
+            maaslog.debug(
+                "%s: Could not update power status; "
+                "no such node.", hostname)
             continue
         if power_state_observed != power_state_recorded:
             maaslog.info(
                 "%s: Power state has changed from %s to %s.", hostname,
                 power_state_recorded, power_state_observed)
-            try:
-                yield power_state_update(system_id, power_state_observed)
-            except NoSuchNode:
-                maaslog.debug(
-                    "%s: Could not update power status; "
-                    "no such node.", hostname)

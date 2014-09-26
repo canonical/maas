@@ -1086,6 +1086,8 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
     @inlineCallbacks
     def test_returns_power_state(self):
         state = random.choice(['on', 'off'])
+        power_state_update = self.patch(
+            power_module, "power_state_update")
         perform_power_query = self.patch(
             power_module, "perform_power_query")
         perform_power_query.return_value = state
@@ -1104,6 +1106,9 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
             MockCalledOnceWith(
                 arguments['system_id'], arguments['hostname'],
                 arguments['power_type'], arguments['context']))
+        self.assertThat(
+            power_state_update,
+            MockCalledOnceWith(arguments['system_id'], state))
 
 
 class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
