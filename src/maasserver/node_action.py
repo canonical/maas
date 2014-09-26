@@ -347,7 +347,8 @@ class MarkBroken(NodeAction):
     display_bulk = "Mark selected nodes as broken"
     actionable_statuses = [
         NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.ALLOCATED] + FAILED_STATUSES
+        NODE_STATUS.ALLOCATED, NODE_STATUS.RELEASING,
+        NODE_STATUS.DEPLOYING] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):
