@@ -61,9 +61,6 @@ class MAASServerTestCase(DjangoTestCase):
         register_mac_type(connection.cursor())
 
     def setUp(self):
-        # Avoid circular imports.
-        from maasserver import monitor_connect
-
         super(MAASServerTestCase, self).setUp()
         self.celery = self.useFixture(CeleryFixture())
         # This patch prevents communication with a non-existent cluster
@@ -74,7 +71,14 @@ class MAASServerTestCase(DjangoTestCase):
             power_parameters,
             'get_all_power_types_from_clusters').return_value = static_params
         # Disconnect the monitor cancellation as it's triggered by a signal.
+        # Avoid circular imports.
+        from maasserver import monitor_connect
         self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
+
+        # Disconnect the status transition event to speed up tests.
+        # Avoid circular imports.
+        from maasserver import event_connect
+        self.patch(event_connect, 'STATE_TRANSITION_EVENT_CONNECT', False)
 
     def client_log_in(self, as_admin=False):
         """Log `self.client` into MAAS.

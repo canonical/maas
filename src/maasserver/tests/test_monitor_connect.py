@@ -27,13 +27,13 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from maastesting.testcase import MAASTestCase
 from mock import ANY
 from provisioningserver.rpc.cluster import CancelMonitor
 
 
-class TestCancelMonitor(MAASTestCase):
+class TestCancelMonitor(MAASServerTestCase):
 
     def setUp(self):
         super(TestCancelMonitor, self).setUp()

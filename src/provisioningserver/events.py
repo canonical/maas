@@ -56,6 +56,8 @@ class EVENT_TYPES:
     NODE_TFTP_REQUEST = 'NODE_TFTP_REQUEST'
     # Other installation-related event types.
     NODE_INSTALLATION_FINISHED = "NODE_INSTALLATION_FINISHED"
+    # Node status transition event.
+    NODE_CHANGED_STATUS = "NODE_CHANGED_STATUS"
 
 
 EventDetail = namedtuple("EventDetail", ("description", "level"))
@@ -97,6 +99,10 @@ EVENT_DETAILS = {
     ),
     EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
         description="Installation complete",
+        level=INFO,
+    ),
+    EVENT_TYPES.NODE_CHANGED_STATUS: EventDetail(
+        description="Node changed status",
         level=INFO,
     ),
 }

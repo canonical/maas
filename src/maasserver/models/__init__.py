@@ -190,3 +190,6 @@ ignore_unused(dhcp_connect)
 
 from maasserver import monitor_connect
 ignore_unused(monitor_connect)
+
+from maasserver import event_connect
+ignore_unused(event_connect)
