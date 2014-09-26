@@ -1369,11 +1369,6 @@ class NodeTest(MAASServerTestCase):
         node.update_power_state(POWER_STATE.ON)
         self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
 
-    def test_update_power_status_marks_ready_if_recovered_from_failure(self):
-        node = factory.make_Node(status=NODE_STATUS.FAILED_READY_POWER)
-        node.update_power_state(POWER_STATE.OFF)
-        self.assertThat(node.status, Equals(NODE_STATUS.READY))
-
     def test_end_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node.end_deployment()

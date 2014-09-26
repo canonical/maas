@@ -1329,12 +1329,6 @@ class Node(CleanSave, TimestampedModel):
             # down.
             self.status = NODE_STATUS.READY
             self.owner = None
-        elif self.status == NODE_STATUS.FAILED_READY_POWER:
-            # The power op worked having previously failed.
-            self.status = NODE_STATUS.READY
-            maaslog.info(
-                "%s power problem was cleared and is now ready.",
-                self.hostname)
         self.save()
 
     def claim_static_ip_addresses(self):

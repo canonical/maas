@@ -293,6 +293,12 @@ class StartNode(NodeAction):
             """)
 
 
+FAILED_STATUSES = [
+    status for status in map_enum(NODE_STATUS).values()
+    if is_failed_status(status)
+]
+
+
 class StopNode(NodeAction):
     """Stop a node."""
     name = "stop"
@@ -302,10 +308,7 @@ class StopNode(NodeAction):
         [NODE_STATUS.DEPLOYED] +
         # Also let a user ask a failed node to shutdown: this
         # is useful to try to recover from power failures.
-        [
-            status for status in map_enum(NODE_STATUS).values()
-            if is_failed_status(status)
-        ]
+        FAILED_STATUSES
     )
     permission = NODE_PERMISSION.EDIT
 
@@ -325,6 +328,7 @@ class ReleaseNode(NodeAction):
     actionable_statuses = (
         NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
         NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.FAILED_RELEASING,
         NODE_STATUS.FAILED_DISK_ERASING)
     permission = NODE_PERMISSION.EDIT
 
@@ -341,10 +345,9 @@ class MarkBroken(NodeAction):
     name = "mark-broken"
     display = "Mark node as broken"
     display_bulk = "Mark selected nodes as broken"
-    actionable_statuses = (
+    actionable_statuses = [
         NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
-        NODE_STATUS.ALLOCATED, NODE_STATUS.FAILED_DEPLOYMENT,
-        NODE_STATUS.FAILED_COMMISSIONING)
+        NODE_STATUS.ALLOCATED] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):

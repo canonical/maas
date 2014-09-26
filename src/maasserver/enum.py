@@ -77,8 +77,8 @@ class NODE_STATUS:
     FAILED_DEPLOYMENT = 11
     #: The node is powering down after a release request.
     RELEASING = 12
-    #: The node failed a power check in the READY status.
-    FAILED_READY_POWER = 13
+    #: The releasing of the node failed.
+    FAILED_RELEASING = 13
     #: The node is erasing its disks.
     DISK_ERASING = 14
     #: The node failed to erase its disks.
@@ -101,7 +101,7 @@ NODE_STATUS_CHOICES = (
     (NODE_STATUS.BROKEN, "Broken"),
     (NODE_STATUS.FAILED_DEPLOYMENT, "Failed deployment"),
     (NODE_STATUS.RELEASING, "Releasing"),
-    (NODE_STATUS.FAILED_READY_POWER, "Power controller problem"),
+    (NODE_STATUS.FAILED_RELEASING, "Releasing failed"),
     (NODE_STATUS.DISK_ERASING, "Disk erasing"),
     (NODE_STATUS.FAILED_DISK_ERASING, "Failed disk erasing"),
 )
