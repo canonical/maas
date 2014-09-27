@@ -424,9 +424,12 @@ class TestClusterClientService(MAASTestCase):
         service.startService()
 
         self.assertThat(getPage, MockCalledOnceWith(sentinel.rpc_info_url))
-        self.assertEqual(
+        dump = logger.dump()
+        self.assertIn(
             "Region not available: Connection was refused by other side.",
-            logger.dump())
+            dump)
+        self.assertIn(
+            "While requesting RPC info at %s" % sentinel.rpc_info_url, dump)
 
     def test__get_rpc_info_accepts_IPv6_url(self):
         connect_tcp = self.patch_autospec(reactor, 'connectTCP')

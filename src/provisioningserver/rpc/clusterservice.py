@@ -494,7 +494,9 @@ class ClusterClientService(TimerService, object):
             yield self._update_connections(eventloops)
         except ConnectError as error:
             self._update_interval(None, len(self.connections))
-            log.msg("Region not available: %s" % (error,))
+            log.msg(
+                "Region not available: %s (While requesting RPC info at %s)."
+                % (error, info_url))
         except:
             self._update_interval(None, len(self.connections))
             log.err()
