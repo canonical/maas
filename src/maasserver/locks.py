@@ -33,3 +33,7 @@ eventloop = DatabaseLock(3)
 # Lock used to only allow one instance of importing boot images to occur
 # at a time.
 import_images = DatabaseLock(4)
+
+# Lock used to only allow one instance of caching boot source
+# image information.
+cache_sources = DatabaseLock(5)

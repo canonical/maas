@@ -44,6 +44,7 @@ from maasserver.models import (
     BootResourceFile,
     BootResourceSet,
     BootSource,
+    BootSourceCache,
     BootSourceSelection,
     DHCPLease,
     DownloadProgress,
@@ -869,6 +870,25 @@ class Factory(maastesting.factory.Factory):
         )
         boot_source.save()
         return boot_source
+
+    def make_BootSourceCache(self, boot_source=None, os=None, arch=None,
+                             subarch=None, release=None, label=None):
+        """Create a new `BootSourceCache`."""
+        if boot_source is None:
+            boot_source = self.make_BootSource()
+        if os is None:
+            os = factory.make_name('os')
+        if arch is None:
+            arch = factory.make_name('arch')
+        if subarch is None:
+            subarch = factory.make_name('subarch')
+        if release is None:
+            release = factory.make_name('release')
+        if label is None:
+            label = factory.make_name('label')
+        return BootSourceCache.objects.create(
+            boot_source=boot_source, os=os, arch=arch,
+            subarch=subarch, release=release, label=label)
 
     def make_BootSourceSelection(self, boot_source=None, os=None,
                                  release=None, arches=None, subarches=None,

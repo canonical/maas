@@ -18,12 +18,14 @@ from os import environ
 
 from maasserver import bootsources
 from maasserver.bootsources import (
+    cache_boot_sources,
     ensure_boot_source_definition,
     get_boot_sources,
     get_os_info_from_boot_sources,
     )
 from maasserver.models import (
     BootSource,
+    BootSourceCache,
     BootSourceSelection,
     Config,
     )
@@ -35,6 +37,48 @@ from provisioningserver.import_images.boot_image_mapping import (
     )
 from provisioningserver.import_images.helpers import ImageSpec
 from testtools.matchers import HasLength
+
+
+def patch_and_capture_env_for_download_all_image_descriptions(testcase):
+    class CaptureEnv:
+        """Fake function; records a copy of the environment."""
+
+        def __call__(self, *args, **kwargs):
+            self.args = args
+            self.env = environ.copy()
+            return MagicMock()
+
+    capture = testcase.patch(
+        bootsources, 'download_all_image_descriptions', CaptureEnv())
+    return capture
+
+
+def make_image_spec(
+        os=None, arch=None, subarch=None, release=None, label=None):
+    if os is None:
+        os = factory.make_name('os')
+    if arch is None:
+        arch = factory.make_name('arch')
+    if subarch is None:
+        subarch = factory.make_name('subarch')
+    if release is None:
+        release = factory.make_name('release')
+    if label is None:
+        label = factory.make_name('label')
+    return ImageSpec(
+        os,
+        arch,
+        subarch,
+        release,
+        label,
+        )
+
+
+def make_boot_image_mapping(image_specs=[]):
+    mapping = BootImageMapping()
+    for image_spec in image_specs:
+        mapping.setdefault(image_spec, {})
+    return mapping
 
 
 class TestHelpers(MAASServerTestCase):
@@ -86,74 +130,13 @@ class TestHelpers(MAASServerTestCase):
 
 class TestGetOSInfoFromBootSources(MAASServerTestCase):
 
-    def patch_and_capture_env_for_download_all_image_descriptions(self):
-        class CaptureEnv:
-            """Fake function; records a copy of the environment."""
-
-            def __call__(self, *args, **kwargs):
-                self.args = args
-                self.env = environ.copy()
-                return MagicMock()
-
-        capture = self.patch(
-            bootsources, 'download_all_image_descriptions', CaptureEnv())
-        return capture
-
-    def make_os_image_spec(self, os=None):
-        if os is None:
-            os = factory.make_name('os')
-        return ImageSpec(
-            os,
-            factory.make_name('arch'),
-            factory.make_name('subarch'),
-            factory.make_name('release'),
-            factory.make_name('label'),
-            )
-
-    def make_boot_image_mapping(self, image_specs=[]):
-        mapping = BootImageMapping()
-        for image_spec in image_specs:
-            mapping.setdefault(image_spec, {})
-        return mapping
-
-    def test__has_env_GNUPGHOME_set(self):
-        capture = (
-            self.patch_and_capture_env_for_download_all_image_descriptions())
-        factory.make_BootSource(keyring_data='1234')
-        get_os_info_from_boot_sources(factory.make_name('os'))
-        self.assertEqual(
-            bootsources.get_maas_user_gpghome(),
-            capture.env['GNUPGHOME'])
-
-    def test__has_env_http_and_https_proxy_set(self):
-        proxy_address = factory.make_name('proxy')
-        Config.objects.set_config('http_proxy', proxy_address)
-        capture = (
-            self.patch_and_capture_env_for_download_all_image_descriptions())
-        factory.make_BootSource(keyring_data='1234')
-        get_os_info_from_boot_sources(factory.make_name('os'))
-        self.assertEqual(
-            (proxy_address, proxy_address),
-            (capture.env['http_proxy'], capture.env['http_proxy']))
-
-    def test__returns_empty_sources_and_sets_when_descriptions_empty(self):
-        factory.make_BootSource(keyring_data='1234')
-        mock_download = self.patch(
-            bootsources, 'download_all_image_descriptions')
-        mock_download.return_value = self.make_boot_image_mapping()
+    def test__returns_empty_sources_and_sets_when_cache_empty(self):
         self.assertEqual(
             ([], set(), set()),
             get_os_info_from_boot_sources(factory.make_name('os')))
 
     def test__returns_empty_sources_and_sets_when_no_os(self):
-        factory.make_BootSource(keyring_data='1234')
-        image_specs = [
-            self.make_os_image_spec()
-            for _ in range(3)
-            ]
-        mock_download = self.patch(
-            bootsources, 'download_all_image_descriptions')
-        mock_download.return_value = self.make_boot_image_mapping(image_specs)
+        factory.make_BootSourceCache()
         self.assertEqual(
             ([], set(), set()),
             get_os_info_from_boot_sources(factory.make_name('os')))
@@ -162,19 +145,65 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
         os = factory.make_name('os')
         sources = [
             factory.make_BootSource(keyring_data='1234') for _ in range(2)]
-        mappings = []
         releases = set()
         arches = set()
-        for _ in sources:
-            image_specs = [self.make_os_image_spec(os) for _ in range(3)]
-            releases = releases.union(
-                {image_spec.release for image_spec in image_specs})
-            arches = arches.union(
-                {image_spec.arch for image_spec in image_specs})
-            mappings.append(self.make_boot_image_mapping(image_specs))
-        mock_download = self.patch(
-            bootsources, 'download_all_image_descriptions')
-        mock_download.side_effect = mappings
+        for source in sources:
+            for _ in range(3):
+                release = factory.make_name('release')
+                arch = factory.make_name('arch')
+                factory.make_BootSourceCache(
+                    source, os=os, release=release, arch=arch)
+                releases.add(release)
+                arches.add(arch)
         self.assertEqual(
             (sources, releases, arches),
             get_os_info_from_boot_sources(os))
+
+
+class TestCacheBootSources(MAASServerTestCase):
+
+    def test__has_env_GNUPGHOME_set(self):
+        capture = (
+            patch_and_capture_env_for_download_all_image_descriptions(self))
+        factory.make_BootSource(keyring_data='1234')
+        cache_boot_sources()
+        self.assertEqual(
+            bootsources.get_maas_user_gpghome(),
+            capture.env['GNUPGHOME'])
+
+    def test__has_env_http_and_https_proxy_set(self):
+        proxy_address = factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy_address)
+        capture = (
+            patch_and_capture_env_for_download_all_image_descriptions(self))
+        factory.make_BootSource(keyring_data='1234')
+        cache_boot_sources()
+        self.assertEqual(
+            (proxy_address, proxy_address),
+            (capture.env['http_proxy'], capture.env['http_proxy']))
+
+    def test__returns_clears_entire_cache(self):
+        source = factory.make_BootSource(keyring_data='1234')
+        factory.make_BootSourceCache(source)
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        mock_download.return_value = make_boot_image_mapping()
+        cache_boot_sources()
+        self.assertEqual(0, BootSourceCache.objects.all().count())
+
+    def test__returns_adds_entries_to_cache_for_source(self):
+        source = factory.make_BootSource(keyring_data='1234')
+        os = factory.make_name('os')
+        releases = [factory.make_name('release') for _ in range(3)]
+        image_specs = [
+            make_image_spec(os=os, release=release) for release in releases]
+        mock_download = self.patch(
+            bootsources, 'download_all_image_descriptions')
+        mock_download.return_value = make_boot_image_mapping(image_specs)
+        cache_boot_sources()
+        cached_releases = [
+            cache.release
+            for cache in BootSourceCache.objects.filter(boot_source=source)
+            if cache.os == os
+            ]
+        self.assertItemsEqual(releases, cached_releases)

@@ -17,6 +17,7 @@ __all__ = [
     'BootResourceFile',
     'BootResourceSet',
     'BootSource',
+    'BootSourceCache',
     'BootSourceSelection',
     'ComponentError',
     'Config',
@@ -53,6 +54,7 @@ from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
 from maasserver.models.bootsource import BootSource
+from maasserver.models.bootsourcecache import BootSourceCache
 from maasserver.models.bootsourceselection import BootSourceSelection
 from maasserver.models.candidatename import CandidateName
 from maasserver.models.component_error import ComponentError

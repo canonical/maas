@@ -164,6 +164,11 @@ def make_ImportResourcesService():
     return bootresources.ImportResourcesService()
 
 
+def make_BootSourceCacheService():
+    from maasserver import bootsources
+    return bootsources.BootSourceCacheService()
+
+
 class RegionEventLoop:
     """An event loop running in a region controller process.
 
@@ -189,6 +194,7 @@ class RegionEventLoop:
         ("rpc-advertise", make_RegionAdvertisingService),
         ("nonce-cleanup", make_NonceCleanupService),
         ("import-resources", make_ImportResourcesService),
+        ("cache-sources", make_BootSourceCacheService),
     )
 
     def __init__(self):
