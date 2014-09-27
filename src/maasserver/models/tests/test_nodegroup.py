@@ -20,6 +20,7 @@ from django.db.models.signals import post_save
 import django.dispatch
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
+    NODEGROUP_STATE,
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -437,6 +438,53 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertThat(
             mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=0))
         self.assertFalse(connected)
+
+    def test_get_state_returns_disconnected_if_no_connection(self):
+        mock_get_boot_images = self.patch(nodegroup_module, 'get_boot_images')
+        mock_get_boot_images.side_effect = NoConnectionsAvailable
+        nodegroup = factory.make_NodeGroup()
+        self.assertEqual(NODEGROUP_STATE.DISCONNECTED, nodegroup.get_state())
+
+    def test_get_state_returns_disconnected_if_is_importing_errors(self):
+        self.patch(nodegroup_module, 'get_boot_images')
+        mock_boot_resources = self.patch(nodegroup_module, 'BootResource')
+        mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
+            False)
+        mock_is_import_boot_images_running = self.patch(
+            nodegroup_module, 'is_import_boot_images_running')
+        mock_is_import_boot_images_running.side_effect = NoConnectionsAvailable
+        nodegroup = factory.make_NodeGroup()
+        self.assertEqual(NODEGROUP_STATE.DISCONNECTED, nodegroup.get_state())
+
+    def test_get_state_returns_synced_if_images_match_resources(self):
+        self.patch(nodegroup_module, 'get_boot_images')
+        mock_boot_resources = self.patch(nodegroup_module, 'BootResource')
+        mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
+            True)
+        nodegroup = factory.make_NodeGroup()
+        self.assertEqual(NODEGROUP_STATE.SYNCED, nodegroup.get_state())
+
+    def test_get_state_returns_out_of_sync_if_not_syncing(self):
+        self.patch(nodegroup_module, 'get_boot_images')
+        mock_boot_resources = self.patch(nodegroup_module, 'BootResource')
+        mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
+            False)
+        mock_is_import_boot_images_running = self.patch(
+            nodegroup_module, 'is_import_boot_images_running')
+        mock_is_import_boot_images_running.return_value = False
+        nodegroup = factory.make_NodeGroup()
+        self.assertEqual(NODEGROUP_STATE.OUT_OF_SYNC, nodegroup.get_state())
+
+    def test_get_state_returns_syncing_if_currently_syncing(self):
+        self.patch(nodegroup_module, 'get_boot_images')
+        mock_boot_resources = self.patch(nodegroup_module, 'BootResource')
+        mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
+            False)
+        mock_is_import_boot_images_running = self.patch(
+            nodegroup_module, 'is_import_boot_images_running')
+        mock_is_import_boot_images_running.return_value = True
+        nodegroup = factory.make_NodeGroup()
+        self.assertEqual(NODEGROUP_STATE.SYNCING, nodegroup.get_state())
 
     def test_add_virsh_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)

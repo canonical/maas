@@ -15,11 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
-import random
 
 from django.core.urlresolvers import reverse
 from lxml.html import fromstring
 from maasserver.enum import (
+    NODEGROUP_STATE,
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
@@ -141,40 +141,32 @@ class ClusterListingTest(MAASServerTestCase):
             HasLength(1),
             "Couldn't find pagination tag.")
 
-    def test_listing_displays_connection_status(self):
-        # We're using a little trick here: we create nodegroups
-        # whose name end with either '0' or '1' and we then
-        # patch nodegroup.is_connected so that it returns
-        # True or False based of the name of the nodegroup.
+
+class ClusterListingStateTest(MAASServerTestCase):
+
+    scenarios = [
+        ('disconnected', {'state': NODEGROUP_STATE.DISCONNECTED}),
+        ('out-of-sync', {'state': NODEGROUP_STATE.OUT_OF_SYNC}),
+        ('syncing', {'state': NODEGROUP_STATE.SYNCING}),
+        ('synced', {'state': NODEGROUP_STATE.SYNCED}),
+    ]
+
+    def test_listing_displays_state(self):
         self.client_log_in(as_admin=True)
-        nodegroup_connections = {}
-        connection_representation = {
-            '&check;': True,
-            '&cross;': False,
-        }
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED, name=self.state)
 
-        def mock_is_connected(self):
-            # Return a boolean based on the last character in the
-            # nodegroup's name.
-            return True if self.name.endswith('0') else False
-        self.patch(NodeGroup, 'is_connected', mock_is_connected)
+        def mock_get_state(self):
+            # Return a state, which is set to the name of the node.
+            return self.name
+        self.patch(NodeGroup, 'get_state', mock_get_state)
 
-        for _ in range(3):
-            # Create a name with a random value of '0' or '1' at the end.
-            name = "nodegroup-%s-%s" % (
-                factory.make_name(), random.choice(['0', '1']))
-            nodegroup = factory.make_NodeGroup(
-                status=self.status, name=name)
-            nodegroup_connections[nodegroup.uuid] = nodegroup.is_connected()
-        response = self.client.get(self.get_url())
+        response = self.client.get(
+            reverse(ClusterListView.status_links[NODEGROUP_STATUS.ACCEPTED]))
         document = fromstring(response.content)
-        connection_displayed = {}
-        for uuid in nodegroup_connections:
-            connection_row = document.xpath(
-                "//td[@id='%s_connection']" % uuid)[0]
-            connection_displayed[uuid] = connection_representation[
-                connection_row.text.strip()]
-        self.assertEqual(nodegroup_connections, connection_displayed)
+        state_row = document.xpath(
+            "//td[@id='%s_state']" % nodegroup.uuid)[0]
+        self.assertEqual(self.state, state_row.text_content().strip())
 
 
 class ClusterListingAccess(MAASServerTestCase):
@@ -239,22 +231,41 @@ class ClusterPendingListingTest(MAASServerTestCase):
 
 class ClusterAcceptedListingTest(MAASServerTestCase):
 
-    def test_warning_is_displayed_if_a_cluster_is_not_connected(self):
+    def test_warning_is_displayed_if_a_cluster_is_disconnected(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED)
 
-        self.patch(NodeGroup, 'is_connected', lambda _: False)
+        self.patch(
+            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.DISCONNECTED)
         response = self.client.get(reverse('cluster-list'))
         document = fromstring(response.content)
         nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
         self.assertIn('warning', nodegroup_row.get('class'))
         warning_elems = (
             nodegroup_row.xpath(
-                """//img[@title="Warning: this cluster isn't connected."]"""))
+                """//img[@title="Warning: this cluster is disconnected."]"""))
         self.assertThat(
             warning_elems, HasLength(1),
             "No warning about disconnected cluster.")
+
+    def test_warning_is_displayed_if_a_cluster_is_out_of_sync(self):
+        self.client_log_in(as_admin=True)
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.patch(
+            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.OUT_OF_SYNC)
+        response = self.client.get(reverse('cluster-list'))
+        document = fromstring(response.content)
+        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
+        self.assertIn('warning', nodegroup_row.get('class'))
+        warning_elems = (
+            nodegroup_row.xpath(
+                """//img[@title="Warning: this cluster is out-of-sync."]"""))
+        self.assertThat(
+            warning_elems, HasLength(1),
+            "No warning about out-of-sync cluster.")
 
 
 class ClusterDeleteTest(MAASServerTestCase):

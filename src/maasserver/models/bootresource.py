@@ -176,6 +176,38 @@ class BootResourceManager(Manager):
                 return resource
         return None
 
+    def boot_images_are_in_sync(self, images):
+        """Return True if the given images match items in the `BootResource`
+        table."""
+        resources = BootResource.objects.all()
+        matched_resources = set()
+        for image in images:
+            if image['osystem'] != 'custom':
+                rtypes = [
+                    BOOT_RESOURCE_TYPE.SYNCED,
+                    BOOT_RESOURCE_TYPE.GENERATED,
+                    ]
+                name = '%s/%s' % (image['osystem'], image['release'])
+            else:
+                rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
+                name = image['release']
+            resource = resources.filter(
+                rtype__in=rtypes, name=name,
+                architecture__startswith=image['architecture']).first()
+            if resource is None:
+                return False
+            if not resource.supports_subarch(image['subarchitecture']):
+                return False
+            resource_set = resource.get_latest_complete_set()
+            if resource_set is None:
+                return False
+            if resource_set.label != image['label']:
+                return False
+            matched_resources.add(resource)
+        if len(matched_resources) != resources.count():
+            return False
+        return True
+
 
 def validate_architecture(value):
     """Validates that architecture value contains a subarchitecture."""

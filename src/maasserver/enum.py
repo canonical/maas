@@ -167,6 +167,18 @@ NODEGROUP_STATUS_CHOICES = (
     )
 
 
+class NODEGROUP_STATE:
+    """The vocabulary of a `NodeGroup`'s possible state."""
+    #:
+    DISCONNECTED = "Disconnected"
+    #:
+    OUT_OF_SYNC = "Out-of-sync"
+    #:
+    SYNCING = "Syncing"
+    #:
+    SYNCED = "Synced"
+
+
 class NODEGROUPINTERFACE_MANAGEMENT:
     """The vocabulary of a `NodeGroupInterface`'s possible statuses."""
     # A nodegroupinterface starts out as UNMANAGED.

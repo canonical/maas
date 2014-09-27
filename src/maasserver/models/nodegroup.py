@@ -19,6 +19,7 @@ __all__ = [
 
 
 from apiclient.creds import convert_tuple_to_string
+from crochet import TimeoutError
 from django.db.models import (
     BooleanField,
     CharField,
@@ -27,11 +28,17 @@ from django.db.models import (
     Manager,
     )
 from maasserver import DefaultMeta
+from maasserver.clusterrpc.boot_images import (
+    get_boot_images,
+    is_import_boot_images_running,
+    )
 from maasserver.enum import (
+    NODEGROUP_STATE,
     NODEGROUP_STATUS,
     NODEGROUP_STATUS_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
+from maasserver.models.bootresource import BootResource
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.user import get_creds_tuple
 from maasserver.rpc import getClientFor
@@ -255,6 +262,26 @@ class NodeGroup(TimestampedModel):
             return False
         else:
             return True
+
+    def get_state(self):
+        """Get the current state of the cluster.
+
+        This returns information about if the cluster is connected,
+        out-of-sync, syncing, synced.
+        """
+        try:
+            images = get_boot_images(self)
+        except (NoConnectionsAvailable, TimeoutError):
+            return NODEGROUP_STATE.DISCONNECTED
+        if not BootResource.objects.boot_images_are_in_sync(images):
+            try:
+                importing = is_import_boot_images_running(self)
+            except (NoConnectionsAvailable, TimeoutError):
+                return NODEGROUP_STATE.DISCONNECTED
+            if not importing:
+                return NODEGROUP_STATE.OUT_OF_SYNC
+            return NODEGROUP_STATE.SYNCING
+        return NODEGROUP_STATE.SYNCED
 
     @property
     def work_queue(self):

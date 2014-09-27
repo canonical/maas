@@ -5,19 +5,24 @@
                        {% endif %}
                      {% endif %}"
     id="{{ cluster.uuid }}">
+  {% with state=cluster.get_state %}
   <td>
-    <a href="{% url 'cluster-edit' cluster.uuid %}">{{ cluster.cluster_name }}</a>
+    <a href="{% url 'cluster-edit' cluster.uuid %}">
+      {{ cluster.cluster_name }}
+      {% if state == "Disconnected" or state == "Out-of-sync" %}
+      {% if display_warnings %}
+      &nbsp;<img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster is {{ state.lower }}."/>
+      {% endif %}
+      {% endif %}
+    </a>
   </td>
-  <td id="{{ cluster.uuid }}_connection">
-  {% if cluster.is_connected %}
-    &check;
-  {% else %}
-    &cross;
-    {% if display_warnings%}
-      <img src="{{ STATIC_URL }}img/warning.png" title="Warning: this cluster isn't connected."/>
-    {% endif %}
-  {% endif %}
+  <td id="{{ cluster.uuid }}_state">
+      {% if state == "Syncing" %}
+      <div class="spinner spin"></div>&nbsp;
+      {% endif %}
+      {{ state }}
   </td>
+  {% endwith %}
   <td>
   {{ cluster.get_managed_interfaces|length }}
   </td>

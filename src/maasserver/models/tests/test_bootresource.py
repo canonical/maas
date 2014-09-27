@@ -19,6 +19,7 @@ from datetime import datetime
 import random
 
 from django.core.exceptions import ValidationError
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
@@ -293,6 +294,97 @@ class TestBootResourceManager(MAASServerTestCase):
             resource,
             BootResource.objects.get_resource_for(
                 osystem, arch, subarch, series))
+
+
+class TestBootImagesAreInSync(MAASServerTestCase):
+    """Tests for `boot_images_are_in_sync`."""
+
+    def test__returns_True_if_both_empty(self):
+        BootResource.objects.all().delete()
+        self.assertTrue(BootResource.objects.boot_images_are_in_sync([]))
+
+    def test__returns_False_if_no_images(self):
+        factory.make_BootResource()
+        self.assertFalse(BootResource.objects.boot_images_are_in_sync([]))
+
+    def test__returns_False_if_no_resources_but_images(self):
+        BootResource.objects.all().delete()
+        images = [make_rpc_boot_image() for _ in range(3)]
+        self.assertFalse(BootResource.objects.boot_images_are_in_sync(images))
+
+    def test__returns_True_if_resource_matches_image(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        label = resource.get_latest_complete_set().label
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=subarch,
+            label=label)
+        self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
+
+    def test__returns_False_if_image_subarch_not_supported_by_resource(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        label = resource.get_latest_complete_set().label
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=factory.make_name('subarch'),
+            label=label)
+        self.assertFalse(BootResource.objects.boot_images_are_in_sync([image]))
+
+    def test__returns_False_if_image_label_doesnt_match_resource(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=subarch,
+            label=factory.make_name('label'))
+        self.assertFalse(BootResource.objects.boot_images_are_in_sync([image]))
+
+    def test__returns_True_if_image_has_multiple_purposes(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        label = resource.get_latest_complete_set().label
+        purposes = [factory.make_name('purpose') for _ in range(3)]
+        images = [
+            make_rpc_boot_image(
+                osystem=os, release=series,
+                architecture=arch, subarchitecture=subarch,
+                label=label, purpose=purpose)
+            for purpose in purposes
+            ]
+        self.assertTrue(BootResource.objects.boot_images_are_in_sync(images))
+
+    def test__returns_True_for_generated_resource(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.GENERATED)
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        label = resource.get_latest_complete_set().label
+        image = make_rpc_boot_image(
+            osystem=os, release=series,
+            architecture=arch, subarchitecture=subarch,
+            label=label)
+        self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
+
+    def test__returns_True_for_uploaded_resource(self):
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED)
+        arch, subarch = resource.split_arch()
+        label = resource.get_latest_complete_set().label
+        image = make_rpc_boot_image(
+            osystem="custom", release=resource.name,
+            architecture=arch, subarchitecture=subarch,
+            label=label)
+        self.assertTrue(BootResource.objects.boot_images_are_in_sync([image]))
 
 
 class TestBootResource(MAASServerTestCase):
