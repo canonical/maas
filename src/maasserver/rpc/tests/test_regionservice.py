@@ -1825,13 +1825,13 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_calls_request_node_info_by_mac_address_function(self):
+        purpose = factory.make_name('purpose')
+        node = yield deferToThread(self.create_node)
         node_info_function = self.patch(
             regionservice, 'request_node_info_by_mac_address')
-        node_info_function.return_value = (
-            yield deferToThread(self.create_node))
+        node_info_function.return_value = (node, purpose)
         mac_address = yield deferToThread(
-            self.make_mac_address,
-            node_info_function.return_value)
+            self.make_mac_address, node)
 
         params = {
             'mac_address': mac_address.mac_address.get_raw(),
@@ -1843,13 +1843,9 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(MAASTestCase):
         self.assertThat(
             node_info_function,
             MockCalledOnceWith(params['mac_address']))
-        purpose = response.pop('purpose')
-        self.assertEqual(
-            node_info_function.return_value.get_boot_purpose(),
-            purpose)
-        self.assertAttributes(
-            node_info_function.return_value,
-            response)
+        response_purpose = response.pop('purpose')
+        self.assertEqual(purpose, response_purpose)
+        self.assertAttributes(node, response)
 
     @wait_for_reactor
     def test_request_node_info_by_mac_address_raises_if_unknown_mac(self):

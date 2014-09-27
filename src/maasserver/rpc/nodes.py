@@ -153,6 +153,7 @@ def request_node_info_by_mac_address(mac_address):
         from.
     """
     try:
-        return MACAddress.objects.get(mac_address=mac_address).node
-    except Node.DoesNotExist:
+        node = MACAddress.objects.get(mac_address=mac_address).node
+    except MACAddress.DoesNotExist:
         raise NoSuchNode.from_mac_address(mac_address)
+    return (node, node.get_boot_purpose())

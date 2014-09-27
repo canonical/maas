@@ -301,8 +301,10 @@ class Region(RPCProtocol):
         """
         d = deferToThread(
             request_node_info_by_mac_address, mac_address)
-        d.addCallback(
-            lambda node: {
+
+        def get_node_info(data):
+            node, purpose = data
+            return {
                 'system_id': node.system_id,
                 'hostname': node.hostname,
                 'status': node.status,
@@ -310,8 +312,9 @@ class Region(RPCProtocol):
                 'osystem': node.osystem,
                 'distro_series': node.distro_series,
                 'architecture': node.architecture,
-                'purpose': node.get_boot_purpose(),
-            })
+                'purpose': purpose,
+            }
+        d.addCallback(get_node_info)
         return d
 
 

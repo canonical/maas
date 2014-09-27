@@ -21,6 +21,7 @@ from maasserver.enum import NODE_STATUS
 from maasserver.rpc.nodes import (
     create_node,
     mark_node_failed,
+    request_node_info_by_mac_address,
     )
 from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.testing.architecture import make_usable_architecture
@@ -158,3 +159,17 @@ class TestMarkNodeFailed(MAASServerTestCase):
         self.assertRaises(
             NodeStateViolation,
             mark_node_failed, node.system_id, factory.make_name('error'))
+
+
+class TestRequestNodeInfoByMACAddress(MAASServerTestCase):
+
+    def test_request_node_info_by_mac_address_raises_exception_no_mac(self):
+        self.assertRaises(
+            NoSuchNode, request_node_info_by_mac_address,
+            factory.make_mac_address())
+
+    def test_request_node_info_by_mac_address_returns_node_for_mac(self):
+        mac_address = factory.make_MACAddress()
+        node, boot_purpose = request_node_info_by_mac_address(
+            mac_address.mac_address.get_raw())
+        self.assertEqual(node, mac_address.node)
