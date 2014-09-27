@@ -15,12 +15,32 @@ __metaclass__ = type
 __all__ = [
     "get_boot_images",
     "get_boot_images_for",
+    "is_import_boot_images_running",
 ]
 
 from maasserver.models import BootResource
 from maasserver.rpc import getClientFor
-from provisioningserver.rpc.cluster import ListBootImages
+from provisioningserver.rpc.cluster import (
+    IsImportBootImagesRunning,
+    ListBootImages,
+    )
 from provisioningserver.utils.twisted import synchronous
+
+
+@synchronous
+def is_import_boot_images_running(nodegroup):
+    """Return True if the cluster is currently import boot images.
+
+    :param nodegroup: The nodegroup.
+
+    :raises NoConnectionsAvailable: When no connections to the node's
+        cluster are available for use.
+    :raises crochet.TimeoutError: If a response has not been received within
+        30 seconds.
+    """
+    client = getClientFor(nodegroup.uuid, timeout=1)
+    call = client(IsImportBootImagesRunning)
+    return call.wait(30).get("running")
 
 
 @synchronous

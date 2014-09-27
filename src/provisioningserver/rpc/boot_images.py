@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "import_boot_images",
     "list_boot_images",
+    "is_import_boot_images_running",
     ]
 
 
@@ -54,3 +55,8 @@ def import_boot_images(sources):
     """Imports the boot images from the given sources."""
     if not import_lock.locked:
         return import_lock.run(deferToThread, _run_import, sources)
+
+
+def is_import_boot_images_running():
+    """Return True if the import process is currently running."""
+    return import_lock.locked

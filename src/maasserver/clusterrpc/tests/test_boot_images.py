@@ -19,6 +19,7 @@ import os
 from maasserver.clusterrpc.boot_images import (
     get_boot_images,
     get_boot_images_for,
+    is_import_boot_images_running,
     )
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
@@ -32,6 +33,7 @@ from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
+from provisioningserver.rpc import clusterservice
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
@@ -52,6 +54,26 @@ def make_image_dir(image_params, tftproot):
     os.makedirs(image_dir)
     factory.make_file(image_dir, 'linux')
     factory.make_file(image_dir, 'initrd.gz')
+
+
+class TestIsImportBootImagesRunning(MAASServerTestCase):
+    """Tests for `is_import_boot_images_running`."""
+
+    def test_returns_True(self):
+        mock_is_running = self.patch(
+            clusterservice, "is_import_boot_images_running")
+        mock_is_running.return_value = True
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        self.useFixture(RunningClusterRPCFixture())
+        self.assertTrue(is_import_boot_images_running(nodegroup))
+
+    def test_returns_False(self):
+        mock_is_running = self.patch(
+            clusterservice, "is_import_boot_images_running")
+        mock_is_running.return_value = False
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        self.useFixture(RunningClusterRPCFixture())
+        self.assertFalse(is_import_boot_images_running(nodegroup))
 
 
 class TestGetBootImages(MAASServerTestCase):

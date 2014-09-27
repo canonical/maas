@@ -31,6 +31,7 @@ from provisioningserver.rpc.boot_images import (
     _run_import,
     import_boot_images,
     import_lock,
+    is_import_boot_images_running,
     list_boot_images,
     )
 from provisioningserver.testing.config import BootSourcesFixture
@@ -149,3 +150,17 @@ class TestImportBootImages(PservTestCase):
         # Lock is released once the download is done.
         clock.advance(1)
         self.assertFalse(import_lock.locked)
+
+
+class TestIsImportBootImagesRunning(PservTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @defer.inlineCallbacks
+    def test__returns_True_when_lock_is_held(self):
+        yield import_lock.acquire()
+        self.addCleanup(import_lock.release)
+        self.assertTrue(is_import_boot_images_running())
+
+    def test__returns_False_when_lock_is_not_held(self):
+        self.assertFalse(is_import_boot_images_running())

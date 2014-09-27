@@ -422,3 +422,15 @@ class EnlistNodesFromUCSM(amp.Command):
     ]
     response = []
     errors = {}
+
+
+class IsImportBootImagesRunning(amp.Command):
+    """Check if the import boot images task is running on the cluster.
+
+    :since: 1.7
+    """
+    arguments = []
+    response = [
+        (b"running", amp.Boolean()),
+    ]
+    errors = {}
