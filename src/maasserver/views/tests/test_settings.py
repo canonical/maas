@@ -163,6 +163,27 @@ class SettingsTest(MAASServerTestCase):
                 Config.objects.get_config('enable_third_party_drivers'),
             ))
 
+    def test_settings_disk_erasing_on_release_POST(self):
+        self.client_log_in(as_admin=True)
+        new_enable_disk_erasing_on_release = factory.pick_bool()
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='disk_erasing_on_release',
+                data={
+                    'enable_disk_erasing_on_release': (
+                        new_enable_disk_erasing_on_release),
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(
+            (
+                new_enable_disk_erasing_on_release,
+            ),
+            (
+                Config.objects.get_config('enable_disk_erasing_on_release'),
+            ))
+
     def test_settings_deploy_POST(self):
         self.client_log_in(as_admin=True)
         osystem = make_usable_osystem(self)

@@ -196,5 +196,22 @@
       </form>
       <div class="clear"></div>
     </div>
+    <div class="divider"></div>
+    <div id="disk_erasing_on_release" class="block size7 first">
+      <h2>Disk Erasing on Release</h2>
+      <form action="{% url "settings" %}" method="post">
+        {% csrf_token %}
+        <ul>
+        {% for field in disk_erasing_on_release_form %}
+          {% include "maasserver/form_field.html" %}
+        {% endfor %}
+        </ul>
+        <input type="hidden" name="disk_erasing_on_release_submit" value="1" />
+        <input type="submit" class="button right" value="Save" />
+      </form>
+      <div class="clear"></div>
+    </div>
+    <div class="divider"></div>
+  </div>
   </div>
 {% endblock %}

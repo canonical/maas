@@ -42,6 +42,7 @@ from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
     DeployForm,
+    DiskErasingOnReleaseForm,
     EditUserForm,
     GlobalKernelOptsForm,
     MAASAndNetworkForm,
@@ -165,6 +166,13 @@ def settings(request):
     if response is not None:
         return response
 
+    # Process disk erasing on release form.
+    disk_erasing_on_release_form, response = process_form(
+        request, DiskErasingOnReleaseForm, reverse('settings'),
+        'disk_erasing_on_release', "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process the MAAS & network form.
     maas_and_network_form, response = process_form(
         request, MAASAndNetworkForm, reverse('settings'), 'maas_and_network',
@@ -217,6 +225,7 @@ def settings(request):
             'commissioning_scripts': commissioning_scripts,
             'maas_and_network_form': maas_and_network_form,
             'third_party_drivers_form': third_party_drivers_form,
+            'disk_erasing_on_release_form': disk_erasing_on_release_form,
             'commissioning_form': commissioning_form,
             'deploy_form': deploy_form,
             'ubuntu_form': ubuntu_form,
