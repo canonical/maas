@@ -1251,3 +1251,28 @@ class TestPowerParameters(APITestCase):
             self.get_node_uri(node), {'op': 'power_parameters'})
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
+
+
+class TestAbortOperation(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=abort_operation"""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_abort_operation_changes_state(self):
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'abort_operation'})
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(
+            NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
+
+    def test_abort_operation_fails_for_unsupported_operation(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'abort_operation'})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)

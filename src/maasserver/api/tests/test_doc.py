@@ -278,6 +278,7 @@ class TestDescribingAPI(MAASServerTestCase):
             "restful=False",
             'POST mark_fixed op=mark_fixed restful=False',
             'POST mark_broken op=mark_broken restful=False',
+            'POST abort_operation op=abort_operation restful=False',
             }
         observed_actions = {
             "%(method)s %(name)s op=%(op)s restful=%(restful)s" % action

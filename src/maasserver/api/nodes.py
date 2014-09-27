@@ -515,6 +515,18 @@ class NodeHandler(OperationsHandler):
 
         return state
 
+    @operation(idempotent=False)
+    def abort_operation(self, request, system_id):
+        """Abort a node's current operation.
+
+        This currently only supports aborting of the 'Disk Erasing' operation.
+        """
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+        node.abort_operation(request.user)
+        return node
+
 
 def create_node(request):
     """Service an http request to create a node.
