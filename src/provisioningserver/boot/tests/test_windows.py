@@ -15,7 +15,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import json
 import os
 import shutil
 
@@ -38,11 +37,7 @@ from provisioningserver.boot.windows import (
 from provisioningserver.config import Config
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from tftp.backend import FilesystemReader
-from twisted.internet.defer import (
-    inlineCallbacks,
-    succeed,
-    )
-from twisted.python import context
+from twisted.internet.defer import inlineCallbacks
 
 
 class TestBcd(MAASTestCase):
@@ -173,42 +168,15 @@ class TestWindowsPXEBootMethod(MAASTestCase):
         clean_path = method.clean_path(dirty_path)
         self.assertEqual('bcd', clean_path)
 
-    @inlineCallbacks
     def test_get_node_info(self):
         method = WindowsPXEBootMethod()
-        mock_mac = factory.make_mac_address()
-        mock_purpose = factory.make_name('install')
-        mock_release = factory.make_name('release')
-        self.patch(windows_module, 'get_remote_mac').return_value = mock_mac
-
-        cluster_uuid = factory.make_UUID()
-        self.patch(windows_module, 'get_cluster_uuid').return_value = (
-            cluster_uuid)
-
-        mock_backend = mock.MagicMock()
-        mock_backend.get_cluster_uuid.return_value = factory.make_name('uuid')
-        mock_backend.get_generator_url.return_value = factory.make_name('url')
-        mock_backend.get_page.return_value = succeed(
-            json.dumps({
-                'purpose': mock_purpose,
-                'release': mock_release,
-                }))
-
-        call_context = {
-            "local": (
-                factory.make_ipv4_address(),
-                factory.pick_port()),
-            "remote": (
-                factory.make_ipv4_address(),
-                factory.pick_port()),
-            }
-
-        data = yield context.call(
-            call_context, method.get_node_info, mock_backend)
-
-        self.assertEqual(mock_purpose, data['purpose'])
-        self.assertEqual(mock_release, data['release'])
-        self.assertEqual(mock_mac, data['mac'])
+        mac = factory.make_mac_address()
+        self.patch(windows_module, 'get_remote_mac').return_value = mac
+        mock_request_node_info = self.patch(
+            windows_module, 'request_node_info_by_mac_address')
+        method.get_node_info()
+        self.assertThat(
+            mock_request_node_info, MockCalledOnceWith(mac))
 
     @inlineCallbacks
     def test_match_path_pxelinux(self):

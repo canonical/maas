@@ -17,7 +17,6 @@ __all__ = [
     'WindowsPXEBootMethod',
     ]
 
-import json
 import os.path
 import re
 import shutil
@@ -29,10 +28,16 @@ from provisioningserver.boot import (
     BytesReader,
     get_remote_mac,
     )
-from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
+from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.rpc import getRegionClient
+from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.utils.fs import tempdir
-from provisioningserver.utils.twisted import deferred
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    deferred,
+    )
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -40,6 +45,10 @@ from twisted.internet.defer import (
     )
 from twisted.python.context import get
 from twisted.python.filepath import FilePath
+
+
+maaslog = get_maas_logger("windows")
+
 
 # These files do not exist in the tftproot. WindowsPXEBootMethod
 # handles access to these files returning the correct version
@@ -77,6 +86,23 @@ def load_hivex(*args, **kwargs):
     if module is None:
         return None
     return module.Hivex(*args, **kwargs)
+
+
+@asynchronous
+@inlineCallbacks
+def request_node_info_by_mac_address(mac_address):
+    """Request node info for the given mac address.
+
+    :param mac_address: The MAC Address of the node of the event.
+    :type mac_address: unicode
+    """
+    client = getRegionClient()
+    try:
+        yield client(
+            RequestNodeInfoByMACAddress, mac_address=mac_address)
+    except NoSuchNode:
+        maaslog.debug(
+            "Node doesn't exist for MAC address: %s" % mac_address)
 
 
 class Bcd:
@@ -171,35 +197,10 @@ class WindowsPXEBootMethod(BootMethod):
     arch_octet = None
 
     @deferred
-    def get_node_info(self, backend):
-        """Gets node information from the backend."""
-        local_host, local_port = get("local", (None, None))
-        remote_host, remote_port = get("remote", (None, None))
-
+    def get_node_info(self):
+        """Gets node information via the remote mac."""
         remote_mac = get_remote_mac()
-        params = {
-            "local": local_host,
-            "remote": remote_host,
-            "mac": remote_mac,
-            "cluster_uuid": get_cluster_uuid(),
-            }
-
-        url = backend.get_generator_url(params)
-
-        def set_remote_mac(data):
-            if data is not None:
-                data['mac'] = remote_mac
-            return data
-
-        d = backend.get_page(url)
-        d.addCallback(json.loads)
-        d.addCallback(set_remote_mac)
-        # Ignore all errors. If communication to pxeconfig fails, then
-        # we don't want this boot method to be selected. If its a true error
-        # to pxeconfig the TFTPService will raise that error, as pxeconfig
-        # is called again in that service.
-        d.addErrback(lambda failure: None)
-        return d
+        return request_node_info_by_mac_address(remote_mac)
 
     def clean_path(self, path):
         """Converts Windows path into a unix path and strips the
@@ -223,7 +224,7 @@ class WindowsPXEBootMethod(BootMethod):
         # need to see if this node is set to boot Windows first.
         local_host, local_port = get("local", (None, None))
         if path == 'pxelinux.0':
-            data = yield self.get_node_info(backend)
+            data = yield self.get_node_info()
             if data is None:
                 returnValue(None)
 
