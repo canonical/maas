@@ -781,129 +781,98 @@ class TestHasStaticIPv6Address(MAASServerTestCase):
 
 class TestComposeDebianNetworkInterfacesFile(MAASServerTestCase):
 
-    def patch_node_interfaces(self, interfaces):
-        """Inject given network interfaces data into `node`.
+    def make_listing(self, interface=None, mac=None):
+        """Return a list containing an interface/MAC tuple."""
+        if interface is None:
+            interface = factory.make_name('eth')
+        if mac is None:
+            mac = factory.make_mac_address()
+        return [(interface, mac)]
 
-        The network interfaces data should be an iterabl of tuples, each of
-        an interface name and a MAC address.
+    def make_mapping(self, mac=None, ips=None):
+        """Create a MAC-to-IPs `defaultdict` like `map_static_ips` returns.
+
+        The mapping will map `mac` (random by default) to `ips` (containing
+        one IPv6 address by default).
         """
-        fake = self.patch_autospec(
-            networking_preseed_module, 'extract_network_interfaces')
-        fake.return_value = [
-            (interface, normalise_mac(mac))
-            for interface, mac in interfaces
-            ]
+        if mac is None:
+            mac = factory.make_mac_address()
+        if ips is None:
+            ips = {factory.make_ipv6_address()}
+        mapping = defaultdict(set)
+        mapping[mac] = {IPAddress(ip) for ip in ips}
+        return mapping
 
     def test__always_generates_lo(self):
         self.assertIn(
             'auto lo',
-            compose_debian_network_interfaces_file(factory.make_Node()))
+            compose_debian_network_interfaces_file([], {}, {}))
 
     def test__generates_DHCPv4_config_if_IPv4_not_disabled(self):
         interface = factory.make_name('eth')
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            disable_ipv4=False)
-        mac = node.get_primary_mac()
-        ipv6_network = factory.make_ipv6_network()
-        factory.make_NodeGroupInterface(
-            node.nodegroup, network=ipv6_network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        factory.make_StaticIPAddress(
-            ip=factory.pick_ip_in_network(ipv6_network), mac=mac)
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
-
+        mac = factory.make_mac_address()
         self.assertIn(
             "\niface %s inet dhcp\n" % interface,
-            compose_debian_network_interfaces_file(node))
+            compose_debian_network_interfaces_file(
+                self.make_listing(interface, mac), {}, {}))
 
     def test__generates_DHCPv4_config_if_no_IPv6_configured(self):
         interface = factory.make_name('eth')
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            disable_ipv4=True)
-        mac = node.get_primary_mac()
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
+        mac = factory.make_mac_address()
         self.assertIn(
             "\niface %s inet dhcp\n" % interface,
-            compose_debian_network_interfaces_file(node))
+            compose_debian_network_interfaces_file(
+                self.make_listing(interface, mac), {}, {}, disable_ipv4=True))
 
     def test__generates_no_DHCPv4_config_if_node_should_use_IPv6_only(self):
-        interface = factory.make_name('eth')
-        ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            disable_ipv4=True)
-        mac = node.get_primary_mac()
-        factory.make_NodeGroupInterface(
-            node.nodegroup, network=ipv6_network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        factory.make_StaticIPAddress(
-            ip=factory.pick_ip_in_network(ipv6_network), mac=mac)
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
-
-        # The space is significant: this should not match the inet6 line!
+        mac = factory.make_mac_address()
+        # The space is significant: we're expecting an inet6 line, so don't
+        # match that when we look for inet.
         self.assertNotIn(
             " inet ",
-            compose_debian_network_interfaces_file(node))
+            compose_debian_network_interfaces_file(
+                self.make_listing(mac=mac), self.make_mapping(mac), {},
+                disable_ipv4=True))
 
     def test__generates_static_IPv6_config(self):
         interface = factory.make_name('eth')
-        ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        mac = node.get_primary_mac()
-        factory.make_NodeGroupInterface(
-            node.nodegroup, network=ipv6_network,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        factory.make_StaticIPAddress(
-            ip=factory.pick_ip_in_network(ipv6_network), mac=mac)
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
+        mac = factory.make_mac_address()
+        ipv6 = factory.make_ipv6_address()
+        disable_ipv4 = factory.pick_bool()
         self.assertIn(
             "\niface %s inet6 static" % interface,
-            compose_debian_network_interfaces_file(node))
+            compose_debian_network_interfaces_file(
+                self.make_listing(interface, mac),
+                self.make_mapping(mac, {ipv6}), {}, disable_ipv4=disable_ipv4))
 
     def test__passes_ip_and_gateway_when_creating_IPv6_stanza(self):
         interface = factory.make_name('eth')
-        ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        [ipv4_interface] = node.nodegroup.nodegroupinterface_set.all()
-        mac = node.get_primary_mac()
-        gateway = factory.pick_ip_in_network(ipv6_network)
-        factory.make_NodeGroupInterface(
-            node.nodegroup, network=ipv6_network, router_ip=gateway,
-            interface=ipv4_interface.interface,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        static_ipv6 = factory.pick_ip_in_network(ipv6_network)
-        factory.make_StaticIPAddress(ip=static_ipv6, mac=mac)
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
+        mac = factory.make_mac_address()
+        ipv6 = factory.make_ipv6_address()
+        gateway = factory.make_ipv6_address()
         fake = self.patch_autospec(
             networking_preseed_module,
             'compose_debian_network_interfaces_ipv6_stanza')
         fake.return_value = factory.make_name('stanza')
 
-        compose_debian_network_interfaces_file(node)
+        compose_debian_network_interfaces_file(
+            self.make_listing(interface, mac), self.make_mapping(mac, {ipv6}),
+            self.make_mapping(mac, {gateway}))
 
         self.assertThat(
             fake,
-            MockCalledOnceWith(
-                interface, IPAddress(static_ipv6), IPAddress(gateway)))
+            MockCalledOnceWith(interface, IPAddress(ipv6), IPAddress(gateway)))
 
     def test__omits_gateway_if_not_set(self):
         interface = factory.make_name('eth')
-        ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        [ipv4_interface] = node.nodegroup.nodegroupinterface_set.all()
-        mac = node.get_primary_mac()
-        factory.make_NodeGroupInterface(
-            node.nodegroup, network=ipv6_network, router_ip='',
-            interface=ipv4_interface.interface,
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        static_ipv6 = factory.pick_ip_in_network(ipv6_network)
-        factory.make_StaticIPAddress(ip=static_ipv6, mac=mac)
-        self.patch_node_interfaces([(interface, mac.mac_address.get_raw())])
+        mac = factory.make_mac_address()
         fake = self.patch_autospec(
             networking_preseed_module,
             'compose_debian_network_interfaces_ipv6_stanza')
         fake.return_value = factory.make_name('stanza')
 
-        compose_debian_network_interfaces_file(node)
+        compose_debian_network_interfaces_file(
+            self.make_listing(interface, mac), self.make_mapping(mac), {})
 
         self.assertThat(
             fake,
@@ -911,10 +880,10 @@ class TestComposeDebianNetworkInterfacesFile(MAASServerTestCase):
 
     def test__writes_auto_lines(self):
         interface = factory.make_name('eth')
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        self.patch_node_interfaces(
-            [(interface, node.get_primary_mac().mac_address.get_raw())])
-        interfaces_file = compose_debian_network_interfaces_file(node)
+
+        interfaces_file = compose_debian_network_interfaces_file(
+            self.make_listing(interface), {}, {})
+
         self.assertIn('auto %s' % interface, interfaces_file)
         self.assertEqual(1, interfaces_file.count('auto %s' % interface))
 

@@ -297,7 +297,7 @@ def extract_ip(mapping, mac, ip_version):
         static address for this version will be returned.
     :return: A matching IP address, or `None`.
     """
-    for ip in mapping[mac]:
+    for ip in mapping.get(mac, []):
         if ip.version == ip_version:
             return ip
     return None
@@ -345,27 +345,38 @@ def has_static_ipv6_address(mapping):
     return False
 
 
-def compose_debian_network_interfaces_file(node):
-    """Return contents for a node's `/etc/network/interfaces` file."""
-    static_ips = map_static_ips(node)
+def compose_debian_network_interfaces_file(interfaces, ips_mapping,
+                                           gateways_mapping,
+                                           disable_ipv4=False):
+    """Return contents for a node's `/etc/network/interfaces` file.
+
+    This function is specific to Debian-based nodes.
+
+    :param interfaces: A list of interface/MAC pairs for the node.
+    :param ips_mapping: A `defaultdict` mapping MAC addresses to sets of the
+        corresponding network interfaces' IP addresses.
+    :param gateways_mapping: A `defaultdict` mapping MAC addresses to sets of
+        the corresponding network interfaces' default gateways.
+
+    :param disable_ipv4: Should this node be installed without IPv4 networking?
+    """
     # Should we disable IPv4 on this node?  For safety's sake, we won't do this
     # if the node has no static IPv6 addresses.  Otherwise it might become
     # accidentally unaddressable: it may have IPv6 addresses, but apart from
     # being able to guess autoconfigured addresses, we won't know what they
     # are.
-    disable_ipv4 = (node.disable_ipv4 and has_static_ipv6_address(static_ips))
-    gateways = map_gateways(node)
+    disable_ipv4 = (disable_ipv4 and has_static_ipv6_address(ips_mapping))
     stanzas = [
         'auto lo',
         ]
-    for interface, mac in extract_network_interfaces(node):
+    for interface, mac in interfaces:
         stanzas.append('auto %s' % interface)
         if not disable_ipv4:
             stanzas.append(
                 compose_debian_network_interfaces_ipv4_stanza(interface))
-        static_ipv6 = extract_ip(static_ips, mac, 6)
+        static_ipv6 = extract_ip(ips_mapping, mac, 6)
         if static_ipv6 is not None:
-            gateway = extract_ip(gateways, mac, 6)
+            gateway = extract_ip(gateways_mapping, mac, 6)
             stanzas.append(
                 compose_debian_network_interfaces_ipv6_stanza(
                     interface, static_ipv6, gateway))
