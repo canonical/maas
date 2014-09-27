@@ -3,7 +3,7 @@
 
 """Node actions.
 
-These are actions that appear as buttons no the UI's Node page, depending
+These are actions that appear as buttons on the UI's Node page, depending
 on the node's state, the user's privileges etc.
 
 To define a new node action, derive a class for it from :class:`NodeAction`,
@@ -203,6 +203,21 @@ class AbortCommissioning(NodeAction):
         return "Node commissioning aborted."
 
 
+class AbortOperation(NodeAction):
+    """Abort the current operation."""
+    name = "abort operation"
+    display = "Abort operation"
+    display_bulk = "Abort operation"
+    actionable_statuses = (
+        NODE_STATUS.DISK_ERASING,)
+    permission = NODE_PERMISSION.EDIT
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
+        self.node.abort_operation(self.user)
+        return "Node operation aborted."
+
+
 class UseCurtin(NodeAction):
     """Set this node to use curtin for installation."""
     name = "usecurtin"
@@ -378,6 +393,7 @@ ACTION_CLASSES = (
     Commission,
     ReleaseNode,
     AbortCommissioning,
+    AbortOperation,
     MarkBroken,
     MarkFixed,
     Delete,

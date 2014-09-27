@@ -707,6 +707,39 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(start_nodes, MockCalledOnceWith(
             [node.system_id], owner, user_data=ANY))
 
+    def test_abort_disk_erasing_changes_state_and_stops_node(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=owner,
+            agent_name=agent_name)
+        stop_nodes = self.patch(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+        node.abort_disk_erasing(owner)
+        self.assertEqual(
+            (owner, NODE_STATUS.FAILED_DISK_ERASING, agent_name),
+            (node.owner, node.status, node.agent_name))
+        self.assertThat(stop_nodes, MockCalledOnceWith(
+            [node.system_id], owner))
+
+    def test_abort_operation_aborts_disk_erasing(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=owner,
+            agent_name=agent_name)
+        abort_disk_erasing = self.patch_autospec(node, 'abort_disk_erasing')
+        node.abort_operation(owner)
+        self.assertThat(abort_disk_erasing, MockCalledOnceWith(owner))
+
+    def test_abort_operation_raises_exception_for_unsupported_state(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, owner=owner,
+            agent_name=agent_name)
+        self.assertRaises(NodeStateViolation, node.abort_operation, owner)
+
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()

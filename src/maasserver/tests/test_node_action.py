@@ -34,6 +34,7 @@ from maasserver.models import StaticIPAddress
 from maasserver.models.node import Node
 from maasserver.node_action import (
     AbortCommissioning,
+    AbortOperation,
     AcquireNode,
     Commission,
     compile_node_actions,
@@ -252,6 +253,22 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertThat(
             stop_nodes, MockCalledOnceWith([node.system_id], admin))
+
+
+class TestAbortOperationNodeAction(MAASServerTestCase):
+
+    def test_AbortOperation_aborts_disk_erasing(self):
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=owner)
+        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes.return_value = [node]
+
+        AbortOperation(node, owner).execute()
+
+        self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
+        self.assertThat(
+            stop_nodes, MockCalledOnceWith([node.system_id], owner))
 
 
 class TestAcquireNodeNodeAction(MAASServerTestCase):

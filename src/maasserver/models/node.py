@@ -1207,6 +1207,36 @@ class Node(CleanSave, TimestampedModel):
         Node.objects.start_nodes(
             [self.system_id], user, user_data=disk_erase_user_data)
 
+    def abort_disk_erasing(self, user):
+        """
+        Power off disk erasing node and set its status to 'failed disk
+        erasing'.
+        """
+        if self.status != NODE_STATUS.DISK_ERASING:
+            raise NodeStateViolation(
+                "Cannot abort disk erasing of a non disk erasing node: "
+                "node %s is in state %s."
+                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+        maaslog.info(
+            "%s: Aborting disk erasing", self.hostname)
+        stopped_node = Node.objects.stop_nodes([self.system_id], user)
+        if len(stopped_node) == 1:
+            self.status = NODE_STATUS.FAILED_DISK_ERASING
+            self.save()
+
+    def abort_operation(self, user):
+        """Abort the current operation.
+        This currently only supports aborting Disk Erasing.
+        """
+        if self.status == NODE_STATUS.DISK_ERASING:
+            self.abort_disk_erasing(user)
+            return
+
+        raise NodeStateViolation(
+            "Cannot abort in current state: "
+            "node %s is in state %s."
+            % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
+
     def release(self):
         """Mark allocated or reserved node as available again and power off.
 
@@ -1378,8 +1408,6 @@ class Node(CleanSave, TimestampedModel):
             # images, kernel options, etc for erasing is the same as that
             # of commissioning.
             return "commissioning"
-        elif self.status == NODE_STATUS.DISK_ERASING:
-            return "disk_erasing"
         elif self.status == NODE_STATUS.DEPLOYING:
             # Install the node if netboot is enabled,
             # otherwise boot locally.
