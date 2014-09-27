@@ -63,6 +63,22 @@ def gen_operating_systems():
         }
 
 
+def get_os_release_title(osystem, release):
+    """Get the title for the operating systems release.
+
+    :raises NoSuchOperatingSystem: If ``osystem`` is not found.
+    """
+    try:
+        osystem = OperatingSystemRegistry[osystem]
+    except KeyError:
+        raise exceptions.NoSuchOperatingSystem(osystem)
+    else:
+        title = osystem.get_release_title(release)
+        if title is None:
+            return ""
+        return title
+
+
 def validate_license_key(osystem, release, key):
     """Validate a license key.
 

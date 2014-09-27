@@ -104,6 +104,35 @@ class TestListOperatingSystemHelpers(MAASTestCase):
         self.assertEqual(expected, list(observed))
 
 
+class TestGetOSReleaseTitle(MAASTestCase):
+
+    def test_returns_release_title(self):
+        os_name = factory.make_name('os')
+        title = factory.make_name('title')
+        purposes = [BOOT_IMAGE_PURPOSE.XINSTALL]
+        osystem = make_osystem(self, os_name, purposes)
+        release = random.choice(osystem.get_supported_releases())
+        self.patch(osystem, 'get_release_title').return_value = title
+        self.assertEqual(
+            title, osystems.get_os_release_title(osystem.name, release))
+
+    def test_returns_empty_release_title_when_None_returned(self):
+        os_name = factory.make_name('os')
+        purposes = [BOOT_IMAGE_PURPOSE.XINSTALL]
+        osystem = make_osystem(self, os_name, purposes)
+        release = random.choice(osystem.get_supported_releases())
+        self.patch(osystem, 'get_release_title').return_value = None
+        self.assertEqual(
+            "", osystems.get_os_release_title(osystem.name, release))
+
+    def test_throws_exception_when_os_does_not_exist(self):
+        self.assertRaises(
+            exceptions.NoSuchOperatingSystem,
+            osystems.get_os_release_title,
+            factory.make_name("no-such-os"),
+            factory.make_name("bogus-release"))
+
+
 class TestValidateLicenseKeyErrors(MAASTestCase):
 
     def test_throws_exception_when_os_does_not_exist(self):

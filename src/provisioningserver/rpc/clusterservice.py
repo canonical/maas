@@ -64,6 +64,7 @@ from provisioningserver.rpc.monitors import (
     )
 from provisioningserver.rpc.osystems import (
     gen_operating_systems,
+    get_os_release_title,
     get_preseed_data,
     validate_license_key,
     )
@@ -164,6 +165,15 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.ListOperatingSystems`.
         """
         return {"osystems": gen_operating_systems()}
+
+    @cluster.GetOSReleaseTitle.responder
+    def get_os_release_title(self, osystem, release):
+        """get_os_release_title()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.GetOSReleaseTitle`.
+        """
+        return {"title": get_os_release_title(osystem, release)}
 
     @cluster.ValidateLicenseKey.responder
     def validate_license_key(self, osystem, release, key):

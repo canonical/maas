@@ -119,6 +119,25 @@ class ListOperatingSystems(amp.Command):
     errors = []
 
 
+class GetOSReleaseTitle(amp.Command):
+    """Get the title for the operating systems release.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"osystem", amp.Unicode()),
+        (b"release", amp.Unicode()),
+    ]
+    response = [
+        (b"title", amp.Unicode()),
+    ]
+    errors = {
+        exceptions.NoSuchOperatingSystem: (
+            b"NoSuchOperatingSystem"),
+    }
+
+
 class ValidateLicenseKey(amp.Command):
     """Validate an OS license key.
 

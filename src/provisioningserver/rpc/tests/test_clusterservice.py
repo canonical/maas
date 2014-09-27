@@ -890,6 +890,49 @@ class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
         self.assertEqual(expected, osystems)
 
 
+class TestClusterProtocol_GetOSReleaseTitle(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.GetOSReleaseTitle.commandName)
+        self.assertIsNot(responder, None)
+
+    @inlineCallbacks
+    def test_calls_get_os_release_title(self):
+        title = factory.make_name('title')
+        get_os_release_title = self.patch(
+            clusterservice, "get_os_release_title")
+        get_os_release_title.return_value = title
+        arguments = {
+            "osystem": factory.make_name("osystem"),
+            "release": factory.make_name("release"),
+        }
+        observed = yield call_responder(
+            Cluster(), cluster.GetOSReleaseTitle, arguments)
+        expected = {"title": title}
+        self.assertEqual(expected, observed)
+        # The arguments are passed to the responder positionally.
+        self.assertThat(get_os_release_title, MockCalledOnceWith(
+            arguments["osystem"], arguments["release"]))
+
+    @inlineCallbacks
+    def test_exception_when_os_does_not_exist(self):
+        # A remote NoSuchOperatingSystem exception is re-raised locally.
+        get_os_release_title = self.patch(
+            clusterservice, "get_os_release_title")
+        get_os_release_title.side_effect = exceptions.NoSuchOperatingSystem()
+        arguments = {
+            "osystem": factory.make_name("osystem"),
+            "release": factory.make_name("release"),
+        }
+        with ExpectedException(exceptions.NoSuchOperatingSystem):
+            yield call_responder(
+                Cluster(), cluster.GetOSReleaseTitle, arguments)
+
+
 class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
