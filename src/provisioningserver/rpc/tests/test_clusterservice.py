@@ -93,7 +93,6 @@ from provisioningserver.rpc.testing.doubles import (
     )
 from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
-from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,
     Equals,
@@ -1144,8 +1143,13 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
             "system_id": "id", "hostname": "hostname", "power_type": "type",
             "context": {},
         })
-        self.assertRaises(
-            exceptions.PowerActionAlreadyInProgress, extract_result, d)
+        # If the call doesn't fail then we have a test failure; we're
+        # *expecting* PowerActionFail to be raised.
+        d.addCallback(self.fail)
+
+        def check(failure):
+            failure.trap(exceptions.PowerActionAlreadyInProgress)
+        return d.addErrback(check)
 
 
 class TestClusterProtocol_PowerQuery(MAASTestCase):

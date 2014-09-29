@@ -203,19 +203,21 @@ class Cluster(RPCProtocol):
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):
         """Turn a node on."""
-        maybe_change_power_state(
+        d = maybe_change_power_state(
             system_id, hostname, power_type, power_change='on',
             context=context)
-        return {}
+        d.addCallback(lambda _: {})
+        return d
 
     @log_call(level=logging.DEBUG)
     @cluster.PowerOff.responder
     def power_off(self, system_id, hostname, power_type, context):
         """Turn a node off."""
-        maybe_change_power_state(
+        d = maybe_change_power_state(
             system_id, hostname, power_type, power_change='off',
             context=context)
-        return {}
+        d.addCallback(lambda _: {})
+        return d
 
     @cluster.PowerQuery.responder
     def power_query(self, system_id, hostname, power_type, context):
