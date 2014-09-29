@@ -18,40 +18,156 @@ var dashboard_hooks = Y.one('#dashboard-hooks').getContent();
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-node-views-NodeListLoader',
 
-    testInitialization: function() {
-        var base_view = new Y.maas.node_views.NodeListLoader();
-        this.addCleanup(function() { base_view.destroy(); });
-        Y.Assert.areEqual('nodeList', base_view.modelList.name);
-        Y.Assert.isFalse(base_view.nodes_loaded);
+    exampleNodes: [
+        {system_id: '3', hostname: 'dan'},
+        {system_id: '4', hostname: 'dee'}
+    ],
+
+    makeNodeListLoader: function() {
+        var view = new Y.maas.node_views.NodeListLoader();
+        this.addCleanup(Y.bind(view.destroy, view));
+        return view;
     },
 
-    testRenderCallsLoad: function() {
-        // The initial call to .render() triggers the loading of the
-        // nodes.
+    testInitialization: function() {
+        var view = this.makeNodeListLoader();
+        Y.Assert.areEqual('nodeList', view.modelList.name);
+    },
+
+    testRenderDoesNotCallLoad: function() {
+        // The initial call to .render() does *not* trigger the loading
+        // of the nodes.
+        var self = this;
+
         var mockXhr = Y.Mock();
         Y.Mock.expect(mockXhr, {
             method: 'send',
-            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any]
+            args: [MAAS_config.uris.nodes_handler, Y.Mock.Value.Any],
+            run: function(uri, cfg) {
+                var out = new Y.Base();
+                out.response = Y.JSON.stringify(self.exampleNodes);
+                cfg.on.success(Y.guid(), out);
+            }
         });
         this.mockIO(mockXhr, module);
 
-        var base_view = new Y.maas.node_views.NodeListLoader();
-        this.addCleanup(function() { base_view.destroy(); });
-        base_view.render();
-        Y.Mock.verify(mockXhr);
+        var view = this.makeNodeListLoader();
+
+        view.render();
+        // The model list has not been populated.
+        Y.Assert.areEqual(0, view.modelList.size());
+    },
+
+    testAddLoader: function() {
+        // A mock loader.
+        var loader = new Y.Base();
+
+        // Capture event registrations.
+        var events = {};
+        loader.on = function(event, callback) {
+            events[event] = callback;
+        };
+
+        var view = this.makeNodeListLoader();
+        view.addLoader(loader);
+
+        // Several events are registered.
+        Y.Assert.areSame(view.loadNodesStarted, events["io:start"]);
+        Y.Assert.areSame(view.loadNodesEnded, events["io:end"]);
+        Y.Assert.areSame(view.loadNodesFailed, events["io:failure"]);
+        Y.Assert.isFunction(events["io:success"]);
     },
 
     testLoadNodes: function() {
-        var response = Y.JSON.stringify([
-               {system_id: '3', hostname: 'dan'},
-               {system_id: '4', hostname: 'dee'}
-           ]);
-        this.mockSuccess(response, module);
-        var base_view = new Y.maas.node_views.NodeListLoader();
-        base_view.render();
-        Y.Assert.areEqual(2, base_view.modelList.size());
-        Y.Assert.areEqual('dan', base_view.modelList.item(0).get('hostname'));
-        Y.Assert.areEqual('dee', base_view.modelList.item(1).get('hostname'));
+        var response = Y.JSON.stringify(this.exampleNodes);
+        var view = this.makeNodeListLoader();
+        view.loadNodes(response);
+        Y.Assert.isTrue(view.loaded);
+        Y.Assert.areEqual(2, view.modelList.size());
+        Y.Assert.areEqual('dan', view.modelList.item(0).get('hostname'));
+        Y.Assert.areEqual('dee', view.modelList.item(1).get('hostname'));
+    },
+
+    testLoadNodes_invalid_data: function() {
+        var response = "{garbled data}";
+        var view = this.makeNodeListLoader();
+
+        var loadNodesFailedCalled = false;
+        view.loadNodesFailed = function() {
+            loadNodesFailedCalled = true;
+        };
+
+        view.loadNodes(response);
+        Y.Assert.isTrue(view.loaded);
+        Y.Assert.areEqual(0, view.modelList.size());
+        Y.Assert.isTrue(loadNodesFailedCalled);
+    },
+
+    assertModelListMatchesNodes: function(modelList, nodes) {
+        Y.Assert.areEqual(nodes.length, modelList.size());
+        Y.Array.each(nodes, function(node) {
+            var model = modelList.getById(node.system_id);
+            Y.Assert.isObject(model);
+            Y.Assert.areEqual(node.hostname, model.get("hostname"));
+            Y.Assert.areEqual(node.status, model.get("status"));
+        });
+    },
+
+    test_mergeNodes_when_modelList_is_empty: function() {
+        var view = this.makeNodeListLoader();
+        var nodes = [
+            {system_id: "1", hostname: "host1", status: 1},
+            {system_id: "2", hostname: "host2", status: 2},
+            {system_id: "3", hostname: "host3", status: 3}
+        ];
+        Y.Assert.areEqual(0, view.modelList.size());
+        view.mergeNodes(nodes);
+        this.assertModelListMatchesNodes(view.modelList, nodes);
+    },
+
+    test_mergeNodes_when_modelList_is_not_empty: function() {
+        var view = this.makeNodeListLoader();
+        var nodes_before = [
+            {system_id: "1", hostname: "host1", status: 1},
+            {system_id: "3", hostname: "host3", status: 3}
+        ];
+        var nodes_after = [
+            {system_id: "1", hostname: "host1after", status: 11},
+            {system_id: "2", hostname: "host2after", status: 22}
+        ];
+        view.mergeNodes(nodes_before);
+        this.assertModelListMatchesNodes(view.modelList, nodes_before);
+        view.mergeNodes(nodes_after);
+        this.assertModelListMatchesNodes(view.modelList, nodes_after);
+    },
+
+    test_mergeNodes_events: function() {
+        var view = this.makeNodeListLoader();
+        var events = [];
+        view.modelList.after(
+            ["add", "remove", "*:change", "reset"],
+            Y.bind(events.push, events));
+
+        var getEventType = function(e) { return e.type; };
+
+        var nodes_before = [
+            {system_id: "1", hostname: "host1", status: 1},
+            {system_id: "3", hostname: "host3", status: 3}
+        ];
+        view.mergeNodes(nodes_before);
+        Y.ArrayAssert.itemsAreSame(
+            ["nodeList:add", "nodeList:add"],
+            Y.Array.map(events, getEventType));
+
+        var nodes_after = [
+            {system_id: "1", hostname: "host1after", status: 11},
+            {system_id: "2", hostname: "host2after", status: 22}
+        ];
+        view.mergeNodes(nodes_after);
+        Y.ArrayAssert.itemsAreSame(
+            ["nodeList:add", "nodeList:add", "nodeModel:change",
+             "nodeList:add", "nodeList:remove"],
+            Y.Array.map(events, getEventType));
     }
 
 }));
@@ -159,7 +275,6 @@ suite.add(new Y.maas.testing.TestCase({
         Y.one('#placeholder').append(new_dash);
         var view = create_dashboard_view(data, this, '#' + root_node_id);
         this.addCleanup(function() { view.destroy(); });
-        view.render();
         return view;
     },
 
@@ -224,27 +339,27 @@ suite.add(new Y.maas.testing.TestCase({
         // The number of nodes for each status should have been set
         Y.Assert.areEqual(
             1,
-            view.allocated_nodes,
+            view.stats.get("allocated"),
             "The number of allocated nodes should have been set.");
         Y.Assert.areEqual(
             2,
-            view.queued_nodes,
+            view.stats.get("queued"),
             "The number of queued nodes should have been set.");
         Y.Assert.areEqual(
             3,
-            view.reserved_nodes,
+            view.stats.get("reserved"),
             "The number of reserved nodes should have been set.");
         Y.Assert.areEqual(
             4,
-            view.offline_nodes,
+            view.stats.get("offline"),
             "The number of offline nodes should have been set.");
         Y.Assert.areEqual(
             2,
-            view.added_nodes,
+            view.stats.get("added"),
             "The number of added nodes should have been set.");
         Y.Assert.areEqual(
             1,
-            view.retired_nodes,
+            view.stats.get("retired"),
             "The number of retired nodes should have been set.");
         Y.Assert.areEqual(
             '12',
@@ -287,7 +402,7 @@ suite.add(new Y.maas.testing.TestCase({
         // Check node creation.
         Y.Assert.areEqual(
             2,
-            view.added_nodes,
+            view.stats.get("added"),
             "Check the initial number of nodes for the status.");
 
         view.fade_in.on('end', function() { self.resume(function() {
@@ -297,12 +412,8 @@ suite.add(new Y.maas.testing.TestCase({
                     "The node should exist in the modellist.");
                 Y.Assert.areEqual(
                     3,
-                    view.added_nodes,
+                    view.stats.get("added"),
                     "The status should have one extra node.");
-                Y.Assert.areEqual(
-                    3,
-                    view.chart.get('added_nodes'),
-                    "The chart status number should also be updated.");
                 Y.Assert.areEqual(
                     '13',
                     number_node.get('text'),
@@ -324,7 +435,7 @@ suite.add(new Y.maas.testing.TestCase({
         node.status = Y.maas.enums.NODE_STATUS.ALLOCATED;
         Y.Assert.areEqual(
             1,
-            view.allocated_nodes,
+            view.stats.get("allocated"),
             "Check the initial number of nodes for the new status.");
 
         // Update a node.
@@ -337,20 +448,12 @@ suite.add(new Y.maas.testing.TestCase({
             "The node should have been updated.");
         Y.Assert.areEqual(
             2,
-            view.allocated_nodes,
+            view.stats.get("allocated"),
             "The new status should have one extra node.");
         Y.Assert.areEqual(
-            2,
-            view.chart.get('allocated_nodes'),
-            "The new chart status number should also be updated.");
-        Y.Assert.areEqual(
             1,
-            view.added_nodes,
+            view.stats.get("added"),
             "The old status count should have one less node.");
-        Y.Assert.areEqual(
-            1,
-            view.chart.get('added_nodes'),
-            "The old chart status number should also be updated.");
 
         Y.Assert.areEqual(
             number_node.get('text'),
@@ -371,12 +474,8 @@ suite.add(new Y.maas.testing.TestCase({
                     "The node should have been deleted.");
                 Y.Assert.areEqual(
                     1,
-                    view.allocated_nodes,
+                    view.stats.get("allocated"),
                     "The status should have one less node.");
-                Y.Assert.areEqual(
-                    1,
-                    view.chart.get('allocated_nodes'),
-                    "The chart status number should also be updated.");
                 Y.Assert.areEqual(
                     '12',
                     number_node.get('text'),
@@ -397,47 +496,33 @@ suite.add(new Y.maas.testing.TestCase({
         // Add a node to a status that also updates the chart
         Y.Assert.areEqual(
             2,
-            view.added_nodes,
+            view.stats.get("added"),
             "Check the initial number of nodes for the status.");
-        var result = view.updateStatus('add', Y.maas.enums.NODE_STATUS.NEW);
+        view.updateStatus('add', Y.maas.enums.NODE_STATUS.NEW);
         Y.Assert.areEqual(
             3,
-            view.added_nodes,
+            view.stats.get("added"),
             "The status should have one extra node.");
-        Y.Assert.areEqual(
-            3,
-            view.chart.get('added_nodes'),
-            "The chart status number should also be updated.");
-        Y.Assert.isTrue(
-            result,
-            "This status needs to update the chart, so should return true.");
         // Remove a node from a status
-        result = view.updateStatus('remove', Y.maas.enums.NODE_STATUS.NEW);
+        view.updateStatus('remove', Y.maas.enums.NODE_STATUS.NEW);
         Y.Assert.areEqual(
             2,
-            view.added_nodes,
+            view.stats.get("added"),
             "The status should have one less node.");
-        Y.Assert.areEqual(
-            2,
-            view.chart.get('added_nodes'),
-            "The chart status number should also be updated.");
         // Check a status that also updates text
         Y.Assert.areEqual(
             3,
-            view.reserved_nodes,
+            view.stats.get("reserved"),
             "Check the initial number of nodes for the reserved status.");
-        result = view.updateStatus('add', Y.maas.enums.NODE_STATUS.RESERVED);
+        view.updateStatus('add', Y.maas.enums.NODE_STATUS.RESERVED);
         Y.Assert.areEqual(
             4,
-            view.reserved_nodes,
+            view.stats.get("reserved"),
             "The status should have one extra node.");
         Y.Assert.areEqual(
             "4 nodes reserved for named deployment.",
             reserved_node.get('text'),
             "The dashboard reserved text should be updated.");
-        Y.Assert.isFalse(
-            result,
-            "This status should not to update the chart.");
     },
 
     testSetSummary: function() {
@@ -509,7 +594,8 @@ suite.add(new Y.maas.testing.TestCase({
     testSetNodeText: function() {
         var view = this.makeDashboard();
         view.setNodeText(
-            view.reservedNode, view.reserved_template, view.reserved_nodes);
+            view.reservedNode, view.reserved_template,
+            view.stats.get("reserved"));
         Y.Assert.areEqual(
             "3 nodes reserved for named deployment.",
             view.srcNode.one('#reserved-nodes').get('text'),
@@ -522,7 +608,8 @@ suite.add(new Y.maas.testing.TestCase({
             }];
         view = this.makeDashboard(data);
         view.setNodeText(
-            view.reservedNode, view.reserved_template, view.reserved_nodes);
+            view.reservedNode, view.reserved_template,
+            view.stats.get("reserved"));
         Y.Assert.areEqual(
             "1 node reserved for named deployment.",
             view.srcNode.one('#reserved-nodes').get('text'),
@@ -542,7 +629,6 @@ suite.add(new Y.maas.testing.TestCase({
 
 function create_dashboard_view(data, self, root_node_descriptor) {
     var response = Y.JSON.stringify(data);
-    self.mockSuccess(response, module);
     var view = new Y.maas.node_views.NodesDashboard({
         srcNode: root_node_descriptor,
         summaryNode: '#summary',
@@ -550,6 +636,7 @@ function create_dashboard_view(data, self, root_node_descriptor) {
         descriptionNode: '#nodes-description',
         reservedNode: '#reserved-nodes',
         retiredNode: '#retired-nodes'});
+    view.loadNodes(response);
     return view;
 }
 

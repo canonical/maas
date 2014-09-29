@@ -34,6 +34,86 @@ module.Node = Y.Base.create('nodeModel', Y.Model, [], {
  */
 module.NodeList = Y.Base.create('nodeList', Y.ModelList, [], {
     model: module.Node
+});
+
+/**
+ * An object that can contain aggregate information about nodes.
+ */
+module.NodeStats = Y.Base.create('nodeStats', Y.Base, [], {
+
+    update: function(name, delta) {
+        var value = this.get(name) + delta;
+        this.set(name, value);
+        return value;
+    }
+
+}, {
+
+    ATTRS: {
+        /**
+         * The number of allocated nodes.
+         *
+         * @attribute allocated
+         * @type integer
+         */
+        allocated: {
+            value: 0
+        },
+        /**
+         * The number of commissioned nodes.
+         *
+         * @attribute commissioned
+         * @type integer
+         */
+        commissioned: {
+            value: 0
+        },
+        /**
+         * The number of queued nodes.
+         *
+         * @attribute queued
+         * @type integer
+         */
+        queued: {
+            value: 0
+        },
+        /**
+         * The number of reserved nodes.
+         *
+         * @attribute reserved
+         * @type integer
+         */
+        reserved: {
+            value: 0
+        },
+        /**
+         * The number of offline nodes.
+         *
+         * @attribute offline
+         * @type integer
+         */
+        offline: {
+            value: 0
+        },
+        /**
+         * The number of added nodes.
+         *
+         * @attribute added
+         * @type integer
+         */
+        added: {
+            value: 0
+        },
+        /**
+         * The number of retired nodes.
+         *
+         * @attribute retired
+         * @type integer
+         */
+        retired: {
+            value: 0
+        }
+    }
 
 });
 

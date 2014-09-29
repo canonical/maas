@@ -10,21 +10,21 @@ var namespace = Y.namespace('maas.nodes_chart.tests');
 var module = Y.maas.nodes_chart;
 var suite = new Y.Test.Suite("maas.nodes_chart Tests");
 
-var cfg = {
-    node_id: 'chart',
-    width: 300,
-    allocated_nodes: 5,
-    commissioned_nodes: 6,
-    queued_nodes: 2,
-    offline_nodes: 3,
-    added_nodes: 10
-    };
+var initialStats = {
+    allocated: 5,
+    commissioned: 6,
+    queued: 2,
+    offline: 3,
+    added: 10
+};
 
 suite.add(new Y.maas.testing.TestCase({
     name: 'test-nodes-chart-widget-creation',
 
     setUp : function () {
-        this.chart = new module.NodesChartWidget(cfg);
+        var stats = new Y.maas.node.NodeStats(initialStats);
+        this.chart = new module.NodesChartWidget(
+            {node_id: 'chart', width: 300, stats: stats});
     },
 
     testCreation: function() {
@@ -40,7 +40,7 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     tearDown : function () {
-        Y.one('#chart').set('text', '');
+        Y.one('#chart').empty();
     }
 }));
 
@@ -48,7 +48,9 @@ suite.add(new Y.maas.testing.TestCase({
     name: 'test-nodes-chart-events',
 
     setUp : function () {
-        this.chart = new module.NodesChartWidget(cfg);
+        var stats = new Y.maas.node.NodeStats(initialStats);
+        this.chart = new module.NodesChartWidget(
+            {node_id: 'chart', width: 300, stats: stats});
     },
 
     testWidgetHover: function() {
@@ -127,12 +129,13 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     tearDown : function () {
-        Y.one('#chart').set('text', '');
+        Y.one('#chart').empty();
     }
 }));
 
 namespace.suite = suite;
 
 }, '0.1', {'requires': [
-    'node-event-simulate', 'test', 'maas.testing', 'maas.nodes_chart']}
+    'node-event-simulate', 'test', 'maas.testing', 'maas.nodes_chart',
+    'maas.node']}
 );

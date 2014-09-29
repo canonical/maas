@@ -11,9 +11,6 @@ YUI.add('maas.node_views', function(Y) {
 Y.log('loading maas.node_views');
 var module = Y.namespace('maas.node_views');
 
-// Only used to mockup io in tests.
-module._io = new Y.IO();
-
 var NODE_STATUS = Y.maas.enums.NODE_STATUS;
 
 
@@ -25,7 +22,7 @@ var NODE_STATUS = Y.maas.enums.NODE_STATUS;
  * Y.maas.node_add.AddNodeDispatcher.  Changes to this.modelList will trigger
  * re-rendering.
  *
- * You can provide your custom rendering method by defining a 'display'
+ * You can provide your custom rendering method by defining a 'render'
  * method (also, you can provide methods named 'loadNodesStarted' and
  * 'loadNodesEnded' to customize the display during the initial loading of the
  * visible nodes and a method named 'displayGlobalError' to display a message
@@ -36,56 +33,96 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
 
     initializer: function(config) {
         this.modelList = new Y.maas.node.NodeList();
-        this.nodes_loaded = false;
+        this.loaded = false;
     },
 
     render: function () {
-        if (this.nodes_loaded) {
-            this.display();
-        }
-        else {
-            this.loadNodesAndRender();
-        }
     },
 
-   /**
-    * Load visible Nodes (store them in this.modelList) and render this view.
-    * to be populated.
-    *
-    * @method loadNodesAndRender
-    */
-    loadNodesAndRender: function() {
-        var self = this;
-        var cfg = {
-            method: 'GET',
-            data: 'op=list',
-            sync: false,
-            on: {
-                start: Y.bind(self.loadNodesStarted, self),
-                success: function(id, out) {
-                    var node_data;
-                    try {
-                        node_data = JSON.parse(out.response);
+    /**
+     * Add a loader, a Y.IO object. Events fired by this IO object will
+     * be followed, and will drive updates to this object's model.
+     *
+     * It may be wiser to remodel this to consume a YUI DataSource. That
+     * would make testing easier, for one, but it would also mean we can
+     * eliminate our polling code: DataSource has support for polling
+     * via the datasource-polling module.
+     *
+     * @method addLoader
+     */
+    addLoader: function(loader) {
+        loader.on("io:start", this.loadNodesStarted, this);
+        loader.on("io:end", this.loadNodesEnded, this);
+        loader.on("io:failure", this.loadNodesFailed, this);
+        loader.on("io:success", function(id, request) {
+            this.loadNodes(request.responseText);
+        }, this);
+    },
+
+    /**
+     * Load the nodes from the given data.
+     *
+     * @method loadNodes
+     */
+    loadNodes: function(data) {
+        try {
+            var nodes = JSON.parse(data);
+            this.mergeNodes(nodes);
+        }
+        catch(e) {
+            this.loadNodesFailed();
+        }
+        // Record that at least one load has been done.
+        this.loaded = true;
+    },
+
+    /**
+     * Process an array of nodes, merging them into modelList with the
+     * fewest modifications possible.
+     *
+     * @method mergeNodes
+     */
+    mergeNodes: function(nodes) {
+        var self = this;  // JavaScript sucks.
+
+        // Attributes that we're checking for changes.
+        var attrs = ["hostname", "status"];
+
+        var nodesBySystemID = {};
+        Y.Array.each(nodes, function(node) {
+            nodesBySystemID[node.system_id] = node;
+        });
+        var modelsBySystemID = {};
+        this.modelList.each(function(model) {
+            modelsBySystemID[model.get("system_id")] = model;
+        });
+
+        Y.each(nodesBySystemID, function(node, system_id) {
+            var model = modelsBySystemID[system_id];
+            if (Y.Lang.isValue(model)) {
+                // Compare the node and the model.
+                var modelAttrs = model.getAttrs(attrs);
+                var modelChanges = {};
+                Y.each(modelAttrs, function(value, key) {
+                    if (node[key] !== value) {
+                        modelChanges[key] = node[key];
                     }
-                    catch(e) {
-                        // Parsing error.
-                        self.displayGlobalError('Unable to load nodes.');
-                     }
-                    self.modelList.add(node_data);
-                    self.modelList.after(
-                        ['add', 'remove', 'reset'], self.render, self);
-                    self.nodes_loaded = true;
-                    self.display();
-                },
-                failure: function(id, out) {
-                    // Unexpected error.
-                    self.displayGlobalError('Unable to load nodes.');
-                },
-                end: Y.bind(self.loadNodesEnded, self)
+                });
+                // Update the node.
+                model.setAttrs(modelChanges);
             }
-        };
-        var request = module._io.send(
-            MAAS_config.uris.nodes_handler, cfg);
+            else {
+                // Add the node.
+                self.modelList.add(node);
+            }
+        });
+
+        Y.each(modelsBySystemID, function(model, system_id) {
+            // Remove models that don't correspond to a node.
+            if (!Y.Object.owns(nodesBySystemID, system_id)) {
+                self.modelList.remove(model);
+            }
+        });
     },
 
    /**
@@ -101,7 +138,7 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
     * Function called if an error occurs during the initial node loading.
     * to be populated.
     *
-    * @method display
+    * @method displayGlobalError
     */
     displayGlobalError: function (error_message) {
     },
@@ -120,6 +157,15 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
     * @method loadNodesEnded
     */
     loadNodesEnded: function() {
+    },
+
+    /**
+     * Function called when the Node list failed to load.
+     *
+     * @method loadNodesFailed
+     */
+    loadNodesFailed: function() {
+        this.displayGlobalError('Unable to load nodes.');
     }
 
 });
@@ -127,20 +173,19 @@ module.NodeListLoader = Y.Base.create('nodeListLoader', Y.View, [], {
 /**
  * A customized view based on NodeListLoader that will display a dashboard
  * of the nodes.
- *
- * @method display
  */
 module.NodesDashboard = Y.Base.create(
     'nodesDashboard', module.NodeListLoader, [], {
-    all_template: ('node{plural} in this MAAS'),
-    allocated_template: ('node{plural} allocated'),
-    commissioned_template: ('node{plural} commissioned'),
-    queued_template: ('node{plural} queued'),
-    offline_template: ('node{plural} offline'),
-    added_template: ('node{plural} added but never seen'),
-    reserved_template:
-        ('{nodes} node{plural} reserved for named deployment.'),
-    retired_template: ('{nodes} retired node{plural} not represented.'),
+
+    // Templates.
+    added_template: 'node{plural} added but never seen',
+    all_template: 'node{plural} in this MAAS',
+    allocated_template: 'node{plural} allocated',
+    commissioned_template: 'node{plural} commissioned',
+    offline_template: 'node{plural} offline',
+    queued_template: 'node{plural} queued',
+    reserved_template: '{nodes} node{plural} reserved for named deployment.',
+    retired_template: '{nodes} retired node{plural} not represented.',
 
     initializer: function(config) {
         this.srcNode = Y.one(config.srcNode);
@@ -155,13 +200,9 @@ module.NodesDashboard = Y.Base.create(
         // XXX: GavinPanella 2012-04-17 bug=984116:
         // Hidden until we support retired nodes.
         this.retiredNode.hide();
-        this.allocated_nodes = 0;
-        this.commissioned_nodes = 0;
-        this.queued_nodes = 0;
-        this.reserved_nodes = 0;
-        this.offline_nodes = 0;
-        this.added_nodes = 0;
-        this.retired_nodes = 0;
+
+        this.stats = new Y.maas.node.NodeStats();
+
         this.fade_out = new Y.Anim({
             node: this.summaryNode,
             to: {opacity: 0},
@@ -177,11 +218,10 @@ module.NodesDashboard = Y.Base.create(
         // Prepare spinnerNode.
         this.spinnerNode = Y.Node.create('<img />')
             .set('src', MAAS_config.uris.statics + 'img/spinner.gif');
+
         // Set up the chart
-        this.chart = new Y.maas.nodes_chart.NodesChartWidget({
-            node_id: 'chart',
-            width: 300
-            });
+        this.chart = new Y.maas.nodes_chart.NodesChartWidget(
+            {node_id: 'chart', width: 300, stats: this.stats});
 
         // Set up the hovers for changing the dashboard text
         var events = [
@@ -211,49 +251,47 @@ module.NodesDashboard = Y.Base.create(
             }, null, event.template, this);
         }, this);
 
-        var self = this;
+        var self = this;  // JavaScript sucks.
 
         // Wire up the model list to the chart and summary.
         this.modelList.after("add", function(e) {
-            if (self.updateStatus('add', e.model.get("status"))) {
-                self.chart.updateChart();
-            }
-            self.setSummary(true);
+            self.updateStatus('add', e.model.get("status"));
+            self.setSummary(self.loaded);
         });
         this.modelList.after("remove", function(e) {
-            if (self.updateStatus('remove', e.model.get("status"))) {
-                self.chart.updateChart();
-            }
-            self.setSummary(true);
+            self.updateStatus('remove', e.model.get("status"));
+            self.setSummary(self.loaded);
         });
         this.modelList.after("*:change", function(e) {
             var status_change = e.changed.status;
             if (Y.Lang.isValue(status_change)) {
-                var update_remove = self.updateStatus(
-                    'remove', status_change.prevVal);
-                var update_add = self.updateStatus(
-                    'add', status_change.newVal);
-                if (update_remove || update_add) {
-                    self.chart.updateChart();
-                }
+                self.updateStatus('remove', status_change.prevVal);
+                self.updateStatus('add', status_change.newVal);
             }
+        });
+        this.modelList.after("reset", function(e) {
+            self.stats.reset();
+            self.modelList.each(function(model) {
+                self.updateStatus("add", model.get("status"));
+            });
+            self.render();
         });
     },
 
    /**
     * Display a dashboard of the nodes.
     *
-    * @method display
+    * @method render
     */
-    display: function () {
-        // Update the chart with the new node/status counts
-        this.chart.updateChart();
+    render: function () {
         // Set the default text on the dashboard
-        this.setSummary(false);
+        this.setSummary(this.loaded);
         this.setNodeText(
-            this.reservedNode, this.reserved_template, this.reserved_nodes);
+            this.reservedNode, this.reserved_template,
+            this.stats.get("reserved"));
         this.setNodeText(
-            this.retiredNode, this.retired_template, this.retired_nodes);
+            this.retiredNode, this.retired_template,
+            this.stats.get("retired"));
     },
 
     loadNodesStarted: function() {
@@ -265,11 +303,12 @@ module.NodesDashboard = Y.Base.create(
     },
 
    /**
-    * Update the number of nodes for a status.
+    * Update the number of nodes for a status, one node at a time.
+    *
+    * @method updateStatus
     */
     updateStatus: function(action, status) {
-        var update_chart = false;
-        var node_counter;
+        var node_counter = 0;
 
         /* This seems like an ugly way to calculate the change, but it stops
            duplication of checking for the action for each status.
@@ -284,50 +323,37 @@ module.NodesDashboard = Y.Base.create(
         switch (status) {
         case NODE_STATUS.NEW:
             // Added nodes
-            this.added_nodes += node_counter;
-            this.chart.set('added_nodes', this.added_nodes);
-            update_chart = true;
+            this.stats.update("added", node_counter);
             break;
         case NODE_STATUS.COMMISSIONING:
         case NODE_STATUS.FAILED_COMMISSIONING:
         case NODE_STATUS.MISSING:
             // Offline nodes
-            this.offline_nodes += node_counter;
-            this.chart.set('offline_nodes', this.offline_nodes);
-            update_chart = true;
+            this.stats.update("offline", node_counter);
             break;
         case NODE_STATUS.READY:
             // Queued nodes
-            this.queued_nodes += node_counter;
-            this.chart.set('queued_nodes', this.queued_nodes);
-            update_chart = true;
+            this.stats.update("queued", node_counter);
             break;
         case NODE_STATUS.RESERVED:
             // Reserved nodes
-            this.reserved_nodes += node_counter;
             this.setNodeText(
-                this.reservedNode,
-                this.reserved_template,
-                this.reserved_nodes
-                );
+                this.reservedNode, this.reserved_template,
+                this.stats.update("reserved", node_counter));
             break;
         case NODE_STATUS.ALLOCATED:
         case NODE_STATUS.DEPLOYING:
         case NODE_STATUS.DEPLOYED:
             // Allocated/Deploying/Deployed nodes
-            this.allocated_nodes += node_counter;
-            this.chart.set('allocated_nodes', this.allocated_nodes);
-            update_chart = true;
+            this.stats.update("allocated", node_counter);
             break;
         case NODE_STATUS.RETIRED:
             // Retired nodes
-            this.retired_nodes += node_counter;
             this.setNodeText(
-                this.retiredNode, this.retired_template, this.retired_nodes);
+                this.retiredNode, this.retired_template,
+                this.stats.update("retired", node_counter));
             break;
         }
-
-        return update_chart;
     },
 
    /**

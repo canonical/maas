@@ -65,6 +65,19 @@ ShortPollManager.ATTRS = {
         valueFn: function() {
             return Y.guid("shortpoll_");
         }
+    },
+
+    /**
+     * The IO instance used.
+     *
+     * @attribute io
+     * @type Y.IO
+     */
+    io: {
+        readOnly: true,
+        getter: function() {
+            return namespace._io;
+        }
     }
 };
 
@@ -170,12 +183,18 @@ Y.extend(ShortPollManager, Y.Base, {
             }
         };
         this._sequence = this._sequence + 1;
-        var poll_uri = this.get("uri") + "?sequence=" + this._sequence;
+        var poll_uri = this.get("uri");
+        if (poll_uri.indexOf("?") >= 0) {
+            poll_uri += "&sequence=" + this._sequence;
+        }
+        else {
+            poll_uri += "?sequence=" + this._sequence;
+        }
         if (!this._started) {
             Y.fire(namespace.shortpoll_start_event);
             this._started = true;
         }
-        namespace._io.send(poll_uri, config);
+        this.get("io").send(poll_uri, config);
     }
 });
 

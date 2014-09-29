@@ -48,54 +48,32 @@ NodesChartWidget.ATTRS = {
     width: {
         value: 0
     },
-   /**
-    * The number of allocated nodes.
-    *
-    * @attribute allocated_nodes
-    * @type integer
-    */
-    allocated_nodes: {
-        value: 0
-    },
-   /**
-    * The number of commissioned nodes.
-    *
-    * @attribute commissioned_nodes
-    * @type integer
-    */
-    commissioned_nodes: {
-        value: 0
-    },
-   /**
-    * The number of queued nodes.
-    *
-    * @attribute queued_nodes
-    * @type integer
-    */
-    queued_nodes: {
-        value: 0
-    },
-   /**
-    * The number of offline nodes.
-    *
-    * @attribute offline_nodes
-    * @type integer
-    */
-    offline_nodes: {
-        value: 0
-    },
-   /**
-    * The number of added nodes.
-    *
-    * @attribute added_nodes
-    * @type integer
-    */
-    added_nodes: {
-        value: 0
+    /**
+     * Basic stats used in the chart.
+     *
+     * @attribute stats
+     * @type maas.node.NodeStats
+     */
+    stats: {
+        writeOnce: "initOnly",
+        valueFn: function() {
+            return new Y.maas.node.NodeStats();
+        }
     }
 };
 
 Y.extend(NodesChartWidget, Y.Widget, {
+    /**
+     * Statistics (in the stats attribute) that this chart shows.
+     */
+    interestingStats: [
+        "added",
+        "allocated",
+        "commissioned",
+        "offline",
+        "queued"
+    ],
+
     /**
      * Create a circle element.
      *
@@ -146,14 +124,10 @@ Y.extend(NodesChartWidget, Y.Widget, {
      * @method updateChart
      */
     updateChart: function() {
-        var allocated_nodes = this.get('allocated_nodes');
-        var commissioned_nodes = this.get('commissioned_nodes');
-        var queued_nodes = this.get('queued_nodes');
-        var offline_nodes = this.get('offline_nodes');
-        var added_nodes = this.get('added_nodes');
+        var stats = this.get("stats").getAttrs(this.interestingStats);
         var outer_nodes = [
             {
-                nodes: allocated_nodes,
+                nodes: stats.allocated,
                 name: 'allocated_nodes',
                 colour: OUTER_COLOURS[0],
                 events: {
@@ -162,7 +136,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     }
                 },
             {
-                nodes: commissioned_nodes,
+                nodes: stats.commissioned,
                 name: 'commissioned_nodes',
                 colour: OUTER_COLOURS[2],
                 events: {
@@ -171,7 +145,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     }
                 },
             {
-                nodes: queued_nodes,
+                nodes: stats.queued,
                 name: 'queued_nodes',
                 colour: OUTER_COLOURS[1],
                 events: {
@@ -184,7 +158,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
         var outer_total = Y.Array.reduce(
             outer_nodes, 0, function(total, node) {
                 return total + node.nodes; });
-        var inner_total = offline_nodes + added_nodes;
+        var inner_total = stats.offline + stats.added;
         var total_nodes = outer_total + inner_total;
         if (outer_total > 0) {
             var create_outer = false;
@@ -239,12 +213,12 @@ Y.extend(NodesChartWidget, Y.Widget, {
         }
 
         var offline_circle_width = 0;
-        if (offline_nodes > 0) {
+        if (stats.offline > 0) {
             offline_circle_width = inner_total / total_nodes * this._radius();
         }
 
         if (!this._offline_circle) {
-            if (offline_nodes > 0) {
+            if (stats.offline > 0) {
                 this._offline_circle = this._addCircle(
                     offline_circle_width, OFFLINE_COLOUR);
                 Y.one(this._offline_circle[0].node).on(
@@ -252,7 +226,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     function(e, widget) {
                         widget.fire(
                             'hover.offline.over',
-                            {nodes: widget.get('offline_nodes')});
+                            {nodes: widget.get('stats').get("offline")});
                     },
                     function(e, widget) {
                         widget.fire('hover.offline.out');
@@ -271,8 +245,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
         if (total_nodes === 0) {
             added_circle_width = this._radius() - STROKE_WIDTH * 2;
         }
-        else if (added_nodes > 0) {
-            added_circle_width = added_nodes / total_nodes * this._radius();
+        else if (stats.added > 0) {
+            added_circle_width = stats.added / total_nodes * this._radius();
         }
 
         if (!this._added_circle) {
@@ -283,7 +257,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 function(e, widget) {
                     widget.fire(
                         'hover.added.over',
-                        {nodes: widget.get('added_nodes')});
+                        {nodes: widget.get('stats').get("added")});
                 },
                 function(e, widget) {
                     widget.fire('hover.added.out');
@@ -292,7 +266,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 this);
         }
         else {
-            if (added_nodes !== total_nodes || total_nodes === 0) {
+            if (stats.added !== total_nodes || total_nodes === 0) {
                 this._added_circle.toFront();
                 this._added_circle.animate(
                     {r: added_circle_width},
@@ -339,11 +313,19 @@ Y.extend(NodesChartWidget, Y.Widget, {
             'stroke-width': 2,
             'stroke-dasharray': '- '
         }]);
+
+        // When interesting stats change update the chart.
+        var changeEventFor = function(attr) { return attr + "Change"; };
+        this.get("stats").after(
+            Y.Array.map(this.interestingStats, changeEventFor),
+            this.updateChart, this);
+
+        // The first update is free.
         this.updateChart();
     }
 });
 
 module.NodesChartWidget = NodesChartWidget;
 
-}, '0.1', {'requires': ['array-extras', 'event-custom', 'widget']}
+}, '0.1', {'requires': ['array-extras', 'event-custom', 'widget', 'maas.node']}
 );

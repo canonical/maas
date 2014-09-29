@@ -15,7 +15,7 @@
   <!--
   YUI().use(
     'maas.enums', 'maas.node_add', 'maas.node','maas.node_views',
-    'maas.utils', 'maas.longpoll',
+    'maas.utils', 'maas.longpoll', 'maas.shortpoll',
     function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
@@ -27,7 +27,12 @@
           descriptionNode: '#nodes-description',
           reservedNode: '#reserved-nodes',
           retiredNode: '#retired-nodes'});
-      view.render();
+
+      var poller = new Y.maas.shortpoll.ShortPollManager({
+          uri: MAAS_config.uris.nodes_handler + "?op=list"
+      });
+      view.addLoader(poller.get("io"));
+      poller.poll();
 
       Y.one('#addnode').on('click', function(e) {
         e.preventDefault();

@@ -14,12 +14,11 @@ suite.add(new Y.maas.testing.TestCase({
     name: 'test-shortpoll',
 
     setUp: function() {
+        this.constructor.superclass.setUp();
         var old_repoll = shortpoll._repoll;
         shortpoll._repoll = false;
         this.addCleanup(function() {shortpoll._repoll = old_repoll; });
     },
-
-    tearDown: function() {},
 
     testInitShortPollManager: function() {
         var manager = new shortpoll.ShortPollManager(
@@ -37,6 +36,17 @@ suite.add(new Y.maas.testing.TestCase({
             "shortpoll_", manager.get("eventKey").substring(0, 10));
         // The default eventKey is stable.
         Y.Assert.areEqual(manager.get("eventKey"), manager.get("eventKey"));
+    },
+
+    testIOAttribute: function() {
+        // The IO attribute/property returns the module's `_io` object.
+        var manager = new shortpoll.ShortPollManager();
+        Y.Assert.areSame(shortpoll._io, manager.get("io"));
+        // Changes to the module's `_io` object are reflected immediately.
+        var io = shortpoll._io;
+        this.addCleanup(function() { shortpoll._io = io; });
+        shortpoll._io = Y.guid();
+        Y.Assert.areSame(shortpoll._io, manager.get("io"));
     },
 
     testPollStarted: function() {
@@ -186,6 +196,26 @@ suite.add(new Y.maas.testing.TestCase({
         // http://yuilibrary.com/projects/yui3/ticket/2529868.
         Y.Assert.areEqual(1234, event_payload[0].something.something_else);
         Y.Assert.areEqual(5678, event_payload[1].thisisit.thatisnot);
+    },
+
+    testPollURI_appends_sequence_to_existing_query_args: function() {
+        // When the URI already contains query arguments, a sequence key is
+        // added to the end.
+        var manager = new shortpoll.ShortPollManager({uri: 'somewhere?k=v'});
+        var log = this.mockSuccess("[]", shortpoll);
+        manager.poll();
+        Y.Assert.areEqual(1, log.length);
+        Y.Assert.areEqual('somewhere?k=v&sequence=1', log[0][0]);
+    },
+
+    testPollURI_adds_sequence_as_new_query_arg: function() {
+        // When the URI does not already contain query arguments, a sequence
+        // key is set as a new query arg.
+        var manager = new shortpoll.ShortPollManager({uri: 'somewhere'});
+        var log = this.mockSuccess("[]", shortpoll);
+        manager.poll();
+        Y.Assert.areEqual(1, log.length);
+        Y.Assert.areEqual('somewhere?sequence=1', log[0][0]);
     }
 
 }));
