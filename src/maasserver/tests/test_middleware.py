@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 import json
 import logging
+import random
 
 from django.contrib.messages import constants
 from django.core.exceptions import (
@@ -37,15 +38,22 @@ from maasserver.middleware import (
     DebuggingLoggerMiddleware,
     ErrorsMiddleware,
     ExceptionMiddleware,
+    RPCErrorsMiddleware,
     )
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.utils import sample_binary_data
+from provisioningserver.rpc.exceptions import (
+    MultipleFailures,
+    NoConnectionsAvailable,
+    PowerActionAlreadyInProgress,
+    )
 from testtools.matchers import (
     Contains,
     Not,
     )
+from twisted.python.failure import Failure
 
 
 class ExceptionMiddlewareTest(MAASServerTestCase):
@@ -247,3 +255,98 @@ class ErrorsMiddlewareTest(MAASServerTestCase):
         # An error message has been published.
         self.assertEqual(
             [(constants.ERROR, error_message, '')], request._messages.messages)
+
+
+class RPCErrorsMiddlewareTest(MAASServerTestCase):
+
+    def test_handles_PowerActionAlreadyInProgress(self):
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        error_message = (
+            "Unable to execute power action: another action is already in "
+            "progress for node %s" % factory.make_name('node'))
+        error = PowerActionAlreadyInProgress(error_message)
+        response = middleware.process_exception(request, error)
+
+        # The response is a redirect.
+        self.assertEqual(request.path, extract_redirect(response))
+        # An error message has been published.
+        self.assertEqual(
+            [(constants.ERROR, error_message, '')],
+            request._messages.messages)
+
+    def test_handles_MultipleFailures(self):
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        failures = []
+        for _ in range(3):
+            error_message = factory.make_name("error-")
+            exception_class = random.choice(
+                (NoConnectionsAvailable, PowerActionAlreadyInProgress))
+            failures.append(Failure(exception_class(error_message)))
+        exception = MultipleFailures(*failures)
+        response = middleware.process_exception(request, exception)
+
+        # The response is a redirect.
+        self.assertEqual(request.path, extract_redirect(response))
+        # An error message has been published for each exception.
+        self.assertEqual(
+            [(constants.ERROR, unicode(failure.value), '')
+                for failure in failures],
+            request._messages.messages)
+
+    def test_handles_NoConnectionsAvailable(self):
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        error_message = (
+            "No connections availble for cluster %s" %
+            factory.make_name('cluster'))
+        error = PowerActionAlreadyInProgress(error_message)
+        response = middleware.process_exception(request, error)
+
+        # The response is a redirect.
+        self.assertEqual(request.path, extract_redirect(response))
+        # An error message has been published.
+        self.assertEqual(
+            [(constants.ERROR, error_message, '')],
+            request._messages.messages)
+
+    def test_ignores_non_rpc_errors(self):
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        exception = ZeroDivisionError(
+            "You may think it's a long walk down the street to the chemist "
+            "but that's just peanuts to space!")
+        response = middleware.process_exception(request, exception)
+        self.assertIsNone(response)
+
+    def test_adds_message_for_unknown_errors_in_multiple_failures(self):
+        # If an exception has no message, the middleware will generate a
+        # useful one and display it to the user.
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        unknown_exception = ZeroDivisionError()
+        failures = [
+            Failure(unknown_exception),
+            Failure(PowerActionAlreadyInProgress("Unzip a banana!")),
+            ]
+        exception = MultipleFailures(*failures)
+        response = middleware.process_exception(request, exception)
+        self.assertEqual(request.path, extract_redirect(response))
+
+        expected_messages = [
+            (
+                constants.ERROR,
+                (
+                    "Unexpected exception: %s. See "
+                    "/var/log/maas/maas-django.log "
+                    "on the region server for more information." %
+                    unknown_exception.__class__.__name__
+                ),
+                ''
+            ),
+            (constants.ERROR, unicode(failures[1].value), ''),
+            ]
+        self.assertEqual(
+            expected_messages,
+            request._messages.messages)

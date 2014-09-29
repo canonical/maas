@@ -43,6 +43,11 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from provisioningserver.rpc.exceptions import (
+    MultipleFailures,
+    NoConnectionsAvailable,
+    PowerActionAlreadyInProgress,
+    )
 
 
 try:
@@ -260,3 +265,39 @@ class DebuggingLoggerMiddleware:
                     self.log_level,
                     "%s\n%s", header, decoded_content)
         return response  # Return response unaltered.
+
+
+class RPCErrorsMiddleware:
+    """A middleware for handling RPC errors."""
+
+    handled_exceptions = (
+        NoConnectionsAvailable,
+        PowerActionAlreadyInProgress,
+        )
+
+    def _handle_exception(self, request, exception):
+        logging.exception(exception)
+        error_message = unicode(exception)
+        if len(error_message) == 0:
+            # Make a pretty message for exceptions without a message.
+            error_message = (
+                "Unexpected exception: %s. See "
+                "/var/log/maas/maas-django.log "
+                "on the region server for more information." %
+                exception.__class__.__name__)
+        messages.error(request, error_message)
+
+    def process_exception(self, request, exception):
+        if isinstance(exception, MultipleFailures):
+            exceptions = [
+                failure.value for failure in exception.args]
+            for exception in exceptions:
+                self._handle_exception(request, exception)
+            return HttpResponseRedirect(request.path)
+        elif isinstance(exception, self.handled_exceptions):
+            self._handle_exception(request, exception)
+            return HttpResponseRedirect(request.path)
+        else:
+            # Nothing to do, since we don't care about anything other
+            # than MultipleFailures and handled_exception.
+            return None

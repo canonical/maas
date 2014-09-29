@@ -164,8 +164,9 @@ def maybe_change_power_state(system_id, hostname, power_type,
     registered_power_action = power_action_registry.get(system_id, None)
     if registered_power_action is not None:
         raise PowerActionAlreadyInProgress(
-            "Power action %s is already in progress for node %s" %
-            (registered_power_action, system_id))
+            "Unable to change power state to '%s' for node %s: another "
+            "action is already in progress for that node." %
+            (power_change, hostname))
     power_action_registry[system_id] = power_change
 
     yield power_change_starting(system_id, hostname, power_change)
