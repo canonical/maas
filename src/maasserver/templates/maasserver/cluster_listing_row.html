@@ -16,17 +16,28 @@
       {% endif %}
     </a>
   </td>
-  <td id="{{ cluster.uuid }}_state">
-      {% if state == "Syncing" %}
-      <div class="spinner spin"></div>&nbsp;
-      {% endif %}
-      {{ state }}
+  <td id="{{ cluster.uuid }}_connection">
+  {% if state == "Disconnected" %}
+    &cross;
+  {% else %}
+    &check;
+  {% endif %}
   </td>
-  {% endwith %}
   <td>
   {{ cluster.get_managed_interfaces|length }}
   </td>
   <td>{{ cluster.node_set.count }}</td>
+  <td id="{{ cluster.uuid }}_images">
+      {% if state == "Disconnected" %}
+      -
+      {% else %}
+      {% if state == "Syncing" %}
+      <div class="spinner spin"></div>&nbsp;
+      {% endif %}
+      {{ state }}
+      {% endif %}
+  </td>
+  {% endwith %}
   <td class="icon-controls">
     <a href="{% url 'cluster-edit' cluster.uuid %}"
        class="icon"

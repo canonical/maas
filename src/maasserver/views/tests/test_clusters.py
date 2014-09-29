@@ -145,13 +145,29 @@ class ClusterListingTest(MAASServerTestCase):
 class ClusterListingStateTest(MAASServerTestCase):
 
     scenarios = [
-        ('disconnected', {'state': NODEGROUP_STATE.DISCONNECTED}),
-        ('out-of-sync', {'state': NODEGROUP_STATE.OUT_OF_SYNC}),
-        ('syncing', {'state': NODEGROUP_STATE.SYNCING}),
-        ('synced', {'state': NODEGROUP_STATE.SYNCED}),
+        ('disconnected', {
+            'state': NODEGROUP_STATE.DISCONNECTED,
+            'text': '-',
+            'connection': '&cross;',
+            }),
+        ('out-of-sync', {
+            'state': NODEGROUP_STATE.OUT_OF_SYNC,
+            'text': NODEGROUP_STATE.OUT_OF_SYNC,
+            'connection': '&check;',
+            }),
+        ('syncing', {
+            'state': NODEGROUP_STATE.SYNCING,
+            'text': NODEGROUP_STATE.SYNCING,
+            'connection': '&check;',
+            }),
+        ('synced', {
+            'state': NODEGROUP_STATE.SYNCED,
+            'text': NODEGROUP_STATE.SYNCED,
+            'connection': '&check;',
+            }),
     ]
 
-    def test_listing_displays_state(self):
+    def test_listing_displays_connected_image_status(self):
         self.client_log_in(as_admin=True)
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED, name=self.state)
@@ -164,9 +180,14 @@ class ClusterListingStateTest(MAASServerTestCase):
         response = self.client.get(
             reverse(ClusterListView.status_links[NODEGROUP_STATUS.ACCEPTED]))
         document = fromstring(response.content)
-        state_row = document.xpath(
-            "//td[@id='%s_state']" % nodegroup.uuid)[0]
-        self.assertEqual(self.state, state_row.text_content().strip())
+        images_col = document.xpath(
+            "//td[@id='%s_images']" % nodegroup.uuid)[0]
+        connection_col = document.xpath(
+            "//td[@id='%s_connection']" % nodegroup.uuid)[0]
+        self.assertEqual(
+            self.text, images_col.text_content().strip())
+        self.assertEqual(
+            self.connection, connection_col.text_content().strip())
 
 
 class ClusterListingAccess(MAASServerTestCase):
