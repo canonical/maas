@@ -26,14 +26,18 @@ __all__ = [
     'Provides',
     ]
 
+from functools import partial
+
 from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
     Equals,
     HasLength,
+    IsInstance,
     Matcher,
     MatchesAll,
     MatchesPredicate,
+    MatchesStructure,
     Mismatch,
     )
 from twisted.internet import defer
@@ -250,3 +254,19 @@ class IsUnfiredDeferred(Matcher):
             return Mismatch(
                 "%r has been called (result=%r)" % (thing, thing.result))
         return None
+
+
+class MatchesPartialCall(Matcher):
+
+    def __init__(self, func, *args, **keywords):
+        super(MatchesPartialCall, self).__init__()
+        self.expected = partial(func, *args, **keywords)
+
+    def match(self, observed):
+        matcher = MatchesAll(
+            IsInstance(partial),
+            MatchesStructure.fromExample(
+                self.expected, "func", "args", "keywords"),
+            first_only=True,
+        )
+        return matcher.match(observed)

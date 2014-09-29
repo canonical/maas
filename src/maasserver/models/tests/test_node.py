@@ -111,6 +111,7 @@ from testtools.matchers import (
     Equals,
     HasLength,
     Is,
+    IsInstance,
     MatchesStructure,
     )
 from twisted.internet import defer
@@ -741,6 +742,7 @@ class NodeTest(MAASServerTestCase):
         self.assertRaises(NodeStateViolation, node.abort_operation, owner)
 
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
+        self.patch(node_module, 'wait_for_power_commands')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use a "controlled" power type (i.e. a power type for which we
@@ -761,6 +763,7 @@ class NodeTest(MAASServerTestCase):
         self.expectThat(node.license_key, Equals(''))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
+        self.patch(node_module, 'wait_for_power_commands')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use an "uncontrolled" power type (i.e. a power type for which we
@@ -1952,24 +1955,19 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         # No complaints are made to the Twisted log.
         self.assertEqual("", twisted_log.dump())
 
-    def test__logs_errors_to_twisted_log_when_starting_nodes(self):
+    def test__raises_failures_for_nodes_that_cannot_be_started(self):
         power_on_nodes = self.patch(node_module, "power_on_nodes")
         power_on_nodes.return_value = {
             factory.make_name("system_id"): defer.fail(
-                ZeroDivisionError("Defiance is futile"))
+                ZeroDivisionError("Defiance is futile")),
+            factory.make_name("system_id"): defer.succeed({}),
         }
 
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes([], factory.make_User())
-
-        # Complaints go only to the Twisted log.
-        self.assertDocTestMatches(
-            """\
-            Unhandled Error
-            Traceback (...
-            Failure: exceptions.ZeroDivisionError: Defiance is futile
-            """,
-            twisted_log.dump())
+        failures = self.assertRaises(
+            MultipleFailures, Node.objects.start_nodes, [],
+            factory.make_User())
+        [failure] = failures.args
+        self.assertThat(failure.value, IsInstance(ZeroDivisionError))
 
     def test__marks_allocated_node_as_deploying(self):
         user = factory.make_User()
@@ -1985,6 +1983,10 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
             owner=user)
         factory.make_MACAddress(node=node)
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            node.system_id: defer.succeed({}),
+        }
         nodes_started = Node.objects.start_nodes([node.system_id], user)
         self.assertItemsEqual([node], nodes_started)
         self.assertEqual(
@@ -2015,6 +2017,8 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
         return nodes
 
     def test_stop_nodes_stops_nodes(self):
+        wait_for_power_commands = self.patch_autospec(
+            node_module, 'wait_for_power_commands')
         power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
         power_off_nodes.side_effect = lambda nodes: {
             system_id: Deferred() for system_id, _, _, _ in nodes}
@@ -2029,23 +2033,24 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
 
         self.assertItemsEqual(nodes, nodes_stopped)
         self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
 
-        nodes_start_info_observed = power_off_nodes.call_args[0][0]
-        nodes_start_info_expected = [
+        nodes_stop_info_observed = power_off_nodes.call_args[0][0]
+        nodes_stop_info_expected = [
             (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
             for node, power_info in izip(nodes, power_infos)
         ]
 
         # The stop mode is added into the power info that's passed.
-        for _, _, _, power_info in nodes_start_info_expected:
+        for _, _, _, power_info in nodes_stop_info_expected:
             power_info.power_parameters['power_off_mode'] = stop_mode
 
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
 
         self.assertItemsEqual(
-            nodes_start_info_expected,
-            nodes_start_info_observed)
+            nodes_stop_info_expected,
+            nodes_stop_info_observed)
 
     def test_stop_nodes_ignores_uneditable_nodes(self):
         owner = factory.make_User()
@@ -2078,6 +2083,19 @@ class NodeManagerTest_StopNodes(MAASServerTestCase):
 
         nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
         self.assertItemsEqual([], nodes_stopped)
+
+    def test__raises_failures_for_nodes_that_cannot_be_stopped(self):
+        power_off_nodes = self.patch(node_module, "power_off_nodes")
+        power_off_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                ZeroDivisionError("Ee by gum lad, that's a rum 'un.")),
+            factory.make_name("system_id"): defer.succeed({}),
+        }
+
+        failures = self.assertRaises(
+            MultipleFailures, Node.objects.stop_nodes, [], factory.make_User())
+        [failure] = failures.args
+        self.assertThat(failure.value, IsInstance(ZeroDivisionError))
 
 
 class TestNodeTransitionMonitors(MAASServerTestCase):

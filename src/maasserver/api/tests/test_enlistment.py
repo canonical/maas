@@ -27,6 +27,7 @@ from maasserver.enum import (
     )
 from maasserver.models import (
     Node,
+    node as node_module,
     NodeGroup,
     )
 from maasserver.testing.api import MultipleUsersScenarios
@@ -47,6 +48,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
+
+    def setUp(self):
+        super(EnlistmentAPITest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
 
     def test_POST_new_creates_node(self):
         architecture = make_usable_architecture(self)
@@ -346,6 +351,10 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                                  MAASServerTestCase):
 
+    def setUp(self):
+        super(NodeHostnameEnlistmentTest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
+
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
         ('user', dict(userfactory=factory.make_User)),
@@ -451,6 +460,10 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
         ('user', dict(userfactory=factory.make_User)),
         ]
 
+    def setUp(self):
+        super(NonAdminEnlistmentAPITest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
+
     def test_POST_non_admin_creates_node_in_declared_state(self):
         # Upon non-admin enlistment, a node goes into the New
         # state.  Deliberate approval is required before we start
@@ -473,6 +486,10 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
 
 class AnonymousEnlistmentAPITest(MAASServerTestCase):
     # Enlistment tests specific to anonymous users.
+
+    def setUp(self):
+        super(AnonymousEnlistmentAPITest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
 
     def test_POST_accept_not_allowed(self):
         # An anonymous user is not allowed to accept an anonymously
@@ -523,6 +540,10 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
 
 class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
     """Enlistment tests from the perspective of regular, non-admin users."""
+
+    def setUp(self):
+        super(SimpleUserLoggedInEnlistmentAPITest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
@@ -613,6 +634,10 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
 
 class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
     """Enlistment tests from the perspective of admin users."""
+
+    def setUp(self):
+        super(AdminLoggedInEnlistmentAPITest, self).setUp()
+        self.patch_autospec(node_module, 'wait_for_power_commands')
 
     def test_POST_new_sets_power_type_if_admin(self):
         self.client_log_in(as_admin=True)

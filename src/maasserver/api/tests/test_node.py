@@ -34,6 +34,7 @@ from maasserver.fields import (
     )
 from maasserver.models import (
     Node,
+    node as node_module,
     StaticIPAddress,
     )
 from maasserver.models.node import RELEASABLE_STATUSES
@@ -65,6 +66,10 @@ from provisioningserver.utils.enum import map_enum
 
 class NodeAnonAPITest(MAASServerTestCase):
 
+    def setUp(self):
+        super(NodeAnonAPITest, self).setUp()
+        self.patch(node_module, 'wait_for_power_commands')
+
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
         # get a "Bad Request" response.
@@ -89,6 +94,10 @@ class NodeAnonAPITest(MAASServerTestCase):
 
 class NodesAPILoggedInTest(MAASServerTestCase):
 
+    def setUp(self):
+        super(NodesAPILoggedInTest, self).setUp()
+        self.patch(node_module, 'wait_for_power_commands')
+
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
         self.client_log_in()
@@ -104,6 +113,10 @@ class NodesAPILoggedInTest(MAASServerTestCase):
 
 class TestNodeAPI(APITestCase):
     """Tests for /api/1.0/nodes/<node>/."""
+
+    def setUp(self):
+        super(TestNodeAPI, self).setUp()
+        self.patch(node_module, 'wait_for_power_commands')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -266,6 +279,7 @@ class TestNodeAPI(APITestCase):
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_start_sets_osystem_and_distro_series(self):
+        self.patch(node_module, 'wait_for_power_commands')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
@@ -305,6 +319,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_sets_license_key(self):
+        self.patch(node_module, 'wait_for_power_commands')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',

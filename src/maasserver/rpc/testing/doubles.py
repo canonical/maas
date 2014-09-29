@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     "IdentifyingRegionServer",
+    "DummyClient",
+    "DummyClients",
 ]
 
 from maasserver.rpc.regionservice import RegionServer
@@ -43,3 +45,22 @@ class IdentifyingRegionServer(RegionServer):
         else:
             return super(IdentifyingRegionServer, self).callRemote(
                 commandType, *args, **kwargs)
+
+
+class DummyClient:
+    """A dummy client that's callable, and records the UUID."""
+
+    def __init__(self, uuid):
+        self.uuid = uuid
+
+    def __call__(self):
+        raise NotImplementedError()
+
+
+class DummyClients(dict):
+    """Lazily hand out `DummyClient` instances."""
+
+    def __missing__(self, uuid):
+        client = DummyClient(uuid)
+        self[uuid] = client
+        return client

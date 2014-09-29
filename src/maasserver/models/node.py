@@ -18,6 +18,7 @@ __all__ = [
     "nodegroup_fqdn",
     ]
 
+
 from collections import (
     defaultdict,
     namedtuple,
@@ -115,12 +116,31 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.twisted import reactor_sync
+from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.defer import DeferredList
 from twisted.protocols import amp
-import twisted.python.log
 
 
 maaslog = get_maas_logger("node")
+
+
+def wait_for_power_commands(deferreds):
+    """Wait for a collection of power command deferreds to return or fail.
+
+    :param deferreds: A collection of deferreds upon which to wait.
+    :raises: MultipleFailures if any of the deferreds fail.
+    """
+    @asynchronous(timeout=30)
+    def block_until_commands_complete():
+        return DeferredList(deferreds, consumeErrors=True)
+
+    results = block_until_commands_complete()
+
+    failures = list(
+        result for success, result in results if not success)
+
+    if len(failures) != 0:
+        raise MultipleFailures(*failures)
 
 
 def generate_node_system_id():
@@ -329,22 +349,20 @@ class NodeManager(Manager):
                     yield node, power_info
 
         # Create info that we can pass into the reactor (no model objects).
-        nodes_start_info = list(
+        nodes_stop_info = list(
             (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
             for node, power_info in gen_power_info(nodes))
+        powered_systems = [
+            system_id for system_id, _, _, _ in nodes_stop_info]
 
-        # Request that these nodes be powered off.
-        deferreds = power_off_nodes(nodes_start_info)
+        # Request that these nodes be powered off and wait for the
+        # commands to return or fail.
+        deferreds = power_off_nodes(nodes_stop_info).viewvalues()
+        wait_for_power_commands(deferreds)
 
-        # Cap these Deferreds off so that Twisted does not complain about
-        # unhandled errors. We just log errors for now; there are other
-        # channels that will report failures in more detail.
-        with reactor_sync():
-            for system_id, d in deferreds.viewitems():
-                d.addErrback(twisted.python.log.err)
-
-        # Return a list of those nodes that we've send power commands for.
-        return list(node for node in nodes if node.system_id in deferreds)
+        # Return a list of those nodes that we've sent power commands for.
+        return list(
+            node for node in nodes if node.system_id in powered_systems)
 
     def start_nodes(self, ids, by_user, user_data=None):
         """Request on given user's behalf that the given nodes be started up.
@@ -421,23 +439,21 @@ class NodeManager(Manager):
                 if power_info.can_be_started:
                     yield node, power_info
 
-        # Create info that we can pass into the reactor (no model objects)
+        # Create info that we can pass into the reactor (no model objects).
         nodes_start_info = list(
             (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
             for node, power_info in gen_power_info(nodes))
+        powered_systems = [
+            system_id for system_id, _, _, _ in nodes_start_info]
 
-        # Request that these nodes be powered on.
-        deferreds = power_on_nodes(nodes_start_info)
+        # Request that these nodes be powered off and wait for the
+        # commands to return or fail.
+        deferreds = power_on_nodes(nodes_start_info).viewvalues()
+        wait_for_power_commands(deferreds)
 
-        # Cap these Deferreds off so that Twisted does not complain about
-        # unhandled errors. We just log errors for now; there are other
-        # channels that will report failures in more detail.
-        with reactor_sync():
-            for system_id, d in deferreds.viewitems():
-                d.addErrback(twisted.python.log.err)
-
-        # Return a list of those nodes that we've send power commands for.
-        return list(node for node in nodes if node.system_id in deferreds)
+        # Return a list of those nodes that we've sent power commands for.
+        return list(
+            node for node in nodes if node.system_id in powered_systems)
 
 
 def patch_pgarray_types():

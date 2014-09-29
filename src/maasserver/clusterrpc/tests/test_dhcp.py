@@ -28,6 +28,7 @@ from maasserver.enum import (
     )
 from maasserver.fields import MAC
 from maasserver.rpc import getClientFor
+from maasserver.rpc.testing.doubles import DummyClients
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
     MockRegionToClusterRPCFixture,
@@ -39,6 +40,7 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import (
+    MatchesPartialCall,
     MockCalledOnceWith,
     MockNotCalled,
     )
@@ -58,11 +60,9 @@ from testtools.matchers import (
     AllMatch,
     HasLength,
     IsInstance,
-    Matcher,
     MatchesAll,
     MatchesPredicateWithParams,
     MatchesSetwise,
-    MatchesStructure,
     )
 from twisted.internet import defer
 
@@ -71,6 +71,7 @@ from twisted.internet import defer
 UpdateSucceeded = MatchesAll(
     IsInstance(Iterator), AfterPreprocessing(list, HasLength(0)),
     first_only=True)
+
 
 # Matcher for testing Twisted Failure objects against a given exception.
 FailedWith = MatchesPredicateWithParams(
@@ -426,41 +427,6 @@ class TestRemoveHostMaps(MAASServerTestCase):
         _, _, kwargs = protocol.RemoveHostMaps.mock_calls[0]
         observed_ip_addresses = kwargs["ip_addresses"]
         self.assertItemsEqual(expected_ip_addresses, observed_ip_addresses)
-
-
-class DummyClient:
-    """A dummy client that's callable, and records the UUID."""
-
-    def __init__(self, uuid):
-        self.uuid = uuid
-
-    def __call__(self):
-        raise NotImplementedError()
-
-
-class DummyClients(dict):
-    """Lazily hand out `DummyClient` instances."""
-
-    def __missing__(self, uuid):
-        client = DummyClient(uuid)
-        self[uuid] = client
-        return client
-
-
-class MatchesPartialCall(Matcher):
-
-    def __init__(self, func, *args, **keywords):
-        super(MatchesPartialCall, self).__init__()
-        self.expected = partial(func, *args, **keywords)
-
-    def match(self, observed):
-        matcher = MatchesAll(
-            IsInstance(partial),
-            MatchesStructure.fromExample(
-                self.expected, "func", "args", "keywords"),
-            first_only=True,
-        )
-        return matcher.match(observed)
 
 
 class TestGenCallsToCreateHostMaps(MAASServerTestCase):
