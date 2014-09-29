@@ -30,7 +30,6 @@ from operator import attrgetter
 from textwrap import dedent
 from urllib import urlencode
 
-from django.conf import settings as django_settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
@@ -51,17 +50,13 @@ from django.views.generic.edit import (
     ProcessFormView,
     )
 from lxml import etree
-from maasserver import logger
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     )
-from maasserver.exceptions import (
-    MAASAPIException,
-    NoRabbit,
-    )
+from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
     BulkNodeActionForm,
     get_action_form,
@@ -69,7 +64,6 @@ from maasserver.forms import (
     MACAddressForm,
     SetZoneBulkAction,
     )
-from maasserver.messages import MESSAGING
 from maasserver.models import (
     MACAddress,
     Node,
@@ -103,21 +97,6 @@ from netaddr import (
     NotRegisteredError,
     )
 from provisioningserver.tags import merge_details_cleanly
-
-
-def get_longpoll_context():
-    messaging = MESSAGING.get()
-    if messaging is not None and django_settings.LONGPOLL_PATH is not None:
-        try:
-            return {
-                'longpoll_queue': messaging.getQueue().name,
-                'LONGPOLL_PATH': django_settings.LONGPOLL_PATH,
-                }
-        except NoRabbit as e:
-            logger.warn("Could not connect to RabbitMQ: %s", e)
-            return {}
-    else:
-        return {}
 
 
 def _parse_constraints(query_string):
@@ -404,7 +383,6 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
     def get_context_data(self, **kwargs):
         context = super(NodeListView, self).get_context_data(**kwargs)
         context = self.late_sort(context)
-        context.update(get_longpoll_context())
         form_class = self.get_form_class()
         form = self.get_form(form_class)
         context["preserved_query"] = self.get_preserved_query()

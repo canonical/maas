@@ -67,7 +67,6 @@ setup(
             ['etc/maas/pserv.yaml',
              'etc/maas/drivers.yaml',
              'etc/maas_cluster.conf',
-             'etc/txlongpoll.yaml',
              'contrib/maas_local_celeryconfig.py',
              'contrib/maas-http.conf',
              'contrib/maas-cluster-http.conf',
@@ -136,7 +135,6 @@ setup(
         'South',
         'Twisted',
         'txAMQP',
-        'txlongpoll',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',

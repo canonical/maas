@@ -65,7 +65,6 @@ def static_resources(context):
             'js/utils.js',
             'js/node_views.js',
             'js/node_check.js',
-            'js/longpoll.js',
             'js/shortpoll.js',
             'js/enums.js',
             'js/os_distro_select.js',

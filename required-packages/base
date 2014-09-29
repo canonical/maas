@@ -48,7 +48,6 @@ python-simplestreams
 python-tempita
 python-twisted
 python-txamqp
-python-txlongpoll
 python-txtftp
 python-tz
 python-yaml

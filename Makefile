@@ -40,7 +40,6 @@ build: \
     bin/twistd.pserv bin/test.pserv \
     bin/test.config \
     bin/maas-probe-dhcp \
-    bin/twistd.txlongpoll \
     bin/celeryd.region \
     bin/py bin/ipy \
     $(js_enums)
@@ -105,10 +104,6 @@ bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
 
 bin/maas-probe-dhcp: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install maas-probe-dhcp
-	@touch --no-create $@
-
-bin/twistd.txlongpoll: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install txlongpoll
 	@touch --no-create $@
 
 bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
@@ -244,7 +239,7 @@ endef
 # Development services.
 #
 
-service_names_region := database dns region-worker reloader txlongpoll web webapp
+service_names_region := database dns region-worker reloader web webapp
 service_names_cluster := pserv reloader
 service_names_all := $(service_names_region) $(service_names_cluster)
 
@@ -336,8 +331,6 @@ services/database/@deps: bin/database
 services/pserv/@deps: bin/twistd.pserv
 
 services/reloader/@deps:
-
-services/txlongpoll/@deps: bin/twistd.txlongpoll
 
 services/web/@deps:
 

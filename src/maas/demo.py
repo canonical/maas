@@ -35,9 +35,6 @@ MIDDLEWARE_CLASSES += (
     'debug_toolbar.middleware.DebugToolbarMiddleware',
 )
 
-# Enable longpoll. Set LONGPOLL_PATH to None to disable it.
-LONGPOLL_PATH = '/longpoll/'
-
 # Connect to the DNS server.
 DNS_CONNECT = True
 

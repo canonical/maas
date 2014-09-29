@@ -15,7 +15,7 @@
   <!--
   YUI().use(
     'maas.enums', 'maas.node_add', 'maas.node','maas.node_views',
-    'maas.utils', 'maas.longpoll', 'maas.shortpoll',
+    'maas.utils', 'maas.shortpoll',
     function (Y) {
     Y.on('load', function() {
       // Create Dashboard view.
@@ -46,17 +46,6 @@
       var title_widget = new Y.maas.utils.TitleEditWidget(
           {srcNode: '.page-title-form'});
       title_widget.render();
-
-      {% if longpoll_queue and LONGPOLL_PATH %}
-      // Start longpoll.
-        Y.later(0, Y.maas.longpoll, function() {
-          var longpollmanager = Y.maas.longpoll.setupLongPollManager(
-            '{{ longpoll_queue }}', '{{ LONGPOLL_PATH }}');
-        });
-      {% else %}
-      // Longoll disabled.
-      {% endif %}
-
     });
   });
   // -->
