@@ -81,15 +81,14 @@ class OperatingSystem:
 
     @abstractmethod
     def get_default_release(self):
-        """Gets the default release to use when a release is not
-        explicit.
+        """Return the default release to use when none is specified.
 
         :returns: default release to use
         """
 
     @abstractmethod
     def get_release_title(self, release):
-        """Returns the title for the given release.
+        """Return the given release's title.
 
         :type release: unicode
         :returns: unicode
@@ -97,7 +96,7 @@ class OperatingSystem:
 
     @abstractmethod
     def get_boot_image_purposes(self, arch, subarch, release, label):
-        """Returns the supported purposes of a boot image.
+        """Return a boot image's supported purposes.
 
         :param arch: Architecture of boot image.
         :param subarch: Sub-architecture of boot image.
@@ -107,7 +106,7 @@ class OperatingSystem:
         """
 
     def format_release_choices(self, releases):
-        """Formats the release choices that are presented to the user.
+        """Format the release choices that are presented to the user.
 
         :param releases: list of installed boot image releases
         :returns: Return Django "choices" list
@@ -121,7 +120,7 @@ class OperatingSystem:
         return choices
 
     def gen_supported_releases(self):
-        """Generate supported releases for operating system.
+        """List operating system's supported releases.
 
         This is based off the boot images that the cluster currently has
         for this operating system.
@@ -132,7 +131,7 @@ class OperatingSystem:
                 yield release
 
     def get_supported_releases(self):
-        """Get set of supported releases for operating system.
+        """Return operating system's supported releases as a set.
 
         This is based off the boot images that the cluster currently has
         for this operating system.
@@ -142,7 +141,7 @@ class OperatingSystem:
         return set(self.gen_supported_releases())
 
     def get_supported_commissioning_releases(self):
-        """Gets the supported commissioning releases.
+        """List operating system's supported commissioning releases.
 
         Typically this will only return something for Ubuntu, because
         that is the only operating system on which we commission.
@@ -152,7 +151,7 @@ class OperatingSystem:
         return []
 
     def get_default_commissioning_release(self):
-        """Gets the default commissioning release.
+        """Return operating system's default commissioning release.
 
         Typically this will only return something for Ubuntu, because
         that is the only operating system on which we commission.
@@ -162,7 +161,7 @@ class OperatingSystem:
         return None
 
     def requires_license_key(self, release):
-        """Returns whether the given release requires a licese key.
+        """Return whether the given release requires a license key.
 
         :param release: Release
         :returns: True if requires license key, false otherwise.
@@ -170,8 +169,9 @@ class OperatingSystem:
         return False
 
     def validate_license_key(self, release, key):
-        """Validates a license key for a release. This is only called if
-        the release requires a license key.
+        """Validate a license key for a release.
+
+        This is only called if the release requires a license key.
 
         :param release: Release
         :param key: License key
@@ -180,7 +180,7 @@ class OperatingSystem:
         raise NotImplementedError()
 
     def compose_preseed(self, preseed_type, node, token, metadata_url):
-        """Composes the preseed for the given node.
+        """Compose preseed for the given node.
 
         :param preseed_type: Preseed type to compose.
         :param node: Node preseed needs generating for.
@@ -195,7 +195,7 @@ class OperatingSystem:
         raise NotImplementedError()
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
-        """Returns the xinstall image name and type for the operating system.
+        """Return the xinstall image name and type for this operating system.
 
         :param arch: Architecture of boot image.
         :param subarch: Sub-architecture of boot image.
