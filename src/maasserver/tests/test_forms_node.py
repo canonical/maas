@@ -369,6 +369,25 @@ class TestNodeForm(MAASServerTestCase):
         node = form.save()
         self.assertEqual(setting, node.disable_ipv4)
 
+    def test_takes_missing_disable_ipv4_as_False_in_UI(self):
+        form = NodeForm(
+            instance=factory.make_Node(disable_ipv4=True),
+            data={
+                'architecture': make_usable_architecture(self),
+                'ui-submission': True,
+                })
+        node = form.save()
+        self.assertFalse(node.disable_ipv4)
+
+    def test_takes_missing_disable_ipv4_as_Unchanged_in_API(self):
+        form = NodeForm(
+            instance=factory.make_Node(disable_ipv4=True),
+            data={
+                'architecture': make_usable_architecture(self),
+                })
+        node = form.save()
+        self.assertTrue(node.disable_ipv4)
+
     def test_takes_True_disable_ipv4_from_cluster_by_default(self):
         setting = True
         cluster = factory.make_NodeGroup(default_disable_ipv4=setting)

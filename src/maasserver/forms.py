@@ -188,10 +188,13 @@ class APIEditMixin:
     First it ensures that missing fields are not errors, then it removes
     None values from cleaned data. This means that missing fields result
     in no change instead of an error.
+
+    :ivar submitted_data: The `data` as originally submitted.
     """
 
     def full_clean(self):
         """For missing fields, default to the model's existing value."""
+        self.submitted_data = self.data
         self.data = get_overridden_query_dict(
             self.initial, self.data, self.fields)
         super(APIEditMixin, self).full_clean()
@@ -384,6 +387,22 @@ class NodeForm(ModelForm):
 
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
+
+    def clean_disable_ipv4(self):
+        # Boolean fields only show up in UI form submissions as "true" (if the
+        # box was checked) or not at all (if the box was not checked).  This
+        # is different from API submissions which can submit "false" values.
+        # Our forms are rigged to interpret missing fields as unchanged, but
+        # that doesn't # work for the UI.  A form in the UI always submits all
+        # its fields, so in that case, no value means False.
+        #
+        # To kludge around this, the UI form submits a hidden input field named
+        # "ui-submission" that doesn't exist in the API.  If this field is
+        # present, go with the UI-style behaviour.
+        form_data = self.submitted_data
+        if 'ui-submission' in form_data and 'disable_ipv4' not in form_data:
+            self.cleaned_data['disable_ipv4'] = False
+        return self.cleaned_data['disable_ipv4']
 
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
