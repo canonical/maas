@@ -162,7 +162,6 @@ module.NodesDashboard = Y.Base.create(
         this.offline_nodes = 0;
         this.added_nodes = 0;
         this.retired_nodes = 0;
-        this.data_populated = false;
         this.fade_out = new Y.Anim({
             node: this.summaryNode,
             to: {opacity: 0},
@@ -211,6 +210,34 @@ module.NodesDashboard = Y.Base.create(
                 }
             }, null, event.template, this);
         }, this);
+
+        var self = this;
+
+        // Wire up the model list to the chart and summary.
+        this.modelList.after("add", function(e) {
+            if (self.updateStatus('add', e.model.get("status"))) {
+                self.chart.updateChart();
+            }
+            self.setSummary(true);
+        });
+        this.modelList.after("remove", function(e) {
+            if (self.updateStatus('remove', e.model.get("status"))) {
+                self.chart.updateChart();
+            }
+            self.setSummary(true);
+        });
+        this.modelList.after("*:change", function(e) {
+            var status_change = e.changed.status;
+            if (Y.Lang.isValue(status_change)) {
+                var update_remove = self.updateStatus(
+                    'remove', status_change.prevVal);
+                var update_add = self.updateStatus(
+                    'add', status_change.newVal);
+                if (update_remove || update_add) {
+                    self.chart.updateChart();
+                }
+            }
+        });
     },
 
    /**
@@ -219,31 +246,6 @@ module.NodesDashboard = Y.Base.create(
     * @method display
     */
     display: function () {
-        /* Set up the initial node/status counts. This needs to happen here
-           so that this.modelList exists.
-        */
-        if (!this.data_populated) {
-            var i;
-            for (i=0; i<this.modelList.size(); i++) {
-                var node = this.modelList.item(i);
-                var status = node.get('status');
-                this.updateStatus('add', status);
-            }
-            this.data_populated = true;
-
-            // Set up the event listeners for node changes
-            Y.on('Node.updated', function(e, widget) {
-                widget.updateNode('updated', e.instance);
-            }, null, this);
-
-            Y.on('Node.created', function(e, widget) {
-                widget.updateNode('created', e.instance);
-            }, null, this);
-
-            Y.on('Node.deleted', function(e, widget) {
-                widget.updateNode('deleted', e.instance);
-            }, null, this);
-        }
         // Update the chart with the new node/status counts
         this.chart.updateChart();
         // Set the default text on the dashboard
@@ -260,45 +262,6 @@ module.NodesDashboard = Y.Base.create(
 
     loadNodesEnded: function() {
         this.spinnerNode.remove();
-    },
-
-   /**
-    * Update the nodes in the chart.
-    */
-    updateNode: function(action, node) {
-        var model_node;
-        var update_chart = false;
-        if (action === 'created') {
-            this.modelList.add(node);
-            update_chart = this.updateStatus('add', node.status);
-        }
-        else if (action === 'deleted') {
-            model_node = this.modelList.getById(node.system_id);
-            this.modelList.remove(model_node);
-            update_chart = this.updateStatus('remove', node.status);
-        }
-        else if (action === 'updated') {
-            model_node = this.modelList.getById(node.system_id);
-            var previous_status = model_node.get('status');
-            model_node.set('status', node.status);
-            var update_remove = this.updateStatus('remove', previous_status);
-            var update_add = this.updateStatus('add', node.status);
-            if (update_remove || update_add) {
-                update_chart = true;
-            }
-        }
-
-        if (update_chart) {
-            // Update the chart with the new node/status counts
-            this.chart.updateChart();
-        }
-
-        if (action !== 'updated') {
-            /* Set the default text on the dashboard. We only need to do this
-               if the total number of nodes has changed.
-            */
-            this.setSummary(true);
-        }
     },
 
    /**

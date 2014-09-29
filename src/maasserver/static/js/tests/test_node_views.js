@@ -270,7 +270,7 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Assert.areEqual("none", view.retiredNode.getStyle("display"));
     },
 
-    testUpdateNodeCreation: function() {
+    testUpdateWhenNodeAdded: function() {
         var self = this;
         var view = this.makeDashboard();
         var node = {
@@ -310,11 +310,13 @@ suite.add(new Y.maas.testing.TestCase({
             });
         });
 
-        view.updateNode('created', node);
+        // Add a node.
+        view.modelList.add(node);
+
         this.wait();
     },
 
-    testUpdateNodeUpdating: function() {
+    testUpdateWhenNodeUpdated: function() {
         var self = this;
         var view = this.makeDashboard();
         var node = this.data[0];
@@ -325,9 +327,12 @@ suite.add(new Y.maas.testing.TestCase({
             view.allocated_nodes,
             "Check the initial number of nodes for the new status.");
 
-        view.updateNode('updated', node);
+        // Update a node.
+        view.modelList.getById('sys1').set(
+            'status', Y.maas.enums.NODE_STATUS.DEPLOYED);
+
         Y.Assert.areEqual(
-            Y.maas.enums.NODE_STATUS.ALLOCATED,
+            Y.maas.enums.NODE_STATUS.DEPLOYED,
             view.modelList.getById('sys1').get('status'),
             "The node should have been updated.");
         Y.Assert.areEqual(
@@ -353,7 +358,7 @@ suite.add(new Y.maas.testing.TestCase({
             "The total number of nodes should not have been updated.");
     },
 
-    testUpdateNodeDeleting: function() {
+    testUpdateWhenNodeDeleted: function() {
         var self = this;
         var view = this.makeDashboard();
         var node = this.data[12];
@@ -379,7 +384,10 @@ suite.add(new Y.maas.testing.TestCase({
             });
         });
 
-        view.updateNode('deleted', node);
+        // Delete a node.
+        var node_model_to_delete = view.modelList.getById(node.system_id);
+        view.modelList.remove(node_model_to_delete);
+
         this.wait();
     },
 
@@ -391,7 +399,7 @@ suite.add(new Y.maas.testing.TestCase({
             2,
             view.added_nodes,
             "Check the initial number of nodes for the status.");
-        var result = view.updateStatus('add', 0);
+        var result = view.updateStatus('add', Y.maas.enums.NODE_STATUS.NEW);
         Y.Assert.areEqual(
             3,
             view.added_nodes,
@@ -404,7 +412,7 @@ suite.add(new Y.maas.testing.TestCase({
             result,
             "This status needs to update the chart, so should return true.");
         // Remove a node from a status
-        result = view.updateStatus('remove', 0);
+        result = view.updateStatus('remove', Y.maas.enums.NODE_STATUS.NEW);
         Y.Assert.areEqual(
             2,
             view.added_nodes,
@@ -418,7 +426,7 @@ suite.add(new Y.maas.testing.TestCase({
             3,
             view.reserved_nodes,
             "Check the initial number of nodes for the reserved status.");
-        result = view.updateStatus('add', 5);
+        result = view.updateStatus('add', Y.maas.enums.NODE_STATUS.RESERVED);
         Y.Assert.areEqual(
             4,
             view.reserved_nodes,
