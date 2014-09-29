@@ -18,7 +18,6 @@ __all__ = [
     "is_import_boot_images_running",
 ]
 
-from maasserver.models import BootResource
 from maasserver.rpc import getClientFor
 from provisioningserver.rpc.cluster import (
     IsImportBootImagesRunning,
@@ -76,6 +75,9 @@ def get_boot_images_for(
     :raises crochet.TimeoutError: If a response has not been received within
         30 seconds.
     """
+    # Avoid circular imports when running the Node view tests in isolation.
+    from maasserver.models import BootResource
+
     images = get_boot_images(nodegroup)
     images = [
         image
