@@ -211,7 +211,7 @@ class APIEditMixin:
         super(APIEditMixin, self)._post_clean()
 
 
-class ModelForm(APIEditMixin, forms.ModelForm):
+class MAASModelForm(APIEditMixin, forms.ModelForm):
     """A form for editing models, with MAAS-specific behaviour.
 
     Specifically, it is much like Django's ``ModelForm``, but removes
@@ -289,7 +289,7 @@ def find_osystem_and_release_from_release_name(name):
     return None, None
 
 
-class NodeForm(ModelForm):
+class NodeForm(MAASModelForm):
 
     def __init__(self, request=None, *args, **kwargs):
         super(NodeForm, self).__init__(*args, **kwargs)
@@ -681,7 +681,7 @@ def get_node_edit_form(user):
         return NodeForm
 
 
-class MACAddressForm(ModelForm):
+class MACAddressForm(MAASModelForm):
     class Meta:
         model = MACAddress
 
@@ -697,7 +697,7 @@ class MACAddressForm(ModelForm):
         return mac
 
 
-class KeyForm(ModelForm):
+class KeyForm(MAASModelForm):
     """Base class for `SSHKeyForm` and `SSLKeyForm`."""
 
     def __init__(self, user, *args, **kwargs):
@@ -973,7 +973,7 @@ def get_action_form(user, request=None):
         {'user': user, 'request': request})
 
 
-class ProfileForm(ModelForm):
+class ProfileForm(MAASModelForm):
     # We use the field 'last_name' to store the user's full name (and
     # don't display Django's 'first_name' field).
     last_name = forms.CharField(
@@ -1294,7 +1294,7 @@ def disambiguate_name(original_name, ip_address):
     return '%s-%s' % (original_name, suffix)
 
 
-class NodeGroupInterfaceForm(ModelForm):
+class NodeGroupInterfaceForm(MAASModelForm):
 
     management = forms.TypedChoiceField(
         choices=NODEGROUPINTERFACE_MANAGEMENT_CHOICES, required=False,
@@ -1323,7 +1323,7 @@ class NodeGroupInterfaceForm(ModelForm):
             )
 
     def save(self, *args, **kwargs):
-        """Override `ModelForm`.save() so that the network data is copied
+        """Override `MAASModelForm`.save() so that the network data is copied
         to a `Network` instance."""
         interface = super(NodeGroupInterfaceForm, self).save(*args, **kwargs)
         if interface.network is None:
@@ -1512,7 +1512,7 @@ def validate_nonoverlapping_networks(interfaces):
                 % (networks[index - 1]['name'], networks[index]['name']))
 
 
-class NodeGroupDefineForm(ModelForm):
+class NodeGroupDefineForm(MAASModelForm):
     """Define a `NodeGroup`, along with its interfaces.
 
     This form can create a new `NodeGroup`, or in the case where a cluster
@@ -1587,7 +1587,7 @@ class NodeGroupDefineForm(ModelForm):
         return nodegroup
 
 
-class NodeGroupEdit(ModelForm):
+class NodeGroupEdit(MAASModelForm):
 
     name = forms.CharField(
         label="DNS zone name",
@@ -1626,7 +1626,7 @@ class NodeGroupEdit(ModelForm):
         return new_name
 
 
-class TagForm(ModelForm):
+class TagForm(MAASModelForm):
 
     class Meta:
         model = Tag
@@ -1892,7 +1892,7 @@ class BulkNodeActionForm(forms.Form):
             return self.perform_action(action_name, system_ids)
 
 
-class DownloadProgressForm(ModelForm):
+class DownloadProgressForm(MAASModelForm):
     """Form to update a `DownloadProgress`.
 
     The `get_download` helper will find the right progress record to update,
@@ -1938,7 +1938,7 @@ class DownloadProgressForm(ModelForm):
         return super(DownloadProgressForm, self).clean()
 
 
-class ZoneForm(ModelForm):
+class ZoneForm(MAASModelForm):
 
     class Meta:
         model = Zone
@@ -1965,7 +1965,7 @@ class NodeMACAddressChoiceField(forms.ModelMultipleChoiceField):
         return "%s (%s)" % (obj.mac_address, obj.node.hostname)
 
 
-class NetworkForm(ModelForm):
+class NetworkForm(MAASModelForm):
 
     class Meta:
         model = Network
@@ -2098,7 +2098,7 @@ class NetworkDisconnectMACsForm(MACsForm):
         self.network.macaddress_set.remove(*self.get_macs())
 
 
-class BootSourceForm(ModelForm):
+class BootSourceForm(MAASModelForm):
     """Form for the Boot Source API."""
 
     class Meta:
@@ -2132,7 +2132,7 @@ class BootSourceForm(ModelForm):
         return data
 
 
-class BootSourceSelectionForm(ModelForm):
+class BootSourceSelectionForm(MAASModelForm):
     """Form for the Boot Source Selection API."""
 
     class Meta:
@@ -2169,7 +2169,7 @@ class BootSourceSelectionForm(ModelForm):
         return boot_source_selection
 
 
-class LicenseKeyForm(ModelForm):
+class LicenseKeyForm(MAASModelForm):
     """Form for global license keys."""
 
     class Meta:
@@ -2278,7 +2278,7 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES_UPLOAD = (
     )
 
 
-class BootResourceForm(ModelForm):
+class BootResourceForm(MAASModelForm):
     """Form for uploading boot resources."""
 
     class Meta:
