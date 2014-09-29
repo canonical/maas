@@ -31,7 +31,6 @@ from maasserver.networking_preseed import (
     compose_debian_network_interfaces_file,
     compose_debian_network_interfaces_ipv4_stanza,
     compose_debian_network_interfaces_ipv6_stanza,
-    compose_linux_udev_rules_file,
     extract_mac_string,
     extract_network_interfaces,
     generate_dns_server_entry,
@@ -886,17 +885,3 @@ class TestComposeDebianNetworkInterfacesFile(MAASServerTestCase):
 
         self.assertIn('auto %s' % interface, interfaces_file)
         self.assertEqual(1, interfaces_file.count('auto %s' % interface))
-
-
-class TestComposeLinuxUdevRulesFile(MAASServerTestCase):
-
-    def test__generates_udev_rule(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        expected_rule = (
-            '\nSUBSYSTEM=="net", ACTION=="add", DRIVERS=="?*", '
-            'ATTR{address}=="%(mac)s", NAME="%(interface)s"\n'
-            ) % {'mac': mac, 'interface': interface}
-        self.assertIn(
-            expected_rule,
-            compose_linux_udev_rules_file([(interface, mac)]))
