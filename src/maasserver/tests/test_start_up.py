@@ -27,13 +27,11 @@ from maasserver.models import (
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.celery import CeleryFixture
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     )
-from testresources import FixtureResource
 from testtools.matchers import HasLength
 
 
@@ -76,10 +74,6 @@ class TestStartUp(MAASServerTestCase):
 
 class TestInnerStartUp(MAASServerTestCase):
     """Tests for the actual work done in `inner_start_up`."""
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
 
     def setUp(self):
         super(TestInnerStartUp, self).setUp()

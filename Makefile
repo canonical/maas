@@ -40,7 +40,6 @@ build: \
     bin/twistd.pserv bin/test.pserv \
     bin/test.config \
     bin/maas-probe-dhcp \
-    bin/celeryd.region \
     bin/py bin/ipy \
     $(js_enums)
 
@@ -68,7 +67,7 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
 
-bin/maas-region-admin bin/celeryd.region: \
+bin/maas-region-admin: \
     bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install maas
 	@touch --no-create $@
@@ -239,7 +238,7 @@ endef
 # Development services.
 #
 
-service_names_region := database dns region-worker reloader web webapp
+service_names_region := database dns reloader web webapp
 service_names_cluster := pserv reloader
 service_names_all := $(service_names_region) $(service_names_cluster)
 
@@ -323,8 +322,6 @@ services/%/@supervise: services/%/@deps
 # Dependencies for individual services.
 
 services/dns/@deps: bin/py
-
-services/region-worker/@deps: bin/celeryd.region
 
 services/database/@deps: bin/database
 

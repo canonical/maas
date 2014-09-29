@@ -23,12 +23,6 @@ YUI_LOCATION = '/usr/share/javascript/yui3/'
 # Use the package's files to serve RaphaelJS.
 RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
 
-# RabbitMQ settings.
-RABBITMQ_HOST = 'localhost'
-RABBITMQ_USERID = 'maas_longpoll'
-RABBITMQ_PASSWORD = ''
-RABBITMQ_VIRTUAL_HOST = '/maas_longpoll'
-
 # See http://docs.djangoproject.com/en/dev/topics/logging for
 # more details on how to customize the logging configuration.
 LOGGING_LEVEL = 'INFO'

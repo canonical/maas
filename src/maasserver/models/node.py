@@ -426,8 +426,7 @@ class NodeManager(Manager):
         if len(update_host_maps_failures) != 0:
             raise MultipleFailures(*update_host_maps_failures)
 
-        # Update the DNS zone with the new static IP info as necessary. This
-        # is the last part of start_nodes() that still uses Celery.
+        # Update the DNS zone with the new static IP info as necessary.
         from maasserver.dns.config import change_dns_zones
         change_dns_zones({node.nodegroup for node in nodes})
 

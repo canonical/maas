@@ -22,7 +22,6 @@ import httplib
 from urlparse import urlparse
 
 import bson
-from celery.app import app_or_default
 from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
@@ -110,25 +109,16 @@ def register_nodegroup(request, uuid):
     return cluster
 
 
-def get_celery_credentials():
-    """Return the credentials needed to connect to the broker."""
-    celery_conf = app_or_default().conf
-    return {
-        'BROKER_URL': celery_conf.BROKER_URL,
-    }
-
-
 def compose_nodegroup_register_response(nodegroup, already_existed):
     """Return the right HTTP response to a `register` request.
 
     The response is based on the status of the `nodegroup` after registration,
     and whether it had already been registered before the call.
 
-    If the nodegroup was accepted, this returns the cluster worker's Celery
-    credentials.
+    If the nodegroup was accepted, this returns an empty 200 response.
     """
     if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-        return get_celery_credentials()
+        return {}  # Previously returned task-runner credentials.
     elif nodegroup.status == NODEGROUP_STATUS.REJECTED:
         raise PermissionDenied('Rejected cluster.')
     elif nodegroup.status == NODEGROUP_STATUS.PENDING:
@@ -162,9 +152,7 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
         This method will use HTTP return codes to indicate the success of the
         call:
 
-        - 200 (OK): the cluster controller has been accepted.  The response
-          will contain the RabbitMQ credentials in JSON format, e.g.:
-          '{"BROKER_URL" = "amqp://guest:guest@localhost:5672//"}'
+        - 200 (OK): the cluster controller has been accepted.
         - 202 (Accepted): the cluster controller has been registered.  It is
           now pending acceptance by an administrator.  Please try again later.
         - 403 (Forbidden): this cluster controller has been rejected.

@@ -20,7 +20,6 @@ from subprocess import CalledProcessError
 
 import celery
 from celery import states
-from celery.app import app_or_default
 from maastesting.celery import CeleryFixture
 from maastesting.factory import factory
 from maastesting.fakemethod import (
@@ -55,9 +54,6 @@ from testtools.matchers import (
     FileExists,
     MatchesListwise,
     )
-
-
-celery_config = app_or_default().conf
 
 
 def assertTaskRetried(runner, result, nb_retries, task_name):
@@ -112,11 +108,6 @@ class TestDNSTasks(PservTestCase):
                 )),
             result)
 
-    def test_write_dns_config_attached_to_dns_worker_queue(self):
-        self.assertEqual(
-            write_dns_config.queue,
-            celery_config.WORKER_QUEUE_DNS)
-
     def test_write_dns_zone_config_writes_file(self):
         command = factory.make_string()
         domain = factory.make_string()
@@ -151,11 +142,6 @@ class TestDNSTasks(PservTestCase):
                 )),
             result)
 
-    def test_write_dns_zone_config_attached_to_dns_worker_queue(self):
-        self.assertEqual(
-            write_dns_zone_config.queue,
-            celery_config.WORKER_QUEUE_DNS)
-
     def test_setup_rndc_configuration_writes_files(self):
         command = factory.make_string()
         result = setup_rndc_configuration.delay(
@@ -177,11 +163,6 @@ class TestDNSTasks(PservTestCase):
                     Equals([((command,), {})]),
                 )),
             result)
-
-    def test_setup_rndc_configuration_attached_to_dns_worker_queue(self):
-        self.assertEqual(
-            setup_rndc_configuration.queue,
-            celery_config.WORKER_QUEUE_DNS)
 
     def test_rndc_command_execute_command(self):
         command = factory.make_string()
@@ -226,9 +207,6 @@ class TestDNSTasks(PservTestCase):
             ExternalProcessError, rndc_command.delay,
             command, retry=True)
 
-    def test_rndc_command_attached_to_dns_worker_queue(self):
-        self.assertEqual(rndc_command.queue, celery_config.WORKER_QUEUE_DNS)
-
     def test_write_full_dns_config_sets_up_config(self):
         # write_full_dns_config writes the config file, writes
         # the zone files, and reloads the dns service.
@@ -272,8 +250,3 @@ class TestDNSTasks(PservTestCase):
                     FileExists(),
                     FileExists(),
                 )))
-
-    def test_write_full_dns_attached_to_dns_worker_queue(self):
-        self.assertEqual(
-            write_full_dns_config.queue,
-            celery_config.WORKER_QUEUE_DNS)

@@ -47,7 +47,7 @@ def start_up():
 
     This method is called when the MAAS application starts up.
     In production, it's called from the WSGI script so this shouldn't block
-    at any costs.  It should simply call very simple methods or Celery tasks.
+    at any costs.
 
     The method will be executed multiple times if multiple processes are used
     but this method uses file-based locking to ensure that the methods it calls

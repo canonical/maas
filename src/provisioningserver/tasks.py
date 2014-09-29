@@ -69,7 +69,7 @@ RNDC_COMMAND_MAX_RETRY = 10
 RNDC_COMMAND_RETRY_DELAY = 2
 
 
-@task(max_retries=RNDC_COMMAND_MAX_RETRY, queue=celery_config.WORKER_QUEUE_DNS)
+@task(max_retries=RNDC_COMMAND_MAX_RETRY)
 @log_call()
 @log_exception_text
 def rndc_command(arguments, retry=False, callback=None):
@@ -94,7 +94,7 @@ def rndc_command(arguments, retry=False, callback=None):
         callback.delay()
 
 
-@task(queue=celery_config.WORKER_QUEUE_DNS)
+@task
 @log_call()
 @log_exception_text
 def write_full_dns_config(zones=None, callback=None, **kwargs):
@@ -118,7 +118,7 @@ def write_full_dns_config(zones=None, callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=celery_config.WORKER_QUEUE_DNS)
+@task
 @log_call()
 @log_exception_text
 def write_dns_config(zones=(), callback=None, **kwargs):
@@ -137,7 +137,7 @@ def write_dns_config(zones=(), callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=celery_config.WORKER_QUEUE_DNS)
+@task
 @log_call()
 @log_exception_text
 def write_dns_zone_config(zones, callback=None, **kwargs):
@@ -155,7 +155,7 @@ def write_dns_zone_config(zones, callback=None, **kwargs):
         callback.delay()
 
 
-@task(queue=celery_config.WORKER_QUEUE_DNS)
+@task
 @log_call()
 @log_exception_text
 def setup_rndc_configuration(callback=None):

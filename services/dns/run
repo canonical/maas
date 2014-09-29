@@ -14,9 +14,14 @@ cd "$(dirname "$0")/../.."
 # because there are race issues when restarting.
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
-homedir="$(pwd)/run/named"
-port=5246
-rndc_port=5247
+# DNS settings, for driving BIND.
+export MAAS_DNS_CONFIG_DIR="$(cd run/named && pwd)"
+export MAAS_DNS_RNDC_PORT=5247
+export MAAS_DNS_DEFAULT_CONTROLS=0
+
+homedir="$MAAS_DNS_CONFIG_DIR"
+port="$((MAAS_DNS_RNDC_PORT - 1))"
+rndc_port="$MAAS_DNS_RNDC_PORT"
 
 # Create DNS config.
 bin/py -m provisioningserver/testing/bindfixture -- \

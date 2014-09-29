@@ -45,7 +45,6 @@ from maasserver.testing.orm import (
     reload_objects,
     )
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.celery import CeleryFixture
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -59,7 +58,6 @@ from provisioningserver.rpc.cluster import (
     EnlistNodesFromUCSM,
     ImportBootImages,
     )
-from testresources import FixtureResource
 from testtools.matchers import (
     AllMatch,
     Equals,
@@ -73,10 +71,6 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
         ('user', dict(userfactory=factory.make_User)),
         ('admin', dict(userfactory=factory.make_admin)),
         ]
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
 
     def test_handler_path(self):
         self.assertEqual(
@@ -103,10 +97,6 @@ class TestNodeGroupsAPI(MultipleUsersScenarios,
 
 
 class TestNodeGroupAPI(APITestCase):
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
 
     def test_handler_path(self):
         self.assertEqual(

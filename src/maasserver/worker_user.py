@@ -3,7 +3,7 @@
 
 """System user representing node-group workers.
 
-The Celery workers access the MAAS API under this user identity.
+Workers access the MAAS API under this user identity.
 """
 
 from __future__ import (

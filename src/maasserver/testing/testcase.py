@@ -32,7 +32,6 @@ from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
-from maastesting.celery import CeleryFixture
 from maastesting.djangotestcase import (
     cleanup_db,
     DjangoTestCase,
@@ -62,7 +61,6 @@ class MAASServerTestCase(DjangoTestCase):
 
     def setUp(self):
         super(MAASServerTestCase, self).setUp()
-        self.celery = self.useFixture(CeleryFixture())
         # This patch prevents communication with a non-existent cluster
         # controller when fetching power types.
         static_params = (

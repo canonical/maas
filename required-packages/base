@@ -52,7 +52,6 @@ python-txtftp
 python-tz
 python-yaml
 python-zope.interface
-rabbitmq-server
 syslinux-common
 tgt
 ubuntu-cloudimage-keyring

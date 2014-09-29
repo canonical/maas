@@ -60,13 +60,13 @@ def handle_webapp_change(event):
 
 
 def handle_pserv_change(event):
-    services = "pserv", "region-worker"
+    services = "pserv",
     if is_interesting_python_change(event.name):
         for service in services:
             service_dir = "services/%s" % service
             if is_supervised(service_dir):
                 print("<-- {0.pathname} changed; reloading {1}.".format(
-                        event, service))
+                    event, service))
                 check_call(("svc", "-du", service_dir))
 
 

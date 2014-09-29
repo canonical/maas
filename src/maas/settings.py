@@ -64,10 +64,6 @@ DHCP_CONNECT = True
 # The MAAS CLI.
 MAAS_CLI = 'sudo maas-region-admin'
 
-# The relative path where a proxy to the Longpoll server can be
-# reached.  Longpolling will be disabled in the UI if this is None.
-LONGPOLL_PATH = '/longpoll/'
-
 # Default URL specifying protocol, host, and (if necessary) port where
 # systems in this MAAS can find the MAAS server.  Configuration can, and
 # probably should, override this.
@@ -77,7 +73,6 @@ if FORCE_SCRIPT_NAME is not None:
     LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
     LOGIN_REDIRECT_URL = FORCE_SCRIPT_NAME + LOGIN_REDIRECT_URL
     LOGIN_URL = FORCE_SCRIPT_NAME + LOGIN_URL
-    LONGPOLL_PATH = FORCE_SCRIPT_NAME + LONGPOLL_PATH
     DEFAULT_MAAS_URL = urljoin(DEFAULT_MAAS_URL, FORCE_SCRIPT_NAME)
     # ADMIN_MEDIA_PREFIX will be deprecated in Django 1.4.
     # Admin's media will be served using staticfiles instead.
@@ -120,15 +115,6 @@ AUTH_PROFILE_MODULE = 'maasserver.UserProfile'
 AUTHENTICATION_BACKENDS = (
     'maasserver.models.MAASAuthorizationBackend',
     )
-
-# Rabbit MQ Configuration.
-RABBITMQ_HOST = 'localhost'
-RABBITMQ_USERID = 'guest'
-RABBITMQ_PASSWORD = 'guest'
-RABBITMQ_VIRTUAL_HOST = '/'
-
-RABBITMQ_PUBLISH = True
-
 
 DATABASES = {
     'default': {
@@ -321,6 +307,9 @@ ALLOWED_HOSTS = ['*']
 SERIALIZATION_MODULES = {
     'maasjson': 'maasserver.json',
 }
+
+# Set up celery to use the production settings.
+os.environ['CELERY_CONFIG_MODULE'] = 'maas.celeryconfig'
 
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()

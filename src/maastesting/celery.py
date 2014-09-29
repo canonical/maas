@@ -25,7 +25,7 @@ from testtools.monkey import MonkeyPatcher
 
 
 class CeleryFixture(Fixture):
-    """This fixture will make Celery run tasks in a synchronous fashion.
+    """This fixture will record Celery tasks as they're run.
 
     This fixture can be used directly::
 

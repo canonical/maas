@@ -45,10 +45,6 @@ class CannotDeleteUserException(Exception):
     """User can't be deleted."""
 
 
-class NoRabbit(MAASException):
-    """Could not reach RabbitMQ."""
-
-
 class MAASAPIException(Exception):
     """Base class for MAAS' API exceptions.
 

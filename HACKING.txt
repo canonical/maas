@@ -292,14 +292,14 @@ and run as normal.
 Running the cluster worker
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The cluster worker process also needs authbind as it needs to bind a socket
-on UDP port 68 for DHCP probing::
+The cluster also needs authbind as it needs to bind a socket on UDP port
+68 for DHCP probing::
 
     $ sudo touch /etc/authbind/byport/68
     $ sudo chmod a+x /etc/authbind/byport/68
 
 If you omit this, nothing else will break, but you will get an error in
-the cluster celeryd log because it can't bind to the port.
+the cluster log because it can't bind to the port.
 
 
 Configuring DHCP

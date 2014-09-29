@@ -38,7 +38,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.worker_user import get_worker_user
-from maastesting.celery import CeleryFixture
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -59,7 +58,6 @@ from provisioningserver.rpc.cluster import (
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils.enum import map_enum
-from testresources import FixtureResource
 from testtools.matchers import (
     EndsWith,
     Equals,
@@ -246,10 +244,6 @@ class TestNodeGroupManager(MAASServerTestCase):
 
 
 class TestNodeGroup(MAASServerTestCase):
-
-    resources = (
-        ('celery', FixtureResource(CeleryFixture())),
-        )
 
     def test_delete_cluster_with_nodes(self):
         nodegroup = factory.make_NodeGroup()

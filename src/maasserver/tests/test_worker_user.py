@@ -25,7 +25,7 @@ from maasserver.worker_user import (
 
 
 class TestNodeGroupUser(MAASServerTestCase):
-    """Test the special "user" that celery workers use to access the API."""
+    """Test the special "user" that workers use to access the API."""
 
     def test_get_worker_user_always_returns_same_user(self):
         self.assertEqual(get_worker_user().id, get_worker_user().id)

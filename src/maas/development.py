@@ -58,8 +58,6 @@ TEMPLATE_DEBUG = DEBUG
 YUI_DEBUG = DEBUG
 STATIC_LOCAL_SERVE = True
 
-RABBITMQ_PUBLISH = False
-
 # Silent South during tests.
 logging.getLogger('south').setLevel(logging.WARNING)
 
@@ -114,9 +112,6 @@ patch_db_creation(DEV_ROOT_DIRECTORY)
 # Override the default provisioning config filename.
 provisioningserver.config.Config.DEFAULT_FILENAME = abspath(
     "etc/maas/pserv.yaml")
-
-# Set up celery to use the demo settings.
-os.environ['CELERY_CONFIG_MODULE'] = 'democeleryconfig'
 
 # Use the in-branch development version of maas_cluster.conf.
 LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")

@@ -19,7 +19,6 @@ import httplib
 import json
 from textwrap import dedent
 
-from celery.app import app_or_default
 from django.conf import settings
 from django.core.exceptions import (
     PermissionDenied,
@@ -30,7 +29,6 @@ from django.test.client import RequestFactory
 from maasserver.api import node_groups as nodegroups_module
 from maasserver.api.node_groups import (
     compose_nodegroup_register_response,
-    get_celery_credentials,
     register_nodegroup,
     update_nodegroup_maas_url,
     )
@@ -104,14 +102,6 @@ def create_local_cluster_config(test_case, uuid):
     test_case.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
 
 
-def patch_broker_url(test_case):
-    """Patch `BROKER_URL` with a fake.  Returns the fake value."""
-    fake = factory.make_name('fake_broker_url')
-    celery_conf = app_or_default().conf
-    test_case.patch(celery_conf, 'BROKER_URL', fake)
-    return fake
-
-
 def make_register_request(uuid):
     """Create a fake register() request."""
     request = RequestFactory().post(
@@ -182,21 +172,12 @@ class TestRegisterNodegroup(MAASServerTestCase):
 class TestComposeNodegroupRegisterResponse(MAASServerTestCase):
     """Tests for `compose_nodegroup_register_response`."""
 
-    def test_returns_credentials_if_accepted(self):
+    def test_returns_empty_response_if_accepted(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         existed = factory.pick_bool()
         self.assertEqual(
-            get_celery_credentials(),
+            {},
             compose_nodegroup_register_response(nodegroup, existed))
-
-    def test_credentials_contain_broker_url(self):
-        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
-        broker_url = patch_broker_url(self)
-        existed = factory.pick_bool()
-
-        response = compose_nodegroup_register_response(nodegroup, existed)
-
-        self.assertEqual({'BROKER_URL': broker_url}, response)
 
     def test_returns_forbidden_if_rejected(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.REJECTED)
@@ -266,7 +247,6 @@ class TestRegisterAPI(MAASServerTestCase):
         name = factory.make_name('cluster')
         uuid = factory.make_UUID()
         create_local_cluster_config(self, uuid)
-        patch_broker_url(self)
 
         response = self.client.post(
             reverse('nodegroups_handler'),

@@ -20,6 +20,11 @@ then
     set -- "$@" --noreload
 fi
 
+# DNS settings, for driving BIND.
+export MAAS_DNS_CONFIG_DIR="$(cd run/named && pwd)"
+export MAAS_DNS_RNDC_PORT=5247
+export MAAS_DNS_DEFAULT_CONTROLS=0
+
 # Exec the MAAS API and Web UI Server.
 script="$(readlink -f bin/maas-region-admin)"
 exec "${script}" runserver 5243 --settings=maas.demo "$@"

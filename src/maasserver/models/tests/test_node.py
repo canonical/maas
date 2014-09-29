@@ -1136,18 +1136,6 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(start_nodes, MockCalledOnceWith(
             [node.system_id], admin, user_data=ANY))
 
-    def test_start_commisssioning_doesnt_start_nodes_for_non_admin_users(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.NEW, power_type='ether_wake')
-        factory.make_MACAddress(node=node)
-        node.start_commissioning(factory.make_User())
-
-        expected_attrs = {
-            'status': NODE_STATUS.COMMISSIONING,
-        }
-        self.assertAttributes(node, expected_attrs)
-        self.assertEqual([], self.celery.tasks)
-
     def test_start_commissioning_sets_user_data(self):
         start_nodes = self.patch(Node.objects, "start_nodes")
 

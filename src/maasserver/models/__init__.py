@@ -181,9 +181,6 @@ class MAASAuthorizationBackend(ModelBackend):
                 perm)
 
 
-from maasserver import messages
-ignore_unused(messages)
-
 from maasserver.dns import connect as dns_connect
 ignore_unused(dns_connect)
 

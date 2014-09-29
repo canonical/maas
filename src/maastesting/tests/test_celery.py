@@ -16,7 +16,6 @@ __all__ = []
 
 import random
 
-from celery import current_app
 from celery.decorators import task
 from celery.result import EagerResult
 from maastesting.celery import CeleryFixture
@@ -39,10 +38,6 @@ class TestCeleryFixture(MAASTestCase):
     def setUp(self):
         super(TestCeleryFixture, self).setUp()
         self.celery = self.useFixture(CeleryFixture())
-
-    def test_celery_config(self):
-        self.assertTrue(current_app.conf.CELERY_ALWAYS_EAGER)
-        self.assertTrue(current_app.conf.CELERY_EAGER_PROPAGATES_EXCEPTIONS)
 
     def test_celery_eagerresult_contains_result(self):
         # The result is an instance of EagerResult and it contains the actual

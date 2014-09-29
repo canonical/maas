@@ -230,10 +230,7 @@ class MACAddress(CleanSave, TimestampedModel):
         MAC.  Typically this will be either just one IPv4 address, or an IPv4
         address and an IPv6 address.
 
-        It is the caller's responsibility to create a celery Task that will
-        write the dhcp host.  It is not done here because celery doesn't
-        guarantee job ordering, and if the host entry is written after
-        the host boots it is too late.
+        It is the caller's responsibility to update the DHCP server.
 
         :param alloc_type: See :class:`StaticIPAddress`.alloc_type.
             This parameter musn't be IPADDRESS_TYPE.USER_RESERVED.
