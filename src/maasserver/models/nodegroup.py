@@ -30,7 +30,7 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.clusterrpc.boot_images import (
     get_boot_images,
-    is_import_boot_images_running,
+    is_import_boot_images_running_for,
     )
 from maasserver.enum import (
     NODEGROUP_STATE,
@@ -275,7 +275,7 @@ class NodeGroup(TimestampedModel):
             return NODEGROUP_STATE.DISCONNECTED
         if not BootResource.objects.boot_images_are_in_sync(images):
             try:
-                importing = is_import_boot_images_running(self)
+                importing = is_import_boot_images_running_for(self)
             except (NoConnectionsAvailable, TimeoutError):
                 return NODEGROUP_STATE.DISCONNECTED
             if not importing:

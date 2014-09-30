@@ -445,7 +445,7 @@ class TestNodeGroup(MAASServerTestCase):
         mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
             False)
         mock_is_import_boot_images_running = self.patch(
-            nodegroup_module, 'is_import_boot_images_running')
+            nodegroup_module, 'is_import_boot_images_running_for')
         mock_is_import_boot_images_running.side_effect = NoConnectionsAvailable
         nodegroup = factory.make_NodeGroup()
         self.assertEqual(NODEGROUP_STATE.DISCONNECTED, nodegroup.get_state())
@@ -464,7 +464,7 @@ class TestNodeGroup(MAASServerTestCase):
         mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
             False)
         mock_is_import_boot_images_running = self.patch(
-            nodegroup_module, 'is_import_boot_images_running')
+            nodegroup_module, 'is_import_boot_images_running_for')
         mock_is_import_boot_images_running.return_value = False
         nodegroup = factory.make_NodeGroup()
         self.assertEqual(NODEGROUP_STATE.OUT_OF_SYNC, nodegroup.get_state())
@@ -475,7 +475,7 @@ class TestNodeGroup(MAASServerTestCase):
         mock_boot_resources.objects.boot_images_are_in_sync.return_value = (
             False)
         mock_is_import_boot_images_running = self.patch(
-            nodegroup_module, 'is_import_boot_images_running')
+            nodegroup_module, 'is_import_boot_images_running_for')
         mock_is_import_boot_images_running.return_value = True
         nodegroup = factory.make_NodeGroup()
         self.assertEqual(NODEGROUP_STATE.SYNCING, nodegroup.get_state())

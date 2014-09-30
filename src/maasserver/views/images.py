@@ -37,6 +37,10 @@ from maasserver.bootresources import (
     is_import_resources_running,
     )
 from maasserver.bootsources import get_os_info_from_boot_sources
+from maasserver.clusterrpc.boot_images import (
+    get_available_boot_images,
+    is_import_boot_images_running,
+    )
 from maasserver.clusterrpc.osystems import get_os_release_title
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
@@ -112,12 +116,20 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             'default_osystem')
         self.default_distro_series = Config.objects.get_config(
             'default_distro_series')
+
+        # Load list of boot resources that currently exist on all clusters.
+        cluster_images = get_available_boot_images()
+        self.clusters_syncing = is_import_boot_images_running()
+        self.cluster_resources = (
+            BootResource.objects.get_resources_matching_boot_images(
+                cluster_images))
         return super(ImagesView, self).get(*args, **kwargs)
 
     def get_context_data(self, **kwargs):
         """Return context data that is passed into the template."""
         context = super(ImagesView, self).get_context_data(**kwargs)
-        context['import_running'] = is_import_resources_running()
+        context['region_import_running'] = is_import_resources_running()
+        context['cluster_import_running'] = self.clusters_syncing
         context['connection_error'] = self.connection_error
         context['ubuntu_streams_count'] = len(self.ubuntu_sources)
         context['ubuntu_releases'] = self.format_ubuntu_releases()
@@ -228,7 +240,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             resource.size = format_size(0)
             resource.last_update = resource.updated
             resource.complete = False
-            resource.status = "Queued"
+            resource.status = "Queued for download"
             resource.downloading = False
         else:
             resource.size = format_size(resource_set.total_size)
@@ -240,11 +252,21 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                     resource.status = "Downloading %3.0f%%" % progress
                     resource.downloading = True
                 else:
-                    resource.status = "Queued"
+                    resource.status = "Queued for download"
                     resource.downloading = False
             else:
-                resource.status = "Queued"
-                resource.downloading = False
+                # See if the resource also exists on all the clusters.
+                if resource in self.cluster_resources:
+                    resource.status = "Complete"
+                    resource.downloading = False
+                else:
+                    resource.complete = False
+                    if self.clusters_syncing:
+                        resource.status = "Syncing to clusters"
+                        resource.downloading = True
+                    else:
+                        resource.status = "Waiting for clusters to sync"
+                        resource.downloading = False
 
     def node_has_architecture_for_resource(self, node, resource):
         """Return True if node is the same architecture as resource."""

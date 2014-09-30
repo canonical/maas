@@ -44,7 +44,7 @@
     }
     .importing {
       margin: -20px auto -19px auto;
-      width: 160px;
+      width: 230px;
       font-weight: bold;
       text-align: center;
       padding: 10px;
@@ -88,10 +88,14 @@
 {% endblock %}
 
 {% block content %}
-    {% if import_running %}
+    {% if region_import_running or cluster_import_running %}
     <div class="importing">
       <div class="spinner spin"></div>
-      Importing images
+      {% if region_import_running %}
+      Step 1/2: Region importing
+      {% elif cluster_import_running %}
+      Step 2/2: Clusters importing
+      {% endif %}
       <span class="importing-dot">.</span>
       <span class="importing-dot" style="-webkit-animation-delay: 0.2s; animation-delay: 0.2s;">.</span>
       <span class="importing-dot" style="-webkit-animation-delay: 0.3s; animation-delay: 0.3s;">.</span>​
@@ -105,7 +109,7 @@
           action="{% url 'images' %}">
           {% csrf_token %}
           <input type="hidden" name="ubuntu_images" value="1" />
-          {% if user.is_superuser and not import_running %}
+          {% if user.is_superuser and not region_import_running %}
           <div class="row">
             {% if connection_error %}
             <div id="connection-error" class="images-warning">
@@ -195,7 +199,7 @@
           </div>
           <div class="clear"></div>
           <div class="row space-top end-row">
-            {% if user.is_superuser and not import_running %}
+            {% if user.is_superuser and not region_import_running %}
             <div class="col12 last align-right">
               {% if ubuntu_streams_count == 1 %}
               {% if ubuntu_resources|length %}
@@ -240,7 +244,7 @@
                   class="{% cycle 'even' 'odd' %}"
                   data-id="{% if resource.id %}{{ resource.id }}{% endif %}">
                   <td>
-                    {% if import_running and resource.exists %}
+                    {% if region_import_running and resource.exists %}
                     {% if not resource.complete %}
                     <div
                       title="{{ resource.status }}"
@@ -249,7 +253,7 @@
                         {% if resource.downloading %}spin{% endif %}">
                     </div>
                     {% endif %}
-                    {% elif not import_running and user.is_superuser %}
+                    {% elif not region_import_running and user.is_superuser %}
                     <input
                       type="checkbox"
                       name="image"
@@ -272,7 +276,7 @@
           </div>
           <div class="clear"></div>
           <div class="row space-top end-row">
-            {% if user.is_superuser and not import_running %}
+            {% if user.is_superuser and not region_import_running %}
             <div class="col12 last align-right">
               <input type="submit" class="button" value="Apply changes">
             </div>

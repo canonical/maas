@@ -13,21 +13,56 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "get_available_boot_images",
     "get_boot_images",
     "get_boot_images_for",
     "is_import_boot_images_running",
+    "is_import_boot_images_running_for",
 ]
 
-from maasserver.rpc import getClientFor
+from functools import partial
+
+from maasserver.rpc import (
+    getAllClients,
+    getClientFor,
+    )
+from maasserver.utils import async
 from provisioningserver.rpc.cluster import (
     IsImportBootImagesRunning,
     ListBootImages,
     )
 from provisioningserver.utils.twisted import synchronous
+from twisted.python.failure import Failure
+
+
+def suppress_failures(responses):
+    """Suppress failures returning from an async/gather operation.
+
+    This may not be advisable! Be very sure this is what you want.
+    """
+    for response in responses:
+        if not isinstance(response, Failure):
+            yield response
 
 
 @synchronous
-def is_import_boot_images_running(nodegroup):
+def is_import_boot_images_running():
+    """Return True if any cluster is currently import boot images."""
+    responses = async.gather(
+        partial(client, IsImportBootImagesRunning)
+        for client in getAllClients())
+
+    # Only one cluster needs to say its importing image, for this method to
+    # return True. Must go through all responses so they are all
+    # marked handled.
+    running = False
+    for response in suppress_failures(responses):
+        running = running or response["running"]
+    return running
+
+
+@synchronous
+def is_import_boot_images_running_for(nodegroup):
     """Return True if the cluster is currently import boot images.
 
     :param nodegroup: The nodegroup.
@@ -56,6 +91,44 @@ def get_boot_images(nodegroup):
     client = getClientFor(nodegroup.uuid, timeout=1)
     call = client(ListBootImages)
     return call.wait(30).get("images")
+
+
+@synchronous
+def get_available_boot_images():
+    """Obtain boot images that are available on all clusters."""
+    responses = async.gather(
+        partial(client, ListBootImages)
+        for client in getAllClients())
+    responses = [
+        response["images"]
+        for response in suppress_failures(responses)
+        ]
+    if len(responses) == 0:
+        return []
+
+    # Create the initial set of images from the first response. This will be
+    # used to perform the intersection of all the other responses.
+    images = responses.pop()
+    images = {
+        frozenset(image.items())
+        for image in images
+        }
+
+    # Intersect all of the remaining responses to get only the images that
+    # exist on all clusters.
+    for response in responses:
+        response_images = {
+            frozenset(image.items())
+            for image in response
+            }
+        images = images & response_images
+
+    # Return only boot images on all cluster, in the same format as
+    # get_boot_images.
+    return [
+        dict(image)
+        for image in list(images)
+        ]
 
 
 @synchronous

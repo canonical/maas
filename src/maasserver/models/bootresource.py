@@ -176,9 +176,8 @@ class BootResourceManager(Manager):
                 return resource
         return None
 
-    def boot_images_are_in_sync(self, images):
-        """Return True if the given images match items in the `BootResource`
-        table."""
+    def get_resources_matching_boot_images(self, images):
+        """Return `BootResource` that match the given images."""
         resources = BootResource.objects.all()
         matched_resources = set()
         for image in images:
@@ -195,16 +194,27 @@ class BootResourceManager(Manager):
                 rtype__in=rtypes, name=name,
                 architecture__startswith=image['architecture']).first()
             if resource is None:
-                return False
+                continue
             if not resource.supports_subarch(image['subarchitecture']):
-                return False
+                continue
             resource_set = resource.get_latest_complete_set()
             if resource_set is None:
-                return False
+                continue
             if resource_set.label != image['label']:
-                return False
+                continue
             matched_resources.add(resource)
+        return list(matched_resources)
+
+    def boot_images_are_in_sync(self, images):
+        """Return True if the given images match items in the `BootResource`
+        table."""
+        resources = BootResource.objects.all()
+        matched_resources = self.get_resources_matching_boot_images(images)
+        if len(matched_resources) == 0 and len(images) > 0:
+            # If there are images, but no resources then there is a mismatch.
+            return False
         if len(matched_resources) != resources.count():
+            # If not all resources have been matched then there is a mismatch.
             return False
         return True
 
