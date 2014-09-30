@@ -23,6 +23,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTwistedRunTest
 from mock import sentinel
+from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.config import Config
 from provisioningserver.import_images import boot_resources
@@ -30,7 +31,6 @@ from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
     _run_import,
     import_boot_images,
-    import_lock,
     is_import_boot_images_running,
     list_boot_images,
     )
@@ -121,8 +121,8 @@ class TestImportBootImages(PservTestCase):
 
     @defer.inlineCallbacks
     def test__does_not_run_if_lock_taken(self):
-        yield import_lock.acquire()
-        self.addCleanup(import_lock.release)
+        yield concurrency.boot_images.acquire()
+        self.addCleanup(concurrency.boot_images.release)
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
         yield import_boot_images(sentinel.sources)
@@ -145,11 +145,11 @@ class TestImportBootImages(PservTestCase):
 
         # Lock is acquired when import is started.
         import_boot_images(sentinel.sources)
-        self.assertTrue(import_lock.locked)
+        self.assertTrue(concurrency.boot_images.locked)
 
         # Lock is released once the download is done.
         clock.advance(1)
-        self.assertFalse(import_lock.locked)
+        self.assertFalse(concurrency.boot_images.locked)
 
 
 class TestIsImportBootImagesRunning(PservTestCase):
@@ -158,8 +158,8 @@ class TestIsImportBootImagesRunning(PservTestCase):
 
     @defer.inlineCallbacks
     def test__returns_True_when_lock_is_held(self):
-        yield import_lock.acquire()
-        self.addCleanup(import_lock.release)
+        yield concurrency.boot_images.acquire()
+        self.addCleanup(concurrency.boot_images.release)
         self.assertTrue(is_import_boot_images_running())
 
     def test__returns_False_when_lock_is_not_held(self):

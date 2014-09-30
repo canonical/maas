@@ -24,6 +24,7 @@ from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from apiclient.utils import ascii_url
+from provisioningserver import concurrency
 from provisioningserver.cluster_config import (
     get_cluster_uuid,
     get_maas_url,
@@ -229,24 +230,32 @@ class Cluster(RPCProtocol):
     @cluster.ConfigureDHCPv4.responder
     def configure_dhcpv4(self, omapi_key, subnet_configs):
         server = dhcp.DHCPv4Server(omapi_key)
-        dhcp.configure(server, subnet_configs)
-        return {}
+        d = concurrency.dhcp.run(
+            deferToThread, dhcp.configure, server, subnet_configs)
+        d.addCallback(lambda _: {})
+        return d
 
     @cluster.ConfigureDHCPv6.responder
     def configure_dhcpv6(self, omapi_key, subnet_configs):
         server = dhcp.DHCPv6Server(omapi_key)
-        dhcp.configure(server, subnet_configs)
-        return {}
+        d = concurrency.dhcp.run(
+            deferToThread, dhcp.configure, server, subnet_configs)
+        d.addCallback(lambda _: {})
+        return d
 
     @cluster.CreateHostMaps.responder
     def create_host_maps(self, mappings, shared_key):
-        create_host_maps(mappings, shared_key)
-        return {}
+        d = concurrency.dhcp.run(
+            deferToThread, create_host_maps, mappings, shared_key)
+        d.addCallback(lambda _: {})
+        return d
 
     @cluster.RemoveHostMaps.responder
     def remove_host_maps(self, ip_addresses, shared_key):
-        remove_host_maps(ip_addresses, shared_key)
-        return {}
+        d = concurrency.dhcp.run(
+            deferToThread, remove_host_maps, ip_addresses, shared_key)
+        d.addCallback(lambda _: {})
+        return d
 
     @cluster.StartMonitors.responder
     def start_monitors(self, monitors):

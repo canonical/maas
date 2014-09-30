@@ -19,17 +19,14 @@ __all__ = [
     ]
 
 
+from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
 from provisioningserver.config import Config
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
-from twisted.internet.defer import DeferredLock
 from twisted.internet.threads import deferToThread
-
-# Lock is used so more than one import is not running at the same time.
-import_lock = DeferredLock()
 
 
 def list_boot_images():
@@ -53,10 +50,11 @@ def _run_import(sources):
 
 def import_boot_images(sources):
     """Imports the boot images from the given sources."""
-    if not import_lock.locked:
-        return import_lock.run(deferToThread, _run_import, sources)
+    lock = concurrency.boot_images
+    if not lock.locked:
+        return lock.run(deferToThread, _run_import, sources)
 
 
 def is_import_boot_images_running():
     """Return True if the import process is currently running."""
-    return import_lock.locked
+    return concurrency.boot_images.locked

@@ -37,6 +37,7 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.utils.fs import sudo_write_file
 from provisioningserver.utils.shell import ExternalProcessError
+from provisioningserver.utils.twisted import synchronous
 
 
 maaslog = get_maas_logger("dhcp")
@@ -91,6 +92,7 @@ class DHCPServer:
         """Restart the DHCP server."""
 
 
+@synchronous
 def configure(server, subnet_configs):
     """Configure the DHCPv6/DHCPv4 server, and restart it as appropriate.
 
@@ -192,6 +194,7 @@ class DHCPv6Server(DHCPServer):
         control.restart_dhcpv6()
 
 
+@synchronous
 def create_host_maps(mappings, shared_key):
     """Create DHCP host maps for the given mappings.
 
@@ -214,6 +217,7 @@ def create_host_maps(mappings, shared_key):
                 mac_address, ip_address, e.output_as_unicode))
 
 
+@synchronous
 def remove_host_maps(ip_addresses, shared_key):
     """Remove DHCP host maps for the given IP addresses.
 

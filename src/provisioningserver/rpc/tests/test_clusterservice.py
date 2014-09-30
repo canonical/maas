@@ -44,6 +44,7 @@ from mock import (
     Mock,
     sentinel,
     )
+from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
 from provisioningserver.dhcp.testing.config import make_subnet_config
@@ -117,6 +118,7 @@ from twisted.internet.defer import (
 from twisted.internet.endpoints import TCP4ClientEndpoint
 from twisted.internet.task import Clock
 from twisted.protocols import amp
+from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection
 from zope.interface.verify import verifyObject
 
@@ -1229,6 +1231,24 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
             DHCPServer.return_value, subnet_configs))
 
     @inlineCallbacks
+    def test__limits_concurrency(self):
+        self.patch_autospec(*self.dhcp_server)
+
+        def check_dhcp_locked(server, subnet_configs):
+            self.assertTrue(concurrency.dhcp.locked)
+            # While we're here, check this is *not* the IO thread.
+            self.expectThat(isInIOThread(), Is(False))
+
+        self.patch(dhcp, "configure", check_dhcp_locked)
+
+        self.assertFalse(concurrency.dhcp.locked)
+        yield call_responder(Cluster(), self.command, {
+            'omapi_key': factory.make_name('key'),
+            'subnet_configs': [],
+            })
+        self.assertFalse(concurrency.dhcp.locked)
+
+    @inlineCallbacks
     def test__propagates_CannotConfigureDHCP(self):
         configure = self.patch_autospec(dhcp, "configure")
         configure.side_effect = (
@@ -1247,12 +1267,15 @@ class TestClusterProtocol_ConfigureDHCP(MAASTestCase):
 
 class TestClusterProtocol_CreateHostMaps(MAASTestCase):
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.CreateHostMaps.commandName)
         self.assertIsNot(responder, None)
 
+    @inlineCallbacks
     def test_executes_create_host_maps(self):
         create_host_maps = self.patch(clusterservice, "create_host_maps")
         mappings = [
@@ -1262,18 +1285,33 @@ class TestClusterProtocol_CreateHostMaps(MAASTestCase):
         ]
         shared_key = factory.make_name("shared_key")
 
-        d = call_responder(Cluster(), cluster.CreateHostMaps, {
+        yield call_responder(Cluster(), cluster.CreateHostMaps, {
             "mappings": mappings, "shared_key": shared_key,
         })
-        # The call above is synchronous because call_responder() does not go
-        # via the reactor.
-        self.assertTrue(d.called)
         self.assertThat(
             create_host_maps, MockCalledOnceWith(
                 mappings, shared_key))
 
+    @inlineCallbacks
+    def test__limits_concurrency(self):
+
+        def check_dhcp_locked(mappings, shared_key):
+            self.assertTrue(concurrency.dhcp.locked)
+            # While we're here, check this is *not* the IO thread.
+            self.expectThat(isInIOThread(), Is(False))
+
+        self.patch(clusterservice, "create_host_maps", check_dhcp_locked)
+
+        self.assertFalse(concurrency.dhcp.locked)
+        yield call_responder(Cluster(), cluster.CreateHostMaps, {
+            "mappings": {}, "shared_key": factory.make_name("key"),
+        })
+        self.assertFalse(concurrency.dhcp.locked)
+
 
 class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_is_registered(self):
         protocol = Cluster()
@@ -1281,20 +1319,34 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
             cluster.RemoveHostMaps.commandName)
         self.assertIsNot(responder, None)
 
+    @inlineCallbacks
     def test_executes_remove_host_maps(self):
         remove_host_maps = self.patch(clusterservice, "remove_host_maps")
         ip_addresses = [factory.make_ipv4_address() for _ in range(2)]
         shared_key = factory.make_name("shared_key")
 
-        d = call_responder(Cluster(), cluster.RemoveHostMaps, {
+        yield call_responder(Cluster(), cluster.RemoveHostMaps, {
             "ip_addresses": ip_addresses, "shared_key": shared_key,
         })
-        # The call above is synchronous because call_responder() does not go
-        # via the reactor.
-        self.assertTrue(d.called)
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
                 ip_addresses, shared_key))
+
+    @inlineCallbacks
+    def test__limits_concurrency(self):
+
+        def check_dhcp_locked(ip_addresses, shared_key):
+            self.assertTrue(concurrency.dhcp.locked)
+            # While we're here, check this is *not* the IO thread.
+            self.expectThat(isInIOThread(), Is(False))
+
+        self.patch(clusterservice, "remove_host_maps", check_dhcp_locked)
+
+        self.assertFalse(concurrency.dhcp.locked)
+        yield call_responder(Cluster(), cluster.RemoveHostMaps, {
+            "ip_addresses": [], "shared_key": factory.make_name("key"),
+        })
+        self.assertFalse(concurrency.dhcp.locked)
 
 
 class TestClusterProtocol_StartMonitors(MAASTestCase):
