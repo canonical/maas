@@ -267,37 +267,94 @@ class DebuggingLoggerMiddleware:
         return response  # Return response unaltered.
 
 
+def get_error_message_for_exception(exception):
+    """Return an error message for an exception.
+
+    If the exception has a message attached, return that. If not, create
+    meaningful error message for the exception and return that instead.
+    """
+    error_message = unicode(exception)
+    if len(error_message) == 0:
+        # Make a pretty message for exceptions without a message.
+        error_message = (
+            "Unexpected exception: %s. See "
+            "/var/log/maas/maas-django.log "
+            "on the region server for more information." %
+            exception.__class__.__name__)
+    return error_message
+
+
 class RPCErrorsMiddleware:
     """A middleware for handling RPC errors."""
 
     handled_exceptions = (
+        MultipleFailures,
         NoConnectionsAvailable,
         PowerActionAlreadyInProgress,
         )
 
     def _handle_exception(self, request, exception):
         logging.exception(exception)
-        error_message = unicode(exception)
-        if len(error_message) == 0:
-            # Make a pretty message for exceptions without a message.
-            error_message = (
-                "Unexpected exception: %s. See "
-                "/var/log/maas/maas-django.log "
-                "on the region server for more information." %
-                exception.__class__.__name__)
-        messages.error(request, error_message)
+        messages.error(
+            request, get_error_message_for_exception(exception))
 
     def process_exception(self, request, exception):
+        path_matcher = re.compile(settings.API_URL_REGEXP)
+        if path_matcher.match(get_relative_path(request.path)):
+            # Not a path we're handling exceptions for.
+            # APIRPCErrorsMiddleware handles all the API request RPC
+            # errors.
+            return None
+
+        if not isinstance(exception, self.handled_exceptions):
+            # Nothing to do, since we don't care about anything other
+            # than MultipleFailures and handled_exceptions.
+            return None
+
         if isinstance(exception, MultipleFailures):
             exceptions = [
                 failure.value for failure in exception.args]
             for exception in exceptions:
                 self._handle_exception(request, exception)
-            return HttpResponseRedirect(request.path)
-        elif isinstance(exception, self.handled_exceptions):
-            self._handle_exception(request, exception)
-            return HttpResponseRedirect(request.path)
         else:
-            # Nothing to do, since we don't care about anything other
-            # than MultipleFailures and handled_exception.
+            self._handle_exception(request, exception)
+        return HttpResponseRedirect(request.path)
+
+
+class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
+    """A middleware for handling RPC errors in API requests."""
+
+    handled_exceptions = {
+        NoConnectionsAvailable: httplib.SERVICE_UNAVAILABLE,
+        PowerActionAlreadyInProgress: httplib.CONFLICT,
+        MultipleFailures: httplib.INTERNAL_SERVER_ERROR,
+        }
+
+    def process_exception(self, request, exception):
+        path_matcher = re.compile(settings.API_URL_REGEXP)
+        if not path_matcher.match(get_relative_path(request.path)):
+            # Not a path we're handling exceptions for.
+            # RPCErrorsMiddleware handles non-API requests.
             return None
+
+        handled_exceptions = self.handled_exceptions.viewkeys()
+        if exception.__class__ not in handled_exceptions:
+            # This isn't something we handle; allow processing to
+            # continue.
+            return None
+
+        status = self.handled_exceptions[exception.__class__]
+        if isinstance(exception, MultipleFailures):
+            for failure in exception.args:
+                logging.exception(exception)
+            error_message = "\n".join(
+                get_error_message_for_exception(failure.value)
+                for failure in exception.args)
+        else:
+            logging.exception(exception)
+            error_message = get_error_message_for_exception(exception)
+
+        encoding = b'utf-8'
+        return HttpResponse(
+            content=error_message.encode(encoding), status=status,
+            mimetype=b"text/plain; charset=%s" % encoding)

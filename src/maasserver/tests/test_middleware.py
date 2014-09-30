@@ -35,9 +35,11 @@ from maasserver.exceptions import (
     )
 from maasserver.middleware import (
     APIErrorsMiddleware,
+    APIRPCErrorsMiddleware,
     DebuggingLoggerMiddleware,
     ErrorsMiddleware,
     ExceptionMiddleware,
+    get_error_message_for_exception,
     RPCErrorsMiddleware,
     )
 from maasserver.testing import extract_redirect
@@ -156,10 +158,10 @@ class APIErrorsMiddlewareTest(MAASServerTestCase):
 
     def test_handles_error_on_API(self):
         middleware = APIErrorsMiddleware()
-        non_api_request = factory.make_fake_request("/api/1.0/hello")
+        api_request = factory.make_fake_request("/api/1.0/hello")
         error_message = factory.make_string()
         exception = MAASAPINotFound(error_message)
-        response = middleware.process_exception(non_api_request, exception)
+        response = middleware.process_exception(api_request, exception)
         self.assertEqual(
             (httplib.NOT_FOUND, error_message),
             (response.status_code, response.content))
@@ -301,7 +303,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         error_message = (
             "No connections availble for cluster %s" %
             factory.make_name('cluster'))
-        error = PowerActionAlreadyInProgress(error_message)
+        error = NoConnectionsAvailable(error_message)
         response = middleware.process_exception(request, error)
 
         # The response is a redirect.
@@ -350,3 +352,116 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         self.assertEqual(
             expected_messages,
             request._messages.messages)
+
+    def test_ignores_error_on_API(self):
+        middleware = RPCErrorsMiddleware()
+        non_api_request = factory.make_fake_request("/api/1.0/ohai")
+        exception_class = random.choice(
+            (NoConnectionsAvailable, PowerActionAlreadyInProgress))
+        exception = exception_class(factory.make_string())
+        self.assertIsNone(
+            middleware.process_exception(non_api_request, exception))
+
+
+class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
+
+    def test_handles_error_on_API(self):
+        middleware = APIRPCErrorsMiddleware()
+        api_request = factory.make_fake_request("/api/1.0/hello")
+        error_message = factory.make_string()
+        exception_class = random.choice(
+            (NoConnectionsAvailable, PowerActionAlreadyInProgress))
+        exception = exception_class(error_message)
+        response = middleware.process_exception(api_request, exception)
+        self.assertEqual(
+            (middleware.handled_exceptions[exception_class], error_message),
+            (response.status_code, response.content))
+
+    def test_ignores_error_outside_API(self):
+        middleware = APIRPCErrorsMiddleware()
+        non_api_request = factory.make_fake_request("/middleware/api/hello")
+        exception_class = random.choice(
+            (NoConnectionsAvailable, PowerActionAlreadyInProgress))
+        exception = exception_class(factory.make_string())
+        self.assertIsNone(
+            middleware.process_exception(non_api_request, exception))
+
+    def test_no_connections_available_returned_as_503(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        error_message = (
+            "No connections availble for cluster %s" %
+            factory.make_name('cluster'))
+        error = NoConnectionsAvailable(error_message)
+        response = middleware.process_exception(request, error)
+
+        self.assertEqual(
+            (httplib.SERVICE_UNAVAILABLE, error_message),
+            (response.status_code, response.content))
+
+    def test_power_action_already_in_progress_returned_as_409(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        error_message = (
+            "Unable to execute power action: another action is already in "
+            "progress for node %s" % factory.make_name('node'))
+        error = PowerActionAlreadyInProgress(error_message)
+        response = middleware.process_exception(request, error)
+
+        self.assertEqual(
+            (httplib.CONFLICT, error_message),
+            (response.status_code, response.content))
+
+    def test_multiple_failures_returned_as_500(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        failures = []
+        error_messages = []
+        for _ in range(3):
+            error_message = factory.make_name("error-")
+            error_messages.append(error_message)
+            exception_class = random.choice(
+                (NoConnectionsAvailable, PowerActionAlreadyInProgress))
+            failures.append(Failure(exception_class(error_message)))
+        exception = MultipleFailures(*failures)
+        response = middleware.process_exception(request, exception)
+
+        expected_error_message = "\n".join(error_messages)
+        self.assertEqual(
+            (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
+            (response.status_code, response.content))
+
+    def test_adds_message_for_unknown_errors_in_multiple_failures(self):
+        # If an exception has no message, the middleware will generate a
+        # useful one and display it to the user.
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        unknown_exception = ZeroDivisionError()
+        error_message = "It ain't 'alf 'ot mum!"
+        expected_error_message = "\n".join([
+            get_error_message_for_exception(unknown_exception),
+            error_message])
+        failures = [
+            Failure(unknown_exception),
+            Failure(PowerActionAlreadyInProgress(error_message)),
+            ]
+        exception = MultipleFailures(*failures)
+        response = middleware.process_exception(request, exception)
+
+        self.assertEqual(
+            (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
+            (response.status_code, response.content))
+
+    def test_ignores_non_rpc_errors(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        exception = ZeroDivisionError(
+            "You may think it's a long walk down the street to the chemist "
+            "but that's just peanuts to space!")
+        response = middleware.process_exception(request, exception)
+        self.assertIsNone(response)
