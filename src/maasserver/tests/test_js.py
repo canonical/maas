@@ -166,7 +166,10 @@ class YUIUnitTestsBase:
             self.fail(message)
 
 
-class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
+# XXX bigjools 2014-09-03 bug=1364713
+# Disabled while waiting for new selenium.
+#class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
+class YUIUnitTestsLocal:
 
     scenarios = tuple(
         (relpath(path, root), {"test_url": "file://%s" % abspath(path)})
