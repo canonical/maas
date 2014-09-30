@@ -19,9 +19,20 @@ import random
 
 from distro_info import UbuntuDistroInfo
 from maastesting.factory import factory
+from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem import BOOT_IMAGE_PURPOSE
+from provisioningserver.drivers.osystem.debian_networking import (
+    compose_network_interfaces,
+    )
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
+import provisioningserver.drivers.osystem.ubuntu as ubuntu_module
+from provisioningserver.udev import compose_network_interfaces_udev_rules
+from testtools.matchers import (
+    AllMatch,
+    HasLength,
+    IsInstance,
+    )
 
 
 class TestUbuntuOS(MAASTestCase):
@@ -77,3 +88,59 @@ class TestUbuntuOS(MAASTestCase):
         self.assertEqual(
             osystem.get_release_title(release),
             self.get_release_title(release))
+
+
+class TestComposeCurtinNetworkPreseed(MAASTestCase):
+
+    def test__returns_list_of_dicts(self):
+        preseed = UbuntuOS().compose_curtin_network_preseed([], {}, {})
+        self.assertIsInstance(preseed, list)
+        self.assertThat(preseed, HasLength(2))
+        [write_files, late_commands] = preseed
+
+        self.assertIsInstance(write_files, dict)
+        self.assertIn('write_files', write_files)
+        self.assertIsInstance(write_files['write_files'], dict)
+        self.assertThat(
+            write_files['write_files'].values(),
+            AllMatch(IsInstance(dict)))
+
+        self.assertIsInstance(late_commands, dict)
+        self.assertIn('late_commands', late_commands)
+        self.assertIsInstance(late_commands['late_commands'], dict)
+        self.assertThat(
+            late_commands['late_commands'].values(),
+            AllMatch(IsInstance(list)))
+
+    def test__installs_and_moves_network_interfaces_file(self):
+        interfaces_file = compose_network_interfaces([], {}, {})
+        write_text_file = self.patch_autospec(
+            ubuntu_module, 'compose_write_text_file')
+        mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
+
+        UbuntuOS().compose_curtin_network_preseed([], {}, {})
+
+        temp_path = '/tmp/maas-etc-network-interfaces'
+        self.expectThat(
+            write_text_file,
+            MockAnyCall(temp_path, interfaces_file, permissions=0644))
+        self.expectThat(
+            mv_command,
+            MockAnyCall(temp_path, '/etc/network/interfaces'))
+
+    def test__installs_and_moves_udev_rules_file(self):
+        udev_file = compose_network_interfaces_udev_rules([])
+        write_text_file = self.patch_autospec(
+            ubuntu_module, 'compose_write_text_file')
+        mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
+
+        UbuntuOS().compose_curtin_network_preseed([], {}, {})
+
+        temp_path = '/tmp/maas-udev-70-persistent-net.rules'
+        self.expectThat(
+            write_text_file,
+            MockAnyCall(temp_path, udev_file, permissions=0644))
+        self.expectThat(
+            mv_command,
+            MockAnyCall(
+                temp_path, '/etc/udev/rules.d/70-persistent-net.rules'))

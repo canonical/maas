@@ -194,6 +194,31 @@ class OperatingSystem:
         """
         raise NotImplementedError()
 
+    def compose_curtin_network_preseed(interfaces, ips_mapping,
+                                       gateways_mapping, disable_ipv4=False):
+        """Compose a Curtin preseed to configure a node's networking.
+
+        :param interfaces: A list of tuples, each a pair of an interface name
+            and a MAC address.  If supported, the resulting preseed will assign
+            these interface names to these MAC addresses.
+        :param ips_mapping: A dict mapping MAC addresses to iterables of the
+            corresponding network interfaces' IP addresses (up to one each for
+            IPv4 and IPv6).  If supported, the resulting preseed will configure
+            the network interface corresponding to each MAC to have the given
+            IP addresses.  By default, DHCP is available for IPv4 and will
+            provide the same addresses, so the caller may choose not to
+            configure those in this way.
+        :param gateways_mapping: A dict mapping MAC addresses to iterables of
+            default gateways (up to one each for IPv4 and IPv6).  If supported,
+            the resulting preseed will configure the network interface
+            corresponding to each MAC to use the given default gateways.
+        :param disable_ipv4: Should this node be installed without IPv4
+            networking?
+        :return: A list of dicts that can be JSON-encoded and submitted to
+            Curtin as preseeds, perhaps in combination with other preseeds.
+        """
+        return []
+
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Return the xinstall image name and type for this operating system.
 

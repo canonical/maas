@@ -21,6 +21,14 @@ from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
     )
+from provisioningserver.drivers.osystem.debian_networking import (
+    compose_network_interfaces,
+    )
+from provisioningserver.udev import compose_network_interfaces_udev_rules
+from provisioningserver.utils.curtin import (
+    compose_mv_command,
+    compose_write_text_file,
+    )
 
 
 class UbuntuOS(OperatingSystem):
@@ -81,3 +89,39 @@ class UbuntuOS(OperatingSystem):
         if row is None:
             return None
         return UbuntuDistroInfo()._format("fullname", row)
+
+    def compose_curtin_network_preseed(self, interfaces, ips_mapping,
+                                       gateways_mapping, disable_ipv4=False):
+        """As defined in `OperatingSystem`: generate networking Curtin preseed.
+
+        Supports:
+        * Static IPv6 address and gateway configuration.
+        * DHCP-based IPv4 configuration.
+        * Assigning network interface names through udev rules.
+        * Disabling IPv4.
+        """
+        interfaces_file = compose_network_interfaces(
+            interfaces, ips_mapping=ips_mapping,
+            gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4)
+        udev_rules = compose_network_interfaces_udev_rules(interfaces)
+        write_files = {
+            'write_files': {
+                'etc_network_interfaces': compose_write_text_file(
+                    '/tmp/maas-etc-network-interfaces', interfaces_file,
+                    permissions=0644),
+                'udev_persistent_net': compose_write_text_file(
+                    '/tmp/maas-udev-70-persistent-net.rules', udev_rules,
+                    permissions=0644),
+            },
+        }
+        late_commands = {
+            'late_commands': {
+                'etc_network_interfaces': compose_mv_command(
+                    '/tmp/maas-etc-network-interfaces',
+                    '/etc/network/interfaces'),
+                'udev_persistent_net': compose_mv_command(
+                    '/tmp/maas-udev-70-persistent-net.rules',
+                    '/etc/udev/rules.d/70-persistent-net.rules')
+            },
+        }
+        return [write_files, late_commands]
