@@ -31,16 +31,12 @@ from provisioningserver.utils.twisted import (
     retries,
     )
 from twisted.application.internet import TimerService
-from twisted.internet.defer import (
-    DeferredLock,
-    inlineCallbacks,
-    )
+from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
 from twisted.python import log
 
 
 maaslog = get_maas_logger("lease_upload_service")
-service_lock = DeferredLock()
 
 
 def convert_mappings_to_leases(mappings):
@@ -79,7 +75,7 @@ class PeriodicLeaseUploadService(TimerService, object):
     check_interval = 60  # In seconds.
 
     def __init__(self, client_service, reactor, cluster_uuid):
-        # Call self.maybe_start_upload() every self.check_interval.
+        # Call self.try_upload() every self.check_interval.
         super(PeriodicLeaseUploadService, self).__init__(
             self.check_interval, self.try_upload)
         self.clock = reactor
@@ -98,20 +94,7 @@ class PeriodicLeaseUploadService(TimerService, object):
             maaslog.error(
                 "Failed to upload leases: %s", failure.getErrorMessage())
 
-        return self.maybe_start_upload().addErrback(upload_failure)
-
-    @inlineCallbacks
-    def maybe_start_upload(self):
-        """Initiate a new upload if one is not already in progress."""
-        # Use a DeferredLock to prevent simultaneous uploads.
-        if service_lock.locked:
-            # Don't want to block on lock release.
-            return
-        yield service_lock.acquire()
-        try:
-            yield self._get_client_and_start_upload()
-        finally:
-            service_lock.release()
+        return self._get_client_and_start_upload().addErrback(upload_failure)
 
     @inlineCallbacks
     def _get_client_and_start_upload(self):

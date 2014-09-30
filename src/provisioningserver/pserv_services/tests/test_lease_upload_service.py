@@ -36,7 +36,6 @@ from provisioningserver.pserv_services.lease_upload_service import (
     convert_leases_to_mappings,
     convert_mappings_to_leases,
     PeriodicLeaseUploadService,
-    service_lock,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLeases
@@ -45,7 +44,6 @@ from provisioningserver.rpc.testing import (
     TwistedLoggerFixture,
     )
 from provisioningserver.testing.testcase import PservTestCase
-from provisioningserver.utils.twisted import pause
 from testtools.deferredruntest import extract_result
 from twisted.application.internet import TimerService
 from twisted.internet import defer
@@ -136,35 +134,6 @@ class TestPeriodicImageDownloadService(PservTestCase):
         self.assertThat(
             start_upload, MockCallsMatch(call(), call(), call()))
 
-    @defer.inlineCallbacks
-    def test_does_not_run_if_lock_taken(self):
-        service = PeriodicLeaseUploadService(
-            sentinel.rpc, Clock(), sentinel.uuid)
-        start_upload = self.patch_upload(service)
-        yield service_lock.acquire()
-        self.addCleanup(service_lock.release)
-        service.startService()
-        self.assertThat(start_upload, MockNotCalled())
-
-    def test_takes_lock_when_running(self):
-        clock = Clock()
-        service = PeriodicLeaseUploadService(
-            sentinel.rpc, clock, sentinel.uuid)
-
-        # Patch the upload func so it's just a Deferred that waits for
-        # one second.
-        _start_upload = self.patch(service, '_get_client_and_start_upload')
-        _start_upload.return_value = pause(1, clock)
-
-        # Lock is acquired for the first download after startup.
-        self.assertFalse(service_lock.locked)
-        service.startService()
-        self.assertTrue(service_lock.locked)
-
-        # Lock is released once the download is done.
-        clock.advance(1)
-        self.assertFalse(service_lock.locked)
-
     def test_no_upload_if_no_rpc_connections(self):
         rpc_client = Mock()
         rpc_client.getClient.side_effect = NoConnectionsAvailable()
@@ -176,8 +145,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         service.startService()
         # Wind clock past all the retries.  You can't do this in one big
         # lump, it seems.  The test looks like it passes, but the
-        # maybe_start_upload() method never returns properly which
-        # leaves the service_lock locked.
+        # maybe_start_upload() method never returns properly.
         clock.pump((5, 5, 5))
         self.assertThat(start_upload, MockNotCalled())
 
@@ -221,8 +189,9 @@ class TestPeriodicImageDownloadService(PservTestCase):
         service = PeriodicLeaseUploadService(
             sentinel.rpc, Clock(), sentinel.uuid)
 
-        maybe_start_upload = self.patch(service, "maybe_start_upload")
-        maybe_start_upload.return_value = defer.fail(
+        _get_client_and_start_upload = self.patch_autospec(
+            service, "_get_client_and_start_upload")
+        _get_client_and_start_upload.return_value = defer.fail(
             ZeroDivisionError("Such a shame I can't divide by zero"))
 
         with FakeLogger("maas") as maaslog, TwistedLoggerFixture():
