@@ -22,6 +22,9 @@
     .section .content {
       margin-left: 10px;
     }
+    .section .end-row {
+      min-height: 26px;
+    }
     .small-icon {
       width: 12px;
     }
@@ -191,17 +194,17 @@
             {% endif %}
           </div>
           <div class="clear"></div>
-          <div class="row space-top">
+          <div class="row space-top end-row">
             {% if user.is_superuser and not import_running %}
             <div class="col12 last align-right">
               {% if ubuntu_streams_count == 1 %}
               {% if ubuntu_resources|length %}
-              <input type="submit" class="button" value="Apply Ubuntu changes">
+              <input type="submit" class="button" value="Apply changes">
               {% else %}
-              <input type="submit" class="button" value="Import boot images">
+              <input type="submit" class="button" value="Import images">
               {% endif %}
               {% elif ubuntu_streams_count > 1 %}
-              <input type="submit" class="button" value="Import boot images">
+              <input type="submit" class="button" value="Import images">
               {% endif %}
             </div>
             {% endif %}
@@ -210,8 +213,136 @@
         </form>
       </div>
     </div>
+    {% if other_resources %}
+    <div id="other-sync-images" class="section">
+      <h2>Other Images</h2>
+      <div class="content">
+        <form id="other_images"
+          method="POST"
+          action="{% url 'images' %}">
+          {% csrf_token %}
+          <input type="hidden" name="other_images" value="1" />
+          <div class="row space-top">
+            <table id="other-resources" class="space-top list">
+              <thead>
+                <tr>
+                  <th class="spinner-col"></th>
+                  <th>Name</th>
+                  <th>Architecture</th>
+                  <th>Size</th>
+                  <th>Nodes deployed</th>
+                  <th>Last update</th>
+                </tr>
+              </thead>
+              <tbody>
+              {% for resource in other_resources %}
+                <tr
+                  class="{% cycle 'even' 'odd' %}"
+                  data-id="{% if resource.id %}{{ resource.id }}{% endif %}">
+                  <td>
+                    {% if import_running and resource.exists %}
+                    {% if not resource.complete %}
+                    <div
+                      title="{{ resource.status }}"
+                      class="
+                        spinner
+                        {% if resource.downloading %}spin{% endif %}">
+                    </div>
+                    {% endif %}
+                    {% elif not import_running and user.is_superuser %}
+                    <input
+                      type="checkbox"
+                      name="image"
+                      value="{{ resource.os }}/{{ resource.arch }}/{{ resource.subarch }}/{{ resource.release }}"
+                      {% if resource.exists %}
+                      checked="checked"
+                      {% endif %}
+                      >
+                    {% endif %}
+                  </td>
+                  <td>{{ resource.title }}</td>
+                  <td>{{ resource.arch }}</td>
+                  <td>{{ resource.size }}</td>
+                  <td>{{ resource.number_of_nodes }}</td>
+                  <td>{{ resource.last_update }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="clear"></div>
+          <div class="row space-top end-row">
+            {% if user.is_superuser and not import_running %}
+            <div class="col12 last align-right">
+              <input type="submit" class="button" value="Apply changes">
+            </div>
+            {% endif %}
+          </div>
+          <div class="clear"></div>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+    {% if generated_resources %}
+    <div id="generated-images" class="section">
+      <h2>Generated Images</h2>
+      <div class="content">
+        <div class="row space-top">
+          <table id="generated-resources" class="space-top list">
+            <thead>
+              <tr>
+                <th class="spinner-col"></th>
+                <th>Name</th>
+                <th>Architecture</th>
+                <th>Size</th>
+                <th>Nodes deployed</th>
+                <th>Last update</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for resource in generated_resources %}
+              <tr
+                class="{% cycle 'even' 'odd' %}"
+                data-id="{{ resource.id }}">
+                <td>
+                  {% if not resource.complete %}
+                  <div
+                    title="{{ resource.status }}"
+                    class="
+                      spinner
+                      {% if resource.downloading %}spin{% endif %}">
+                  </div>
+                  {% endif %}
+                </td>
+                <td>{{ resource.title }}
+                  {% if user.is_superuser %}
+                  <a
+                    title="Delete image"
+                    href="{% url 'image-delete' resource.id %}">
+                    <img
+                      class="small-icon"
+                      src="{{ STATIC_URL }}img/delete.png"
+                      alt="delete" />
+                  </a>
+                  {% endif %}
+                </td>
+                <td>{{ resource.arch }}</td>
+                <td>{{ resource.size }}</td>
+                <td>{{ resource.number_of_nodes }}</td>
+                <td>{{ resource.last_update }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="clear"></div>
+        <div class="row space-top end-row"></div>
+        <div class="clear"></div>
+      </div>
+    </div>
+    {% endif %}
     <div id="custom-images" class="section">
-      <h2>Custom</h2>
+      <h2>Custom Images</h2>
       <div class="content">
         <div class="row space-top">
           {% if uploaded_resources|length %}

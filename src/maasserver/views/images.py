@@ -17,6 +17,7 @@ __all__ = [
     "ImageDeleteView",
     ]
 
+from collections import defaultdict
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import PermissionDenied
@@ -36,12 +37,14 @@ from maasserver.bootresources import (
     is_import_resources_running,
     )
 from maasserver.bootsources import get_os_info_from_boot_sources
+from maasserver.clusterrpc.osystems import get_os_release_title
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
     )
 from maasserver.models import (
     BootResource,
+    BootSourceCache,
     BootSourceSelection,
     Config,
     Node,
@@ -120,6 +123,8 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         context['ubuntu_releases'] = self.format_ubuntu_releases()
         context['ubuntu_arches'] = self.format_ubuntu_arches()
         context['ubuntu_resources'] = self.get_ubuntu_resources()
+        context['other_resources'] = self.get_other_resources()
+        context['generated_resources'] = self.get_generated_resources()
         context['uploaded_resources'] = self.get_uploaded_resources()
         return context
 
@@ -133,6 +138,10 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             arches = request.POST.getlist('arch')
             self.update_source_selection(
                 self.ubuntu_sources[0], 'ubuntu', releases, arches)
+            return HttpResponseRedirect(reverse('images'))
+        elif 'other_images' in request.POST:
+            images = request.POST.getlist('image')
+            self.update_other_images_source_selection(images)
             return HttpResponseRedirect(reverse('images'))
         else:
             # Unknown action: redirect to the images page (this
@@ -297,6 +306,128 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         # Start the import process, now that the selections have changed.
         import_resources()
 
+    def get_other_synced_resources(self):
+        """Return all synced resources that are not Ubuntu."""
+        resources = list(BootResource.objects.filter(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED).exclude(
+            name__startswith='ubuntu/').order_by('-name', 'architecture'))
+        for resource in resources:
+            os, release = resource.name.split('/')
+            title = get_os_release_title(os, release)
+            if title is not None:
+                resource.title = title
+            else:
+                resource.title = resource.name
+            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
+                resource)
+            self.add_resource_template_attributes(resource)
+        return resources
+
+    def check_if_image_matches_resource(self, resource, image):
+        """Return True if the resource matches the image."""
+        os, series = resource.name.split('/')
+        arch, subarch = resource.split_arch()
+        if os != image.os or series != image.release or arch != image.arch:
+            return False
+        if not resource.supports_subarch(subarch):
+            return False
+        return True
+
+    def get_matching_resource_for_image(self, resources, image):
+        """Return True if the image matches one of the resources."""
+        for resource in resources:
+            if self.check_if_image_matches_resource(resource, image):
+                return resource
+        return None
+
+    def get_other_resources(self):
+        """Return all other resources if they are synced or not."""
+        # Get the resource that already exist in the
+        resources = self.get_other_synced_resources()
+        images = list(BootSourceCache.objects.exclude(os='ubuntu'))
+        for image in images:
+            resource = self.get_matching_resource_for_image(resources, image)
+            if resource is None:
+                image.exists = False
+                image.complete = False
+                image.size = '-'
+                image.last_update = 'not synced'
+                image.status = ""
+                image.downloading = False
+                image.number_of_nodes = '-'
+            else:
+                self.add_resource_template_attributes(resource)
+                image.exists = True
+                image.complete = resource.complete
+                image.size = resource.size
+                image.last_update = resource.last_update
+                image.status = resource.status
+                image.downloading = resource.downloading
+                image.number_of_nodes = (
+                    self.get_number_of_nodes_deployed_for(resource))
+            image.title = get_os_release_title(image.os, image.release)
+            if image.title is None:
+                image.title = '%s/%s' % (image.os, image.release)
+
+        # Only superusers can change selections about other images, so we only
+        # show the images that already exist for standard users.
+        if not self.request.user.is_superuser:
+            images = [
+                image
+                for image in images
+                if image.exists
+                ]
+        return images
+
+    def update_other_images_source_selection(self, images):
+        """Update `BootSourceSelection`'s to only include the selected
+        images."""
+        # Remove all selections that are not Ubuntu.
+        BootSourceSelection.objects.exclude(os='ubuntu').delete()
+
+        # Break down the images into os/release with multiple arches.
+        selections = defaultdict(list)
+        for image in images:
+            os, arch, _, release = image.split('/', 4)
+            name = '%s/%s' % (os, release)
+            selections[name].append(arch)
+
+        # Create each selection for the source.
+        for name, arches in selections.items():
+            os, release = name.split('/')
+            cache = BootSourceCache.objects.filter(
+                os=os, arch=arch, release=release).first()
+            if cache is None:
+                # It is possible the cache changed while waiting for the user
+                # to perform an action. Ignore the selection as its no longer
+                # available.
+                continue
+            # Create the selection for the source.
+            BootSourceSelection.objects.create(
+                boot_source=cache.boot_source,
+                os=os, release=release,
+                arches=arches, subarches=["*"], labels=["*"])
+
+        # Start the import process, now that the selections have changed.
+        import_resources()
+
+    def get_generated_resources(self):
+        """Return all generated resources."""
+        resources = list(BootResource.objects.filter(
+            rtype=BOOT_RESOURCE_TYPE.GENERATED).order_by(
+            '-name', 'architecture'))
+        for resource in resources:
+            os, release = resource.name.split('/')
+            title = get_os_release_title(os, release)
+            if title is not None:
+                resource.title = title
+            else:
+                resource.title = resource.name
+            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
+                resource)
+            self.add_resource_template_attributes(resource)
+        return resources
+
     def get_uploaded_resources(self):
         """Return all uploaded resources, for usage in the template."""
         resources = list(BootResource.objects.filter(
@@ -327,12 +458,20 @@ class ImageDeleteView(HelpfulDeleteView):
     def get_object(self):
         resource_id = self.kwargs.get('resource_id', None)
         resource = get_object_or_404(BootResource, id=resource_id)
-        if resource.rtype != BOOT_RESOURCE_TYPE.UPLOADED:
+        if resource.rtype == BOOT_RESOURCE_TYPE.SYNCED:
             raise PermissionDenied()
-        if 'title' in resource.extra:
-            resource.title = resource.extra['title']
+        if resource.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            if 'title' in resource.extra:
+                resource.title = resource.extra['title']
+            else:
+                resource.title = resource.name
         else:
-            resource.title = resource.name
+            os, release = resource.name.split('/')
+            title = get_os_release_title(os, release)
+            if title is not None:
+                resource.title = title
+            else:
+                resource.title = resource.name
         return resource
 
     def get_next_url(self):
@@ -340,7 +479,17 @@ class ImageDeleteView(HelpfulDeleteView):
 
     def name_object(self, obj):
         """See `HelpfulDeleteView`."""
-        if 'title' in obj.extra:
-            return "%s (%s)" % (obj.extra['title'], obj.architecture)
+        title = ""
+        if obj.rtype == BOOT_RESOURCE_TYPE.UPLOADED:
+            if 'title' in obj.extra:
+                title = obj.extra['title']
+            else:
+                title = obj.name
         else:
-            return "%s (%s)" % (obj.name, obj.architecture)
+            os, release = obj.name.split('/')
+            rpc_title = get_os_release_title(os, release)
+            if rpc_title is not None:
+                title = rpc_title
+            else:
+                title = obj.name
+        return "%s (%s)" % (title, obj.architecture)

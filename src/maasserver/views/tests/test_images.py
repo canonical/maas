@@ -24,15 +24,22 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
+    BootSourceCache,
     BootSourceSelection,
     Config,
     )
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
-from maasserver.testing.orm import reload_object
+from maasserver.testing.orm import (
+    get_one,
+    reload_object,
+    )
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import images as images_view
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCalledWith,
+    )
 from requests import ConnectionError
 from testtools.matchers import (
     Contains,
@@ -64,19 +71,6 @@ class UbuntuImagesTest(MAASServerTestCase):
         return factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name=name, architecture=architecture)
-
-    def make_uploaded_resource(self, name=None):
-        if name is None:
-            name = factory.make_name('name')
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        architecture = '%s/%s' % (arch, subarch)
-        resource = factory.make_BootResource(
-            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
-            name=name, architecture=architecture)
-        resource_set = factory.make_BootResourceSet(resource)
-        factory.make_boot_resource_file_with_content(resource_set)
-        return resource
 
     def test_shows_connection_error(self):
         self.client_log_in(as_admin=True)
@@ -325,6 +319,301 @@ class UbuntuImagesTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertIsNone(reload_object(delete_selection))
         self.assertIsNotNone(reload_object(keep_selection))
+
+
+class OtherImagesTest(MAASServerTestCase):
+
+    def make_other_resource(self, os=None, arch=None, subarch=None,
+                            release=None):
+        if os is None:
+            os = factory.make_name('os')
+        if arch is None:
+            arch = factory.make_name('arch')
+        if subarch is None:
+            subarch = factory.make_name('subarch')
+        if release is None:
+            release = factory.make_name('release')
+        name = '%s/%s' % (os, release)
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name, architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
+
+    def test_hides_other_synced_images_section(self):
+        self.client_log_in()
+        BootSourceCache.objects.all().delete()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        section = doc.cssselect('div#other-sync-images')
+        self.assertEqual(
+            0, len(section), "Didn't hide the other images section.")
+
+    def test_shows_other_synced_images_section(self):
+        self.client_log_in(as_admin=True)
+        factory.make_BootSourceCache()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        section = doc.cssselect('div#other-sync-images')
+        self.assertEqual(
+            1, len(section), "Didn't show the other images section.")
+
+    def test_hides_image_from_boot_source_cache_without_admin(self):
+        self.client_log_in()
+        factory.make_BootSourceCache()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        rows = doc.cssselect('table#other-resources > tbody > tr')
+        self.assertEqual(
+            0, len(rows), "Didn't hide unselected boot image from non-admin.")
+
+    def test_shows_image_from_boot_source_cache_with_admin(self):
+        self.client_log_in(as_admin=True)
+        cache = factory.make_BootSourceCache()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        title = doc.cssselect(
+            'table#other-resources > tbody > '
+            'tr > td')[1].text_content().strip()
+        self.assertEqual('%s/%s' % (cache.os, cache.release), title)
+
+    def test_shows_checkbox_for_boot_source_cache(self):
+        self.client_log_in(as_admin=True)
+        factory.make_BootSourceCache()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        checkbox = doc.cssselect(
+            'table#other-resources > tbody > tr > td > input')
+        self.assertEqual(
+            1, len(checkbox), "Didn't show checkbox for boot image.")
+
+    def test_shows_last_update_time_for_synced_resource(self):
+        self.client_log_in(as_admin=True)
+        cache = factory.make_BootSourceCache()
+        self.make_other_resource(
+            os=cache.os, arch=cache.arch,
+            subarch=cache.subarch, release=cache.release)
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        last_update = doc.cssselect(
+            'table#other-resources > tbody > '
+            'tr > td')[5].text_content().strip()
+        self.assertNotEqual('not synced', last_update)
+
+    def test_shows_number_of_nodes_for_synced_resource(self):
+        self.client_log_in(as_admin=True)
+        cache = factory.make_BootSourceCache()
+        resource = self.make_other_resource(
+            os=cache.os, arch=cache.arch,
+            subarch=cache.subarch, release=cache.release)
+        factory.make_Node(
+            status=NODE_STATUS.DEPLOYED,
+            osystem=cache.os, distro_series=cache.release,
+            architecture=resource.architecture)
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        number_of_nodes = doc.cssselect(
+            'table#other-resources > tbody > '
+            'tr > td')[4].text_content().strip()
+        self.assertEqual(
+            1, int(number_of_nodes),
+            "Incorrect number of deployed nodes for resource.")
+
+    def test_shows_apply_button_if_admin(self):
+        self.client_log_in(as_admin=True)
+        factory.make_BootSourceCache()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        apply_button = doc.cssselect(
+            '#other-sync-images')[0].cssselect('input[type="submit"]')
+        self.assertEqual(
+            1, len(apply_button), "Didn't show apply button for admin.")
+
+    def test_hides_apply_button_if_import_running(self):
+        self.client_log_in(as_admin=True)
+        factory.make_BootSourceCache()
+        self.patch(
+            images_view, 'is_import_resources_running').return_value = True
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        apply_button = doc.cssselect(
+            '#other-sync-images')[0].cssselect('input[type="submit"]')
+        self.assertEqual(
+            0, len(apply_button),
+            "Didn't hide apply button when import running.")
+
+    def test_calls_get_os_release_title_for_other_resource(self):
+        self.client_log_in()
+        title = factory.make_name('title')
+        cache = factory.make_BootSourceCache()
+        resource = self.make_other_resource(
+            os=cache.os, arch=cache.arch,
+            subarch=cache.subarch, release=cache.release)
+        mock_get_title = self.patch(images_view, 'get_os_release_title')
+        mock_get_title.return_value = title
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        row_title = doc.cssselect(
+            'table#other-resources > tbody > '
+            'tr > td')[1].text_content().strip()
+        self.assertEqual(title, row_title)
+        os, release = resource.name.split('/')
+        self.assertThat(mock_get_title, MockCalledWith(os, release))
+
+    def test_post_returns_forbidden_if_not_admin(self):
+        self.client_log_in()
+        response = self.client.post(
+            reverse('images'), {'other_images': 1})
+        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_post_clears_all_other_os_selections(self):
+        self.client_log_in(as_admin=True)
+        source = factory.make_BootSource()
+        ubuntu_selection = BootSourceSelection.objects.create(
+            boot_source=source, os='ubuntu')
+        other_selection = BootSourceSelection.objects.create(
+            boot_source=source, os=factory.make_name('os'))
+        self.patch(images_view, 'import_resources')
+        response = self.client.post(
+            reverse('images'), {'other_images': 1, 'image': []})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertIsNotNone(reload_object(ubuntu_selection))
+        self.assertIsNone(reload_object(other_selection))
+
+    def test_post_creates_selection_with_multiple_arches(self):
+        self.client_log_in(as_admin=True)
+        source = factory.make_BootSource()
+        os = factory.make_name('os')
+        release = factory.make_name('release')
+        arches = [factory.make_name('arch') for _ in range(3)]
+        images = []
+        for arch in arches:
+            factory.make_BootSourceCache(
+                boot_source=source, os=os, release=release, arch=arch)
+            images.append('%s/%s/subarch/%s' % (os, arch, release))
+        self.patch(images_view, 'import_resources')
+        response = self.client.post(
+            reverse('images'), {'other_images': 1, 'image': images})
+        self.assertEqual(httplib.FOUND, response.status_code)
+
+        selection = get_one(BootSourceSelection.objects.filter(
+            boot_source=source, os=os, release=release))
+        self.assertIsNotNone(selection)
+        self.assertItemsEqual(arches, selection.arches)
+
+    def test_post_calls_import_resources(self):
+        self.client_log_in(as_admin=True)
+        mock_import = self.patch(images_view, 'import_resources')
+        response = self.client.post(
+            reverse('images'), {'other_images': 1, 'image': []})
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertThat(mock_import, MockCalledOnceWith())
+
+
+class GeneratedImagesTest(MAASServerTestCase):
+
+    def make_generated_resource(self, os=None, arch=None, subarch=None,
+                                release=None):
+        if os is None:
+            os = factory.make_name('os')
+        if arch is None:
+            arch = factory.make_name('arch')
+        if subarch is None:
+            subarch = factory.make_name('subarch')
+        if release is None:
+            release = factory.make_name('release')
+        name = '%s/%s' % (os, release)
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.GENERATED,
+            name=name, architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
+
+    def test_hides_generated_images_section(self):
+        self.client_log_in()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        section = doc.cssselect('div#generated-images')
+        self.assertEqual(
+            0, len(section), "Didn't hide the generated images section.")
+
+    def test_shows_generated_images_section(self):
+        self.client_log_in()
+        self.make_generated_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        section = doc.cssselect('div#generated-images')
+        self.assertEqual(
+            1, len(section), "Didn't show the generated images section.")
+
+    def test_shows_generated_resources(self):
+        self.client_log_in()
+        resources = [self.make_generated_resource() for _ in range(3)]
+        names = [resource.name for resource in resources]
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        table_content = doc.cssselect(
+            'table#generated-resources')[0].text_content()
+        self.assertThat(table_content, ContainsAll(names))
+
+    def test_shows_delete_button_for_generated_resource(self):
+        self.client_log_in(as_admin=True)
+        self.make_generated_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        delete_btn = doc.cssselect(
+            'table#generated-resources > tbody > tr > td > '
+            'a[title="Delete image"]')
+        self.assertEqual(
+            1, len(delete_btn),
+            "Didn't show delete button for generated image.")
+
+    def test_hides_delete_button_for_generated_resource_when_not_admin(self):
+        self.client_log_in()
+        self.make_generated_resource()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        delete_btn = doc.cssselect(
+            'table#generated-resources > tbody > tr > td > '
+            'a[title="Delete image"]')
+        self.assertEqual(
+            0, len(delete_btn),
+            "Didn't hide delete button for generated image when not admin.")
+
+    def test_calls_get_os_release_title_for_generated_resource(self):
+        self.client_log_in()
+        title = factory.make_name('title')
+        resource = self.make_generated_resource()
+        mock_get_title = self.patch(images_view, 'get_os_release_title')
+        mock_get_title.return_value = title
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        row_title = doc.cssselect(
+            'table#generated-resources > tbody > '
+            'tr > td')[1].text_content().strip()
+        self.assertEqual(title, row_title)
+        os, release = resource.name.split('/')
+        self.assertThat(mock_get_title, MockCalledOnceWith(os, release))
+
+
+class UploadedImagesTest(MAASServerTestCase):
+
+    def make_uploaded_resource(self, name=None):
+        if name is None:
+            name = factory.make_name('name')
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        architecture = '%s/%s' % (arch, subarch)
+        resource = factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.UPLOADED,
+            name=name, architecture=architecture)
+        resource_set = factory.make_BootResourceSet(resource)
+        factory.make_boot_resource_file_with_content(resource_set)
+        return resource
 
     def test_shows_no_custom_images_message(self):
         self.client_log_in()
