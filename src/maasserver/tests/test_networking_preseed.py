@@ -17,7 +17,6 @@ __all__ = [
 
 from collections import defaultdict
 from random import randint
-from textwrap import dedent
 
 from maasserver import networking_preseed
 from maasserver.dns import zonegenerator
@@ -28,9 +27,6 @@ from maasserver.enum import (
 from maasserver.exceptions import UnresolvableHost
 from maasserver.networking_preseed import (
     add_ip_to_mapping,
-    compose_debian_network_interfaces_file,
-    compose_debian_network_interfaces_ipv4_stanza,
-    compose_debian_network_interfaces_ipv6_stanza,
     extract_mac_string,
     extract_network_interfaces,
     generate_dns_server_entry,
@@ -38,17 +34,14 @@ from maasserver.networking_preseed import (
     generate_network_entry,
     generate_networking_config,
     generate_route_entries,
-    has_static_ipv6_address,
     list_dns_servers,
     map_gateways,
     map_static_ips,
     normalise_mac,
     )
-import maasserver.networking_preseed as networking_preseed_module
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from mock import ANY
 from netaddr import IPAddress
 from testtools.matchers import HasLength
 
@@ -499,47 +492,6 @@ class TestGenerateNetworkingConfig(MAASServerTestCase):
             config['network_info']['services'])
 
 
-class TestComposeDebianNetworkInterfaceIPv4Stanza(MAASServerTestCase):
-
-    def test__produces_dhcp_stanza(self):
-        interface = factory.make_name('eth')
-        expected = "iface %s inet dhcp" % interface
-        self.assertEqual(
-            expected.strip(),
-            compose_debian_network_interfaces_ipv4_stanza(interface).strip())
-
-
-class TestComposeDebianNetworkInterfacesIPv6Stanza(MAASServerTestCase):
-
-    def test__produces_static_stanza(self):
-        ip = factory.make_ipv6_address()
-        interface = factory.make_name('eth')
-        expected = dedent("""\
-            iface %s inet6 static
-            \tnetmask 64
-            \taddress %s
-            """) % (interface, ip)
-        self.assertEqual(
-            expected.strip(),
-            compose_debian_network_interfaces_ipv6_stanza(
-                interface, ip).strip())
-
-    def test__includes_gateway_if_given(self):
-        ip = factory.make_ipv6_address()
-        interface = factory.make_name('eth')
-        gateway = factory.make_ipv6_address()
-        expected = dedent("""\
-            iface %s inet6 static
-            \tnetmask 64
-            \taddress %s
-            \tgateway %s
-            """) % (interface, ip, gateway)
-        self.assertEqual(
-            expected.strip(),
-            compose_debian_network_interfaces_ipv6_stanza(
-                interface, ip, gateway).strip())
-
-
 class TestExtractMACString(MAASServerTestCase):
 
     def test__returns_string(self):
@@ -743,145 +695,3 @@ class TestMapGateways(MAASServerTestCase):
                     },
             },
             map_gateways(node))
-
-
-class TestHasStaticIPv6Address(MAASServerTestCase):
-
-    def make_mapping(self):
-        return defaultdict(set)
-
-    def test__returns_False_for_empty_mapping(self):
-        self.assertFalse(has_static_ipv6_address(self.make_mapping()))
-
-    def test__finds_IPv6_address(self):
-        mapping = self.make_mapping()
-        add_ip_to_mapping(
-            mapping, factory.make_MACAddress(), factory.make_ipv6_address())
-        self.assertTrue(has_static_ipv6_address(mapping))
-
-    def test__ignores_IPv4_address(self):
-        mapping = self.make_mapping()
-        add_ip_to_mapping(
-            mapping, factory.make_MACAddress(), factory.make_ipv4_address())
-        self.assertFalse(has_static_ipv6_address(mapping))
-
-    def test__finds_IPv6_address_among_IPv4_addresses(self):
-        mapping = self.make_mapping()
-        add_ip_to_mapping(
-            mapping, factory.make_MACAddress(), factory.make_ipv4_address())
-        mac = factory.make_MACAddress()
-        add_ip_to_mapping(mapping, mac, factory.make_ipv4_address())
-        add_ip_to_mapping(mapping, mac, factory.make_ipv6_address())
-        add_ip_to_mapping(mapping, mac, factory.make_ipv4_address())
-        add_ip_to_mapping(
-            mapping, factory.make_MACAddress(), factory.make_ipv4_address())
-        self.assertTrue(has_static_ipv6_address(mapping))
-
-
-class TestComposeDebianNetworkInterfacesFile(MAASServerTestCase):
-
-    def make_listing(self, interface=None, mac=None):
-        """Return a list containing an interface/MAC tuple."""
-        if interface is None:
-            interface = factory.make_name('eth')
-        if mac is None:
-            mac = factory.make_mac_address()
-        return [(interface, mac)]
-
-    def make_mapping(self, mac=None, ips=None):
-        """Create a MAC-to-IPs `defaultdict` like `map_static_ips` returns.
-
-        The mapping will map `mac` (random by default) to `ips` (containing
-        one IPv6 address by default).
-        """
-        if mac is None:
-            mac = factory.make_mac_address()
-        if ips is None:
-            ips = {factory.make_ipv6_address()}
-        mapping = defaultdict(set)
-        mapping[mac] = {IPAddress(ip) for ip in ips}
-        return mapping
-
-    def test__always_generates_lo(self):
-        self.assertIn(
-            'auto lo',
-            compose_debian_network_interfaces_file([], {}, {}))
-
-    def test__generates_DHCPv4_config_if_IPv4_not_disabled(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        self.assertIn(
-            "\niface %s inet dhcp\n" % interface,
-            compose_debian_network_interfaces_file(
-                self.make_listing(interface, mac), {}, {}))
-
-    def test__generates_DHCPv4_config_if_no_IPv6_configured(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        self.assertIn(
-            "\niface %s inet dhcp\n" % interface,
-            compose_debian_network_interfaces_file(
-                self.make_listing(interface, mac), {}, {}, disable_ipv4=True))
-
-    def test__generates_no_DHCPv4_config_if_node_should_use_IPv6_only(self):
-        mac = factory.make_mac_address()
-        # The space is significant: we're expecting an inet6 line, so don't
-        # match that when we look for inet.
-        self.assertNotIn(
-            " inet ",
-            compose_debian_network_interfaces_file(
-                self.make_listing(mac=mac), self.make_mapping(mac), {},
-                disable_ipv4=True))
-
-    def test__generates_static_IPv6_config(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        ipv6 = factory.make_ipv6_address()
-        disable_ipv4 = factory.pick_bool()
-        self.assertIn(
-            "\niface %s inet6 static" % interface,
-            compose_debian_network_interfaces_file(
-                self.make_listing(interface, mac),
-                self.make_mapping(mac, {ipv6}), {}, disable_ipv4=disable_ipv4))
-
-    def test__passes_ip_and_gateway_when_creating_IPv6_stanza(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        ipv6 = factory.make_ipv6_address()
-        gateway = factory.make_ipv6_address()
-        fake = self.patch_autospec(
-            networking_preseed_module,
-            'compose_debian_network_interfaces_ipv6_stanza')
-        fake.return_value = factory.make_name('stanza')
-
-        compose_debian_network_interfaces_file(
-            self.make_listing(interface, mac), self.make_mapping(mac, {ipv6}),
-            self.make_mapping(mac, {gateway}))
-
-        self.assertThat(
-            fake,
-            MockCalledOnceWith(interface, IPAddress(ipv6), IPAddress(gateway)))
-
-    def test__omits_gateway_if_not_set(self):
-        interface = factory.make_name('eth')
-        mac = factory.make_mac_address()
-        fake = self.patch_autospec(
-            networking_preseed_module,
-            'compose_debian_network_interfaces_ipv6_stanza')
-        fake.return_value = factory.make_name('stanza')
-
-        compose_debian_network_interfaces_file(
-            self.make_listing(interface, mac), self.make_mapping(mac), {})
-
-        self.assertThat(
-            fake,
-            MockCalledOnceWith(interface, ANY, None))
-
-    def test__writes_auto_lines(self):
-        interface = factory.make_name('eth')
-
-        interfaces_file = compose_debian_network_interfaces_file(
-            self.make_listing(interface), {}, {})
-
-        self.assertIn('auto %s' % interface, interfaces_file)
-        self.assertEqual(1, interfaces_file.count('auto %s' % interface))
