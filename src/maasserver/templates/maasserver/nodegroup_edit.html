@@ -64,15 +64,6 @@
       </table>
       <a class="button right"
          href="{% url 'cluster-interface-create' cluster.uuid %}">Add interface</a>
-
-      <div class="clear"></div>
-      <h2>Boot images</h2>
-      {% if not cluster.bootimage_set.count %}
-      {% include "maasserver/no-bootimages-warning.html" %}
-      {% else %}
-      This cluster has {{ cluster.bootimage_set.count }} boot images.
-      <a href="{% url 'cluster-bootimages-list' cluster.uuid %}">View boot image list</a>.
-      {% endif %}         
     </form>
   </div>
   <div class="clear"></div>
