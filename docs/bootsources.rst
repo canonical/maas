@@ -102,7 +102,7 @@ You can also add a new source::
 
 Inside that newly created source ('2') you can add selections::
 
-    $ maas $PROFILE boot-source-selections create $CLUSTER_UUID 2 arches=amd64 subarches='*' release='trusty' labels='*'
+    $ maas $PROFILE boot-source-selections create $CLUSTER_UUID 2 arches=amd64 subarches='*' release='trusty' labels='*' os='ubuntu'
     {
         "labels": ["*"],
         "arches": ["amd64"],
