@@ -57,13 +57,6 @@ query_state() {
     local state=
     local count=
     state=$(issue_amt_command info | grep '^Powerstate:' | awk '{print $2}')
-    if [ -n "$state" ]
-    then
-        break
-    fi
-    # Wait 1 second between queries  AMT controllers are generally very
-    # light and may not be comfortable with more frequent queries.
-    sleep 1
     case "$state" in
     S[0-4])
         # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
@@ -74,7 +67,7 @@ query_state() {
         echo 'off'
         ;;
     *)
-        fail 2 "Got unknown power state from node: '$state'"
+        fail 1 "Got unknown power state from node: '$state'"
         ;;
     esac
 }
@@ -92,7 +85,6 @@ power_on() {
     # Do not retry here, it's handled in the core power driver.
     # Issue the AMT command; amttool will prompt for confirmation.
     yes | issue_amt_command powerup pxe
-    sleep 1
     if [ "$(query_state)" = 'on' ]
     then
         # Success.  Machine is on.
@@ -108,7 +100,6 @@ power_off() {
     # Do not retry here, it's handled in the core power driver.
     # Issue the AMT command; amttool will prompt for confirmation.
     yes | issue_amt_command powerdown
-    sleep 1
     if [ "$(query_state)" = 'off' ]
     then
         # Success.  Machine is off.
