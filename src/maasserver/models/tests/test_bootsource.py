@@ -17,9 +17,13 @@ __all__ = []
 import os
 
 from django.core.exceptions import ValidationError
+from maasserver.bootsources import _cache_boot_sources
 from maasserver.models import BootSource
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
+from twisted.internet import reactor
+from twisted.internet.threads import deferToThread
 
 
 class TestBootSource(MAASServerTestCase):
@@ -93,3 +97,11 @@ class TestBootSource(MAASServerTestCase):
         self.assertEqual(
             [],
             boot_source_dict['selections'])
+
+    def test_calls_cache_boot_sources_on_create(self):
+        mock_callLater = self.patch(reactor, 'callLater')
+        BootSource.objects.create(
+            url="http://test.test/", keyring_data=b"1234")
+        self.assertThat(
+            mock_callLater,
+            MockCalledOnceWith(1, deferToThread, _cache_boot_sources))

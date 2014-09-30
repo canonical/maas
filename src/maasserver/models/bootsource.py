@@ -22,6 +22,7 @@ from django.db.models import (
     FilePathField,
     URLField,
     )
+from django.db.models.signals import post_save
 from maasserver import DefaultMeta
 from maasserver.fields import EditableBinaryField
 from maasserver.models.cleansave import CleanSave
@@ -99,3 +100,13 @@ class BootSource(CleanSave, TimestampedModel):
             for selection in self.bootsourceselection_set.all()
             ]
         return data
+
+
+def update_boot_source_cache(sender, instance, **kwargs):
+    """Update the `BootSourceCache` with information for the updated
+    source."""
+    # Avoid circular import
+    from maasserver.bootsources import cache_boot_sources
+    cache_boot_sources()
+
+post_save.connect(update_boot_source_cache, BootSource)

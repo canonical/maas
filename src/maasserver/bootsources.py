@@ -16,7 +16,8 @@ __all__ = [
     "ensure_boot_source_definition",
     "get_boot_sources",
     "get_os_info_from_boot_sources",
-    "BootSourceCacheService"
+    "cache_boot_sources",
+    "BootSourceCacheService",
 ]
 
 
@@ -37,6 +38,7 @@ from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import tempdir
 from twisted.application.internet import TimerService
+from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
 from twisted.python import log
 
@@ -99,7 +101,7 @@ def get_os_info_from_boot_sources(os):
 
 
 @transactional
-def cache_boot_sources():
+def _cache_boot_sources():
     """Cache all image information in boot sources."""
     # If the lock is already held, then cache is already running.
     if locks.cache_sources.is_locked():
@@ -132,6 +134,19 @@ def cache_boot_sources():
         maaslog.info("Updated boot sources cache.")
 
 
+def cache_boot_sources():
+    """Starts the caching of image information in boot sources.
+
+    Note: This function returns immediately. It only starts the process, it
+    doesn't wait for it to be finished.
+    """
+    # We start the update about 1 second later, or we get a OperationalError.
+    # "OperationalError: could not serialize access due to concurrent update"
+    # The wait will make sure the transaction that started the update will
+    # have finished and been committed.
+    reactor.callLater(1, deferToThread, _cache_boot_sources)
+
+
 class BootSourceCacheService(TimerService, object):
     """Service to periodically cache boot source information.
 
@@ -158,6 +173,6 @@ class BootSourceCacheService(TimerService, object):
                 "Failed to update boot source cache: %s",
                 failure.getErrorMessage())
 
-        d = deferToThread(cache_boot_sources)
+        d = deferToThread(_cache_boot_sources)
         d.addErrback(cache_boot_sources_failed)
         return d

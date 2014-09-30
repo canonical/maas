@@ -18,6 +18,7 @@ from os import environ
 
 from maasserver import bootsources
 from maasserver.bootsources import (
+    _cache_boot_sources,
     cache_boot_sources,
     ensure_boot_source_definition,
     get_boot_sources,
@@ -31,12 +32,15 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import MockCalledOnceWith
 from mock import MagicMock
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.helpers import ImageSpec
 from testtools.matchers import HasLength
+from twisted.internet import reactor
+from twisted.internet.threads import deferToThread
 
 
 def patch_and_capture_env_for_download_all_image_descriptions(testcase):
@@ -160,13 +164,13 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
             get_os_info_from_boot_sources(os))
 
 
-class TestCacheBootSources(MAASServerTestCase):
+class TestPrivateCacheBootSources(MAASServerTestCase):
 
     def test__has_env_GNUPGHOME_set(self):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
         factory.make_BootSource(keyring_data='1234')
-        cache_boot_sources()
+        _cache_boot_sources()
         self.assertEqual(
             bootsources.get_maas_user_gpghome(),
             capture.env['GNUPGHOME'])
@@ -177,7 +181,7 @@ class TestCacheBootSources(MAASServerTestCase):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
         factory.make_BootSource(keyring_data='1234')
-        cache_boot_sources()
+        _cache_boot_sources()
         self.assertEqual(
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['http_proxy']))
@@ -188,7 +192,7 @@ class TestCacheBootSources(MAASServerTestCase):
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
         mock_download.return_value = make_boot_image_mapping()
-        cache_boot_sources()
+        _cache_boot_sources()
         self.assertEqual(0, BootSourceCache.objects.all().count())
 
     def test__returns_adds_entries_to_cache_for_source(self):
@@ -200,10 +204,20 @@ class TestCacheBootSources(MAASServerTestCase):
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
         mock_download.return_value = make_boot_image_mapping(image_specs)
-        cache_boot_sources()
+        _cache_boot_sources()
         cached_releases = [
             cache.release
             for cache in BootSourceCache.objects.filter(boot_source=source)
             if cache.os == os
             ]
         self.assertItemsEqual(releases, cached_releases)
+
+
+class TestCacheBootSources(MAASServerTestCase):
+
+    def test__calls_callLater_in_reactor(self):
+        mock_callLater = self.patch(reactor, 'callLater')
+        cache_boot_sources()
+        self.assertThat(
+            mock_callLater,
+            MockCalledOnceWith(1, deferToThread, _cache_boot_sources))
