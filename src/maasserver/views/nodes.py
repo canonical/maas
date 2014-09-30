@@ -658,6 +658,7 @@ class NodeEdit(UpdateView):
         # form needs it because it sets error messages for the UI.
         kwargs = super(NodeEdit, self).get_form_kwargs()
         kwargs['request'] = self.request
+        kwargs['ui_submission'] = True
         return kwargs
 
     def get_success_url(self):

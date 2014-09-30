@@ -217,7 +217,25 @@ class MAASModelForm(APIEditMixin, forms.ModelForm):
     Specifically, it is much like Django's ``ModelForm``, but removes
     ``None`` values from cleaned data. This allows the forms to be used
     for both the UI and the API with unsuprising behaviour in both.
+
+    With some fields (like boolean fields), the behavior of a UI-submitted
+    form and a API-submitted form needs to be different: the UI will omit
+    the field to denote "false" where the API will provide the existing
+    value for the field.
+
+    Each form needs to deal with this but this base class provides built-in
+    support for marking that a form is used in the UI by passing a
+    'ui_submission=True' parameter; this information can then be used by the
+    form to specialize its behavior depending on whether the submission is
+    made from the API or the UI.
     """
+
+    def __init__(self, data=None, files=None, ui_submission=False, **kwargs):
+        super(MAASModelForm, self).__init__(data=data, files=files, **kwargs)
+        if ui_submission:
+            self.fields.insert(
+                0, 'ui_submission',
+                forms.CharField(widget=forms.HiddenInput(), required=False))
 
 
 def list_all_usable_architectures():
@@ -393,14 +411,14 @@ class NodeForm(MAASModelForm):
         # box was checked) or not at all (if the box was not checked).  This
         # is different from API submissions which can submit "false" values.
         # Our forms are rigged to interpret missing fields as unchanged, but
-        # that doesn't # work for the UI.  A form in the UI always submits all
+        # that doesn't work for the UI.  A form in the UI always submits all
         # its fields, so in that case, no value means False.
         #
         # To kludge around this, the UI form submits a hidden input field named
-        # "ui-submission" that doesn't exist in the API.  If this field is
+        # "ui_submission" that doesn't exist in the API.  If this field is
         # present, go with the UI-style behaviour.
         form_data = self.submitted_data
-        if 'ui-submission' in form_data and 'disable_ipv4' not in form_data:
+        if 'ui_submission' in form_data and 'disable_ipv4' not in form_data:
             self.cleaned_data['disable_ipv4'] = False
         return self.cleaned_data['disable_ipv4']
 

@@ -781,6 +781,23 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertAttributes(node, params)
 
+    def test_user_can_change_disable_ipv4_flag(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user, disable_ipv4=True)
+        node_edit_link = reverse('node-edit', args=[node.system_id])
+        params = {
+            'hostname': factory.make_string(),
+            'architecture': make_usable_architecture(self),
+            'ui_submission': True,
+            # Omitting the 'disable_ipv4' parameters means setting it
+            # to false because this is a UI submission.
+        }
+        response = self.client.post(node_edit_link, params)
+
+        node = reload_object(node)
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertEqual(False, node.disable_ipv4)
+
     def test_edit_nodes_contains_list_of_macaddresses(self):
         self.client_log_in()
         node = factory.make_Node(owner=self.logged_in_user)

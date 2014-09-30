@@ -82,7 +82,7 @@ EOF
 erase_disks() {
    for disk in `lsblk -d -n -oKNAME,TYPE,RO | grep '^\w*\s*disk\s*0' | awk {'print $1'}`
    do
-      echo "Erasing $disk"
+      echo "Erasing $disk..."
       bytes=$(blockdev --getsize64 /dev/$disk)
       head -c $bytes /dev/zero > /dev/$disk
    done

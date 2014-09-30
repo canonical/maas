@@ -374,7 +374,7 @@ class TestNodeForm(MAASServerTestCase):
             instance=factory.make_Node(disable_ipv4=True),
             data={
                 'architecture': make_usable_architecture(self),
-                'ui-submission': True,
+                'ui_submission': True,
                 })
         node = form.save()
         self.assertFalse(node.disable_ipv4)

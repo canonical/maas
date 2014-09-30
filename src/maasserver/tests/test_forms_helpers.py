@@ -25,6 +25,7 @@ from maasserver.forms import (
     get_node_edit_form,
     initialize_node_group,
     list_all_usable_architectures,
+    MAASModelForm,
     NodeForm,
     NodeWithMACAddressesForm,
     pick_default_architecture,
@@ -146,3 +147,25 @@ class TestHelpers(MAASServerTestCase):
         admin = factory.make_admin()
         self.assertEqual(
             AdminNodeWithMACAddressesForm, get_node_create_form(admin))
+
+
+class TestModelForm(MAASServerTestCase):
+
+    def test_model_class_from_UI_has_hidden_field(self):
+        class TestClass(MAASModelForm):
+            class Meta:
+                model = Node
+
+        form = TestClass(ui_submission=True)
+        self.assertIn('ui_submission', form.fields)
+        self.assertTrue(
+            form.fields['ui_submission'].widget.is_hidden,
+            "ui_submission field is not 'hidden'")
+
+    def test_model_class_from_API_doesnt_have_hidden_field(self):
+        class TestClass(MAASModelForm):
+            class Meta:
+                model = Node
+
+        form = TestClass()
+        self.assertNotIn('ui_submission', form.fields)
