@@ -121,7 +121,7 @@ class TestNetwork(APITestCase):
         self.assertIsNotNone(reload_object(network))
 
     def test_DELETE_is_idempotent(self):
-        name = factory.make_name('no-net')
+        name = factory.make_Network().name
         self.become_admin()
         response1 = self.client.delete(self.get_url(name))
         response2 = self.client.delete(self.get_url(name))
