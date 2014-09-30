@@ -15,9 +15,12 @@ cd "$(dirname "$0")/../.."
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
 # DNS settings, for driving BIND.
-export MAAS_DNS_CONFIG_DIR="$(cd run/named && pwd)"
+export MAAS_DNS_CONFIG_DIR="${MAAS_ROOT}/etc/bind/maas"
 export MAAS_DNS_RNDC_PORT=5247
 export MAAS_DNS_DEFAULT_CONTROLS=0
+
+# Ensure that we've got a configuration directory.
+mkdir -p "${MAAS_DNS_CONFIG_DIR}"
 
 homedir="$MAAS_DNS_CONFIG_DIR"
 port="$((MAAS_DNS_RNDC_PORT - 1))"

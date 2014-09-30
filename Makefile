@@ -31,6 +31,9 @@ dbrun := bin/database --preserve run --
 # use the "maas" databases.
 export PGDATABASE := maas
 
+# For anything we start, we want to hint as to its root directory.
+export MAAS_ROOT := $(CURDIR)/run
+
 build: \
     bin/buildout \
     bin/database \
@@ -266,17 +269,17 @@ $(eval $(call service_template,supervise))
 
 # The `run` targets do not fit into the mould of the others.
 run-region:
-	@env MAAS_ROOT=./run services/run $(service_names_region)
+	@services/run $(service_names_region)
 run-cluster:
-	@env MAAS_ROOT=./run services/run $(service_names_cluster)
+	@services/run $(service_names_cluster)
 run:
-	@env MAAS_ROOT=./run services/run $(service_names_all)
+	@services/run $(service_names_all)
 
 phony_services_targets += run-region run-cluster run
 
 # This one's for the rapper, yo.
 run+webapp:
-	@env MAAS_ROOT=./run services/run $(service_names_region) +webapp
+	@services/run $(service_names_region) +webapp
 
 phony_services_targets += run+webapp
 
