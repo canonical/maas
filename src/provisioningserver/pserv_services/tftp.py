@@ -209,10 +209,11 @@ class TFTPBackend(FilesystemSynchronousBackend):
         from that boot method. Otherwise the filesystem is used to service
         the response.
         """
-        send_event_node_mac_address(
-            event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
-            mac_address=get_remote_mac(),
-            description=file_name)
+        mac_address = get_remote_mac()
+        if mac_address is not None:
+            send_event_node_mac_address(
+                event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
+                mac_address=mac_address, description=file_name)
         d = self.get_boot_method(file_name)
         d.addCallback(partial(self.handle_boot_method, file_name))
         d.addErrback(self.get_page_errback, file_name)

@@ -28,13 +28,19 @@ from urlparse import (
     )
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
     )
 import mock
-from mock import sentinel
+from mock import (
+    sentinel,
+    ANY,
+    )
 from netaddr import IPNetwork
 from netaddr.ip import (
     IPV4_LINK_LOCAL,
@@ -43,6 +49,7 @@ from netaddr.ip import (
 from provisioningserver.boot import BytesReader
 from provisioningserver.boot.pxe import PXEBootMethod
 from provisioningserver.boot.tests.test_pxe import compose_config_path
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.pserv_services import tftp as tftp_module
 from provisioningserver.pserv_services.tftp import (
     Port,
@@ -131,6 +138,12 @@ class TestTFTPBackend(MAASTestCase):
             ]
         self.assertItemsEqual(query_expected, query)
 
+    def get_reader(self, data):
+        temp_file = self.make_file(name="example", contents=data)
+        temp_dir = path.dirname(temp_file)
+        backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
+        return backend.get_reader("example")
+
     @inlineCallbacks
     def test_get_reader_regular_file(self):
         # TFTPBackend.get_reader() returns a regular FilesystemReader for
@@ -138,14 +151,36 @@ class TestTFTPBackend(MAASTestCase):
         self.patch(tftp_module, 'send_event_node_mac_address')
         self.patch(tftp_module, 'get_remote_mac')
         data = factory.make_string().encode("ascii")
-        temp_file = self.make_file(name="example", contents=data)
-        temp_dir = path.dirname(temp_file)
-        backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
-        reader = yield backend.get_reader("example")
+        reader = yield self.get_reader(data)
         self.addCleanup(reader.finish)
         self.assertEqual(len(data), reader.size)
         self.assertEqual(data, reader.read(len(data)))
         self.assertEqual(b"", reader.read(1))
+
+    @inlineCallbacks
+    def test_get_reader_logs_node_event_with_mac_address(self):
+        mac_address = factory.make_mac_address()
+        self.patch_autospec(tftp_module, 'send_event_node_mac_address')
+        self.patch(tftp_module, 'get_remote_mac').return_value = mac_address
+        data = factory.make_string().encode("ascii")
+        reader = yield self.get_reader(data)
+        self.addCleanup(reader.finish)
+        self.assertThat(
+            tftp_module.send_event_node_mac_address,
+            MockCalledOnceWith(
+                event_type=EVENT_TYPES.NODE_TFTP_REQUEST,
+                mac_address=mac_address, description=ANY))
+
+    @inlineCallbacks
+    def test_get_reader_does_not_log_when_mac_cannot_be_found(self):
+        self.patch_autospec(tftp_module, 'send_event_node_mac_address')
+        self.patch(tftp_module, 'get_remote_mac').return_value = None
+        data = factory.make_string().encode("ascii")
+        reader = yield self.get_reader(data)
+        self.addCleanup(reader.finish)
+        self.assertThat(
+            tftp_module.send_event_node_mac_address,
+            MockNotCalled())
 
     @inlineCallbacks
     def test_get_render_file(self):
