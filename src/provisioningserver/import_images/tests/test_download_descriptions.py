@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
-from maastesting.matchers import MockAnyCall
 from maastesting.testcase import MAASTestCase
 from provisioningserver.import_images import download_descriptions
 from provisioningserver.import_images.boot_image_mapping import (
@@ -222,19 +221,3 @@ class TestBootMerge(MAASTestCase):
             resource="New resource", image_spec=image)
         download_descriptions.boot_merge(total_resources, resources_from_repo)
         self.assertEqual(original_resources, total_resources.mapping)
-
-
-class TestDownloadImageDescriptions(MAASTestCase):
-
-    def test_warns_if_no_resources_found(self):
-        self.patch(download_descriptions, 'maaslog')
-        # Stop the RepoDumper from finding any boot resources at all.
-        self.patch(download_descriptions, 'RepoDumper')
-        path = factory.make_name('path')
-        download_descriptions.download_image_descriptions(path)
-        self.assertThat(
-            download_descriptions.maaslog.warn,
-            MockAnyCall(
-                "No resources found in Simplestreams repository %r.  "
-                "Is it correctly configured?",
-                path))

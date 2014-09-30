@@ -229,7 +229,7 @@ def import_images(sources):
     """
     maaslog.info("Started importing boot images.")
     if len(sources) == 0:
-        maaslog.warn("Can't import: no Simplestreams sources selected.")
+        maaslog.warn("Can't import: region did not provide a source.")
         return
 
     with tempdir('keyrings') as keyrings_path:
@@ -241,13 +241,16 @@ def import_images(sources):
         image_descriptions = download_all_image_descriptions(sources)
         if image_descriptions.is_empty():
             maaslog.warn(
-                "Finished importing boot images, no boot images available.")
+                "Finished importing boot images, the region does not have "
+                "any boot images available.")
             return
 
         storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
-            maaslog.info("Finished importing boot images, no new images.")
+            maaslog.info(
+                "Finished importing boot images, the region does not "
+                "have any new images.")
             return
 
         product_mapping = map_products(image_descriptions)

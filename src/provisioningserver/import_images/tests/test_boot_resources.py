@@ -340,7 +340,7 @@ class TestMain(MAASTestCase):
 
         self.assertThat(
             boot_resources.maaslog.warn,
-            MockAnyCall("Can't import: no Simplestreams sources selected."))
+            MockAnyCall("Can't import: region did not provide a source."))
 
     def test_warns_if_no_boot_resources_found(self):
         # The import code used to crash when no resources were found in the
@@ -366,7 +366,8 @@ class TestMain(MAASTestCase):
         self.assertThat(
             boot_resources.maaslog.warn,
             MockAnyCall(
-                "Finished importing boot images, no boot images available."))
+                "Finished importing boot images, the region does not have "
+                "any boot images available."))
 
     def test_raises_ioerror_when_no_sources_file_found(self):
         self.patch_maaslog()

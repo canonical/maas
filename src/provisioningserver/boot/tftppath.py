@@ -233,7 +233,8 @@ def list_boot_images(tftproot):
     except OSError as exception:
         if exception.errno == errno.ENOENT:
             # Directory does not exist, so return empty list.
-            maaslog.warning("No boot images have been imported yet.")
+            maaslog.warning(
+                "No boot images have been imported from the region.")
             return []
 
         # Other error. Propagate.
