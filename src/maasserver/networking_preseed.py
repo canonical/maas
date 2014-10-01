@@ -28,8 +28,6 @@ __all__ = [
     'generate_networking_config',
     ]
 
-from collections import defaultdict
-
 from lxml import etree
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.exceptions import UnresolvableHost
@@ -38,6 +36,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from netaddr import (
     IPAddress,
     IPNetwork,
+    valid_ipv4,
     )
 
 
@@ -66,6 +65,14 @@ def normalise_mac(mac):
     normalisation, even if they were originally different spellings.
     """
     return mac.strip().lower()
+
+
+def normalise_ip(ip):
+    """Return an IP address' normalised representation.
+
+    IPv6 addresses in particular can have many different spellings.
+    """
+    return unicode(IPAddress(ip.strip()))
 
 
 def extract_network_interfaces(node):
@@ -152,7 +159,7 @@ def generate_route_entries(cluster_interface):
     if cluster_interface.router_ip in ('', None):
         # No routes available.
         return []
-    elif IPAddress(cluster_interface.ip).version == 4:
+    elif valid_ipv4(cluster_interface.ip):
         return [
             {
                 'network': '0.0.0.0',
@@ -252,28 +259,25 @@ def extract_mac_string(mac):
 def add_ip_to_mapping(mapping, macaddress, ip):
     """Add IP address to a `defaultdict` keyed by MAC string.
 
-    :param mapping: A `defaultdict` (defaulting to the empty set) mapping
-        normalised MAC address strings to sets of `IPAddress`.
+    :param mapping: A `dict` mapping normalised MAC address strings to sets of
+        normalised IP address strings.
     :param macaddress: A `MACAddress`.
     :param ip: An IP address string.  If it is empty or `None`, it will not
         be added to the mapping.
     """
-    if ip in (None, ''):
-        return
-    assert isinstance(ip, (unicode, bytes, IPAddress))
-    mac = extract_mac_string(macaddress)
-    ip = IPAddress(ip)
-    mapping[mac].add(ip)
+    if ip not in (None, ''):
+        mac = extract_mac_string(macaddress)
+        mapping.setdefault(mac, set()).add(normalise_ip(ip))
 
 
 def map_static_ips(node):
     """Return a `defaultdict` mapping node's MAC addresses to their static IPs.
 
     :param node: A `Node`.
-    :return: A `defaultdict` (defaulting to the empty set) mapping normalised
-        MAC address strings to sets of `IPAddress`.
+    :return: A dict mapping normalised MAC address strings to sets of
+        normalised IP address strings.
     """
-    mapping = defaultdict(set)
+    mapping = {}
     for sip in StaticIPAddress.objects.filter(macaddress__node=node):
         for mac in sip.macaddress_set.all():
             add_ip_to_mapping(mapping, mac, sip.ip)
@@ -284,10 +288,10 @@ def map_gateways(node):
     """Return a `defaultdict` mapping node's MAC addresses to their gateways.
 
     :param node: A `Node`.
-    :return: A `defaultdict` (defaulting to the empty set) mapping normalised
-        MAC address strings to sets of `IPAddress`.
+    :return: A dict mapping normalised MAC address strings to sets of
+        normalised IP address strings.
     """
-    mapping = defaultdict(set)
+    mapping = {}
     for mac in node.macaddress_set.all():
         for cluster_interface in mac.get_cluster_interfaces():
             if cluster_interface.manages_static_range():

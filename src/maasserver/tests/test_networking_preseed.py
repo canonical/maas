@@ -15,7 +15,6 @@ __metaclass__ = type
 __all__ = [
     ]
 
-from collections import defaultdict
 from random import randint
 
 from maasserver import networking_preseed
@@ -37,12 +36,12 @@ from maasserver.networking_preseed import (
     list_dns_servers,
     map_gateways,
     map_static_ips,
+    normalise_ip,
     normalise_mac,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPAddress
 from testtools.matchers import HasLength
 
 
@@ -220,6 +219,30 @@ class TestNormaliseMAC(MAASServerTestCase):
         self.assertEqual(
             normalise_mac(mac),
             normalise_mac(normalise_mac(mac)))
+
+
+class TestNormaliseIP(MAASServerTestCase):
+
+    def test__normalises_case(self):
+        ip = factory.make_ipv6_address()
+        self.assertEqual(
+            normalise_ip(ip.upper()),
+            normalise_ip(ip.lower()))
+
+    def test__strips_whitespace(self):
+        ip = factory.make_ipv4_address()
+        self.assertEqual(ip, normalise_ip(' %s ' % ip))
+
+    def test__normalises_zeroes(self):
+        self.assertEqual('::1', normalise_ip('0000:000:00:0::1'))
+
+    def test__accepts_bytes(self):
+        ip = factory.make_ipv6_address()
+        self.assertEqual(normalise_ip(ip), normalise_ip(ip.encode('ascii')))
+
+    def test__is_idempotent(self):
+        ip = factory.make_ipv6_address()
+        self.assertEqual(normalise_ip(ip), normalise_ip(normalise_ip(ip)))
 
 
 class TestGenerateEthernetLinkEntry(MAASServerTestCase):
@@ -517,38 +540,31 @@ class TestExtractMACString(MAASServerTestCase):
 
 class TestAddIPToMapping(MAASServerTestCase):
 
-    def make_mapping(self):
-        return defaultdict(set)
-
     def test__adds_to_empty_entry(self):
-        mapping = self.make_mapping()
         mac = factory.make_MACAddress()
         ip = factory.make_ipv4_address()
+        mapping = {}
         add_ip_to_mapping(mapping, mac, ip)
-        self.assertEqual(
-            {mac.mac_address: {IPAddress(ip)}},
-            mapping)
+        self.assertEqual({mac.mac_address: {ip}}, mapping)
 
     def test__adds_to_nonempty_entry(self):
-        mapping = self.make_mapping()
+        mapping = {}
         mac = factory.make_MACAddress()
         ip1 = factory.make_ipv4_address()
         add_ip_to_mapping(mapping, mac, ip1)
         ip2 = factory.make_ipv4_address()
         add_ip_to_mapping(mapping, mac, ip2)
-        self.assertEqual(
-            {mac.mac_address: {IPAddress(ip1), IPAddress(ip2)}},
-            mapping)
+        self.assertEqual({mac.mac_address: {ip1, ip2}}, mapping)
 
     def test__does_not_add_None(self):
-        mapping = self.make_mapping()
         mac = factory.make_MACAddress()
+        mapping = {}
         add_ip_to_mapping(mapping, mac, None)
         self.assertEqual({}, mapping)
 
     def test__does_not_add_empty_string(self):
-        mapping = self.make_mapping()
         mac = factory.make_MACAddress()
+        mapping = {}
         add_ip_to_mapping(mapping, mac, '')
         self.assertEqual({}, mapping)
 
@@ -564,7 +580,7 @@ class TestMapStaticIPs(MAASServerTestCase):
         ip = factory.make_ipv4_address()
         factory.make_StaticIPAddress(ip=ip, mac=mac)
         self.assertEqual(
-            {mac.mac_address: {IPAddress(ip)}},
+            {mac.mac_address: {ip}},
             map_static_ips(node))
 
     def test__finds_IPv6_address(self):
@@ -573,7 +589,7 @@ class TestMapStaticIPs(MAASServerTestCase):
         ip = factory.make_ipv6_address()
         factory.make_StaticIPAddress(ip=ip, mac=mac)
         self.assertEqual(
-            {mac.mac_address: {IPAddress(ip)}},
+            {mac.mac_address: {ip}},
             map_static_ips(node))
 
     def test__finds_addresses_on_multiple_MACs(self):
@@ -586,8 +602,8 @@ class TestMapStaticIPs(MAASServerTestCase):
         factory.make_StaticIPAddress(ip=ip2, mac=mac2)
         self.assertEqual(
             {
-                mac1.mac_address: {IPAddress(ip1)},
-                mac2.mac_address: {IPAddress(ip2)},
+                mac1.mac_address: {ip1},
+                mac2.mac_address: {ip2},
             },
             map_static_ips(node))
 
@@ -599,7 +615,7 @@ class TestMapStaticIPs(MAASServerTestCase):
         factory.make_StaticIPAddress(ip=ipv4, mac=mac)
         factory.make_StaticIPAddress(ip=ipv6, mac=mac)
         self.assertEqual(
-            {mac.mac_address: {IPAddress(ipv4), IPAddress(ipv6)}},
+            {mac.mac_address: {ipv4, ipv6}},
             map_static_ips(node))
 
 
@@ -620,7 +636,7 @@ class TestMapGateways(MAASServerTestCase):
             node=node, cluster_interface=cluster_interface)
 
         self.assertEqual(
-            {mac.mac_address: {IPAddress(gateway)}},
+            {mac.mac_address: {gateway}},
             map_gateways(node))
 
     def test__finds_IPv6_gateway(self):
@@ -640,7 +656,7 @@ class TestMapGateways(MAASServerTestCase):
             node=node, cluster_interface=ipv4_interface)
 
         self.assertEqual(
-            {mac.mac_address: {IPAddress(gateway)}},
+            {mac.mac_address: {gateway}},
             map_gateways(node))
 
     def test__finds_gateways_on_multiple_MACs(self):
@@ -663,8 +679,8 @@ class TestMapGateways(MAASServerTestCase):
 
         self.assertEqual(
             {
-                mac1.mac_address: {IPAddress(gateway1)},
-                mac2.mac_address: {IPAddress(gateway2)},
+                mac1.mac_address: {gateway1},
+                mac2.mac_address: {gateway2},
             },
             map_gateways(node))
 
@@ -690,8 +706,8 @@ class TestMapGateways(MAASServerTestCase):
         self.assertEqual(
             {
                 mac.mac_address: {
-                    IPAddress(ipv4_gateway),
-                    IPAddress(ipv6_gateway),
+                    ipv4_gateway,
+                    ipv6_gateway,
                     },
             },
             map_gateways(node))
