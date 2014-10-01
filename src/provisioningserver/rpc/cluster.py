@@ -185,6 +185,35 @@ class GetPreseedData(amp.Command):
     }
 
 
+class ComposeCurtinNetworkPreseed(amp.Command):
+    """Generate Curtin network preseed for a node.
+
+    :param osystem: Operating system identifier, e.g. `ubuntu`.
+    :param config: A dict detailing the network configuration:
+        `interfaces` maps to a list of pairs of interface name and MAC address.
+        `ips_mapping` maps to a dict which maps MAC addresses to lists of
+        IP addresses (at most one IPv4 and one IPv6 each) to be assigned to the
+        corresponding network interfaces.
+        `gateways_mapping` maps to a dict which maps MAC addresses to lists of
+        gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
+        corresponding network interfaces.
+    :param disable_ipv4: Should IPv4 networking be disabled on the node?
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"osystem", amp.Unicode()),
+        (b"config", StructureAsJSON()),
+        (b"disable_ipv4", amp.Boolean()),
+        ]
+    response = [
+        (b"data", StructureAsJSON()),
+        ]
+    errors = {
+        exceptions.NoSuchOperatingSystem: b"NoSuchOperatingSystem",
+    }
+
+
 class _Power(amp.Command):
     """Base class for power control commands.
 

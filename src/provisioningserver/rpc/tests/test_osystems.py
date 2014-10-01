@@ -199,3 +199,41 @@ class TestGetPreseedData(MAASTestCase):
                 (sentinel.consumer_key, sentinel.token_key,
                  sentinel.token_secret),
                 metadata_url.geturl()))
+
+
+class TestComposeCurtinNetworkPreseed(MAASTestCase):
+
+    def make_args(self):
+        mac = factory.make_mac_address()
+        return {
+            'interfaces': [(factory.make_name('eth'), mac)],
+            'ips_mapping': {
+                mac: [
+                    factory.make_ipv4_address(),
+                    factory.make_ipv6_address(),
+                    ],
+                },
+            'gateways_mapping': {
+                mac: [
+                    factory.make_ipv4_address(),
+                    factory.make_ipv6_address(),
+                    ],
+                },
+            'disable_ipv4': factory.pick_bool(),
+            }
+
+    def test__forwards_to_OS_implementation(self):
+        args = self.make_args()
+        for os_name, osystem in OperatingSystemRegistry:
+            fake = self.patch(osystem, 'compose_curtin_network_preseed')
+            fake.return_value = factory.make_name('preseed-%s' % os_name)
+            self.assertEqual(
+                fake.return_value,
+                osystems.compose_curtin_network_preseed(os_name, **args))
+
+    def test__works_with_real_implementation(self):
+        ubuntu = OperatingSystemRegistry['ubuntu']
+        args = self.make_args()
+        self.assertEqual(
+            ubuntu.compose_curtin_network_preseed(**args),
+            osystems.compose_curtin_network_preseed('ubuntu', **args))
