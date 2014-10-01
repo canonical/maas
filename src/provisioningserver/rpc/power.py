@@ -139,7 +139,6 @@ def power_change_starting(system_id, hostname, power_change):
 default_waiting_policy = (1, 1, 1, 1, 1, 3, 5)
 
 
-@inlineCallbacks
 @asynchronous
 def maybe_change_power_state(system_id, hostname, power_type,
                              power_change, context, clock=reactor):
@@ -158,7 +157,6 @@ def maybe_change_power_state(system_id, hostname, power_type,
     """
     assert power_change in ('on', 'off'), (
         "Unknown power change: %s" % power_change)
-
     # There should be one and only one power change for each system ID.
     # If there's one already, raise an error.
     registered_power_action = power_action_registry.get(system_id, None)
@@ -168,8 +166,8 @@ def maybe_change_power_state(system_id, hostname, power_type,
             "action is already in progress for that node." %
             (power_change, hostname))
     power_action_registry[system_id] = power_change
-
-    yield power_change_starting(system_id, hostname, power_change)
+    # Arrange for the power change to happen later; do not make the caller
+    # wait, because it might take a long time.
     clock.callLater(
         0, change_power_state, system_id, hostname, power_type,
         power_change, context, clock=clock)
@@ -185,6 +183,7 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     power state of the node and mark the node as failed if it doesn't
     work.
     """
+    yield power_change_starting(system_id, hostname, power_change)
     try:
         # Use increasing waiting times to work around race conditions
         # that could arise when power-cycling the node.

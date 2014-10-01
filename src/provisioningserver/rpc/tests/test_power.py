@@ -33,6 +33,7 @@ from mock import (
     call,
     DEFAULT,
     Mock,
+    sentinel,
     )
 import provisioningserver
 from provisioningserver.events import EVENT_TYPES
@@ -203,6 +204,27 @@ class TestChangePowerState(MAASTestCase):
         protocol.MarkNodeFailed.side_effect = side_effect
         self.addCleanup((yield connecting))
         returnValue(protocol.MarkNodeFailed)
+
+    def test_change_power_state_calls_power_change_starting_early_on(self):
+        # The first, or one of the first, things that change_power_state()
+        # does is write to the node event log via power_change_starting().
+
+        class ArbitraryException(Exception):
+            """This allows us to return early from a function."""
+
+        # Raise this exception when power_change_starting() is called, to
+        # return early from change_power_state(). This lets us avoid set-up
+        # for parts of the function that we're presently not interested in.
+        self.patch_autospec(power, "power_change_starting")
+        power.power_change_starting.side_effect = ArbitraryException()
+
+        d = power.change_power_state(
+            sentinel.system_id, sentinel.hostname, sentinel.power_type,
+            sentinel.power_change, sentinel.context)
+        self.assertRaises(ArbitraryException, extract_result, d)
+        self.assertThat(
+            power.power_change_starting, MockCalledOnceWith(
+                sentinel.system_id, sentinel.hostname, sentinel.power_change))
 
     @inlineCallbacks
     def test_change_power_state_changes_power_state(self):
@@ -755,26 +777,6 @@ class TestMaybeChangePowerState(MAASTestCase):
         with ExpectedException(exceptions.PowerActionAlreadyInProgress):
             yield power.maybe_change_power_state(
                 system_id, hostname, power_type, power_change, context)
-
-    @inlineCallbacks
-    def test_calls_power_change_starting(self):
-        self.patch_methods_using_rpc()
-
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-
-        yield power.maybe_change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertThat(
-            power.power_change_starting,
-            MockCalledOnceWith(system_id, hostname, power_change))
-
-        reactor.runUntilCurrent()  # Run all delayed calls.
 
     @inlineCallbacks
     def test_calls_change_power_state_later(self):
