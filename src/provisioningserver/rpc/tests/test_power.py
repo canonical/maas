@@ -53,8 +53,10 @@ from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
     )
+from testtools.matchers import IsInstance
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    Deferred,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
@@ -742,6 +744,13 @@ class TestMaybeChangePowerState(MAASTestCase):
 
         self.patch_autospec(power, 'change_power_state')
         power.change_power_state.side_effect = change_power_state
+
+    def test_always_returns_deferred(self):
+        clock = Clock()
+        d = power.maybe_change_power_state(
+            sentinel.system_id, sentinel.hostname, sentinel.power_type,
+            random.choice(("on", "off")), sentinel.context, clock=clock)
+        self.assertThat(d, IsInstance(Deferred))
 
     @inlineCallbacks
     def test_adds_action_to_registry(self):

@@ -37,6 +37,7 @@ from provisioningserver.rpc.region import (
     )
 from provisioningserver.utils.twisted import (
     asynchronous,
+    deferred,
     pause,
     synchronous,
     )
@@ -140,6 +141,7 @@ default_waiting_policy = (1, 1, 1, 1, 1, 3, 5)
 
 
 @asynchronous
+@deferred  # Always return a Deferred.
 def maybe_change_power_state(system_id, hostname, power_type,
                              power_change, context, clock=reactor):
     """Attempt to change the power state of a node.
