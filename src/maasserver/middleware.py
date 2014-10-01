@@ -30,6 +30,7 @@ import re
 import sys
 import traceback
 
+from crochet import TimeoutError
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import (
@@ -275,6 +276,7 @@ class RPCErrorsMiddleware:
         MultipleFailures,
         NoConnectionsAvailable,
         PowerActionAlreadyInProgress,
+        TimeoutError,
         )
 
     def get_error_message_for_exception(self, exception):
@@ -345,6 +347,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
         NoConnectionsAvailable: httplib.SERVICE_UNAVAILABLE,
         PowerActionAlreadyInProgress: httplib.CONFLICT,
         MultipleFailures: httplib.INTERNAL_SERVER_ERROR,
+        TimeoutError: httplib.GATEWAY_TIMEOUT,
         }
 
     def process_exception(self, request, exception):

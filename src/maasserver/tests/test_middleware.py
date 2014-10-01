@@ -19,6 +19,7 @@ import json
 import logging
 import random
 
+from crochet import TimeoutError
 from django.contrib.messages import constants
 from django.core.exceptions import (
     PermissionDenied,
@@ -312,6 +313,20 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
             [(constants.ERROR, "Error: " + error_message, '')],
             request._messages.messages)
 
+    def test_handles_TimeoutError(self):
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        error_message = "Here, have a picture of Queen Victoria!"
+        error = TimeoutError(error_message)
+        response = middleware.process_exception(request, error)
+
+        # The response is a redirect.
+        self.assertEqual(request.path, extract_redirect(response))
+        # An error message has been published.
+        self.assertEqual(
+            [(constants.ERROR, "Error: " + error_message, '')],
+            request._messages.messages)
+
     def test_ignores_non_rpc_errors(self):
         middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
@@ -446,6 +461,18 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         expected_error_message = "\n".join(error_messages)
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
+            (response.status_code, response.content))
+
+    def test_handles_TimeoutError(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        error_message = "No thanks, I'm trying to give them up."
+        error = TimeoutError(error_message)
+        response = middleware.process_exception(request, error)
+
+        self.assertEqual(
+            (httplib.GATEWAY_TIMEOUT, error_message),
             (response.status_code, response.content))
 
     def test_adds_message_for_unknown_errors_in_multiple_failures(self):
