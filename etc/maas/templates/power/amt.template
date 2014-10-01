@@ -32,8 +32,7 @@ fail() {
 
 # Perform a command using amttool.
 issue_amt_command() {
-  LC_ALL='C' AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@" || fail 1 "amttool failure"
-    # Stderr will be caught by the power driver, no need to repeat it.
+  LC_ALL='C' AMT_PASSWORD="$power_pass" amttool "$ip_address" "$@"
 }
 
 # Check that amttool is present.
@@ -56,7 +55,17 @@ query_state() {
     # Retry the state if it fails because it often fails the first time.
     local state=
     local count=
-    state=$(issue_amt_command info | grep '^Powerstate:' | awk '{print $2}')
+    for attempts in $(seq 0 10)
+    do
+        state=$(issue_amt_command info | grep '^Powerstate:' | awk '{print $2}')
+        if [ -n "$state" ]
+        then
+            break
+        fi
+        # Wait 1 second between retries.  AMT controllers are generally very
+        # light and may not be comfortable with more frequent queries.
+        sleep 1
+    done
     case "$state" in
     S[0-4])
         # Wide awake (S0), or asleep (S1-S4), but not a clean slate that
@@ -82,14 +91,18 @@ restart() {
 # Power the machine on, and boot it using PXE.
 power_on() {
     local attempts=
-    # Do not retry here, it's handled in the core power driver.
-    # Issue the AMT command; amttool will prompt for confirmation.
-    yes | issue_amt_command powerup pxe
-    if [ "$(query_state)" = 'on' ]
-    then
-        # Success.  Machine is on.
-        return 0
-    fi
+    # Try several times.  Power commands often fail the first time.
+    for attempts in $(seq 0 10)
+    do
+        # Issue the AMT command; amttool will prompt for confirmation.
+        yes | issue_amt_command powerup pxe
+        if [ "$(query_state)" = 'on' ]
+        then
+            # Success.  Machine is on.
+            return 0
+        fi
+        sleep 1
+    done
     fail 1 "Machine is not powering on.  Giving up."
 }
 
@@ -97,15 +110,18 @@ power_on() {
 # Power the machine off.
 power_off() {
     local attempts=
-    # Do not retry here, it's handled in the core power driver.
-    # Issue the AMT command; amttool will prompt for confirmation.
-    yes | issue_amt_command powerdown
-    if [ "$(query_state)" = 'off' ]
-    then
-        # Success.  Machine is off.
-        return 0
-    fi
-
+    # Try several times.  Power commands often fail the first time.
+    for attempts in $(seq 0 10)
+    do
+        if [ "$(query_state)" = 'off' ]
+        then
+            # Success.  Machine is off.
+            return 0
+        fi
+        # Issue the AMT command; amttool will prompt for confirmation.
+        yes | issue_amt_command powerdown
+        sleep 1
+    done
     fail 1 "Machine is not powering off.  Giving up."
 }
 
