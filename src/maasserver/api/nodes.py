@@ -487,7 +487,8 @@ class NodeHandler(OperationsHandler):
             client = getClientFor(ng.uuid)
         except NoConnectionsAvailable:
             maaslog.error(
-                "Unable to get RPC connection for cluster '%s'", ng.name)
+                "Unable to get RPC connection for cluster '%s' (%s)",
+                ng.cluster_name, ng.uuid)
             raise PowerProblem("Unable to connect to cluster controller")
 
         try:

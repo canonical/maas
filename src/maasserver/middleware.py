@@ -298,8 +298,8 @@ class RPCErrorsMiddleware:
             cluster = NodeGroup.objects.get_by_natural_key(
                 exception.uuid)
             return (
-                "Unable to connect to cluster '%s'; no connections available."
-                % cluster.name)
+                "Unable to connect to cluster '%s' (%s); no connections "
+                "available." % (cluster.cluster_name, cluster.uuid))
 
         error_message = unicode(exception)
         if len(error_message) == 0:

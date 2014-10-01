@@ -52,10 +52,12 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
             client = getClientFor(ng.uuid)
         except NoConnectionsAvailable:
             logger.error(
-                "Unable to get RPC connection for cluster '%s'", ng.name)
+                "Unable to get RPC connection for cluster '%s' (%s)",
+                ng.cluster_name, ng.uuid)
             if not ignore_errors:
                 raise ClusterUnavailable(
-                    "Unable to get RPC connection for cluster '%s'" % ng.name)
+                    "Unable to get RPC connection for cluster '%s' (%s)"
+                    % (ng.cluster_name, ng.uuid))
         else:
             call = partial(client, command)
             calls.append(call)

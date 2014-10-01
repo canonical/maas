@@ -385,8 +385,8 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         middleware.process_exception(request, error)
 
         expected_error_message = (
-            "Error: Unable to connect to cluster '%s'; no connections "
-            "available." % cluster.name)
+            "Error: Unable to connect to cluster '%s' (%s); no connections "
+            "available." % (cluster.cluster_name, cluster.uuid))
         self.assertEqual(
             [(constants.ERROR, expected_error_message, '')],
             request._messages.messages)

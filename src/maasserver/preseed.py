@@ -221,11 +221,11 @@ def get_curtin_image(node):
             node.nodegroup, osystem, arch, subarch, series)
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
-            "Unable to get RPC connection for cluster '%s'",
-            node.nodegroup.name)
+            "Unable to get RPC connection for cluster '%s' (%s)",
+            node.nodegroup.cluster_name, node.nodegroup.uuid)
         raise ClusterUnavailable(
-            "Unable to get RPC connection for cluster '%s'" % (
-                node.nodegroup.name))
+            "Unable to get RPC connection for cluster '%s' (%s)" %
+            (node.nodegroup.cluster_name, node.nodegroup.uuid))
     for image in images:
         if image['purpose'] == 'xinstall':
             return image
@@ -308,11 +308,11 @@ def get_supported_purposes_for_node(node):
             node.nodegroup, os_name, arch, subarch, series)
     except (NoConnectionsAvailable, TimeoutError):
         logger.error(
-            "Unable to get RPC connection for cluster '%s'",
-            node.nodegroup.name)
+            "Unable to get RPC connection for cluster '%s' (%s)",
+            node.nodegroup.cluster_name, node.nodegroup.uuid)
         raise ClusterUnavailable(
-            "Unable to get RPC connection for cluster '%s'" % (
-                node.nodegroup.name))
+            "Unable to get RPC connection for cluster '%s' (%s)" %
+            (node.nodegroup.cluster_name, node.nodegroup.uuid))
     return {image['purpose'] for image in images}
 
 
