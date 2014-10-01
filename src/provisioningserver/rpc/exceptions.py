@@ -31,6 +31,10 @@ from twisted.python.failure import Failure
 class NoConnectionsAvailable(Exception):
     """There is no connection available."""
 
+    def __init__(self, message='', uuid=None):
+        super(NoConnectionsAvailable, self).__init__(message)
+        self.uuid = uuid
+
 
 class NoSuchEventType(Exception):
     """The specified event type was not found."""

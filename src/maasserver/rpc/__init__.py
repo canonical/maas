@@ -41,7 +41,7 @@ def getClientFor(uuid, timeout=0):
     except KeyError:
         raise exceptions.NoConnectionsAvailable(
             "Unable to connect to cluster %s; no connections available." %
-            uuid)
+            uuid, uuid=uuid)
     else:
         return service.getClientFor(uuid, timeout=timeout)
 

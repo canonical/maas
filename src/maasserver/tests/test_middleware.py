@@ -39,7 +39,6 @@ from maasserver.middleware import (
     DebuggingLoggerMiddleware,
     ErrorsMiddleware,
     ExceptionMiddleware,
-    get_error_message_for_exception,
     RPCErrorsMiddleware,
     )
 from maasserver.testing import extract_redirect
@@ -265,8 +264,8 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         middleware = RPCErrorsMiddleware()
         request = factory.make_fake_request(factory.make_string(), 'POST')
         error_message = (
-            "Unable to execute power action: another action is already in "
-            "progress for node %s" % factory.make_name('node'))
+            "Unable to execute power action: another action is "
+            "already in progress for node %s" % factory.make_name('node'))
         error = PowerActionAlreadyInProgress(error_message)
         response = middleware.process_exception(request, error)
 
@@ -274,7 +273,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         self.assertEqual(request.path, extract_redirect(response))
         # An error message has been published.
         self.assertEqual(
-            [(constants.ERROR, error_message, '')],
+            [(constants.ERROR, "Error: %s" % error_message, '')],
             request._messages.messages)
 
     def test_handles_MultipleFailures(self):
@@ -293,7 +292,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         self.assertEqual(request.path, extract_redirect(response))
         # An error message has been published for each exception.
         self.assertEqual(
-            [(constants.ERROR, unicode(failure.value), '')
+            [(constants.ERROR, "Error: %s" % unicode(failure.value), '')
                 for failure in failures],
             request._messages.messages)
 
@@ -310,7 +309,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         self.assertEqual(request.path, extract_redirect(response))
         # An error message has been published.
         self.assertEqual(
-            [(constants.ERROR, error_message, '')],
+            [(constants.ERROR, "Error: " + error_message, '')],
             request._messages.messages)
 
     def test_ignores_non_rpc_errors(self):
@@ -339,15 +338,11 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         expected_messages = [
             (
                 constants.ERROR,
-                (
-                    "Unexpected exception: %s. See "
-                    "/var/log/maas/maas-django.log "
-                    "on the region server for more information." %
-                    unknown_exception.__class__.__name__
-                ),
-                ''
+                "Error: %s" % middleware.get_error_message_for_exception(
+                    unknown_exception),
+                '',
             ),
-            (constants.ERROR, unicode(failures[1].value), ''),
+            (constants.ERROR, "Error: %s" % unicode(failures[1].value), ''),
             ]
         self.assertEqual(
             expected_messages,
@@ -361,6 +356,25 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         exception = exception_class(factory.make_string())
         self.assertIsNone(
             middleware.process_exception(non_api_request, exception))
+
+    def test_no_connections_available_has_usable_cluster_name_in_msg(self):
+        # If a NoConnectionsAvailable exception carries a reference to
+        # the cluster UUID, RPCErrorsMiddleware will look up the
+        # cluster's name and make the error message it displays more
+        # useful.
+        middleware = RPCErrorsMiddleware()
+        request = factory.make_fake_request(factory.make_string(), 'POST')
+        cluster = factory.make_NodeGroup()
+        error = NoConnectionsAvailable(
+            factory.make_name('msg'), uuid=cluster.uuid)
+        middleware.process_exception(request, error)
+
+        expected_error_message = (
+            "Error: Unable to connect to cluster '%s'; no connections "
+            "available." % cluster.name)
+        self.assertEqual(
+            [(constants.ERROR, expected_error_message, '')],
+            request._messages.messages)
 
 
 class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
@@ -391,7 +405,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(
             "/api/1.0/" + factory.make_string(), 'POST')
         error_message = (
-            "No connections availble for cluster %s" %
+            "Unable to connect to cluster '%s'; no connections available" %
             factory.make_name('cluster'))
         error = NoConnectionsAvailable(error_message)
         response = middleware.process_exception(request, error)
@@ -443,7 +457,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         unknown_exception = ZeroDivisionError()
         error_message = "It ain't 'alf 'ot mum!"
         expected_error_message = "\n".join([
-            get_error_message_for_exception(unknown_exception),
+            middleware.get_error_message_for_exception(unknown_exception),
             error_message])
         failures = [
             Failure(unknown_exception),

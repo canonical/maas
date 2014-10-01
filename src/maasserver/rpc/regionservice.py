@@ -514,7 +514,7 @@ class RegionService(service.Service, object):
             failure.trap(CancelledError)
             raise exceptions.NoConnectionsAvailable(
                 "Unable to connect to cluster %s; no connections available." %
-                uuid)
+                uuid, uuid=uuid)
 
         return d.addCallbacks(common.Client, cancelled)
 
