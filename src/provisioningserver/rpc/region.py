@@ -121,7 +121,9 @@ class UpdateLeases(amp.Command):
              (b"mac", amp.Unicode())]))
     ]
     response = []
-    errors = []
+    errors = {
+        NoSuchCluster: b"NoSuchCluster",
+    }
 
 
 class GetArchiveMirrors(amp.Command):

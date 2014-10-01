@@ -333,6 +333,13 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         observed = yield deferToThread(get_cluster_interface)
         self.assertThat(observed, Equals(cluster_interface))
 
+    @wait_for_reactor
+    def test__raises_NoSuchCluster_if_cluster_not_found(self):
+        uuid = factory.make_name("uuid")
+        d = call_responder(
+            Region(), UpdateLeases, {b"uuid": uuid, b"mappings": []})
+        return assert_fails_with(d, NoSuchCluster)
+
 
 class TestRegionProtocol_GetBootSources(TransactionTestCase):
 
