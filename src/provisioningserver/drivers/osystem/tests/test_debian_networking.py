@@ -186,11 +186,18 @@ class TestComposeNetworkInterfaces(MAASTestCase):
             fake,
             MockCalledOnceWith(interface, ANY, None))
 
-    def test__writes_auto_lines(self):
+    def test__writes_auto_lines_for_interfaces_in_auto_interfaces(self):
         interface = factory.make_name('eth')
+        mac = factory.make_mac_address()
 
         interfaces_file = compose_network_interfaces(
-            self.make_listing(interface), [], {}, {})
+            self.make_listing(interface, mac), [mac], {}, {})
 
         self.assertIn('auto %s' % interface, interfaces_file)
         self.assertEqual(1, interfaces_file.count('auto %s' % interface))
+
+    def test__omits_auto_lines_for_interfaces_not_in_auto_interfaces(self):
+        interface = factory.make_name('eth')
+        interfaces_file = compose_network_interfaces(
+            self.make_listing(interface), [factory.make_mac_address()], {}, {})
+        self.assertNotIn('auto %s' % interface, interfaces_file)

@@ -91,7 +91,8 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
         'auto lo',
         ]
     for interface, mac in interfaces:
-        stanzas.append('auto %s' % interface)
+        if mac in auto_interfaces:
+            stanzas.append('auto %s' % interface)
         if not disable_ipv4:
             stanzas.append(compose_ipv4_stanza(interface))
         static_ipv6 = extract_ip(ips_mapping, mac, 6)
