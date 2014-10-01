@@ -194,13 +194,16 @@ class OperatingSystem:
         """
         raise NotImplementedError()
 
-    def compose_curtin_network_preseed(interfaces, ips_mapping,
-                                       gateways_mapping, disable_ipv4=False):
+    def compose_curtin_network_preseed(interfaces, auto_interfaces,
+                                       ips_mapping, gateways_mapping,
+                                       disable_ipv4=False):
         """Compose a Curtin preseed to configure a node's networking.
 
         :param interfaces: A list of tuples, each a pair of an interface name
             and a MAC address.  If supported, the resulting preseed will assign
             these interface names to these MAC addresses.
+        :param auto_interfaces: A list of MAC addresses for the network
+            interfaces that should come up automatically on node boot.
         :param ips_mapping: A dict mapping MAC addresses to iterables of the
             corresponding network interfaces' IP addresses (up to one each for
             IPv4 and IPv6).  If supported, the resulting preseed will configure

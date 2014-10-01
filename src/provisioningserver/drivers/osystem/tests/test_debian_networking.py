@@ -119,7 +119,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         return {mac: ips}
 
     def test__always_generates_lo(self):
-        self.assertIn('auto lo', compose_network_interfaces([], {}, {}))
+        self.assertIn('auto lo', compose_network_interfaces([], [], {}, {}))
 
     def test__generates_DHCPv4_config_if_IPv4_not_disabled(self):
         interface = factory.make_name('eth')
@@ -127,7 +127,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         self.assertIn(
             "\niface %s inet dhcp\n" % interface,
             compose_network_interfaces(
-                self.make_listing(interface, mac), {}, {}))
+                self.make_listing(interface, mac), [], {}, {}))
 
     def test__generates_DHCPv4_config_if_no_IPv6_configured(self):
         interface = factory.make_name('eth')
@@ -135,7 +135,8 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         self.assertIn(
             "\niface %s inet dhcp\n" % interface,
             compose_network_interfaces(
-                self.make_listing(interface, mac), {}, {}, disable_ipv4=True))
+                self.make_listing(interface, mac), [], {}, {},
+                disable_ipv4=True))
 
     def test__generates_no_DHCPv4_config_if_node_should_use_IPv6_only(self):
         mac = factory.make_mac_address()
@@ -144,7 +145,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         self.assertNotIn(
             " inet ",
             compose_network_interfaces(
-                self.make_listing(mac=mac), self.make_mapping(mac), {},
+                self.make_listing(mac=mac), [], self.make_mapping(mac), {},
                 disable_ipv4=True))
 
     def test__generates_static_IPv6_config(self):
@@ -155,7 +156,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         self.assertIn(
             "\niface %s inet6 static" % interface,
             compose_network_interfaces(
-                self.make_listing(interface, mac),
+                self.make_listing(interface, mac), [],
                 self.make_mapping(mac, {ipv6}), {}, disable_ipv4=disable_ipv4))
 
     def test__passes_ip_and_gateway_when_creating_IPv6_stanza(self):
@@ -167,8 +168,8 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         fake.return_value = factory.make_name('stanza')
 
         compose_network_interfaces(
-            self.make_listing(interface, mac), self.make_mapping(mac, {ipv6}),
-            self.make_mapping(mac, {gateway}))
+            self.make_listing(interface, mac), [],
+            self.make_mapping(mac, {ipv6}), self.make_mapping(mac, {gateway}))
 
         self.assertThat(fake, MockCalledOnceWith(interface, ipv6, gateway))
 
@@ -179,7 +180,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         fake.return_value = factory.make_name('stanza')
 
         compose_network_interfaces(
-            self.make_listing(interface, mac), self.make_mapping(mac), {})
+            self.make_listing(interface, mac), [], self.make_mapping(mac), {})
 
         self.assertThat(
             fake,
@@ -189,7 +190,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
         interface = factory.make_name('eth')
 
         interfaces_file = compose_network_interfaces(
-            self.make_listing(interface), {}, {})
+            self.make_listing(interface), [], {}, {})
 
         self.assertIn('auto %s' % interface, interfaces_file)
         self.assertEqual(1, interfaces_file.count('auto %s' % interface))

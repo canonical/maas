@@ -90,8 +90,9 @@ class UbuntuOS(OperatingSystem):
             return None
         return UbuntuDistroInfo()._format("fullname", row)
 
-    def compose_curtin_network_preseed(self, interfaces, ips_mapping,
-                                       gateways_mapping, disable_ipv4=False):
+    def compose_curtin_network_preseed(self, interfaces, auto_interfaces,
+                                       ips_mapping, gateways_mapping,
+                                       disable_ipv4=False):
         """As defined in `OperatingSystem`: generate networking Curtin preseed.
 
         Supports:
@@ -101,7 +102,7 @@ class UbuntuOS(OperatingSystem):
         * Disabling IPv4.
         """
         interfaces_file = compose_network_interfaces(
-            interfaces, ips_mapping=ips_mapping,
+            interfaces, auto_interfaces, ips_mapping=ips_mapping,
             gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4)
         udev_rules = compose_network_interfaces_udev_rules(interfaces)
         write_files = {

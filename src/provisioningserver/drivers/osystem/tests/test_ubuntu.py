@@ -93,7 +93,7 @@ class TestUbuntuOS(MAASTestCase):
 class TestComposeCurtinNetworkPreseed(MAASTestCase):
 
     def test__returns_list_of_dicts(self):
-        preseed = UbuntuOS().compose_curtin_network_preseed([], {}, {})
+        preseed = UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
         self.assertIsInstance(preseed, list)
         self.assertThat(preseed, HasLength(2))
         [write_files, late_commands] = preseed
@@ -113,12 +113,12 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
             AllMatch(IsInstance(list)))
 
     def test__installs_and_moves_network_interfaces_file(self):
-        interfaces_file = compose_network_interfaces([], {}, {})
+        interfaces_file = compose_network_interfaces([], [], {}, {})
         write_text_file = self.patch_autospec(
             ubuntu_module, 'compose_write_text_file')
         mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
 
-        UbuntuOS().compose_curtin_network_preseed([], {}, {})
+        UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
 
         temp_path = '/tmp/maas-etc-network-interfaces'
         self.expectThat(
@@ -134,7 +134,7 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
             ubuntu_module, 'compose_write_text_file')
         mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
 
-        UbuntuOS().compose_curtin_network_preseed([], {}, {})
+        UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
 
         temp_path = '/tmp/maas-udev-70-persistent-net.rules'
         self.expectThat(

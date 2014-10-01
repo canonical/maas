@@ -191,6 +191,8 @@ class ComposeCurtinNetworkPreseed(amp.Command):
     :param osystem: Operating system identifier, e.g. `ubuntu`.
     :param config: A dict detailing the network configuration:
         `interfaces` maps to a list of pairs of interface name and MAC address.
+        `auto_interfaces` maps to a list of MAC addresses for those network
+        interfaces that should come up automatically on node boot.
         `ips_mapping` maps to a dict which maps MAC addresses to lists of
         IP addresses (at most one IPv4 and one IPv6 each) to be assigned to the
         corresponding network interfaces.

@@ -68,11 +68,13 @@ def has_static_ipv6_address(mapping):
     return False
 
 
-def compose_network_interfaces(interfaces, ips_mapping, gateways_mapping,
-                               disable_ipv4=False):
+def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
+                               gateways_mapping, disable_ipv4=False):
     """Return contents for a node's `/etc/network/interfaces` file.
 
     :param interfaces: A list of interface/MAC pairs for the node.
+    :param auto_interfaces: A list of MAC addresses whose network interfaces
+        should come up automatically on node boot.
     :param ips_mapping: A dict mapping MAC addresses to containers of the
         corresponding network interfaces' IP addresses.
     :param gateways_mapping: A `defaultdict` mapping MAC addresses to

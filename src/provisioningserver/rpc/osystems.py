@@ -117,13 +117,16 @@ def get_preseed_data(
             metadata_url.geturl())
 
 
-def compose_curtin_network_preseed(os_name, interfaces, ips_mapping,
-                                   gateways_mapping, disable_ipv4):
+def compose_curtin_network_preseed(os_name, interfaces, auto_interfaces,
+                                   ips_mapping, gateways_mapping,
+                                   disable_ipv4):
     """Compose Curtin network preseed for a node.
 
     :param os_name: Identifying name of the operating system for which a
         preseed should be generated.
     :param interfaces: A list of interface/MAC pairs for the node.
+    :param auto_interfaces: A list of MAC addresses whose network interfaces
+        should come up automatically on node boot.
     :param ips_mapping: A dict mapping MAC addresses to containers of the
         corresponding network interfaces' IP addresses.
     :param gateways_mapping: A `defaultdict` mapping MAC addresses to
@@ -137,5 +140,5 @@ def compose_curtin_network_preseed(os_name, interfaces, ips_mapping,
         raise exceptions.NoSuchOperatingSystem(os_name)
     else:
         return osystem.compose_curtin_network_preseed(
-            interfaces, ips_mapping, gateways_mapping,
-            disable_ipv4=disable_ipv4)
+            interfaces, auto_interfaces, ips_mapping=ips_mapping,
+            gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4)

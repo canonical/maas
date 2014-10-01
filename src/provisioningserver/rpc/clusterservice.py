@@ -210,12 +210,13 @@ class Cluster(RPCProtocol):
         """
         interfaces = config.get('interfaces', [])
         interfaces = [tuple(interface) for interface in interfaces]
+        auto_interfaces = config.get('auto_interfaces', [])
         ips_mapping = config.get('ips_mapping', {})
         gateways_mapping = config.get('gateways_mapping', {})
         return {
             'data': compose_curtin_network_preseed(
-                osystem, interfaces, ips_mapping, gateways_mapping,
-                disable_ipv4=disable_ipv4),
+                osystem, interfaces, auto_interfaces, ips_mapping=ips_mapping,
+                gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4),
             }
 
     @log_call(level=logging.DEBUG)

@@ -207,6 +207,7 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
         mac = factory.make_mac_address()
         return {
             'interfaces': [(factory.make_name('eth'), mac)],
+            'auto_interfaces': [mac],
             'ips_mapping': {
                 mac: [
                     factory.make_ipv4_address(),
