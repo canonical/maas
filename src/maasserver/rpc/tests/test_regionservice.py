@@ -666,6 +666,26 @@ class TestRegionProtocol_RegisterEventType(MAASTestCase):
                 name=name, description=description, level=level)
         )
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_register_event_type_does_not_error_for_existing_event_types(self):
+        # This is a regression test for bug 1373357.
+        name = factory.make_name('name')
+        old_description = factory.make_name('old-description')
+        level = random.randint(0, 100)
+        response = yield call_responder(
+            Region(), RegisterEventType,
+            {b'name': name, b'description': old_description, b'level': level})
+        self.assertEqual({}, response)
+
+        new_description = factory.make_name('new-description')
+        response = yield call_responder(
+            Region(), RegisterEventType,
+            {b'name': name, b'description': new_description, b'level': level})
+        # If we get this far, no error has been raised, even though we
+        # sent a duplicate request for registration.
+        self.assertEqual({}, response)
+
 
 class TestRegionProtocol_SendEvent(MAASTestCase):
 
