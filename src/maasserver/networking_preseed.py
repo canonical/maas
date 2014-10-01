@@ -297,3 +297,20 @@ def map_gateways(node):
             if cluster_interface.manages_static_range():
                 add_ip_to_mapping(mapping, mac, cluster_interface.router_ip)
     return mapping
+
+
+def find_macs_for_automatic_interfaces(node):
+    """Return those MAC addresses for `node` that should come up on boot.
+
+    These are the MACs for the network interfaces that should be enabled when
+    a node boots.  If the node has `MACAddress` entries on managed networks,
+    these will be returned; if it doesn't, all of its `MACAddress` enries will
+    be returned.
+
+    :param node: A `Node`.
+    :return: A list of normalised MAC address strings.
+    """
+    macs = node.mac_addresses_on_managed_interfaces()
+    if len(macs) == 0:
+        macs = node.macaddress_set.all()
+    return [normalise_mac(unicode(mac.mac_address)) for mac in macs]

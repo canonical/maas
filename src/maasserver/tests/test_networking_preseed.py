@@ -28,6 +28,7 @@ from maasserver.networking_preseed import (
     add_ip_to_mapping,
     extract_mac_string,
     extract_network_interfaces,
+    find_macs_for_automatic_interfaces,
     generate_dns_server_entry,
     generate_ethernet_link_entry,
     generate_network_entry,
@@ -711,3 +712,39 @@ class TestMapGateways(MAASServerTestCase):
                     },
             },
             map_gateways(node))
+
+
+class TestFindMACsForAutomaticInterfaces(MAASServerTestCase):
+
+    def test__returns_netboot_interface_in_simple_case(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.get_primary_mac().mac_address
+        self.assertEqual(
+            [normalise_mac(unicode(mac))],
+            find_macs_for_automatic_interfaces(node))
+
+    def test__returns_only_macs_on_managed_networks_if_connected(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        boot_mac = node.get_primary_mac().mac_address
+        factory.make_MACAddress(
+            node=node,
+            cluster_interface=factory.make_NodeGroupInterface(
+                node.nodegroup,
+                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
+        self.assertEqual(
+            [normalise_mac(unicode(boot_mac))],
+            find_macs_for_automatic_interfaces(node))
+
+    def test__returns_all_macs_if_no_managed_networks_connected(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        mac1 = node.get_primary_mac().mac_address
+        other_mac = factory.make_MACAddress(
+            node=node,
+            cluster_interface=factory.make_NodeGroupInterface(
+                node.nodegroup,
+                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
+        mac2 = other_mac.mac_address
+        self.assertItemsEqual(
+            [normalise_mac(unicode(mac1)), normalise_mac(unicode(mac2))],
+            find_macs_for_automatic_interfaces(node))
