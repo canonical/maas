@@ -531,7 +531,13 @@ class ClusterClientService(TimerService, object):
             info_url = self._get_rpc_info_url()
             info = yield self._fetch_rpc_info(info_url)
             eventloops = info["eventloops"]
-            yield self._update_connections(eventloops)
+            if eventloops is None:
+                # This means that the region process we've just asked about
+                # RPC event-loop endpoints is not running the RPC advertising
+                # service. It could be just starting up for example.
+                log.msg("Region is not advertising RPC endpoints.")
+            else:
+                yield self._update_connections(eventloops)
         except ConnectError as error:
             self._update_interval(None, len(self.connections))
             log.msg(
@@ -541,7 +547,11 @@ class ClusterClientService(TimerService, object):
             self._update_interval(None, len(self.connections))
             log.err()
         else:
-            self._update_interval(len(eventloops), len(self.connections))
+            if eventloops is None:
+                # The advertising service on the region was not running yet.
+                self._update_interval(None, len(self.connections))
+            else:
+                self._update_interval(len(eventloops), len(self.connections))
 
     @staticmethod
     def _get_rpc_info_url():

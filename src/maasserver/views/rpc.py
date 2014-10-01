@@ -29,15 +29,21 @@ from maasserver import eventloop
 def info(request):
     """View returning a JSON document with information about RPC endpoints.
 
-    Currently the only information returned is a list of `(host, port)`
-    tuples on which the region has listening RPC endpoints.
+    Currently the only information returned is a list of `(host, port)` tuples
+    on which the region has listening RPC endpoints.
+
+    When the `rpc-advertise` service is not running this returns `None`
+    instead of the list of event-loop endpoints. This denotes something along
+    the lines of "I don't know". The cluster should not act on this, and
+    instead ask again later.
+
     """
     try:
         advertiser = eventloop.services.getServiceNamed("rpc-advertise")
     except KeyError:
         # RPC advertising service has not been created, so we declare
         # that there are no endpoints *at all*.
-        endpoints = {}
+        endpoints = None
     else:
         if advertiser.running:
             endpoints = {}
@@ -49,7 +55,7 @@ def info(request):
         else:
             # RPC advertising service is not running, so we declare that
             # there are no endpoints *at all*.
-            endpoints = {}
+            endpoints = None
 
     # Each endpoint is an entry point into this event-loop.
     info = {"eventloops": endpoints}

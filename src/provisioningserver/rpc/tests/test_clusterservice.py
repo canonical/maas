@@ -586,6 +586,30 @@ class TestClusterClientService(MAASTestCase):
             MockCalledOnceWith(host3client.eventloop, host3client.address))
         self.assertThat(_drop_connection, MockCalledWith(host2client))
 
+    @inlineCallbacks
+    def test__update_only_updates_interval_when_eventloops_are_unknown(self):
+        service = ClusterClientService(Clock())
+        self.patch_autospec(service, "_get_rpc_info_url")
+        self.patch_autospec(service, "_fetch_rpc_info")
+        self.patch_autospec(service, "_update_connections")
+        # Return a token from _get_rpc_info_url.
+        service._get_rpc_info_url.return_value = sentinel.info_url
+        # Return None instead of a list of event-loop endpoints. This is the
+        # response that the region will give when the advertising service is
+        # not running.
+        service._fetch_rpc_info.return_value = {"eventloops": None}
+        # Set the step to a bogus value so we can see it change.
+        service.step = sentinel.unset
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        yield service.startService()
+
+        self.assertThat(service._update_connections, MockNotCalled())
+        self.assertThat(service.step, Equals(service.INTERVAL_LOW))
+        self.assertEqual(
+            "Region is not advertising RPC endpoints.", logger.dump())
+
     def test__make_connection(self):
         service = ClusterClientService(Clock())
         connectProtocol = self.patch(clusterservice, "connectProtocol")

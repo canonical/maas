@@ -43,13 +43,23 @@ is_valid_port = MatchesAll(
 
 class RPCViewTest(MAASServerTestCase):
 
-    def test_rpc_info(self):
+    def test_rpc_info_when_rpc_advertise_not_present(self):
+        getServiceNamed = self.patch_autospec(
+            eventloop.services, "getServiceNamed")
+        getServiceNamed.side_effect = KeyError
+
         response = self.client.get(reverse('rpc-info'))
         self.assertEqual("application/json", response["Content-Type"])
         info = json.loads(response.content)
-        self.assertEqual({"eventloops": {}}, info)
+        self.assertEqual({"eventloops": None}, info)
 
-    def test_rpc_info_when_rpc_running(self):
+    def test_rpc_info_when_rpc_advertise_not_running(self):
+        response = self.client.get(reverse('rpc-info'))
+        self.assertEqual("application/json", response["Content-Type"])
+        info = json.loads(response.content)
+        self.assertEqual({"eventloops": None}, info)
+
+    def test_rpc_info_when_rpc_advertise_running(self):
         self.useFixture(RegionEventLoopFixture("rpc", "rpc-advertise"))
 
         eventloop.start().wait(5)
