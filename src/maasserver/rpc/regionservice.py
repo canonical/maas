@@ -62,6 +62,7 @@ from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     deferWithTimeout,
+    pause,
     synchronous,
     )
 from twisted.application import service
@@ -560,9 +561,11 @@ class RegionAdvertisingService(TimerService, object):
 
     @asynchronous
     def startService(self):
-        self.starting = deferToThread(self.prepare)
-        self.starting.addCallback(lambda ignore: (
-            super(RegionAdvertisingService, self).startService()))
+        self.starting = self._prepareService()
+
+        def prepared(_):
+            return super(RegionAdvertisingService, self).startService()
+        self.starting.addCallback(prepared)
 
         def ignore_cancellation(failure):
             failure.trap(defer.CancelledError)
@@ -584,6 +587,32 @@ class RegionAdvertisingService(TimerService, object):
             # Start-up has not yet finished; cancel it.
             self.starting.cancel()
             return self.starting
+
+    @inlineCallbacks
+    def _prepareService(self):
+        """Keep calling `prepare` until it works.
+
+        The call to `prepare` can sometimes fail, particularly after starting
+        the region for the first time on a fresh MAAS installation, but the
+        mechanism is not yet understood. We take a pragmatic stance and just
+        keep trying until it works.
+
+        Each failure will be logged, and there will be a pause of 5 seconds
+        between each attempt.
+
+        """
+        while True:
+            try:
+                yield deferToThread(self.prepare)
+            except defer.CancelledError:
+                raise
+            except Exception as e:
+                log.err(e, (
+                    "Preparation of %s failed; will try again in "
+                    "5 seconds." % self.__class__.__name__))
+                yield pause(5)
+            else:
+                break
 
     @synchronous
     @synchronised(lock)

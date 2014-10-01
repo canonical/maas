@@ -1417,25 +1417,25 @@ class TestRegionAdvertisingService(MAASTestCase):
     @wait_for_reactor
     def test_start_up_errors_are_logged(self):
         service = RegionAdvertisingService()
-
+        # Prevent real pauses.
+        self.patch_autospec(regionservice, "pause").return_value = None
         # Ensure that service.prepare fails with a obvious error.
         exception = ValueError("You don't vote for kings!")
-        self.patch(service, "prepare").side_effect = exception
+        self.patch(service, "prepare").side_effect = [exception, None]
+        # Capture all Twisted logs.
+        logger = self.useFixture(TwistedLoggerFixture())
 
-        err_calls = []
-        self.patch(log, "err", err_calls.append)
-
-        err_calls_expected = [
-            AfterPreprocessing(
-                (lambda failure: failure.value),
-                Is(exception)),
-        ]
-
-        def check(ignore):
-            self.assertThat(err_calls, MatchesListwise(err_calls_expected))
+        def check_logs(ignore):
+            self.assertDocTestMatches(
+                """\
+                Preparation of ... failed; will try again in 5 seconds.
+                Traceback (most recent call last):...
+                Failure: exceptions.ValueError: You don't vote for kings!
+                """,
+                logger.dump())
 
         service.startService()
-        service.starting.addCallback(check)
+        service.starting.addCallback(check_logs)
         return service.starting
 
     @wait_for_reactor
