@@ -45,7 +45,10 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
-from maasserver.rpc import regionservice
+from maasserver.rpc import (
+    events as events_module,
+    regionservice,
+    )
 from maasserver.rpc.regionservice import (
     Region,
     RegionAdvertisingService,
@@ -739,7 +742,8 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
 
     @wait_for_reactor
     @inlineCallbacks
-    def test_create_node_raises_if_unknown_node(self):
+    def test_create_node_logs_if_unknown_node(self):
+        maaslog = self.patch(events_module, 'maaslog')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
@@ -755,11 +759,13 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
                 b'description': event_description,
             })
 
-        def check(error):
-            self.assertIsInstance(error, Failure)
-            self.assertIsInstance(error.value, NoSuchNode)
+        def check(result):
+            self.assertThat(
+                maaslog.warning, MockCalledOnceWith(
+                    "Event '%s: %s' sent for non-existent node '%s'.",
+                    name, event_description, system_id))
 
-        yield d.addErrback(check)
+        yield d.addCallback(check)
 
 
 class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
@@ -840,6 +846,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
     @wait_for_reactor
     @inlineCallbacks
     def test_create_node_raises_if_unknown_node(self):
+        maaslog = self.patch(events_module, 'maaslog')
         name = factory.make_name('type_name')
         description = factory.make_name('description')
         level = random.randint(0, 100)
@@ -855,11 +862,14 @@ class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
                 b'description': event_description,
             })
 
-        def check(error):
-            self.assertIsInstance(error, Failure)
-            self.assertIsInstance(error.value, NoSuchNode)
+        def check(result):
+            self.assertThat(
+                maaslog.warning, MockCalledOnceWith(
+                    "Event '%s: %s' sent for non-existent node with MAC "
+                    "address '%s'.",
+                    name, event_description, mac_address))
 
-        yield d.addErrback(check)
+        yield d.addCallback(check)
 
 
 class TestRegionServer(MAASServerTestCase):

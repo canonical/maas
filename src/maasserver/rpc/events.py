@@ -26,11 +26,12 @@ from maasserver.models import (
     Node,
     )
 from maasserver.utils.async import transactional
-from provisioningserver.rpc.exceptions import (
-    NoSuchEventType,
-    NoSuchNode,
-    )
+from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.utils.twisted import synchronous
+
+
+maaslog = get_maas_logger("region.events")
 
 
 @synchronous
@@ -59,7 +60,13 @@ def send_event(system_id, type_name, description=''):
     try:
         node = Node.objects.get(system_id=system_id)
     except Node.DoesNotExist:
-        raise NoSuchNode.from_system_id(system_id)
+        # The node doesn't exist, but we don't raise an exception - it's
+        # entirely possible the cluster has started sending events for a
+        # node that we don't know about yet.
+        maaslog.warning(
+            "Event '%s: %s' sent for non-existent node '%s'.",
+            type_name, description, system_id)
+        return
 
     Event.objects.create(
         node=node, type=event_type, description=description)
@@ -80,7 +87,14 @@ def send_event_mac_address(mac_address, type_name, description=''):
     try:
         node = MACAddress.objects.get(mac_address=mac_address).node
     except MACAddress.DoesNotExist:
-        raise NoSuchNode.from_mac_address(mac_address)
+        # The node doesn't exist, but we don't raise an exception - it's
+        # entirely possible the cluster has started sending events for a
+        # node that we don't know about yet.
+        maaslog.warning(
+            "Event '%s: %s' sent for non-existent node with MAC "
+            "address '%s'.",
+            type_name, description, mac_address)
+        return
 
     Event.objects.create(
         node=node, type=event_type, description=description)
