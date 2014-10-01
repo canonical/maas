@@ -14,12 +14,22 @@ str = None
 __metaclass__ = type
 __all__ = [
     "get_region_certificate",
+    "get_shared_secret",
 ]
 
 from datetime import datetime
+import os
 
 from maasserver import locks
 from maasserver.models.config import Config
+from maasserver.utils.async import transactional
+from provisioningserver.security import (
+    get_shared_secret_filesystem_path,
+    get_shared_secret_from_filesystem,
+    set_shared_secret_on_filesystem,
+    to_bin,
+    to_hex,
+    )
 from provisioningserver.utils.twisted import synchronous
 from pytz import UTC
 from twisted.internet import ssl
@@ -58,6 +68,7 @@ def generate_region_certificate():
 
 
 @synchronous
+@transactional
 def get_region_certificate():
     cert = load_region_certificate()
     if cert is None:
@@ -68,3 +79,38 @@ def get_region_certificate():
                 cert = generate_region_certificate()
                 save_region_certificate(cert)
     return cert
+
+
+@synchronous
+@transactional
+def get_shared_secret():
+    # Get a full region-wide lock.
+    with locks.security:
+        # Load secret from database, if it exists.
+        secret_in_db_hex = Config.objects.get_config("rpc_shared_secret")
+        if secret_in_db_hex is None:
+            secret_in_db = None
+        else:
+            secret_in_db = to_bin(secret_in_db_hex)
+        # Load secret from the filesystem, if it exists.
+        secret_on_fs = get_shared_secret_from_filesystem()
+
+        if secret_in_db is None and secret_on_fs is None:
+            secret = os.urandom(16)  # 16-bytes of crypto-standard noise.
+            Config.objects.set_config("rpc_shared_secret", to_hex(secret))
+            set_shared_secret_on_filesystem(secret)
+        elif secret_in_db is None:
+            secret = secret_on_fs
+            Config.objects.set_config("rpc_shared_secret", to_hex(secret))
+        elif secret_on_fs is None:
+            secret = secret_in_db
+            set_shared_secret_on_filesystem(secret)
+        elif secret_in_db == secret_on_fs:
+            secret = secret_in_db  # or secret_on_fs.
+        else:
+            raise AssertionError(
+                "The secret stored in the database does not match the secret "
+                "stored on the filesystem at %s. Please investigate." %
+                get_shared_secret_filesystem_path())
+
+        return secret

@@ -14,18 +14,25 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from binascii import b2a_hex
 from datetime import datetime
+from os import unlink
 
+from fixtures import EnvironmentVariableFixture
 from maasserver import security
 from maasserver.models.config import Config
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.testcase import MAASTestCase
+from provisioningserver.utils.fs import write_text_file
 from pytz import UTC
 from testtools.matchers import (
     AfterPreprocessing,
     Equals,
+    FileContains,
+    GreaterThan,
     IsInstance,
     MatchesAll,
+    MatchesAny,
     )
 from twisted.internet import ssl
 
@@ -94,3 +101,61 @@ class TestCertificateFunctions(MAASServerTestCase):
         cert = security.get_region_certificate()
         self.assertThat(cert, is_valid_region_certificate)
         self.assertEqual(cert, security.load_region_certificate())
+
+
+is_valid_secret = MatchesAll(
+    IsInstance(bytes), AfterPreprocessing(
+        len, MatchesAny(Equals(16), GreaterThan(16))))
+
+
+class TestGetSharedSecret(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestGetSharedSecret, self).setUp()
+        self.useFixture(EnvironmentVariableFixture(
+            "MAAS_ROOT", self.make_dir()))
+
+    def test__generates_new_secret_when_none_exists(self):
+        secret = security.get_shared_secret()
+        self.assertThat(secret, is_valid_secret)
+
+    def test__same_secret_is_returned_on_subsequent_calls(self):
+        self.assertEqual(
+            security.get_shared_secret(),
+            security.get_shared_secret())
+
+    def test__uses_database_secret_when_none_on_fs(self):
+        secret_before = security.get_shared_secret()
+        unlink(security.get_shared_secret_filesystem_path())
+        secret_after = security.get_shared_secret()
+        self.assertEqual(secret_before, secret_after)
+        # The secret found in the database is written to the filesystem.
+        self.assertThat(
+            security.get_shared_secret_filesystem_path(),
+            FileContains(b2a_hex(secret_after)))
+
+    def test__uses_filesystem_secret_when_none_in_database(self):
+        secret_before = security.get_shared_secret()
+        Config.objects.set_config("rpc_shared_secret", None)
+        secret_after = security.get_shared_secret()
+        self.assertEqual(secret_before, secret_after)
+        # The secret found on the filesystem is saved in the database.
+        self.assertEqual(
+            b2a_hex(secret_after),
+            Config.objects.get_config("rpc_shared_secret"))
+
+    def test__errors_when_database_value_cannot_be_decoded(self):
+        security.get_shared_secret()  # Ensure that the directory exists.
+        Config.objects.set_config("rpc_shared_secret", "_")
+        self.assertRaises(TypeError, security.get_shared_secret)
+
+    def test__errors_when_database_and_filesystem_values_differ(self):
+        security.get_shared_secret()  # Ensure that the directory exists.
+        Config.objects.set_config("rpc_shared_secret", "666f6f")
+        write_text_file(
+            security.get_shared_secret_filesystem_path(), "626172")
+        self.assertRaises(AssertionError, security.get_shared_secret)
+
+    def test__deals_fine_with_whitespace_in_database_value(self):
+        Config.objects.set_config("rpc_shared_secret", " 666f6f\n")
+        self.assertEqual(b"foo", security.get_shared_secret())

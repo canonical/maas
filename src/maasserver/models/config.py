@@ -56,6 +56,7 @@ def get_default_config():
         'ntp_server': 'ntp.ubuntu.com',
         # RPC configuration.
         'rpc_region_certificate': None,
+        'rpc_shared_secret': None,
         # Third Party
         'enable_third_party_drivers': True,
         'enable_disk_erasing_on_release': False,
