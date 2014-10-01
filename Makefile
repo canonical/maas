@@ -133,18 +133,26 @@ lint-css:
 	@find $(sources) -type f \
 	    -print0 | xargs -r0 $(pocketlint) --max-length=120
 
+# Python lint checks are time-intensive, so we run them in parallel.  It may
+# make things matters worse if the files need to be read from disk, though, so
+# this may need more tuning.
+# The -n50 -P4 setting roughly doubled speed on a high-end system with SSD and
+# all the files in cache.
 lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 lint-py: bin/flake8
-	@find $(sources) -name '*.py' ! -path '*/migrations/*' \
-	    -print0 | xargs -r0 bin/flake8 --ignore=E123 --config=/dev/null
+	@find $(sources) -name '*.py' ! -path '*/migrations/*' -print0 \
+	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123 --config=/dev/null
 	@./utilities/check-maaslog-exception
 
 lint-doc:
 	@./utilities/doc-lint
 
+# JavaScript lint is checked in parallel for speed.  The -n20 -P4 seetting
+# worked well on a multicore SSD machine with the files cached, roughly
+# doubling the speed, but it may need tuning for slower systems or cold caches.
 lint-js: sources = src/maasserver/static/js
 lint-js:
-	@find $(sources) -type f -print0 '(' -name '*.html' -o -name '*.js' ')' | xargs -r0 $(pocketlint)
+	@find $(sources) -type f -print0 '(' -name '*.html' -o -name '*.js' ')' | xargs -r0 -n20 -P4 $(pocketlint)
 
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
