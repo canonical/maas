@@ -18,6 +18,10 @@ __all__ = [
     ]
 
 import httplib
+from itertools import (
+    chain,
+    repeat,
+    )
 import json
 from time import sleep
 from urllib2 import (
@@ -116,6 +120,10 @@ def run(args):
     """
     maaslog.info("Starting cluster controller %s." % get_cluster_uuid())
     connection_details = register(args.server_url)
+    # Wait only two seconds between attempts during the first minute, then only
+    # check every minute.
+    waiting_times = chain(repeat(2, 30), repeat(60))
     while connection_details is None:
-        sleep(60)
+        waiting_time = next(waiting_times)
+        sleep(waiting_time)
         connection_details = register(args.server_url)
