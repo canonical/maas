@@ -22,14 +22,19 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
-from provisioningserver.rpc.cluster import GetPreseedData
+from provisioningserver.rpc.cluster import (
+    ComposeCurtinNetworkPreseed,
+    GetPreseedData,
+    )
+from provisioningserver.rpc.testing import always_succeed_with
 
 
 class PreseedRPCMixin:
     """Set-up a live RPC environment for testing.
 
     It creates a cluster connected by RPC that responds to the
-    `GetPreseedData` call with a simple `NotImplementedError`.
+    `GetPreseedData` call with a simple `NotImplementedError`.  The
+    `ComposeCurtinNetworkPreseed` call returns an empty list.
 
     Tests that mix this in can use their ``rpc_cluster`` attribute (an
     instance of :py:class:`MockLiveRegionToClusterRPCFixture`) to control the
@@ -48,6 +53,8 @@ class PreseedRPCMixin:
         # GetPreseedData call with a simple NotImplementedError.
         self.rpc_nodegroup = factory.make_NodeGroup()
         self.rpc_cluster = self.rpc_fixture.makeCluster(
-            self.rpc_nodegroup, GetPreseedData)
+            self.rpc_nodegroup, GetPreseedData, ComposeCurtinNetworkPreseed)
         self.rpc_cluster.GetPreseedData.side_effect = (
             NotImplementedError())
+        self.rpc_cluster.ComposeCurtinNetworkPreseed.side_effect = (
+            always_succeed_with({'data': []}))

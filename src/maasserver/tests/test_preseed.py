@@ -74,6 +74,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maastesting.matchers import MockCalledOnceWith
 from metadataserver.models import NodeKey
+from mock import ANY
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.utils import locate_config
 from provisioningserver.utils.enum import map_enum
@@ -885,8 +886,14 @@ class TestGetCurtinUserData(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
+
         user_data = get_curtin_userdata(node)
-        # Just check that the user data looks good.
+
+        self.expectThat(
+            self.rpc_cluster.ComposeCurtinNetworkPreseed,
+            MockCalledOnceWith(
+                ANY, osystem=node.get_osystem(), config=ANY,
+                disable_ipv4=node.disable_ipv4))
         self.assertIn("PREFIX='curtin'", user_data)
 
 

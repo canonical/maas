@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     ]
 
+import json
 from random import randint
 
 from maasserver import networking_preseed
@@ -26,6 +27,7 @@ from maasserver.enum import (
 from maasserver.exceptions import UnresolvableHost
 from maasserver.networking_preseed import (
     add_ip_to_mapping,
+    compose_curtin_network_preseed_for,
     extract_mac_string,
     extract_network_interfaces,
     find_macs_for_automatic_interfaces,
@@ -43,6 +45,7 @@ from maasserver.networking_preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
+from netaddr import IPAddress
 from testtools.matchers import HasLength
 
 
@@ -754,3 +757,51 @@ class TestFindMACsForAutomaticInterfaces(MAASServerTestCase):
         self.assertItemsEqual(
             [normalise_mac(unicode(mac1)), normalise_mac(unicode(mac2))],
             find_macs_for_automatic_interfaces(node))
+
+
+class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
+
+    def test__composes_config(self):
+        fake = self.patch_autospec(
+            networking_preseed, 'compose_curtin_network_preseed')
+        fake.return_value = []
+        node = factory.make_Node()
+        node.nodegroup.accept()
+        network = factory.make_ipv4_network(slash=24)
+        router = factory.pick_ip_in_network(network)
+        static_low = unicode(IPAddress(network.first + 1))
+        static_high = unicode(IPAddress(network.first + 2))
+        dyn_low = unicode(IPAddress(network.first + 3))
+        dyn_high = unicode(IPAddress(network.first + 4))
+        interface = factory.make_NodeGroupInterface(
+            node.nodegroup, network=network, router_ip=router,
+            static_ip_range_low=static_low, static_ip_range_high=static_high,
+            ip_range_low=dyn_low, ip_range_high=dyn_high,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac = factory.make_MACAddress(node=node, cluster_interface=interface)
+        extract_interfaces = self.patch_autospec(
+            networking_preseed, 'extract_network_interfaces')
+        extract_interfaces.return_value = [mac.mac_address]
+
+        compose_curtin_network_preseed_for(node)
+
+        expected_config = {
+            'interfaces': [mac.mac_address],
+            'auto_interfaces': [mac.mac_address],
+            'ips_mapping': {},
+            'gateways_mapping': {mac.mac_address: [router]},
+            }
+        self.assertThat(fake, MockCalledOnceWith(node, expected_config))
+
+    def test__returns_preseeds_as_list_of_text(self):
+        fake = self.patch_autospec(
+            networking_preseed, 'compose_curtin_network_preseed')
+        preseed_data = {factory.make_name('key'): factory.make_name('value')}
+        fake.return_value = [preseed_data]
+        node = factory.make_Node()
+
+        preseed = compose_curtin_network_preseed_for(node)
+
+        self.assertIsInstance(preseed, list)
+        [data] = preseed
+        self.assertEqual(preseed_data, json.loads(data))

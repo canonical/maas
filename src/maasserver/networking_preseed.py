@@ -25,10 +25,14 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'compose_curtin_network_preseed_for',
     'generate_networking_config',
     ]
 
+import json
+
 from lxml import etree
+from maasserver.clusterrpc.osystems import compose_curtin_network_preseed
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models.nodeprobeddetails import get_probed_details
@@ -317,3 +321,19 @@ def find_macs_for_automatic_interfaces(node):
     if len(macs) == 0:
         macs = node.macaddress_set.all()
     return [normalise_mac(unicode(mac.mac_address)) for mac in macs]
+
+
+def compose_curtin_network_preseed_for(node):
+    """Compose OS-dependent preseed for configuring networking on `node`.
+
+    :param node: A `Node`.
+    :return: A list of preseed strings.
+    """
+    config = {
+        'interfaces': extract_network_interfaces(node),
+        'auto_interfaces': find_macs_for_automatic_interfaces(node),
+        'ips_mapping': map_static_ips(node),
+        'gateways_mapping': map_gateways(node),
+        }
+    preseed = compose_curtin_network_preseed(node, config)
+    return [json.dumps(item) for item in preseed]

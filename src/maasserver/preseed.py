@@ -52,6 +52,7 @@ from maasserver.models import (
     Config,
     DHCPLease,
     )
+from maasserver.networking_preseed import compose_curtin_network_preseed_for
 from maasserver.node_status import COMMISSIONING_LIKE_STATUSES
 from maasserver.server_address import get_maas_facing_server_host
 from maasserver.third_party_drivers import get_third_party_driver
@@ -135,6 +136,7 @@ def compose_curtin_maas_reporter(node):
     return [yaml.safe_dump(reporter)]
 
 
+# This function is being replaced with compose_curtin_network_preseed_for.
 def compose_curtin_network_preseed(node):
     """Return a list of curtin preseeds for configuring a node's networking.
 
@@ -205,7 +207,7 @@ def get_curtin_userdata(node):
     installer_url = get_curtin_installer_url(node)
     main_config = get_curtin_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
-    network_config = compose_curtin_network_preseed(node)
+    network_config = compose_curtin_network_preseed_for(node)
     return pack_install(
         configs=[main_config] + reporter_config + network_config,
         args=[installer_url])
