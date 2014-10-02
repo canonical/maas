@@ -32,6 +32,7 @@ from maasserver import (
     )
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.rpc import (
+    clusters,
     configuration,
     events,
     leases,
@@ -167,6 +168,11 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.GetProxies`.
         """
         d = deferToThread(configuration.get_proxies)
+        return d
+
+    @region.GetClusterStatus.responder
+    def get_cluster_status(self, uuid):
+        d = deferToThread(clusters.get_cluster_status, uuid)
         return d
 
     @region.MarkNodeFailed.responder

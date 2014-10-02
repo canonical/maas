@@ -25,6 +25,7 @@ __all__ = [
 
 from provisioningserver.rpc.arguments import (
     Bytes,
+    Choice,
     ParsedURL,
     StructureAsJSON,
     )
@@ -151,6 +152,29 @@ class GetProxies(amp.Command):
         (b"https", ParsedURL(optional=True)),
     ]
     errors = []
+
+
+class GetClusterStatus(amp.Command):
+    """Return the status of the given cluster.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        # The cluster UUID.
+        (b"uuid", amp.Unicode()),
+    ]
+    _response_status_choices = {
+        0: b"PENDING",   # NODEGROUP_STATUS.PENDING
+        1: b"ACCEPTED",  # NODEGROUP_STATUS.ACCEPTED
+        2: b"REJECTED",  # NODEGROUP_STATUS.REJECTED
+    }
+    response = [
+        (b"status", Choice(_response_status_choices)),
+    ]
+    errors = {
+        NoSuchCluster: b"NoSuchCluster",
+    }
 
 
 class MarkNodeFailed(amp.Command):

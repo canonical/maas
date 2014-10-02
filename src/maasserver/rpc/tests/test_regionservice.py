@@ -35,6 +35,7 @@ from maasserver import (
 from maasserver.bootresources import get_simplestream_endpoint
 from maasserver.enum import (
     NODE_STATUS,
+    NODEGROUP_STATUS_CHOICES,
     POWER_STATE,
     )
 from maasserver.models import (
@@ -91,6 +92,7 @@ from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
     GetClusterInterfaces,
+    GetClusterStatus,
     GetProxies,
     Identify,
     ListNodePowerParameters,
@@ -472,6 +474,37 @@ class TestRegionProtocol_GetProxies(MAASTestCase):
         self.assertEqual(
             {b"http": url, b"https": url},
             response)
+
+
+class TestRegionProtocol_GetClusterStatus(MAASTestCase):
+
+    def test_get_boot_sources_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(GetClusterStatus.commandName)
+        self.assertIsNot(responder, None)
+
+    @wait_for_reactor
+    def test_get_cluster_status_can_be_called(self):
+        uuid = factory.make_name("uuid")
+        d = call_responder(Region(), GetClusterStatus, {b"uuid": uuid})
+        return assert_fails_with(d, NoSuchCluster)
+
+    @transactional
+    def make_cluster_with_random_status(self):
+        status = factory.pick_choice(NODEGROUP_STATUS_CHOICES)
+        nodegroup = factory.make_NodeGroup(status=status)
+        return nodegroup.uuid, status
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_get_cluster_status_with_real_cluster(self):
+        uuid, status = yield deferToThread(
+            self.make_cluster_with_random_status)
+
+        response = yield call_responder(
+            Region(), GetClusterStatus, {b"uuid": uuid})
+
+        self.assertEqual({b"status": status}, response)
 
 
 class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
