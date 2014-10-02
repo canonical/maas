@@ -26,6 +26,7 @@ from maasserver import (
     )
 from maasserver.api import pxeconfig as pxeconfig_module
 from maasserver.api.pxeconfig import (
+    event_log_pxe_request,
     find_nodegroup_for_pxeconfig_request,
     get_boot_image,
     )
@@ -37,6 +38,7 @@ from maasserver.enum import (
     )
 from maasserver.models import (
     Config,
+    Event,
     MACAddress,
     )
 from maasserver.preseed import (
@@ -47,6 +49,7 @@ from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
+from maastesting.matchers import MockCalledOnceWith
 from mock import sentinel
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
@@ -444,3 +447,29 @@ class TestPXEConfigAPI(MAASServerTestCase):
 
         params_out = self.get_pxeconfig(params)
         self.assertEqual("hwe-s", params_out["subarch"])
+
+    def test_pxeconfig_calls_event_log_pxe_request(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        event_log_pxe_request = self.patch_autospec(
+            pxeconfig_module, 'event_log_pxe_request')
+        self.client.get(reverse('pxeconfig'), params)
+        self.assertThat(
+            event_log_pxe_request,
+            MockCalledOnceWith(node, node.get_boot_purpose()))
+
+    def test_event_log_pxe_request_for_known_boot_purpose(self):
+        purposes = [
+            ("commissioning", "commissioning"),
+            ("install", "d-i install"),
+            ("xinstall", "curtin install"),
+            ("local", "local boot"),
+            ("poweroff", "power off")]
+        for purpose, description in purposes:
+            node = factory.make_Node()
+            event_log_pxe_request(node, purpose)
+            self.assertEqual(
+                description,
+                Event.objects.get(node=node).description)

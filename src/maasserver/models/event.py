@@ -28,6 +28,7 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
+from provisioningserver.events import EVENT_DETAILS
 
 
 class EventManager(Manager):
@@ -51,6 +52,14 @@ class EventManager(Manager):
 
         Event.objects.create(
             node=node, type=event_type, description=event_description)
+
+    def create_node_event(self, system_id, event_type, event_description=''):
+        """Helper to register event and event type for the given node."""
+        self.register_event_and_event_type(
+            system_id=system_id, type_name=event_type,
+            type_description=EVENT_DETAILS[event_type].description,
+            type_level=EVENT_DETAILS[event_type].level,
+            event_description=event_description)
 
 
 class Event(CleanSave, TimestampedModel):

@@ -31,6 +31,7 @@ from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     BootResource,
     Config,
+    Event,
     MACAddress,
     NodeGroup,
     )
@@ -45,6 +46,7 @@ from maasserver.utils import (
     strip_domain,
     )
 from maasserver.utils.orm import get_one
+from provisioningserver.events import EVENT_TYPES
 from provisioningserver.kernel_opts import KernelParameters
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 import simplejson as json
@@ -105,6 +107,25 @@ def get_boot_image(
         osystem, architecture, subarchitecture, series, purpose,
         nodegroup.name)
     return None
+
+
+# XXX newell 2014-10-01 bug=1376489: Currently logging the pxe
+# request for the given boot purpose here. It would be better to
+# someday fix this to create the log entries when the file
+# transfer completes, rather than when we receive the first
+# (and potentially duplicate) packet of the request.
+def event_log_pxe_request(node, purpose):
+    """Log PXE request to node's event log."""
+    options = {
+        'commissioning': "commissioning",
+        'xinstall': "curtin install",
+        'install': "d-i install",
+        'local': "local boot",
+        'poweroff': "power off",
+    }
+    Event.objects.create_node_event(
+        system_id=node.system_id, event_type=EVENT_TYPES.NODE_PXE_REQUEST,
+        event_description=options[purpose])
 
 
 def pxeconfig(request):
@@ -184,6 +205,7 @@ def pxeconfig(request):
         purpose = "commissioning"  # enlistment
     else:
         purpose = node.get_boot_purpose()
+        event_log_pxe_request(node, purpose)
     if purpose == "xinstall":
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')

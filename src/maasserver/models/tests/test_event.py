@@ -23,6 +23,7 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from provisioningserver.events import EVENT_TYPES
 
 
 class EventTest(MAASServerTestCase):
@@ -51,4 +52,14 @@ class EventTest(MAASServerTestCase):
                 [logging.ERROR, logging.WARNING, logging.INFO]),
             event_description=description)
         self.assertIsNotNone(EventType.objects.get(name=type_name))
+        self.assertIsNotNone(Event.objects.get(node=node))
+
+    def test_create_node_event_creates_event(self):
+        # EventTypes that are currently being used for
+        # create_node_event
+        node = factory.make_Node()
+        event_type = random.choice([EVENT_TYPES.NODE_PXE_REQUEST])
+        Event.objects.create_node_event(
+            system_id=node.system_id, event_type=event_type)
+        self.assertIsNotNone(EventType.objects.get(name=event_type))
         self.assertIsNotNone(Event.objects.get(node=node))

@@ -52,6 +52,8 @@ class EVENT_TYPES:
     NODE_POWER_ON_FAILED = 'NODE_POWER_ON_FAILED'
     NODE_POWER_OFF_FAILED = 'NODE_POWER_OFF_FAILED'
     NODE_POWER_QUERY_FAILED = 'NODE_POWER_QUERY_FAILED'
+    # PXE request event.
+    NODE_PXE_REQUEST = 'NODE_PXE_REQUEST'
     # TFTP request event.
     NODE_TFTP_REQUEST = 'NODE_TFTP_REQUEST'
     # Other installation-related event types.
@@ -96,6 +98,10 @@ EVENT_DETAILS = {
     EVENT_TYPES.NODE_TFTP_REQUEST: EventDetail(
         description="TFTP Request",
         level=DEBUG,
+    ),
+    EVENT_TYPES.NODE_PXE_REQUEST: EventDetail(
+        description="PXE Request",
+        level=INFO,
     ),
     EVENT_TYPES.NODE_INSTALLATION_FINISHED: EventDetail(
         description="Installation complete",
