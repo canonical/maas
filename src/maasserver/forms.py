@@ -556,9 +556,9 @@ class AdminNodeForm(NodeForm):
     cpu_count = forms.IntegerField(
         required=False, initial=0, label="CPU Count")
     memory = forms.IntegerField(
-        required=False, initial=0, label="Memory")
+        required=False, initial=0, label="Memory (MB)")
     storage = forms.IntegerField(
-        required=False, initial=0, label="Disk space")
+        required=False, initial=0, label="Disk space (GB)")
 
     class Meta:
         model = Node
