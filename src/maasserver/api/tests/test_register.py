@@ -42,7 +42,11 @@ from mock import (
     ANY,
     Mock,
     )
-from testtools.matchers import MatchesStructure
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from testtools.matchers import (
+    Equals,
+    MatchesStructure,
+    )
 from testtools.testcase import ExpectedException
 
 
@@ -209,6 +213,11 @@ class TestRegisterAPI(MAASServerTestCase):
 
     This method can be called anonymously.
     """
+
+    def setUp(self):
+        super(TestRegisterAPI, self).setUp()
+        self.getClientFor = self.patch_autospec(
+            nodegroups_module, "getClientFor")
 
     def test_register_creates_nodegroup_and_interfaces(self):
         create_configured_master()
@@ -443,3 +452,14 @@ class TestRegisterAPI(MAASServerTestCase):
         self.assertEqual([], update_maas_url.call_args_list)
         # The master's maas_url field remains empty.
         self.assertEqual("", master.maas_url)
+
+    def test_register_nodegroup_when_rpc_not_connected(self):
+        create_configured_master()
+        self.getClientFor.side_effect = NoConnectionsAvailable
+        response = self.client.post(
+            reverse('nodegroups_handler'),
+            {'op': 'register', 'uuid': factory.make_UUID()})
+        self.expectThat(
+            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
+        self.expectThat(
+            response.content, Equals("Waiting for RPC connection."))

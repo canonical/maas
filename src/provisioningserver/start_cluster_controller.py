@@ -76,7 +76,12 @@ def register(server_url):
     :raise ClusterControllerRejected: if this system has been rejected as a
         cluster controller.
     """
-    known_responses = {httplib.OK, httplib.FORBIDDEN, httplib.ACCEPTED}
+    known_responses = {
+        httplib.ACCEPTED,
+        httplib.FORBIDDEN,
+        httplib.OK,
+        httplib.SERVICE_UNAVAILABLE,
+    }
 
     interfaces = json.dumps(discover_networks())
     client = make_anonymous_api_client(server_url)
@@ -103,6 +108,9 @@ def register(server_url):
         return json.loads(response.read())
     elif status_code == httplib.ACCEPTED:
         # Our application is still waiting for approval.  Keep trying.
+        return None
+    elif status_code == httplib.SERVICE_UNAVAILABLE:
+        # Our cluster has not yet established RPC connections.
         return None
     elif status_code == httplib.FORBIDDEN:
         # Our application has been rejected.  Give up.

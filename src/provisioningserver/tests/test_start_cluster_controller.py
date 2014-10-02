@@ -123,6 +123,10 @@ class TestStartClusterController(PservTestCase):
         """Prepare to return "request pending" from API request."""
         self.prepare_response(httplib.ACCEPTED)
 
+    def prepare_rpc_wait_response(self):
+        """Prepare to return "waiting for RPC" from API request."""
+        self.prepare_response(httplib.SERVICE_UNAVAILABLE)
+
     def test_run_command(self):
         # We can't really run the script, but we can verify that (with
         # the right system functions patched out) we can run it
@@ -150,6 +154,12 @@ class TestStartClusterController(PservTestCase):
 
     def test_polls_while_pending(self):
         self.prepare_pending_response()
+        self.assertRaises(
+            Sleeping,
+            start_cluster_controller.run, make_args())
+
+    def test_polls_on_rpc_wait(self):
+        self.prepare_rpc_wait_response()
         self.assertRaises(
             Sleeping,
             start_cluster_controller.run, make_args())

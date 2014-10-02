@@ -55,11 +55,13 @@ from maasserver.forms import (
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_probed_details
+from maasserver.rpc import getClientFor
 from maasserver.utils import (
     build_absolute_uri,
     get_local_cluster_UUID,
     )
 from maasserver.utils.orm import get_one
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
@@ -180,7 +182,17 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
                 # send it from now on.
                 update_nodegroup_maas_url(nodegroup, request)
         else:
-            nodegroup = register_nodegroup(request, uuid)
+            # An RPC connection to the target cluster is required for
+            # registration to work, so we wait up to 10 seconds for a
+            # connection to be established.
+            try:
+                getClientFor(uuid, timeout=10)
+            except NoConnectionsAvailable:
+                return HttpResponse(
+                    "Waiting for RPC connection.",
+                    status=httplib.SERVICE_UNAVAILABLE)
+            else:
+                nodegroup = register_nodegroup(request, uuid)
 
         return compose_nodegroup_register_response(nodegroup, already_existed)
 
