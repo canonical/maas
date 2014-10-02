@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ComposeCurtinNetworkPreseed",
     "ConfigureDHCPv4",
     "ConfigureDHCPv6",
     "CreateHostMaps",
@@ -188,18 +189,6 @@ class GetPreseedData(amp.Command):
 class ComposeCurtinNetworkPreseed(amp.Command):
     """Generate Curtin network preseed for a node.
 
-    :param osystem: Operating system identifier, e.g. `ubuntu`.
-    :param config: A dict detailing the network configuration:
-        `interfaces` maps to a list of pairs of interface name and MAC address.
-        `auto_interfaces` maps to a list of MAC addresses for those network
-        interfaces that should come up automatically on node boot.
-        `ips_mapping` maps to a dict which maps MAC addresses to lists of
-        IP addresses (at most one IPv4 and one IPv6 each) to be assigned to the
-        corresponding network interfaces.
-        `gateways_mapping` maps to a dict which maps MAC addresses to lists of
-        gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
-        corresponding network interfaces.
-    :param disable_ipv4: Should IPv4 networking be disabled on the node?
     :since: 1.7
     """
 

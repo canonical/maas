@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "compose_curtin_network_preseed",
     "gen_all_known_operating_systems",
     "get_preseed_data",
     "validate_license_key",
@@ -32,6 +33,7 @@ from maasserver.rpc import (
 from maasserver.utils import async
 from maasserver.utils.orm import get_one
 from provisioningserver.rpc.cluster import (
+    ComposeCurtinNetworkPreseed,
     GetOSReleaseTitle,
     GetPreseedData,
     ListOperatingSystems,
@@ -131,6 +133,30 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
         node_system_id=node.system_id, node_hostname=node.hostname,
         consumer_key=token.consumer.key, token_key=token.key,
         token_secret=token.secret, metadata_url=urlparse(metadata_url))
+    return call.wait(30).get("data")
+
+
+@synchronous
+def compose_curtin_network_preseed(node, config):
+    """Generate a Curtin network preseed for a node.
+
+    :param node: A `Node`.
+    :param config: A dict detailing the network configuration:
+        `interfaces` maps to a list of pairs of interface name and MAC address.
+        `auto_interfaces` maps to a list of MAC addresses for those network
+        interfaces that should come up automatically on node boot.
+        `ips_mapping` maps to a dict which maps MAC addresses to lists of
+        IP addresses (at most one IPv4 and one IPv6 each) to be assigned to the
+        corresponding network interfaces.
+        `gateways_mapping` maps to a dict which maps MAC addresses to lists of
+        gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
+        corresponding network interfaces.
+    :param disable_ipv4: Should IPv4 networking be disabled on the node?
+    """
+    client = getClientFor(node.nodegroup.uuid)
+    call = client(
+        ComposeCurtinNetworkPreseed, osystem=node.get_osystem(), config=config,
+        disable_ipv4=node.disable_ipv4)
     return call.wait(30).get("data")
 
 
