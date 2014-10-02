@@ -16,6 +16,7 @@ __all__ = []
 
 from cgi import escape
 import httplib
+import logging
 from operator import attrgetter
 import os
 from random import (
@@ -1258,12 +1259,16 @@ class NodeViewsTest(MAASServerTestCase):
         node = factory.make_Node()
         # Create old events.
         [
-            factory.make_Event(node=node)
+            factory.make_Event(
+                node=node, type=factory.make_EventType(
+                    level=logging.INFO))
             for _ in range(4)
         ]
         # Create NodeView.number_of_events_shown events.
         events = [
-            factory.make_Event(node=node)
+            factory.make_Event(
+                node=node, type=factory.make_EventType(
+                    level=logging.INFO))
             for _ in range(NodeView.number_of_events_shown)
         ]
         response = self.client.get(reverse('node-view', args=[node.system_id]))
@@ -1280,6 +1285,23 @@ class NodeViewsTest(MAASServerTestCase):
                 normalize_text(display.text_content())
                 for display in events_displayed
             ]
+        )
+
+    def test_node_view_doesnt_show_events_with_debug_level(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        # Create an event with debug level
+        event = factory.make_Event(
+            node=node, type=factory.make_EventType(
+                level=logging.DEBUG))
+        response = self.client.get(
+            reverse('node-view', args=[node.system_id]))
+        self.assertIn("Latest node events", response.content)
+        document = fromstring(response.content)
+        events_displayed = document.xpath("//div[@id='node_event_list']")
+        self.assertNotIn(
+            event.type.description,
+            events_displayed[0].text_content().strip(),
         )
 
     def test_node_view_doesnt_show_events_from_other_nodes(self):

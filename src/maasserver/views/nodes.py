@@ -26,6 +26,7 @@ __all__ = [
     ]
 
 from cgi import escape
+import logging
 from operator import attrgetter
 from textwrap import dedent
 from urllib import urlencode
@@ -599,6 +600,7 @@ class NodeView(NodeViewMixin, UpdateView):
 
         event_list = (
             Event.objects.filter(node=self.get_object())
+            .exclude(type__level=logging.DEBUG)
             .order_by('-id')[:self.number_of_events_shown])
         context['event_list'] = event_list
         context['event_count'] = Event.objects.filter(
