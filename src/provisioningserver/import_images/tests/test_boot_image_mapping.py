@@ -129,3 +129,14 @@ class TestBootImageMapping(MAASTestCase):
         bad_json = ""
         mapping = BootImageMapping.load_json(bad_json)
         self.assertEqual({}, mapping.mapping)
+
+    def test_get_image_arches_gets_arches_from_imagespecs(self):
+        expected_arches = set()
+        mapping = None
+        for _ in range(0, 3):
+            image_spec = make_image_spec()
+            resource = factory.make_name('resource')
+            expected_arches.add(image_spec.arch)
+            mapping = set_resource(mapping, image_spec, resource)
+
+        self.assertEqual(expected_arches, mapping.get_image_arches())

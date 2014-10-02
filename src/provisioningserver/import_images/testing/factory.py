@@ -50,15 +50,20 @@ def make_boot_resource():
         }
 
 
-def make_image_spec():
+def make_image_spec(os=None, arch=None, subarch=None, release=None,
+                    label=None):
     """Return an `ImageSpec` with random values."""
-    return ImageSpec(
-        factory.make_name('os'),
-        factory.make_name('arch'),
-        factory.make_name('subarch'),
-        factory.make_name('release'),
-        factory.make_name('label'),
-        )
+    if os is None:
+        os = factory.make_name('os')
+    if arch is None:
+        arch = factory.make_name('arch')
+    if subarch is None:
+        subarch = factory.make_name('subarch')
+    if release is None:
+        release = factory.make_name('release')
+    if label is None:
+        label = factory.make_name('label')
+    return ImageSpec(os, arch, subarch, release, label)
 
 
 def set_resource(boot_dict=None, image_spec=None, resource=None):

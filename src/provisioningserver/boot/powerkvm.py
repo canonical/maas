@@ -41,6 +41,7 @@ class PowerKVMBootMethod(BootMethod):
     name = "powerkvm"
     template_subdir = None
     bootloader_path = "bootppc64.bin"
+    bootloader_arches = ['ppc64el']
     arch_octet = "00:0C"
 
     def match_path(self, backend, path):

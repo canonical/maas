@@ -92,12 +92,14 @@ def tgt_entry(osystem, arch, subarch, release, label, image):
     return entry
 
 
-def install_boot_loaders(destination):
+def install_boot_loaders(destination, arches):
     """Install the all the required file from each bootloader method.
     :param destination: Directory where the loaders should be stored.
+    :param arches: Arches we want to install boot loaders for.
     """
-    for _, method in BootMethodRegistry:
-        method.install_bootloader(destination)
+    for _, boot_method in BootMethodRegistry:
+        if arches.intersection(boot_method.bootloader_arches) != set():
+            boot_method.install_bootloader(destination)
 
 
 def make_arg_parser(doc):
@@ -262,8 +264,8 @@ def import_images(sources):
     write_snapshot_metadata(snapshot_path, meta_file_content)
     write_targets_conf(snapshot_path)
 
-    maaslog.info("Installing boot images snapshot %s.", snapshot_path)
-    install_boot_loaders(snapshot_path)
+    maaslog.info("Installing boot images snapshot %s" % snapshot_path)
+    install_boot_loaders(snapshot_path, image_descriptions.get_image_arches())
 
     # If we got here, all went well.  This is now truly the "current" snapshot.
     update_current_symlink(storage, snapshot_path)

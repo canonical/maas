@@ -90,6 +90,7 @@ class PXEBootMethod(BootMethod):
 
     name = "pxe"
     template_subdir = "pxe"
+    bootloader_arches = ['i386', 'amd64']
     bootloader_path = "pxelinux.0"
     arch_octet = "00:00"
 

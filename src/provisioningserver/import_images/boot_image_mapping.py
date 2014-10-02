@@ -107,3 +107,7 @@ class BootImageMapping:
                         os, data[os]):
                     mapping.setdefault(image, resource)
         return mapping
+
+    def get_image_arches(self):
+        """Set of arches this BootImageMapping has an ImageSpec for."""
+        return {item[0].arch for item in self.items()}

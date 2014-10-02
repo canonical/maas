@@ -113,7 +113,9 @@ class TestMain(MAASTestCase):
         self.storage = self.make_dir()
         self.patch(
             provisioningserver.config, 'BOOT_RESOURCES_STORAGE', self.storage)
-        self.image = make_image_spec()
+        # Forcing arch to amd64 causes pxelinux.0 to be installed, giving more
+        # test coverage.
+        self.image = make_image_spec(arch='amd64')
         self.os, self.arch, self.subarch, \
             self.release, self.label = self.image
         self.repo = self.make_simplestreams_repo(self.image)

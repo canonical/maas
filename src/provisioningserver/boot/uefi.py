@@ -140,6 +140,7 @@ class UEFIBootMethod(BootMethod):
 
     name = "uefi"
     template_subdir = "uefi"
+    bootloader_arches = ['amd64']
     bootloader_path = "bootx64.efi"
     arch_octet = "00:07"  # AMD64 EFI
 

@@ -128,6 +128,9 @@ class BootMethod:
     # the dhcpd.conf that is generated.
     path_prefix = None
 
+    # Arches for which this boot method needs to install boot loaders.
+    bootloader_arches = []
+
     @abstractproperty
     def name(self):
         """Name of the boot method."""
