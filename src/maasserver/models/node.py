@@ -631,9 +631,13 @@ class Node(CleanSave, TimestampedModel):
     disable_ipv4 = BooleanField(
         default=False, verbose_name="Disable IPv4 when deployed",
         help_text=(
-            "On operating systems where this choice is supported, "
-            "disable IPv4 networking on this node when it is deployed.  "
-            "IPv4 may still be used for booting and installing the node."))
+            "On operating systems where this choice is supported, this option "
+            "disables IPv4 networking on this node when it is deployed.  "
+            "IPv4 may still be used for booting and installing the node.  "
+            "THIS MAY STOP YOUR NODE FROM WORKING.  Do not disable IPv4 "
+            "unless you know what you're doing: clusters must be configured "
+            "to use a MAAS URL with a hostname that resolves on both IPv4 and "
+            "IPv6."))
 
     objects = NodeManager()
 
