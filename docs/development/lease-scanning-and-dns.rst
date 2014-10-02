@@ -20,7 +20,7 @@ Leases scanning
 ===============
 
 MAAS will periodically scan the DHCP leases file using the
-``PeriodicLeaseUploadService()`` pserv service.
+``LeaseUploadService()`` pserv service.
 
 As leases are discovered, it calls the RPC function ``UpdateLeases`` which
 stores the active leases in the DHCPLease table.

@@ -33,7 +33,7 @@ from mock import (
     )
 from provisioningserver.boot import tftppath
 from provisioningserver.pserv_services.image_download_service import (
-    PeriodicImageDownloadService,
+    ImageDownloadService,
     )
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import _run_import
@@ -56,7 +56,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_init(self):
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.service, sentinel.clock, sentinel.uuid)
         self.assertIsInstance(service, TimerService)
         self.assertIs(service.clock, sentinel.clock)
@@ -70,7 +70,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_is_called_every_interval(self):
         clock = Clock()
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.service, clock, sentinel.uuid)
         # Avoid actual downloads:
         self.patch_download(service, None)
@@ -99,7 +99,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_initiates_download_if_no_meta_file(self):
         clock = Clock()
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.service, clock, sentinel.uuid)
         _start_download = self.patch_download(service, None)
         self.patch(
@@ -110,7 +110,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_initiates_download_if_15_minutes_has_passed(self):
         clock = Clock()
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.service, clock, sentinel.uuid)
         _start_download = self.patch_download(service, None)
         one_week_ago = clock.seconds() - timedelta(minutes=15).total_seconds()
@@ -122,7 +122,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_no_download_if_15_minutes_has_not_passed(self):
         clock = Clock()
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.service, clock, sentinel.uuid)
         _start_download = self.patch_download(service, None)
         one_week = timedelta(minutes=15).total_seconds()
@@ -153,7 +153,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         # 2. It means there's no thread to clean up after the test.
         deferToThread = self.patch(boot_images, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             rpc_client, clock, sentinel.uuid)
         service.startService()
         self.assertThat(
@@ -166,13 +166,13 @@ class TestPeriodicImageDownloadService(PservTestCase):
         rpc_client.getClient.side_effect = failure
 
         deferToThread = self.patch(boot_images, 'deferToThread')
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             rpc_client, Clock(), sentinel.uuid)
         service.startService()
         self.assertThat(deferToThread, MockNotCalled())
 
     def test_logs_other_errors(self):
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.rpc, Clock(), sentinel.uuid)
 
         maybe_start_download = self.patch(service, "maybe_start_download")
@@ -201,7 +201,7 @@ class TestGetBootSources(PservTestCase):
             defer.succeed(dict(sources=sentinel.sources)),
             ]
 
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.rpc, clock, sentinel.uuid)
         sources = yield service._get_boot_sources(client_call)
         self.assertEqual(sources.get('sources'), sentinel.sources)
@@ -218,7 +218,7 @@ class TestGetBootSources(PservTestCase):
             defer.succeed(dict(sources=[])),
             ]
 
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.rpc, clock, sentinel.uuid)
         yield service._get_boot_sources(client_call)
         self.assertThat(
@@ -256,7 +256,7 @@ class TestGetBootSources(PservTestCase):
             defer.succeed(dict(sources=sources)),
             ]
 
-        service = PeriodicImageDownloadService(
+        service = ImageDownloadService(
             sentinel.rpc, clock, sentinel.uuid)
         sources = yield service._get_boot_sources(client_call)
         os_selections = [

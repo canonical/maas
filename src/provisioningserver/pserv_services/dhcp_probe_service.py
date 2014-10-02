@@ -1,7 +1,7 @@
 # Copyright 2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Periodic DHCP probing service."""
+""" DHCP probing service."""
 
 from __future__ import (
     absolute_import,
@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "PeriodicDHCPProbeService",
+    "DHCPProbeService",
     ]
 
 
@@ -43,7 +43,7 @@ from twisted.protocols.amp import UnhandledCommand
 maaslog = get_maas_logger("dhcp.probe")
 
 
-class PeriodicDHCPProbeService(TimerService, object):
+class DHCPProbeService(TimerService, object):
     """Service to probe for DHCP servers on this cluster's network.
 
     Built on top of Twisted's `TimerService`.
@@ -56,7 +56,7 @@ class PeriodicDHCPProbeService(TimerService, object):
 
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.try_probe_dhcp() every self.check_interval.
-        super(PeriodicDHCPProbeService, self).__init__(
+        super(DHCPProbeService, self).__init__(
             self.check_interval, self.try_probe_dhcp)
         self.clock = reactor
         self.uuid = cluster_uuid

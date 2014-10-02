@@ -35,7 +35,7 @@ from provisioningserver.pserv_services import lease_upload_service
 from provisioningserver.pserv_services.lease_upload_service import (
     convert_leases_to_mappings,
     convert_mappings_to_leases,
-    PeriodicLeaseUploadService,
+    LeaseUploadService,
     )
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import UpdateLeases
@@ -91,7 +91,7 @@ class TestHelperFunctions(PservTestCase):
 class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_init(self):
-        service = PeriodicLeaseUploadService(
+        service = LeaseUploadService(
             sentinel.service, sentinel.clock, sentinel.uuid)
         self.assertIsInstance(service, TimerService)
         self.assertIs(service.clock, sentinel.clock)
@@ -105,7 +105,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
     def test_is_called_every_interval(self):
         clock = Clock()
-        service = PeriodicLeaseUploadService(
+        service = LeaseUploadService(
             sentinel.service, clock, sentinel.uuid)
         # Avoid actual uploads:
         start_upload = self.patch_upload(service)
@@ -139,7 +139,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
         rpc_client.getClient.side_effect = NoConnectionsAvailable()
 
         clock = Clock()
-        service = PeriodicLeaseUploadService(
+        service = LeaseUploadService(
             rpc_client, clock, sentinel.uuid)
         start_upload = self.patch(service, '_start_upload')
         service.startService()
@@ -170,7 +170,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
 
         # Start the service.
         uuid = factory.make_UUID()
-        service = PeriodicLeaseUploadService(rpc_service, Clock(), uuid)
+        service = LeaseUploadService(rpc_service, Clock(), uuid)
         service.startService()
 
         # Gavin says that I need to pump my IO.  I don't know what this
@@ -186,7 +186,7 @@ class TestPeriodicImageDownloadService(PservTestCase):
             MockCalledOnceWith(ANY, uuid=uuid, mappings=mappings))
 
     def test_logs_other_errors(self):
-        service = PeriodicLeaseUploadService(
+        service = LeaseUploadService(
             sentinel.rpc, Clock(), sentinel.uuid)
 
         _get_client_and_start_upload = self.patch_autospec(

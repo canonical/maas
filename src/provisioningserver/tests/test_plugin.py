@@ -31,10 +31,10 @@ from provisioningserver.plugin import (
     SingleUsernamePasswordChecker,
     )
 from provisioningserver.pserv_services.dhcp_probe_service import (
-    PeriodicDHCPProbeService,
+    DHCPProbeService,
     )
 from provisioningserver.pserv_services.image_download_service import (
-    PeriodicImageDownloadService,
+    ImageDownloadService,
     )
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
@@ -132,7 +132,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         image_service = service.getServiceNamed("image_download")
-        self.assertIsInstance(image_service, PeriodicImageDownloadService)
+        self.assertIsInstance(image_service, ImageDownloadService)
 
     def test_node_monitor_service(self):
         options = Options()
@@ -148,7 +148,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Spike", "Milligan")
         service = service_maker.makeService(options)
         dhcp_probe = service.getServiceNamed("dhcp_probe")
-        self.assertIsInstance(dhcp_probe, PeriodicDHCPProbeService)
+        self.assertIsInstance(dhcp_probe, DHCPProbeService)
 
     def test_tftp_service(self):
         # A TFTP service is configured and added to the top-level service.

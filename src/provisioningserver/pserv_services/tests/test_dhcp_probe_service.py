@@ -29,7 +29,7 @@ from mock import (
     )
 from provisioningserver.pserv_services import dhcp_probe_service
 from provisioningserver.pserv_services.dhcp_probe_service import (
-    PeriodicDHCPProbeService,
+    DHCPProbeService,
     )
 from provisioningserver.rpc import (
     getRegionClient,
@@ -67,7 +67,7 @@ class TestDHCPProbeService(PservTestCase):
 
     def test_is_called_every_interval(self):
         clock = Clock()
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             sentinel.service, clock, self.cluster_uuid)
 
         # Avoid actually probing
@@ -109,7 +109,7 @@ class TestDHCPProbeService(PservTestCase):
         # 2. This way there's no thread to clean up after the test.
         deferToThread = self.patch(dhcp_probe_service, 'deferToThread')
         deferToThread.return_value = defer.succeed(None)
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             rpc_service, clock, self.cluster_uuid)
         service.startService()
         self.assertThat(
@@ -129,7 +129,7 @@ class TestDHCPProbeService(PservTestCase):
             region.GetClusterInterfaces.commandName]
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             rpc_service, clock, self.cluster_uuid)
         yield service.startService()
         yield service.stopService()
@@ -159,7 +159,7 @@ class TestDHCPProbeService(PservTestCase):
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             rpc_service, clock, self.cluster_uuid)
         yield service.startService()
         yield service.stopService()
@@ -173,7 +173,7 @@ class TestDHCPProbeService(PservTestCase):
     def test_logs_errors(self):
         clock = Clock()
         maaslog = self.patch(dhcp_probe_service, 'maaslog')
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             sentinel.service, clock, self.cluster_uuid)
         error_message = factory.make_string()
         self.patch(service, 'probe_dhcp').side_effect = Exception(
@@ -203,7 +203,7 @@ class TestDHCPProbeService(PservTestCase):
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             rpc_service, clock, self.cluster_uuid)
         yield service.startService()
         yield service.stopService()
@@ -233,7 +233,7 @@ class TestDHCPProbeService(PservTestCase):
 
         rpc_service = Mock()
         rpc_service.getClient.return_value = getRegionClient()
-        service = PeriodicDHCPProbeService(
+        service = DHCPProbeService(
             rpc_service, clock, self.cluster_uuid)
         yield service.startService()
         yield service.stopService()

@@ -32,13 +32,13 @@ import provisioningserver
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
 from provisioningserver.pserv_services.dhcp_probe_service import (
-    PeriodicDHCPProbeService,
+    DHCPProbeService,
     )
 from provisioningserver.pserv_services.image_download_service import (
-    PeriodicImageDownloadService,
+    ImageDownloadService,
     )
 from provisioningserver.pserv_services.lease_upload_service import (
-    PeriodicLeaseUploadService,
+    LeaseUploadService,
     )
 from provisioningserver.pserv_services.node_power_monitor_service import (
     NodePowerMonitorService,
@@ -232,14 +232,14 @@ class ProvisioningServiceMaker:
         tftp_service.setName("tftp")
         return tftp_service
 
-    def _makePeriodicImageDownloadService(self, rpc_service):
-        image_download_service = PeriodicImageDownloadService(
+    def _makeImageDownloadService(self, rpc_service):
+        image_download_service = ImageDownloadService(
             rpc_service, reactor, get_cluster_uuid())
         image_download_service.setName("image_download")
         return image_download_service
 
-    def _makePeriodicLeaseUploadService(self, rpc_service):
-        lease_upload_service = PeriodicLeaseUploadService(
+    def _makeLeaseUploadService(self, rpc_service):
+        lease_upload_service = LeaseUploadService(
             rpc_service, reactor, get_cluster_uuid())
         lease_upload_service.setName("lease_upload")
         return lease_upload_service
@@ -254,8 +254,8 @@ class ProvisioningServiceMaker:
         rpc_service.setName("rpc")
         return rpc_service
 
-    def _makePeriodicDHCPProbeService(self, rpc_service):
-        dhcp_probe_service = PeriodicDHCPProbeService(
+    def _makeDHCPProbeService(self, rpc_service):
+        dhcp_probe_service = DHCPProbeService(
             rpc_service, reactor, get_cluster_uuid())
         dhcp_probe_service.setName("dhcp_probe")
         return dhcp_probe_service
@@ -280,14 +280,13 @@ class ProvisioningServiceMaker:
         node_monitor = self._makeNodePowerMonitorService()
         node_monitor.setServiceParent(services)
 
-        image_download_service = self._makePeriodicImageDownloadService(
-            rpc_service)
+        image_download_service = self._makeImageDownloadService(rpc_service)
         image_download_service.setServiceParent(services)
 
-        dhcp_probe_service = self._makePeriodicDHCPProbeService(rpc_service)
+        dhcp_probe_service = self._makeDHCPProbeService(rpc_service)
         dhcp_probe_service.setServiceParent(services)
-        lease_upload_service = self._makePeriodicLeaseUploadService(
-            rpc_service)
+
+        lease_upload_service = self._makeLeaseUploadService(rpc_service)
         lease_upload_service.setServiceParent(services)
 
         return services

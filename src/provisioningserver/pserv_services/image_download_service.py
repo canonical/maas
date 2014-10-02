@@ -13,7 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "PeriodicImageDownloadService",
+    "ImageDownloadService",
     ]
 
 
@@ -43,7 +43,7 @@ from twisted.spread.pb import NoSuchMethod
 maaslog = get_maas_logger("boot_image_download_service")
 
 
-class PeriodicImageDownloadService(TimerService, object):
+class ImageDownloadService(TimerService, object):
     """Twisted service to periodically refresh ephemeral images.
 
     :param client_service: A `ClusterClientService` instance for talking
@@ -55,7 +55,7 @@ class PeriodicImageDownloadService(TimerService, object):
 
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.check() every self.check_interval.
-        super(PeriodicImageDownloadService, self).__init__(
+        super(ImageDownloadService, self).__init__(
             self.check_interval, self.try_download)
         self.clock = reactor
         self.client_service = client_service

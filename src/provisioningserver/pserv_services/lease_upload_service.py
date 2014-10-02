@@ -15,7 +15,7 @@ __metaclass__ = type
 __all__ = [
     "convert_leases_to_mappings",
     "convert_mappings_to_leases",
-    "PeriodicLeaseUploadService",
+    "LeaseUploadService",
     ]
 
 
@@ -64,7 +64,7 @@ def convert_leases_to_mappings(leases):
         ]
 
 
-class PeriodicLeaseUploadService(TimerService, object):
+class LeaseUploadService(TimerService, object):
     """Twisted service to periodically upload DHCP leases to the region.
 
     :param client_service: A `ClusterClientService` instance for talking
@@ -76,12 +76,12 @@ class PeriodicLeaseUploadService(TimerService, object):
 
     def __init__(self, client_service, reactor, cluster_uuid):
         # Call self.try_upload() every self.check_interval.
-        super(PeriodicLeaseUploadService, self).__init__(
+        super(LeaseUploadService, self).__init__(
             self.check_interval, self.try_upload)
         self.clock = reactor
         self.client_service = client_service
         self.uuid = cluster_uuid
-        maaslog.info("PeriodicLeaseUploadService starting.")
+        maaslog.info("LeaseUploadService starting.")
 
     def try_upload(self):
         """Wrap upload attempts in something that catches Failures.
