@@ -90,7 +90,7 @@ class AttachedNetwork:
 # Feature flag: reveal IPv6 capabilities to the user?
 #
 # While this is set to False, MAAS will not auto-detect IPv6 networks.
-REVEAL_IPv6 = False
+REVEAL_IPv6 = True
 
 
 def get_interface_info(interface):
