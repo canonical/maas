@@ -266,8 +266,11 @@ def add_ip_to_mapping(mapping, macaddress, ip):
         be added to the mapping.
     """
     if ip not in (None, ''):
+        ip = normalise_ip(ip)
         mac = extract_mac_string(macaddress)
-        mapping.setdefault(mac, set()).add(normalise_ip(ip))
+        ips = mapping.setdefault(mac, [])
+        if ip not in ips:
+            ips.append(ip)
 
 
 def map_static_ips(node):
