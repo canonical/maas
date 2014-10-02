@@ -140,6 +140,21 @@ def get_preseed_data(preseed_type, node, token, metadata_url):
 def compose_curtin_network_preseed(node, config):
     """Generate a Curtin network preseed for a node.
 
+    The `config` is a dict like::
+
+        {
+            'interfaces': ['aa:bb:cc:dd:ee:ff', '00:11:22:33:44:55'],
+            'auto_interfaces': ['aa:bb:cc:dd:ee:ff'],
+            'ips_mapping': {
+                'aa:bb:cc:dd:ee:ff': ['10.9.8.7'],
+                '00:11:22:33:44:55': ['192.168.32.150'],
+                },
+            'gateways_mapping': {
+                'aa:bb:cc:dd:ee:ff': ['10.9.1.1'],
+                '00:11:22:33:44:55': ['192.168.32.254'],
+                },
+        }
+
     :param node: A `Node`.
     :param config: A dict detailing the network configuration:
         `interfaces` maps to a list of pairs of interface name and MAC address.
@@ -151,7 +166,7 @@ def compose_curtin_network_preseed(node, config):
         `gateways_mapping` maps to a dict which maps MAC addresses to lists of
         gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
         corresponding network interfaces.
-    :param disable_ipv4: Should IPv4 networking be disabled on the node?
+    :return: A list of preseed dicts.
     """
     client = getClientFor(node.nodegroup.uuid)
     call = client(
