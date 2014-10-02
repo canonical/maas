@@ -37,9 +37,7 @@ from maastesting.djangotestcase import (
     DjangoTestCase,
     )
 from maastesting.fixtures import DisplayFixture
-# XXX bigjools 2014-09-03 bug=1364713
-# tests disabled while waiting for new selenium.
-#from maastesting.testcase import MAASTestCase
+from maastesting.testcase import MAASTestCase
 from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
@@ -142,10 +140,7 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-# XXX bigjools 2014-09-03 bug=1364713
-# All tests disabled while waiting for new selenium.
-#class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
-class SeleniumTestCase:
+class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
     """Selenium-enabled test case.
 
     Two users are pre-created: "user" for a regular user account, or "admin"
