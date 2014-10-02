@@ -486,11 +486,15 @@ class ClusterClientService(TimerService, object):
 
     :ivar connections: A mapping of eventloop names to protocol
         instances connected to it.
+    :ivar time_started: Records the time that `startService` was last called,
+        or `None` if it hasn't yet.
     """
 
     INTERVAL_LOW = 2  # seconds.
     INTERVAL_MID = 10  # seconds.
     INTERVAL_HIGH = 30  # seconds.
+
+    time_started = None
 
     def __init__(self, reactor):
         super(ClusterClientService, self).__init__(
@@ -505,6 +509,10 @@ class ClusterClientService(TimerService, object):
         # calls `fromBytes`.  That last function assumes that a colon can only
         # occur in the URL's netloc portion as part of a port specification.
         twisted.web.client._URI = PatchedURI
+
+    def startService(self):
+        self.time_started = self.clock.seconds()
+        super(ClusterClientService, self).startService()
 
     def getClient(self):
         """Returns a :class:`common.Client` connected to a region.
@@ -572,11 +580,21 @@ class ClusterClientService(TimerService, object):
         connections, so that this can quickly obtain its first
         connection.
 
+        The interval is also `INTERVAL_LOW` for a time after the service
+        starts. This helps to get everything connected quickly when the
+        cluster is started at a similar time to the region.
+
         The interval changes to `INTERVAL_MID` seconds when there are
         some connections, but fewer than there are event-loops.
 
         After that it drops back to `INTERVAL_HIGH` seconds.
         """
+        if self.time_started is not None:
+            time_running = self.clock.seconds() - self.time_started
+            if time_running < self.INTERVAL_HIGH:
+                # This service has recently started; keep trying regularly.
+                return self.INTERVAL_LOW
+
         if num_eventloops is None:
             # The region is not available; keep trying regularly.
             return self.INTERVAL_LOW

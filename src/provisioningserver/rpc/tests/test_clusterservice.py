@@ -673,26 +673,37 @@ class TestClusterClientServiceIntervals(MAASTestCase):
 
     scenarios = (
         ("initial", {
+            "time_running": 0,
             "num_eventloops": None,
             "num_connections": None,
             "expected": ClusterClientService.INTERVAL_LOW,
         }),
+        ("shortly-after-start", {
+            "time_running": 10,
+            "num_eventloops": 1,  # same as num_connections.
+            "num_connections": 1,  # same as num_eventloops.
+            "expected": ClusterClientService.INTERVAL_LOW,
+        }),
         ("no-event-loops", {
+            "time_running": 1000,
             "num_eventloops": 0,
             "num_connections": sentinel.undefined,
             "expected": ClusterClientService.INTERVAL_LOW,
         }),
         ("no-connections", {
+            "time_running": 1000,
             "num_eventloops": 1,  # anything > 1.
             "num_connections": 0,
             "expected": ClusterClientService.INTERVAL_LOW,
         }),
         ("fewer-connections-than-event-loops", {
+            "time_running": 1000,
             "num_eventloops": 2,  # anything > num_connections.
             "num_connections": 1,  # anything > 0.
             "expected": ClusterClientService.INTERVAL_MID,
         }),
         ("default", {
+            "time_running": 1000,
             "num_eventloops": 3,  # same as num_connections.
             "num_connections": 3,  # same as num_eventloops.
             "expected": ClusterClientService.INTERVAL_HIGH,
@@ -711,6 +722,7 @@ class TestClusterClientServiceIntervals(MAASTestCase):
     def test__calculate_interval(self):
         service = self.make_inert_client_service()
         service.startService()
+        service.clock.advance(self.time_running)
         self.assertEqual(
             self.expected, service._calculate_interval(
                 self.num_eventloops, self.num_connections))
