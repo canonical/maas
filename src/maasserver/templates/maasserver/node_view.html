@@ -117,6 +117,11 @@
 {% endblock %}
 
 {% block content %}
+  <style type="text/css">
+    #content-discovery-data {
+      width: 945px;
+    }
+  </style>
   <div id="content-with-sidebar">
   <ul class="data-list">
     <li class="block size3 first">
@@ -285,7 +290,12 @@
         </a>
       {% endif %}
     </li>
+  </ul>
+  </div>
+  <div class="clear"></div>
     {% if probed_details_xml %}
+    <div id="content-discovery-data">
+    <ul class="data-list">
       <li class="block first separate">
         <h2 class="first size6">Discovery data</h2>
         {# Button link for the Reveal widget that shows/hides LLDP output. #}
@@ -293,23 +303,22 @@
         {# Content div for the probed details output. #}
       </li>
       <li class="block first pad-top-small">
-        <div class="block first" id="details-output">
-          <ul class="list size2 no-background normal">
-	    <li><a href="#yaml">Discovery YAML</a></li>
-	    <li><a href="#xml">Discovery XML</a></li>
-	  </ul>
-          <div class="last size8 no-background normal">
-	    <div id="yaml">
-	      <pre>{{ probed_details_yaml }}</pre>
-	    </div>
-	    <div id="xml">
-	      <pre>{{ probed_details_xml }}</pre>	
-	    </div>
-	  </div>
-	</div>
+        <div class="row first" id="details-output">
+          <ul class="list col1 no-background normal">
+            <li><a href="#yaml">YAML</a></li>
+            <li><a href="#xml">XML</a></li>
+          </ul>
+          <div class="last col10 no-background normal">
+            <div id="yaml">
+              <pre>{{ probed_details_yaml }}</pre>
+            </div>
+            <div id="xml">
+              <pre>{{ probed_details_xml }}</pre>
+            </div>
+          </div>
+        </div>
       </li>
+    </ul>
+    </div>
     {% endif %}
-  </ul>
-  <div class="clear"></div>
-  </div>
 {% endblock %}
