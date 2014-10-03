@@ -380,7 +380,7 @@ class TestPatchedURI(MAASTestCase):
         ip = factory.make_ipv6_address().encode('ascii')
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://[%s]/%s' % (ip, path))
-        self.expectThat(uri.host, Equals(b'[%s]' % ip))
+        self.expectThat(uri.host, Equals(b'%s' % ip))
         self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(80))
 
@@ -389,7 +389,7 @@ class TestPatchedURI(MAASTestCase):
         port = factory.pick_port()
         path = factory.make_name('path').encode('ascii')
         uri = PatchedURI.fromBytes(b'http://[%s]:%d/%s' % (ip, port, path))
-        self.expectThat(uri.host, Equals(b'[%s]' % ip))
+        self.expectThat(uri.host, Equals(b'%s' % ip))
         self.expectThat(uri.path, Equals(b'/%s' % path))
         self.expectThat(uri.port, Equals(port))
 

@@ -455,7 +455,7 @@ class PatchedURI(twisted.web.client._URI):
         if '[' in netloc:
             # IPv6 address.  This is complicated.
             parsed_netloc = re.match(
-                '(?P<host>\\[[0-9A-Fa-f:.]+\\])([:](?P<port>[0-9]+))?$',
+                '\\[(?P<host>[0-9A-Fa-f:.]+)\\]([:](?P<port>[0-9]+))?$',
                 netloc)
             host, port = parsed_netloc.group('host', 'port')
         elif ':' in netloc:
