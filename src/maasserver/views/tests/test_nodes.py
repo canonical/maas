@@ -24,6 +24,7 @@ from random import (
     randint,
     )
 from textwrap import dedent
+from unittest import skip
 from urlparse import (
     parse_qsl,
     urlparse,
@@ -1665,6 +1666,8 @@ class NodeListingBulkActionSelectionTest(SeleniumTestCase):
             if action.get_attribute('value') == action_name:
                 action.click()
 
+    @skip(
+        "XXX: blake_r 2014-10-02 bug=1376977: Causes intermittent failures")
     def test_zone_widget_is_visible_only_when_set_zone_selected(self):
         self.log_in('admin')
         self.get_page('node-list')
