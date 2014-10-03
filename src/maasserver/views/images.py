@@ -140,7 +140,6 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         context['ubuntu_streams_count'] = len(self.ubuntu_sources)
         context['ubuntu_releases'] = self.format_ubuntu_releases()
         context['ubuntu_arches'] = self.format_ubuntu_arches()
-        context['ubuntu_resources'] = self.get_ubuntu_resources()
         context['other_resources'] = self.get_other_resources()
         context['generated_resources'] = self.get_generated_resources()
         context['uploaded_resources'] = self.get_uploaded_resources()
@@ -246,15 +245,6 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                 return resource.extra['title']
             else:
                 return resource.name
-
-    def get_ubuntu_resources(self):
-        """Return all Ubuntu resources, for usage in the template."""
-        resources = list(BootResource.objects.filter(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name__startswith='ubuntu/').order_by('-name', 'architecture'))
-        for resource in resources:
-            self.add_resource_template_attributes(resource)
-        return resources
 
     def add_resource_template_attributes(self, resource):
         """Adds helper attributes to the resource."""

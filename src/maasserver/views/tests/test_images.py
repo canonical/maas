@@ -43,7 +43,6 @@ from maastesting.matchers import (
     )
 from requests import ConnectionError
 from testtools.matchers import (
-    Contains,
     ContainsAll,
     HasLength,
     )
@@ -61,17 +60,6 @@ class UbuntuImagesTest(MAASServerTestCase):
             images_view, 'get_os_info_from_boot_sources')
         mock_get_os_info.return_value = (sources, releases, arches)
         return mock_get_os_info
-
-    def make_ubuntu_resource(self, release=None):
-        if release is None:
-            release = factory.make_name('release')
-        name = 'ubuntu/%s' % release
-        arch = factory.make_name('arch')
-        subarch = factory.make_name('subarch')
-        architecture = '%s/%s' % (arch, subarch)
-        return factory.make_usable_boot_resource(
-            rtype=BOOT_RESOURCE_TYPE.SYNCED,
-            name=name, architecture=architecture)
 
     def test_shows_connection_error(self):
         self.client_log_in(as_admin=True)
@@ -128,83 +116,6 @@ class UbuntuImagesTest(MAASServerTestCase):
         warnings = doc.cssselect('div#missing-ubuntu-images')
         self.assertEqual(1, len(warnings))
 
-    def test_shows_ubuntu_resources(self):
-        self.client_log_in()
-        releases = [factory.make_name('release') for _ in range(3)]
-        [self.make_ubuntu_resource(release) for release in releases]
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        table_content = doc.cssselect(
-            'table#ubuntu-resources')[0].text_content()
-        self.assertThat(table_content, ContainsAll(releases))
-
-    def test_shows_ubuntu_release_version_name(self):
-        self.client_log_in()
-        # Use trusty as known to map to "14.04 LTS"
-        release = 'trusty'
-        version = '14.04 LTS'
-        self.make_ubuntu_resource(release)
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        table_content = doc.cssselect(
-            'table#ubuntu-resources')[0].text_content()
-        self.assertThat(table_content, Contains(version))
-
-    def test_shows_number_of_nodes_deployed_for_ubuntu_resource(self):
-        self.client_log_in()
-        resource = self.make_ubuntu_resource()
-        os_name, series = resource.name.split('/')
-        number_of_nodes = random.randint(1, 4)
-        for _ in range(number_of_nodes):
-            factory.make_Node(
-                status=NODE_STATUS.DEPLOYED,
-                osystem=os_name, distro_series=series,
-                architecture=resource.architecture)
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        count = int(doc.cssselect(
-            'table#ubuntu-resources > tbody > tr > td')[4].text_content())
-        self.assertEqual(number_of_nodes, count)
-
-    def test_shows_number_of_default_nodes_deployed_for_ubuntu_resource(self):
-        self.client_log_in()
-        resource = self.make_ubuntu_resource()
-        os_name, series = resource.name.split('/')
-        Config.objects.set_config('default_osystem', os_name)
-        Config.objects.set_config('default_distro_series', series)
-        number_of_nodes = random.randint(1, 4)
-        for _ in range(number_of_nodes):
-            factory.make_Node(
-                status=NODE_STATUS.DEPLOYED,
-                architecture=resource.architecture)
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        count = int(doc.cssselect(
-            'table#ubuntu-resources > tbody > tr > td')[4].text_content())
-        self.assertEqual(number_of_nodes, count)
-
-    def test_shows_number_of_nodes_deployed_for_ubuntu_subarch_resource(self):
-        self.client_log_in()
-        resource = self.make_ubuntu_resource()
-        arch, subarch = resource.split_arch()
-        extra_subarch = factory.make_name('subarch')
-        resource.extra['subarches'] = ','.join([subarch, extra_subarch])
-        resource.save()
-
-        os_name, series = resource.name.split('/')
-        node_architecture = '%s/%s' % (arch, extra_subarch)
-        number_of_nodes = random.randint(1, 4)
-        for _ in range(number_of_nodes):
-            factory.make_Node(
-                status=NODE_STATUS.DEPLOYED,
-                osystem=os_name, distro_series=series,
-                architecture=node_architecture)
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        count = int(doc.cssselect(
-            'table#ubuntu-resources > tbody > tr > td')[4].text_content())
-        self.assertEqual(number_of_nodes, count)
-
     def test_hides_import_button_if_not_admin(self):
         self.client_log_in()
         sources = [factory.make_BootSource()]
@@ -224,18 +135,6 @@ class UbuntuImagesTest(MAASServerTestCase):
         import_button = doc.cssselect(
             '#ubuntu-images')[0].cssselect('input[type="submit"]')
         self.assertEqual(1, len(import_button))
-
-    def test_hides_import_button_if_import_running(self):
-        self.client_log_in()
-        sources = [factory.make_BootSource()]
-        self.patch_get_os_info_from_boot_sources(sources)
-        self.patch(
-            images_view, 'is_import_resources_running').return_value = True
-        response = self.client.get(reverse('images'))
-        doc = fromstring(response.content)
-        import_button = doc.cssselect(
-            '#ubuntu-images')[0].cssselect('input[type="submit"]')
-        self.assertEqual(0, len(import_button))
 
     def test_post_returns_forbidden_if_not_admin(self):
         self.client_log_in()

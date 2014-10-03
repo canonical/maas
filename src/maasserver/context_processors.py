@@ -56,6 +56,8 @@ def static_resources(context):
             'css/multiselect_widget.css',
         ],
         'JS_LIST': [
+            'js/image.js',
+            'js/image_views.js',
             'js/license_key.js',
             'js/morph.js',
             'js/user_panel.js',

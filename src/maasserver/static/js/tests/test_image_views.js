@@ -369,6 +369,29 @@ suite.add(new Y.maas.testing.TestCase({
         });
     },
 
+    testUpdateUbuntuButtonSetValueForApply: function() {
+        var view = this.makeImagesView();
+        var ubuntuButton = view.srcNode.one('#ubuntu-apply');
+        view.updateUbuntuButton(true);
+        Y.Assert.areSame('Apply changes', ubuntuButton.get('value'));
+    },
+
+    testUpdateUbuntuButtonSetValueForImport: function() {
+        var view = this.makeImagesView();
+        var ubuntuButton = view.srcNode.one('#ubuntu-apply');
+        view.updateUbuntuButton(false);
+        Y.Assert.areSame('Import images', ubuntuButton.get('value'));
+    },
+
+    testUpdateUbuntuButtonDoesNothingIfLockValueExists: function() {
+        var view = this.makeImagesView();
+        var ubuntuButton = view.srcNode.one('#ubuntu-apply');
+        ubuntuButton.set('value', 'testing');
+        ubuntuButton.setData('lock-value', 'true');
+        view.updateUbuntuButton(true);
+        Y.Assert.areSame('testing', ubuntuButton.get('value'));
+    },
+
     testGetSpinnerReturnsEmptyForComplete: function() {
         var view = this.makeImagesView();
         var model = new Y.maas.image.Image({complete: true});

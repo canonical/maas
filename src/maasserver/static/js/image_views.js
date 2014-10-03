@@ -254,9 +254,11 @@ module.ImagesView = Y.Base.create(
         if(ubuntuImages.length == 0) {
             this.ubuntuMissingImages.removeClass('hidden');
             this.ubuntuTable.addClass('hidden');
+            this.updateUbuntuButton(false);
         } else {
             this.ubuntuMissingImages.addClass('hidden');
             this.ubuntuTable.removeClass('hidden');
+            this.updateUbuntuButton(true);
         }
         var self = this;
         var innerTable = "";
@@ -270,6 +272,25 @@ module.ImagesView = Y.Base.create(
             innerTable += "</tr>";
         });
         this.ubuntuTable.one('tbody').setHTML(innerTable);
+    },
+
+   /**
+    * Update the value of the ubuntuButton.
+    *
+    * The value of the button can be locked meaning it should not change, this
+    * is done using the data attribute lock-value. data-lock-value="true"
+    *
+    * @method updateUbuntuButton
+    */
+    updateUbuntuButton: function(showApply) {
+        if(!Y.Lang.isValue(this.ubuntuButton))
+            return;
+        if(this.ubuntuButton.getData('lock-value') === "true")
+            return;
+        if(showApply)
+            this.ubuntuButton.set('value', 'Apply changes');
+        else
+            this.ubuntuButton.set('value', 'Import images');
     },
 
    /**
