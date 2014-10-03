@@ -47,6 +47,7 @@ from provisioningserver.rpc.testing import (
     always_succeed_with,
     MockClusterToRegionRPCFixture,
     MockLiveClusterToRegionRPCFixture,
+    TwistedLoggerFixture,
     )
 from testtools import ExpectedException
 from testtools.deferredruntest import (
@@ -404,69 +405,6 @@ class TestChangePowerState(MAASTestCase):
             call(power_change='query', **context),
         ))
 
-    @inlineCallbacks
-    def test_change_power_state_removes_action_from_registry_on_success(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = random.choice(['on', 'off'])
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'pause')
-        power.power_action_registry[system_id] = power_change
-        # Patch the power action utility so that it doesn't actually try
-        # to do anything.
-        power_action, execute = patch_power_action(
-            self, return_value=power_change)
-        yield self.patch_rpc_methods()
-
-        yield power.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertNotIn(system_id, power.power_action_registry.keys())
-
-    @inlineCallbacks
-    def test_change_power_state_removes_action_from_registry_on_failure(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'pause')
-        power.power_action_registry[system_id] = power_change
-        # Simulate a persistent failure.
-        power_action, execute = patch_power_action(self, return_value='off')
-        yield self.patch_rpc_methods()
-
-        yield power.change_power_state(
-            system_id, hostname, power_type, power_change, context)
-        self.assertNotIn(system_id, power.power_action_registry.keys())
-
-    @inlineCallbacks
-    def test_change_power_state_removes_action_from_registry_on_error(self):
-        system_id = factory.make_name('system_id')
-        hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
-        power_change = 'on'
-        context = {
-            factory.make_name('context-key'): factory.make_name('context-val')
-        }
-        self.patch(power, 'pause')
-        power.power_action_registry[system_id] = power_change
-        # Simulate an exception.
-        exception_message = factory.make_name('exception')
-        power_action, execute = patch_power_action(
-            self, side_effect=PowerActionFail(exception_message))
-        yield self.patch_rpc_methods()
-
-        with ExpectedException(PowerActionFail):
-            yield power.change_power_state(
-                system_id, hostname, power_type, power_change, context)
-
-        self.assertNotIn(system_id, power.power_action_registry.keys())
-
 
 class TestPowerQuery(MAASTestCase):
 
@@ -735,15 +673,15 @@ class TestMaybeChangePowerState(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def patch_power_action_registry(self):
+        self.patch(power, 'power_action_registry', {})
+
     def patch_methods_using_rpc(self):
         self.patch_autospec(power, 'power_change_starting')
         power.power_change_starting.side_effect = always_succeed_with(None)
 
-        def change_power_state(system_id, *args, **kwargs):
-            del power.power_action_registry[system_id]
-
         self.patch_autospec(power, 'change_power_state')
-        power.change_power_state.side_effect = change_power_state
+        power.change_power_state.side_effect = always_succeed_with(None)
 
     def test_always_returns_deferred(self):
         clock = Clock()
@@ -755,6 +693,7 @@ class TestMaybeChangePowerState(MAASTestCase):
     @inlineCallbacks
     def test_adds_action_to_registry(self):
         self.patch_methods_using_rpc()
+        self.patch_power_action_registry()
 
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -806,4 +745,48 @@ class TestMaybeChangePowerState(MAASTestCase):
             power.change_power_state,
             MockCalledOnceWith(
                 system_id, hostname, power_type, power_change, context,
-                clock=power.reactor))
+                power.reactor))
+
+    @inlineCallbacks
+    def test_clears_lock_if_change_power_state_success(self):
+        self.patch_power_action_registry()
+        self.patch_methods_using_rpc()
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertNotIn(system_id, power.power_action_registry)
+
+    @inlineCallbacks
+    def test_clears_lock_if_change_power_state_fails(self):
+        self.patch_power_action_registry()
+
+        class TestException(Exception):
+            pass
+
+        self.patch_autospec(power, 'power_change_starting')
+        power.power_change_starting.side_effect = TestException('boom')
+
+        system_id = factory.make_name('system_id')
+        hostname = sentinel.hostname
+        power_type = sentinel.power_type
+        power_change = random.choice(['on', 'off'])
+        context = sentinel.context
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertNotIn(system_id, power.power_action_registry)
+        self.assertDocTestMatches(
+            "Unhandled Error...TestException: boom",
+            logger.dump())

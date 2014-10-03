@@ -46,7 +46,9 @@ from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     )
+from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
+from twisted.python import log
 
 # List of power_types that support querying the power state.
 # change_power_state() will only retry changing the power
@@ -168,11 +170,20 @@ def maybe_change_power_state(system_id, hostname, power_type,
             "action is already in progress for that node." %
             (power_change, hostname))
     power_action_registry[system_id] = power_change
+
+    def clean_up(*args, **kwargs):
+        power_action_registry.pop(system_id, None)
+
     # Arrange for the power change to happen later; do not make the caller
     # wait, because it might take a long time.
-    clock.callLater(
-        0, change_power_state, system_id, hostname, power_type,
-        power_change, context, clock=clock)
+    d = deferLater(
+        clock, 0, change_power_state, system_id, hostname,
+        power_type, power_change, context, clock)
+    d.addErrback(log.err)
+    # Whether we succeeded or failed, we need to remove the action
+    # from the registry of actions, otherwise every subsequent
+    # action will fail.
+    d.addBoth(clean_up)
 
 
 @asynchronous
@@ -186,40 +197,34 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
     work.
     """
     yield power_change_starting(system_id, hostname, power_change)
-    try:
-        # Use increasing waiting times to work around race conditions
-        # that could arise when power-cycling the node.
-        for waiting_time in default_waiting_policy:
-            # Perform power change.
-            try:
-                yield deferToThread(
-                    perform_power_change, system_id, hostname, power_type,
-                    power_change, context)
-            except PowerActionFail:
-                raise
-            # If the power_type doesn't support querying the power state:
-            # exit now.
-            if power_type not in QUERY_POWER_TYPES:
-                return
-            # Wait to let the node some time to change its power state.
-            yield pause(waiting_time, clock)
-            # Check current power state.
-            new_power_state = yield deferToThread(
+    # Use increasing waiting times to work around race conditions
+    # that could arise when power-cycling the node.
+    for waiting_time in default_waiting_policy:
+        # Perform power change.
+        try:
+            yield deferToThread(
                 perform_power_change, system_id, hostname, power_type,
-                'query', context)
-            if new_power_state == power_change:
-                yield power_change_success(system_id, hostname, power_change)
-                return
+                power_change, context)
+        except PowerActionFail:
+            raise
+        # If the power_type doesn't support querying the power state:
+        # exit now.
+        if power_type not in QUERY_POWER_TYPES:
+            return
+        # Wait to let the node some time to change its power state.
+        yield pause(waiting_time, clock)
+        # Check current power state.
+        new_power_state = yield deferToThread(
+            perform_power_change, system_id, hostname, power_type,
+            'query', context)
+        if new_power_state == power_change:
+            yield power_change_success(system_id, hostname, power_change)
+            return
 
-        # Failure: the power state of the node hasn't changed: mark it as
-        # broken.
-        message = "Timeout after %s tries" % len(default_waiting_policy)
-        yield power_change_failure(system_id, hostname, power_change, message)
-    finally:
-        # Whether we succeeded or failed, we need to remove the action
-        # from the registry of actions, otherwise every subsequent
-        # action will fail.
-        del power_action_registry[system_id]
+    # Failure: the power state of the node hasn't changed: mark it as
+    # broken.
+    message = "Timeout after %s tries" % len(default_waiting_policy)
+    yield power_change_failure(system_id, hostname, power_change, message)
 
 
 @asynchronous
