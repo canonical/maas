@@ -150,7 +150,10 @@ from maasserver.utils.osystems import (
     )
 from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    valid_ipv6,
+    )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.network import REVEAL_IPv6
 from provisioningserver.rpc.exceptions import (
@@ -308,6 +311,14 @@ def find_osystem_and_release_from_release_name(name):
     return None, None
 
 
+def contains_managed_ipv6_interface(interfaces):
+    """Does any of a list of cluster interfaces manage a IPv6 subnet?"""
+    return any(
+        interface.manages_static_range() and valid_ipv6(interface.ip)
+        for interface in interfaces
+        )
+
+
 class NodeForm(MAASModelForm):
 
     def __init__(self, request=None, *args, **kwargs):
@@ -322,10 +333,25 @@ class NodeForm(MAASModelForm):
             # Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
                 required=False, empty_label="Default (master)")
+
+        if not REVEAL_IPv6:
+            # We're not showing the IPv6 feature to the user.  Hide the ability
+            # to disable IPv4 on a node.
+            allow_disable_ipv4 = False
+        elif self.new_node:
+            # Permit disabling of IPv4 if at least one cluster supports IPv6.
+            allow_disable_ipv4 = contains_managed_ipv6_interface(
+                NodeGroupInterface.objects.all())
+        else:
+            # Permit disabling of IPv4 if at least one interface on the cluster
+            # supports IPv6.
+            allow_disable_ipv4 = contains_managed_ipv6_interface(
+                self.instance.nodegroup.nodegroupinterface_set.all())
+
         self.set_up_architecture_field()
         self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
 
-        if not REVEAL_IPv6:
+        if not allow_disable_ipv4:
             # Hide the disable_ipv4 field until support works properly.  The
             # API will still support the field, but it won't be visible.
             # This hidden field absolutely needs an empty label, because its

@@ -15,6 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from crochet import TimeoutError
+from django.forms import (
+    CheckboxInput,
+    HiddenInput,
+    )
 from maasserver import forms
 from maasserver.clusterrpc.power_parameters import get_power_type_choices
 from maasserver.clusterrpc.testing.osystems import (
@@ -32,6 +36,7 @@ from maasserver.forms import (
     NodeForm,
     pick_default_architecture,
     )
+import maasserver.forms as forms_module
 from maasserver.testing.architecture import (
     make_usable_architecture,
     patch_usable_architectures,
@@ -411,6 +416,57 @@ class TestNodeForm(MAASServerTestCase):
         form.instance.nodegroup = cluster
         node = form.save()
         self.assertEqual(setting, node.disable_ipv4)
+
+    def test_shows_disable_ipv4_if_IPv6_revealed_and_configured(self):
+        self.patch(forms_module, 'REVEAL_IPv6', True)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        factory.make_NodeGroupInterface(
+            node.nodegroup, network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        form = NodeForm(
+            instance=node,
+            data={'architecture': make_usable_architecture(self)})
+        self.assertIsInstance(
+            form.fields['disable_ipv4'].widget, CheckboxInput)
+
+    def test_hides_disable_ipv4_if_IPv6_not_revealed(self):
+        self.patch(forms_module, 'REVEAL_IPv6', False)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        factory.make_NodeGroupInterface(
+            node.nodegroup, network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        form = NodeForm(
+            instance=node,
+            data={'architecture': make_usable_architecture(self)})
+        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
+
+    def test_hides_disable_ipv4_if_IPv6_not_configured(self):
+        self.patch(forms_module, 'REVEAL_IPv6', True)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        factory.make_NodeGroupInterface(
+            node.nodegroup, network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        form = NodeForm(
+            instance=node,
+            data={'architecture': make_usable_architecture(self)})
+        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
+
+    def test_shows_disable_ipv4_on_new_node_if_any_cluster_supports_it(self):
+        self.patch(forms_module, 'REVEAL_IPv6', True)
+        factory.make_NodeGroupInterface(
+            factory.make_NodeGroup(), network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        form = NodeForm(data={'architecture': make_usable_architecture(self)})
+        self.assertIsInstance(
+            form.fields['disable_ipv4'].widget, CheckboxInput)
+
+    def test_hides_disable_ipv4_on_new_node_if_no_cluster_supports_it(self):
+        self.patch(forms_module, 'REVEAL_IPv6', True)
+        factory.make_NodeGroupInterface(
+            factory.make_NodeGroup(), network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        form = NodeForm(data={'architecture': make_usable_architecture(self)})
+        self.assertIsInstance(form.fields['disable_ipv4'].widget, HiddenInput)
 
 
 class TestAdminNodeForm(MAASServerTestCase):
