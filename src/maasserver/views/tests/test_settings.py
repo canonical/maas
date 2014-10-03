@@ -25,6 +25,7 @@ from maasserver.clusterrpc.testing.osystems import (
     make_rpc_release,
     )
 from maasserver.models import (
+    BootSource,
     Config,
     UserProfile,
     )
@@ -273,6 +274,65 @@ class SettingsTest(MAASServerTestCase):
         self.assertEqual(
             new_kernel_opts,
             Config.objects.get_config('kernel_opts'))
+
+    def test_settings_boot_source_is_shown(self):
+        self.client_log_in(as_admin=True)
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        boot_source = doc.cssselect('#boot_source')
+        self.assertEqual(
+            1, len(boot_source), "Didn't show boot image settings section.")
+
+    def test_settings_boot_source_is_not_shown(self):
+        self.client_log_in(as_admin=True)
+        for _ in range(2):
+            factory.make_BootSource()
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        boot_source = doc.cssselect('#boot_source')
+        self.assertEqual(
+            0, len(boot_source), "Didn't hide boot image settings section.")
+
+    def test_settings_boot_source_POST_creates_new_source(self):
+        self.client_log_in(as_admin=True)
+        url = "http://test.example.com/archive"
+        keyring = "/usr/local/testing/path.gpg"
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='boot_source',
+                data={
+                    'boot_source_url': url,
+                    'boot_source_keyring': keyring,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+
+        boot_source = BootSource.objects.first()
+        self.assertIsNotNone(boot_source)
+        self.assertEqual(
+            (url, keyring),
+            (boot_source.url, boot_source.keyring_filename))
+
+    def test_settings_boot_source_POST_updates_source(self):
+        self.client_log_in(as_admin=True)
+        boot_source = factory.make_BootSource()
+        url = "http://test.example.com/archive"
+        keyring = "/usr/local/testing/path.gpg"
+        response = self.client.post(
+            reverse('settings'),
+            get_prefixed_form_data(
+                prefix='boot_source',
+                data={
+                    'boot_source_url': url,
+                    'boot_source_keyring': keyring,
+                }))
+
+        self.assertEqual(httplib.FOUND, response.status_code, response.content)
+        boot_source = reload_object(boot_source)
+        self.assertEqual(
+            (url, keyring),
+            (boot_source.url, boot_source.keyring_filename))
 
 
 class NonAdminSettingsTest(MAASServerTestCase):

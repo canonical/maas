@@ -41,6 +41,7 @@ from django.views.generic.edit import ModelFormMixin
 from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
+    BootSourceSettingsForm,
     CommissioningForm,
     DeployForm,
     DiskErasingOnReleaseForm,
@@ -53,6 +54,7 @@ from maasserver.forms import (
     WindowsForm,
     )
 from maasserver.models import (
+    BootSource,
     LicenseKey,
     UserProfile,
     )
@@ -196,6 +198,14 @@ def set_license_key_titles(license_key, osystems):
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
 
+    # Process boot source settings form.
+    show_boot_source = BootSource.objects.count() < 2
+    boot_source_form, response = process_form(
+        request, BootSourceSettingsForm, reverse('settings'),
+        'boot_source', "Configuration updated.")
+    if response is not None:
+        return response
+
     # Process Third Party Drivers form.
     third_party_drivers_form, response = process_form(
         request, ThirdPartyDriversForm, reverse('settings'),
@@ -270,6 +280,8 @@ def settings(request):
             'show_license_keys': show_license_keys,
             'license_keys': license_keys,
             'maas_and_network_form': maas_and_network_form,
+            'show_boot_source': show_boot_source,
+            'boot_source_form': boot_source_form,
             'third_party_drivers_form': third_party_drivers_form,
             'disk_erasing_on_release_form': disk_erasing_on_release_form,
             'commissioning_form': commissioning_form,
