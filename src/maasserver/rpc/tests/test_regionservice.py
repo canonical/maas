@@ -16,6 +16,8 @@ __all__ = []
 
 from collections import defaultdict
 from contextlib import closing
+from hashlib import sha256
+from hmac import HMAC
 from itertools import product
 from operator import attrgetter
 import os.path
@@ -57,6 +59,7 @@ from maasserver.rpc.regionservice import (
     RegionService,
     )
 from maasserver.rpc.testing.doubles import IdentifyingRegionServer
+from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -87,6 +90,7 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
+    Authenticate,
     CreateNode,
     GetArchiveMirrors,
     GetBootSources,
@@ -116,7 +120,10 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
-from testtools.deferredruntest import assert_fails_with
+from testtools.deferredruntest import (
+    assert_fails_with,
+    extract_result,
+    )
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -159,7 +166,7 @@ class TestRegionProtocol_Identify(MAASTestCase):
     def test_identify_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(Identify.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     def test_identify_reports_event_loop_name(self):
@@ -171,12 +178,34 @@ class TestRegionProtocol_Identify(MAASTestCase):
         return d.addCallback(check)
 
 
+class TestRegionProtocol_Authenticate(MAASServerTestCase):
+
+    def test_authenticate_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(Authenticate.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_authenticate_calculates_digest_with_salt(self):
+        message = factory.make_bytes()
+        secret = get_shared_secret()
+
+        args = {b"message": message}
+        d = call_responder(Region(), Authenticate, args)
+        response = extract_result(d)
+        digest = response["digest"]
+        salt = response["salt"]
+
+        expected_digest = HMAC(secret, message + salt, sha256).digest()
+        self.assertEqual(expected_digest, digest)
+        self.assertThat(salt, HasLength(16))
+
+
 class TestRegionProtocol_StartTLS(MAASTestCase):
 
     def test_StartTLS_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(amp.StartTLS.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test_get_tls_parameters_returns_parameters(self):
         # get_tls_parameters() is the underlying responder function.
@@ -207,7 +236,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
     def test_report_boot_images_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(ReportBootImages.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     def test_report_boot_images_can_be_called(self):
@@ -270,7 +299,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
     def test_update_leases_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(UpdateLeases.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def make_node_group(self, uuid):
@@ -348,7 +377,7 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(GetBootSources.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     def test_get_boot_sources_returns_simplestreams_endpoint(self):
@@ -369,7 +398,7 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
     def test_get_boot_sources_v2_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(GetBootSourcesV2.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     def test_get_boot_sources_v2_returns_simplestreams_endpoint(self):
@@ -390,7 +419,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTestCase):
     def test_get_archive_mirrors_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(GetArchiveMirrors.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def set_main_archive(self, url):
@@ -446,7 +475,7 @@ class TestRegionProtocol_GetProxies(MAASTestCase):
     def test_get_proxies_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(GetProxies.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def set_http_proxy(self, url):
@@ -512,7 +541,7 @@ class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
     def test_mark_failed_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(MarkNodeFailed.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def create_deploying_node(self):
@@ -587,7 +616,7 @@ class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             ListNodePowerParameters.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -642,7 +671,7 @@ class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
     def test__is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(UpdateNodePowerState.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -682,7 +711,7 @@ class TestRegionProtocol_RegisterEventType(MAASTestCase):
     def test_register_event_type_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(RegisterEventType.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def get_event_type(self, name):
@@ -732,7 +761,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
     def test_send_event_is_registered(self):
         protocol = Region()
         responder = protocol.locateResponder(SendEvent.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def get_event(self, system_id, type_name):
@@ -834,7 +863,7 @@ class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             SendEventMACAddress.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def get_event(self, mac_address, type_name):
@@ -1719,7 +1748,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             ReportForeignDHCPServer.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def create_cluster_interface(self):
@@ -1775,7 +1804,7 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             GetClusterInterfaces.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def create_cluster_and_interfaces(self):
@@ -1812,7 +1841,7 @@ class TestRegionProtocol_CreateNode(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             CreateNode.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def create_node(self):
@@ -1854,7 +1883,7 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             CreateNode.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @wait_for_reactor
     @inlineCallbacks
@@ -1882,7 +1911,7 @@ class TestRegionProtocol_RequestNodeInforByMACAddress(MAASTestCase):
         protocol = Region()
         responder = protocol.locateResponder(
             RequestNodeInfoByMACAddress.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @transactional
     def make_mac_address(self, node):

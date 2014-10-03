@@ -18,6 +18,7 @@ __all__ = [
 
 import json
 import logging
+from os import urandom
 import random
 import re
 from urlparse import urlparse
@@ -75,6 +76,10 @@ from provisioningserver.rpc.power import (
     maybe_change_power_state,
     )
 from provisioningserver.rpc.tags import evaluate_tag
+from provisioningserver.security import (
+    calculate_digest,
+    get_shared_secret_from_filesystem,
+    )
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
 from twisted.internet.defer import inlineCallbacks
@@ -110,6 +115,13 @@ class Cluster(RPCProtocol):
         :py:class:`~provisioningserver.rpc.cluster.Identify`.
         """
         return {b"ident": get_cluster_uuid().decode("ascii")}
+
+    @cluster.Authenticate.responder
+    def authenticate(self, message):
+        secret = get_shared_secret_from_filesystem()
+        salt = urandom(16)  # 16 bytes of high grade noise.
+        digest = calculate_digest(secret, message, salt)
+        return {"digest": digest, "salt": salt}
 
     @cluster.ListBootImages.responder
     def list_boot_images(self):

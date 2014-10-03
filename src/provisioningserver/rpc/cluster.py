@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Authenticate",
     "ComposeCurtinNetworkPreseed",
     "ConfigureDHCPv4",
     "ConfigureDHCPv6",
@@ -42,7 +43,10 @@ from provisioningserver.rpc.arguments import (
     ParsedURL,
     StructureAsJSON,
     )
-from provisioningserver.rpc.common import Identify
+from provisioningserver.rpc.common import (
+    Authenticate,
+    Identify,
+    )
 from twisted.protocols import amp
 
 

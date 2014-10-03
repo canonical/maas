@@ -16,6 +16,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Authenticate",
     "CreateNode",
     "Identify",
     "MarkNodeFailed",
@@ -29,7 +30,10 @@ from provisioningserver.rpc.arguments import (
     ParsedURL,
     StructureAsJSON,
     )
-from provisioningserver.rpc.common import Identify
+from provisioningserver.rpc.common import (
+    Authenticate,
+    Identify,
+    )
 from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
     NodeStateViolation,

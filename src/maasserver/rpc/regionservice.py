@@ -19,6 +19,7 @@ __all__ = [
 
 from collections import defaultdict
 from contextlib import closing
+from os import urandom
 import random
 from socket import AF_INET
 from textwrap import dedent
@@ -47,6 +48,7 @@ from maasserver.rpc.nodes import (
     create_node,
     request_node_info_by_mac_address,
     )
+from maasserver.security import get_shared_secret
 from maasserver.utils import synchronised
 from maasserver.utils.async import transactional
 from netaddr import IPAddress
@@ -58,6 +60,7 @@ from provisioningserver.rpc import (
     )
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.interfaces import IConnection
+from provisioningserver.security import calculate_digest
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import (
     asynchronous,
@@ -96,6 +99,13 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.Identify`.
         """
         return {b"ident": eventloop.loop.name}
+
+    @cluster.Authenticate.responder
+    def authenticate(self, message):
+        secret = get_shared_secret()
+        salt = urandom(16)  # 16 bytes of high grade noise.
+        digest = calculate_digest(secret, message, salt)
+        return {"digest": digest, "salt": salt}
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):

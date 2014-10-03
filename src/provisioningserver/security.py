@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "calculate_digest",
     "get_shared_secret_filesystem_path",
     "get_shared_secret_from_filesystem",
 ]
@@ -22,6 +23,8 @@ from binascii import (
     b2a_hex,
     )
 import errno
+from hashlib import sha256
+from hmac import HMAC
 from os.path import dirname
 
 from lockfile import FileLock
@@ -90,3 +93,14 @@ def set_shared_secret_on_filesystem(secret):
     with FileLock(secret_path):
         # Write secret to the filesystem.
         write_text_file(secret_path, secret_hex)
+
+
+def calculate_digest(secret, message, salt):
+    """Calculate a SHA-256 HMAC digest for the given data."""
+    assert isinstance(secret, bytes)
+    assert isinstance(message, bytes)
+    assert isinstance(salt, bytes)
+    hmacr = HMAC(secret, digestmod=sha256)
+    hmacr.update(message)
+    hmacr.update(salt)
+    return hmacr.digest()

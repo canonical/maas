@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "Authenticate",
     "Client",
     "Identify",
     "RPCProtocol",
@@ -31,6 +32,44 @@ class Identify(amp.Command):
     """
 
     response = [(b"ident", amp.Unicode())]
+
+
+class Authenticate(amp.Command):
+    """Authenticate the remote side.
+
+    The procedure is as follows:
+
+    - When establishing a new connection, the region and the cluster call
+      `Authenticate` on each other, passing a random chunk of data in
+      `message`. This message must be unique to avoid replay attacks.
+
+    - The remote side adds some salt to the message, and calculates an HMAC
+      digest, keyed with the shared secret.
+
+      The salt is intended to prevent replay attacks: it prevents an intruder
+      from authenticating itself by calling `Authenticate` on the caller (or
+      another endpoint in the same MAAS installation) and sending the same
+      message, receiving the digest and passing it back to the caller.
+
+    - The remote side returns this digest and the salt. The caller performs
+      the same calculation, and compares the digests.
+
+    - If the digests match, the connection is put into rotation.
+
+    - If the digests do not match, the connection is closed immediately, and
+      an error is logged.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"message", amp.String()),
+    ]
+    response = [
+        (b"digest", amp.String()),
+        (b"salt", amp.String()),  # Is 'salt' the right term here?
+    ]
+    errors = []
 
 
 class Client:

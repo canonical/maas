@@ -18,6 +18,8 @@ from datetime import (
     datetime,
     timedelta,
     )
+from hashlib import sha256
+from hmac import HMAC
 from itertools import product
 import json
 import os.path
@@ -92,8 +94,10 @@ from provisioningserver.rpc.testing.doubles import (
     DummyConnection,
     StubOS,
     )
+from provisioningserver.security import set_shared_secret_on_filesystem
 from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
+from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     Contains,
     Equals,
@@ -130,7 +134,7 @@ class TestClusterProtocol_Identify(MAASTestCase):
     def test_identify_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(cluster.Identify.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test_identify_reports_cluster_uuid(self):
         example_uuid = factory.make_UUID()
@@ -145,6 +149,29 @@ class TestClusterProtocol_Identify(MAASTestCase):
         return d.addCallback(check)
 
 
+class TestClusterProtocol_Authenticate(MAASTestCase):
+
+    def test_authenticate_is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(cluster.Authenticate.commandName)
+        self.assertIsNotNone(responder)
+
+    def test_authenticate_calculates_digest_with_salt(self):
+        message = factory.make_bytes()
+        secret = factory.make_bytes()
+        set_shared_secret_on_filesystem(secret)
+
+        args = {b"message": message}
+        d = call_responder(Cluster(), cluster.Authenticate, args)
+        response = extract_result(d)
+        digest = response["digest"]
+        salt = response["salt"]
+
+        self.assertThat(salt, HasLength(16))
+        expected_digest = HMAC(secret, message + salt, sha256).digest()
+        self.assertEqual(expected_digest, digest)
+
+
 class TestClusterProtocol_StartTLS(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
@@ -152,7 +179,7 @@ class TestClusterProtocol_StartTLS(MAASTestCase):
     def test_StartTLS_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(amp.StartTLS.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test_get_tls_parameters_returns_parameters(self):
         # get_tls_parameters() is the underlying responder function.
@@ -185,7 +212,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ListBootImages.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_list_boot_images_can_be_called(self):
@@ -253,7 +280,7 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ImportBootImages.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_import_boot_images_can_be_called(self):
@@ -327,7 +354,7 @@ class TestClusterProtocol_DescribePowerTypes(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.DescribePowerTypes.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_describe_power_types_returns_jsonized_power_parameters(self):
@@ -875,7 +902,7 @@ class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ListSupportedArchitectures.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_returns_architectures(self):
@@ -899,7 +926,7 @@ class TestClusterProtocol_ListOperatingSystems(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ListOperatingSystems.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_returns_oses(self):
@@ -935,7 +962,7 @@ class TestClusterProtocol_GetOSReleaseTitle(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.GetOSReleaseTitle.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_get_os_release_title(self):
@@ -978,7 +1005,7 @@ class TestClusterProtocol_ValidateLicenseKey(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.ValidateLicenseKey.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_validate_license_key(self):
@@ -1035,7 +1062,7 @@ class TestClusterProtocol_GetPreseedData(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.GetPreseedData.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_calls_get_preseed_data(self):
@@ -1146,7 +1173,7 @@ class TestClusterProtocol_PowerOn_PowerOff(MAASTestCase):
     def test_is_registered(self):
         protocol = Cluster()
         responder = protocol.locateResponder(self.command.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test_executes_maybe_change_power_state(self):
         maybe_change_power_state = self.patch(
@@ -1247,7 +1274,7 @@ class TestClusterProtocol_PowerQuery(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.PowerQuery.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_returns_power_state(self):
@@ -1358,7 +1385,7 @@ class TestClusterProtocol_CreateHostMaps(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.CreateHostMaps.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_executes_create_host_maps(self):
@@ -1402,7 +1429,7 @@ class TestClusterProtocol_RemoveHostMaps(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.RemoveHostMaps.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_executes_remove_host_maps(self):
@@ -1440,7 +1467,7 @@ class TestClusterProtocol_StartMonitors(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.StartMonitors.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__executes_start_monitors(self):
         deadline = datetime.now(amp.utc) + timedelta(seconds=10)
@@ -1460,7 +1487,7 @@ class TestClusterProtocol_CancelMonitor(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.CancelMonitor.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__executes_cancel_monitor(self):
         deadline = datetime.now(amp.utc) + timedelta(seconds=10)
@@ -1483,7 +1510,7 @@ class TestClusterProtocol_EvaluateTag(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.EvaluateTag.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     @inlineCallbacks
     def test_happy_path(self):
@@ -1545,7 +1572,7 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.AddVirsh.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__calls_probe_virsh_and_enlist(self):
         probe_virsh_and_enlist = self.patch_autospec(
@@ -1590,7 +1617,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.AddSeaMicro15k.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__calls_find_ip_via_arp(self):
         # Prevent any actual probing from happing.
@@ -1669,7 +1696,7 @@ class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.EnlistNodesFromMSCM.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__calls_probe_and_enlist_mscm(self):
         probe_and_enlist_mscm = self.patch_autospec(
@@ -1696,7 +1723,7 @@ class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
         protocol = Cluster()
         responder = protocol.locateResponder(
             cluster.EnlistNodesFromUCSM.commandName)
-        self.assertIsNot(responder, None)
+        self.assertIsNotNone(responder)
 
     def test__calls_probe_and_enlist_ucsm(self):
         probe_and_enlist_ucsm = self.patch_autospec(
