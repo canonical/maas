@@ -440,6 +440,13 @@ class NodeForm(MAASModelForm):
         return is_valid
 
     def clean_license_key(self):
+        """Validates the license_key field is the correct format for the
+        selected operating system."""
+        # We allow the license_key field to be blank, even if the OS requires
+        # a license key. This is to allow for situations where the OS has a
+        # license key installed in the image that gets deployed, or where the
+        # OS is activated using some other activation service (for example
+        # Windows KMS activation).
         key = self.cleaned_data.get('license_key')
         if key == '':
             return ''
@@ -513,7 +520,7 @@ class NodeForm(MAASModelForm):
             "FQDN."))
 
     license_key = forms.CharField(
-        label="License Key (Required)", required=False, help_text=(
+        label="License Key", required=False, help_text=(
             "License key for operating system"),
         max_length=30)
 

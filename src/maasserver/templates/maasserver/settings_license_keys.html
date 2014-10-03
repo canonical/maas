@@ -1,0 +1,35 @@
+
+<h2>License Keys</h2>
+  <table class="list">
+    <tbody>
+    {% for key in license_keys %}
+      <tr class="script {% cycle 'even' 'odd' %}" id="{{ key.osystem }}-{{ key.distro_series }}">
+        <td>{{ key.osystem_title }}</td>
+        <td>{{ key.distro_series_title }}</td>
+        <td class="icon-controls">
+          <a href="{% url 'license-key-edit' key.osystem key.distro_series %}"
+             title="Edit license key"
+             class="icon">
+            <img src="{{ STATIC_URL }}img/edit.png"
+                 alt="edit"
+                 class="space-right-small" />
+          </a>
+          <a href="{% url 'license-key-delete' key.osystem key.distro_series %}"
+             title="Delete license key"
+             class="icon">
+             <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+          </a>
+        </td>
+    {% empty %}
+    No license keys.
+    {% endfor %}
+    </tbody>
+  </table>
+<div>
+  <a class="button right space-top-small"
+     href="{% url 'license-key-add' %}">
+    Add license key
+  </a>
+</div>
+<div class="clear"></div>
+

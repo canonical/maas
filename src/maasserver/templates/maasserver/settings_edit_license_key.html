@@ -1,0 +1,20 @@
+{% extends "maasserver/base.html" %}
+
+{% block nav-active-settings %}active{% endblock %}
+{% block title %}Edit license key{% endblock %}
+{% block page-title %}Edit license key{% endblock %}
+
+{% block content %}
+<div class="block size10 first">
+    <form action="." method="post" class="block">
+      {% csrf_token %}
+      <ul>
+      {% for field in form %}
+        {% include "maasserver/form_field.html" %}
+      {% endfor %}
+      </ul>
+      <input type="submit" value="Save license key"
+             class="button right" />
+      <a href="{% url 'settings' %}#license_keys">Cancel</a>
+</div>
+{% endblock %}

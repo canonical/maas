@@ -85,6 +85,11 @@ from maasserver.views.settings_commissioning_scripts import (
     CommissioningScriptCreate,
     CommissioningScriptDelete,
     )
+from maasserver.views.settings_license_keys import (
+    LicenseKeyCreate,
+    LicenseKeyDelete,
+    LicenseKeyEdit,
+    )
 from maasserver.views.tags import TagView
 from maasserver.views.zones import (
     ZoneAdd,
@@ -257,6 +262,18 @@ urlpatterns += patterns(
         r'^commissioning-results/$',
         NodeCommissionResultListView.as_view(),
         name='nodecommissionresult-list'),
+    adminurl(
+        r'^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/delete/$',
+        LicenseKeyDelete.as_view(),
+        name='license-key-delete'),
+    adminurl(
+        r'^license-key/(?P<osystem>[^/]+)/(?P<distro_series>[^/]+)/edit/$',
+        LicenseKeyEdit.as_view(),
+        name='license-key-edit'),
+    adminurl(
+        r'^license-key/add/$',
+        LicenseKeyCreate.as_view(),
+        name='license-key-add'),
 )
 
 # Tag views.

@@ -38,6 +38,7 @@ from django.views.generic import (
 from django.views.generic.base import TemplateView
 from django.views.generic.detail import SingleObjectTemplateResponseMixin
 from django.views.generic.edit import ModelFormMixin
+from maasserver.clusterrpc.osystems import gen_all_known_operating_systems
 from maasserver.exceptions import CannotDeleteUserException
 from maasserver.forms import (
     CommissioningForm,
@@ -51,7 +52,14 @@ from maasserver.forms import (
     UbuntuForm,
     WindowsForm,
     )
-from maasserver.models import UserProfile
+from maasserver.models import (
+    LicenseKey,
+    UserProfile,
+    )
+from maasserver.utils.osystems import (
+    get_osystem_from_osystems,
+    get_release_from_osystem,
+    )
 from maasserver.views import process_form
 from metadataserver.models import CommissioningScript
 
@@ -156,6 +164,35 @@ class AccountsEdit(TemplateView, ModelFormMixin,
         return self.respond(request, profile_form, password_form)
 
 
+def has_osystems_supporting_license_keys(osystems):
+    """Return True if the given osystems supports releases with license keys.
+    """
+    for osystem in osystems:
+        for release in osystem['releases']:
+            if release['requires_license_key']:
+                return True
+    return False
+
+
+def set_license_key_titles(license_key, osystems):
+    """Sets the osystem_title and distro_series_title field on the
+    license_key.
+
+    Uses the given "osystems" to get the titles.
+    """
+    osystem = get_osystem_from_osystems(osystems, license_key.osystem)
+    if osystem is None:
+        license_key.osystem_title = license_key.osystem
+        license_key.distro_series_title = license_key.distro_series
+        return
+    license_key.osystem_title = osystem['title']
+    release = get_release_from_osystem(osystem, license_key.distro_series)
+    if release is None:
+        license_key.distro_series_title = license_key.distro_series
+        return
+    license_key.distro_series_title = release['title']
+
+
 def settings(request):
     user_list = UserProfile.objects.all_users().order_by('username')
 
@@ -218,11 +255,20 @@ def settings(request):
     # Commissioning scripts.
     commissioning_scripts = CommissioningScript.objects.all()
 
+    # License keys w/ titles for osystem and distro_series
+    osystems = list(gen_all_known_operating_systems())
+    show_license_keys = has_osystems_supporting_license_keys(osystems)
+    license_keys = LicenseKey.objects.all()
+    for license_key in license_keys:
+        set_license_key_titles(license_key, osystems)
+
     return render_to_response(
         'maasserver/settings.html',
         {
             'user_list': user_list,
             'commissioning_scripts': commissioning_scripts,
+            'show_license_keys': show_license_keys,
+            'license_keys': license_keys,
             'maas_and_network_form': maas_and_network_form,
             'third_party_drivers_form': third_party_drivers_form,
             'disk_erasing_on_release_form': disk_erasing_on_release_form,

@@ -91,6 +91,13 @@
       {% include "maasserver/settings_commissioning_scripts.html" %}
       <div class="clear"></div>
     </div>
+    {% if show_license_keys %}
+    <div class="divider"></div>
+    <div id="license_keys" class="block size11 first">
+      {% include "maasserver/settings_license_keys.html" %}
+      <div class="clear"></div>
+    </div>
+    {% endif %}
     <div class="divider"></div>
     <div id="commissioning" class="block size7 first">
       <h2>Commissioning</h2>

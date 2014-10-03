@@ -39,6 +39,7 @@ from maasserver.testing.osystems import (
     patch_usable_osystems,
     )
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.views import settings as settings_view
 
 
 class SettingsTest(MAASServerTestCase):
@@ -141,6 +142,27 @@ class SettingsTest(MAASServerTestCase):
                 Config.objects.get_config('check_compatibility'),
                 Config.objects.get_config('commissioning_distro_series'),
             ))
+
+    def test_settings_hides_license_keys_if_no_OS_supporting_keys(self):
+        self.client_log_in(as_admin=True)
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        license_keys = doc.cssselect('#license_keys')
+        self.assertEqual(
+            0, len(license_keys), "Didn't hide the license key section.")
+
+    def test_settings_shows_license_keys_if_OS_supporting_keys(self):
+        self.client_log_in(as_admin=True)
+        release = make_rpc_release(requires_license_key=True)
+        osystem = make_rpc_osystem(releases=[release])
+        self.patch(
+            settings_view,
+            'gen_all_known_operating_systems').return_value = [osystem]
+        response = self.client.get(reverse('settings'))
+        doc = fromstring(response.content)
+        license_keys = doc.cssselect('#license_keys')
+        self.assertEqual(
+            1, len(license_keys), "Didn't show the license key section.")
 
     def test_settings_third_party_drivers_POST(self):
         self.client_log_in(as_admin=True)
