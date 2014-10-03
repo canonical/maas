@@ -1,6 +1,7 @@
 build-essential
 curl
 firefox
+gjs
 ipython
 libjs-yui3-full
 make

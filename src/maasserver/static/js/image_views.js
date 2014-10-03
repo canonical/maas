@@ -67,7 +67,7 @@ module.ImageListLoader = Y.Base.create('imageListLoader', Y.View, [], {
         try {
             var parsed = JSON.parse(data);
             this.regionImportRunning = parsed.region_import_running;
-            this.clusterImportRunning = parsed.cluster_import_running
+            this.clusterImportRunning = parsed.cluster_import_running;
             this.mergeImages(parsed.resources);
         }
         catch(e) {
@@ -188,13 +188,13 @@ module.ImagesView = Y.Base.create(
     getUbuntuImages: function() {
         images = this.modelList.filter(function(model) {
             return model.get('rtype') === BOOT_RESOURCE_TYPE.SYNCED &&
-                model.get('name').indexOf('ubuntu/') == 0;
+                model.get('name').indexOf('ubuntu/') === 0;
         });
         // Sort the images decending, so newest Ubuntu version is on top.
         images.sort(function(a, b) {
-            return -(a.get('title').localeCompare(b.get('title')))
+            return -(a.get('title').localeCompare(b.get('title')));
         });
-        return images
+        return images;
     },
 
    /**
@@ -220,7 +220,7 @@ module.ImagesView = Y.Base.create(
     * @method renderUbuntuView
     */
     renderImporting: function() {
-        var importingText = this.importer.one('.importing-text')
+        var importingText = this.importer.one('.importing-text');
         if(!this.regionImportRunning && !this.clusterImportRunning) {
             this.importer.addClass('hidden');
             importingText.setContent('');
@@ -240,18 +240,22 @@ module.ImagesView = Y.Base.create(
     */
     renderUbuntuView: function() {
         if(this.regionImportRunning) {
-            if(Y.Lang.isValue(this.ubuntuOptions))
+            if(Y.Lang.isValue(this.ubuntuOptions)) {
                 this.ubuntuOptions.addClass('hidden');
-            if(Y.Lang.isValue(this.ubuntuButton))
+            }
+            if(Y.Lang.isValue(this.ubuntuButton)) {
                 this.ubuntuButton.addClass('hidden');
+            }
         } else {
-            if(Y.Lang.isValue(this.ubuntuOptions))
+            if(Y.Lang.isValue(this.ubuntuOptions)) {
                 this.ubuntuOptions.removeClass('hidden');
-            if(Y.Lang.isValue(this.ubuntuButton))
+            }
+            if(Y.Lang.isValue(this.ubuntuButton)) {
                 this.ubuntuButton.removeClass('hidden');
+            }
         }
         var ubuntuImages = this.getUbuntuImages();
-        if(ubuntuImages.length == 0) {
+        if(ubuntuImages.length === 0) {
             this.ubuntuMissingImages.removeClass('hidden');
             this.ubuntuTable.addClass('hidden');
             this.updateUbuntuButton(false);
@@ -283,14 +287,18 @@ module.ImagesView = Y.Base.create(
     * @method updateUbuntuButton
     */
     updateUbuntuButton: function(showApply) {
-        if(!Y.Lang.isValue(this.ubuntuButton))
+        if(!Y.Lang.isValue(this.ubuntuButton)) {
             return;
-        if(this.ubuntuButton.getData('lock-value') === "true")
+        }
+        if(this.ubuntuButton.getData('lock-value') === "true") {
             return;
-        if(showApply)
+        }
+        if(showApply) {
             this.ubuntuButton.set('value', 'Apply changes');
-        else
+        }
+        else {
             this.ubuntuButton.set('value', 'Import images');
+        }
     },
 
    /**
