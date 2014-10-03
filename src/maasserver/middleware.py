@@ -44,6 +44,14 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from maasserver.components import (
+    discard_persistent_error,
+    register_persistent_error,
+    )
+from maasserver.enum import (
+    COMPONENT,
+    NODEGROUP_STATUS,
+    )
 from maasserver.models.nodegroup import NodeGroup
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -139,8 +147,19 @@ class ExternalComponentsMiddleware:
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
         try:
-            # TODO: Components checks here.
-            pass
+            # Check cluster connectivity.
+            accepted_clusters = NodeGroup.objects.filter(
+                status=NODEGROUP_STATUS.ACCEPTED)
+            disconnected_clusters_found = not all(
+                cluster.is_connected() for cluster in accepted_clusters)
+            if disconnected_clusters_found:
+                register_persistent_error(
+                    COMPONENT.CLUSTERS,
+                    "One or more clusters are currently disconnected. Visit "
+                    "the <a href=\"%s\">clusters page</a> for more "
+                    "information." % reverse('cluster-list'))
+            else:
+                discard_persistent_error(COMPONENT.CLUSTERS)
         except Exception:
             pass
         return None

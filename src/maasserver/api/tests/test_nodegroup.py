@@ -218,6 +218,9 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_import_boot_images_for_all_accepted_clusters(self):
+        # Patch out the is_connected method of NodeGroup so as to avoid
+        # extra calls to getClient()
+        self.patch(nodegroup_module.NodeGroup, 'is_connected')
         self.become_admin()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
         accepted_nodegroups = [

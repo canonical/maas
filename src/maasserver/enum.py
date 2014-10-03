@@ -41,6 +41,7 @@ class COMPONENT:
     """Major moving parts of the application that may have failure states."""
     PSERV = 'provisioning server'
     IMPORT_PXE_FILES = 'maas-import-pxe-files script'
+    CLUSTERS = 'clusters'
 
 
 class NODE_STATUS:
