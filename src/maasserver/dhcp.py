@@ -111,9 +111,7 @@ def do_configure_dhcp(ip_version, nodegroup, interfaces, ntp_server):
     client = getClientFor(nodegroup.uuid)
     # XXX jtv 2014-08-26 bug=1361673: If this fails remotely, the error
     # needs to be reported gracefully to the caller.
-    call = client(command, omapi_key=omapi_key, subnet_configs=subnets)
-    # Keep the timeout short: the UI may be waiting for completion.
-    call.wait(5)
+    client(command, omapi_key=omapi_key, subnet_configs=subnets).wait(60)
 
 
 def configure_dhcpv4(nodegroup, interfaces, ntp_server):

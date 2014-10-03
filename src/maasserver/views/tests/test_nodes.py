@@ -401,6 +401,9 @@ class NodeViewsTest(MAASServerTestCase):
                 if link.startswith('/nodes/node')])
 
     def test_node_list_num_queries_is_independent_of_num_nodes(self):
+        # XXX: GavinPanella 2014-10-03 bug=1377335
+        self.skip("Unreliable; something is causing varying counts.")
+
         # Listing nodes takes a constant number of database queries,
         # regardless of how many nodes are in the listing.
         self.client_log_in()

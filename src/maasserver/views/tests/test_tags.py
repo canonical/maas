@@ -58,6 +58,9 @@ class TagViewsTest(MAASServerTestCase):
         self.assertIn(node_link, get_content_links(response))
 
     def test_view_tag_num_queries_is_independent_of_num_nodes(self):
+        # XXX: GavinPanella 2014-10-03 bug=1377335
+        self.skip("Unreliable; something is causing varying counts.")
+
         self.client_log_in()
         tag = factory.make_Tag()
         tag_link = reverse('tag-view', args=[tag.name])
