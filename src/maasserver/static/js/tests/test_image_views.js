@@ -180,7 +180,7 @@ suite.add(new Y.maas.testing.TestCase({
                 status: "Complete",
                 downloading: false,
                 numberOfNodes: 1,
-                lastUpdate: '10/1/14',
+                lastUpdate: '10/1/14'
             },
             {
                 id: 2,
@@ -193,7 +193,7 @@ suite.add(new Y.maas.testing.TestCase({
                 status: "Complete",
                 downloading: false,
                 numberOfNodes: 0,
-                lastUpdate: '10/1/14',
+                lastUpdate: '10/1/14'
             },
             {
                 id: 3,
@@ -206,8 +206,8 @@ suite.add(new Y.maas.testing.TestCase({
                 status: "Downloading 13%",
                 downloading: true,
                 numberOfNodes: 0,
-                lastUpdate: '10/1/14',
-            },
+                lastUpdate: '10/1/14'
+            }
         ];
     },
 
@@ -327,12 +327,12 @@ suite.add(new Y.maas.testing.TestCase({
             {
                 id: 1,
                 rtype: Y.maas.enums.BOOT_RESOURCE_TYPE.SYNCED,
-                name: "centos/centos65",
+                name: "centos/centos65"
             },
             {
                 id: 2,
                 rtype: Y.maas.enums.BOOT_RESOURCE_TYPE.SYNCED,
-                name: "centos/centos70",
+                name: "centos/centos70"
             }
         ];
         var view = this.makeImagesView(false, false, none_ubuntu_images);
