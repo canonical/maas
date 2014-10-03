@@ -34,32 +34,32 @@
       <h4>Script return value</h4>
       <span>{{ object.script_result }}</span>
     </li>
-
     <li class="block first separate" id="output">
       {% if object.data %}
       <h2>Output</h2>
         {% if object.name == "99-maas-02-capture-lldp.out" or object.name == "00-maas-01-lshw.out" %}
-        <div class="block first" id="tags">
-          <ul class="list size1 no-background normal">
-	    <li><a href="#yaml">YAML</a></li>
-	    <li><a href="#xml">XML</a></li>
-	  </ul>
-          <div class="last size12 no-background normal">
-	    <div id="yaml">
-	      <pre>{{ object.get_data_as_yaml_html }}</pre>
-	    </div>
-	    <div id="xml">
-	      <pre>{{ object.get_data_as_html }}</pre>	
-	    </div>
-	  </div>
-	</div>
+        <div class="row first" id="tags">
+          <ul class="list col1 no-background normal">
+            <li><a href="#yaml">YAML</a></li>
+            <li><a href="#xml">XML</a></li>
+          </ul>
+          <div class="last col11 no-background normal">
+            <div id="yaml">
+              <pre>{{ object.get_data_as_yaml_html }}</pre>
+            </div>
+            <div id="xml">
+              <pre>{{ object.get_data_as_html }}</pre>
+            </div>
+          </div>
+        </div>
         {% else %}
-	<pre>
-	  {{ object.get_data_as_html }}
-	</pre>
+        <pre>
+          {{ object.get_data_as_html }}
+        </pre>
         {% endif %}
       {% endif %}
     </li>
   </ul>
-
 {% endblock %}
+
+
