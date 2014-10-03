@@ -1621,6 +1621,8 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
 class NodeListingSelectionJSControls(SeleniumTestCase):
 
+    @skip(
+        "XXX: blake_r 2014-10-02 bug=1376977: Causes intermittent failures")
     def test_node_list_js_control_select_all(self):
         self.log_in()
         self.get_page('node-list')

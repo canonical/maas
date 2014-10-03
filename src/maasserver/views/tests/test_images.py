@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+import json
 import random
 
 from django.core.urlresolvers import reverse
@@ -651,6 +652,142 @@ class UploadedImagesTest(MAASServerTestCase):
             'table#uploaded-resources > tbody > tr > td > '
             'a[title="Delete image"]')
         self.assertEqual(0, len(delete_btn))
+
+
+class TestImageAjax(MAASServerTestCase):
+
+    def get_images_ajax(self):
+        return self.client.get(
+            reverse('images'), HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+    def test__returns_json(self):
+        self.client_log_in()
+        response = self.get_images_ajax()
+        self.assertEqual('application/json', response['Content-Type'])
+
+    def test__returns_region_import_running_True(self):
+        self.client_log_in()
+        self.patch(
+            images_view, 'is_import_resources_running').return_value = True
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        self.assertTrue(json_obj['region_import_running'])
+
+    def test__returns_region_import_running_False(self):
+        self.client_log_in()
+        self.patch(
+            images_view, 'is_import_resources_running').return_value = False
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        self.assertFalse(json_obj['region_import_running'])
+
+    def test__returns_cluster_import_running_True(self):
+        self.client_log_in()
+        self.patch(
+            images_view, 'is_import_boot_images_running').return_value = True
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        self.assertTrue(json_obj['cluster_import_running'])
+
+    def test__returns_cluster_import_running_False(self):
+        self.client_log_in()
+        self.patch(
+            images_view, 'is_import_boot_images_running').return_value = False
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        self.assertFalse(json_obj['cluster_import_running'])
+
+    def test_returns_resources(self):
+        self.client_log_in()
+        resources = [factory.make_usable_boot_resource() for _ in range(3)]
+        resource_ids = [resource.id for resource in resources]
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_ids = [
+            json_resource['id']
+            for json_resource in json_obj['resources']
+            ]
+        self.assertItemsEqual(resource_ids, json_ids)
+
+    def test_returns_resource_attributes(self):
+        self.client_log_in()
+        factory.make_usable_boot_resource()
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertThat(
+            json_resource,
+            ContainsAll([
+                'id', 'rtype', 'name', 'title', 'arch', 'size',
+                'complete', 'status', 'downloading',
+                'numberOfNodes', 'lastUpdate']))
+
+    def test_returns_ubuntu_release_version_name(self):
+        self.client_log_in()
+        # Use trusty as known to map to "14.04 LTS"
+        version = '14.04 LTS'
+        name = 'ubuntu/trusty'
+        factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED, name=name)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(version, json_resource['title'])
+
+    def test_shows_number_of_nodes_deployed_for_resource(self):
+        self.client_log_in()
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os_name, series = resource.name.split('/')
+        number_of_nodes = random.randint(1, 4)
+        for _ in range(number_of_nodes):
+            factory.make_Node(
+                status=NODE_STATUS.DEPLOYED,
+                osystem=os_name, distro_series=series,
+                architecture=resource.architecture)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
+
+    def test_shows_number_of_nodes_deployed_for_resource_with_defaults(self):
+        self.client_log_in()
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        os_name, series = resource.name.split('/')
+        Config.objects.set_config('default_osystem', os_name)
+        Config.objects.set_config('default_distro_series', series)
+        number_of_nodes = random.randint(1, 4)
+        for _ in range(number_of_nodes):
+            factory.make_Node(
+                status=NODE_STATUS.DEPLOYED,
+                architecture=resource.architecture)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
+
+    def test_shows_number_of_nodes_deployed_for_ubuntu_subarch_resource(self):
+        self.client_log_in()
+        resource = factory.make_usable_boot_resource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        arch, subarch = resource.split_arch()
+        extra_subarch = factory.make_name('subarch')
+        resource.extra['subarches'] = ','.join([subarch, extra_subarch])
+        resource.save()
+
+        os_name, series = resource.name.split('/')
+        node_architecture = '%s/%s' % (arch, extra_subarch)
+        number_of_nodes = random.randint(1, 4)
+        for _ in range(number_of_nodes):
+            factory.make_Node(
+                status=NODE_STATUS.DEPLOYED,
+                osystem=os_name, distro_series=series,
+                architecture=node_architecture)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
 
 class TestImageDelete(MAASServerTestCase):

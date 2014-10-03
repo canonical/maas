@@ -18,11 +18,13 @@ __all__ = [
     ]
 
 from collections import defaultdict
+import json
 
 from distro_info import UbuntuDistroInfo
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.http import (
+    HttpResponse,
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
@@ -106,7 +108,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             self.ubuntu_releases = set()
             self.ubuntu_arches = set()
 
-    def get(self, *args, **kwargs):
+    def get(self, request, *args, **kwargs):
         # Load all the nodes, so its not done on every call
         # to the method get_number_of_nodes_deployed_for.
         self.nodes = Node.objects.filter(
@@ -123,7 +125,11 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
         self.cluster_resources = (
             BootResource.objects.get_resources_matching_boot_images(
                 cluster_images))
-        return super(ImagesView, self).get(*args, **kwargs)
+
+        # If the request is ajax, then return the list of resources as json.
+        if request.is_ajax():
+            return self.ajax(request, *args, **kwargs)
+        return super(ImagesView, self).get(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         """Return context data that is passed into the template."""
@@ -219,22 +225,43 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                 })
         return arches
 
+    def get_resource_title(self, resource):
+        """Return the title for the resource based on the type and name."""
+        rtypes_with_split_names = [
+            BOOT_RESOURCE_TYPE.SYNCED,
+            BOOT_RESOURCE_TYPE.GENERATED,
+            ]
+        if resource.rtype in rtypes_with_split_names:
+            os, series = resource.name.split('/')
+            if resource.name.startswith('ubuntu/'):
+                return format_ubuntu_distro_series(series)
+            else:
+                title = get_os_release_title(os, series)
+                if title is None:
+                    return resource.name
+                else:
+                    return title
+        else:
+            if 'title' in resource.extra:
+                return resource.extra['title']
+            else:
+                return resource.name
+
     def get_ubuntu_resources(self):
         """Return all Ubuntu resources, for usage in the template."""
         resources = list(BootResource.objects.filter(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
             name__startswith='ubuntu/').order_by('-name', 'architecture'))
         for resource in resources:
-            resource.os, resource.series = resource.name.split('/')
-            resource.title = format_ubuntu_distro_series(resource.series)
-            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
-                resource)
             self.add_resource_template_attributes(resource)
         return resources
 
     def add_resource_template_attributes(self, resource):
         """Adds helper attributes to the resource."""
+        resource.title = self.get_resource_title(resource)
         resource.arch, resource.subarch = resource.split_arch()
+        resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
+            resource)
         resource_set = resource.get_latest_set()
         if resource_set is None:
             resource.size = format_size(0)
@@ -334,14 +361,6 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             rtype=BOOT_RESOURCE_TYPE.SYNCED).exclude(
             name__startswith='ubuntu/').order_by('-name', 'architecture'))
         for resource in resources:
-            os, release = resource.name.split('/')
-            title = get_os_release_title(os, release)
-            if title is not None:
-                resource.title = title
-            else:
-                resource.title = resource.name
-            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
-                resource)
             self.add_resource_template_attributes(resource)
         return resources
 
@@ -439,14 +458,6 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             rtype=BOOT_RESOURCE_TYPE.GENERATED).order_by(
             '-name', 'architecture'))
         for resource in resources:
-            os, release = resource.name.split('/')
-            title = get_os_release_title(os, release)
-            if title is not None:
-                resource.title = title
-            else:
-                resource.title = resource.name
-            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
-                resource)
             self.add_resource_template_attributes(resource)
         return resources
 
@@ -456,14 +467,34 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             rtype=BOOT_RESOURCE_TYPE.UPLOADED).order_by(
             'name', 'architecture'))
         for resource in resources:
-            if 'title' in resource.extra:
-                resource.title = resource.extra['title']
-            else:
-                resource.title = resource.name
-            resource.number_of_nodes = self.get_number_of_nodes_deployed_for(
-                resource)
             self.add_resource_template_attributes(resource)
         return resources
+
+    def ajax(self, request, *args, **kwargs):
+        """Return all resources in a json object.
+
+        This is used by the image model list on the client side to update
+        the status of images."""
+        resources = list(BootResource.objects.all())
+        for resource in resources:
+            self.add_resource_template_attributes(resource)
+        json_resources = [
+            dict(
+                id=resource.id,
+                rtype=resource.rtype, name=resource.name,
+                title=resource.title, arch=resource.arch, size=resource.size,
+                complete=resource.complete, status=resource.status,
+                downloading=resource.downloading,
+                numberOfNodes=resource.number_of_nodes,
+                lastUpdate=resource.last_update.strftime('%c'))
+            for resource in resources
+            ]
+        data = dict(
+            region_import_running=is_import_resources_running(),
+            cluster_import_running=self.clusters_syncing,
+            resources=json_resources)
+        json_data = json.dumps(data)
+        return HttpResponse(json_data, mimetype='application/json')
 
 
 class ImageDeleteView(HelpfulDeleteView):
