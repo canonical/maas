@@ -119,7 +119,7 @@ def get_preseed_data(
 
 def compose_curtin_network_preseed(os_name, interfaces, auto_interfaces,
                                    ips_mapping, gateways_mapping,
-                                   disable_ipv4):
+                                   disable_ipv4, nameservers):
     """Compose Curtin network preseed for a node.
 
     :param os_name: Identifying name of the operating system for which a
@@ -132,6 +132,7 @@ def compose_curtin_network_preseed(os_name, interfaces, auto_interfaces,
     :param gateways_mapping: A `defaultdict` mapping MAC addresses to
         containers of the corresponding network interfaces' default gateways.
     :param disable_ipv4: Should this node be installed without IPv4 networking?
+    :param nameservers: List of DNS servers.
     :return: Preseed data, as JSON.
     """
     try:
@@ -141,4 +142,5 @@ def compose_curtin_network_preseed(os_name, interfaces, auto_interfaces,
     else:
         return osystem.compose_curtin_network_preseed(
             interfaces, auto_interfaces, ips_mapping=ips_mapping,
-            gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4)
+            gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4,
+            nameservers=nameservers)

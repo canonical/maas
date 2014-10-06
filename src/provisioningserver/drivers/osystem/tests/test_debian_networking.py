@@ -65,7 +65,21 @@ class TestComposeIPv6Stanza(MAASTestCase):
             """) % (interface, ip, gateway)
         self.assertEqual(
             expected.strip(),
-            compose_ipv6_stanza(interface, ip, gateway).strip())
+            compose_ipv6_stanza(interface, ip, gateway=gateway).strip())
+
+    def test__adds_nameserver_if_given(self):
+        ip = factory.make_ipv6_address()
+        interface = factory.make_name('eth')
+        nameserver = factory.make_ipv6_address()
+        expected = dedent("""\
+            iface %s inet6 static
+            \tnetmask 64
+            \taddress %s
+            \tdns-nameservers %s
+            """) % (interface, ip, nameserver)
+        self.assertEqual(
+            expected.strip(),
+            compose_ipv6_stanza(interface, ip, nameserver=nameserver).strip())
 
 
 class TestHasStaticIPv6Address(MAASTestCase):
@@ -159,21 +173,42 @@ class TestComposeNetworkInterfaces(MAASTestCase):
                 self.make_listing(interface, mac), [],
                 self.make_mapping(mac, {ipv6}), {}, disable_ipv4=disable_ipv4))
 
-    def test__passes_ip_and_gateway_when_creating_IPv6_stanza(self):
+    def test__passes_ip_gateway_and_nameserver_when_creating_IPv6_stanza(self):
         interface = factory.make_name('eth')
         mac = factory.make_mac_address()
         ipv6 = factory.make_ipv6_address()
         gateway = factory.make_ipv6_address()
+        nameserver = factory.make_ipv6_address()
         fake = self.patch_autospec(debian_networking, 'compose_ipv6_stanza')
         fake.return_value = factory.make_name('stanza')
 
         compose_network_interfaces(
             self.make_listing(interface, mac), [],
-            self.make_mapping(mac, {ipv6}), self.make_mapping(mac, {gateway}))
+            self.make_mapping(mac, {ipv6}), self.make_mapping(mac, {gateway}),
+            nameservers=[nameserver])
 
-        self.assertThat(fake, MockCalledOnceWith(interface, ipv6, gateway))
+        self.assertThat(
+            fake, MockCalledOnceWith(
+                interface, ipv6, gateway=gateway, nameserver=nameserver))
 
-    def test__omits_gateway_if_not_set(self):
+    def test__ignores_IPv4_nameserver_when_creating_IPv6_stanza(self):
+        interface = factory.make_name('eth')
+        mac = factory.make_mac_address()
+        ipv6 = factory.make_ipv6_address()
+        nameserver = factory.make_ipv4_address()
+        fake = self.patch_autospec(debian_networking, 'compose_ipv6_stanza')
+        fake.return_value = factory.make_name('stanza')
+
+        compose_network_interfaces(
+            self.make_listing(interface, mac), [],
+            self.make_mapping(mac, {ipv6}), gateways_mapping={},
+            nameservers=[nameserver])
+
+        self.assertThat(
+            fake, MockCalledOnceWith(
+                interface, ANY, gateway=ANY, nameserver=None))
+
+    def test__omits_gateway_and_nameserver_if_not_set(self):
         interface = factory.make_name('eth')
         mac = factory.make_mac_address()
         fake = self.patch_autospec(debian_networking, 'compose_ipv6_stanza')
@@ -184,7 +219,7 @@ class TestComposeNetworkInterfaces(MAASTestCase):
 
         self.assertThat(
             fake,
-            MockCalledOnceWith(interface, ANY, None))
+            MockCalledOnceWith(interface, ANY, gateway=None, nameserver=None))
 
     def test__writes_auto_lines_for_interfaces_in_auto_interfaces(self):
         interface = factory.make_name('eth')

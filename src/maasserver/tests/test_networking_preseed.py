@@ -769,6 +769,8 @@ class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
         node.nodegroup.accept()
         network = factory.make_ipv4_network(slash=24)
         router = factory.pick_ip_in_network(network)
+        dns = factory.pick_ip_in_network(network)
+        patch_dns_servers(self, dns)
         static_low = unicode(IPAddress(network.first + 1))
         static_high = unicode(IPAddress(network.first + 2))
         dyn_low = unicode(IPAddress(network.first + 3))
@@ -790,6 +792,7 @@ class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
             'auto_interfaces': [mac.mac_address],
             'ips_mapping': {},
             'gateways_mapping': {mac.mac_address: [router]},
+            'nameservers': [dns],
             }
         self.assertThat(fake, MockCalledOnceWith(node, expected_config))
 

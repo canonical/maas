@@ -334,6 +334,7 @@ def compose_curtin_network_preseed_for(node):
         'auto_interfaces': find_macs_for_automatic_interfaces(node),
         'ips_mapping': map_static_ips(node),
         'gateways_mapping': map_gateways(node),
+        'nameservers': list_dns_servers(node),
         }
     preseed = compose_curtin_network_preseed(node, config)
     return [json.dumps(item) for item in preseed]

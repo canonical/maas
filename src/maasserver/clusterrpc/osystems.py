@@ -153,6 +153,7 @@ def compose_curtin_network_preseed(node, config):
                 'aa:bb:cc:dd:ee:ff': ['10.9.1.1'],
                 '00:11:22:33:44:55': ['192.168.32.254'],
                 },
+            'nameservers': ['10.9.1.1'],
         }
 
     :param node: A `Node`.
@@ -166,6 +167,7 @@ def compose_curtin_network_preseed(node, config):
         `gateways_mapping` maps to a dict which maps MAC addresses to lists of
         gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
         corresponding network interfaces.
+        'nameservers' maps to a list of DNS servers for the node to use.
     :return: A list of preseed dicts.
     """
     client = getClientFor(node.nodegroup.uuid)

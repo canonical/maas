@@ -194,9 +194,9 @@ class OperatingSystem:
         """
         raise NotImplementedError()
 
-    def compose_curtin_network_preseed(interfaces, auto_interfaces,
+    def compose_curtin_network_preseed(self, interfaces, auto_interfaces,
                                        ips_mapping, gateways_mapping,
-                                       disable_ipv4=False):
+                                       disable_ipv4=False, nameservers=None):
         """Compose a Curtin preseed to configure a node's networking.
 
         :param interfaces: A list of tuples, each a pair of an interface name
@@ -217,6 +217,7 @@ class OperatingSystem:
             corresponding to each MAC to use the given default gateways.
         :param disable_ipv4: Should this node be installed without IPv4
             networking?
+        :param nameservers: Optional list of DNS servers.
         :return: A list of dicts that can be JSON-encoded and submitted to
             Curtin as preseeds, perhaps in combination with other preseeds.
         """

@@ -1121,6 +1121,7 @@ class TestClusterProtocol_ComposeCurtinNetworkPreseed(MAASTestCase):
                 'auto_interfaces': [mac],
                 'ips_mapping': {mac: [factory.make_ipv4_address()]},
                 'gateways_mapping': {mac: [factory.make_ipv4_address()]},
+                'nameservers': [],
                 },
             'disable_ipv4': factory.pick_bool(),
             }
@@ -1134,7 +1135,8 @@ class TestClusterProtocol_ComposeCurtinNetworkPreseed(MAASTestCase):
     @inlineCallbacks
     def test__calls_compose_curtin_network_preseed(self):
         preseed = [factory.make_name('preseed')]
-        fake = self.patch(clusterservice, 'compose_curtin_network_preseed')
+        fake = self.patch_autospec(
+            clusterservice, 'compose_curtin_network_preseed')
         fake.return_value = preseed
         args = self.make_args()
 

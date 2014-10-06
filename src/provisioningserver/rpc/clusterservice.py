@@ -225,10 +225,12 @@ class Cluster(RPCProtocol):
         auto_interfaces = config.get('auto_interfaces', [])
         ips_mapping = config.get('ips_mapping', {})
         gateways_mapping = config.get('gateways_mapping', {})
+        nameservers = config.get('nameservers', [])
         return {
             'data': compose_curtin_network_preseed(
                 osystem, interfaces, auto_interfaces, ips_mapping=ips_mapping,
-                gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4),
+                gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4,
+                nameservers=nameservers),
             }
 
     @log_call(level=logging.DEBUG)

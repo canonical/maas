@@ -19,6 +19,20 @@ __all__ = [
 from netaddr import IPAddress
 
 
+def extract_ip_from_sequence(ips, ip_version):
+    """Return the first address for the given IP version from `ips`.
+
+    :param ips: A sequence of IP address strings.
+    :param ip_version: Either 4 or 6 (for IPv4 or IPv6 respectively).  Only an
+        address for this version will be returned.
+    :return: A matching IP address, or `None`.
+    """
+    for ip in ips:
+        if IPAddress(ip).version == ip_version:
+            return ip
+    return None
+
+
 def extract_ip(mapping, mac, ip_version):
     """Extract IP address for `mac` and given IP version from `mapping`.
 
@@ -29,10 +43,7 @@ def extract_ip(mapping, mac, ip_version):
         address for this version will be returned.
     :return: A matching IP address, or `None`.
     """
-    for ip in mapping.get(mac, []):
-        if IPAddress(ip).version == ip_version:
-            return ip
-    return None
+    return extract_ip_from_sequence(mapping.get(mac, []), ip_version)
 
 
 def compose_ipv4_stanza(interface):
@@ -40,7 +51,7 @@ def compose_ipv4_stanza(interface):
     return "iface %s inet dhcp" % interface
 
 
-def compose_ipv6_stanza(interface, ip, gateway=None):
+def compose_ipv6_stanza(interface, ip, gateway=None, nameserver=None):
     """Return a Debian `/etc/network/interfaces` stanza for IPv6.
 
     The stanza will configure a static address.
@@ -52,6 +63,9 @@ def compose_ipv6_stanza(interface, ip, gateway=None):
         ]
     if gateway is not None:
         lines.append('\tgateway %s' % gateway)
+    if nameserver is not None:
+        # Actually this keyword accepts up to 2 nameservers.
+        lines.append('\tdns-nameservers %s' % nameserver)
     return '\n'.join(lines)
 
 
@@ -69,7 +83,8 @@ def has_static_ipv6_address(mapping):
 
 
 def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
-                               gateways_mapping, disable_ipv4=False):
+                               gateways_mapping, disable_ipv4=False,
+                               nameservers=None):
     """Return contents for a node's `/etc/network/interfaces` file.
 
     :param interfaces: A list of interface/MAC pairs for the node.
@@ -80,7 +95,13 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
     :param gateways_mapping: A `defaultdict` mapping MAC addresses to
         containers of the corresponding network interfaces' default gateways.
     :param disable_ipv4: Should this node be installed without IPv4 networking?
+    :param nameservers: Optional list of DNS servers.
     """
+    if nameservers is None:
+        ipv6_nameserver = None
+    else:
+        ipv6_nameserver = extract_ip_from_sequence(nameservers, 6)
+
     # Should we disable IPv4 on this node?  For safety's sake, we won't do this
     # if the node has no static IPv6 addresses.  Otherwise it might become
     # accidentally unaddressable: it may have IPv6 addresses, but apart from
@@ -99,5 +120,7 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
         if static_ipv6 is not None:
             gateway = extract_ip(gateways_mapping, mac, 6)
             stanzas.append(
-                compose_ipv6_stanza(interface, static_ipv6, gateway))
+                compose_ipv6_stanza(
+                    interface, static_ipv6, gateway=gateway,
+                    nameserver=ipv6_nameserver))
     return '%s\n' % '\n\n'.join(stanzas)

@@ -221,6 +221,7 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
                     ],
                 },
             'disable_ipv4': factory.pick_bool(),
+            'nameservers': [factory.make_ipv6_address()],
             }
 
     def test__forwards_to_OS_implementation(self):
