@@ -790,3 +790,26 @@ class TestMaybeChangePowerState(MAASTestCase):
         self.assertDocTestMatches(
             "Unhandled Error...TestException: boom",
             logger.dump())
+
+    @inlineCallbacks
+    def test__calls_change_power_state_with_timeout(self):
+        self.patch_power_action_registry()
+        self.patch_methods_using_rpc()
+        defer_with_timeout = self.patch(power, 'deferWithTimeout')
+
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+
+        yield power.maybe_change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        reactor.runUntilCurrent()  # Run all delayed calls.
+        self.assertThat(
+            defer_with_timeout, MockCalledOnceWith(
+                power.CHANGE_POWER_STATE_TIMEOUT,
+                power.change_power_state, system_id, hostname,
+                power_type, power_change, context, power.reactor))

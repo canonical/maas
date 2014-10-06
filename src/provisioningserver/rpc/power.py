@@ -17,6 +17,8 @@ __all__ = [
     "query_all_nodes",
 ]
 
+from datetime import timedelta
+
 from provisioningserver.events import (
     EVENT_TYPES,
     send_event_node,
@@ -38,6 +40,7 @@ from provisioningserver.rpc.region import (
 from provisioningserver.utils.twisted import (
     asynchronous,
     deferred,
+    deferWithTimeout,
     pause,
     synchronous,
     )
@@ -56,6 +59,11 @@ from twisted.python import log
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
 QUERY_POWER_TYPES = ['amt', 'ipmi', 'virsh']
+
+
+# Timeout for change_power_state(). We set it to 2 minutes by default,
+# but it would be lovely if this was configurable.
+CHANGE_POWER_STATE_TIMEOUT = timedelta(minutes=2).total_seconds()
 
 
 maaslog = get_maas_logger("power")
@@ -176,9 +184,13 @@ def maybe_change_power_state(system_id, hostname, power_type,
 
     # Arrange for the power change to happen later; do not make the caller
     # wait, because it might take a long time.
+    # We set a timeout of two minutes so that if the power action
+    # doesn't return in a timely fashion (or fails silently or
+    # some such) it doesn't block other actions on the node.
     d = deferLater(
-        clock, 0, change_power_state, system_id, hostname,
-        power_type, power_change, context, clock)
+        clock, 0, deferWithTimeout, CHANGE_POWER_STATE_TIMEOUT,
+        change_power_state, system_id, hostname, power_type,
+        power_change, context, clock)
     d.addErrback(log.err)
     # Whether we succeeded or failed, we need to remove the action
     # from the registry of actions, otherwise every subsequent
