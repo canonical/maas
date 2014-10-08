@@ -8,5 +8,7 @@ debconf_selections:
 late_commands:
   maas: [wget, '--no-proxy', '{{node_disable_pxe_url}}', '--post-data', '{{node_disable_pxe_data}}', '-O', '/dev/null']
 
+license_key: {{node.get_effective_license_key}}
+
 power_state:
   mode: reboot

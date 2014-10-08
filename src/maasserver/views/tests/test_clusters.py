@@ -25,6 +25,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
+    BootResource,
     NodeGroup,
     NodeGroupInterface,
     )
@@ -169,6 +170,7 @@ class ClusterListingStateTest(MAASServerTestCase):
 
     def test_listing_displays_connected_image_status(self):
         self.client_log_in(as_admin=True)
+        factory.make_BootResource()
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED, name=self.state)
 
@@ -188,6 +190,27 @@ class ClusterListingStateTest(MAASServerTestCase):
             self.text, images_col.text_content().strip())
         self.assertEqual(
             self.connection, connection_col.text_content().strip())
+
+
+class ClusterListingNoImagesTest(MAASServerTestCase):
+
+    def test_listing_displays_no_images_available(self):
+        self.client_log_in(as_admin=True)
+        BootResource.objects.all().delete()
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED)
+
+        def mock_get_state(self):
+            return NODEGROUP_STATE.OUT_OF_SYNC
+        self.patch(NodeGroup, 'get_state', mock_get_state)
+
+        response = self.client.get(
+            reverse(ClusterListView.status_links[NODEGROUP_STATUS.ACCEPTED]))
+        document = fromstring(response.content)
+        images_col = document.xpath(
+            "//td[@id='%s_images']" % nodegroup.uuid)[0]
+        self.assertEqual(
+            "No images available", images_col.text_content().strip())
 
 
 class ClusterListingAccess(MAASServerTestCase):
@@ -270,8 +293,29 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
             warning_elems, HasLength(1),
             "No warning about disconnected cluster.")
 
+    def test_warning_is_displayed_if_region_is_missing_images(self):
+        self.client_log_in(as_admin=True)
+        BootResource.objects.all().delete()
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.patch(
+            NodeGroup, 'get_state', lambda _: NODEGROUP_STATE.OUT_OF_SYNC)
+        response = self.client.get(reverse('cluster-list'))
+        document = fromstring(response.content)
+        nodegroup_row = document.xpath("//tr[@id='%s']" % nodegroup.uuid)[0]
+        self.assertIn('warning', nodegroup_row.get('class'))
+        warning_elems = (
+            nodegroup_row.xpath(
+                "//img[@title=\"Warning: this cluster cannot sync images as "
+                "the region doesn't have any images.\"]"))
+        self.assertThat(
+            warning_elems, HasLength(1),
+            "No warning about region not containing images.")
+
     def test_warning_is_displayed_if_a_cluster_is_out_of_sync(self):
         self.client_log_in(as_admin=True)
+        factory.make_BootResource()
         nodegroup = factory.make_NodeGroup(
             status=NODEGROUP_STATUS.ACCEPTED)
 

@@ -46,6 +46,7 @@ from maasserver.forms import (
     NodeGroupInterfaceForm,
     )
 from maasserver.models import (
+    BootResource,
     NodeGroup,
     NodeGroupInterface,
     )
@@ -113,6 +114,7 @@ class ClusterListView(PaginatedListView, FormMixin, ProcessFormView):
         context['status'] = self.status
         context['statuses'] = NODEGROUP_STATUS
         context['status_name'] = NODEGROUP_STATUS_CHOICES[self.status][1]
+        context['region_has_images'] = BootResource.objects.exists()
         return context
 
     def post(self, request, *args, **kwargs):
