@@ -17,7 +17,6 @@ __all__ = [
 
 import json
 from random import randint
-from unittest import skip
 
 from maasserver import networking_preseed
 from maasserver.dns import zonegenerator
@@ -762,18 +761,15 @@ class TestFindMACsForAutomaticInterfaces(MAASServerTestCase):
 
 class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
 
-    @skip(
-        "XXX: blake_r 2014-10-08 bug=1378643: Periodic test failure due to "
-        "nameservers returning empty list.")
     def test__composes_config(self):
         fake = self.patch_autospec(
             networking_preseed, 'compose_curtin_network_preseed')
         fake.return_value = []
-        node = factory.make_Node()
+        node = factory.make_Node(disable_ipv4=False)
         node.nodegroup.accept()
-        network = factory.make_ipv4_network(slash=24)
+        network = factory.make_ipv4_network(slash=16)
         router = factory.pick_ip_in_network(network)
-        dns = factory.pick_ip_in_network(network)
+        dns = factory.make_ipv4_address()
         patch_dns_servers(self, dns)
         static_low = unicode(IPAddress(network.first + 1))
         static_high = unicode(IPAddress(network.first + 2))
