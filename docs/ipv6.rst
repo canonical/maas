@@ -40,10 +40,11 @@ Enabling IPv6
 -------------
 
 You enable IPv6 networking in the same way that you enable IPv4 networking:
-configure a separate cluster interface for your IPv6 subnet.  Provided that you
-already have a functioning IPv6 network, that's all there is to it.  The
-following sections will go into more detail about what is supported, what is
-needed, and what to do if you don't yet have a functioning IPv6 network.
+configure a separate cluster interface for your IPv6 subnet, in addition to the
+one you need for your IPv4 subnet.  Provided that you already have a
+functioning IPv6 network, that's all there is to it.  The following sections
+will go into more detail about what is supported, what is needed, and what to
+do if you don't yet have a functioning IPv6 network.
 
 An IPv6 cluster interface can use the same network interface on the cluster
 controller as an existing IPv4 network interface.  It just defines a different
@@ -73,11 +74,13 @@ needed for the nodes themselves.  MAAS will not be aware of any addresses
 issued by DHCP, and does not guarantee that they will stay unchanged.
 
 
+.. _ipv6-routing:
+
 Routing
 ^^^^^^^
 
 In IPv6, clients do not discover routes through DHCP.  Routers make themselves
-known on their networks by broadcasting *route advertisements*.  These *RAs*
+known on their networks by sending out *route advertisements*.  These *RAs*
 contain other configuration as well: whether clients should statelessly
 configure their own unique IP addresses based on their MAC addresses; whether
 they should request stateless configuration from a DHCP server; and finally,
@@ -85,12 +88,13 @@ whether they should request a stateful IP address from a DHCP server.  Since a
 network interface can have any number of IPv6 addresses even on a single
 subnet, several of these address assignment mechanisms can be combined.
 
-MAAS configures your nodes' default IPv6 route to use the router configured on
-the cluster interface, if there is one, so that the nodes will know their
-default gateway.  If that is not what you want, or if you are planning to
-operate DHCPv6 clients that need routing information, you may still want route
-advertisements configured to make nodes obtain configuration over DHCP.  If
-your router does not provide RAs, another option is to install and configure
+MAAS statically configures your nodes' default IPv6 route to use the router
+configured on the cluster interface, if there is one, so that the nodes will
+know their default gateway.  If you are planning to operate DHCPv6 clients that
+need routing information, you may still want route advertisements configured to
+make those clients obtain configuration over DHCP.
+
+If you want RAs but your gateway does not send them, install and configure
 ``radvd`` somewhere on the network to advertise its route.
 
 
@@ -107,3 +111,45 @@ static IPv6 address configured, even if MAAS has allocated it to the node.
 However, as long as the address remains allocated to the node, you may still
 configure its operating system to use that address.  The node can then use that
 address as if it had been configured by MAAS.
+
+
+Disabling IPv4
+--------------
+
+For advanced users, there is an experimental capability to deploy nodes with
+pure IPv6, with IPv4 networking disabled.  To enable this on a node, check the
+"Disable IPv4 on deployment" box on the node's Edit page.  The process of
+managing and deploying the node will still largely work through IPv4, but once
+deployed, the node will have IPv6 networking only.
+
+In practice nodes may not be functional without IPv4 networking.  A few things
+are known to be needed in any case:
+
+
+Configuring the MAAS URL
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+The *maas-cluster-controller* package has a configuration item for the URL
+where nodes and cluster controllers can reach the MAAS region API.
+
+By default, this URL is set based on the region controller's IPv4 address.  To
+make it work for nodes that won't have IP4, you must set the MAAS URL to use
+a hostname instead of an IP address.  The hostname must resolve to both IPv4
+and IPv6 addresses, and both on the cluster controller and on the nodes.
+
+To change this setting, run::
+
+    dpkg-reconfigure maas-cluster-controller
+
+It will prompt you for the URL, with its current setting as the initial value.
+
+
+Route advertisements
+^^^^^^^^^^^^^^^^^^^^
+
+When a deployed node boots, it runs cloud-init which retrieves configuration
+from the MAAS region controller.  In order for it to be able to do that over
+IPv6, a network advertisement daemon needs to be active on the network.
+
+See :ref:`Routing <ipv6-routing>` above for more about route advertisements,
+and how to provide them if your gateway doesn't do it for you.
