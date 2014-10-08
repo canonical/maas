@@ -89,12 +89,13 @@ network interface can have any number of IPv6 addresses even on a single
 subnet, several of these address assignment mechanisms can be combined.
 
 MAAS statically configures your nodes' default IPv6 route to use the router
-configured on the cluster interface, if there is one, so that the nodes will
-know their default gateway.  If you are planning to operate DHCPv6 clients that
-need routing information, you may still want route advertisements configured to
-make those clients obtain configuration over DHCP.
+that is configured on the cluster interface, so that the nodes will know their
+default gateway.  They do not need DHCP.  However, if you are planning to
+operate DHCPv6 clients as well, e.g. on machines not managed by MAAS or on
+virtual machines hosted by MAAS nodes, you may still want to have RAs
+configured to make those clients obtain configuration over DHCP.
 
-If you want RAs but your gateway does not send them, install and configure
+If you need RAs but your gateway does not send them, install and configure
 ``radvd`` somewhere on the network to advertise its route.
 
 
