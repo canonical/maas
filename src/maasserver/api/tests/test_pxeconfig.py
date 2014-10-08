@@ -131,8 +131,17 @@ class TestPXEConfigAPI(MAASServerTestCase):
             }
 
     def get_mac_params(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        arch, subarch = node.split_arch()
+        image = make_rpc_boot_image(
+            osystem=node.get_osystem(), release=node.get_distro_series(),
+            architecture=arch, subarchitecture=subarch,
+            purpose='install')
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [image]
         params = self.get_default_params()
-        params['mac'] = factory.make_MACAddress().mac_address
+        params['mac'] = factory.make_MACAddress(node=node).mac_address
         return params
 
     def get_pxeconfig(self, params=None):
@@ -384,34 +393,32 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(params["local"], kernel_params.fs_host)
 
     def test_pxeconfig_returns_extra_kernel_options(self):
-        node = factory.make_Node()
         extra_kernel_opts = factory.make_string()
         Config.objects.set_config('kernel_opts', extra_kernel_opts)
-        mac = factory.make_MACAddress(node=node)
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params = self.get_mac_params()
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(extra_kernel_opts, pxe_config['extra_opts'])
 
     def test_pxeconfig_returns_None_for_extra_kernel_opts(self):
-        mac = factory.make_MACAddress()
-        params = self.get_default_params()
-        params['mac'] = mac.mac_address
+        params = self.get_mac_params()
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(None, pxe_config['extra_opts'])
 
-    def test_pxeconfig_sets_nonsense_label_for_insane_state(self):
-        # If pxeconfig() encounters a state where there is no relevant
-        # BootImage for a given set of (nodegroup, arch, subarch,
-        # release, purpose) it sets the label to no-such-image. This is
-        # clearly nonsensical, but this state only arises during tests
-        # or an insane environment.
+    def test_pxeconfig_returns_poweroff_for_insane_state(self):
         mac = factory.make_MACAddress()
         params = self.get_default_params()
         params['mac'] = mac.mac_address
-        params['arch'] = 'iHaveNoIdea'
         pxe_config = self.get_pxeconfig(params)
-        self.assertEqual('no-such-image', pxe_config['label'])
+        self.assertEqual('poweroff', pxe_config['purpose'])
+
+    def test_pxeconfig_returns_poweroff_for_ready_node(self):
+        mac = factory.make_MACAddress()
+        mac.node.status = NODE_STATUS.READY
+        mac.node.save()
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        pxe_config = self.get_pxeconfig(params)
+        self.assertEqual('poweroff', pxe_config['purpose'])
 
     def test_pxeconfig_returns_image_subarch_not_node_subarch(self):
         # In the scenario such as deploying trusty on an hwe-s subarch

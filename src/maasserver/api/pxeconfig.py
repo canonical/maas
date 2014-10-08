@@ -210,6 +210,18 @@ def pxeconfig(request):
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
 
+    # If we are powering off the node, then we only need to return enough
+    # to turn the machine off. Calculation of the label, kernel parameters,
+    # server address, and cluster address is not needed.
+    if purpose == 'poweroff':
+        params = KernelParameters(
+            osystem="", arch=arch, subarch=subarch, release="",
+            label="", purpose=purpose, hostname=hostname, domain=domain,
+            preseed_url="", log_host="", fs_host="", extra_opts="")
+        return HttpResponse(
+            json.dumps(params._asdict()),
+            content_type="application/json")
+
     # We use as our default label the label of the most recent image for
     # the criteria we've assembled above. If there is no latest image
     # (which should never happen in reality but may happen in tests), we
