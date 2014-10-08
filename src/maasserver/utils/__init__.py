@@ -19,6 +19,7 @@ __all__ = [
     'get_db_state',
     'get_local_cluster_UUID',
     'ignore_unused',
+    'make_validation_error_message',
     'strip_domain',
     'synchronised',
     ]
@@ -34,6 +35,7 @@ from django.core.urlresolvers import reverse
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.utils.orm import get_one
+from provisioningserver.utils.text import make_bullet_list
 
 
 def get_db_state(instance, field_name):
@@ -191,3 +193,24 @@ def synchronised(lock):
                 return func(*args, **kwargs)
         return call_with_lock
     return synchronise
+
+
+def gen_validation_error_messages(error):
+    """Return massaged messages from a :py:class:`ValidationError`."""
+    message_dict = error.message_dict
+    for field in sorted(message_dict):
+        field_messages = message_dict[field]
+        if field == "__all__":
+            for field_message in field_messages:
+                yield field_message
+        else:
+            for field_message in field_messages:
+                yield "%s: %s" % (field, field_message)
+
+
+def make_validation_error_message(error):
+    """Return a massaged message from a :py:class:`ValidationError`.
+
+    The message takes the form of a textual bullet-list.
+    """
+    return make_bullet_list(gen_validation_error_messages(error))
