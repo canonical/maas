@@ -21,8 +21,7 @@ __all__ = [
     "hide_missing_boot_image_error",
     ]
 
-from textwrap import dedent
-
+from django.core.urlresolvers import reverse
 from django.utils.safestring import mark_safe
 from maasserver.enum import COMPONENT
 from maasserver.models import ComponentError
@@ -64,11 +63,11 @@ def get_persistent_errors():
 
 def show_missing_boot_image_error():
     """Show missing boot images error on the UI."""
-    warning = dedent("""\
-        Boot image import process not started. Nodes will not be able to
-        provision without boot images. Start the boot images import process to
-        resolve this issue.
-        """)
+    warning = (
+        "Boot image import process not started. Nodes will not be able to "
+        "provision without boot images. Visit the "
+        "<a href=\"%s\">boot images</a> page to start the import." % (
+            reverse('images')))
     register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
 
 
