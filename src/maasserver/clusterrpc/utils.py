@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'call_clusters',
+    'get_error_message_for_exception',
     ]
 
 
@@ -25,7 +26,10 @@ from maasserver.exceptions import ClusterUnavailable
 from maasserver.models import NodeGroup
 from maasserver.rpc import getClientFor
 from maasserver.utils import async
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    MultipleFailures,
+    NoConnectionsAvailable,
+    )
 from twisted.python.failure import Failure
 
 
@@ -72,3 +76,49 @@ def call_clusters(command, nodegroups=None, ignore_errors=True):
                     "Failure while communicating with cluster.")
         else:
             yield response
+
+
+def get_error_message_for_exception(exception):
+    """Return an error message for an exception.
+
+    If `exception` is a NoConnectionsAvailable error,
+    get_error_message_for_exception() will check to see if there's a
+    UUID listed. If so, this is an error referring to a cluster.
+    get_error_message_for_exception() will return an error message
+    containing the cluster's name (as opposed to its UUID), which is
+    more useful to users.
+
+    If `exception` is an instance of `MultipleFailures` a single error
+    message will be returned, explaining where to look for more
+    information.
+
+    Otherwise, if the exception has a message attached, return that.
+    If not, create meaningful error message for the exception and
+    return that instead.
+    """
+    # If we've gt a NoConnectionsAvailable error, check it for a UUID
+    # field. If it's got one, we can report the cluster details more
+    # helpfully.
+    is_no_connections_error = isinstance(
+        exception, NoConnectionsAvailable)
+    has_uuid_field = getattr(exception, 'uuid', None) is not None
+    if (is_no_connections_error and has_uuid_field):
+        cluster = NodeGroup.objects.get_by_natural_key(
+            exception.uuid)
+        return (
+            "Unable to connect to cluster '%s' (%s); no connections "
+            "available." % (cluster.cluster_name, cluster.uuid))
+
+    if isinstance(exception, MultipleFailures):
+        return (
+            "Multiple failures encountered. See /var/log/maas/maas-django.log "
+            "on the region server for more information.")
+
+    error_message = unicode(exception)
+    if len(error_message) == 0:
+        error_message = (
+            "Unexpected exception: %s. See "
+            "/var/log/maas/maas-django.log "
+            "on the region server for more information." %
+            exception.__class__.__name__)
+    return error_message

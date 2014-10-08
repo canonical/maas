@@ -18,6 +18,7 @@ import random
 from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
+from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     NODE_BOOT,
     NODE_PERMISSION,
@@ -43,6 +44,7 @@ from maasserver.node_action import (
     MarkFixed,
     NodeAction,
     ReleaseNode,
+    RPC_EXCEPTIONS,
     StartNode,
     StopNode,
     UseCurtin,
@@ -54,7 +56,9 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
+from provisioningserver.rpc.exceptions import MultipleFailures
 from testtools.matchers import Equals
+from twisted.python.failure import Failure
 
 
 ALL_STATUSES = NODE_STATUS_CHOICES_DICT.keys()
@@ -244,12 +248,11 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.COMMISSIONING,
             power_type='virsh')
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        stop_nodes = self.patch(Node.objects, "stop_nodes")
         stop_nodes.return_value = [node]
         admin = factory.make_admin()
 
         AbortCommissioning(node, admin).execute()
-
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertThat(
             stop_nodes, MockCalledOnceWith([node.system_id], admin))
@@ -489,3 +492,89 @@ class TestMarkFixedAction(MAASServerTestCase):
         actions = compile_node_actions(
             node, factory.make_admin(), classes=[MarkFixed])
         self.assertItemsEqual([], actions)
+
+
+class TestRPCActionsErrorHandling(MAASServerTestCase):
+    """Tests for error handling in actions that need RPC."""
+
+    scenarios = [
+        (exception_class.__name__, {"exception_class": exception_class})
+        for exception_class in RPC_EXCEPTIONS
+        ]
+
+    def make_exception(self):
+        if self.exception_class is MultipleFailures:
+            exception = self.exception_class(
+                Failure(Exception(factory.make_name("exception"))))
+        else:
+            exception = self.exception_class(factory.make_name("exception"))
+        return exception
+
+    def patch_rpc_methods(self):
+        exception = self.make_exception()
+        self.patch(Node.objects, "start_nodes").side_effect = (
+            exception)
+        self.patch(Node.objects, "stop_nodes").side_effect = (
+            exception)
+
+    def make_action(self, action_class, node_status):
+        node = factory.make_Node(
+            mac=True, status=node_status, power_type='ether_wake')
+        admin = factory.make_admin()
+        return action_class(node, admin)
+
+    def test_Commission_handles_rpc_errors(self):
+        action = self.make_action(Commission, NODE_STATUS.READY)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.start_nodes.side_effect),
+            unicode(exception))
+
+    def test_AbortCommissioning_handles_rpc_errors(self):
+        action = self.make_action(
+            AbortCommissioning, NODE_STATUS.COMMISSIONING)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.stop_nodes.side_effect),
+            unicode(exception))
+
+    def test_AbortOperation_handles_rpc_errors(self):
+        action = self.make_action(
+            AbortOperation, NODE_STATUS.DISK_ERASING)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.stop_nodes.side_effect),
+            unicode(exception))
+
+    def test_StartNode_handles_rpc_errors(self):
+        action = self.make_action(StartNode, NODE_STATUS.READY)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.start_nodes.side_effect),
+            unicode(exception))
+
+    def test_StopNode_handles_rpc_errors(self):
+        action = self.make_action(StopNode, NODE_STATUS.DEPLOYED)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.stop_nodes.side_effect),
+            unicode(exception))
+
+    def test_ReleaseNode_handles_rpc_errors(self):
+        action = self.make_action(ReleaseNode, NODE_STATUS.ALLOCATED)
+        self.patch_rpc_methods()
+        exception = self.assertRaises(NodeActionError, action.execute)
+        self.assertEqual(
+            get_error_message_for_exception(
+                Node.objects.stop_nodes.side_effect),
+            unicode(exception))

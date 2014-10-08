@@ -143,6 +143,16 @@ class StaticIPAddressTypeClash(MAASAPIException):
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
 
+    def __init__(self, error):
+        # Avoid circular imports.
+        from maasserver.clusterrpc.utils import (
+            get_error_message_for_exception)
+        if isinstance(error, Exception):
+            super(NodeActionError, self).__init__(
+                get_error_message_for_exception(error))
+        else:
+            super(NodeActionError, self).__init__(error)
+
 
 class UnresolvableHost(MAASException):
     """Raised when a hostname can't be resolved to an IP address."""

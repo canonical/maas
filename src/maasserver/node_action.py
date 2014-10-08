@@ -33,6 +33,7 @@ from abc import (
 from collections import OrderedDict
 from textwrap import dedent
 
+from crochet import TimeoutError
 from django.core.urlresolvers import reverse
 from maasserver.enum import (
     NODE_BOOT,
@@ -50,10 +51,25 @@ from maasserver.models import (
     SSHKey,
     )
 from maasserver.node_status import is_failed_status
+from provisioningserver.rpc.exceptions import (
+    MultipleFailures,
+    NoConnectionsAvailable,
+    PowerActionAlreadyInProgress,
+    )
 from provisioningserver.utils.enum import map_enum
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
+
+
+# A collection of errors that may be raised by RPC-based actions that
+# should be converted to NodeActionErrors.
+RPC_EXCEPTIONS = (
+    MultipleFailures,
+    NoConnectionsAvailable,
+    PowerActionAlreadyInProgress,
+    TimeoutError,
+)
 
 
 class NodeAction:
@@ -184,8 +200,12 @@ class Commission(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.start_commissioning(self.user)
-        return "Node commissioning started."
+        try:
+            self.node.start_commissioning(self.user)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "Node commissioning started."
 
 
 class AbortCommissioning(NodeAction):
@@ -199,8 +219,12 @@ class AbortCommissioning(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.abort_commissioning(self.user)
-        return "Node commissioning aborted."
+        try:
+            self.node.abort_commissioning(self.user)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "Node commissioning aborted."
 
 
 class AbortOperation(NodeAction):
@@ -214,8 +238,12 @@ class AbortOperation(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.abort_operation(self.user)
-        return "Node operation aborted."
+        try:
+            self.node.abort_operation(self.user)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "Node operation aborted."
 
 
 class UseCurtin(NodeAction):
@@ -270,9 +298,7 @@ class AcquireNode(NodeAction):
         # acquire() call.
         self.node.acquire(self.user, token=None)
 
-        return dedent("""\
-            This node is now allocated to you.
-            """)
+        return "This node is now allocated to you."
 
 
 class StartNode(NodeAction):
@@ -303,9 +329,10 @@ class StartNode(NodeAction):
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname)
-        return dedent("""\
-            This node has been asked to start up.
-            """)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "This node has been asked to start up."
 
 
 FAILED_STATUSES = [
@@ -329,10 +356,12 @@ class StopNode(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        Node.objects.stop_nodes([self.node.system_id], self.user)
-        return dedent("""\
-            This node has been asked to shut down.
-            """)
+        try:
+            Node.objects.stop_nodes([self.node.system_id], self.user)
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "This node has been asked to shut down."
 
 
 class ReleaseNode(NodeAction):
@@ -349,10 +378,12 @@ class ReleaseNode(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        self.node.release_or_erase()
-        return dedent("""\
-            This node is no longer allocated to you.
-            """)
+        try:
+            self.node.release_or_erase()
+        except RPC_EXCEPTIONS as exception:
+            raise NodeActionError(exception)
+        else:
+            return "This node is no longer allocated to you."
 
 
 class MarkBroken(NodeAction):

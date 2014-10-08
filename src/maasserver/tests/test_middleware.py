@@ -29,6 +29,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.http.request import build_request_repr
 from fixtures import FakeLogger
+from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
     register_persistent_error,
@@ -368,7 +369,7 @@ class RPCErrorsMiddlewareTest(MAASServerTestCase):
         expected_messages = [
             (
                 constants.ERROR,
-                "Error: %s" % middleware.get_error_message_for_exception(
+                "Error: %s" % get_error_message_for_exception(
                     unknown_exception),
                 '',
             ),
@@ -499,7 +500,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         unknown_exception = ZeroDivisionError()
         error_message = "It ain't 'alf 'ot mum!"
         expected_error_message = "\n".join([
-            middleware.get_error_message_for_exception(unknown_exception),
+            get_error_message_for_exception(unknown_exception),
             error_message])
         failures = [
             Failure(unknown_exception),

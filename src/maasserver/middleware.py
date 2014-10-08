@@ -44,6 +44,7 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     discard_persistent_error,
     register_persistent_error,
@@ -298,43 +299,11 @@ class RPCErrorsMiddleware:
         TimeoutError,
         )
 
-    def get_error_message_for_exception(self, exception):
-        """Return an error message for an exception.
-
-        If `exception` is a NoConnectionsAvailable error,
-        get_error_message_for_exception() will check to see if there's a
-        UUID listed. If so, this is an error referring to a cluster.
-        get_error_message_for_exception() will return an error message
-        containing the cluster's name (as opposed to its UUID), which is
-        more useful to users.
-
-        Otherwise, if the exception has a message attached, return that.
-        If not, create meaningful error message for the exception and
-        return that instead.
-        """
-        if (isinstance(exception, NoConnectionsAvailable) and
-                getattr(exception, 'uuid', None) is not None):
-            cluster = NodeGroup.objects.get_by_natural_key(
-                exception.uuid)
-            return (
-                "Unable to connect to cluster '%s' (%s); no connections "
-                "available." % (cluster.cluster_name, cluster.uuid))
-
-        error_message = unicode(exception)
-        if len(error_message) == 0:
-            # Make a pretty message for exceptions without a message.
-            error_message = (
-                "Unexpected exception: %s. See "
-                "/var/log/maas/maas-django.log "
-                "on the region server for more information." %
-                exception.__class__.__name__)
-        return error_message
-
     def _handle_exception(self, request, exception):
         logging.exception(exception)
         messages.error(
             request,
-            "Error: %s" % self.get_error_message_for_exception(exception))
+            "Error: %s" % get_error_message_for_exception(exception))
 
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
@@ -387,11 +356,11 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             for failure in exception.args:
                 logging.exception(exception)
             error_message = "\n".join(
-                self.get_error_message_for_exception(failure.value)
+                get_error_message_for_exception(failure.value)
                 for failure in exception.args)
         else:
             logging.exception(exception)
-            error_message = self.get_error_message_for_exception(exception)
+            error_message = get_error_message_for_exception(exception)
 
         encoding = b'utf-8'
         return HttpResponse(
