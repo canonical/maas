@@ -230,8 +230,8 @@ class AbortCommissioning(NodeAction):
 class AbortOperation(NodeAction):
     """Abort the current operation."""
     name = "abort operation"
-    display = "Abort operation"
-    display_bulk = "Abort operation"
+    display = "Abort disk erasure"
+    display_bulk = "Abort disk erasure"
     actionable_statuses = (
         NODE_STATUS.DISK_ERASING,)
     permission = NODE_PERMISSION.EDIT
