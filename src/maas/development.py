@@ -26,7 +26,7 @@ from maas.customise_test_db import patch_db_creation
 from metadataserver.address import guess_server_host
 import provisioningserver.config
 from provisioningserver.utils import compose_URL
-from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 # We expect the following settings to be overridden. They are mentioned here
 # to silence lint warnings.
@@ -70,7 +70,7 @@ DATABASES = {
         # Unix socket directory.
         'HOST': abspath('db'),
         'OPTIONS': {
-            'isolation_level': ISOLATION_LEVEL_SERIALIZABLE,
+            'isolation_level': ISOLATION_LEVEL_READ_COMMITTED,
         },
     },
 }
