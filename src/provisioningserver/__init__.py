@@ -16,10 +16,15 @@ __all__ = []
 
 
 from twisted.application.service import MultiService
+from twisted.internet.protocol import Factory
 
 # The cluster's services. This is initialised by
 # ProvisioningServiceMaker.
 services = MultiService()
+
+# Make t.i.protocol.Factory quiet. Its jabbering is mind-numbingly
+# useless.
+Factory.noisy = False
 
 
 try:
