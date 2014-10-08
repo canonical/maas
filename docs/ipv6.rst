@@ -119,7 +119,7 @@ Disabling IPv4
 
 For advanced users, there is an experimental capability to deploy nodes with
 pure IPv6, with IPv4 networking disabled.  To enable this on a node, check the
-"Disable IPv4 on deployment" box on the node's Edit page.  The process of
+"Disable IPv4 when deployed" box on the node's Edit page.  The process of
 managing and deploying the node will still largely work through IPv4, but once
 deployed, the node will have IPv6 networking only.
 
