@@ -14,7 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from os import chmod
+from os import (
+    chmod,
+    stat,
+    )
 from os.path import dirname
 
 from fixtures import EnvironmentVariableFixture
@@ -123,3 +126,13 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         security.set_shared_secret_on_filesystem(b"foo")
         self.assertThat(write_text_file, MockCalledOnceWith(ANY, ANY))
         self.assertFalse(lock.is_locked())
+
+    def test__writes_with_secure_permissions(self):
+        secret = factory.make_bytes()
+        security.set_shared_secret_on_filesystem(secret)
+        secret_path = security.get_shared_secret_filesystem_path()
+        perms_observed = stat(secret_path).st_mode & 0o777
+        perms_expected = 0o640
+        self.assertEqual(
+            perms_expected, perms_observed,
+            "Expected %04o, got %04o." % (perms_expected, perms_observed))

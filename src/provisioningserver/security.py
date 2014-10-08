@@ -25,6 +25,7 @@ from binascii import (
 import errno
 from hashlib import sha256
 from hmac import HMAC
+from os import fchmod
 from os.path import dirname
 
 from lockfile import FileLock
@@ -91,6 +92,9 @@ def set_shared_secret_on_filesystem(secret):
     ensure_dir(dirname(secret_path))
     secret_hex = to_hex(secret)
     with FileLock(secret_path):
+        # Ensure that the file has sensible permissions.
+        with open(secret_path, "ab") as secret_f:
+            fchmod(secret_f.fileno(), 0o640)
         # Write secret to the filesystem.
         write_text_file(secret_path, secret_hex)
 
