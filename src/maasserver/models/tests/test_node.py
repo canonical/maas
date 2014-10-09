@@ -1480,6 +1480,10 @@ class NodeTest(MAASServerTestCase):
             preseed_module, 'get_boot_images_for').return_value = [boot_image]
         self.assertEqual('install', node.get_boot_purpose())
 
+    def test_pxe_mac_default_is_none(self):
+        node = factory.make_Node()
+        self.assertIsNone(node.pxe_mac)
+
 
 class NodeRoutersTest(MAASServerTestCase):
 

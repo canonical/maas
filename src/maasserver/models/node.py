@@ -86,7 +86,10 @@ from maasserver.models.cleansave import CleanSave
 from maasserver.models.config import Config
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.licensekey import LicenseKey
-from maasserver.models.macaddress import update_mac_cluster_interfaces
+from maasserver.models.macaddress import (
+    MACAddress,
+    update_mac_cluster_interfaces,
+    )
 from maasserver.models.staticipaddress import (
     StaticIPAddress,
     StaticIPAddressExhaustion,
@@ -638,6 +641,13 @@ class Node(CleanSave, TimestampedModel):
             "unless you know what you're doing: clusters must be configured "
             "to use a MAAS URL with a hostname that resolves on both IPv4 and "
             "IPv6."))
+
+    # Record the MAC address for the interface the node last PXE booted from.
+    # This will be used for determining which MAC address to create a static
+    # IP reservation for when starting a node.
+    pxe_mac = ForeignKey(
+        MACAddress, default=None, blank=True, null=True, editable=False,
+        related_name='+')
 
     objects = NodeManager()
 
