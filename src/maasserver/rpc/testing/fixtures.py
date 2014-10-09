@@ -20,12 +20,18 @@ __all__ = [
 ]
 
 from collections import defaultdict
-from os import path
+from os import (
+    path,
+    urandom,
+    )
 from warnings import warn
 
 from crochet import run_in_reactor
 import fixtures
-from maasserver import eventloop
+from maasserver import (
+    eventloop,
+    security,
+    )
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import getClientFor
@@ -43,6 +49,7 @@ from provisioningserver.rpc.testing import (
     call_responder,
     make_amp_protocol_factory,
     )
+from provisioningserver.security import calculate_digest
 from provisioningserver.utils.twisted import (
     asynchronous,
     synchronous,
@@ -134,6 +141,17 @@ class RunningClusterRPCFixture(fixtures.Fixture):
         self.useFixture(ClusterRPCFixture())
 
 
+def authenticate_with_secret(secret, message):
+    """Patch-in for `Authenticate` calls.
+
+    This ought to always return the correct digest because it'll be using
+    the same shared-secret as the region.
+    """
+    salt = urandom(16)  # 16 bytes of high grade noise.
+    digest = calculate_digest(secret, message, salt)
+    return defer.succeed({"digest": digest, "salt": salt})
+
+
 class MockRegionToClusterRPCFixture(fixtures.Fixture):
     """Patch in a stub cluster RPC implementation to enable end-to-end testing.
 
@@ -156,6 +174,8 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
     def setUp(self):
         super(MockRegionToClusterRPCFixture, self).setUp()
+        # Ensure there's a shared-secret.
+        self.secret = security.get_shared_secret()
         # We need the event-loop up and running.
         if not eventloop.loop.running:
             raise RuntimeError(
@@ -201,11 +221,15 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         """
         if cluster.Identify not in commands:
             commands = commands + (cluster.Identify,)
+        if cluster.Authenticate not in commands:
+            commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         ident_response = {"ident": nodegroup.uuid.decode("ascii")}
         protocol.Identify.side_effect = (
-            lambda protocol: defer.succeed(ident_response.copy()))
+            lambda _: defer.succeed(ident_response.copy()))
+        protocol.Authenticate.side_effect = (
+            lambda _, message: authenticate_with_secret(self.secret, message))
         return protocol, self.addCluster(protocol)
 
 
@@ -239,6 +263,9 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
     def start(self):
         # Shutdown the RPC service, switch endpoints, then start again.
         self.rpc.stopService().wait(10)
+
+        # Ensure there's a shared-secret.
+        self.secret = security.get_shared_secret()
 
         # The RPC service uses a list to manage endpoints, but let's check
         # those assumptions.
@@ -313,11 +340,15 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         """
         if cluster.Identify not in commands:
             commands = commands + (cluster.Identify,)
+        if cluster.Authenticate not in commands:
+            commands = commands + (cluster.Authenticate,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         ident_response = {"ident": nodegroup.uuid.decode("ascii")}
         protocol.Identify.side_effect = (
             lambda protocol: defer.succeed(ident_response.copy()))
+        protocol.Authenticate.side_effect = (
+            lambda _, message: authenticate_with_secret(self.secret, message))
         self.addCluster(protocol).wait(10)
         # The connection is now established, but there is a brief handshake
         # that takes place immediately upon connection.  We wait for that to

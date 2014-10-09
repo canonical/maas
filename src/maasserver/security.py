@@ -30,9 +30,13 @@ from provisioningserver.security import (
     to_bin,
     to_hex,
     )
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    synchronous,
+    )
 from pytz import UTC
 from twisted.internet import ssl
+from twisted.internet.threads import deferToThread
 
 
 def get_serial():
@@ -83,7 +87,7 @@ def get_region_certificate():
 
 @synchronous
 @transactional
-def get_shared_secret():
+def get_shared_secret_txn():
     # Get a full region-wide lock.
     with locks.security:
         # Load secret from database, if it exists.
@@ -114,3 +118,24 @@ def get_shared_secret():
                 get_shared_secret_filesystem_path())
 
         return secret
+
+
+@asynchronous(timeout=10)
+def get_shared_secret():
+    """Get the shared-secret.
+
+    It may need to generate a new secret and commit it to the database, hence
+    this always runs in a separate transaction in a separate thread.
+
+    If called from the IO thread (a.k.a. the reactor), it will return a
+    `Deferred` that'll fire with the secret (a byte string).
+
+    If called from another thread it will return the secret directly, but may
+    block for up to 10 seconds. If it times-out, an exception is raised.
+
+    :returns: The shared-secret, a short byte string, or a `Deferred` if
+        called from the IO/reactor thread.
+    :raises crochet.TimeoutError: when it times-out after being called from
+        thread other than the IO/reactor thread.
+    """
+    return deferToThread(get_shared_secret_txn)

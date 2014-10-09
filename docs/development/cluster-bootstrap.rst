@@ -66,9 +66,12 @@ Work items
 
 #. **DONE:** Check for shared-secret during start-up (packaging change too?).
 
-#. Perform ``Authenticate`` handshake.
+#. **DONE:** Perform ``Authenticate`` handshake.
 
 #. Perform ``Register`` handshake.
+
+#. Display secret to admins in UI, or provide tool to obtain secret
+   locally on region controller's machine.
 
 #. Mechanism to limit available RPC calls.
 

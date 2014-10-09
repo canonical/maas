@@ -105,9 +105,9 @@ def set_shared_secret_on_filesystem(secret):
 
 def calculate_digest(secret, message, salt):
     """Calculate a SHA-256 HMAC digest for the given data."""
-    assert isinstance(secret, bytes)
-    assert isinstance(message, bytes)
-    assert isinstance(salt, bytes)
+    assert isinstance(secret, bytes), "%r is not a byte string." % (secret,)
+    assert isinstance(message, bytes), "%r is not byte string." % (message,)
+    assert isinstance(salt, bytes), "%r is not a byte string." % (salt,)
     hmacr = HMAC(secret, digestmod=sha256)
     hmacr.update(message)
     hmacr.update(salt)

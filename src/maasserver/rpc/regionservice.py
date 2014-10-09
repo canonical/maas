@@ -79,6 +79,8 @@ from twisted.internet import defer
 from twisted.internet.defer import (
     CancelledError,
     inlineCallbacks,
+    maybeDeferred,
+    returnValue,
     )
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet.protocol import Factory
@@ -106,7 +108,7 @@ class Region(RPCProtocol):
 
     @region.Authenticate.responder
     def authenticate(self, message):
-        d = deferToThread(get_shared_secret)
+        d = maybeDeferred(get_shared_secret)
 
         def got_secret(secret):
             salt = urandom(16)  # 16 bytes of high grade noise.
@@ -374,20 +376,59 @@ class RegionServer(Region):
     factory = None
     ident = None
 
+    @inlineCallbacks
+    def identifyCluster(self):
+        response = yield self.callRemote(cluster.Identify)
+        self.ident = response.get("ident")
+
+    @inlineCallbacks
+    def authenticateCluster(self):
+        """Authenticate the cluster."""
+        secret = yield get_shared_secret()
+        message = urandom(16)  # 16 bytes of the finest.
+        response = yield self.callRemote(
+            cluster.Authenticate, message=message)
+        salt, digest = response["salt"], response["digest"]
+        digest_local = calculate_digest(secret, message, salt)
+        returnValue(digest == digest_local)
+
+    @inlineCallbacks
+    def performHandshake(self):
+        yield self.identifyCluster()
+        authenticated = yield self.authenticateCluster()
+        if authenticated:
+            log.msg("Cluster '%s' authenticated." % self.ident)
+            self.factory.service._addConnectionFor(self.ident, self)
+        else:
+            log.msg(
+                "Cluster '%s' FAILED authentication; "
+                "dropping connection." % self.ident)
+            yield self.transport.loseConnection()
+
+    def handshakeSucceeded(self, result):
+        """The handshake (identify and authenticate) succeeded.
+
+        This does *NOT* mean that the cluster was successfully authenticated,
+        merely that the process of authentication did not encounter an error.
+        """
+
+    def handshakeFailed(self, failure):
+        """The handshake (identify and authenticate) failed."""
+        if self.ident is None:
+            log.err(
+                failure, "Cluster could not be identified; "
+                "dropping connection.")
+        else:
+            log.err(
+                failure, "Cluster '%s' could not be authenticated; "
+                "dropping connection." % self.ident)
+        return self.transport.loseConnection()
+
     def connectionMade(self):
         super(RegionServer, self).connectionMade()
         if self.factory.service.running:
-            d = self.callRemote(cluster.Identify)
-
-            def cb_identify(response):
-                self.ident = response.get("ident")
-                self.factory.service._addConnectionFor(self.ident, self)
-
-            def eb_identify(failure):
-                log.err(failure)
-                return self.transport.loseConnection()
-
-            d.addCallbacks(cb_identify, eb_identify)
+            return self.performHandshake().addCallbacks(
+                self.handshakeSucceeded, self.handshakeFailed)
         else:
             self.transport.loseConnection()
 
@@ -474,10 +515,18 @@ class RegionService(service.Service, object):
         """Start listening on an ephemeral port."""
         super(RegionService, self).startService()
         self.starting = defer.DeferredList(
-            endpoint.listen(self.factory)
-            for endpoint in self.endpoints)
+            (endpoint.listen(self.factory) for endpoint in self.endpoints),
+            consumeErrors=True)
+
+        def log_failure(failure):
+            if failure.check(defer.CancelledError):
+                log.msg("RegionServer start-up has been cancelled.")
+            else:
+                log.err(failure, "RegionServer start-up failed.")
+
         self.starting.addCallback(self._savePorts)
-        self.starting.addErrback(log.err)
+        self.starting.addErrback(log_failure)
+
         # Twisted's service framework does not track start-up progress, i.e.
         # it does not check for Deferreds returned by startService(). Here we
         # return a Deferred anyway so that direct callers (esp. those from

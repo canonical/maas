@@ -59,9 +59,14 @@ from maasserver.rpc.regionservice import (
     RegionServer,
     RegionService,
     )
-from maasserver.rpc.testing.doubles import IdentifyingRegionServer
+from maasserver.rpc.testing.doubles import HandshakingRegionServer
+from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
 from maasserver.security import get_shared_secret
 from maasserver.testing.architecture import make_usable_architecture
+from maasserver.testing.eventloop import (
+    RegionEventLoopFixture,
+    RunningEventLoopFixture,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
@@ -75,6 +80,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     call,
     Mock,
     )
@@ -116,6 +122,8 @@ from provisioningserver.rpc.region import (
     UpdateNodePowerState,
     )
 from provisioningserver.rpc.testing import (
+    always_fail_with,
+    always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
     TwistedLoggerFixture,
@@ -124,7 +132,10 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
-from testtools.deferredruntest import assert_fails_with
+from testtools.deferredruntest import (
+    assert_fails_with,
+    extract_result,
+    )
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -190,7 +201,7 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
     @inlineCallbacks
     def test_authenticate_calculates_digest_with_salt(self):
         message = factory.make_bytes()
-        secret = yield deferToThread(get_shared_secret)
+        secret = yield get_shared_secret()
 
         args = {b"message": message}
         response = yield call_responder(Region(), Authenticate, args)
@@ -1046,8 +1057,12 @@ class TestRegionServer(MAASServerTestCase):
         callRemote = self.patch(protocol, "callRemote")
         callRemote.return_value = succeed({b"ident": example_uuid})
         protocol.connectionMade()
-        # The Identify command was called on the cluster.
-        self.assertThat(callRemote, MockCalledOnceWith(cluster.Identify))
+        # The Identify command was called on the cluster. Authenticate too,
+        # but we're not looking at that right now.
+        self.assertThat(callRemote, MockCallsMatch(
+            call(cluster.Identify),
+            call(cluster.Authenticate, message=ANY),
+        ))
         # The UUID has been saved on the protocol instance.
         self.assertThat(protocol.ident, Equals(example_uuid))
 
@@ -1067,7 +1082,7 @@ class TestRegionServer(MAASServerTestCase):
         # The error is logged.
         self.assertDocTestMatches(
             """\
-            Unhandled Error
+            Cluster could not be identified; dropping connection.
             Traceback (most recent call last):
             Failure: exceptions.IOError: no paddle
             """,
@@ -1076,7 +1091,7 @@ class TestRegionServer(MAASServerTestCase):
     def test_connectionMade_updates_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
-        service.factory.protocol = IdentifyingRegionServer
+        service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         self.assertDictEqual({}, service.connections)
         protocol.connectionMade()
@@ -1087,7 +1102,7 @@ class TestRegionServer(MAASServerTestCase):
     def test_connectionMade_drops_connection_if_service_not_running(self):
         service = RegionService()
         service.running = False  # Pretend it's not running.
-        service.factory.protocol = IdentifyingRegionServer
+        service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         transport = self.patch(protocol, "transport")
         self.assertDictEqual({}, service.connections)
@@ -1100,7 +1115,7 @@ class TestRegionServer(MAASServerTestCase):
     def test_connectionLost_updates_services_connection_set(self):
         service = RegionService()
         service.running = True  # Pretend it's running.
-        service.factory.protocol = IdentifyingRegionServer
+        service.factory.protocol = HandshakingRegionServer
         protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
         protocol.connectionMade()
         connectionLost_up_call = self.patch(amp.AMP, "connectionLost")
@@ -1112,6 +1127,108 @@ class TestRegionServer(MAASServerTestCase):
         self.assertDictEqual({protocol.ident: set()}, service.connections)
         # connectionLost() is called on the superclass.
         self.assertThat(connectionLost_up_call, MockCalledOnceWith(None))
+
+    def patch_authenticate_for_failure(self, client):
+        authenticate = self.patch_autospec(client, "authenticateCluster")
+        authenticate.side_effect = always_succeed_with(False)
+
+    def patch_authenticate_for_error(self, client, exception):
+        authenticate = self.patch_autospec(client, "authenticateCluster")
+        authenticate.side_effect = always_fail_with(exception)
+
+    def test_connectionMade_drops_connections_if_authentication_fails(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        service.factory.protocol = HandshakingRegionServer
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        self.patch_authenticate_for_failure(protocol)
+        transport = self.patch(protocol, "transport")
+        self.assertDictEqual({}, service.connections)
+        protocol.connectionMade()
+        # The protocol is not added to the connection set.
+        self.assertDictEqual({}, service.connections)
+        # The transport is instructed to lose the connection.
+        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+
+    def test_connectionMade_drops_connections_if_authentication_errors(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        service.factory.protocol = HandshakingRegionServer
+        protocol = service.factory.buildProtocol(addr=None)  # addr is unused.
+        exception_type = factory.make_exception_type()
+        self.patch_authenticate_for_error(protocol, exception_type())
+        transport = self.patch(protocol, "transport")
+        self.assertDictEqual({}, service.connections)
+        protocol.connectionMade()
+        # The protocol is not added to the connection set.
+        self.assertDictEqual({}, service.connections)
+        # The transport is instructed to lose the connection.
+        self.assertThat(transport.loseConnection, MockCalledOnceWith())
+
+        # The log was written to.
+        self.assertDocTestMatches(
+            """\
+            Cluster '...' could not be authenticated; dropping connection.
+            Traceback (most recent call last):...
+            """,
+            logger.dump())
+
+    def make_running_server(self):
+        service = RegionService()
+        service.running = True  # Pretend it's running.
+        # service.factory.protocol = RegionServer
+        return service.factory.buildProtocol(addr=None)  # addr is unused.
+
+    def test_authenticateCluster_accepts_matching_digests(self):
+        server = self.make_running_server()
+
+        def calculate_digest(_, message):
+            # Use the region's own authentication responder.
+            return Region().authenticate(message)
+
+        callRemote = self.patch_autospec(server, "callRemote")
+        callRemote.side_effect = calculate_digest
+
+        d = server.authenticateCluster()
+        self.assertTrue(extract_result(d))
+
+    def test_authenticateCluster_rejects_non_matching_digests(self):
+        server = self.make_running_server()
+
+        def calculate_digest(_, message):
+            # Return some nonsense.
+            response = {
+                "digest": factory.make_bytes(),
+                "salt": factory.make_bytes(),
+            }
+            return succeed(response)
+
+        callRemote = self.patch_autospec(server, "callRemote")
+        callRemote.side_effect = calculate_digest
+
+        d = server.authenticateCluster()
+        self.assertFalse(extract_result(d))
+
+    def test_authenticateCluster_propagates_errors(self):
+        server = self.make_running_server()
+        exception_type = factory.make_exception_type()
+
+        callRemote = self.patch_autospec(server, "callRemote")
+        callRemote.return_value = fail(exception_type())
+
+        d = server.authenticateCluster()
+        self.assertRaises(exception_type, extract_result, d)
+
+    def test_authenticateCluster_end_to_end(self):
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        server = rpc_fixture.makeCluster(factory.make_NodeGroup())
+        self.assertThat(
+            server.Authenticate,
+            MockCalledOnceWith(server, message=ANY))
 
 
 class TestRegionService(MAASTestCase):
@@ -1232,7 +1349,7 @@ class TestRegionService(MAASTestCase):
     def test_stopping_closes_connections_cleanly(self):
         service = RegionService()
         service.starting = Deferred()
-        service.factory.protocol = IdentifyingRegionServer
+        service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
@@ -1256,7 +1373,7 @@ class TestRegionService(MAASTestCase):
     def test_stopping_logs_errors_when_closing_connections(self):
         service = RegionService()
         service.starting = Deferred()
-        service.factory.protocol = IdentifyingRegionServer
+        service.factory.protocol = HandshakingRegionServer
         connections = {
             service.factory.buildProtocol(None),
             service.factory.buildProtocol(None),
