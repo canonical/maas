@@ -90,10 +90,7 @@ from maasserver.models.macaddress import (
     MACAddress,
     update_mac_cluster_interfaces,
     )
-from maasserver.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressExhaustion,
-    )
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.models.zone import Zone
@@ -1391,35 +1388,31 @@ class Node(CleanSave, TimestampedModel):
         self.save()
 
     def claim_static_ip_addresses(self):
-        """Assign static IPs to all managed interfaces.
-
-        In the case where there are multuple interfaces, if there's a problem
-        assigning an address to any of them, none of them will be assigned an
-        address. It's all or nothing.
+        """Assign static IPs to the node's PXE MAC.
 
         :returns: A list of ``(ip-address, mac-address)`` tuples.
         :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
         """
+        mac = self.get_pxe_mac()
+
+        if mac is None:
+            return []
+
+        # XXX 2014-10-09 jhobbs bug=1379370
+        # It's not clear to me that this transaction needs to be here
+        # since this doesn't allocate IP addresses across multiple
+        # interfaces. This needs to be looked at some more when there is
+        # more time.
         with transaction.atomic():
-            mappings = []
-            for mac in self.mac_addresses_on_managed_interfaces():
-                try:
-                    static_ips = mac.claim_static_ips()
-                except StaticIPAddressTypeClash:
-                    # There's already a non-AUTO IP.
-                    pass
-                except StaticIPAddressExhaustion:
-                    # XXX 2014-06-17 bigjools bug=1330762
-                    # We /could/ continue and provision those nodes that have
-                    # obtained static addresses, but we choose to abandon the
-                    # attempt to start nodes entirely.
-                    raise
-                else:
-                    for static_ip in static_ips:
-                        mappings.append((static_ip.ip, unicode(mac)))
+            try:
+                static_ips = mac.claim_static_ips()
+            except StaticIPAddressTypeClash:
+                # There's already a non-AUTO IP.
+                return []
+
             # Return a list instead of yielding mappings as they're ready
             # because it's all-or-nothing (hence the atomic context).
-            return mappings
+            return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
     def get_boot_purpose(self):
         """
