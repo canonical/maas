@@ -124,6 +124,7 @@ Developing MAAS
    development/security
    development/building-packages
    development/cluster-registration
+   development/cluster-bootstrap
    development/tagging
    development/lease-scanning-and-dns
    development/preseeds

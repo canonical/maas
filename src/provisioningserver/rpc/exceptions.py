@@ -15,10 +15,11 @@ __metaclass__ = type
 __all__ = [
     "CannotConfigureDHCP",
     "CannotCreateHostMap",
+    "CannotRegisterCluster",
     "CannotRemoveHostMap",
     "MultipleFailures",
-    "NodeStateViolation",
     "NoConnectionsAvailable",
+    "NodeStateViolation",
     "NoSuchCluster",
     "NoSuchEventType",
     "NoSuchNode",
@@ -67,12 +68,12 @@ class NodeStateViolation(Exception):
 
 
 class NoSuchCluster(Exception):
-    """The specified cluster (a.k.a. node-group) was not found."""
+    """The specified cluster was not found."""
 
     @classmethod
     def from_uuid(cls, uuid):
         return cls(
-            "The cluster (a.k.a. node-group) with UUID %s could not "
+            "The cluster with UUID %s could not "
             "be found." % uuid
         )
 
@@ -122,3 +123,14 @@ class PowerActionAlreadyInProgress(Exception):
     """A power action was requested on a node where a power action is
     already in progress.
     """
+
+
+class CannotRegisterCluster(Exception):
+    """The cluster could not be registered."""
+
+    @classmethod
+    def from_uuid(cls, uuid, message):
+        return cls(
+            "The cluster with UUID %s could not "
+            "be registered:\n%s" % (uuid, message)
+        )

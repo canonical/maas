@@ -48,6 +48,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.rpc import (
     events as events_module,
     regionservice,
@@ -78,12 +79,14 @@ from mock import (
     Mock,
     )
 import netaddr
+from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
     cluster,
     common,
     exceptions,
     )
 from provisioningserver.rpc.exceptions import (
+    CannotRegisterCluster,
     NoSuchCluster,
     NoSuchEventType,
     NoSuchNode,
@@ -102,6 +105,7 @@ from provisioningserver.rpc.region import (
     ListNodePowerParameters,
     MarkNodeFailed,
     MonitorExpired,
+    Register,
     RegisterEventType,
     ReportBootImages,
     ReportForeignDHCPServer,
@@ -198,6 +202,72 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         expected_digest = HMAC(secret, message + salt, sha256).digest()
         self.assertEqual(expected_digest, digest)
         self.assertThat(salt, HasLength(16))
+
+
+class TestRegionProtocol_Register(TransactionTestCase):
+
+    def test__is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(Register.commandName)
+        self.assertIsNotNone(responder)
+
+    @transactional
+    def get_nodegroup(self, uuid):
+        return NodeGroup.objects.get_by_natural_key(uuid)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__registers_cluster_with_only_uuid(self):
+        uuid = factory.make_UUID()
+        args = {"uuid": uuid}
+        response = yield call_responder(Region(), Register, args)
+        self.assertEqual({}, response)
+        nodegroup = yield deferToThread(self.get_nodegroup, uuid)
+        self.assertEqual(uuid, nodegroup.uuid)
+
+    @transactional
+    def get_cluster_networks(self, cluster):
+        return [
+            {"interface": ngi.interface, "ip": ngi.ip,
+             "subnet_mask": ngi.subnet_mask}
+            for ngi in cluster.nodegroupinterface_set.all()
+        ]
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__registers_cluster_with_uuid_and_networks(self):
+        uuid = factory.make_UUID()
+        networks = discover_networks()
+        args = {"uuid": uuid, "networks": networks}
+        response = yield call_responder(Region(), Register, args)
+        self.assertEqual({}, response)
+        nodegroup = yield deferToThread(self.get_nodegroup, uuid)
+        self.assertEqual(uuid, nodegroup.uuid)
+        networks_observed = yield deferToThread(
+            self.get_cluster_networks, nodegroup)
+        self.assertItemsEqual(networks, networks_observed)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__raises_CannotRegisterCluster_when_it_cant(self):
+        args = {
+            "uuid": factory.make_UUID(),
+            "networks": [
+                # The IP address is invalid, so the region will reject
+                # this registration.
+                {"interface": "eth0", "ip": "1.2.3",
+                 "subnet_mask": "255.255.255.255"},
+            ],
+        }
+        error = yield assert_fails_with(
+            call_responder(Region(), Register, args),
+            CannotRegisterCluster)
+        self.assertDocTestMatches(
+            """\
+            The cluster ... could not be registered:
+            * interfaces: ...
+            """,
+            unicode(error))
 
 
 class TestRegionProtocol_StartTLS(MAASTestCase):
@@ -414,7 +484,7 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetArchiveMirrors(MAASTestCase):
+class TestRegionProtocol_GetArchiveMirrors(TransactionTestCase):
 
     def test_get_archive_mirrors_is_registered(self):
         protocol = Region()
@@ -470,7 +540,7 @@ class TestRegionProtocol_GetArchiveMirrors(MAASTestCase):
             response)
 
 
-class TestRegionProtocol_GetProxies(MAASTestCase):
+class TestRegionProtocol_GetProxies(TransactionTestCase):
 
     def test_get_proxies_is_registered(self):
         protocol = Region()
@@ -505,7 +575,7 @@ class TestRegionProtocol_GetProxies(MAASTestCase):
             response)
 
 
-class TestRegionProtocol_GetClusterStatus(MAASTestCase):
+class TestRegionProtocol_GetClusterStatus(TransactionTestCase):
 
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
@@ -536,7 +606,7 @@ class TestRegionProtocol_GetClusterStatus(MAASTestCase):
         self.assertEqual({b"status": status}, response)
 
 
-class TestRegionProtocol_MarkNodeFailed(MAASTestCase):
+class TestRegionProtocol_MarkNodeFailed(TransactionTestCase):
 
     def test_mark_failed_is_registered(self):
         protocol = Region()
@@ -706,7 +776,7 @@ class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
         return d.addErrback(check)
 
 
-class TestRegionProtocol_RegisterEventType(MAASTestCase):
+class TestRegionProtocol_RegisterEventType(TransactionTestCase):
 
     def test_register_event_type_is_registered(self):
         protocol = Region()
@@ -756,7 +826,7 @@ class TestRegionProtocol_RegisterEventType(MAASTestCase):
         self.assertEqual({}, response)
 
 
-class TestRegionProtocol_SendEvent(MAASTestCase):
+class TestRegionProtocol_SendEvent(TransactionTestCase):
 
     def test_send_event_is_registered(self):
         protocol = Region()
@@ -857,7 +927,7 @@ class TestRegionProtocol_SendEvent(MAASTestCase):
         yield d.addCallback(check)
 
 
-class TestRegionProtocol_SendEventMACAddress(MAASTestCase):
+class TestRegionProtocol_SendEventMACAddress(TransactionTestCase):
 
     def test_send_event_mac_address_is_registered(self):
         protocol = Region()
@@ -1742,7 +1812,7 @@ class TestRegionAdvertisingService(MAASTestCase):
         self.assertItemsEqual([], service._get_addresses())
 
 
-class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
+class TestRegionProtocol_ReportForeignDHCPServer(TransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -1798,7 +1868,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(MAASTestCase):
         self.assertThat(configure_dhcp, MockNotCalled())
 
 
-class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
+class TestRegionProtocol_GetClusterInterfaces(TransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -1835,7 +1905,7 @@ class TestRegionProtocol_GetClusterInterfaces(MAASTestCase):
             expected_interfaces, response["interfaces"])
 
 
-class TestRegionProtocol_CreateNode(MAASTestCase):
+class TestRegionProtocol_CreateNode(TransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -1905,7 +1975,7 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
             MockCalledOnceWith(params['id'], params['context']))
 
 
-class TestRegionProtocol_RequestNodeInforByMACAddress(MAASTestCase):
+class TestRegionProtocol_RequestNodeInforByMACAddress(TransactionTestCase):
 
     def test_request_node_info_by_mac_address_is_registered(self):
         protocol = Region()

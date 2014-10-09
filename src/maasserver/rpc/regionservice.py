@@ -26,6 +26,7 @@ from textwrap import dedent
 import threading
 
 from crochet import reactor
+from django.core.exceptions import ValidationError
 from django.db import connection
 from maasserver import (
     eventloop,
@@ -49,7 +50,10 @@ from maasserver.rpc.nodes import (
     request_node_info_by_mac_address,
     )
 from maasserver.security import get_shared_secret
-from maasserver.utils import synchronised
+from maasserver.utils import (
+    make_validation_error_message,
+    synchronised,
+    )
 from maasserver.utils.async import transactional
 from netaddr import IPAddress
 from provisioningserver.rpc import (
@@ -100,12 +104,26 @@ class Region(RPCProtocol):
         """
         return {b"ident": eventloop.loop.name}
 
-    @cluster.Authenticate.responder
+    @region.Authenticate.responder
     def authenticate(self, message):
         secret = get_shared_secret()
         salt = urandom(16)  # 16 bytes of high grade noise.
         digest = calculate_digest(secret, message, salt)
         return {"digest": digest, "salt": salt}
+
+    @region.Register.responder
+    def register(self, uuid, networks):
+        d = deferToThread(clusters.register_cluster, uuid, networks=networks)
+
+        def cb_cluster_registered(cluster):
+            return {}
+
+        def eb_validation_error(failure):
+            failure.trap(ValidationError)
+            raise exceptions.CannotRegisterCluster.from_uuid(
+                uuid, make_validation_error_message(failure.value))
+
+        return d.addCallbacks(cb_cluster_registered, eb_validation_error)
 
     @region.ReportBootImages.responder
     def report_boot_images(self, uuid, images):

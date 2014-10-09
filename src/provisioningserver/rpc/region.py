@@ -18,9 +18,25 @@ __metaclass__ = type
 __all__ = [
     "Authenticate",
     "CreateNode",
+    "GetArchiveMirrors",
+    "GetBootSources",
+    "GetBootSourcesV2",
+    "GetClusterInterfaces",
+    "GetClusterStatus",
+    "GetProxies",
     "Identify",
+    "ListNodePowerParameters",
     "MarkNodeFailed",
+    "MonitorExpired",
+    "Register",
+    "RegisterEventType",
+    "ReloadCluster",
     "ReportBootImages",
+    "ReportForeignDHCPServer",
+    "RequestNodeInfoByMACAddress",
+    "SendEvent",
+    "SendEventMACAddress",
+    "UpdateLeases",
     "UpdateNodePowerState",
 ]
 
@@ -35,6 +51,7 @@ from provisioningserver.rpc.common import (
     Identify,
     )
 from provisioningserver.rpc.exceptions import (
+    CannotRegisterCluster,
     NodeAlreadyExists,
     NodeStateViolation,
     NoSuchCluster,
@@ -42,6 +59,29 @@ from provisioningserver.rpc.exceptions import (
     NoSuchNode,
     )
 from twisted.protocols import amp
+
+
+class Register(amp.Command):
+    """Register a cluster with the region controller.
+
+    This is the last part of the Identify, Authenticate, Register three-step.
+    See cluster-bootstrap_ for an explanation.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b"uuid", amp.Unicode()),
+        (b"networks", amp.AmpList([
+            (b"interface", amp.Unicode()),
+            (b"ip", amp.Unicode()),
+            (b"subnet_mask", amp.Unicode()),
+        ], optional=True)),
+    ]
+    response = []
+    errors = {
+        CannotRegisterCluster: b"CannotRegisterCluster",
+    }
 
 
 class ReportBootImages(amp.Command):
