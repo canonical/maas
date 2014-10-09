@@ -1797,7 +1797,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             node_id__in=(node.id for node in nodes))
         self.assertEqual({user_data}, {nud.data for nud in nuds})
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__resets_user_data(self):
         user = factory.make_User()
@@ -1815,7 +1815,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             node_id__in=(node.id for node in nodes))
         self.assertThat(list(nuds), HasLength(0))
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__claims_static_ip_addresses(self):
         user = factory.make_User()
@@ -1834,7 +1834,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         for node in nodes:
             self.expectThat(claim_static_ip_addresses, MockAnyCall(node))
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__claims_static_ip_addresses_for_allocated_nodes_only(self):
         user = factory.make_User()
@@ -1862,7 +1862,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             claim_static_ip_addresses,
             MockCalledOnceWith(allocated_node))
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__updates_host_maps(self):
         user = factory.make_User()
@@ -1886,7 +1886,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
                 for mac in node.mac_addresses_on_managed_interfaces()
             }))
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__propagates_errors_when_updating_host_maps(self):
         user = factory.make_User()
@@ -1907,7 +1907,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             update_host_maps.return_value, error.args)
 
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__updates_dns(self):
         user = factory.make_User()
@@ -1924,7 +1924,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
                 {node.nodegroup for node in nodes}))
 
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__starts_nodes(self):
         user = factory.make_User()
@@ -1956,7 +1956,7 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             nodes_start_info_observed)
 
         # No complaints are made to the Twisted log.
-        self.assertEqual("", twisted_log.dump())
+        self.assertFalse(twisted_log.containsError(), twisted_log.output)
 
     def test__raises_failures_for_nodes_that_cannot_be_started(self):
         power_on_nodes = self.patch(node_module, "power_on_nodes")

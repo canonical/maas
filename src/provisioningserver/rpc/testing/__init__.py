@@ -125,6 +125,12 @@ class TwistedLoggerFixture(Fixture):
         return "\n---\n".join(
             log.textFromEventDict(event) for event in self.logs)
 
+    # For compatibility with fixtures.FakeLogger.
+    output = property(dump)
+
+    def containsError(self):
+        return any(log["isError"] for log in self.logs)
+
     def setUp(self):
         super(TwistedLoggerFixture, self).setUp()
         self.addCleanup(
