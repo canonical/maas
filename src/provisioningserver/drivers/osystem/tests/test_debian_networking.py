@@ -27,16 +27,26 @@ from provisioningserver.drivers.osystem.debian_networking import (
     compose_network_interfaces,
     has_static_ipv6_address,
     )
+from testtools.matchers import Contains
 
 
 class TestComposeIPv4Stanza(MAASTestCase):
 
-    def test__produces_dhcp_stanza(self):
+    def test__produces_dhcp_stanza_by_default(self):
         interface = factory.make_name('eth')
-        expected = "iface %s inet dhcp" % interface
         self.assertEqual(
-            expected.strip(),
+            "iface %s inet dhcp" % interface,
             compose_ipv4_stanza(interface).strip())
+
+    def test__produces_static_nil_address_if_disabled(self):
+        interface = factory.make_name('eth')
+        stanza = compose_ipv4_stanza(interface, disable=True)
+        self.expectThat(
+            stanza,
+            Contains("iface %s inet static\n" % interface))
+        self.expectThat(
+            stanza + '\n',
+            Contains("address 0.0.0.0\n"))
 
 
 class TestComposeIPv6Stanza(MAASTestCase):
@@ -152,15 +162,14 @@ class TestComposeNetworkInterfaces(MAASTestCase):
                 self.make_listing(interface, mac), [], {}, {},
                 disable_ipv4=True))
 
-    def test__generates_no_DHCPv4_config_if_node_should_use_IPv6_only(self):
+    def test__disables_IPv4_statically_if_IPv4_disabled(self):
+        interface = factory.make_name('eth')
         mac = factory.make_mac_address()
-        # The space is significant: we're expecting an inet6 line, so don't
-        # match that when we look for inet.
-        self.assertNotIn(
-            " inet ",
+        self.assertIn(
+            "\niface %s inet static" % interface,
             compose_network_interfaces(
-                self.make_listing(mac=mac), [], self.make_mapping(mac), {},
-                disable_ipv4=True))
+                self.make_listing(interface, mac), [], self.make_mapping(mac),
+                {}, disable_ipv4=True))
 
     def test__generates_static_IPv6_config(self):
         interface = factory.make_name('eth')

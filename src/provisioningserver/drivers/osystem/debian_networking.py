@@ -16,6 +16,8 @@ __all__ = [
     'compose_network_interfaces',
     ]
 
+from textwrap import dedent
+
 from netaddr import IPAddress
 
 
@@ -46,9 +48,24 @@ def extract_ip(mapping, mac, ip_version):
     return extract_ip_from_sequence(mapping.get(mac, []), ip_version)
 
 
-def compose_ipv4_stanza(interface):
-    """Return a Debian `/etc/network/interfaces` stanza for DHCPv4."""
-    return "iface %s inet dhcp" % interface
+def compose_ipv4_stanza(interface, disable=False):
+    """Return a Debian `/etc/network/interfaces` stanza for DHCPv4.
+
+    :param interface: Name of the network interface whose configuration should
+        be generated.
+    :param disable: If `True`, generate a stanza to disable the IPv4 address.
+        If `False` (the default), generate a DHCP stanza.
+    :return: Text of the interface's IPv4 address configuration stanza.
+    """
+    if disable:
+        return dedent("""\
+            # MAAS was configured to disable IPv4 networking on this node.
+            iface %s inet static
+            \tnetmask 255.255.255.255
+            \taddress 0.0.0.0
+            """.rstrip()) % interface
+    else:
+        return "iface %s inet dhcp" % interface
 
 
 def compose_ipv6_stanza(interface, ip, gateway=None, nameserver=None):
@@ -114,8 +131,7 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
     for interface, mac in interfaces:
         if mac in auto_interfaces:
             stanzas.append('auto %s' % interface)
-        if not disable_ipv4:
-            stanzas.append(compose_ipv4_stanza(interface))
+        stanzas.append(compose_ipv4_stanza(interface, disable=disable_ipv4))
         static_ipv6 = extract_ip(ips_mapping, mac, 6)
         if static_ipv6 is not None:
             gateway = extract_ip(gateways_mapping, mac, 6)
