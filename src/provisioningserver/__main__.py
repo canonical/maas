@@ -29,6 +29,7 @@ from provisioningserver.utils.script import (
 
 script_commands = {
     'atomic-write': AtomicWriteScript,
+    'check-for-shared-secret': security.CheckForSharedSecretScript,
     'customize-config': provisioningserver.customize_config,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-shared-secret': security.InstallSharedSecretScript,

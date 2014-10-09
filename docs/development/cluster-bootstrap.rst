@@ -64,7 +64,7 @@ Work items
 
 #. **DONE:** Command-line to install shared-secret.
 
-#. Check for shared-secret during start-up (packaging change too?).
+#. **DONE:** Check for shared-secret during start-up (packaging change too?).
 
 #. Perform ``Authenticate`` handshake.
 

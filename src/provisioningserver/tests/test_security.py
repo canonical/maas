@@ -258,3 +258,34 @@ class TestInstallSharedSecretScript(MAASTestCase):
         self.assertThat(
             print, MockCalledOnceWith(
                 "Secret installed to %s." % shared_secret_path))
+
+
+class TestCheckForSharedSecretScript(MAASTestCase):
+
+    def setUp(self):
+        super(TestCheckForSharedSecretScript, self).setUp()
+        self.useFixture(EnvironmentVariableFixture(
+            "MAAS_ROOT", self.make_dir()))
+
+    def test__has_add_arguments(self):
+        # It doesn't do anything, but it's there to fulfil the contract with
+        # ActionScript/MainScript.
+        security.CheckForSharedSecretScript.add_arguments(sentinel.parser)
+        self.assertIsNotNone("Obligatory assertion.")
+
+    def test__exits_non_zero_if_secret_does_not_exist(self):
+        print = self.patch(security, "print")
+        error = self.assertRaises(
+            SystemExit, security.CheckForSharedSecretScript.run, sentinel.args)
+        self.assertEqual(1, error.code)
+        self.assertThat(
+            print, MockCalledOnceWith("Shared-secret is NOT installed."))
+
+    def test__exits_zero_if_secret_exists(self):
+        security.set_shared_secret_on_filesystem(factory.make_bytes())
+        print = self.patch(security, "print")
+        error = self.assertRaises(
+            SystemExit, security.CheckForSharedSecretScript.run, sentinel.args)
+        self.assertEqual(0, error.code)
+        self.assertThat(
+            print, MockCalledOnceWith("Shared-secret is installed."))

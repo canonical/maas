@@ -130,7 +130,7 @@ class InstallSharedSecretScript:
 
     @staticmethod
     def run(args):
-        """Install a shared secret to this cluster.
+        """Install a shared-secret to this cluster.
 
         When invoked interactively, you'll be prompted to enter the secret.
         Otherwise the secret will be read from the first line of stdin.
@@ -159,4 +159,32 @@ class InstallSharedSecretScript:
             set_shared_secret_on_filesystem(secret)
             shared_secret_path = get_shared_secret_filesystem_path()
             print("Secret installed to %s." % shared_secret_path)
+            raise SystemExit(0)
+
+
+class CheckForSharedSecretScript:
+    """Check for the presence of a shared-secret on a cluster.
+
+    This class conforms to the contract that :py:func:`MainScript.register`
+    requires.
+    """
+
+    @staticmethod
+    def add_arguments(parser):
+        """Initialise options for checking the presence of a shared-secret.
+
+        :param parser: An instance of :class:`ArgumentParser`.
+        """
+
+    @staticmethod
+    def run(args):
+        """Check for the presence of a shared-secret on this cluster.
+
+        Exits 0 (zero) if a shared-secret has been installed.
+        """
+        if get_shared_secret_from_filesystem() is None:
+            print("Shared-secret is NOT installed.")
+            raise SystemExit(1)
+        else:
+            print("Shared-secret is installed.")
             raise SystemExit(0)
