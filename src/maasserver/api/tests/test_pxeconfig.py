@@ -47,6 +47,7 @@ from maasserver.preseed import (
     )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
@@ -480,3 +481,13 @@ class TestPXEConfigAPI(MAASServerTestCase):
             self.assertEqual(
                 description,
                 Event.objects.get(node=node).description)
+
+    def test_pxeconfig_updates_pxe_mac_for_existing_node(self):
+        node = factory.make_Node()
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        mac = factory.make_MACAddress(node=node)
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(mac, node.pxe_mac)

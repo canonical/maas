@@ -156,7 +156,13 @@ def pxeconfig(request):
         requesting IP address, for compatibility.  Passing `cluster_uuid`
         is preferred.
     """
-    node = get_node_from_mac_string(request.GET.get('mac', None))
+    request_mac = request.GET.get('mac', None)
+    node = get_node_from_mac_string(request_mac)
+
+    if node is not None:
+        # Update the record of which MAC address this node uses to PXE boot.
+        node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
+        node.save()
 
     if node is None or node.status == NODE_STATUS.COMMISSIONING:
         osystem = Config.objects.get_config('commissioning_osystem')
