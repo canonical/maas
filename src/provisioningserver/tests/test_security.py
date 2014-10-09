@@ -25,7 +25,10 @@ import lockfile
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
-from mock import ANY
+from mock import (
+    ANY,
+    sentinel,
+    )
 from provisioningserver import security
 from provisioningserver.utils.fs import (
     ensure_dir,
@@ -136,3 +139,122 @@ class TestSetSharedSecretOnFilesystem(MAASTestCase):
         self.assertEqual(
             perms_expected, perms_observed,
             "Expected %04o, got %04o." % (perms_expected, perms_observed))
+
+
+class TestInstallSharedSecretScript(MAASTestCase):
+
+    def setUp(self):
+        super(TestInstallSharedSecretScript, self).setUp()
+        self.useFixture(EnvironmentVariableFixture(
+            "MAAS_ROOT", self.make_dir()))
+
+    def test__has_add_arguments(self):
+        # It doesn't do anything, but it's there to fulfil the contract with
+        # ActionScript/MainScript.
+        security.InstallSharedSecretScript.add_arguments(sentinel.parser)
+        self.assertIsNotNone("Obligatory assertion.")
+
+    def installAndCheckExitCode(self, code):
+        error = self.assertRaises(
+            SystemExit, security.InstallSharedSecretScript.run, sentinel.args)
+        self.assertEqual(code, error.code)
+
+    def test__reads_secret_from_stdin(self):
+        secret = factory.make_bytes()
+
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.readline.return_value = secret.encode("hex")
+        stdin.isatty.return_value = False
+
+        self.installAndCheckExitCode(0)
+        self.assertEqual(
+            secret, security.get_shared_secret_from_filesystem())
+
+    def test__ignores_surrounding_whitespace_from_stdin(self):
+        secret = factory.make_bytes()
+
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.readline.return_value = " " + secret.encode("hex") + " \n"
+        stdin.isatty.return_value = False
+
+        self.installAndCheckExitCode(0)
+        self.assertEqual(
+            secret, security.get_shared_secret_from_filesystem())
+
+    def test__reads_secret_from_tty(self):
+        secret = factory.make_bytes()
+
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.isatty.return_value = True
+
+        raw_input = self.patch(security, "raw_input")
+        raw_input.return_value = secret.encode("hex")
+
+        self.installAndCheckExitCode(0)
+        self.assertThat(
+            raw_input, MockCalledOnceWith("Secret (hex/base16 encoded): "))
+        self.assertEqual(
+            secret, security.get_shared_secret_from_filesystem())
+
+    def test__ignores_surrounding_whitespace_from_tty(self):
+        secret = factory.make_bytes()
+
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.isatty.return_value = True
+
+        raw_input = self.patch(security, "raw_input")
+        raw_input.return_value = " " + secret.encode("hex") + " \n"
+
+        self.installAndCheckExitCode(0)
+        self.assertEqual(
+            secret, security.get_shared_secret_from_filesystem())
+
+    def test__deals_gracefully_with_eof_from_tty(self):
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.isatty.return_value = True
+
+        raw_input = self.patch(security, "raw_input")
+        raw_input.side_effect = EOFError()
+
+        self.installAndCheckExitCode(1)
+        self.assertIsNone(
+            security.get_shared_secret_from_filesystem())
+
+    def test__deals_gracefully_with_interrupt_from_tty(self):
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.isatty.return_value = True
+
+        raw_input = self.patch(security, "raw_input")
+        raw_input.side_effect = KeyboardInterrupt()
+
+        self.assertRaises(
+            KeyboardInterrupt,
+            security.InstallSharedSecretScript.run, sentinel.args)
+        self.assertIsNone(
+            security.get_shared_secret_from_filesystem())
+
+    def test__prints_error_message_when_secret_cannot_be_decoded(self):
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.readline.return_value = "garbage"
+        stdin.isatty.return_value = False
+
+        print = self.patch(security, "print")
+
+        self.installAndCheckExitCode(1)
+        self.assertThat(
+            print, MockCalledOnceWith(
+                "Secret could not be decoded:", "Odd-length string",
+                file=security.stderr))
+
+    def test__prints_message_when_secret_is_installed(self):
+        stdin = self.patch_autospec(security, "stdin")
+        stdin.readline.return_value = factory.make_bytes().encode("hex")
+        stdin.isatty.return_value = False
+
+        print = self.patch(security, "print")
+
+        self.installAndCheckExitCode(0)
+        shared_secret_path = security.get_shared_secret_filesystem_path()
+        self.assertThat(
+            print, MockCalledOnceWith(
+                "Secret installed to %s." % shared_secret_path))

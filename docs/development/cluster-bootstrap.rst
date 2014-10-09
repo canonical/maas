@@ -62,7 +62,7 @@ Work items
 
 #. **DONE:** Add ``Register`` RPC call.
 
-#. Command-line to install shared-secret.
+#. **DONE:** Command-line to install shared-secret.
 
 #. Check for shared-secret during start-up (packaging change too?).
 

@@ -14,6 +14,7 @@ str = None
 
 __metaclass__ = type
 
+from provisioningserver import security
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
 import provisioningserver.customize_config
@@ -30,6 +31,7 @@ script_commands = {
     'atomic-write': AtomicWriteScript,
     'customize-config': provisioningserver.customize_config,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
+    'install-shared-secret': security.InstallSharedSecretScript,
     'install-uefi-config': provisioningserver.boot.install_grub,
     'start-cluster-controller': provisioningserver.start_cluster_controller,
     'upgrade-cluster': provisioningserver.upgrade_cluster,

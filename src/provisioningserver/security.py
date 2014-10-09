@@ -27,6 +27,10 @@ from hashlib import sha256
 from hmac import HMAC
 from os import fchmod
 from os.path import dirname
+from sys import (
+    stderr,
+    stdin,
+    )
 
 from lockfile import FileLock
 from provisioningserver.path import get_path
@@ -108,3 +112,51 @@ def calculate_digest(secret, message, salt):
     hmacr.update(message)
     hmacr.update(salt)
     return hmacr.digest()
+
+
+class InstallSharedSecretScript:
+    """Install a shared-secret onto a cluster.
+
+    This class conforms to the contract that :py:func:`MainScript.register`
+    requires.
+    """
+
+    @staticmethod
+    def add_arguments(parser):
+        """Initialise options for storing a shared-secret.
+
+        :param parser: An instance of :class:`ArgumentParser`.
+        """
+
+    @staticmethod
+    def run(args):
+        """Install a shared secret to this cluster.
+
+        When invoked interactively, you'll be prompted to enter the secret.
+        Otherwise the secret will be read from the first line of stdin.
+
+        In both cases, the secret must be hex/base16 encoded.
+        """
+        # Obtain the secret from the invoker.
+        if stdin.isatty():
+            try:
+                secret_hex = raw_input("Secret (hex/base16 encoded): ")
+            except EOFError:
+                print()  # So that the shell prompt appears on the next line.
+                raise SystemExit(1)
+            except KeyboardInterrupt:
+                print()  # So that the shell prompt appears on the next line.
+                raise
+        else:
+            secret_hex = stdin.readline()
+        # Decode and install the secret.
+        try:
+            secret = secret_hex.strip().decode("hex")
+        except TypeError as error:
+            print("Secret could not be decoded:", unicode(error), file=stderr)
+            raise SystemExit(1)
+        else:
+            set_shared_secret_on_filesystem(secret)
+            shared_secret_path = get_shared_secret_filesystem_path()
+            print("Secret installed to %s." % shared_secret_path)
+            raise SystemExit(0)
