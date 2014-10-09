@@ -1454,3 +1454,17 @@ class Node(CleanSave, TimestampedModel):
             return "local"
         else:
             return "poweroff"
+
+    def get_pxe_mac(self):
+        """Get the MAC address this node is expected to PXE boot from.
+
+        Normally, this will be the MAC address last used in a
+        pxeconfig() API request for the node, as recorded in the
+        'pxe_mac' property. However, if the node hasn't PXE booted since
+        the 'pxe_mac' property was added to the Node model, this will
+        return the node's first MAC address instead.
+        """
+        if self.pxe_mac is not None:
+            return self.pxe_mac
+
+        return self.macaddress_set.first()

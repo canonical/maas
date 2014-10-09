@@ -1484,6 +1484,17 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node()
         self.assertIsNone(node.pxe_mac)
 
+    def test_get_pxe_mac_returns_pxe_mac_if_pxe_mac_set(self):
+        node = factory.make_Node(mac=True)
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
+        self.assertEqual(node.pxe_mac, node.get_pxe_mac())
+
+    def test_get_pxe_mac_returns_first_macaddress_if_pxe_mac_unset(self):
+        node = factory.make_Node(mac=True)
+        factory.make_MACAddress(node=node)
+        self.assertEqual(node.macaddress_set.first(), node.get_pxe_mac())
+
 
 class NodeRoutersTest(MAASServerTestCase):
 
