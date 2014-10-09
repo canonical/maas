@@ -988,7 +988,8 @@ class Node(CleanSave, TimestampedModel):
         # declare host maps in the dynamic range. At some point we can stop
         # removing host maps from the dynamic range, once we decide that
         # enough time has passed.
-        macs = self.macaddress_set.values_list('mac_address', flat=True)
+        macs = self.mac_addresses_on_managed_interfaces().values_list(
+            'mac_address', flat=True)
         leases = DHCPLease.objects.filter(
             nodegroup=self.nodegroup, mac__in=macs)
         leased_ips = leases.values_list("ip", flat=True)

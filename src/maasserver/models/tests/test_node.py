@@ -65,7 +65,10 @@ from maasserver.node_status import (
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TRANSITIONS,
     )
-from maasserver.rpc.testing.fixtures import MockLiveRegionToClusterRPCFixture
+from maasserver.rpc.testing.fixtures import (
+    MockLiveRegionToClusterRPCFixture,
+    RunningClusterRPCFixture,
+    )
 from maasserver.testing.eventloop import (
     RegionEventLoopFixture,
     RunningEventLoopFixture,
@@ -364,6 +367,18 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(osystem=osystem, distro_series=series)
         self.assertEqual(license_key, node.get_effective_license_key())
 
+    def test_delete_node_deletes_managed_node_when_changed_to_unmanaged(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        factory.make_DHCPLease(
+            nodegroup=node.nodegroup,
+            mac=node.macaddress_set.all().first().mac_address)
+        interface = node.nodegroup.nodegroupinterface_set.all().first()
+        interface.management = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
+        interface.save()
+        self.useFixture(RunningClusterRPCFixture())
+        node.delete()
+        self.assertItemsEqual([], Node.objects.all())
+
     def test_delete_node_deletes_related_mac(self):
         node = factory.make_Node()
         mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
@@ -401,9 +416,10 @@ class NodeTest(MAASServerTestCase):
     def test_delete_node_also_deletes_dhcp_host_map(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
-        lease = make_active_lease()
-        node = factory.make_Node(nodegroup=lease.nodegroup)
-        node.add_mac_address(lease.mac)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        lease = factory.make_DHCPLease(
+            nodegroup=node.nodegroup,
+            mac=node.macaddress_set.all().first().mac_address)
         node.delete()
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
@@ -412,11 +428,17 @@ class NodeTest(MAASServerTestCase):
     def test_delete_node_removes_multiple_host_maps(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
-        lease1 = make_active_lease()
-        lease2 = make_active_lease(nodegroup=lease1.nodegroup)
-        node = factory.make_Node(nodegroup=lease1.nodegroup)
-        node.add_mac_address(lease1.mac)
-        node.add_mac_address(lease2.mac)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
+        mac.cluster_interface = (
+            node.nodegroup.nodegroupinterface_set.all()[:1].get())
+        mac.save()
+        lease1 = factory.make_DHCPLease(
+            nodegroup=node.nodegroup,
+            mac=node.macaddress_set.all()[:1].get().mac_address)
+        lease2 = factory.make_DHCPLease(
+            nodegroup=node.nodegroup,
+            mac=mac.mac_address)
         node.delete()
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
