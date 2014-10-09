@@ -18,22 +18,22 @@ __all__ = [
     "startup",
 ]
 
-from maasserver.utils.dblocks import DatabaseLock
+from maasserver.utils.dblocks import DatabaseXactLock
 
 # Lock around starting-up a MAAS region.
-startup = DatabaseLock(1)
+startup = DatabaseXactLock(1)
 
 # Lock around performing critical security-related operations, like
 # generating or signing certificates.
-security = DatabaseLock(2)
+security = DatabaseXactLock(2)
 
 # Lock used when starting up the event-loop.
-eventloop = DatabaseLock(3)
+eventloop = DatabaseXactLock(3)
 
 # Lock used to only allow one instance of importing boot images to occur
 # at a time.
-import_images = DatabaseLock(4)
+import_images = DatabaseXactLock(4)
 
 # Lock used to only allow one instance of caching boot source
 # image information.
-cache_sources = DatabaseLock(5)
+cache_sources = DatabaseXactLock(5)

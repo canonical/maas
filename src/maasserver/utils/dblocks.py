@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "DatabaseLock",
+    "DatabaseXactLock",
     "DatabaseLockAttemptOutsideTransaction",
     "DatabaseLockNotHeld",
 ]
@@ -41,7 +42,7 @@ class DatabaseLockNotHeld(Exception):
     """A particular lock was not held."""
 
 
-class DatabaseLock(tuple):
+class DatabaseLockBase(tuple):
     """An advisory lock held in the database.
 
     Implemented using PostgreSQL's advisory locking functions.
@@ -70,19 +71,13 @@ class DatabaseLock(tuple):
     objid = property(itemgetter(1))
 
     def __new__(cls, objid):
-        return super(cls, DatabaseLock).__new__(cls, (classid, objid))
+        return super(DatabaseLockBase, cls).__new__(cls, (classid, objid))
 
     def __enter__(self):
-        if not connection.in_atomic_block:
-            raise DatabaseLockAttemptOutsideTransaction(self)
-        with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT pg_advisory_lock(%s, %s)", self)
+        raise NotImplementedError()
 
     def __exit__(self, *exc_info):
-        with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT pg_advisory_unlock(%s, %s)", self)
-            if cursor.fetchone() != (True,):
-                raise DatabaseLockNotHeld(self)
+        raise NotImplementedError()
 
     def __repr__(self):
         return b"<%s classid=%d objid=%d>" % (
@@ -106,3 +101,55 @@ class DatabaseLock(tuple):
         with closing(connection.cursor()) as cursor:
             cursor.execute(stmt, self)
             return len(cursor.fetchall()) >= 1
+
+
+class DatabaseLock(DatabaseLockBase):
+    """An advisory lock obtained with ``pg_advisory_lock``.
+
+    Use this to obtain an exclusive lock on an external, shared, resource.
+    Avoid using this to obtain a lock for a database modification because this
+    lock must be released before the transaction is committed.
+
+    In most cases you should prefer :py:class:`DatabaseXactLock` instead.
+
+    See :py:class:`DatabaseLockBase`.
+    """
+
+    __slots__ = ()
+
+    def __enter__(self):
+        if not connection.in_atomic_block:
+            raise DatabaseLockAttemptOutsideTransaction(self)
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT pg_advisory_lock(%s, %s)", self)
+
+    def __exit__(self, *exc_info):
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT pg_advisory_unlock(%s, %s)", self)
+            if cursor.fetchone() != (True,):
+                raise DatabaseLockNotHeld(self)
+
+
+class DatabaseXactLock(DatabaseLockBase):
+    """An advisory lock obtained with ``pg_advisory_xact_lock``.
+
+    Use this to obtain an exclusive lock for a modification to the database.
+    It can be used to synchronise access to an external resource too, but the
+    point of release is less explicit because it's outside of the control of
+    this class: the lock is only released when the transaction in which it was
+    obtained is committed or aborted.
+
+    See :py:class:`DatabaseLockBase`.
+    """
+
+    __slots__ = ()
+
+    def __enter__(self):
+        """Obtain lock using pg_advisory_xact_lock()."""
+        if not connection.in_atomic_block:
+            raise DatabaseLockAttemptOutsideTransaction(self)
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(%s, %s)", self)
+
+    def __exit__(self, *exc_info):
+        """Do nothing: this lock can only be released by the transaction."""
