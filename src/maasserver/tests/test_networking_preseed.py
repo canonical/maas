@@ -30,12 +30,12 @@ from maasserver.networking_preseed import (
     compose_curtin_network_preseed_for,
     extract_mac_string,
     extract_network_interfaces,
-    find_macs_for_automatic_interfaces,
     generate_dns_server_entry,
     generate_ethernet_link_entry,
     generate_network_entry,
     generate_networking_config,
     generate_route_entries,
+    get_mac_for_automatic_interfaces,
     list_dns_servers,
     map_gateways,
     map_static_ips,
@@ -723,40 +723,14 @@ class TestMapGateways(MAASServerTestCase):
             mapping[mac.mac_address])
 
 
-class TestFindMACsForAutomaticInterfaces(MAASServerTestCase):
+class TestGetMACForAutomaticInterfaces(MAASServerTestCase):
 
-    def test__returns_netboot_interface_in_simple_case(self):
+    def test__uses_pxe_mac(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        mac = node.get_primary_mac().mac_address
-        self.assertEqual(
-            [normalise_mac(unicode(mac))],
-            find_macs_for_automatic_interfaces(node))
-
-    def test__returns_only_macs_on_managed_networks_if_connected(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        boot_mac = node.get_primary_mac().mac_address
-        factory.make_MACAddress(
-            node=node,
-            cluster_interface=factory.make_NodeGroupInterface(
-                node.nodegroup,
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
-        self.assertEqual(
-            [normalise_mac(unicode(boot_mac))],
-            find_macs_for_automatic_interfaces(node))
-
-    def test__returns_all_macs_if_no_managed_networks_connected(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac1 = node.get_primary_mac().mac_address
-        other_mac = factory.make_MACAddress(
-            node=node,
-            cluster_interface=factory.make_NodeGroupInterface(
-                node.nodegroup,
-                management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED))
-        mac2 = other_mac.mac_address
-        self.assertItemsEqual(
-            [normalise_mac(unicode(mac1)), normalise_mac(unicode(mac2))],
-            find_macs_for_automatic_interfaces(node))
+        mac = node.get_primary_mac()
+        node.pxe_mac = mac
+        result = get_mac_for_automatic_interfaces(node)
+        self.assertEqual(result, extract_mac_string(mac))
 
 
 class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
@@ -801,7 +775,7 @@ class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
             networking_preseed, 'compose_curtin_network_preseed')
         preseed_data = {factory.make_name('key'): factory.make_name('value')}
         fake.return_value = [preseed_data]
-        node = factory.make_Node()
+        node = factory.make_Node(mac=True)
 
         preseed = compose_curtin_network_preseed_for(node)
 

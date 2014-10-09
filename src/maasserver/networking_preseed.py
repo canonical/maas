@@ -306,21 +306,17 @@ def map_gateways(node):
     return mapping
 
 
-def find_macs_for_automatic_interfaces(node):
-    """Return those MAC addresses for `node` that should come up on boot.
+def get_mac_for_automatic_interfaces(node):
+    """Return the MAC addresses for `node` that should come up on boot.
 
-    These are the MACs for the network interfaces that should be enabled when
-    a node boots.  If the node has `MACAddress` entries on managed networks,
-    these will be returned; if it doesn't, all of its `MACAddress` enries will
-    be returned.
+    This will return the node's PXE MAC address as a normalized string.
+    This is the MAC we expect the node to PXE boot from.
 
     :param node: A `Node`.
-    :return: A list of normalised MAC address strings.
+    :return: A normalised MAC address string.
     """
-    macs = node.mac_addresses_on_managed_interfaces()
-    if len(macs) == 0:
-        macs = node.macaddress_set.all()
-    return [normalise_mac(unicode(mac.mac_address)) for mac in macs]
+    pxe_mac = node.get_pxe_mac()
+    return normalise_mac(unicode(pxe_mac.mac_address))
 
 
 def compose_curtin_network_preseed_for(node):
@@ -331,7 +327,7 @@ def compose_curtin_network_preseed_for(node):
     """
     config = {
         'interfaces': extract_network_interfaces(node),
-        'auto_interfaces': find_macs_for_automatic_interfaces(node),
+        'auto_interfaces': [get_mac_for_automatic_interfaces(node)],
         'ips_mapping': map_static_ips(node),
         'gateways_mapping': map_gateways(node),
         'nameservers': list_dns_servers(node),

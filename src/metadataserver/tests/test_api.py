@@ -421,7 +421,7 @@ class TestCurtinMetadataUserData(PreseedRPCMixin, DjangoTestCase):
     """Tests for the curtin-metadata user-data API endpoint."""
 
     def test_curtin_user_data_view_returns_curtin_data(self):
-        node = factory.make_Node(nodegroup=self.rpc_nodegroup)
+        node = factory.make_Node(nodegroup=self.rpc_nodegroup, mac=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -457,7 +457,7 @@ class TestInstallingAPI(MAASServerTestCase):
             NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_signaling_installing_success_leaves_node_deploying(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        node = factory.make_Node(mac=True, status=NODE_STATUS.DEPLOYING)
         client = make_node_client(node=node)
         response = call_signal(client, status='OK')
         self.assertEqual(httplib.OK, response.status_code)

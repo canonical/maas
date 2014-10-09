@@ -881,7 +881,8 @@ class TestGetCurtinUserData(
 
     def test_get_curtin_userdata(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
+            mac=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
@@ -910,7 +911,7 @@ class TestGetCurtinUserDataOS(
     def test_get_curtin_userdata(self):
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem=self.os_name,
-            boot_type=NODE_BOOT.FASTPATH)
+            boot_type=NODE_BOOT.FASTPATH, mac=True)
         factory.make_NodeGroupInterface(
             node.nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         arch, subarch = node.architecture.split('/')
