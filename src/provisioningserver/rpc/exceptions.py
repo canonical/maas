@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "AuthenticationFailed",
     "CannotConfigureDHCP",
     "CannotCreateHostMap",
     "CannotRegisterCluster",
@@ -134,3 +135,7 @@ class CannotRegisterCluster(Exception):
             "The cluster with UUID %s could not "
             "be registered:\n%s" % (uuid, message)
         )
+
+
+class AuthenticationFailed(Exception):
+    """One or both sides of the connection failed to authenticate."""

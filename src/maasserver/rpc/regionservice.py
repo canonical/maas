@@ -106,10 +106,14 @@ class Region(RPCProtocol):
 
     @region.Authenticate.responder
     def authenticate(self, message):
-        secret = get_shared_secret()
-        salt = urandom(16)  # 16 bytes of high grade noise.
-        digest = calculate_digest(secret, message, salt)
-        return {"digest": digest, "salt": salt}
+        d = deferToThread(get_shared_secret)
+
+        def got_secret(secret):
+            salt = urandom(16)  # 16 bytes of high grade noise.
+            digest = calculate_digest(secret, message, salt)
+            return {"digest": digest, "salt": salt}
+
+        return d.addCallback(got_secret)
 
     @region.Register.responder
     def register(self, uuid, networks):

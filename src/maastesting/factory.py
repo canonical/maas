@@ -23,6 +23,7 @@ from functools import partial
 import httplib
 import io
 from itertools import (
+    count,
     imap,
     islice,
     repeat,
@@ -114,6 +115,15 @@ class Factory:
     def make_status_code(self):
         """Return an arbitrary HTTP status code."""
         return next(self.random_http_responses)
+
+    exception_type_names = (b"TestException#%d" % i for i in count(1))
+
+    def make_exception_type(self, bases=(Exception,), **namespace):
+        return type(next(self.exception_type_names), bases, namespace)
+
+    def make_exception(self, message=None, bases=(Exception,), **namespace):
+        exc_type = self.make_exception_type(bases, **namespace)
+        return exc_type() if message is None else exc_type(message)
 
     def pick_bool(self):
         """Return an arbitrary Boolean value (`True` or `False`)."""

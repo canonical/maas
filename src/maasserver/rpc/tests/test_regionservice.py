@@ -124,10 +124,7 @@ from provisioningserver.rpc.testing.doubles import DummyConnection
 from provisioningserver.testing.config import set_tftp_root
 from provisioningserver.utils.twisted import asynchronous
 from simplejson import dumps
-from testtools.deferredruntest import (
-    assert_fails_with,
-    extract_result,
-    )
+from testtools.deferredruntest import assert_fails_with
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -189,13 +186,14 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         responder = protocol.locateResponder(Authenticate.commandName)
         self.assertIsNotNone(responder)
 
+    @wait_for_reactor
+    @inlineCallbacks
     def test_authenticate_calculates_digest_with_salt(self):
         message = factory.make_bytes()
-        secret = get_shared_secret()
+        secret = yield deferToThread(get_shared_secret)
 
         args = {b"message": message}
-        d = call_responder(Region(), Authenticate, args)
-        response = extract_result(d)
+        response = yield call_responder(Region(), Authenticate, args)
         digest = response["digest"]
         salt = response["salt"]
 

@@ -31,6 +31,7 @@ from apiclient.creds import convert_tuple_to_string
 from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import (
+    IsUnfiredDeferred,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
@@ -85,8 +86,11 @@ from provisioningserver.rpc.monitors import (
 from provisioningserver.rpc.osystems import gen_operating_systems
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import (
+    always_fail_with,
+    always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
+    capture_result,
     MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
     )
@@ -116,6 +120,7 @@ from twisted.internet import (
     reactor,
     )
 from twisted.internet.defer import (
+    fail,
     inlineCallbacks,
     succeed,
     )
@@ -766,6 +771,18 @@ class TestClusterClient(MAASTestCase):
         client.service.running = True
         return client
 
+    def patch_authenticate_for_success(self, client):
+        authenticate = self.patch_autospec(client, "authenticateRegion")
+        authenticate.side_effect = always_succeed_with(True)
+
+    def patch_authenticate_for_failure(self, client):
+        authenticate = self.patch_autospec(client, "authenticateRegion")
+        authenticate.side_effect = always_succeed_with(False)
+
+    def patch_authenticate_for_error(self, client, exception):
+        authenticate = self.patch_autospec(client, "authenticateRegion")
+        authenticate.side_effect = always_fail_with(exception)
+
     def test_interfaces(self):
         client = self.make_running_client()
         # transport.getHandle() is used by AMP._getPeerCertificate, which we
@@ -780,14 +797,20 @@ class TestClusterClient(MAASTestCase):
 
     def test_connecting(self):
         client = self.make_running_client()
+        getOnReadyResult = capture_result(client.onReady)
+        self.patch_authenticate_for_success(client)
         self.assertEqual(client.service.connections, {})
+        self.assertThat(client.onReady, IsUnfiredDeferred())
         client.connectionMade()
+        # onReady has fired with the name of the event-loop.
+        self.assertEqual(client.eventloop, getOnReadyResult())
         self.assertEqual(
             client.service.connections,
             {client.eventloop: client})
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
+        getOnReadyResult = capture_result(client.onReady)
 
         # Pretend that a connection already exists for this address.
         client.service.connections[client.eventloop] = sentinel.connection
@@ -796,6 +819,10 @@ class TestClusterClient(MAASTestCase):
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
+
+        # onReady was fired with KeyError to signify that a connection to the
+        # same event-loop already existed.
+        self.assertRaises(KeyError, getOnReadyResult)
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -808,11 +835,64 @@ class TestClusterClient(MAASTestCase):
     def test_disconnects_when_service_is_not_running(self):
         client = self.make_running_client()
         client.service.running = False
+        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
+
+        # onReady was fired with RuntimeError to signify that the client
+        # service was not running.
+        self.assertRaises(RuntimeError, getOnReadyResult)
+
+        # The connections list is unchanged because the new connection
+        # immediately disconnects.
+        self.assertEqual(client.service.connections, {})
+        self.assertFalse(client.connected)
+
+    def test_disconnects_when_authentication_fails(self):
+        client = self.make_running_client()
+        self.patch_authenticate_for_failure(client)
+        getOnReadyResult = capture_result(client.onReady)
+
+        # Connect via an in-memory transport.
+        transport = StringTransportWithDisconnection()
+        transport.protocol = client
+        client.makeConnection(transport)
+
+        # onReady was fired with AuthenticationFailed.
+        self.assertRaises(exceptions.AuthenticationFailed, getOnReadyResult)
+
+        # The connections list is unchanged because the new connection
+        # immediately disconnects.
+        self.assertEqual(client.service.connections, {})
+        self.assertFalse(client.connected)
+
+    def test_disconnects_when_authentication_errors(self):
+        client = self.make_running_client()
+        exception_type = factory.make_exception_type()
+        self.patch_authenticate_for_error(client, exception_type())
+        getOnReadyResult = capture_result(client.onReady)
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        # Connect via an in-memory transport.
+        transport = StringTransportWithDisconnection()
+        transport.protocol = client
+        client.makeConnection(transport)
+
+        # onReady was fired with AuthenticationFailed.
+        self.assertRaises(exception_type, getOnReadyResult)
+
+        # The log was written to.
+        self.assertDocTestMatches(
+            """...
+            Event-loop 'eventloop:pid=12345' could not be authenticated;
+            dropping connection.
+            Traceback (most recent call last):...
+            """,
+            logger.dump())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -859,12 +939,10 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
 
         callRemote = self.patch(client, "callRemote")
-        callRemote_return_values = [
+        callRemote.side_effect = [
             {},  # In response to a StartTLS call.
             {"ident": "bogus-name"},  # Identify.
         ]
-        callRemote.side_effect = lambda cmd, **kwargs: (
-            callRemote_return_values.pop(0))
 
         transport = self.patch(client, "transport")
         logger = self.useFixture(TwistedLoggerFixture())
@@ -892,6 +970,57 @@ class TestClusterClient(MAASTestCase):
         # XXX: Expose secureConnection() in the client.
         yield client._conn.secureConnection()
         self.assertTrue(client.isSecure())
+
+    def test_authenticateRegion_accepts_matching_digests(self):
+        client = self.make_running_client()
+
+        def calculate_digest(_, message):
+            # Use the cluster's own authentication responder.
+            response = Cluster().authenticate(message)
+            return succeed(response)
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = calculate_digest
+
+        d = client.authenticateRegion()
+        self.assertTrue(extract_result(d))
+
+    def test_authenticateRegion_rejects_non_matching_digests(self):
+        client = self.make_running_client()
+
+        def calculate_digest(_, message):
+            # Return some nonsense.
+            response = {
+                "digest": factory.make_bytes(),
+                "salt": factory.make_bytes(),
+            }
+            return succeed(response)
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = calculate_digest
+
+        d = client.authenticateRegion()
+        self.assertFalse(extract_result(d))
+
+    def test_authenticateRegion_propagates_errors(self):
+        client = self.make_running_client()
+        exception_type = factory.make_exception_type()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.return_value = fail(exception_type())
+
+        d = client.authenticateRegion()
+        self.assertRaises(exception_type, extract_result, d)
+
+    @inlineCallbacks
+    def test_authenticateRegion_end_to_end(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop()
+        self.addCleanup((yield connecting))
+        yield getRegionClient()
+        self.assertThat(
+            protocol.Authenticate,
+            MockCalledOnceWith(protocol, message=ANY))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

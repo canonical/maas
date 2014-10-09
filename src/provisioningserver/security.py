@@ -43,13 +43,13 @@ from provisioningserver.utils.fs import (
 
 def to_hex(b):
     """Convert byte string to hex encoding."""
-    assert isinstance(b, bytes)
+    assert isinstance(b, bytes), "%r is not a byte string" % (b,)
     return b2a_hex(b).decode("ascii")
 
 
 def to_bin(u):
     """Convert ASCII-only unicode string to hex encoding."""
-    assert isinstance(u, unicode)
+    assert isinstance(u, unicode), "%r is not a unicode string" % (u,)
     # Strip ASCII whitespace from u before converting.
     return a2b_hex(u.encode("ascii").strip())
 

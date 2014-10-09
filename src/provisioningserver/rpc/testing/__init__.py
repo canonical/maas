@@ -44,15 +44,21 @@ from mock import (
 import provisioningserver
 from provisioningserver.rpc import region
 from provisioningserver.rpc.clusterservice import (
+    Cluster,
     ClusterClient,
     ClusterClientService,
     )
 from provisioningserver.rpc.common import RPCProtocol
 from provisioningserver.rpc.testing.tls import get_tls_parameters_for_region
+from provisioningserver.security import (
+    get_shared_secret_from_filesystem,
+    set_shared_secret_on_filesystem,
+    )
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
     )
+from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     AllMatch,
     IsInstance,
@@ -238,6 +244,11 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
             protocol.ident = factory.make_name("eventloop")
             return protocol.ident
 
+    def ensureSharedSecret(self):
+        """Make sure the shared-secret is set."""
+        if get_shared_secret_from_filesystem() is None:
+            set_shared_secret_on_filesystem(factory.make_bytes())
+
     @asynchronous(timeout=5)
     def addEventLoop(self, protocol):
         """Add a new stub event-loop using the given `protocol`.
@@ -258,12 +269,15 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         """
         if region.Identify not in commands:
             commands = commands + (region.Identify,)
+        if region.Authenticate not in commands:
+            commands = commands + (region.Authenticate,)
         if amp.StartTLS not in commands:
             commands = commands + (amp.StartTLS,)
         protocol_factory = make_amp_protocol_factory(*commands)
         protocol = protocol_factory()
         eventloop = self.getEventLoopName(protocol)
         protocol.Identify.return_value = {"ident": eventloop}
+        protocol.Authenticate.side_effect = self._authenticate_with_cluster_key
         protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 
@@ -296,6 +310,15 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
                 for eventloop, client in connections
             },
         }
+
+    def _authenticate_with_cluster_key(self, protocol, message):
+        """Patch-in for `Authenticate` calls.
+
+        This ought to always return the correct digest because it'll be using
+        the same shared-secret as the cluster.
+        """
+        self.ensureSharedSecret()
+        return Cluster().authenticate(message)
 
 
 class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
@@ -412,6 +435,12 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         endpoint_cluster = endpoints.UNIXClientEndpoint(reactor, sockfile)
         client = yield endpoints.connectProtocol(endpoint_cluster, cluster)
 
+        # Wait for the client to be fully connected. Because onReady will have
+        # been capped-off by now (see ClusterClient.connectionMade) this will
+        # not raise any exceptions. In some ways this is convenient because it
+        # allows the resulting issues to be encountered within test code.
+        yield client.onReady
+
         @inlineCallbacks
         def shutdown():
             # We need to make sure that everything is shutdown correctly. TLS
@@ -485,3 +514,25 @@ def always_fail_with(result):
     def always_fail(*args, **kwargs):
         return defer.fail(copy(result))
     return always_fail
+
+
+def capture_result(d):
+    """Capture a result from a `Deferred` mid-flight.
+
+    Rather than at the end of a callback chain.
+
+    :type d: :py:class:`defer.Deferred`.
+    :returns: A no-argument callable that will extract the current result from
+        the given `Deferred`, or raise an exception if it has not yet fired.
+        See py:func:`extract_result`.
+    """
+    # We don't need to use a Deferred here, but it's convenient because it
+    # pairs well with extract_result().
+    dest = defer.Deferred()
+
+    def capture(result):
+        dest.callback(result)
+        return result
+    d.addBoth(capture)
+
+    return lambda: extract_result(dest)

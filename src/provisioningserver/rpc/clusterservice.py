@@ -82,7 +82,11 @@ from provisioningserver.security import (
     )
 from provisioningserver.utils.network import find_ip_via_arp
 from twisted.application.internet import TimerService
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    Deferred,
+    inlineCallbacks,
+    returnValue,
+    )
 from twisted.internet.endpoints import (
     connectProtocol,
     TCP4ClientEndpoint,
@@ -393,6 +397,12 @@ class ClusterClient(Cluster):
     :ivar service: A reference to the :class:`ClusterClientService` that
         made self.
 
+    :ivar onReady: A py:class:`Deferred` that will fire when this connection
+        is up and has performed authentication on the region. If everything
+        has gone smoothly it will fire with `None`, otherwise it will fire
+        with: `RuntimeError` if the client service is not running; `KeyError`
+        if there's already a live connection for this event-loop; or
+        `AuthenticationFailed` if, guess, the authentication failed.
     """
 
     address = None
@@ -404,20 +414,80 @@ class ClusterClient(Cluster):
         self.address = address
         self.eventloop = eventloop
         self.service = service
+        # Events for this protocol's life-cycle.
+        self.onReady = Deferred()
 
     @property
     def ident(self):
         """The ident of the remote event-loop."""
         return self.eventloop
 
+    @inlineCallbacks
+    def authenticateRegion(self):
+        """Authenticate the region."""
+        secret = get_shared_secret_from_filesystem()
+        message = urandom(16)  # 16 bytes of the finest.
+        response = yield self.callRemote(
+            region.Authenticate, message=message)
+        salt, digest = response["salt"], response["digest"]
+        digest_local = calculate_digest(secret, message, salt)
+        returnValue(digest == digest_local)
+
+    @inlineCallbacks
+    def performHandshake(self):
+        authenticated = yield self.authenticateRegion()
+        if authenticated:
+            log.msg("Event-loop '%s' authenticated." % self.ident)
+            self.service.connections[self.eventloop] = self
+            self.onReady.callback(self.eventloop)
+        else:
+            log.msg(
+                "Event-loop '%s' FAILED authentication; "
+                "dropping connection." % self.ident)
+            self.transport.loseConnection()
+            self.onReady.errback(
+                exceptions.AuthenticationFailed(
+                    "Event-loop '%s' failed authentication."
+                    % self.eventloop))
+
+    def handshakeSucceeded(self, result):
+        """The handshake (identify and authenticate) succeeded.
+
+        This does *NOT* mean that the region was successfully authenticated,
+        merely that the process of authentication did not encounter an error.
+        """
+
+    def handshakeFailed(self, failure):
+        """The handshake (identify and authenticate) failed."""
+        log.err(
+            failure, "Event-loop '%s' could not be authenticated; "
+            "dropping connection." % self.ident)
+        self.transport.loseConnection()
+        self.onReady.errback(failure)
+
     def connectionMade(self):
         super(ClusterClient, self).connectionMade()
+
+        # Cap-off onReady to avoid "Unhandled error in Deferred" messages.
+        # Anyone interested in onReady will have used it well before now.
+        self.onReady.addBoth(lambda _: None)
+
         if not self.service.running:
+            log.msg(
+                "Event-loop '%s' will be disconnected; the cluster's "
+                "client service is not running." % self.ident)
             self.transport.loseConnection()
+            self.onReady.errback(RuntimeError("Service not running."))
         elif self.eventloop in self.service.connections:
+            log.msg(
+                "Event-loop '%s' is already connected; "
+                "dropping connection." % self.ident)
             self.transport.loseConnection()
+            self.onReady.errback(KeyError(
+                "Event-loop '%s' already connected." % self.eventloop))
         else:
-            self.service.connections[self.eventloop] = self
+            return self.performHandshake().addCallbacks(
+                self.handshakeSucceeded, self.handshakeFailed)
 
     def connectionLost(self, reason):
         if self.eventloop in self.service.connections:
