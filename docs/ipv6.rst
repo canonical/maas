@@ -16,13 +16,12 @@ MAAS has limited IPv6 support for networking nodes.  It works much like IPv4
 support, but with a number of limitations:
 
 * Nodes still boot, register, and install using the IPv4 network.
-* IPv6 addresses are only configured when using the Ubuntu "fast" installer.
+* IPv6 addresses are only configured when using the default Ubuntu installer.
 * Most BMCs can only be controlled (e.g. to power nodes on/off) using IPv4.
 * MAAS still uses IPv4 for its internal operation, installing nodes, etc.
 * For now, MAAS only supports IPv6 on networks where it also manages IPv4 DHCP.
 * A network interface on a node can only be on one IPv6 subnet.
 * A network interface on a cluster controller can manage only one IPv6 subnet.
-* Nodes are configured to use 64-bit netmasks for their IPv6 networks.
 
 The web user interface and REST API can be accessed in the same way on both
 IPv4 and IPv6.  To use an IPv6 address as the hostname in a URL, in your
@@ -42,10 +41,11 @@ Enabling IPv6
 
 You enable IPv6 networking in the same way that you enable IPv4 networking:
 configure a separate cluster interface for your IPv6 subnet, in addition to the
-one you need for your IPv4 subnet.  Provided that you already have a
-functioning IPv6 network, that's all there is to it.  The following sections
-will go into more detail about what is supported, what is needed, and what to
-do if you don't yet have a functioning IPv6 network.
+one you need for your IPv4 subnet.  The IPv6 cluster interface must define a
+static address range.  Provided that you already have a functioning IPv6
+network, that's all there is to it.  The following sections will go into more
+detail about what is supported, what is needed, and what to do if you don't yet
+have a functioning IPv6 network.
 
 An IPv6 cluster interface can use the same network interface on the cluster
 controller as an existing IPv4 network interface.  It just defines a different
@@ -89,12 +89,16 @@ whether they should request a stateful IP address from a DHCP server.  Since a
 network interface can have any number of IPv6 addresses even on a single
 subnet, several of these address assignment mechanisms can be combined.
 
-MAAS statically configures your nodes' default IPv6 route to use the router
+However, when MAAS configures IPv6 networking on a node, it does not rely on
+RAs.  it statically configures your nodes' default IPv6 route to use the router
 that is configured on the cluster interface, so that the nodes will know their
-default gateway.  They do not need DHCP.  However, if you are planning to
-operate DHCPv6 clients as well, e.g. on machines not managed by MAAS or on
-virtual machines hosted by MAAS nodes, you may still want to have RAs
-configured to make those clients obtain configuration over DHCP.
+default gateway.  They do not need DHCP and will not autoconfigure global
+addresses.
+
+However, if you are planning to operate DHCPv6 clients as well, e.g. on
+machines not managed by MAAS or on virtual machines hosted by MAAS nodes, you
+may still want to have RAs configured to make those clients obtain
+configuration over DHCP.
 
 If you need RAs but your gateway does not send them, install and configure
 ``radvd`` somewhere on the network to advertise its route.
@@ -144,14 +148,3 @@ To change this setting, run::
     dpkg-reconfigure maas-cluster-controller
 
 It will prompt you for the URL, with its current setting as the initial value.
-
-
-Route advertisements
-^^^^^^^^^^^^^^^^^^^^
-
-When a deployed node boots, it runs cloud-init which retrieves configuration
-from the MAAS region controller.  In order for it to be able to do that over
-IPv6, a network advertisement daemon needs to be active on the network.
-
-See :ref:`Routing <ipv6-routing>` above for more about route advertisements,
-and how to provide them if your gateway doesn't do it for you.
