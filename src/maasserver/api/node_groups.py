@@ -19,7 +19,6 @@ __all__ = [
     ]
 
 import httplib
-from urlparse import urlparse
 
 import bson
 from django.core.exceptions import (
@@ -29,7 +28,6 @@ from django.core.exceptions import (
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode import validators
-from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
     AnonymousOperationsHandler,
@@ -45,92 +43,17 @@ from maasserver.api.utils import (
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
     )
-from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import Unauthorized
 from maasserver.forms import (
     DownloadProgressForm,
-    NodeGroupDefineForm,
     NodeGroupEdit,
     )
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodeprobeddetails import get_probed_details
-from maasserver.rpc import getClientFor
-from maasserver.utils import (
-    build_absolute_uri,
-    get_local_cluster_UUID,
-    )
-from maasserver.utils.orm import get_one
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 
 
 DISPLAYED_NODEGROUP_FIELDS = ('uuid', 'status', 'name', 'cluster_name')
-
-
-def register_nodegroup(request, uuid):
-    """Register a new nodegroup.
-
-    If the master has not been configured yet, this nodegroup becomes the
-    master.  In that situation, if the uuid is also the one configured locally
-    (meaning that the cluster controller is running on the same host as this
-    region controller), the new master is also automatically accepted.
-    """
-    master = NodeGroup.objects.ensure_master()
-
-    # Has the master been configured yet?
-    if master.uuid in ('master', ''):
-        # No, the master is not yet configured.  No actual cluster
-        # controllers have registered yet.  All we have is the
-        # default placeholder.  We let the cluster controller that's
-        # making this request take the master's place.
-        update_instance = master
-        local_uuid = get_local_cluster_UUID()
-        is_local_cluster = (
-            local_uuid is not None and
-            uuid == local_uuid)
-        if is_local_cluster:
-            # It's the cluster controller that's running locally.
-            # Auto-accept it.
-            status = NODEGROUP_STATUS.ACCEPTED
-        else:
-            # It's a non-local cluster controller.  Keep it pending.
-            status = NODEGROUP_STATUS.PENDING
-    else:
-        # It's a new regular cluster.  Create it, and keep it pending.
-        update_instance = None
-        status = NODEGROUP_STATUS.PENDING
-
-    form = NodeGroupDefineForm(
-        data=request.data, status=status, instance=update_instance)
-
-    if not form.is_valid():
-        raise ValidationError(form.errors)
-
-    cluster = form.save()
-    maaslog.info("New cluster controller registered: %s", cluster.name)
-    return cluster
-
-
-def compose_nodegroup_register_response(nodegroup, already_existed):
-    """Return the right HTTP response to a `register` request.
-
-    The response is based on the status of the `nodegroup` after registration,
-    and whether it had already been registered before the call.
-
-    If the nodegroup was accepted, this returns an empty 200 response.
-    """
-    if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-        return {}  # Previously returned task-runner credentials.
-    elif nodegroup.status == NODEGROUP_STATUS.REJECTED:
-        raise PermissionDenied('Rejected cluster.')
-    elif nodegroup.status == NODEGROUP_STATUS.PENDING:
-        if already_existed:
-            message = "Awaiting admin approval."
-        else:
-            message = "Cluster registered.  Awaiting admin approval."
-        return HttpResponse(message, status=httplib.ACCEPTED)
-    else:
-        raise AssertionError("Unknown nodegroup status: %s", nodegroup.status)
 
 
 class AnonNodeGroupsHandler(AnonymousOperationsHandler):
@@ -146,69 +69,6 @@ class AnonNodeGroupsHandler(AnonymousOperationsHandler):
     @classmethod
     def resource_uri(cls):
         return ('nodegroups_handler', [])
-
-    @operation(idempotent=False)
-    def register(self, request):
-        """Register a new cluster controller.
-
-        This method will use HTTP return codes to indicate the success of the
-        call:
-
-        - 200 (OK): the cluster controller has been accepted.
-        - 202 (Accepted): the cluster controller has been registered.  It is
-          now pending acceptance by an administrator.  Please try again later.
-        - 403 (Forbidden): this cluster controller has been rejected.
-
-        :param uuid: The cluster's UUID.
-        :type name: unicode
-        :param name: The cluster's name.
-        :type name: unicode
-        :param interfaces: The cluster controller's network interfaces.
-        :type interfaces: JSON string containing a list of dictionaries with
-            the data to initialize the interfaces.
-            e.g.: '[{"ip_range_high": "192.168.168.254",
-            "ip_range_low": "192.168.168.1", "broadcast_ip":
-            "192.168.168.255", "ip": "192.168.168.18", "subnet_mask":
-            "255.255.255.0", "router_ip": "192.168.168.1", "interface":
-            "eth0"}]'
-        """
-        uuid = get_mandatory_param(request.data, 'uuid')
-        nodegroup = get_one(NodeGroup.objects.filter(uuid=uuid))
-        already_existed = (nodegroup is not None)
-        if already_existed:
-            if nodegroup.status == NODEGROUP_STATUS.ACCEPTED:
-                # This cluster controller has been accepted.  Use the
-                # information in the request to update the MAAS URL we will
-                # send it from now on.
-                update_nodegroup_maas_url(nodegroup, request)
-        else:
-            # An RPC connection to the target cluster is required for
-            # registration to work, so we wait up to 10 seconds for a
-            # connection to be established.
-            try:
-                getClientFor(uuid, timeout=10)
-            except NoConnectionsAvailable:
-                return HttpResponse(
-                    "Waiting for RPC connection.",
-                    status=httplib.SERVICE_UNAVAILABLE)
-            else:
-                nodegroup = register_nodegroup(request, uuid)
-
-        return compose_nodegroup_register_response(nodegroup, already_existed)
-
-
-def update_nodegroup_maas_url(nodegroup, request):
-    """Update `nodegroup.maas_url` from the given `request`.
-
-    Only update `nodegroup.maas_url` if the hostname part is not 'localhost'
-    (i.e. the default value used when the master nodegroup connects).
-    """
-    path = request.META["SCRIPT_NAME"]
-    maas_url = build_absolute_uri(request, path)
-    server_host = urlparse(maas_url).hostname
-    if server_host != 'localhost':
-        nodegroup.maas_url = maas_url
-        nodegroup.save()
 
 
 class NodeGroupsHandler(OperationsHandler):
