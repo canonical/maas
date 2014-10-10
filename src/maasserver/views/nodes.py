@@ -28,6 +28,7 @@ __all__ = [
 from cgi import escape
 import logging
 from operator import attrgetter
+import re
 from textwrap import dedent
 from urllib import urlencode
 
@@ -592,6 +593,8 @@ class NodeView(NodeViewMixin, UpdateView):
         installation_results = NodeResult.objects.filter(
             node=node, result_type=RESULT_TYPE.INSTALLING)
         if len(installation_results) > 0:
+            for result in installation_results:
+                result.name = re.sub('[_.]', ' ', result.name)
             context['nodeinstallresults'] = installation_results
 
         context['third_party_drivers_enabled'] = Config.objects.get_config(
