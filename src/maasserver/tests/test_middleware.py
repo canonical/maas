@@ -67,6 +67,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
     )
+from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
     Contains,
     Not,
@@ -597,3 +598,33 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         request = factory.make_fake_request(factory.make_string(), 'GET')
         middleware.process_request(request)
         self.assertIsNone(get_persistent_error(COMPONENT.CLUSTERS))
+
+    def test__adds_warning_if_boot_image_import_not_started(self):
+        middleware = ExternalComponentsMiddleware()
+
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware.process_request(request)
+
+        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        self.assertEqual(
+            normalise_whitespace(
+                "Boot image import process not started. Nodes will not be "
+                "able to provision without boot images. Visit the "
+                "<a href=\"%s\">boot images</a> page to start the import." % (
+                    reverse('images'))),
+            error)
+
+    def test__removes_warning_if_boot_image_process_started(self):
+        middleware = ExternalComponentsMiddleware()
+        register_persistent_error(
+            COMPONENT.IMPORT_PXE_FILES,
+            "You rotten swine, you! You have deaded me!")
+
+        # Add a BootResource so that the middleware thinks the import
+        # process has started.
+        factory.make_BootResource()
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware.process_request(request)
+
+        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        self.assertIsNone(error)

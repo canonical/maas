@@ -26,16 +26,9 @@ from maasserver import (
     security,
     )
 from maasserver.bootresources import ensure_boot_source_definition
-from maasserver.components import (
-    hide_missing_boot_image_error,
-    show_missing_boot_image_error,
-    )
 from maasserver.dns.config import write_full_dns_config
 from maasserver.fields import register_mac_type
-from maasserver.models import (
-    BootResource,
-    NodeGroup,
-    )
+from maasserver.models import NodeGroup
 from provisioningserver.upgrade_cluster import create_gnupg_home
 
 
@@ -85,9 +78,3 @@ def inner_start_up():
 
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     write_full_dns_config(reload_retry=True)
-
-    # Check whether we have boot resources yet.
-    if not BootResource.objects.all().exists():
-        show_missing_boot_image_error()
-    else:
-        hide_missing_boot_image_error()

@@ -53,6 +53,7 @@ from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
     )
+from maasserver.models.bootresource import BootResource
 from maasserver.models.nodegroup import NodeGroup
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -137,30 +138,46 @@ class AccessMiddleware:
 
 
 class ExternalComponentsMiddleware:
-    """Middleware check external components at regular intervals.
+    """Middleware to check external components at regular intervals."""
 
-    Right now nothing is checked, because Cobbler was the only component
-    we checked, and we just ditched it.
-    """
+    def _check_cluster_connectivity(self):
+        """Check each accepted cluster to see if it's connected.
+
+        If any clusters are disconnected, add a persistent error.
+        """
+        accepted_clusters = NodeGroup.objects.filter(
+            status=NODEGROUP_STATUS.ACCEPTED)
+        disconnected_clusters_found = not all(
+            cluster.is_connected() for cluster in accepted_clusters)
+        if disconnected_clusters_found:
+            register_persistent_error(
+                COMPONENT.CLUSTERS,
+                "One or more clusters are currently disconnected. Visit "
+                "the <a href=\"%s\">clusters page</a> for more "
+                "information." % reverse('cluster-list'))
+        else:
+            discard_persistent_error(COMPONENT.CLUSTERS)
+
+    def _check_boot_image_import_process(self):
+        """Add a persistent error if the boot image import hasn't started."""
+        if not BootResource.objects.all().exists():
+            warning = (
+                "Boot image import process not started. Nodes will not "
+                "be able to provision without boot images. Visit the "
+                "<a href=\"%s\">boot images</a> page to start the import." % (
+                    reverse('images')))
+            register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
+        else:
+            discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+
     def process_request(self, request):
         # This middleware hijacks the request to perform checks.  Any
         # error raised during these checks should be caught to avoid
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
         try:
-            # Check cluster connectivity.
-            accepted_clusters = NodeGroup.objects.filter(
-                status=NODEGROUP_STATUS.ACCEPTED)
-            disconnected_clusters_found = not all(
-                cluster.is_connected() for cluster in accepted_clusters)
-            if disconnected_clusters_found:
-                register_persistent_error(
-                    COMPONENT.CLUSTERS,
-                    "One or more clusters are currently disconnected. Visit "
-                    "the <a href=\"%s\">clusters page</a> for more "
-                    "information." % reverse('cluster-list'))
-            else:
-                discard_persistent_error(COMPONENT.CLUSTERS)
+            self._check_cluster_connectivity()
+            self._check_boot_image_import_process()
         except Exception:
             pass
         return None

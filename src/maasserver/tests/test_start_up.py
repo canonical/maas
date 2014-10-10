@@ -19,19 +19,14 @@ from maasserver import (
     locks,
     start_up,
     )
-from maasserver.components import hide_missing_boot_image_error
 from maasserver.models import (
     BootSource,
     NodeGroup,
     )
 from maasserver.testing.eventloop import RegionEventLoopFixture
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCalledWith,
-    )
+from maastesting.matchers import MockCalledOnceWith
 from testtools.matchers import HasLength
 
 
@@ -102,18 +97,3 @@ class TestInnerStartUp(MAASServerTestCase):
         self.assertItemsEqual([], BootSource.objects.all())
         start_up.inner_start_up()
         self.assertThat(BootSource.objects.all(), HasLength(1))
-
-    def test__warns_about_missing_boot_resources(self):
-        # If no boot resources have been created, then the user has not
-        # performed the import process.
-        hide_missing_boot_image_error()
-        recorder = self.patch(start_up, 'show_missing_boot_image_error')
-        start_up.inner_start_up()
-        self.assertThat(recorder, MockCalledWith())
-
-    def test__does_not_warn_if_boot_resources_are_known(self):
-        # If boot resources are known, there is no warning.
-        factory.make_BootResource()
-        recorder = self.patch(start_up, 'hide_missing_boot_image_error')
-        start_up.inner_start_up()
-        self.assertThat(recorder, MockCalledWith())
