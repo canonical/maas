@@ -35,6 +35,9 @@ from lxml import etree
 from maasserver.clusterrpc.osystems import compose_curtin_network_preseed
 from maasserver.dns.zonegenerator import get_dns_server_address
 from maasserver.exceptions import UnresolvableHost
+from maasserver.models.macaddress import (
+    find_cluster_interface_responsible_for_ip,
+    )
 from maasserver.models.nodeprobeddetails import get_probed_details
 from maasserver.models.staticipaddress import StaticIPAddress
 from netaddr import (
@@ -279,7 +282,7 @@ def add_ip_to_mapping(mapping, macaddress, ip):
 
 
 def map_static_ips(node):
-    """Return a `defaultdict` mapping node's MAC addresses to their static IPs.
+    """Return a dict mapping node's MAC addresses to their static IPs.
 
     :param node: A `Node`.
     :return: A dict mapping normalised MAC address strings to sets of
@@ -320,6 +323,23 @@ def get_mac_for_automatic_interfaces(node):
     return normalise_mac(unicode(pxe_mac.mac_address))
 
 
+def map_netmasks(node):
+    """Return respective netmasks for node's configured IP addresses."""
+    mapping = {}
+    for mac in node.macaddress_set.filter(cluster_interface__isnull=False):
+        interfaces = mac.get_cluster_interfaces()
+        for sip in StaticIPAddress.objects.filter(macaddress=mac):
+            interface = find_cluster_interface_responsible_for_ip(
+                interfaces, IPAddress(sip.ip))
+            if interface is not None:
+                if valid_ipv4(sip.ip):
+                    netmask = interface.subnet_mask
+                else:
+                    netmask = '%d' % interface.network.prefixlen
+                mapping[normalise_ip(sip.ip)] = netmask
+    return mapping
+
+
 def compose_curtin_network_preseed_for(node):
     """Compose OS-dependent preseed for configuring networking on `node`.
 
@@ -332,8 +352,7 @@ def compose_curtin_network_preseed_for(node):
         'ips_mapping': map_static_ips(node),
         'gateways_mapping': map_gateways(node),
         'nameservers': list_dns_servers(node),
-        # XXX jtv 2014-10-10, bug=1379641: Pass netmasks.
-        'netmasks': {}
+        'netmasks': map_netmasks(node),
         }
     preseed = compose_curtin_network_preseed(node, config)
     return [json.dumps(item) for item in preseed]

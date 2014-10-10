@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'find_cluster_interface_responsible_for_ip',
     'MACAddress',
     ]
 

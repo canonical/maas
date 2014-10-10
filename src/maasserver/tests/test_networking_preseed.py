@@ -38,6 +38,7 @@ from maasserver.networking_preseed import (
     get_mac_for_automatic_interfaces,
     list_dns_servers,
     map_gateways,
+    map_netmasks,
     map_static_ips,
     normalise_ip,
     normalise_mac,
@@ -45,7 +46,10 @@ from maasserver.networking_preseed import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
 from testtools.matchers import HasLength
 
 
@@ -748,6 +752,49 @@ class TestGetMACForAutomaticInterfaces(MAASServerTestCase):
         self.assertEqual(result, extract_mac_string(mac))
 
 
+class TestMapNetmasks(MAASServerTestCase):
+
+    def test__maps_ipv4_netmask(self):
+        network = factory.make_ipv4_network()
+        netmask = unicode(IPNetwork(network).netmask)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        ip = factory.pick_ip_in_network(network)
+        factory.make_StaticIPAddress(mac=mac, ip=ip)
+        self.assertEqual({normalise_ip(ip): netmask}, map_netmasks(node))
+
+    def test__maps_ipv6_netmask_as_prefix_bits(self):
+        network = factory.make_ipv6_network(slash=randint(16, 127))
+        netmask = '%d' % IPNetwork(network).prefixlen
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        [ipv4_interface] = node.nodegroup.nodegroupinterface_set.all()
+        factory.make_NodeGroupInterface(
+            node.nodegroup, network=network,
+            interface=ipv4_interface.interface)
+        mac = node.get_primary_mac()
+        ip = factory.pick_ip_in_network(network)
+        factory.make_StaticIPAddress(mac=mac, ip=ip)
+        self.assertEqual({normalise_ip(ip): netmask}, map_netmasks(node))
+
+    def test__ignores_network_interface_without_cluster_interface(self):
+        network = factory.make_ipv4_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        mac = node.get_primary_mac()
+        mac.cluster_interface = None
+        mac.save()
+        ip = factory.pick_ip_in_network(network)
+        factory.make_StaticIPAddress(mac=mac, ip=ip)
+        self.assertEqual({}, map_netmasks(node))
+
+    def test__ignores_network_interface_without_static_IP(self):
+        network = factory.make_ipv4_network()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            network=network)
+        self.assertEqual({}, map_netmasks(node))
+
+
 class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
 
     def test__composes_config(self):
@@ -782,8 +829,6 @@ class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
             'ips_mapping': {},
             'gateways_mapping': {mac.mac_address: [router]},
             'nameservers': [dns],
-            # XXX jtv 2014-10-10, bug=1379641: empty for now, but to be
-            # populated soon.
             'netmasks': {},
             }
         self.assertThat(fake, MockCalledOnceWith(node, expected_config))
