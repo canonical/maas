@@ -167,7 +167,9 @@ def compose_curtin_network_preseed(node, config):
         `gateways_mapping` maps to a dict which maps MAC addresses to lists of
         gateway IP addresses (at most one IPv4 and one IPv6) to be used by the
         corresponding network interfaces.
-        'nameservers' maps to a list of DNS servers for the node to use.
+        `nameservers` maps to a list of DNS servers for the node to use.
+        `netmasks` maps IP addresses from `ips_mapping` to their respective
+            netmask strings.
     :return: A list of preseed dicts.
     """
     client = getClientFor(node.nodegroup.uuid)

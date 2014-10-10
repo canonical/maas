@@ -101,7 +101,7 @@ def has_static_ipv6_address(mapping):
 
 def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
                                gateways_mapping, disable_ipv4=False,
-                               nameservers=None):
+                               nameservers=None, netmasks=None):
     """Return contents for a node's `/etc/network/interfaces` file.
 
     :param interfaces: A list of interface/MAC pairs for the node.
@@ -113,11 +113,15 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
         containers of the corresponding network interfaces' default gateways.
     :param disable_ipv4: Should this node be installed without IPv4 networking?
     :param nameservers: Optional list of DNS servers.
+    :param netmasks: Optional dict mapping MAC IP addresses from `ips_mapping`
+        to their respective netmask strings.
     """
     if nameservers is None:
         ipv6_nameserver = None
     else:
         ipv6_nameserver = extract_ip_from_sequence(nameservers, 6)
+    if netmasks is None:
+        netmasks = {}
 
     # Should we disable IPv4 on this node?  For safety's sake, we won't do this
     # if the node has no static IPv6 addresses.  Otherwise it might become

@@ -782,6 +782,9 @@ class TestComposeCurtinNetworkPreseedFor(MAASServerTestCase):
             'ips_mapping': {},
             'gateways_mapping': {mac.mac_address: [router]},
             'nameservers': [dns],
+            # XXX jtv 2014-10-10, bug=1379641: empty for now, but to be
+            # populated soon.
+            'netmasks': {},
             }
         self.assertThat(fake, MockCalledOnceWith(node, expected_config))
 

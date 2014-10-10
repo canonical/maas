@@ -196,7 +196,8 @@ class OperatingSystem:
 
     def compose_curtin_network_preseed(self, interfaces, auto_interfaces,
                                        ips_mapping, gateways_mapping,
-                                       disable_ipv4=False, nameservers=None):
+                                       disable_ipv4=False, nameservers=None,
+                                       netmasks=None):
         """Compose a Curtin preseed to configure a node's networking.
 
         :param interfaces: A list of tuples, each a pair of an interface name
@@ -218,6 +219,8 @@ class OperatingSystem:
         :param disable_ipv4: Should this node be installed without IPv4
             networking?
         :param nameservers: Optional list of DNS servers.
+        :param netmasks: Optional dict mapping IP addresses  from `ips_mapping`
+            to their respective netmask strings.
         :return: A list of dicts that can be JSON-encoded and submitted to
             Curtin as preseeds, perhaps in combination with other preseeds.
         """

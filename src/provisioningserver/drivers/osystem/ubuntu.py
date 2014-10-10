@@ -92,7 +92,8 @@ class UbuntuOS(OperatingSystem):
 
     def compose_curtin_network_preseed(self, interfaces, auto_interfaces,
                                        ips_mapping, gateways_mapping,
-                                       disable_ipv4=False, nameservers=None):
+                                       disable_ipv4=False, nameservers=None,
+                                       netmasks=None):
         """As defined in `OperatingSystem`: generate networking Curtin preseed.
 
         Supports:
@@ -104,7 +105,7 @@ class UbuntuOS(OperatingSystem):
         interfaces_file = compose_network_interfaces(
             interfaces, auto_interfaces, ips_mapping=ips_mapping,
             gateways_mapping=gateways_mapping, disable_ipv4=disable_ipv4,
-            nameservers=nameservers)
+            nameservers=nameservers, netmasks=netmasks)
         udev_rules = compose_network_interfaces_udev_rules(interfaces)
         write_files = {
             'write_files': {

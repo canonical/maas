@@ -332,6 +332,8 @@ def compose_curtin_network_preseed_for(node):
         'ips_mapping': map_static_ips(node),
         'gateways_mapping': map_gateways(node),
         'nameservers': list_dns_servers(node),
+        # XXX jtv 2014-10-10, bug=1379641: Pass netmasks.
+        'netmasks': {}
         }
     preseed = compose_curtin_network_preseed(node, config)
     return [json.dumps(item) for item in preseed]

@@ -205,15 +205,14 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
 
     def make_args(self):
         mac = factory.make_mac_address()
+        ipv4_net = factory.make_ipv4_network()
+        ipv4_addr = factory.pick_ip_in_network(ipv4_net)
+        ipv6_net = factory.make_ipv6_network()
+        ipv6_addr = factory.pick_ip_in_network(ipv6_net)
         return {
             'interfaces': [(factory.make_name('eth'), mac)],
             'auto_interfaces': [mac],
-            'ips_mapping': {
-                mac: [
-                    factory.make_ipv4_address(),
-                    factory.make_ipv6_address(),
-                    ],
-                },
+            'ips_mapping': {mac: [ipv4_addr, ipv6_addr]},
             'gateways_mapping': {
                 mac: [
                     factory.make_ipv4_address(),
@@ -222,6 +221,10 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
                 },
             'disable_ipv4': factory.pick_bool(),
             'nameservers': [factory.make_ipv6_address()],
+            'netmasks': {
+                ipv4_addr: unicode(ipv4_net.netmask),
+                ipv6_addr: unicode(ipv6_net.netmask),
+                },
             }
 
     def test__forwards_to_OS_implementation(self):
