@@ -48,7 +48,7 @@ from provisioningserver.utils.network import make_network
 # UI explanation for subnet_mask field.
 SUBNET_MASK_HELP = "e.g. 255.255.255.0"
 if REVEAL_IPv6:
-    SUBNET_MASK_HELP += " (for IPv4 networks only)."
+    SUBNET_MASK_HELP += " (defaults to 64-bit netmask for IPv6)."
 
 
 # UI explanation for broadcast_ip field.

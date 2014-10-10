@@ -1529,12 +1529,9 @@ class NodeGroupInterfaceForm(MAASModelForm):
         ip_addr = cleaned_data.get('ip')
         if ip_addr and IPAddress(ip_addr).version == 6:
             netmask = cleaned_data.get('subnet_mask')
-            ipv6_netmask = IPAddress('ffff:ffff:ffff:ffff::')
-            if netmask and IPAddress(netmask) != ipv6_netmask:
-                set_form_error(
-                    self, 'subnet_mask',
-                    "IPv6 netmask is always 64 bits wide.  Leave it blank.")
-            cleaned_data['subnet_mask'] = unicode(ipv6_netmask)
+            if netmask in (None, ''):
+                netmask = 'ffff:ffff:ffff:ffff::'
+            cleaned_data['subnet_mask'] = unicode(netmask)
 
         static_ip_range_low = cleaned_data.get('static_ip_range_low')
         static_ip_range_high = cleaned_data.get('static_ip_range_high')

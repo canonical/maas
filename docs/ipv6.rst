@@ -22,6 +22,7 @@ support, but with a number of limitations:
 * For now, MAAS only supports IPv6 on networks where it also manages IPv4 DHCP.
 * A network interface on a node can only be on one IPv6 subnet.
 * A network interface on a cluster controller can manage only one IPv6 subnet.
+* Nodes are configured to use 64-bit netmasks for their IPv6 networks.
 
 The web user interface and REST API can be accessed in the same way on both
 IPv4 and IPv6.  To use an IPv6 address as the hostname in a URL, in your

@@ -187,14 +187,19 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
             IPAddress('ffff:ffff:ffff:ffff::'),
             IPAddress(interface.subnet_mask))
 
-    def test__rejects_netmasks_other_than_64_bits_on_IPv6(self):
-        network = factory.make_ipv6_network()
+    def test__accepts_netmasks_other_than_64_bits_on_IPv6(self):
+        netmask = 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:fffc'
+        network = factory.make_ipv6_network(slash=netmask)
         int_settings = factory.get_interface_fields(
             network=network, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            netmask='ffff:ffff::')
+            netmask=netmask)
         form = NodeGroupInterfaceForm(
             data=int_settings, instance=make_ngi_instance())
-        self.assertFalse(form.is_valid())
+        self.assertTrue(form.is_valid())
+        interface = form.save()
+        self.assertEqual(
+            IPAddress(netmask),
+            IPAddress(interface.subnet_mask))
 
     def test_validates_new_static_ip_ranges(self):
         network = IPNetwork("10.1.0.0/24")
