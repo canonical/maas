@@ -87,6 +87,21 @@ class TestExtractNetworkInterfaces(MAASServerTestCase):
             data=lshw_output.encode('ascii'))
         self.assertEqual([(interface, mac)], extract_network_interfaces(node))
 
+    def test__extracts_interface_data_with_multiple_interface_format(self):
+        node = factory.make_Node()
+        interface = factory.make_name('eth')
+        mac = factory.make_mac_address()
+        lshw_output = """
+            <node id="network:1" claimed="true" class="network">
+             <logicalname>%(interface)s</logicalname>
+             <serial>%(mac)s</serial>
+            </node>
+            """ % {'interface': interface, 'mac': mac}
+        factory.make_NodeResult_for_commissioning(
+            node=node, name='00-maas-01-lshw.out', script_result=0,
+            data=lshw_output.encode('ascii'))
+        self.assertEqual([(interface, mac)], extract_network_interfaces(node))
+
     def test__finds_network_interface_on_motherboard(self):
         node = factory.make_Node()
         interface = factory.make_name('eth')

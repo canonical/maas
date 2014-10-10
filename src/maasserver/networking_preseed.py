@@ -92,7 +92,8 @@ def extract_network_interfaces(node):
     lshw_xml = node_details[node.system_id].get('lshw')
     if lshw_xml is None:
         return []
-    network_nodes = etree.fromstring(lshw_xml).xpath("//node[@id='network']")
+    network_nodes = etree.fromstring(lshw_xml).xpath(
+        "//node[starts-with(@id, 'network')]")
     interfaces = [
         extract_network_interface_data(xml_node)
         for xml_node in network_nodes
