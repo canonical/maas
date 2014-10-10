@@ -945,13 +945,34 @@ class Node(CleanSave, TimestampedModel):
 
         commissioning_user_data = generate_user_data(node=self)
         NodeResult.objects.clear_results(self)
-        self.status = NODE_STATUS.COMMISSIONING
-        self.save()
         # The commissioning profile is handled in start_nodes.
         maaslog.info(
             "%s: Starting commissioning", self.hostname)
-        Node.objects.start_nodes(
-            [self.system_id], user, user_data=commissioning_user_data)
+        # We need to mark the node as COMMISSIONING now to avoid a race
+        # when starting multiple nodes. We hang on to old_status just in
+        # case the power action fails.
+        old_status = self.status
+        self.status = NODE_STATUS.COMMISSIONING
+        self.save()
+        transaction.commit()
+        try:
+            # We don't check for which nodes we've started here, because
+            # it's possible we can't start the node - its power type may not
+            # allow us to do that.
+            Node.objects.start_nodes(
+                [self.system_id], user, user_data=commissioning_user_data)
+        except Exception as ex:
+            maaslog.error(
+                "%s: Unable to start node: %s",
+                self.hostname, unicode(ex))
+            self.status = old_status
+            self.save()
+            transaction.commit()
+            # Let the exception bubble up, since the UI or API will have to
+            # deal with it.
+            raise
+        else:
+            maaslog.info("%s: Commissioning started", self.hostname)
 
     def abort_commissioning(self, user):
         """Power off a commissioning node and set its status to 'declared'."""
@@ -962,10 +983,20 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         maaslog.info(
             "%s: Aborting commissioning", self.hostname)
-        stopped_node = Node.objects.stop_nodes([self.system_id], user)
-        if len(stopped_node) == 1:
+        try:
+            # We don't check for which nodes we've stopped here, because
+            # it's possible we can't stop the node - its power type may
+            # not allow us to do that.
+            Node.objects.stop_nodes([self.system_id], user)
+        except Exception as ex:
+            maaslog.error(
+                "%s: Unable to shut node down: %s",
+                self.hostname, unicode(ex))
+            raise
+        else:
             self.status = NODE_STATUS.NEW
             self.save()
+            maaslog.info("%s: Commissioning aborted", self.hostname)
 
     def delete(self):
         """Delete this node.
@@ -1227,12 +1258,31 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.disk_erasing import generate_user_data
 
         disk_erase_user_data = generate_user_data(node=self)
+        maaslog.info(
+            "%s: Starting disk erasure", self.hostname)
+        # Change the status of the node now to avoid races when starting
+        # nodes in bulk.
         self.status = NODE_STATUS.DISK_ERASING
         self.save()
-        maaslog.info(
-            "%s: Starting disk erasing", self.hostname)
-        Node.objects.start_nodes(
-            [self.system_id], user, user_data=disk_erase_user_data)
+        transaction.commit()
+        try:
+            Node.objects.start_nodes(
+                [self.system_id], user, user_data=disk_erase_user_data)
+        except Exception as ex:
+            maaslog.error(
+                "%s: Unable to start node: %s",
+                self.hostname, unicode(ex))
+            # We always mark the node as failed here, although we could
+            # potentially move it back to the state it was in
+            # previously. For now, though, this is safer, since it marks
+            # the node as needing attention.
+            self.status = NODE_STATUS.FAILED_DISK_ERASING
+            self.save()
+            transaction.commit()
+            raise
+        else:
+            maaslog.info(
+                "%s: Disk erasure started.", self.hostname)
 
     def abort_disk_erasing(self, user):
         """
@@ -1246,8 +1296,14 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         maaslog.info(
             "%s: Aborting disk erasing", self.hostname)
-        stopped_node = Node.objects.stop_nodes([self.system_id], user)
-        if len(stopped_node) == 1:
+        try:
+            Node.objects.stop_nodes([self.system_id], user)
+        except Exception as ex:
+            maaslog.error(
+                "%s: Unable to shut node down: %s",
+                self.hostname, unicode(ex))
+            raise
+        else:
             self.status = NODE_STATUS.FAILED_DISK_ERASING
             self.save()
 
@@ -1270,7 +1326,14 @@ class Node(CleanSave, TimestampedModel):
         :raises MultipleFailures: If host maps cannot be deleted.
         """
         maaslog.info("%s: Releasing node", self.hostname)
-        Node.objects.stop_nodes([self.system_id], self.owner)
+        try:
+            Node.objects.stop_nodes([self.system_id], self.owner)
+        except Exception as ex:
+            maaslog.error(
+                "%s: Unable to shut node down: %s", self.hostname,
+                unicode(ex))
+            raise
+
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
         self.delete_host_maps(deallocated_ips)
         from maasserver.dns.config import change_dns_zones
