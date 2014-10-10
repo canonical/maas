@@ -118,8 +118,9 @@ class Region(RPCProtocol):
         return d.addCallback(got_secret)
 
     @region.Register.responder
-    def register(self, uuid, networks):
-        d = deferToThread(clusters.register_cluster, uuid, networks=networks)
+    def register(self, uuid, networks, url):
+        d = deferToThread(
+            clusters.register_cluster, uuid, networks=networks, url=url)
 
         def cb_cluster_registered(cluster):
             return {}

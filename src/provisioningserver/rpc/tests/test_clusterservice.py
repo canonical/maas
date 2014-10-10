@@ -50,11 +50,16 @@ from mock import (
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.boot.tests.test_tftppath import make_osystem
+from provisioningserver.cluster_config import (
+    get_cluster_uuid,
+    get_maas_url,
+    )
 from provisioningserver.dhcp.testing.config import make_subnet_config
 from provisioningserver.drivers.osystem import (
     OperatingSystem,
     OperatingSystemRegistry,
     )
+from provisioningserver.network import discover_networks
 from provisioningserver.power.poweraction import (
     PowerActionFail,
     UnknownPowerType,
@@ -766,8 +771,10 @@ class TestClusterClient(MAASTestCase):
 
     def setUp(self):
         super(TestClusterClient, self).setUp()
-        get_uuid = self.patch_autospec(clusterservice, "get_cluster_uuid")
-        get_uuid.return_value = factory.make_UUID()
+        self.useFixture(EnvironmentVariable(
+            "MAAS_URL", factory.make_simple_http_url()))
+        self.useFixture(EnvironmentVariable(
+            "CLUSTER_UUID", factory.make_UUID().encode("ascii")))
 
     def make_running_client(self):
         client = clusterservice.ClusterClient(
@@ -1140,7 +1147,9 @@ class TestClusterClient(MAASTestCase):
         yield getRegionClient()
         self.assertThat(
             protocol.Register, MockCalledOnceWith(
-                protocol, uuid=ANY, networks=ANY))
+                protocol, uuid=get_cluster_uuid(),
+                networks=discover_networks(),
+                url=urlparse(get_maas_url())))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

@@ -437,6 +437,7 @@ class ClusterClient(Cluster):
     def registerWithRegion(self):
         uuid = get_cluster_uuid()
         networks = discover_networks()
+        url = get_maas_url()
 
         def cb_register(_):
             log.msg(
@@ -451,7 +452,9 @@ class ClusterClient(Cluster):
                 % (uuid, self.eventloop))
             return False
 
-        d = self.callRemote(region.Register, uuid=uuid, networks=networks)
+        d = self.callRemote(
+            region.Register, uuid=uuid, networks=networks,
+            url=urlparse(url))
         return d.addCallbacks(cb_register, eb_register)
 
     @inlineCallbacks

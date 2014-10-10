@@ -17,14 +17,16 @@ __all__ = []
 import errno
 import fcntl
 import httplib
-import os
 import socket
 import textwrap
 import urllib2
 
 from apiclient.maas_client import MAASClient
 from apiclient.testing.credentials import make_api_credentials
-from fixtures import FakeLogger
+from fixtures import (
+    EnvironmentVariable,
+    FakeLogger,
+    )
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -341,9 +343,7 @@ class TestPeriodicTask(PservTestCase):
             factory.make_string(),
             )
         api_credentials = make_api_credentials()
-
-        os.environ["MAAS_URL"] = maas_url
-
+        self.useFixture(EnvironmentVariable("MAAS_URL", maas_url))
         self.knowledge = dict(
             nodegroup_uuid=uuid,
             api_credentials=api_credentials,

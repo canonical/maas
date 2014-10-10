@@ -29,6 +29,7 @@ from maasserver.rpc.clusters import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.rpc.exceptions import NoSuchCluster
+from testtools.matchers import Equals
 
 
 class TestGetClusterStatus(MAASServerTestCase):
@@ -59,11 +60,14 @@ class TestRegister(MAASServerTestCase):
         # NodeGroup's field names are counterintuitive.
         new_name = factory.make_name(cluster.cluster_name)
         new_domain = factory.make_name(cluster.name)
+        new_url = factory.make_parsed_url(
+            scheme="http", params="", query="", fragment="")
         cluster_registered = register_cluster(
-            cluster.uuid, new_name, new_domain, networks=[])
-        self.assertEqual(cluster.uuid, cluster_registered.uuid)
-        self.assertEqual(new_name, cluster_registered.cluster_name)
-        self.assertEqual(new_domain, cluster_registered.name)
+            cluster.uuid, new_name, new_domain, networks=[], url=new_url)
+        self.expectThat(cluster.uuid, Equals(cluster_registered.uuid))
+        self.expectThat(new_name, Equals(cluster_registered.cluster_name))
+        self.expectThat(new_domain, Equals(cluster_registered.name))
+        self.expectThat(new_url.geturl(), Equals(cluster_registered.maas_url))
 
     def test__automatically_accepts_cluster(self):
         cluster = register_cluster(
@@ -126,6 +130,29 @@ class TestRegister(MAASServerTestCase):
         networks_expected = networks[:1]
         networks_observed = self.get_cluster_networks(cluster)
         self.assertItemsEqual(networks_expected, networks_observed)
+
+    def test__accepts_a_url(self):
+        url = factory.make_parsed_url(
+            scheme="http", params="", query="", fragment="")
+        cluster = register_cluster(factory.make_UUID(), url=url)
+        self.assertEqual(url.geturl(), cluster.maas_url)
+
+    def test__does_NOT_update_maas_url_if_localhost(self):
+        cluster = factory.make_NodeGroup(
+            maas_url=factory.make_simple_http_url())
+        old_url = cluster.maas_url
+        new_url = factory.make_parsed_url(
+            scheme="http", netloc="localhost", params="", query="",
+            fragment="")
+        cluster_registered = register_cluster(cluster.uuid, url=new_url)
+        self.assertEqual(old_url, cluster_registered.maas_url)
+
+    def test__does_NOT_update_maas_url_if_none_provided(self):
+        cluster = factory.make_NodeGroup(
+            maas_url=factory.make_simple_http_url())
+        old_url = cluster.maas_url
+        cluster_registered = register_cluster(cluster.uuid, url=None)
+        self.assertEqual(old_url, cluster_registered.maas_url)
 
     def test__raises_ValidationError_when_input_is_bad(self):
         error = self.assertRaises(

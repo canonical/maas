@@ -77,6 +77,8 @@ class Register(amp.Command):
             (b"ip", amp.Unicode()),
             (b"subnet_mask", amp.Unicode()),
         ], optional=True)),
+        # The URL for the region as seen by the cluster.
+        (b"url", ParsedURL(optional=True)),
     ]
     response = []
     errors = {

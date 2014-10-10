@@ -50,7 +50,7 @@ def get_cluster_status(uuid):
 
 @synchronous
 @transactional
-def register_cluster(uuid, name=None, domain=None, networks=None):
+def register_cluster(uuid, name=None, domain=None, networks=None, url=None):
     """Register a new cluster, if not already registered.
 
     If the master has not been configured yet, this nodegroup becomes the
@@ -102,6 +102,14 @@ def register_cluster(uuid, name=None, domain=None, networks=None):
         cluster = form.save()
         maaslog.info("%s: %s (%s)" % (
             message, cluster.cluster_name, cluster.uuid))
-        return cluster
     else:
         raise ValidationError(form.errors)
+
+    # Update `cluster.maas_url` from the given URL, but only when the hostname
+    # is not 'localhost' (i.e. the default value used when the master cluster
+    # connects).
+    if url is not None and url.hostname != "localhost":
+        cluster.maas_url = url.geturl()
+        cluster.save()
+
+    return cluster

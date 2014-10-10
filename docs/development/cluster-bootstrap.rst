@@ -70,7 +70,7 @@ Work items
 
 #. **DONE:** Perform ``Register`` handshake.
 
-#. Pass MAAS_URL in ``Register`` call. This replicates functionality
+#. **DONE:** Pass MAAS_URL in ``Register`` call. This replicates functionality
    found in ``update_nodegroup_maas_url``, which is no longer used.
 
 #. Display secret to admins in UI, or provide tool to obtain secret
