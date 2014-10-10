@@ -68,14 +68,15 @@ def compose_ipv4_stanza(interface, disable=False):
         return "iface %s inet dhcp" % interface
 
 
-def compose_ipv6_stanza(interface, ip, gateway=None, nameserver=None):
+def compose_ipv6_stanza(interface, ip, gateway=None, nameserver=None,
+                        netmask=64):
     """Return a Debian `/etc/network/interfaces` stanza for IPv6.
 
     The stanza will configure a static address.
     """
     lines = [
         'iface %s inet6 static' % interface,
-        '\tnetmask 64',
+        '\tnetmask %s' % netmask,
         '\taddress %s' % ip,
         ]
     if gateway is not None:
@@ -139,8 +140,9 @@ def compose_network_interfaces(interfaces, auto_interfaces, ips_mapping,
         static_ipv6 = extract_ip(ips_mapping, mac, 6)
         if static_ipv6 is not None:
             gateway = extract_ip(gateways_mapping, mac, 6)
+            netmask = netmasks.get(static_ipv6, '64')
             stanzas.append(
                 compose_ipv6_stanza(
                     interface, static_ipv6, gateway=gateway,
-                    nameserver=ipv6_nameserver))
+                    nameserver=ipv6_nameserver, netmask=netmask))
     return '%s\n' % '\n\n'.join(stanzas)
