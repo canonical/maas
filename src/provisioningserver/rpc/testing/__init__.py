@@ -34,7 +34,10 @@ import operator
 from os import path
 
 import fixtures
-from fixtures import Fixture
+from fixtures import (
+    EnvironmentVariable,
+    Fixture,
+    )
 from maastesting.factory import factory
 from maastesting.fixtures import TempDirectory
 from mock import (
@@ -213,6 +216,11 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
     @asynchronous(timeout=15)
     def setUp(self):
         super(MockClusterToRegionRPCFixtureBase, self).setUp()
+        # Ensure that we have MAAS_URL and CLUSTER_UUID set.
+        self.useFixture(EnvironmentVariable(
+            "MAAS_URL", factory.make_simple_http_url()))
+        self.useFixture(EnvironmentVariable(
+            "CLUSTER_UUID", factory.make_UUID().encode("ascii")))
         # Use an inert clock with ClusterClientService so it doesn't update
         # itself except when we ask it to.
         self.rpc_service = ClusterClientService(Clock())
@@ -271,6 +279,8 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
             commands = commands + (region.Identify,)
         if region.Authenticate not in commands:
             commands = commands + (region.Authenticate,)
+        if region.Register not in commands:
+            commands = commands + (region.Register,)
         if amp.StartTLS not in commands:
             commands = commands + (amp.StartTLS,)
         protocol_factory = make_amp_protocol_factory(*commands)
@@ -278,6 +288,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         eventloop = self.getEventLoopName(protocol)
         protocol.Identify.return_value = {"ident": eventloop}
         protocol.Authenticate.side_effect = self._authenticate_with_cluster_key
+        protocol.Register.side_effect = always_succeed_with({})
         protocol.StartTLS.return_value = get_tls_parameters_for_region()
         return protocol, self.addEventLoop(protocol)
 

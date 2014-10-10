@@ -764,6 +764,11 @@ class TestClusterClient(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    def setUp(self):
+        super(TestClusterClient, self).setUp()
+        get_uuid = self.patch_autospec(clusterservice, "get_cluster_uuid")
+        get_uuid.return_value = factory.make_UUID()
+
     def make_running_client(self):
         client = clusterservice.ClusterClient(
             address=("example.com", 1234), eventloop="eventloop:pid=12345",
@@ -783,6 +788,18 @@ class TestClusterClient(MAASTestCase):
         authenticate = self.patch_autospec(client, "authenticateRegion")
         authenticate.side_effect = always_fail_with(exception)
 
+    def patch_register_for_success(self, client):
+        register = self.patch_autospec(client, "registerWithRegion")
+        register.side_effect = always_succeed_with(True)
+
+    def patch_register_for_failure(self, client):
+        register = self.patch_autospec(client, "registerWithRegion")
+        register.side_effect = always_succeed_with(False)
+
+    def patch_register_for_error(self, client, exception):
+        register = self.patch_autospec(client, "registerWithRegion")
+        register.side_effect = always_fail_with(exception)
+
     def test_interfaces(self):
         client = self.make_running_client()
         # transport.getHandle() is used by AMP._getPeerCertificate, which we
@@ -799,6 +816,7 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         getOnReadyResult = capture_result(client.onReady)
         self.patch_authenticate_for_success(client)
+        self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
         self.assertThat(client.onReady, IsUnfiredDeferred())
         client.connectionMade()
@@ -854,6 +872,7 @@ class TestClusterClient(MAASTestCase):
     def test_disconnects_when_authentication_fails(self):
         client = self.make_running_client()
         self.patch_authenticate_for_failure(client)
+        self.patch_register_for_success(client)
         getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
@@ -873,6 +892,7 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_error(client, exception_type())
+        self.patch_register_for_success(client)
         getOnReadyResult = capture_result(client.onReady)
 
         logger = self.useFixture(TwistedLoggerFixture())
@@ -888,7 +908,57 @@ class TestClusterClient(MAASTestCase):
         # The log was written to.
         self.assertDocTestMatches(
             """...
-            Event-loop 'eventloop:pid=12345' could not be authenticated;
+            Event-loop 'eventloop:pid=12345' handshake failed;
+            dropping connection.
+            Traceback (most recent call last):...
+            """,
+            logger.dump())
+
+        # The connections list is unchanged because the new connection
+        # immediately disconnects.
+        self.assertEqual(client.service.connections, {})
+        self.assertFalse(client.connected)
+
+    def test_disconnects_when_registration_fails(self):
+        client = self.make_running_client()
+        self.patch_authenticate_for_success(client)
+        self.patch_register_for_failure(client)
+        getOnReadyResult = capture_result(client.onReady)
+
+        # Connect via an in-memory transport.
+        transport = StringTransportWithDisconnection()
+        transport.protocol = client
+        client.makeConnection(transport)
+
+        # onReady was fired with AuthenticationFailed.
+        self.assertRaises(exceptions.RegistrationFailed, getOnReadyResult)
+
+        # The connections list is unchanged because the new connection
+        # immediately disconnects.
+        self.assertEqual(client.service.connections, {})
+        self.assertFalse(client.connected)
+
+    def test_disconnects_when_registration_errors(self):
+        client = self.make_running_client()
+        exception_type = factory.make_exception_type()
+        self.patch_authenticate_for_success(client)
+        self.patch_register_for_error(client, exception_type())
+        getOnReadyResult = capture_result(client.onReady)
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        # Connect via an in-memory transport.
+        transport = StringTransportWithDisconnection()
+        transport.protocol = client
+        client.makeConnection(transport)
+
+        # onReady was fired with AuthenticationFailed.
+        self.assertRaises(exception_type, getOnReadyResult)
+
+        # The log was written to.
+        self.assertDocTestMatches(
+            """...
+            Event-loop 'eventloop:pid=12345' handshake failed;
             dropping connection.
             Traceback (most recent call last):...
             """,
@@ -1021,6 +1091,56 @@ class TestClusterClient(MAASTestCase):
         self.assertThat(
             protocol.Authenticate,
             MockCalledOnceWith(protocol, message=ANY))
+
+    def test_registerWithRegion_returns_True_when_accepted(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.side_effect = always_succeed_with({})
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        d = client.registerWithRegion()
+        self.assertTrue(extract_result(d))
+
+        self.assertDocTestMatches(
+            "Cluster '...' registered (via ...).",
+            logger.output)
+
+    def test_registerWithRegion_returns_False_when_rejected(self):
+        client = self.make_running_client()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.return_value = fail(exceptions.CannotRegisterCluster())
+
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        d = client.registerWithRegion()
+        self.assertFalse(extract_result(d))
+
+        self.assertDocTestMatches(
+            "Cluster '...' REJECTED by the region (via ...).",
+            logger.output)
+
+    def test_registerWithRegion_propagates_errors(self):
+        client = self.make_running_client()
+        exception_type = factory.make_exception_type()
+
+        callRemote = self.patch_autospec(client, "callRemote")
+        callRemote.return_value = fail(exception_type())
+
+        d = client.registerWithRegion()
+        self.assertRaises(exception_type, extract_result, d)
+
+    @inlineCallbacks
+    def test_registerWithRegion_end_to_end(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop()
+        self.addCleanup((yield connecting))
+        yield getRegionClient()
+        self.assertThat(
+            protocol.Register, MockCalledOnceWith(
+                protocol, uuid=ANY, networks=ANY))
 
 
 class TestClusterProtocol_ListSupportedArchitectures(MAASTestCase):

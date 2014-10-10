@@ -42,6 +42,7 @@ from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.logger.utils import log_call
+from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
     cluster,
     common,
@@ -433,13 +434,41 @@ class ClusterClient(Cluster):
         digest_local = calculate_digest(secret, message, salt)
         returnValue(digest == digest_local)
 
+    def registerWithRegion(self):
+        uuid = get_cluster_uuid()
+        networks = discover_networks()
+
+        def cb_register(_):
+            log.msg(
+                "Cluster '%s' registered (via %s)."
+                % (uuid, self.eventloop))
+            return True
+
+        def eb_register(failure):
+            failure.trap(exceptions.CannotRegisterCluster)
+            log.msg(
+                "Cluster '%s' REJECTED by the region (via %s)."
+                % (uuid, self.eventloop))
+            return False
+
+        d = self.callRemote(region.Register, uuid=uuid, networks=networks)
+        return d.addCallbacks(cb_register, eb_register)
+
     @inlineCallbacks
     def performHandshake(self):
         authenticated = yield self.authenticateRegion()
         if authenticated:
             log.msg("Event-loop '%s' authenticated." % self.ident)
-            self.service.connections[self.eventloop] = self
-            self.onReady.callback(self.eventloop)
+            registered = yield self.registerWithRegion()
+            if registered:
+                self.service.connections[self.eventloop] = self
+                self.onReady.callback(self.eventloop)
+            else:
+                self.transport.loseConnection()
+                self.onReady.errback(
+                    exceptions.RegistrationFailed(
+                        "Event-loop '%s' rejected registration."
+                        % self.ident))
         else:
             log.msg(
                 "Event-loop '%s' FAILED authentication; "
@@ -460,7 +489,7 @@ class ClusterClient(Cluster):
     def handshakeFailed(self, failure):
         """The handshake (identify and authenticate) failed."""
         log.err(
-            failure, "Event-loop '%s' could not be authenticated; "
+            failure, "Event-loop '%s' handshake failed; "
             "dropping connection." % self.ident)
         self.transport.loseConnection()
         self.onReady.errback(failure)

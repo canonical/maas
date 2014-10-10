@@ -19,7 +19,6 @@ import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
-import provisioningserver.start_cluster_controller
 import provisioningserver.upgrade_cluster
 from provisioningserver.utils.script import (
     AtomicWriteScript,
@@ -34,7 +33,6 @@ script_commands = {
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-shared-secret': security.InstallSharedSecretScript,
     'install-uefi-config': provisioningserver.boot.install_grub,
-    'start-cluster-controller': provisioningserver.start_cluster_controller,
     'upgrade-cluster': provisioningserver.upgrade_cluster,
 }
 

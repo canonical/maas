@@ -64,8 +64,8 @@ from twisted.protocols import amp
 class Register(amp.Command):
     """Register a cluster with the region controller.
 
-    This is the last part of the Identify, Authenticate, Register three-step.
-    See cluster-bootstrap_ for an explanation.
+    This is the last part of the Authenticate and Register two-step. See
+    cluster-bootstrap_ for an explanation.
 
     :since: 1.7
     """

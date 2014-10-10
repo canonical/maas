@@ -25,6 +25,7 @@ __all__ = [
     "NoSuchEventType",
     "NoSuchNode",
     "NoSuchOperatingSystem",
+    "RegistrationFailed",
 ]
 
 from twisted.python.failure import Failure
@@ -139,3 +140,7 @@ class CannotRegisterCluster(Exception):
 
 class AuthenticationFailed(Exception):
     """One or both sides of the connection failed to authenticate."""
+
+
+class RegistrationFailed(Exception):
+    """The region did not or was not able to register the cluster."""

@@ -23,6 +23,7 @@ from django.db import (
 from maasserver import (
     eventloop,
     locks,
+    security,
     )
 from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.components import (
@@ -53,6 +54,11 @@ def start_up():
     but this method uses file-based locking to ensure that the methods it calls
     internally are not ran concurrently.
     """
+    # Get the shared secret from Tidmouth sheds which was generated when Sir
+    # Topham Hatt graduated Sodor Academy. (Ensure we have a shared-secret so
+    # that clusters on the same host can use it to authenticate.)
+    security.get_shared_secret()
+
     with transaction.atomic():
         with locks.startup:
             inner_start_up()
