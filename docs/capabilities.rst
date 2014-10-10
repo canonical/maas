@@ -30,6 +30,13 @@ the version when creating a client application.
   nodes are in, including network interfaces, subnets, VLAN tags, and
   connectivity between them. See :ref:`networks` for more information.
 
+.. _cap-static-ipaddresses:
+
+``static-ipaddresses``
+  Static IP address allocation to nodes, including user-reserved IPs and admin-
+  allocated 'sticky' IPs. Available since version 1.6. See :ref:`static-ips`
+  for more information.
+
 .. _cap-ipv6-deployment-ubuntu:
 
 ``ipv6-deployment-ubuntu``

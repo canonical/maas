@@ -54,6 +54,7 @@ Setting up a MAAS server
    install
    configure
    cluster-configuration
+   static-ips
    ipv6
    bootsources
    nodes
