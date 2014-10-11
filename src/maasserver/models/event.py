@@ -18,6 +18,7 @@ __all__ = [
 
 import logging
 
+from django.db import IntegrityError
 from django.db.models import (
     ForeignKey,
     Manager,
@@ -29,6 +30,10 @@ from maasserver.models.eventtype import EventType
 from maasserver.models.node import Node
 from maasserver.models.timestampedmodel import TimestampedModel
 from provisioningserver.events import EVENT_DETAILS
+from provisioningserver.logger.log import get_maas_logger
+
+
+maaslog = get_maas_logger('models.event')
 
 
 class EventManager(Manager):
@@ -44,9 +49,20 @@ class EventManager(Manager):
             event_type = EventType.objects.get(name=type_name)
         except EventType.DoesNotExist:
             # Create the event type.
-            event_type = EventType.objects.create(
-                name=type_name, description=type_description,
-                level=type_level)
+            try:
+                event_type = EventType.objects.create(
+                    name=type_name, description=type_description,
+                    level=type_level)
+            except IntegrityError:
+                # If we get an integrity error then we've probably ended
+                # up in a situation where another thread has created the
+                # EventType already. This is a bit inelegant, but short
+                # of locking the table it's the only sane way to do
+                # things given the shortcomings of Django's ORM.
+                maaslog.debug(
+                    "IntegrityError caught in register_event_and_event_type; "
+                    "Trying to fetch event type '%s' again", type_name)
+                event_type = EventType.objects.get(name=type_name)
 
         node = Node.objects.get(system_id=system_id)
 
