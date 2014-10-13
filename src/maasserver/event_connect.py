@@ -20,6 +20,7 @@ from maasserver.models import (
     Event,
     Node,
     )
+from maasserver.models.node import NODE_STATUS
 from maasserver.signals import connect_to_field_change
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -43,6 +44,12 @@ def emit_state_transition_event(instance, old_values, **kwargs):
         NODE_STATUS_CHOICES_DICT[old_status],
         NODE_STATUS_CHOICES_DICT[node.status],
     )
+
+    # Special-case for allocating ndoes: we can include usernames here
+    # to make the event log more useful.
+    if node.status == NODE_STATUS.ALLOCATED:
+        description += " (to %s)" % node.owner.username
+
     Event.objects.register_event_and_event_type(
         node.system_id, type_name, type_level=event_details.level,
         type_description=event_details.description,

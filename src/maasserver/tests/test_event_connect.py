@@ -60,3 +60,22 @@ class TestStatusTransitionEvent(MAASServerTestCase):
                 latest_event.type.description,
                 latest_event.description,
             ))
+
+    def test_changing_to_allocated_includes_user_name(self):
+        old_status = NODE_STATUS.READY
+        user = factory.make_User()
+        node = factory.make_Node(status=old_status)
+        node.acquire(user)
+
+        latest_event = Event.objects.filter(node=node).last()
+        description = "From '%s' to '%s' (to %s)" % (
+            NODE_STATUS_CHOICES_DICT[old_status],
+            NODE_STATUS_CHOICES_DICT[node.status],
+            user.username,
+        )
+        self.assertEqual(
+            EVENT_TYPES.NODE_CHANGED_STATUS, latest_event.type.name)
+        self.assertEqual(
+            EVENT_DETAILS[EVENT_TYPES.NODE_CHANGED_STATUS].description,
+            latest_event.type.description)
+        self.assertEqual(description, latest_event.description)
