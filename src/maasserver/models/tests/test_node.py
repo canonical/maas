@@ -1988,6 +1988,16 @@ class NodeManagerTest(MAASServerTestCase):
             Node.objects.get_nodes(
                 factory.make_admin(), NODE_PERMISSION.ADMIN))
 
+    def test_get_nodes_with_null_user(self):
+        # Recreate conditions of bug 1376023. It is not valid to have a
+        # node in this state with no user, however the code should not
+        # crash.
+        node = factory.make_Node(
+            status=NODE_STATUS.FAILED_RELEASING, owner=None)
+        observed = Node.objects.get_nodes(
+            user=None, perm=NODE_PERMISSION.EDIT, ids=[node.system_id])
+        self.assertItemsEqual([], observed)
+
     def test_get_visible_node_or_404_ok(self):
         """get_node_or_404 fetches nodes by system_id."""
         user = factory.make_User()

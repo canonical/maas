@@ -224,6 +224,11 @@ class NodeManager(Manager):
         :return: A version of `node` that is filtered to include only those
             nodes that `user` is allowed to access.
         """
+        # If the data is corrupt, this can get called with None for
+        # user where a Node should have an owner but doesn't.
+        # Nonetheless, the code should not crash with corrupt data.
+        if user is None:
+            return nodes.none()
         if user.is_superuser:
             # Admin is allowed to see all nodes.
             return nodes
