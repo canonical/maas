@@ -42,7 +42,10 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     TestWithoutCrochetMixin,
     )
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    )
 from maastesting.utils import sample_binary_data
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
@@ -314,6 +317,60 @@ def make_lldp_output(macs):
         )
     script = (lldp_output_template % interfaces).encode('utf8')
     return bytes(script)
+
+
+# The two following example outputs differ because eth2 and eth1 are not
+# configured and thus 'ifconfig -s -a' returns a list with both 'eth1'
+# and 'eth2' while 'ifconfig -s' does not contain them.
+
+# Example output of 'ifconfig -s -a':
+ifconfig_all = """
+Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
+eth2       1500 0         0      0      0 0             0      0
+eth1       1500 0         0      0      0 0             0      0
+eth0       1500 0   1366127      0      0 0        831110      0
+lo        65536 0     38075      0      0 0         38075      0
+virbr0     1500 0         0      0      0 0             0      0
+wlan0      1500 0   2304695      0      0 0       1436049      0
+"""
+
+# Example output of 'ifconfig -s':
+ifconfig_config = """
+Iface   MTU Met   RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP
+eth0       1500 0   1366127      0      0 0        831110      0
+lo        65536 0     38115      0      0 0         38115      0
+virbr0     1500 0         0      0      0 0             0      0
+wlan0      1500 0   2304961      0      0 0       1436319      0
+"""
+
+
+class TestDHCPExplore(MAASServerTestCase):
+
+    def test_calls_dhclient_on_unconfigured_interfaces(self):
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [ifconfig_all, ifconfig_config]
+        check_call = self.patch(subprocess, "check_call")
+        dhcp_explore = isolate_function(cs_module.dhcp_explore)
+        dhcp_explore()
+        self.assertThat(
+            check_call,
+            MockCallsMatch(
+                call(("sudo", "dhclient", "-w", 'eth1')),
+                call(("sudo", "dhclient", "-w", 'eth2'))))
+
+    def test_swallows_errors(self):
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [ifconfig_all, ifconfig_config]
+        check_call = self.patch(subprocess, "check_call")
+        # Simulate a failure for the first call to dhclient.
+        check_call.side_effect = [CalledProcessError('boom', 2), '']
+        dhcp_explore = isolate_function(cs_module.dhcp_explore)
+        dhcp_explore()
+        self.assertThat(
+            check_call,
+            MockCallsMatch(
+                call(("sudo", "dhclient", "-w", 'eth1')),
+                call(("sudo", "dhclient", "-w", 'eth2'))))
 
 
 class TestExtractRouters(MAASServerTestCase):

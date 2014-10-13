@@ -214,6 +214,29 @@ def set_virtual_tag(node, output, exit_status):
             node.system_id)
 
 
+# Run `dhclient` on all the unconfigured interfaces.
+# This is done to create records in the leases file for the
+# NICs attached to unconfigured interfaces.  This way the leases
+# parser will be able to connect these NICs and the networks
+# MAAS knows about.
+def dhcp_explore():
+    def get_iface_list(ifconfig_output):
+        return [
+            line.split()[0]
+            for line in ifconfig_output.splitlines()[1:]]
+
+    from subprocess import check_output, CalledProcessError, check_call
+    all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
+    configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
+    unconfigured_ifaces = set(all_ifaces) - set(configured_ifaces)
+    for iface in sorted(unconfigured_ifaces):
+        try:
+            check_call(("sudo", "dhclient", "-w", iface))
+        except CalledProcessError:
+            # Continue trying to run dhcplient on the other interfaces.
+            pass
+
+
 # This function must be entirely self-contained. It must not use
 # variables or imports from the surrounding scope.
 def lldpd_install(config_file):
@@ -367,6 +390,10 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     },
     LIST_MODALIASES_OUTPUT_NAME: {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
+        'hook': null_hook,
+    },
+    '00-maas-05-dhcp-unconfigured-ifaces': {
+        'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
     },
     '99-maas-01-wait-for-lldpd.out': {
