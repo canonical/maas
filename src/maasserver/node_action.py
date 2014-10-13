@@ -304,11 +304,18 @@ class AcquireNode(NodeAction):
 class StartNode(NodeAction):
     """Start a node."""
     name = "start"
-    display = "Start node"
     display_bulk = "Start selected nodes"
     actionable_statuses = (
-        NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED)
+        NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED)
     permission = NODE_PERMISSION.EDIT
+
+    @property
+    def display(self):
+        if self.node.owner == self.user:
+            label = "Start node"
+        else:
+            label = "Acquire and start node"
+        return label
 
     def inhibit(self):
         """The user must have an SSH key, so that they access the node."""
@@ -323,6 +330,9 @@ class StartNode(NodeAction):
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
+        if self.node.owner is None:
+            self.node.acquire(self.user, token=None)
+
         try:
             Node.objects.start_nodes([self.node.system_id], self.user)
         except StaticIPAddressExhaustion:

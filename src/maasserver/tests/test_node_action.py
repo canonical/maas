@@ -338,6 +338,31 @@ class TestStartNodeNodeAction(MAASServerTestCase):
             user.has_perm(NODE_PERMISSION.EDIT, node))
         self.assertFalse(StartNode(node, user).is_permitted())
 
+    def test_StartNode_allocates_node_if_node_not_already_allocated(self):
+        self.patch(Node.objects, "start_nodes")
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        action = StartNode(node, user)
+        action.execute()
+
+        self.assertEqual(user, node.owner)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
+
+    def test_StartNode_label_shows_allocate_if_unallocated(self):
+        self.patch(Node.objects, "start_nodes")
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        action = StartNode(node, user)
+        self.assertEqual("Acquire and start node", action.display)
+
+    def test_StartNode_label_hids_allocate_if_allocated(self):
+        self.patch(Node.objects, "start_nodes")
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        node.acquire(user)
+        action = StartNode(node, user)
+        self.assertEqual("Start node", action.display)
+
 
 class TestStopNodeNodeAction(MAASServerTestCase):
 
