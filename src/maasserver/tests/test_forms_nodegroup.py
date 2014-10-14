@@ -17,6 +17,10 @@ __all__ = []
 import json
 from random import randint
 
+from django.forms import (
+    CheckboxInput,
+    HiddenInput,
+    )
 from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -382,3 +386,34 @@ class TestNodeGroupEdit(MAASServerTestCase):
         self.assertTrue(form.is_valid())
         form.save()
         self.assertEqual(data['name'], reload_object(nodegroup).name)
+
+    def test_shows_default_disable_ipv4_if_managed_ipv6_configured(self):
+        nodegroup = factory.make_NodeGroup()
+        factory.make_NodeGroupInterface(
+            nodegroup, network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        form = NodeGroupEdit(instance=nodegroup)
+        self.assertIsInstance(
+            form.fields['default_disable_ipv4'].widget, CheckboxInput)
+
+    def test_hides_default_disable_ipv4_if_no_managed_ipv6_configured(self):
+        nodegroup = factory.make_NodeGroup()
+        eth = factory.make_name('eth')
+        factory.make_NodeGroupInterface(
+            nodegroup, network=factory.make_ipv4_network(), interface=eth,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        factory.make_NodeGroupInterface(
+            nodegroup, network=factory.make_ipv6_network(), interface=eth,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        form = NodeGroupEdit(instance=nodegroup)
+        self.assertIsInstance(
+            form.fields['default_disable_ipv4'].widget, HiddenInput)
+
+    def test_default_disable_ipv4_field_ignores_other_nodegroups(self):
+        factory.make_NodeGroupInterface(
+            factory.make_NodeGroup(), network=factory.make_ipv6_network(),
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        nodegroup = factory.make_NodeGroup()
+        form = NodeGroupEdit(instance=nodegroup)
+        self.assertIsInstance(
+            form.fields['default_disable_ipv4'].widget, HiddenInput)

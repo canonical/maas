@@ -1713,6 +1713,16 @@ class NodeGroupEdit(MAASModelForm):
             'default_disable_ipv4',
             )
 
+    def __init__(self, *args, **kwargs):
+        super(NodeGroupEdit, self).__init__(*args, **kwargs)
+        # Hide the default_disable_ipv4 field if the cluster is not
+        # configured for IPv6.
+        show_default_disable_ipv4 = contains_managed_ipv6_interface(
+            self.instance.nodegroupinterface_set.all())
+        if not show_default_disable_ipv4:
+            self.fields['default_disable_ipv4'] = forms.BooleanField(
+                label="", required=False, widget=forms.HiddenInput())
+
     def clean_name(self):
         old_name = self.instance.name
         new_name = self.cleaned_data['name']
