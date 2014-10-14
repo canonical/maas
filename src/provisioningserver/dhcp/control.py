@@ -33,8 +33,8 @@ def call_service_script(ip_version, subcommand):
     :raise ExternalProcessError: if the restart command fails.
     """
     service_names = {
-        4: 'maas-dhcp-server',
-        6: 'maas-dhcpv6-server',
+        4: 'maas-dhcpd',
+        6: 'maas-dhcpd6',
         }
     name = service_names[ip_version]
     call_and_check(

@@ -52,7 +52,7 @@ class TestCallServiceScript(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
+                ['sudo', '-n', 'service', 'maas-dhcpd', 'stop'],
                 env=ANY))
 
     def test__controls_maas_dhcpv6_server_for_IP_version_6(self):
@@ -61,7 +61,7 @@ class TestCallServiceScript(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'stop'],
+                ['sudo', '-n', 'service', 'maas-dhcpd6', 'stop'],
                 env=ANY))
 
     def test__sets_C_locale(self):
@@ -81,7 +81,7 @@ class TestStopDHCPServer(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcp-server', 'stop'],
+                ['sudo', '-n', 'service', 'maas-dhcpd', 'stop'],
                 env=ANY))
 
     def test__stops_dhcpv6(self):
@@ -90,7 +90,7 @@ class TestStopDHCPServer(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'stop'],
+                ['sudo', '-n', 'service', 'maas-dhcpd6', 'stop'],
                 env=ANY))
 
     def test__treats_already_stopped_as_success(self):
@@ -113,7 +113,7 @@ class TestControl(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcp-server', 'restart'],
+                ['sudo', '-n', 'service', 'maas-dhcpd', 'restart'],
                 env={'LC_ALL': 'C'}))
 
     def test_restart_dhcpv6(self):
@@ -122,7 +122,7 @@ class TestControl(MAASTestCase):
         self.assertThat(
             call_and_check,
             MockCalledOnceWith(
-                ['sudo', '-n', 'service', 'maas-dhcpv6-server', 'restart'],
+                ['sudo', '-n', 'service', 'maas-dhcpd6', 'restart'],
                 env={'LC_ALL': 'C'}))
 
     def test_stop_dhcpv4(self):
