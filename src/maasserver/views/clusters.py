@@ -143,6 +143,15 @@ class ClusterEdit(UpdateView):
     form_class = NodeGroupEdit
     context_object_name = 'cluster'
 
+    def get_form_kwargs(self):
+        kwargs = super(ClusterEdit, self).get_form_kwargs()
+        # The cluster form has a boolean checkbox.  For those we need to know
+        # whether a submission came in from the UI (where omitting the field
+        # means "set to False") or from the API (where it means "leave
+        # unchanged").
+        kwargs['ui_submission'] = True
+        return kwargs
+
     def get_context_data(self, **kwargs):
         context = super(ClusterEdit, self).get_context_data(**kwargs)
         context['interfaces'] = (

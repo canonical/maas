@@ -183,8 +183,8 @@ class NodeGroup(TimestampedModel):
         default=False,
         verbose_name="Disable IPv4 by default when deploying nodes",
         help_text=(
-            "Default setting for setting on new nodes: disable IPv4 when "
-            "deploying, on operating systems where this is supported."))
+            "Default setting for new nodes: disable IPv4 when deploying, on "
+            "operating systems where this is supported."))
 
     @property
     def api_credentials(self):

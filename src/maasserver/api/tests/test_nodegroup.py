@@ -128,7 +128,9 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_PUT_updates_nodegroup(self):
         # The api allows the updating of a NodeGroup.
-        nodegroup = factory.make_NodeGroup()
+        old_disable_ipv4 = factory.pick_bool()
+        nodegroup = factory.make_NodeGroup(
+            default_disable_ipv4=old_disable_ipv4)
         self.become_admin()
         new_name = factory.make_name("new-name")
         new_cluster_name = factory.make_name("new-cluster-name")
@@ -140,6 +142,7 @@ class TestNodeGroupAPI(APITestCase):
                 'name': new_name,
                 'cluster_name': new_cluster_name,
                 'status': new_status,
+                'default_disable_ipv4': not old_disable_ipv4,
             })
 
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -147,6 +150,7 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(
             (new_name, new_cluster_name, new_status),
             (nodegroup.name, nodegroup.cluster_name, nodegroup.status))
+        self.assertEqual(not old_disable_ipv4, nodegroup.default_disable_ipv4)
 
     def test_PUT_updates_nodegroup_validates_data(self):
         nodegroup, _ = factory.make_unrenamable_NodeGroup_with_Node()
@@ -162,6 +166,18 @@ class TestNodeGroupAPI(APITestCase):
         self.assertIn(
             "Can't rename DNS zone",
             parsed_result['name'][0])
+
+    def test_PUT_without_default_disable_ipv4_leaves_field_unchanged(self):
+        old_value = factory.pick_bool()
+        nodegroup = factory.make_NodeGroup(default_disable_ipv4=old_value)
+        self.become_admin()
+        response = self.client_put(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {'name': nodegroup.name})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(
+            old_value,
+            reload_object(nodegroup).default_disable_ipv4)
 
     def test_accept_accepts_nodegroup(self):
         nodegroups = [factory.make_NodeGroup() for _ in range(3)]

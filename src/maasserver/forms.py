@@ -1710,6 +1710,7 @@ class NodeGroupEdit(MAASModelForm):
             'cluster_name',
             'status',
             'name',
+            'default_disable_ipv4',
             )
 
     def clean_name(self):
@@ -1731,6 +1732,16 @@ class NodeGroupEdit(MAASModelForm):
                 "Can't rename DNS zone to %s; nodes are in use." % new_name)
 
         return new_name
+
+    def clean_default_disable_ipv4(self):
+        data = self.submitted_data
+        if 'ui_submission' in data and 'default_disable_ipv4' not in data:
+            # In the UI, where all fields are submitted except checkboxes in
+            # the "off" state, a missing boolean field means False.
+            # (In the API, as enforced by MAASModelForm, a missing boolean
+            # field means "unchanged").
+            self.cleaned_data['default_disable_ipv4'] = False
+        return self.cleaned_data['default_disable_ipv4']
 
 
 class TagForm(MAASModelForm):

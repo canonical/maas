@@ -397,6 +397,18 @@ class ClusterEditTest(MAASServerTestCase):
         self.assertIn(
             reverse('cluster-interface-create', args=[nodegroup.uuid]), links)
 
+    def test_admin_can_disable_default_disable_ipv4_flag(self):
+        self.client_log_in(as_admin=True)
+        nodegroup = factory.make_NodeGroup(default_disable_ipv4=True)
+        edit_link = reverse('cluster-edit', args=[nodegroup.uuid])
+        # In a UI submission, omitting a boolean means setting it to False.
+        data = {
+            'ui_submission': True,
+            }
+        response = self.client.post(edit_link, data)
+        self.assertEqual(httplib.FOUND, response.status_code)
+        self.assertFalse(reload_object(nodegroup).default_disable_ipv4)
+
 
 class ClusterInterfaceDeleteTest(MAASServerTestCase):
 
