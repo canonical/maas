@@ -225,16 +225,15 @@ def dhcp_explore():
             line.split()[0]
             for line in ifconfig_output.splitlines()[1:]]
 
-    from subprocess import check_output, CalledProcessError, check_call
+    from subprocess import check_output, call
     all_ifaces = get_iface_list(check_output(("ifconfig", "-s", "-a")))
     configured_ifaces = get_iface_list(check_output(("ifconfig", "-s")))
     unconfigured_ifaces = set(all_ifaces) - set(configured_ifaces)
     for iface in sorted(unconfigured_ifaces):
-        try:
-            check_call(("sudo", "dhclient", "-w", iface))
-        except CalledProcessError:
-            # Continue trying to run dhcplient on the other interfaces.
-            pass
+        # Run dhclient in the background to avoid blocking the commissioning.
+        call("dhclient -w %s &" % iface, shell=True)
+        # Ignore return code and continue running dhcplient on the
+        # other interfaces.
 
 
 # This function must be entirely self-contained. It must not use

@@ -349,28 +349,14 @@ class TestDHCPExplore(MAASServerTestCase):
     def test_calls_dhclient_on_unconfigured_interfaces(self):
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [ifconfig_all, ifconfig_config]
-        check_call = self.patch(subprocess, "check_call")
+        subprocess_call = self.patch(subprocess, "call")
         dhcp_explore = isolate_function(cs_module.dhcp_explore)
         dhcp_explore()
         self.assertThat(
-            check_call,
+            subprocess_call,
             MockCallsMatch(
-                call(("sudo", "dhclient", "-w", 'eth1')),
-                call(("sudo", "dhclient", "-w", 'eth2'))))
-
-    def test_swallows_errors(self):
-        check_output = self.patch(subprocess, "check_output")
-        check_output.side_effect = [ifconfig_all, ifconfig_config]
-        check_call = self.patch(subprocess, "check_call")
-        # Simulate a failure for the first call to dhclient.
-        check_call.side_effect = [CalledProcessError('boom', 2), '']
-        dhcp_explore = isolate_function(cs_module.dhcp_explore)
-        dhcp_explore()
-        self.assertThat(
-            check_call,
-            MockCallsMatch(
-                call(("sudo", "dhclient", "-w", 'eth1')),
-                call(("sudo", "dhclient", "-w", 'eth2'))))
+                call("dhclient -w eth1 &", shell=True),
+                call("dhclient -w eth2 &", shell=True)))
 
 
 class TestExtractRouters(MAASServerTestCase):
