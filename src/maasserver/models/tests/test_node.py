@@ -2335,6 +2335,27 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
             [node1.system_id, node2.system_id], user)
         self.assertItemsEqual([node1], nodes_started)
 
+    def test__does_not_try_to_start_nodes_not_allocated_to_user(self):
+        user1 = factory.make_User()
+        [node1] = self.make_acquired_nodes_with_macs(user1, count=1)
+        node1.power_type = 'ether_wake'  # can be started.
+        node1.save()
+        user2 = factory.make_User()
+        [node2] = self.make_acquired_nodes_with_macs(user2, count=1)
+        node2.power_type = 'ether_wake'  # can be started.
+        node2.save()
+
+        self.patch(node_module, 'power_on_nodes')
+        self.patch(node_module, 'wait_for_power_commands')
+        nodes_started = Node.objects.start_nodes(
+            [node1.system_id, node2.system_id], user1)
+
+        # Since no power commands were sent to the node, it isn't
+        # returned by start_nodes().
+        # test__only_returns_nodes_for_which_power_commands_have_been_sent()
+        # demonstrates this behaviour.
+        self.assertItemsEqual([node1], nodes_started)
+
 
 class NodeManagerTest_StopNodes(MAASServerTestCase):
 

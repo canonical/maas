@@ -355,13 +355,37 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         action = StartNode(node, user)
         self.assertEqual("Acquire and start node", action.display)
 
-    def test_StartNode_label_hids_allocate_if_allocated(self):
+    def test_StartNode_label_hides_allocate_if_allocated(self):
         self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
         node.acquire(user)
         action = StartNode(node, user)
         self.assertEqual("Start node", action.display)
+
+    def test_StartNode_label_hides_acquire_for_non_owner_admin(self):
+        user = factory.make_User()
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        node.acquire(user)
+        action = StartNode(node, admin)
+        self.assertEqual("Start node", action.display)
+
+    def test_StartNode_does_not_reallocate_when_run_by_non_owner(self):
+        self.patch(Node.objects, "start_nodes")
+        user = factory.make_User()
+        admin = factory.make_admin()
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        node.acquire(user)
+        action = StartNode(node, admin)
+
+        # This action.execute() will not fail because the non-owner is
+        # an admin, so they can start the node. Even if they weren't an
+        # admin, the node still wouldn't start;
+        # NodeManager.start_nodes() would ignore it.
+        action.execute()
+        self.assertEqual(user, node.owner)
+        self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
 
 class TestStopNodeNodeAction(MAASServerTestCase):

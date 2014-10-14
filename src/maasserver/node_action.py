@@ -311,10 +311,18 @@ class StartNode(NodeAction):
 
     @property
     def display(self):
-        if self.node.owner == self.user:
-            label = "Start node"
-        else:
+        # We explictly check for owner is None here, rather than owner
+        # != self.user, because in practice the only people who are
+        # going to see this button other than the node's owner are
+        # administrators (because once once the node's owned, you need
+        # EDIT permission to see this button).
+        # We can safely assume that if you're seeing this and you don't
+        # own the node, you're an admin, so you can still start it even
+        # though you don't own it.
+        if self.node.status == NODE_STATUS.READY and self.node.owner is None:
             label = "Acquire and start node"
+        else:
+            label = "Start node"
         return label
 
     def inhibit(self):
