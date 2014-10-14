@@ -81,11 +81,11 @@ def register_cluster(uuid, name=None, domain=None, networks=None, url=None):
         message = "Cluster registered"
 
     # Massage the data so that we can pass it into NodeGroupDefineForm.
-    data = {
-        "cluster_name": name,
-        "name": domain,
-        "uuid": uuid,
-    }
+    data = {"uuid": uuid}
+    if name is not None:
+        data["cluster_name"] = name
+    if domain is not None:
+        data["name"] = domain
 
     # Populate networks when there are no preexisting networks.
     if networks is not None:

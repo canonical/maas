@@ -27,6 +27,7 @@ from maasserver.rpc.clusters import (
     register_cluster,
     )
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from testtools.matchers import Equals
@@ -153,6 +154,19 @@ class TestRegister(MAASServerTestCase):
         old_url = cluster.maas_url
         cluster_registered = register_cluster(cluster.uuid, url=None)
         self.assertEqual(old_url, cluster_registered.maas_url)
+
+    def test__does_NOT_update_cluster_name_if_none_provided(self):
+        cluster_name = factory.make_name("cluster")
+        cluster = factory.make_NodeGroup(cluster_name=cluster_name)
+        cluster_registered = register_cluster(cluster.uuid, name=None)
+        self.assertEqual(
+            cluster_name, reload_object(cluster_registered).cluster_name)
+
+    def test__does_NOT_update_domain_if_none_provided(self):
+        domain = factory.make_name("domain")
+        cluster = factory.make_NodeGroup(name=domain)
+        cluster_registered = register_cluster(cluster.uuid, domain=None)
+        self.assertEqual(domain, reload_object(cluster_registered).name)
 
     def test__raises_ValidationError_when_input_is_bad(self):
         error = self.assertRaises(
