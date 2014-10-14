@@ -13,11 +13,20 @@ power_address={{power_address}}
 power_change={{power_change}}
 power_pass={{power_pass}}
 ip_address={{ip_address}}
+boot_mode={{boot_mode}}
 
 # The user specified power_address overrides any automatically determined
 # ip_address.
 if [ -n "$power_address" ]; then
   ip_address=$power_address
+fi
+
+# boot_mode tells us whether we're pxe booting or local booting. For local
+# booting, the argument to amttool must be empty (NOT 'hd', it doesn't work!).
+if [ "$boot_mode" = 'local' ]; then
+    amt_boot_mode=''
+else
+    amt_boot_mode=$boot_mode
 fi
 
 
@@ -82,9 +91,9 @@ query_state() {
 }
 
 
-# Power-cycle the machine, and boot it using PXE.
+# Power-cycle the machine, and boot it using the requested boot mode.
 restart() {
-    issue_amt_command powercycle pxe
+    issue_amt_command powercycle "$amt_boot_mode"
 }
 
 
@@ -95,7 +104,7 @@ power_on() {
     for attempts in $(seq 0 10)
     do
         # Issue the AMT command; amttool will prompt for confirmation.
-        yes | issue_amt_command powerup pxe
+        yes | issue_amt_command powerup "$amt_boot_mode"
         if [ "$(query_state)" = 'on' ]
         then
             # Success.  Machine is on.

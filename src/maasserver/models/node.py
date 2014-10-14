@@ -1208,6 +1208,14 @@ class Node(CleanSave, TimestampedModel):
             if primary_mac is not None:
                 mac = primary_mac.mac_address.get_raw()
                 power_params['mac_address'] = mac
+
+        # boot_mode is something that tells the template whether this is
+        # a PXE boot or a local HD boot.
+        if self.status == NODE_STATUS.DEPLOYED:
+            power_params['boot_mode'] = 'local'
+        else:
+            power_params['boot_mode'] = 'pxe'
+
         return power_params
 
     def get_effective_power_info(self):
