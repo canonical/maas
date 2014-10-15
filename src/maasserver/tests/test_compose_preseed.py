@@ -115,7 +115,7 @@ class TestComposePreseed(MAASServerTestCase):
         data = yaml.safe_load(value)
 
         self.assertIn("manage_etc_hosts", data)
-        self.assertEqual(data["manage_etc_hosts"], "localhost")
+        self.assertEqual(data["manage_etc_hosts"], False)
         self.assertIn("apt_preserve_sources_list", data)
         self.assertEqual(data["apt_preserve_sources_list"], True)
 

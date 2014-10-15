@@ -37,7 +37,11 @@ def compose_cloud_init_preseed(token, base_url=''):
         })
 
     local_config_yaml = yaml.safe_dump({
-        "manage_etc_hosts": "localhost",
+        # Do not let cloud-init override /etc/hosts/: use the default
+        # behavior which means running `dns_resolve(hostname)` on a node
+        # will query the DNS server (and not return 127.0.0.1).
+        # See bug 1087183 for details.
+        "manage_etc_hosts": False,
         "apt_preserve_sources_list": True,
     })
     # this is debconf escaping
