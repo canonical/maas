@@ -87,7 +87,6 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
     )
-from maastesting.testcase import MAASTestCase
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -131,7 +130,7 @@ from twisted.protocols import amp
 from twisted.python.failure import Failure
 
 
-class TestHostnameValidator(MAASTestCase):
+class TestHostnameValidator(MAASServerTestCase):
     """Tests for the validation of hostnames.
 
     Specifications based on:
@@ -2516,7 +2515,7 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
         self.assertIsNone(node.start_transition_monitor(monitor_timeout))
 
 
-class TestClaimStaticIPAddresses(MAASTestCase):
+class TestClaimStaticIPAddresses(MAASServerTestCase):
     """Tests for `Node.claim_static_ip_addresses`."""
 
     def test__returns_empty_list_if_no_iface(self):

@@ -18,7 +18,6 @@ from datetime import datetime
 
 from django.db import transaction
 from maasserver.models.timestampedmodel import now
-from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import TimestampedModelTestModel
 from maastesting.djangotestcase import (
@@ -92,6 +91,7 @@ class UtilitiesTransactionalTest(TransactionTestCase):
     def test_now_returns_transaction_time(self):
         date_now = now()
         # Perform a write database operation.
-        factory.make_Node()
+        obj = TimestampedModelTestModel()
+        obj.save()
         transaction.commit()
         self.assertLessEqual(date_now, now())

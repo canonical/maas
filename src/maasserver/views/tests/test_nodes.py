@@ -32,6 +32,7 @@ from urlparse import (
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from django.utils import html
 from lxml.etree import XPath
 from lxml.html import fromstring
@@ -1718,7 +1719,9 @@ class NodeProbedDetailsExpanderTest(SeleniumTestCase):
         # Loading just once.  Creating a second node in a separate test causes
         # an integrity error in the database; clearly that's not working too
         # well in a Selenium test case.
-        self.load_node_page(self.make_node_with_lldp_output())
+        with transaction.atomic():
+            node = self.make_node_with_lldp_output()
+        self.load_node_page(node)
 
         # The ProbedDetails output is in its hidden state.
         self.assertEqual(

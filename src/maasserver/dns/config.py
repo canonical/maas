@@ -23,6 +23,7 @@ __all__ = [
 
 
 from django.conf import settings
+from maasserver import locks
 from maasserver.dns.zonegenerator import ZoneGenerator
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
@@ -33,6 +34,7 @@ from maasserver.sequence import (
     INT_MAX,
     Sequence,
     )
+from maasserver.utils import synchronised
 from provisioningserver import tasks
 from provisioningserver.logger import get_maas_logger
 
@@ -64,6 +66,7 @@ def is_dns_enabled():
     return settings.DNS_CONNECT
 
 
+@synchronised(locks.dns)
 def change_dns_zones(nodegroups):
     """Update the zone configuration for the given list of Nodegroups.
 
@@ -82,6 +85,7 @@ def change_dns_zones(nodegroups):
             zones=[zone], callback=zone_reload_subtask)
 
 
+@synchronised(locks.dns)
 def add_zone(nodegroup):
     """Add to the DNS server a new zone for the given `nodegroup`.
 
@@ -111,6 +115,7 @@ def add_zone(nodegroup):
         zones=zones_to_write, callback=write_dns_config_subtask)
 
 
+@synchronised(locks.dns)
 def write_full_dns_config(reload_retry=False, force=False):
     """Write the DNS configuration.
 

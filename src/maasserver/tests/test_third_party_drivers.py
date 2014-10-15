@@ -18,6 +18,7 @@ import os
 
 from maasserver import third_party_drivers
 from maasserver.testing.factory import factory
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.third_party_drivers import (
     DriversConfig,
     get_third_party_driver,
@@ -26,7 +27,6 @@ from maasserver.third_party_drivers import (
     populate_kernel_opts,
     )
 from maastesting import root
-from maastesting.testcase import MAASTestCase
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.fields import Bin
 from metadataserver.models import (
@@ -35,7 +35,7 @@ from metadataserver.models import (
     )
 
 
-class TestNodeModaliases(MAASTestCase):
+class TestNodeModaliases(MAASServerTestCase):
 
     def test_uses_commissioning_modaliases(self):
         test_data = b'hulla\nbaloo'
@@ -53,7 +53,7 @@ class TestNodeModaliases(MAASTestCase):
         self.assertEqual([], aliases)
 
 
-class TestMatchAliasesToDriver(MAASTestCase):
+class TestMatchAliasesToDriver(MAASServerTestCase):
 
     def test_finds_first_match(self):
         drivers = [
@@ -73,7 +73,7 @@ class TestMatchAliasesToDriver(MAASTestCase):
         self.assertIsNone(driver)
 
 
-class TestPopulateKernelOpts(MAASTestCase):
+class TestPopulateKernelOpts(MAASServerTestCase):
 
     def test_blacklist_provided(self):
         driver = {'blacklist': 'bad'}
@@ -86,7 +86,7 @@ class TestPopulateKernelOpts(MAASTestCase):
         self.assertNotIn('kernel_opts', driver)
 
 
-class TestGetThirdPartyCode(MAASTestCase):
+class TestGetThirdPartyCode(MAASServerTestCase):
 
     def test_finds_match(self):
         node = factory.make_Node()
@@ -109,7 +109,7 @@ class TestGetThirdPartyCode(MAASTestCase):
         self.assertEqual({}, driver)
 
 
-class TestDriversConfig(MAASTestCase):
+class TestDriversConfig(MAASServerTestCase):
 
     def test_get_defaults_returns_empty_drivers_list(self):
         observed = DriversConfig.get_defaults()

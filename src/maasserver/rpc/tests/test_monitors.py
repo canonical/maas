@@ -28,11 +28,11 @@ from maasserver.testing.eventloop import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
-from maastesting.testcase import MAASTestCase
+from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.rpc.cluster import CancelMonitor
 
 
-class TestHandleMonitorExpired(MAASTestCase):
+class TestHandleMonitorExpired(MAASServerTestCase):
 
     def prepare_cluster_rpc(self, cluster):
         self.useFixture(RegionEventLoopFixture('rpc'))

@@ -21,6 +21,7 @@ import random
 from celery.task import task
 from django.conf import settings
 from django.core.management import call_command
+from maasserver import locks
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
     add_zone,
@@ -46,7 +47,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import MockCalledOnceWith
-from mock import ANY
+from mock import (
+    ANY,
+    sentinel,
+    )
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -172,6 +176,35 @@ class TestDNSServer(MAASServerTestCase):
             ["%s." % fqdn], reverse_lookup_result,
             "Failed to reverse resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(reverse_lookup_result)))
+
+
+class TestDNSModificationUsesLocks(TestDNSServer):
+
+    def patch_is_dns_enabled(self):
+        def check_dns_is_locked():
+            self.assertTrue(
+                locks.dns.is_locked(), "locks.dns isn't locked")
+            return False  # Prevent change_dns_zones from continuing.
+
+        is_dns_enabled = self.patch_autospec(
+            dns_config_module, 'is_dns_enabled')
+        is_dns_enabled.side_effect = check_dns_is_locked
+        return is_dns_enabled
+
+    def test_change_dns_zone_uses_lock(self):
+        is_dns_enabled = self.patch_is_dns_enabled()
+        dns_config_module.change_dns_zones(sentinel.nodegroup)
+        self.assertThat(is_dns_enabled, MockCalledOnceWith())
+
+    def test_add_zone_uses_lock(self):
+        is_dns_enabled = self.patch_is_dns_enabled()
+        dns_config_module.add_zone(sentinel.nodegroup)
+        self.assertThat(is_dns_enabled, MockCalledOnceWith())
+
+    def test_write_full_dns_config_uses_lock(self):
+        is_dns_enabled = self.patch_is_dns_enabled()
+        dns_config_module.write_full_dns_config()
+        self.assertThat(is_dns_enabled, MockCalledOnceWith())
 
 
 class TestDNSConfigModifications(TestDNSServer):

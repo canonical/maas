@@ -35,9 +35,9 @@ from maasserver.testing.factory import factory
 from maastesting.djangotestcase import (
     cleanup_db,
     DjangoTestCase,
+    TransactionTestCase,
     )
 from maastesting.fixtures import DisplayFixture
-from maastesting.testcase import MAASTestCase
 from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
@@ -140,7 +140,7 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-class SeleniumTestCase(MAASTestCase, LiveServerTestCase):
+class SeleniumTestCase(TransactionTestCase, LiveServerTestCase):
     """Selenium-enabled test case.
 
     Two users are pre-created: "user" for a regular user account, or "admin"
