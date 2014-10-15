@@ -231,8 +231,8 @@ def dhcp_explore():
     unconfigured_ifaces = set(all_ifaces) - set(configured_ifaces)
     for iface in sorted(unconfigured_ifaces):
         # Run dhclient in the background to avoid blocking the commissioning.
-        call("dhclient -w %s &" % iface, shell=True)
-        # Ignore return code and continue running dhcplient on the
+        call(["dhclient", "-nw", iface])
+        # Ignore return value and continue running dhcplient on the
         # other interfaces.
 
 
