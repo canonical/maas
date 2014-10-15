@@ -31,6 +31,7 @@ from maasserver.enum import (
 from maasserver.exceptions import ClusterUnavailable
 from maasserver.fields import MAC
 from maasserver.models import (
+    Config,
     Node,
     NodeGroup,
     )
@@ -1189,6 +1190,20 @@ class TestNodesAPI(APITestCase):
         self.assertItemsEqual(
             [node.system_id for node in nodes[1:]],
             parsed_result)
+
+    def test_POST_release_erases_disks_when_enabled(self):
+        owner = self.logged_in_user
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        Config.objects.set_config(
+            'enable_disk_erasing_on_release', True)
+        response = self.client.post(
+            reverse('nodes_handler'), {
+                'op': 'release',
+                'nodes': [node.system_id],
+                })
+        self.assertEqual(httplib.OK, response.status_code, response)
+        node = reload_object(node)
+        self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
 
     def test_handle_when_URL_is_repeated(self):
         # bin/maas-enlist (in the maas-enlist package) has a bug where the

@@ -815,7 +815,7 @@ class NodesHandler(OperationsHandler):
                 # Nothing to do.
                 pass
             elif node.status in RELEASABLE_STATUSES:
-                node.release()
+                node.release_or_erase()
                 released_ids.append(node.system_id)
             else:
                 failed.append(
