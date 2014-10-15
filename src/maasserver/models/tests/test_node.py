@@ -1268,6 +1268,13 @@ class NodeTest(MAASServerTestCase):
             ],
             [node.status for node in nodes])
 
+    def test_release_commits_after_status_change(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        self.patch(Node.objects, 'stop_nodes')
+        commit = self.patch(transaction, 'commit')
+        node.release()
+        self.assertThat(commit, MockCalledOnceWith())
+
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.
@@ -1717,6 +1724,12 @@ class NodeTest(MAASServerTestCase):
         node.end_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
+    def test_end_deployment_commits_after_status_change(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        commit = self.patch(transaction, 'commit')
+        node.end_deployment()
+        self.assertThat(commit, MockCalledOnceWith())
+
     def test_start_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         # Do not start the transaction monitor.
@@ -1733,6 +1746,13 @@ class NodeTest(MAASServerTestCase):
         node.start_deployment()
         self.assertThat(
             mock_start_transition_monitor, MockCalledOnceWith(monitor_timeout))
+
+    def test_start_deployment_commits_after_status_change(self):
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        self.patch(node, 'start_transition_monitor')
+        commit = self.patch(transaction, 'commit')
+        node.start_deployment()
+        self.assertThat(commit, MockCalledOnceWith())
 
     def test_handle_monitor_expired_marks_node_as_failed(self):
         status = random.choice(MONITORED_STATUSES)

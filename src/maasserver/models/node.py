@@ -682,6 +682,10 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
         self.save()
+        # We explicitly commit here because during bulk node actions we
+        # want to make sure that each successful state transition is
+        # recorded in the DB.
+        transaction.commit()
         deployment_time = self.get_deployment_time()
         self.start_transition_monitor(deployment_time)
 
@@ -689,6 +693,10 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
+        # We explicitly commit here because during bulk node actions we
+        # want to make sure that each successful state transition is
+        # recorded in the DB.
+        transaction.commit()
 
     def start_transition_monitor(self, timeout):
         """Start cluster-side transition monitor."""
@@ -1372,6 +1380,10 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ''
         self.license_key = ''
         self.save()
+        # We explicitly commit here because during bulk node actions we
+        # want to make sure that each successful state transition is
+        # recorded in the DB.
+        transaction.commit()
 
     def release_or_erase(self):
         """Either release the node or erase the node then release it, depending
