@@ -2584,3 +2584,211 @@ class TestDeploymentStatus(MAASServerTestCase):
             )
         node = factory.make_Node(status=status)
         self.assertEqual("Not in deployment", node.get_deployment_status())
+
+
+class TestNode_Start(MAASServerTestCase):
+    """Tests for Node.start()."""
+
+    def setUp(self):
+        super(TestNode_Start, self).setUp()
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def prepare_rpc_to_cluster(self, nodegroup):
+        protocol = self.rpc_fixture.makeCluster(
+            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn,
+            cluster_module.StartMonitors)
+        protocol.CreateHostMaps.side_effect = always_succeed_with({})
+        protocol.StartMonitors.side_effect = always_succeed_with({})
+        protocol.PowerOn.side_effect = always_succeed_with({})
+        return protocol
+
+    def make_acquired_node_with_mac(self, user, nodegroup=None):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup, status=NODE_STATUS.READY)
+        self.prepare_rpc_to_cluster(node.nodegroup)
+        node.acquire(user)
+        return node
+
+    def test__sets_user_data(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        user_data = factory.make_bytes()
+
+        node.start(user, user_data=user_data)
+
+        nud = NodeUserData.objects.get(node=node)
+        self.assertEqual(user_data, nud.data)
+
+    def test__resets_user_data(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        user_data = factory.make_bytes()
+        NodeUserData.objects.set_user_data(node, user_data)
+
+        node.start(user, user_data=None)
+
+        self.assertFalse(NodeUserData.objects.filter(node=node).exists())
+
+    def test__claims_static_ip_addresses(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+
+        claim_static_ip_addresses = self.patch_autospec(
+            node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        node.start(user)
+
+        self.expectThat(node.claim_static_ip_addresses, MockAnyCall())
+
+    def test__only_claims_static_addresses_when_allocated(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node.status = NODE_STATUS.BROKEN
+        node.save()
+
+        claim_static_ip_addresses = self.patch_autospec(
+            node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        node.start(user)
+
+        # No calls are made to claim_static_ip_addresses, since the node
+        # isn't ALLOCATED.
+        self.assertThat(claim_static_ip_addresses, MockNotCalled())
+
+    def test__updates_host_maps(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+
+        node.start(user)
+
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                node.nodegroup: {
+                    ip_address.ip: mac.mac_address
+                    for ip_address in mac.ip_addresses.all()
+                }
+                for mac in node.mac_addresses_on_managed_interfaces()
+            }))
+
+    def test__propagates_errors_when_updating_host_maps(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = [
+            Failure(AssertionError("Please, don't do that.")),
+            ]
+
+        error = self.assertRaises(
+            MultipleFailures, node.start, user)
+
+        self.assertSequenceEqual(
+            update_host_maps.return_value, error.args)
+
+    def test__updates_dns(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        change_dns_zones = self.patch(dns_config, "change_dns_zones")
+
+        node.start(user)
+
+        self.assertThat(
+            change_dns_zones, MockCalledOnceWith(node.nodegroup))
+
+    def test__starts_nodes(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        power_info = node.get_effective_power_info()
+
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {}
+
+        node.start(user)
+
+        self.assertThat(power_on_nodes, MockCalledOnceWith(ANY))
+
+        nodes_start_info_observed = power_on_nodes.call_args[0][0]
+        nodes_start_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+        ]
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_start_info_expected,
+            nodes_start_info_observed)
+
+    def test__raises_failures_when_power_action_fails(self):
+        class PraiseBeToJTVException(Exception):
+            """A nonsense exception for this test.
+
+            (Though jtv is praiseworthy, and that's worth noting).
+            """
+
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                PraiseBeToJTVException("Defiance is futile")),
+        }
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        failures = self.assertRaises(MultipleFailures, node.start, user)
+        [failure] = failures.args
+        self.assertThat(failure.value, IsInstance(PraiseBeToJTVException))
+
+    def test__marks_allocated_node_as_deploying(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        node.start(user)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYING, reload_object(node).status)
+
+    def test__does_not_change_state_of_deployed_node(self):
+        user = factory.make_User()
+        # Create a node that we can execute power actions on, so that we
+        # exercise the whole of start().
+        node = factory.make_Node(
+            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
+            owner=user)
+        factory.make_MACAddress(node=node)
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            node.system_id: defer.succeed({}),
+        }
+        node.start(user)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+    def test__does_not_try_to_start_nodes_that_cant_be_started_by_MAAS(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        power_info = PowerInfo(
+            can_be_started=False,
+            can_be_stopped=True,
+            can_be_queried=True,
+            power_type=node.get_effective_power_type(),
+            power_parameters=node.get_effective_power_parameters(),
+            )
+        self.patch(node, 'get_effective_power_info').return_value = power_info
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        node.start(user)
+        self.assertThat(power_on_nodes, MockNotCalled())

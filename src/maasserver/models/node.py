@@ -1550,3 +1550,60 @@ class Node(CleanSave, TimestampedModel):
             return self.pxe_mac
 
         return self.macaddress_set.first()
+
+    def start(self, by_user, user_data=None):
+        """Request on given user's behalf that the node be started up.
+
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :param user_data: Optional blob of user-data to be made available to
+            the node through the metadata service.  If not given, any
+            previous user data is used.
+        :type user_data: unicode
+
+        :raises MultipleFailures: When there are failures originating from a
+            remote process. There could be one or more failures -- it's not
+            strictly *multiple* -- but they do all originate from comms with
+            remote processes.
+        :raises: `StaticIPAddressExhaustion` if there are not enough IP
+            addresses left in the static range for this node toget all
+            the addresses it needs.
+        """
+        # Avoid circular imports.
+        from metadataserver.models import NodeUserData
+        from maasserver.dns.config import change_dns_zones
+
+        # Record the user data for the node. Note that we do this
+        # whether or not we can actually send power commands to the
+        # node; the user may choose to start it manually.
+        NodeUserData.objects.set_user_data(self, user_data)
+
+        # Claim static IP addresses for the node if it's ALLOCATED.
+        if self.status == NODE_STATUS.ALLOCATED:
+            static_mappings = defaultdict(dict)
+            claims = self.claim_static_ip_addresses()
+            static_mappings[self.nodegroup].update(claims)
+            update_host_maps_failures = list(update_host_maps(static_mappings))
+            if len(update_host_maps_failures) != 0:
+                raise MultipleFailures(*update_host_maps_failures)
+            self.start_deployment()
+
+        # Update the DNS zone with the new static IP info as necessary.
+        change_dns_zones(self.nodegroup)
+
+        power_info = self.get_effective_power_info()
+        if not power_info.can_be_started:
+            # The node can't be powered on by MAAS, so return early.
+            # Everything we've done up to this point is still valid;
+            # this is not an error state.
+            return
+
+        # We need to convert the node into something that we can
+        # pass into the reactor.
+        start_info = (
+            self.system_id, self.hostname, self.nodegroup.uuid, power_info,)
+
+        # Send the power on command to the node and wait for it to
+        # return.
+        deferreds = power_on_nodes([start_info]).viewvalues()
+        wait_for_power_commands(deferreds)
