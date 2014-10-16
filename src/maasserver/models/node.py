@@ -1461,6 +1461,8 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s: Marking node fixed", self.hostname)
         self.status = NODE_STATUS.READY
         self.error_description = ''
+        self.osystem = ''
+        self.distro_series = ''
         self.save()
 
     def update_power_state(self, power_state):
