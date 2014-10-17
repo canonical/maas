@@ -110,11 +110,8 @@ Custom Images.
 maas-proxy.
   MAAS now uses maas-proxy as the default proxy solution instead of
   squid-deb-proxy. On a fresh install, MAAS will use maas-proxy by default.
-  On upgrades from previous releases, MAAS will continue to use squid-deb-proxy
-  as the proxy for backwards compatibility.
-  If you wish to use maas-proxy, you simply need to install it. Running this will
-  install maas-proxy and remove squid-deb-proxy:
-  sudo apt-get install maas-proxy
+  On upgrades from previous releases, MAAS will install maas-proxy instead of
+  squid-deb-proxy.
 
 Minor notable changes
 ---------------------
