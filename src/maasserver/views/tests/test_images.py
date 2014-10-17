@@ -25,6 +25,7 @@ from maasserver.enum import (
     NODE_STATUS,
     )
 from maasserver.models import (
+    BootResource,
     BootSourceCache,
     BootSourceSelection,
     Config,
@@ -37,6 +38,7 @@ from maasserver.testing.orm import (
     )
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.views import images as images_view
+from maasserver.views.images import format_size
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
@@ -687,6 +689,195 @@ class TestImageAjax(MAASServerTestCase):
         json_obj = json.loads(response.content)
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
+
+    def test_combines_hwe_resources_into_one_resource(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        for subarch in subarches:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        self.assertEqual(
+            1, len(json_obj['resources']),
+            'More than one resource was returned.')
+
+    def test_combined_hwe_resource_calculates_unique_size(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        largefile = factory.make_LargeFile()
+        for subarch in subarches:
+            resource = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+            resource_set = factory.make_BootResourceSet(resource)
+            factory.make_BootResourceFile(resource_set, largefile)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(
+            format_size(largefile.total_size), json_resource['size'])
+
+    def test_combined_hwe_resource_calculates_number_of_nodes_deployed(self):
+        self.client_log_in()
+        osystem = 'ubuntu'
+        series = factory.make_name('series')
+        name = '%s/%s' % (osystem, series)
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        for subarch in subarches:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+
+        number_of_nodes = random.randint(1, 4)
+        for _ in range(number_of_nodes):
+            subarch = random.choice(subarches)
+            node_architecture = '%s/%s' % (arch, subarch)
+            factory.make_Node(
+                status=NODE_STATUS.DEPLOYED,
+                osystem=osystem, distro_series=series,
+                architecture=node_architecture)
+
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
+
+    def test_combined_hwe_resource_calculates_complete_True(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        resources = [
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+            for subarch in subarches
+            ]
+        self.patch(
+            BootResource.objects,
+            'get_resources_matching_boot_images').return_value = resources
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertTrue(json_resource['complete'])
+
+    def test_combined_hwe_resource_calculates_complete_False(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        incomplete_subarch = subarches.pop()
+        factory.make_BootResource(
+            rtype=BOOT_RESOURCE_TYPE.SYNCED,
+            name=name, architecture='%s/%s' % (arch, incomplete_subarch))
+        for subarch in subarches:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertFalse(json_resource['complete'])
+
+    def test_combined_hwe_resource_calculates_progress(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        largefile = factory.make_LargeFile()
+        largefile.total_size = largefile.total_size * 2
+        largefile.save()
+        for subarch in subarches:
+            resource = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+            resource_set = factory.make_BootResourceSet(resource)
+            factory.make_BootResourceFile(resource_set, largefile)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual("Downloading  50%", json_resource['status'])
+
+    def test_combined_hwe_resource_shows_queued_if_no_progress(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        largefile = factory.make_LargeFile(content="")
+        for subarch in subarches:
+            resource = factory.make_BootResource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+            resource_set = factory.make_BootResourceSet(resource)
+            factory.make_BootResourceFile(resource_set, largefile)
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual("Queued for download", json_resource['status'])
+
+    def test_combined_hwe_resource_shows_complete_status(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        resources = [
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+            for subarch in subarches
+            ]
+        self.patch(
+            BootResource.objects,
+            'get_resources_matching_boot_images').return_value = resources
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual("Complete", json_resource['status'])
+
+    def test_combined_hwe_resource_shows_waiting_for_cluster_to_sync(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        for subarch in subarches:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+        self.patch(
+            BootResource.objects,
+            'get_resources_matching_boot_images').return_value = []
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(
+            "Waiting for clusters to sync", json_resource['status'])
+
+    def test_combined_hwe_resource_shows_clusters_syncing(self):
+        self.client_log_in()
+        name = 'ubuntu/%s' % factory.make_name('series')
+        arch = factory.make_name('arch')
+        subarches = [factory.make_name('hwe') for _ in range(3)]
+        for subarch in subarches:
+            factory.make_usable_boot_resource(
+                rtype=BOOT_RESOURCE_TYPE.SYNCED,
+                name=name, architecture='%s/%s' % (arch, subarch))
+        self.patch(
+            BootResource.objects,
+            'get_resources_matching_boot_images').return_value = []
+        self.patch(
+            images_view, 'is_import_boot_images_running').return_value = True
+        response = self.get_images_ajax()
+        json_obj = json.loads(response.content)
+        json_resource = json_obj['resources'][0]
+        self.assertEqual(
+            "Syncing to clusters", json_resource['status'])
 
 
 class TestImageDelete(MAASServerTestCase):
