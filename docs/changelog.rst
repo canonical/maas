@@ -96,8 +96,6 @@ Removal of Celery and RabbitMQ.
   Since a constant connection is maintained, as a side effect the web UI now
   shows whether each cluster is connected or not.
 
-  XXX security for cluster to region
-
 Support for other OSes.
   Non-Ubuntu OSes are fully supported now. This includes:
    - Windows
