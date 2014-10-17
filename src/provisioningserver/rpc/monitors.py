@@ -49,6 +49,9 @@ def start_monitors(monitors, clock=reactor):
     for monitor in monitors:
         delay = monitor["deadline"] - datetime.now(amp.utc)
         monitor_id = monitor["id"]
+        if monitor_id in running_monitors:
+            dc, _ = running_monitors.pop(monitor_id)
+            dc.cancel()
         call = clock.callLater(
             delay.total_seconds(), monitor_expired, monitor_id)
         running_monitors[monitor_id] = (call, monitor["context"])
