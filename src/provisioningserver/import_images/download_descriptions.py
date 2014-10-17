@@ -78,12 +78,14 @@ class RepoDumper(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         os = get_os_from_product(item)
-        arch, subarch = item['arch'], item['subarch']
+        arch, subarches = item['arch'], item['subarches']
         release = item['release']
         label = item['label']
-        base_image = ImageSpec(os, arch, subarch, release, label)
+        base_image = ImageSpec(os, arch, None, release, label)
         compact_item = clean_up_repo_item(item)
-        self.boot_images_dict.setdefault(base_image, compact_item)
+        for subarch in subarches.split(','):
+            self.boot_images_dict.setdefault(
+                base_image._replace(subarch=subarch), compact_item)
 
 
 def value_passes_filter_list(filter_list, property_value):

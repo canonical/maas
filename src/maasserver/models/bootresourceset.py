@@ -130,7 +130,7 @@ class BootResourceSet(CleanSave, TimestampedModel):
         if size <= 0:
             # Handle division by zero
             return 0
-        return 100.0 * size / float(self.total_size)
+        return self.total_size / float(size)
 
     @property
     def complete(self):

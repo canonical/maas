@@ -53,7 +53,6 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     Config,
-    LargeFile,
     Node,
     )
 from maasserver.views import HelpfulDeleteView
@@ -461,149 +460,14 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
             self.add_resource_template_attributes(resource)
         return resources
 
-    def is_hwe_resource(self, resource):
-        """Return True if the resource is an Ubuntu HWE resource."""
-        if resource.rtype != BOOT_RESOURCE_TYPE.SYNCED:
-            return False
-        if not resource.name.startswith('ubuntu/'):
-            return False
-        arch, subarch = resource.split_arch()
-        return subarch.startswith('hwe-')
-
-    def pick_latest_datetime(self, time, other_time):
-        """Return the datetime that is the latest."""
-        if time is None:
-            return other_time
-        return max([time, other_time])
-
-    def calculate_unique_size_for_resources(self, resources):
-        """Return size of all unique largefiles for the given resources."""
-        shas = set()
-        size = 0
-        for resource in resources:
-            resource_set = resource.get_latest_set()
-            if resource_set is None:
-                continue
-            for rfile in resource_set.files.all():
-                try:
-                    largefile = rfile.largefile
-                except LargeFile.DoesNotExist:
-                    continue
-                if largefile.sha256 not in shas:
-                    size += largefile.total_size
-                    shas.add(largefile.sha256)
-        return size
-
-    def are_all_resources_complete(self, resources):
-        """Return the complete status for all the given resources."""
-        for resource in resources:
-            resource_set = resource.get_latest_set()
-            if resource_set is None:
-                return False
-            if not resource_set.complete:
-                return False
-        return True
-
-    def get_last_update_for_resources(self, resources):
-        """Return the latest updated time for all resources."""
-        last_update = None
-        for resource in resources:
-            last_update = self.pick_latest_datetime(
-                last_update, resource.updated)
-            resource_set = resource.get_latest_set()
-            if resource_set is not None:
-                last_update = self.pick_latest_datetime(
-                    last_update, resource_set.updated)
-        return last_update
-
-    def get_number_of_nodes_for_resources(self, resources):
-        """Return the number of nodes used by all resources."""
-        return sum([
-            self.get_number_of_nodes_deployed_for(resource)
-            for resource in resources])
-
-    def get_progress_for_resources(self, resources):
-        """Return the overall progress for all resources."""
-        size = 0
-        total_size = 0
-        for resource in resources:
-            resource_set = resource.get_latest_set()
-            if resource_set is not None:
-                size += resource_set.size
-                total_size += resource_set.total_size
-        if size <= 0:
-            # Handle division by zero
-            return 0
-        return 100.0 * (size / float(total_size))
-
-    def hwes_to_resource(self, hwes):
-        """Convert the list of hwes into one resource to be used in the UI."""
-        # Calculate all of the values using all of the hwe resources for
-        # this combination of resources.
-        last_update = self.get_last_update_for_resources(hwes)
-        unique_size = self.calculate_unique_size_for_resources(hwes)
-        number_of_nodes = self.get_number_of_nodes_for_resources(hwes)
-        complete = self.are_all_resources_complete(hwes)
-        progress = self.get_progress_for_resources(hwes)
-
-        # Set the computed attributes on the first resource as that will
-        # be the only one returned to the UI.
-        resource = hwes[0]
-        resource.arch, resource.subarch = resource.split_arch()
-        resource.title = self.get_resource_title(resource)
-        resource.complete = complete
-        resource.size = format_size(unique_size)
-        resource.last_update = last_update
-        resource.number_of_nodes = number_of_nodes
-        resource.complete = complete
-        if not complete:
-            if progress > 0:
-                resource.status = "Downloading %3.0f%%" % progress
-                resource.downloading = True
-            else:
-                resource.status = "Queued for download"
-                resource.downloading = False
-        else:
-            # See if all the hwe resources exist on all the clusters.
-            cluster_has_hwes = any(
-                hwe in hwes for hwe in self.cluster_resources)
-            if cluster_has_hwes:
-                resource.status = "Complete"
-                resource.downloading = False
-            else:
-                resource.complete = False
-                if self.clusters_syncing:
-                    resource.status = "Syncing to clusters"
-                    resource.downloading = True
-                else:
-                    resource.status = "Waiting for clusters to sync"
-                    resource.downloading = False
-        return resource
-
-    def combine_hwe_resources(self, resources):
-        """Return a list of resources removing the duplicate hwe resources."""
-        none_hwe_resources = []
-        hwe_resources = defaultdict(list)
-        for resource in resources:
-            if not self.is_hwe_resource(resource):
-                self.add_resource_template_attributes(resource)
-                none_hwe_resources.append(resource)
-            else:
-                arch = resource.split_arch()[0]
-                key = '%s/%s' % (resource.name, arch)
-                hwe_resources[key].append(resource)
-        combined_hwes = [
-            self.hwes_to_resource(hwes)
-            for _, hwes in hwe_resources.items()
-            ]
-        return none_hwe_resources + combined_hwes
-
     def ajax(self, request, *args, **kwargs):
         """Return all resources in a json object.
 
         This is used by the image model list on the client side to update
         the status of images."""
-        resources = self.combine_hwe_resources(BootResource.objects.all())
+        resources = list(BootResource.objects.all())
+        for resource in resources:
+            self.add_resource_template_attributes(resource)
         json_resources = [
             dict(
                 id=resource.id,

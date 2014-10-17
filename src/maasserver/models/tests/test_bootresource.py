@@ -363,34 +363,6 @@ class TestGetResourcesMatchingBootImages(MAASServerTestCase):
             [resource],
             BootResource.objects.get_resources_matching_boot_images(images))
 
-    def test__returns_multiple_resource_for_hwe_resources(self):
-        os = factory.make_name('os')
-        series = factory.make_name('series')
-        name = '%s/%s' % (os, series)
-        arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
-        resources = [
-            factory.make_usable_boot_resource(
-                rtype=BOOT_RESOURCE_TYPE.SYNCED,
-                name=name, architecture='%s/%s' % (arch, subarch))
-            for subarch in subarches
-            ]
-        images = []
-        for resource in resources:
-            label = resource.get_latest_complete_set().label
-            purposes = [factory.make_name('purpose') for _ in range(3)]
-            arch, subarch = resource.split_arch()
-            images.extend([
-                make_rpc_boot_image(
-                    osystem=os, release=series,
-                    architecture=arch, subarchitecture=subarch,
-                    label=label, purpose=purpose)
-                for purpose in purposes
-                ])
-        self.assertItemsEqual(
-            resources,
-            BootResource.objects.get_resources_matching_boot_images(images))
-
     def test__returns_resource_for_generated_resource(self):
         resource = factory.make_usable_boot_resource(
             rtype=BOOT_RESOURCE_TYPE.GENERATED)

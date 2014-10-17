@@ -132,7 +132,7 @@ class TestBootResourceSet(MAASServerTestCase):
             resource_set, largefile, filename=filetype, filetype=filetype)
         self.assertEqual(0, resource_set.progress)
 
-    def test_progress_increases_from_0_to_100(self):
+    def test_progress_increases_from_0_to_1(self):
         resource = factory.make_BootResource()
         resource_set = factory.make_BootResourceSet(resource)
         filetype = BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE
@@ -149,7 +149,7 @@ class TestBootResourceSet(MAASServerTestCase):
             stream.write(b"a")
             current_size += 1
             self.assertAlmostEqual(
-                100.0 * current_size / float(total_size),
+                total_size / float(current_size),
                 resource_set.progress)
 
     def test_progress_accumulates_all_files(self):
@@ -174,7 +174,7 @@ class TestBootResourceSet(MAASServerTestCase):
                 content=content, size=total_size)
             factory.make_BootResourceFile(
                 resource_set, largefile, filename=filetype, filetype=filetype)
-        progress = 100.0 * final_size / float(final_total_size)
+        progress = final_total_size / float(final_size)
         self.assertAlmostEqual(progress, resource_set.progress)
 
     def test_complete_returns_false_for_no_files(self):
