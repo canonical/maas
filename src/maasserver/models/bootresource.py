@@ -186,19 +186,28 @@ class BootResourceManager(Manager):
             else:
                 rtypes = [BOOT_RESOURCE_TYPE.UPLOADED]
                 name = image['release']
-            resource = resources.filter(
+            matching_resources = resources.filter(
                 rtype__in=rtypes, name=name,
-                architecture__startswith=image['architecture']).first()
-            if resource is None:
-                continue
-            if not resource.supports_subarch(image['subarchitecture']):
-                continue
-            resource_set = resource.get_latest_complete_set()
-            if resource_set is None:
-                continue
-            if resource_set.label != image['label']:
-                continue
-            matched_resources.add(resource)
+                architecture__startswith=image['architecture'])
+            for resource in matching_resources:
+                if resource is None:
+                    # This shouldn't happen at all, but just to be sure.
+                    continue
+                if not resource.supports_subarch(image['subarchitecture']):
+                    # This matching resource doesn't support the images
+                    # subarchitecture, so its not a matching resource.
+                    continue
+                resource_set = resource.get_latest_complete_set()
+                if resource_set is None:
+                    # Possible that the import just started, and there is no
+                    # set. Making it not a matching resource, as it cannot
+                    # exist on the cluster unless it has a set.
+                    continue
+                if resource_set.label != image['label']:
+                    # The label is different so the cluster has a different
+                    # version of this set.
+                    continue
+                matched_resources.add(resource)
         return list(matched_resources)
 
     def boot_images_are_in_sync(self, images):
