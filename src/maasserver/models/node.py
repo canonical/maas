@@ -1609,3 +1609,37 @@ class Node(CleanSave, TimestampedModel):
         # return.
         deferreds = power_on_nodes([start_info]).viewvalues()
         wait_for_power_commands(deferreds)
+
+    def stop(self, by_user, stop_mode='hard'):
+        """Request that the node be powered down.
+
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :param stop_mode: Power off mode - usually 'soft' or 'hard'.
+        :type stop_mode: unicode
+        :raises MultipleFailures: When there are failures originating
+            from the RPC power action.
+        """
+        if by_user != self.owner and not by_user.is_superuser:
+            # You can't stop a node you don't own unless you're an
+            # admin, so we return early.  This is consistent with the
+            # behaviour of NodeManager.stop_nodes(); it may be better to
+            # raise an error here.
+            return
+
+        power_info = self.get_effective_power_info()
+        if not power_info.can_be_stopped:
+            # We can't stop this node, so just return; trying to stop a
+            # node we don't know how to stop isn't an error state, but
+            # it's a no-op.
+            return
+
+        # Smuggle in a hint about how to power-off the self.
+        power_info.power_parameters['power_off_mode'] = stop_mode
+        stop_info = (
+            self.system_id, self.hostname, self.nodegroup.uuid, power_info)
+
+        # Request that the node be powered off and wait for the command
+        # to return or fail.
+        deferreds = power_off_nodes([stop_info]).viewvalues()
+        wait_for_power_commands(deferreds)

@@ -2799,3 +2799,108 @@ class TestNode_Start(MAASServerTestCase):
         power_on_nodes = self.patch(node_module, "power_on_nodes")
         node.start(user)
         self.assertThat(power_on_nodes, MockNotCalled())
+
+
+class TestNode_Stop(MAASServerTestCase):
+    """Tests for Node.stop()."""
+
+    def make_node_with_mac(self, user, nodegroup=None, power_type="virsh"):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup, status=NODE_STATUS.READY,
+            power_type=power_type)
+        node.acquire(user)
+        return node
+
+    def test__stops_nodes(self):
+        wait_for_power_commands = self.patch_autospec(
+            node_module, 'wait_for_power_commands')
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_nodes.side_effect = lambda nodes: {
+            system_id: Deferred() for system_id, _, _, _ in nodes}
+
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+        power_info = node.get_effective_power_info()
+
+        stop_mode = factory.make_name('stop-mode')
+        node.stop(user, stop_mode)
+
+        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
+
+        nodes_stop_info_observed = power_off_nodes.call_args[0][0]
+        nodes_stop_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            ]
+
+        # The stop mode is added into the power info that's passed.
+        for _, _, _, power_info in nodes_stop_info_expected:
+            power_info.power_parameters['power_off_mode'] = stop_mode
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_stop_info_expected,
+            nodes_stop_info_observed)
+
+    def test__does_not_stop_nodes_the_user_cannot_edit(self):
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        owner = factory.make_User()
+        node = self.make_node_with_mac(owner)
+
+        user = factory.make_User()
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__allows_admin_to_stop_any_node(self):
+        wait_for_power_commands = self.patch_autospec(
+            node_module, 'wait_for_power_commands')
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        owner = factory.make_User()
+        node = self.make_node_with_mac(owner)
+
+        admin = factory.make_admin()
+        node.stop(admin)
+
+        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
+
+    def test__does_not_attempt_power_off_if_no_power_type(self):
+        # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
+        # won't attempt to power it off.
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+        node.power_type = ""
+        node.save()
+
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__does_not_attempt_power_off_if_cannot_be_stopped(self):
+        # If the node has a power_type that doesn't allow MAAS to power
+        # the node off, stop() won't attempt to send the power command.
+        user = factory.make_User()
+        node = self.make_node_with_mac(user, power_type="ether_wake")
+        node.save()
+
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__propagates_failures_when_power_action_fails(self):
+        fake_exception_type = factory.make_exception_type()
+
+        power_off_nodes = self.patch(node_module, "power_off_nodes")
+        power_off_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                fake_exception_type("Soon be the weekend!"))
+        }
+
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+
+        error = self.assertRaises(MultipleFailures, node.stop, user)
+        [failure] = error.args
+        self.assertThat(failure.value, IsInstance(fake_exception_type))
