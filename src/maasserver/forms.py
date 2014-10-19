@@ -327,8 +327,14 @@ class NodeForm(MAASModelForm):
         # a parameter named 'request' because it is used interchangingly
         # with NodeAdminForm which actually uses this parameter.
 
+        instance = kwargs.get('instance')
+        if instance is None or instance.owner is None:
+            self.has_owner = False
+        else:
+            self.has_owner = True
+
         # Are we creating a new node object?
-        self.new_node = (kwargs.get('instance') is None)
+        self.new_node = (instance is None)
         if self.new_node:
             # Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
@@ -349,7 +355,7 @@ class NodeForm(MAASModelForm):
                 self.instance.nodegroup.nodegroupinterface_set.all())
 
         self.set_up_architecture_field()
-        self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
+        self.set_up_osystem_and_distro_series_fields(instance)
 
         if not allow_disable_ipv4:
             # Hide the disable_ipv4 field until support works properly.  The
@@ -359,6 +365,17 @@ class NodeForm(MAASModelForm):
             #
             # To enable the field, just remove this clause.
             self.fields['disable_ipv4'] = forms.BooleanField(
+                label="", required=False, widget=forms.HiddenInput())
+
+        # We only want the license key field to render in the UI if the `OS`
+        # and `Release` fields are also present.
+        if self.has_owner:
+            self.fields['license_key'] = forms.CharField(
+                label="License Key", required=False, help_text=(
+                    "License key for operating system"),
+                max_length=30)
+        else:
+            self.fields['license_key'] = forms.CharField(
                 label="", required=False, widget=forms.HiddenInput())
 
     def set_up_architecture_field(self):
@@ -387,19 +404,26 @@ class NodeForm(MAASModelForm):
         """
         osystems = list_all_usable_osystems()
         releases = list_all_usable_releases(osystems)
-        os_choices = list_osystem_choices(osystems)
-        distro_choices = list_release_choices(releases)
-        invalid_osystem_message = compose_invalid_choice_text(
-            'osystem', os_choices)
-        invalid_distro_series_message = compose_invalid_choice_text(
-            'distro_series', distro_choices)
-        self.fields['osystem'] = forms.ChoiceField(
-            label="OS", choices=os_choices, required=False, initial='',
-            error_messages={'invalid_choice': invalid_osystem_message})
-        self.fields['distro_series'] = forms.ChoiceField(
-            label="Release", choices=distro_choices,
-            required=False, initial='',
-            error_messages={'invalid_choice': invalid_distro_series_message})
+        if self.has_owner:
+            os_choices = list_osystem_choices(osystems)
+            distro_choices = list_release_choices(releases)
+            invalid_osystem_message = compose_invalid_choice_text(
+                'osystem', os_choices)
+            invalid_distro_series_message = compose_invalid_choice_text(
+                'distro_series', distro_choices)
+            self.fields['osystem'] = forms.ChoiceField(
+                label="OS", choices=os_choices, required=False, initial='',
+                error_messages={'invalid_choice': invalid_osystem_message})
+            self.fields['distro_series'] = forms.ChoiceField(
+                label="Release", choices=distro_choices,
+                required=False, initial='',
+                error_messages={
+                    'invalid_choice': invalid_distro_series_message})
+        else:
+            self.fields['osystem'] = forms.ChoiceField(
+                label="", required=False, widget=forms.HiddenInput())
+            self.fields['distro_series'] = forms.ChoiceField(
+                label="", required=False, widget=forms.HiddenInput())
         if instance is not None:
             initial_value = get_distro_series_initial(osystems, instance)
             if instance is not None:
@@ -545,11 +569,6 @@ class NodeForm(MAASModelForm):
             "by the domain defined on the cluster; if the cluster controller "
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
-
-    license_key = forms.CharField(
-        label="License Key", required=False, help_text=(
-            "License key for operating system"),
-        max_length=30)
 
     class Meta:
         model = Node
@@ -2342,7 +2361,8 @@ class LicenseKeyForm(MAASModelForm):
             error_messages={'invalid_choice': invalid_osystem_message})
         self.fields['distro_series'] = forms.ChoiceField(
             label="Release", choices=distro_choices, required=True,
-            error_messages={'invalid_choice': invalid_distro_series_message})
+            error_messages={
+                'invalid_choice': invalid_distro_series_message})
         if instance is not None:
             initial_value = get_distro_series_initial(
                 osystems, instance, with_key_required=False)

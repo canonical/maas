@@ -658,6 +658,12 @@ class NodeEdit(UpdateView):
     def get_form_class(self):
         return get_node_edit_form(self.request.user)
 
+    def get_has_owner(self):
+        node = self.get_object()
+        if node is None or node.owner is None:
+            return mark_safe("false")
+        return mark_safe("true")
+
     def get_form_kwargs(self):
         # This is here so the request can be passed to the form. The
         # form needs it because it sets error messages for the UI.
@@ -673,6 +679,9 @@ class NodeEdit(UpdateView):
         context = super(NodeEdit, self).get_context_data(**kwargs)
         context['power_types'] = generate_js_power_types(
             self.get_object().nodegroup)
+        # 'os_release' lets us know if we should render the `OS`
+        # and `Release` choice fields in the UI.
+        context['os_release'] = self.get_has_owner()
         return context
 
 
