@@ -440,11 +440,11 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
         mac.cluster_interface = (
-            node.nodegroup.nodegroupinterface_set.all()[:1].get())
+            node.nodegroup.nodegroupinterface_set.all().first())
         mac.save()
         lease1 = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all()[:1].get().mac_address)
+            mac=node.macaddress_set.all().first().mac_address)
         lease2 = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
             mac=mac.mac_address)
