@@ -18,6 +18,7 @@ import random
 from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
+from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     NODE_BOOT,
@@ -284,6 +285,17 @@ class TestAcquireNodeNodeAction(MAASServerTestCase):
         AcquireNode(node, user).execute()
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
         self.assertEqual(user, node.owner)
+
+    def test_AcquireNode_uses_node_acquire_lock(self):
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.READY,
+            power_type='ether_wake')
+        user = factory.make_User()
+        node_acquire = self.patch(locks, 'node_acquire')
+        AcquireNode(node, user).execute()
+        self.assertThat(node_acquire.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            node_acquire.__exit__, MockCalledOnceWith(None, None, None))
 
 
 class TestStartNodeNodeAction(MAASServerTestCase):

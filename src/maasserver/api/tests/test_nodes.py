@@ -56,6 +56,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
 from maasserver.utils.orm import get_one
 from maastesting.djangotestcase import count_queries
+from maastesting.matchers import MockCalledOnceWith
 from mock import Mock
 from provisioningserver.power.poweraction import PowerActionFail
 from provisioningserver.rpc import cluster as cluster_module
@@ -549,6 +550,16 @@ class TestNodesAPI(APITestCase):
         self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
         node = Node.objects.get(system_id=node.system_id)
         self.assertEqual(self.logged_in_user, node.owner)
+
+    def test_POST_acquire_uses_node_acquire_lock(self):
+        # The "acquire" operation allocates the node it returns.
+        available_status = NODE_STATUS.READY
+        factory.make_Node(status=available_status, owner=None)
+        node_acquire = self.patch(nodes_module.locks, 'node_acquire')
+        self.client.post(reverse('nodes_handler'), {'op': 'acquire'})
+        self.assertThat(node_acquire.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            node_acquire.__exit__, MockCalledOnceWith(None, None, None))
 
     def test_POST_acquire_sets_agent_name(self):
         available_status = NODE_STATUS.READY
