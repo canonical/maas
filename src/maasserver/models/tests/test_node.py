@@ -1679,7 +1679,9 @@ class NodeTest(MAASServerTestCase):
         node.osystem = factory.make_name('osystem')
         node.distro_series = factory.make_name('distro_series')
         node.mark_fixed()
-        self.assertEqual(('', ''), (node.osystem, node.distro_series))
+        expected_osystem = expected_distro_series = ''
+        self.expectThat(expected_osystem, Equals(node.osystem))
+        self.expectThat(expected_distro_series, Equals(node.distro_series))
 
     def test_mark_fixed_changes_status(self):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
