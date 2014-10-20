@@ -35,6 +35,7 @@ from textwrap import dedent
 
 from crochet import TimeoutError
 from django.core.urlresolvers import reverse
+from maasserver import locks
 from maasserver.enum import (
     NODE_BOOT,
     NODE_PERMISSION,
@@ -296,7 +297,9 @@ class AcquireNode(NodeAction):
         """See `NodeAction.execute`."""
         # The UI does not use OAuth, so there is no token to pass to the
         # acquire() call.
-        self.node.acquire(self.user, token=None)
+
+        with locks.node_acquire:
+            self.node.acquire(self.user, token=None)
 
         return "This node is now allocated to you."
 

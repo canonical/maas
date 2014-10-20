@@ -28,6 +28,7 @@ from django.core.exceptions import (
     )
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
+from maasserver import locks
 from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     admin_method,
@@ -950,7 +951,13 @@ class NodesHandler(OperationsHandler):
         maaslog.info(
             "Request from user %s to acquire a node with constraints %s",
             request.user.username, request.data)
-        if form.is_valid():
+
+        if not form.is_valid():
+            raise ValidationError(form.errors)
+
+        # This lock prevents a node we've picked as available from
+        # becoming unavailable before our transaction commits.
+        with locks.node_acquire:
             nodes = Node.objects.get_available_nodes_for_acquisition(
                 request.user)
             nodes = form.filter_nodes(nodes)
@@ -971,7 +978,6 @@ class NodesHandler(OperationsHandler):
                 request.user, get_oauth_token(request),
                 agent_name=agent_name)
             return node
-        raise ValidationError(form.errors)
 
     @admin_method
     @operation(idempotent=False)
