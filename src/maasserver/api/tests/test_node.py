@@ -1274,8 +1274,7 @@ class TestAbortOperation(APITestCase):
     def test_abort_operation_changes_state(self):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch_autospec(node_module.Node, "stop")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.OK, response.status_code)
