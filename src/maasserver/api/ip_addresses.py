@@ -101,7 +101,9 @@ class IPAddressesHandler(OperationsHandler):
                 # Winner winner chicken dinner.
                 return self.claim_ip(
                     request.user, interface, requested_address)
-        raise MAASAPIBadRequest("No network found matching %s" % network)
+        raise MAASAPIBadRequest(
+            "No network found matching %s; you may be requesting an IP "
+            "on a network with no static IP range defined." % network)
 
     @operation(idempotent=False)
     def release(self, request):

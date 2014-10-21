@@ -56,7 +56,8 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
-            "No network found matching %s" % unicode(net),
+            "No network found matching %s; you may be requesting an IP "
+            "on a network with no static IP range defined." % unicode(net),
             response.content)
 
     def test_handler_path(self):
