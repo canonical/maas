@@ -103,7 +103,9 @@ class StaticIPAddressManager(Manager):
             ipaddress.save()
         except IntegrityError:
             # The address is already taken.
-            raise StaticIPAddressUnavailable()
+            raise StaticIPAddressUnavailable(
+                "The IP address %s is already in use." %
+                requested_address.format())
         else:
             # We deliberately do *not* save the user until now because it
             # might result in an IntegrityError, and we rely on the latter

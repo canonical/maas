@@ -130,8 +130,10 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         # Do same request again and check it is rejected.
         response = self.post_reservation_request(net, ip_in_network)
-        self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+        self.expectThat(response.status_code, Equals(httplib.NOT_FOUND))
+        self.expectThat(
+            response.content, Equals(
+                "The IP address %s is already in use." % ip_in_network))
 
     def test_POST_reserve_requested_address_detects_out_of_range_addr(self):
         interface = self.make_interface()
