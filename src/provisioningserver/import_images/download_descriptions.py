@@ -64,7 +64,11 @@ class RepoDumper(BasicMirrorWriter):
     """
 
     def __init__(self, boot_images_dict):
-        super(RepoDumper, self).__init__()
+        super(RepoDumper, self).__init__(config={
+            # Only download the latest version. Without this all versions
+            # will be read, causing miss matches in versions.
+            'max_items': 1,
+            })
         self.boot_images_dict = boot_images_dict
 
     def load_products(self, path=None, content_id=None):
@@ -78,12 +82,27 @@ class RepoDumper(BasicMirrorWriter):
         """Overridable from `BasicMirrorWriter`."""
         item = products_exdata(src, pedigree)
         os = get_os_from_product(item)
-        arch, subarch = item['arch'], item['subarch']
+        arch, subarches = item['arch'], item['subarches']
         release = item['release']
         label = item['label']
-        base_image = ImageSpec(os, arch, subarch, release, label)
+        base_image = ImageSpec(os, arch, None, release, label)
         compact_item = clean_up_repo_item(item)
-        self.boot_images_dict.setdefault(base_image, compact_item)
+        for subarch in subarches.split(','):
+            self.boot_images_dict.setdefault(
+                base_image._replace(subarch=subarch), compact_item)
+
+        # HWE resources need to map to a specfic resource, and not just to
+        # any of the supported subarchitectures for that resource.
+        subarch = item['subarch']
+        self.boot_images_dict.set(
+            base_image._replace(subarch=subarch), compact_item)
+
+        # HWE resources with generic, should map to the HWE that ships with
+        # that release.
+        hwe_arch = 'hwe-%s' % release[0]
+        if subarch == hwe_arch and 'generic' in subarches:
+            self.boot_images_dict.set(
+                base_image._replace(subarch='generic'), compact_item)
 
 
 def value_passes_filter_list(filter_list, property_value):

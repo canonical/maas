@@ -212,7 +212,11 @@ def pxeconfig(request):
     else:
         purpose = node.get_boot_purpose()
         event_log_pxe_request(node, purpose)
-    if purpose == "xinstall":
+
+    # Use only the commissioning osystem and series, for operating systems
+    # other than Ubuntu. As Ubuntu supports HWE kernels, and needs to use
+    # that kernel to perform the installation.
+    if purpose == "xinstall" and osystem != 'ubuntu':
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
 
