@@ -43,6 +43,7 @@ class NodePowerMonitorService(TimerService, object):
     """Service to monitor the power status of all nodes in this cluster."""
 
     check_interval = timedelta(minutes=5).total_seconds()
+    max_nodes_at_once = 5
 
     def __init__(self, cluster_uuid, clock=None):
         # Call self.query_nodes() every self.check_interval.
@@ -92,4 +93,6 @@ class NodePowerMonitorService(TimerService, object):
                 uuid)
         else:
             node_power_parameters = response['nodes']
-            yield query_all_nodes(node_power_parameters, clock=self.clock)
+            yield query_all_nodes(
+                node_power_parameters,
+                max_concurrency=self.max_nodes_at_once, clock=self.clock)

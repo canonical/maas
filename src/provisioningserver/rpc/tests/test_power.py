@@ -58,9 +58,11 @@ from testtools.matchers import IsInstance
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
+    fail,
     inlineCallbacks,
     maybeDeferred,
     returnValue,
+    succeed,
     )
 from twisted.internet.task import Clock
 
@@ -620,7 +622,10 @@ class TestPowerQueryAsync(MAASTestCase):
         # Report back that all nodes' power states are as recorded.
         power_states = [node['power_state'] for node in nodes]
         get_power_state = self.patch(power, 'get_power_state')
-        get_power_state.side_effect = power_states
+        get_power_state.side_effect = [
+            succeed(power_state)
+            for power_state in power_states
+            ]
 
         yield power.query_all_nodes(nodes)
         self.assertThat(get_power_state, MockCallsMatch(*(
@@ -638,7 +643,7 @@ class TestPowerQueryAsync(MAASTestCase):
         get_power_state = self.patch(power, 'get_power_state')
         error_msg = factory.make_name("error")
         get_power_state.side_effect = [
-            PowerActionFail(error_msg), new_state_2]
+            fail(PowerActionFail(error_msg)), succeed(new_state_2)]
 
         with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
             yield power.query_all_nodes([node1, node2])
@@ -656,7 +661,7 @@ class TestPowerQueryAsync(MAASTestCase):
         new_state_2 = self.pick_alternate_state(node2['power_state'])
         get_power_state = self.patch(power, 'get_power_state')
         get_power_state.side_effect = [
-            exceptions.NoSuchNode(), new_state_2]
+            fail(exceptions.NoSuchNode()), succeed(new_state_2)]
 
         with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
             yield power.query_all_nodes([node1, node2])
@@ -667,6 +672,36 @@ class TestPowerQueryAsync(MAASTestCase):
             hostname-...: Power state has changed from ... to ...
             """,
             maaslog.output)
+
+    @inlineCallbacks
+    def test_query_all_nodes_swallows_Exception(self):
+        node1, node2 = self.make_nodes(2)
+        new_state_2 = self.pick_alternate_state(node2['power_state'])
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = [
+            fail(Exception('unknown')), succeed(new_state_2)]
+
+        with FakeLogger("maas.power", level=logging.DEBUG) as maaslog:
+            yield power.query_all_nodes([node1, node2])
+
+        self.assertDocTestMatches(
+            """\
+            hostname-...: Failed to query power state, unknown error: unknown
+            hostname-...: Power state has changed from ... to ...
+            """,
+            maaslog.output)
+
+    @inlineCallbacks
+    def test_query_all_nodes_returns_deferredlist_of_number_of_nodes(self):
+        node1, node2 = self.make_nodes(2)
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = [
+            succeed(node1['power_state']), succeed(node2['power_state'])]
+
+        results = yield power.query_all_nodes([node1, node2])
+        self.assertEqual(
+            [(True, node1['power_state']), (True, node2['power_state'])],
+            results)
 
 
 class TestMaybeChangePowerState(MAASTestCase):
