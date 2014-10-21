@@ -1464,6 +1464,10 @@ class Node(CleanSave, TimestampedModel):
                 update_host_maps_failures = list(
                     update_host_maps(static_mappings))
                 if len(update_host_maps_failures) != 0:
+                    # We've hit errors, so release any IPs we've claimed
+                    # and then raise the errors for the call site to
+                    # handle.
+                    StaticIPAddress.objects.deallocate_by_node(self)
                     raise MultipleFailures(*update_host_maps_failures)
 
         if self.status == NODE_STATUS.ALLOCATED:
@@ -1484,10 +1488,17 @@ class Node(CleanSave, TimestampedModel):
         start_info = (
             self.system_id, self.hostname, self.nodegroup.uuid, power_info,)
 
-        # Send the power on command to the node and wait for it to
-        # return.
-        deferreds = power_on_nodes([start_info]).viewvalues()
-        wait_for_power_commands(deferreds)
+        try:
+            # Send the power on command to the node and wait for it to
+            # return.
+            deferreds = power_on_nodes([start_info]).viewvalues()
+            wait_for_power_commands(deferreds)
+        except:
+            # If we encounter any failure here, we deallocate the static
+            # IPs we claimed earlier. We don't try to handle the error;
+            # that's the job of the call site.
+            StaticIPAddress.objects.deallocate_by_node(self)
+            raise
 
     def stop(self, by_user, stop_mode='hard'):
         """Request that the node be powered down.

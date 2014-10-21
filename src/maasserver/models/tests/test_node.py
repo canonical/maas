@@ -2386,6 +2386,35 @@ class TestNode_Start(MAASServerTestCase):
         self.expectThat(power_on_nodes, MockCalledOnceWith(ANY))
         self.expectThat(wait_for_power_commands, MockCalledOnceWith(ANY))
 
+    def test__releases_static_ips_when_power_action_fails(self):
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                factory.make_exception("He's fallen in the water!"))
+        }
+        deallocate_ips = self.patch(
+            node_module.StaticIPAddress.objects, 'deallocate_by_node')
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        self.assertRaises(MultipleFailures, node.start, user)
+        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+
+    def test__releases_static_ips_when_update_host_maps_fails(self):
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = [
+            Failure(factory.make_exception("You steaming nit, you!"))
+            ]
+        deallocate_ips = self.patch(
+            node_module.StaticIPAddress.objects, 'deallocate_by_node')
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        self.assertRaises(MultipleFailures, node.start, user)
+        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+
 
 class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
