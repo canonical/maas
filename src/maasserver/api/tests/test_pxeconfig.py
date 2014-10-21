@@ -491,3 +491,50 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.client.get(reverse('pxeconfig'), params)
         node = reload_object(node)
         self.assertEqual(mac, node.pxe_mac)
+
+    def test_pxeconfig_returns_commissioning_os_series_for_other_oses(self):
+        osystem = Config.objects.get_config('default_osystem')
+        release = Config.objects.get_config('default_distro_series')
+        nodegroup = factory.make_NodeGroup()
+        os_image = make_rpc_boot_image(purpose='xinstall')
+        architecture = '%s/%s' % (
+            os_image['architecture'], os_image['subarchitecture'])
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [os_image]
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').return_value = [os_image]
+        node = factory.make_Node(
+            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
+            osystem=os_image['osystem'],
+            distro_series=os_image['release'],
+            architecture=architecture)
+        params = self.get_default_params()
+        params['cluster_uuid'] = nodegroup.uuid
+        params['mac'] = node.get_primary_mac()
+        params_out = self.get_pxeconfig(params)
+        self.assertEqual(osystem, params_out["osystem"])
+        self.assertEqual(release, params_out["release"])
+
+    def test_pxeconfig_returns_ubuntu_os_series_for_ubuntu_xinstall(self):
+        nodegroup = factory.make_NodeGroup()
+        ubuntu_image = make_rpc_boot_image(
+            osystem='ubuntu', purpose='xinstall')
+        architecture = '%s/%s' % (
+            ubuntu_image['architecture'], ubuntu_image['subarchitecture'])
+        self.patch(
+            preseed_module,
+            'get_boot_images_for').return_value = [ubuntu_image]
+        self.patch(
+            pxeconfig_module,
+            'get_boot_images_for').return_value = [ubuntu_image]
+        node = factory.make_Node(
+            mac=True, nodegroup=nodegroup, status=NODE_STATUS.DEPLOYING,
+            osystem='ubuntu', distro_series=ubuntu_image['release'],
+            architecture=architecture)
+        params = self.get_default_params()
+        params['cluster_uuid'] = nodegroup.uuid
+        params['mac'] = node.get_primary_mac()
+        params_out = self.get_pxeconfig(params)
+        self.assertEqual(ubuntu_image['release'], params_out["release"])

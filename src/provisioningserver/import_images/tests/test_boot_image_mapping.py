@@ -63,6 +63,14 @@ class TestBootImageMapping(MAASTestCase):
         image_dict.setdefault(image, factory.make_name('newresource'))
         self.assertItemsEqual([(image, old_resource)], image_dict.items())
 
+    def test_set_overwrites_item(self):
+        image_dict = BootImageMapping()
+        image = make_image_spec()
+        resource = factory.make_name('resource')
+        image_dict.setdefault(image, factory.make_name('resource'))
+        image_dict.set(image, resource)
+        self.assertItemsEqual([(image, resource)], image_dict.items())
+
     def test_dump_json_is_consistent(self):
         image = make_image_spec()
         resource = factory.make_name('resource')
