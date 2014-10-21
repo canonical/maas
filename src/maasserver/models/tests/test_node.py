@@ -1843,6 +1843,28 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(node.macaddress_set.first(), node.get_pxe_mac())
 
 
+class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
+
+    def test__returns_true_if_managed(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        self.assertTrue(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_no_pxe_mac(self):
+        node = factory.make_Node()
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_no_attached_cluster_interface(self):
+        node = factory.make_Node()
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_cluster_interface_unmanaged(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+
 class NodeRoutersTest(MAASServerTestCase):
 
     def test_routers_stores_mac_address(self):
@@ -2675,6 +2697,15 @@ class TestNode_Start(MAASServerTestCase):
         # No calls are made to claim_static_ip_addresses, since the node
         # isn't ALLOCATED.
         self.assertThat(claim_static_ip_addresses, MockNotCalled())
+
+    def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        self.patch(
+            node, 'is_pxe_mac_on_managed_interface').return_value = False
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        node.start(user)
+        self.assertThat(update_host_maps, MockNotCalled())
 
     def test__updates_host_maps(self):
         user = factory.make_User()

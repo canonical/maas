@@ -1553,6 +1553,14 @@ class Node(CleanSave, TimestampedModel):
 
         return self.macaddress_set.first()
 
+    def is_pxe_mac_on_managed_interface(self):
+        pxe_mac = self.get_pxe_mac()
+        if pxe_mac is not None:
+            cluster_interface = pxe_mac.cluster_interface
+            if cluster_interface is not None:
+                return cluster_interface.is_managed
+        return False
+
     def start(self, by_user, user_data=None):
         """Request on given user's behalf that the node be started up.
 
@@ -1584,10 +1592,16 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.ALLOCATED:
             static_mappings = defaultdict(dict)
             claims = self.claim_static_ip_addresses()
-            static_mappings[self.nodegroup].update(claims)
-            update_host_maps_failures = list(update_host_maps(static_mappings))
-            if len(update_host_maps_failures) != 0:
-                raise MultipleFailures(*update_host_maps_failures)
+            # If the PXE mac is on a managed interface then we can ask
+            # the cluster to generate the DHCP host map(s).
+            if self.is_pxe_mac_on_managed_interface():
+                static_mappings[self.nodegroup].update(claims)
+                update_host_maps_failures = list(
+                    update_host_maps(static_mappings))
+                if len(update_host_maps_failures) != 0:
+                    raise MultipleFailures(*update_host_maps_failures)
+
+        if self.status == NODE_STATUS.ALLOCATED:
             self.start_deployment()
 
         # Update the DNS zone with the new static IP info as necessary.
