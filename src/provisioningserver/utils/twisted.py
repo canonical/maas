@@ -16,6 +16,7 @@ __all__ = [
     'asynchronous',
     'callOut',
     'deferred',
+    'DeferredValue',
     'deferWithTimeout',
     'FOREVER',
     'pause',
@@ -35,10 +36,14 @@ import threading
 from crochet import run_in_reactor
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    AlreadyCalledError,
+    CancelledError,
     Deferred,
     maybeDeferred,
+    succeed,
     )
 from twisted.python import threadable
+from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 
 
@@ -296,3 +301,84 @@ def callOut(func, *args, **kwargs):
         func(*args, **kwargs)
         return thing
     return callCallOut
+
+
+class DeferredValue:
+    """Coordination primitive for a value.
+
+    Or a "Future", or a "Promise", or ...
+
+    :ivar waiters: A set of :py:class:`Deferreds`, each of which has been
+        handed to a caller of `get`, and which will be fired when `set` is
+        called... or ``None``, immediately after `set` has been called.
+    """
+
+    def __init__(self):
+        super(DeferredValue, self).__init__()
+        self.waiters = set()
+
+    def set(self, value):
+        """Set the promised value.
+
+        Notifies all waiters of the value, or raises `AlreadyCalledError` if
+        the value has been set previously.
+        """
+        if self.waiters is None:
+            raise AlreadyCalledError(
+                "Value already set to %r." % (self.value,))
+
+        self.value = value
+        waiters, self.waiters = self.waiters, None
+        for waiter in waiters.copy():
+            waiter.callback(value)
+
+    def fail(self, failure=None):
+        """Set the promised value to a `Failure`.
+
+        Notifies all waiters via `errback`, or raises `AlreadyCalledError` if
+        the value has been set previously.
+        """
+        if not isinstance(failure, Failure):
+            failure = Failure(failure)
+
+        self.set(failure)
+
+    def get(self, timeout=None):
+        """Get a promise for the value.
+
+        Returns a `Deferred` that will fire with the value when it's made
+        available, or with `CancelledError` if this object is cancelled.
+
+        If a time-out in seconds is specified, the `Deferred` will be
+        cancelled if the value is not made available within the time.
+        """
+        if self.waiters is None:
+            return succeed(self.value)
+
+        if timeout is None:
+            d = Deferred()
+        else:
+            d = deferWithTimeout(timeout)
+
+        def remove(result, discard, d):
+            discard(d)  # Remove d from the waiters list.
+            return result  # Pass-through the result.
+
+        d.addBoth(remove, self.waiters.discard, d)
+        self.waiters.add(d)
+        return d
+
+    def cancel(self):
+        """Cancel all waiters and prevent further use of this object.
+
+        After cancelling, `AlreadyCalledError` will be raised if `set` is
+        called, and the `Deferred` returned from `get` will have already been
+        cancelled.
+        """
+        if self.waiters is None:
+            return
+
+        self.value = Failure(CancelledError())
+        waiters, self.waiters = self.waiters, None
+        for waiter in waiters.copy():
+            waiter.cancel()
