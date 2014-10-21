@@ -345,7 +345,7 @@ class StartNode(NodeAction):
             self.node.acquire(self.user, token=None)
 
         try:
-            Node.objects.start_nodes([self.node.system_id], self.user)
+            self.node.start(self.user)
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."

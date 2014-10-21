@@ -740,13 +740,13 @@ class NodeTest(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
-        start_nodes = self.patch(Node.objects, "start_nodes")
+        node_start = self.patch(node, 'start')
         node.start_disk_erasing(owner)
-        self.assertEqual(
-            (owner, NODE_STATUS.DISK_ERASING, agent_name),
-            (node.owner, node.status, node.agent_name))
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], owner, user_data=ANY))
+        self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
+        self.expectThat(node.agent_name, Equals(agent_name))
+        self.assertThat(
+            node_start, MockCalledOnceWith(owner, user_data=ANY))
 
     def test_abort_disk_erasing_changes_state_and_stops_node(self):
         agent_name = factory.make_name('agent-name')
@@ -769,53 +769,35 @@ class NodeTest(MAASServerTestCase):
         # Failures encountered in one call to start_disk_erasing() won't
         # affect subsequent calls.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(
-                status=NODE_STATUS.ALLOCATED, power_type="virsh")
-            for _ in range(3)
-            ]
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         generate_user_data = self.patch(disk_erasing, 'generate_user_data')
-        start_nodes = self.patch(Node.objects, 'start_nodes')
-        start_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = MultipleFailures(
+            Failure(NoConnectionsAvailable())),
 
         with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.start_disk_erasing(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all the expected errors coming out of
-                    # start_disk_erasing() because they're tested
-                    # eleswhere.
-                    pass
+            try:
+                node.start_disk_erasing(admin)
+            except RPC_EXCEPTIONS:
+                # Suppress all the expected errors coming out of
+                # start_disk_erasing() because they're tested
+                # eleswhere.
+                pass
 
-        expected_calls = (
-            call(
-                [node.system_id], admin,
-                user_data=generate_user_data.return_value)
-            for node in nodes)
         self.assertThat(
-            start_nodes, MockCallsMatch(*expected_calls))
-        self.assertEqual(
-            [
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING,
-                NODE_STATUS.DISK_ERASING,
-            ],
-            [node.status for node in nodes])
+            node_start, MockCalledOnceWith(
+                admin, user_data=generate_user_data.return_value))
+        self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         maaslog = self.patch(node_module, 'maaslog')
-        exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'start_nodes').side_effect = exception
+        exception_type = factory.make_exception_type()
+        exception = exception_type(factory.make_name())
+        self.patch(node, 'start').side_effect = exception
         self.assertRaises(
-            NoConnectionsAvailable, node.start_disk_erasing, admin)
+            exception_type, node.start_disk_erasing, admin)
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
@@ -1337,8 +1319,7 @@ class NodeTest(MAASServerTestCase):
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
-        start_nodes = self.patch(Node.objects, "start_nodes")
-        start_nodes.return_value = [node]
+        node_start = self.patch(node, 'start')
         factory.make_MACAddress(node=node)
         admin = factory.make_admin()
         node.start_commissioning(admin)
@@ -1347,21 +1328,20 @@ class NodeTest(MAASServerTestCase):
             'status': NODE_STATUS.COMMISSIONING,
         }
         self.assertAttributes(node, expected_attrs)
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], admin, user_data=ANY))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, user_data=ANY))
 
     def test_start_commissioning_sets_user_data(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
-
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
             commissioning, 'generate_user_data')
         generate_user_data.return_value = user_data
         admin = factory.make_admin()
         node.start_commissioning(admin)
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], admin, user_data=user_data))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, user_data=user_data))
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
@@ -1391,49 +1371,32 @@ class NodeTest(MAASServerTestCase):
         # start the node, it will revert the node to its previous
         # status.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(status=NODE_STATUS.NEW, power_type="ether_wake")
-            for _ in range(3)
-            ]
+        node = factory.make_Node(status=NODE_STATUS.NEW)
         generate_user_data = self.patch(commissioning, 'generate_user_data')
-        start_nodes = self.patch(Node.objects, 'start_nodes')
-        start_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = MultipleFailures(
+            Failure(NoConnectionsAvailable()))
 
         with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.start_commissioning(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all expected errors; we test for them
-                    # elsewhere.
-                    pass
+            try:
+                node.start_commissioning(admin)
+            except RPC_EXCEPTIONS:
+                # Suppress all expected errors; we test for them
+                # elsewhere.
+                pass
 
-        expected_calls = (
-            call(
-                [node.system_id], admin,
-                user_data=generate_user_data.return_value)
-            for node in nodes)
         self.assertThat(
-            start_nodes, MockCallsMatch(*expected_calls))
-        self.assertEqual(
-            [
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING
-            ],
-            [node.status for node in nodes])
+            node_start,
+            MockCalledOnceWith(
+                admin, user_data=generate_user_data.return_value))
+        self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         maaslog = self.patch(node_module, 'maaslog')
         exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'start_nodes').side_effect = exception
+        self.patch(node, 'start').side_effect = exception
         self.assertRaises(
             NoConnectionsAvailable, node.start_commissioning, admin)
         self.assertEqual(NODE_STATUS.NEW, node.status)
@@ -2832,6 +2795,28 @@ class TestNode_Start(MAASServerTestCase):
         power_on_nodes = self.patch(node_module, "power_on_nodes")
         node.start(user)
         self.assertThat(power_on_nodes, MockNotCalled())
+
+    def test__does_not_start_nodes_the_user_cannot_edit(self):
+        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_mac(owner)
+
+        user = factory.make_User()
+        node.start(user)
+        self.assertThat(power_on_nodes, MockNotCalled())
+
+    def test__allows_admin_to_start_any_node(self):
+        wait_for_power_commands = self.patch_autospec(
+            node_module, 'wait_for_power_commands')
+        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_mac(owner)
+
+        admin = factory.make_admin()
+        node.start(admin)
+
+        self.expectThat(power_on_nodes, MockCalledOnceWith(ANY))
+        self.expectThat(wait_for_power_commands, MockCalledOnceWith(ANY))
 
 
 class TestNode_Stop(MAASServerTestCase):

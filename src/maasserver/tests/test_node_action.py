@@ -230,17 +230,16 @@ class TestCommissionNodeAction(MAASServerTestCase):
     )
 
     def test_Commission_starts_commissioning(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
         node = factory.make_Node(
             mac=True, status=self.status,
             power_type='ether_wake')
+        node_start = self.patch(node, 'start')
         admin = factory.make_admin()
         action = Commission(node, admin)
         action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            start_nodes, MockCalledOnceWith(
-                [node.system_id], admin, user_data=ANY))
+            node_start, MockCalledOnceWith(admin, user_data=ANY))
 
 
 class TestAbortCommissioningNodeAction(MAASServerTestCase):
@@ -314,14 +313,14 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertIn("SSH key", inhibition)
 
     def test_StartNode_starts_node(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
+        node_start = self.patch(node, 'start')
         StartNode(node, user).execute()
         self.assertThat(
-            start_nodes, MockCalledOnceWith([node.system_id], user))
+            node_start, MockCalledOnceWith(user))
 
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
@@ -351,9 +350,9 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertFalse(StartNode(node, user).is_permitted())
 
     def test_StartNode_allocates_node_if_node_not_already_allocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         action = StartNode(node, user)
         action.execute()
 
@@ -361,16 +360,16 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_StartNode_label_shows_allocate_if_unallocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         action = StartNode(node, user)
         self.assertEqual("Acquire and start node", action.display)
 
     def test_StartNode_label_hides_allocate_if_allocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         node.acquire(user)
         action = StartNode(node, user)
         self.assertEqual("Start node", action.display)
@@ -384,17 +383,17 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual("Start node", action.display)
 
     def test_StartNode_does_not_reallocate_when_run_by_non_owner(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         node.acquire(user)
         action = StartNode(node, admin)
 
         # This action.execute() will not fail because the non-owner is
         # an admin, so they can start the node. Even if they weren't an
-        # admin, the node still wouldn't start;
-        # NodeManager.start_nodes() would ignore it.
+        # admin, the node still wouldn't start; Node.start() would
+        # ignore it.
         action.execute()
         self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -571,9 +570,9 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
             exception = self.exception_class(factory.make_name("exception"))
         return exception
 
-    def patch_rpc_methods(self):
+    def patch_rpc_methods(self, node):
         exception = self.make_exception()
-        self.patch(Node.objects, "start_nodes").side_effect = (
+        self.patch(node, 'start').side_effect = (
             exception)
         self.patch(Node.objects, "stop_nodes").side_effect = (
             exception)
@@ -586,17 +585,17 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
 
     def test_Commission_handles_rpc_errors(self):
         action = self.make_action(Commission, NODE_STATUS.READY)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.start_nodes.side_effect),
+                action.node.start.side_effect),
             unicode(exception))
 
     def test_AbortCommissioning_handles_rpc_errors(self):
         action = self.make_action(
             AbortCommissioning, NODE_STATUS.COMMISSIONING)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
@@ -606,7 +605,7 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
     def test_AbortOperation_handles_rpc_errors(self):
         action = self.make_action(
             AbortOperation, NODE_STATUS.DISK_ERASING)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
@@ -615,16 +614,16 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
 
     def test_StartNode_handles_rpc_errors(self):
         action = self.make_action(StartNode, NODE_STATUS.READY)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.start_nodes.side_effect),
+                action.node.start.side_effect),
             unicode(exception))
 
     def test_StopNode_handles_rpc_errors(self):
         action = self.make_action(StopNode, NODE_STATUS.DEPLOYED)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
@@ -633,7 +632,7 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
 
     def test_ReleaseNode_handles_rpc_errors(self):
         action = self.make_action(ReleaseNode, NODE_STATUS.ALLOCATED)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(

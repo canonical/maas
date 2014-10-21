@@ -969,11 +969,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         transaction.commit()
         try:
-            # We don't check for which nodes we've started here, because
-            # it's possible we can't start the node - its power type may not
-            # allow us to do that.
-            Node.objects.start_nodes(
-                [self.system_id], user, user_data=commissioning_user_data)
+            self.start(user, user_data=commissioning_user_data)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to start node: %s",
@@ -1287,8 +1283,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         transaction.commit()
         try:
-            Node.objects.start_nodes(
-                [self.system_id], user, user_data=disk_erase_user_data)
+            self.start(user, user_data=disk_erase_user_data)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to start node: %s",
@@ -1583,6 +1578,13 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.models import NodeUserData
         from maasserver.dns.config import change_dns_zones
 
+        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't stop a node you don't own unless you're an
+            # admin, so we return early.  This is consistent with the
+            # behaviour of NodeManager.stop_nodes(); it may be better to
+            # raise an error here.
+            return
+
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
         # node; the user may choose to start it manually.
@@ -1634,7 +1636,7 @@ class Node(CleanSave, TimestampedModel):
         :raises MultipleFailures: When there are failures originating
             from the RPC power action.
         """
-        if by_user != self.owner and not by_user.is_superuser:
+        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an
             # admin, so we return early.  This is consistent with the
             # behaviour of NodeManager.stop_nodes(); it may be better to
