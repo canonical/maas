@@ -215,28 +215,27 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        node_stop = self.patch(node, 'stop')
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertThat(stop_nodes, MockNotCalled())
+        self.assertThat(node_stop, MockNotCalled())
 
     def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
         # The node may not be stopped by stop_nodes because, for example, its
         # power type does not support it. In this case the node is not
         # returned to the caller.
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = []
+        node_stop = self.patch(node_module.Node, 'stop')
+        node_stop.return_value = False
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIsNone(json.loads(response.content))
-        self.assertThat(stop_nodes, MockCalledOnceWith(
-            [node.system_id], ANY, stop_mode=ANY))
+        self.assertThat(node_stop, MockCalledOnceWith(
+            ANY, stop_mode=ANY))
 
     def test_POST_stop_returns_node(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node_module.Node, 'stop').return_value = True
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -246,23 +245,20 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node, 'stop')
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_stop_stops_nodes(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch(node_module.Node, 'stop')
         stop_mode = factory.make_name('stop_mode')
         self.client.post(
             self.get_node_uri(node), {'op': 'stop', 'stop_mode': stop_mode})
         self.assertThat(
-            stop_nodes,
-            MockCalledOnceWith(
-                [node.system_id], self.logged_in_user, stop_mode=stop_mode))
+            node_stop,
+            MockCalledOnceWith(self.logged_in_user, stop_mode=stop_mode))
 
     def test_POST_start_checks_permission(self):
         node = factory.make_Node()

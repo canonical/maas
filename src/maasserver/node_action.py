@@ -47,10 +47,7 @@ from maasserver.exceptions import (
     Redirect,
     StaticIPAddressExhaustion,
     )
-from maasserver.models import (
-    Node,
-    SSHKey,
-    )
+from maasserver.models import SSHKey
 from maasserver.node_status import is_failed_status
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -378,7 +375,7 @@ class StopNode(NodeAction):
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
         try:
-            Node.objects.stop_nodes([self.node.system_id], self.user)
+            self.node.stop(self.user)
         except RPC_EXCEPTIONS as exception:
             raise NodeActionError(exception)
         else:

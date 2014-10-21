@@ -33,7 +33,6 @@ from maasserver.exceptions import (
     Redirect,
     )
 from maasserver.models import StaticIPAddress
-from maasserver.models.node import Node
 from maasserver.node_action import (
     AbortCommissioning,
     AbortOperation,
@@ -248,14 +247,12 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.COMMISSIONING,
             power_type='virsh')
-        stop_nodes = self.patch(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch_autospec(node, 'stop')
         admin = factory.make_admin()
 
         AbortCommissioning(node, admin).execute()
         self.assertEqual(NODE_STATUS.NEW, node.status)
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], admin))
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
 
 
 class TestAbortOperationNodeAction(MAASServerTestCase):
@@ -264,14 +261,12 @@ class TestAbortOperationNodeAction(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=owner)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch_autospec(node, 'stop')
 
         AbortOperation(node, owner).execute()
 
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], owner))
+        self.assertThat(node_stop, MockCalledOnceWith(owner))
 
 
 class TestAcquireNodeNodeAction(MAASServerTestCase):
@@ -411,13 +406,11 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch_autospec(node, 'stop')
 
         StopNode(node, user).execute()
 
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], user))
+        self.assertThat(node_stop, MockCalledOnceWith(user))
 
     def test_StopNode_actionnable_for_failed_states(self):
         status = random.choice(FAILED_STATUSES)
@@ -451,14 +444,13 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             mac=True, status=self.actionable_status,
             power_type='ipmi',
             owner=user, power_parameters=params)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch_autospec(node, 'stop')
 
         ReleaseNode(node, user).execute()
 
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], user))
+            node_stop, MockCalledOnceWith(user))
 
 
 class TestUseCurtinNodeAction(MAASServerTestCase):
@@ -572,10 +564,8 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
 
     def patch_rpc_methods(self, node):
         exception = self.make_exception()
-        self.patch(node, 'start').side_effect = (
-            exception)
-        self.patch(Node.objects, "stop_nodes").side_effect = (
-            exception)
+        self.patch(node, 'start').side_effect = exception
+        self.patch(node, 'stop').side_effect = exception
 
     def make_action(self, action_class, node_status):
         node = factory.make_Node(
@@ -599,7 +589,7 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_AbortOperation_handles_rpc_errors(self):
@@ -609,7 +599,7 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_StartNode_handles_rpc_errors(self):
@@ -627,7 +617,7 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_ReleaseNode_handles_rpc_errors(self):
@@ -636,5 +626,5 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))

@@ -259,12 +259,11 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
-        nodes_stopped = Node.objects.stop_nodes(
-            [node.system_id], request.user, stop_mode=stop_mode)
-        if len(nodes_stopped) == 0:
-            return None
-        else:
+        power_action_sent = node.stop(request.user, stop_mode=stop_mode)
+        if power_action_sent:
             return node
+        else:
+            return None
 
     @operation(idempotent=False)
     def start(self, request, system_id):

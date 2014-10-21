@@ -993,10 +993,7 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info(
             "%s: Aborting commissioning", self.hostname)
         try:
-            # We don't check for which nodes we've stopped here, because
-            # it's possible we can't stop the node - its power type may
-            # not allow us to do that.
-            Node.objects.stop_nodes([self.system_id], user)
+            self.stop(user)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s",
@@ -1313,7 +1310,7 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info(
             "%s: Aborting disk erasing", self.hostname)
         try:
-            Node.objects.stop_nodes([self.system_id], user)
+            self.stop(user)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s",
@@ -1343,7 +1340,7 @@ class Node(CleanSave, TimestampedModel):
         """
         maaslog.info("%s: Releasing node", self.hostname)
         try:
-            Node.objects.stop_nodes([self.system_id], self.owner)
+            self.stop(self.owner)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s", self.hostname,
@@ -1635,6 +1632,9 @@ class Node(CleanSave, TimestampedModel):
         :type stop_mode: unicode
         :raises MultipleFailures: When there are failures originating
             from the RPC power action.
+        :return: True if the power action was sent to the node; False if
+            it wasn't sent. If the user doesn't have permission to stop
+            the node, return None.
         """
         if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an
@@ -1648,7 +1648,7 @@ class Node(CleanSave, TimestampedModel):
             # We can't stop this node, so just return; trying to stop a
             # node we don't know how to stop isn't an error state, but
             # it's a no-op.
-            return
+            return False
 
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode
@@ -1659,3 +1659,4 @@ class Node(CleanSave, TimestampedModel):
         # to return or fail.
         deferreds = power_off_nodes([stop_info]).viewvalues()
         wait_for_power_commands(deferreds)
+        return True
