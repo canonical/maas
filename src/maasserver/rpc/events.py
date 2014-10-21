@@ -68,7 +68,9 @@ def send_event(system_id, type_name, description=''):
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a
         # node that we don't know about yet.
-        maaslog.warning(
+        # This is most likely to happen when a new node is trying to
+        # enlist.
+        maaslog.debug(
             "Event '%s: %s' sent for non-existent node '%s'.",
             type_name, description, system_id)
         return
@@ -95,7 +97,9 @@ def send_event_mac_address(mac_address, type_name, description=''):
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a
         # node that we don't know about yet.
-        maaslog.warning(
+        # This is most likely to happen when a new node is trying to
+        # enlist.
+        maaslog.debug(
             "Event '%s: %s' sent for non-existent node with MAC "
             "address '%s'.",
             type_name, description, mac_address)

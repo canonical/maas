@@ -929,7 +929,7 @@ class TestRegionProtocol_SendEvent(TransactionTestCase):
 
         def check(result):
             self.assertThat(
-                maaslog.warning, MockCalledOnceWith(
+                maaslog.debug, MockCalledOnceWith(
                     "Event '%s: %s' sent for non-existent node '%s'.",
                     name, event_description, system_id))
 
@@ -1032,7 +1032,7 @@ class TestRegionProtocol_SendEventMACAddress(TransactionTestCase):
 
         def check(result):
             self.assertThat(
-                maaslog.warning, MockCalledOnceWith(
+                maaslog.debug, MockCalledOnceWith(
                     "Event '%s: %s' sent for non-existent node with MAC "
                     "address '%s'.",
                     name, event_description, mac_address))
