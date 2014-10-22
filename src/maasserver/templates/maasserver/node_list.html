@@ -9,6 +9,33 @@
 {% endblock %}
 
 {% block head %}
+  <style type="text/css">
+  #node_listing_form select {
+      height: 33px;
+      background: #fff;
+      border-radius: 4px;
+  }
+
+  #node_listing_form select:focus {
+      background: #fff;
+      outline: none;
+      outline-style:none;
+      box-shadow:none;
+  }
+
+  #node_listing_form select option[value=""] {
+      display:none;
+  }
+
+  input.search-input {
+    line-height: 23px;
+    outline: none;
+  }
+
+  input.search-submit {
+    margin-top: 3px;
+  }
+  </style>
   <script type="text/javascript">
   <!--
   YUI().use('maas.node_add', function (Y) {
@@ -88,7 +115,6 @@
           method="post">
       <div class="block full-width">
         {% csrf_token %}
-        Bulk action:&nbsp;
         {{ form.action }}
         <input type="submit" value="Go" />
         {% if form.zone %}

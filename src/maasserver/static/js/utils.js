@@ -81,7 +81,7 @@ module.base_flash = base_flash;
  * @return Y.Anim instance
  */
 var green_flash = function(obj) {
-    return base_flash(obj, '#00FF00');
+    return base_flash(obj, '#38b44a');
 };
 
 module.green_flash = green_flash;
@@ -93,7 +93,7 @@ module.green_flash = green_flash;
  * @return Y.Anim instance
  */
 var red_flash = function(obj) {
-    return base_flash(obj, '#FF0000');
+    return base_flash(obj, '#df382c');
 };
 
 module.red_flash = red_flash;

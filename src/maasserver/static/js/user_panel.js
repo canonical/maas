@@ -23,7 +23,7 @@ module.createUserPanelWidget = function(event) {
     Y.Base.mix(Y.Overlay, [Y.WidgetAutohide]);
     var cfg = {
         srcNode: '#user-options',
-        align: {node:'#global-header',
+        align: {node:'#user-link',
                 points: [Y.WidgetPositionAlign.TR, Y.WidgetPositionAlign.BR]},
         width: '150px',
         zIndex: 2,
