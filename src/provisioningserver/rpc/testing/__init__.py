@@ -450,7 +450,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         # been capped-off by now (see ClusterClient.connectionMade) this will
         # not raise any exceptions. In some ways this is convenient because it
         # allows the resulting issues to be encountered within test code.
-        yield client.onReady
+        yield client.ready.get()
 
         @inlineCallbacks
         def shutdown():

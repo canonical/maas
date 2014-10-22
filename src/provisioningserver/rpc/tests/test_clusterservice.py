@@ -95,7 +95,6 @@ from provisioningserver.rpc.testing import (
     always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
-    capture_result,
     MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
     )
@@ -821,21 +820,20 @@ class TestClusterClient(MAASTestCase):
 
     def test_connecting(self):
         client = self.make_running_client()
-        getOnReadyResult = capture_result(client.onReady)
         self.patch_authenticate_for_success(client)
         self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
-        self.assertThat(client.onReady, IsUnfiredDeferred())
+        wait_for_ready = client.ready.get()
+        self.assertThat(wait_for_ready, IsUnfiredDeferred())
         client.connectionMade()
-        # onReady has fired with the name of the event-loop.
-        self.assertEqual(client.eventloop, getOnReadyResult())
+        # ready has been set with the name of the event-loop.
+        self.assertEqual(client.eventloop, extract_result(wait_for_ready))
         self.assertEqual(
             client.service.connections,
             {client.eventloop: client})
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
-        getOnReadyResult = capture_result(client.onReady)
 
         # Pretend that a connection already exists for this address.
         client.service.connections[client.eventloop] = sentinel.connection
@@ -845,9 +843,9 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with KeyError to signify that a connection to the
+        # ready was set with KeyError to signify that a connection to the
         # same event-loop already existed.
-        self.assertRaises(KeyError, getOnReadyResult)
+        self.assertRaises(KeyError, extract_result, client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -860,16 +858,15 @@ class TestClusterClient(MAASTestCase):
     def test_disconnects_when_service_is_not_running(self):
         client = self.make_running_client()
         client.service.running = False
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with RuntimeError to signify that the client
+        # ready was set with RuntimeError to signify that the client
         # service was not running.
-        self.assertRaises(RuntimeError, getOnReadyResult)
+        self.assertRaises(RuntimeError, extract_result, client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -880,15 +877,16 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         self.patch_authenticate_for_failure(client)
         self.patch_register_for_success(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exceptions.AuthenticationFailed, getOnReadyResult)
+        # ready was set with AuthenticationFailed.
+        self.assertRaises(
+            exceptions.AuthenticationFailed, extract_result,
+            client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -900,7 +898,6 @@ class TestClusterClient(MAASTestCase):
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_error(client, exception_type())
         self.patch_register_for_success(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -909,8 +906,8 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exception_type, getOnReadyResult)
+        # ready was set with AuthenticationFailed.
+        self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
@@ -930,15 +927,16 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         self.patch_authenticate_for_success(client)
         self.patch_register_for_failure(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exceptions.RegistrationFailed, getOnReadyResult)
+        # ready was set with AuthenticationFailed.
+        self.assertRaises(
+            exceptions.RegistrationFailed, extract_result,
+            client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -950,7 +948,6 @@ class TestClusterClient(MAASTestCase):
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_success(client)
         self.patch_register_for_error(client, exception_type())
-        getOnReadyResult = capture_result(client.onReady)
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -959,8 +956,8 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exception_type, getOnReadyResult)
+        # ready was set with the exception we made.
+        self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
