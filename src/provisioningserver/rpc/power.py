@@ -286,6 +286,8 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     the database is updated.
     """
     if power_type not in QUERY_POWER_TYPES:
+        # query_all_nodes() won't call this with an un-queryable power
+        # type, however this is left here to prevent PEBKAC.
         raise PowerActionFail("Unknown power_type '%s'" % power_type)
 
     # Use increasing waiting times to work around race conditions that could
@@ -362,4 +364,5 @@ def query_all_nodes(nodes, max_concurrency=5, clock=reactor):
     semaphore = DeferredSemaphore(tokens=max_concurrency)
     return DeferredList(
         semaphore.run(_query_node, node, clock)
-        for node in nodes)
+        for node in nodes
+        if node['power_type'] in QUERY_POWER_TYPES)

@@ -587,10 +587,11 @@ class TestPowerQueryAsync(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def make_node(self):
+    def make_node(self, power_type=None):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
-        power_type = random.choice(power.QUERY_POWER_TYPES)
+        if power_type is None:
+            power_type = random.choice(power.QUERY_POWER_TYPES)
         state = random.choice(['on', 'off', 'unknown', 'error'])
         context = {
             factory.make_name('context-key'): (
@@ -634,6 +635,30 @@ class TestPowerQueryAsync(MAASTestCase):
                 node['power_type'], node['context'],
                 clock=reactor)
             for node in nodes
+        )))
+
+    @inlineCallbacks
+    def test_query_all_nodes_only_queries_queryable_power_types(self):
+        nodes = self.make_nodes()
+        # nodes are all queryable, so add one that isn't:
+        nodes.append(self.make_node(power_type='ether_wake'))
+
+        # Report back that all nodes' power states are as recorded.
+        power_states = [node['power_state'] for node in nodes]
+        get_power_state = self.patch(power, 'get_power_state')
+        get_power_state.side_effect = [
+            succeed(power_state)
+            for power_state in power_states
+            ]
+
+        yield power.query_all_nodes(nodes)
+        self.assertThat(get_power_state, MockCallsMatch(*(
+            call(
+                node['system_id'], node['hostname'],
+                node['power_type'], node['context'],
+                clock=reactor)
+            for node in nodes
+            if node['power_type'] in power.QUERY_POWER_TYPES
         )))
 
     @inlineCallbacks
