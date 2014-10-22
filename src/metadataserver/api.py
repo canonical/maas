@@ -76,7 +76,7 @@ from metadataserver.models import (
     NodeUserData,
     )
 from metadataserver.models.commissioningscript import (
-    BUILTIN_COMMISSIONING_SCRIPTS,
+    get_builtin_commissioning_scripts,
     )
 from piston.utils import rc
 from provisioningserver.events import (
@@ -229,8 +229,10 @@ class VersionIndexHandler(MetadataViewHandler):
         script_result = int(request.POST.get('script_result', 0))
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
-            if name in BUILTIN_COMMISSIONING_SCRIPTS:
-                postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
+            builtin_commissioning_scripts = (
+                get_builtin_commissioning_scripts())
+            if name in builtin_commissioning_scripts:
+                postprocess_hook = builtin_commissioning_scripts[name]['hook']
                 postprocess_hook(
                     node=node, output=raw_content,
                     exit_status=script_result)

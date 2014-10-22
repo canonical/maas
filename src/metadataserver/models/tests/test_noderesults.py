@@ -35,6 +35,7 @@ import time
 
 from fixtures import FakeLogger
 from maasserver.fields import MAC
+from maasserver.models import Config
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -55,7 +56,10 @@ from metadataserver.models import (
     )
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
+    BUILTIN_COMMISSIONING_SCRIPTS,
+    DHCP_UNCONFIGURED_INTERFACES_NAME,
     extract_router_mac_addresses,
+    get_builtin_commissioning_scripts,
     inject_lldp_result,
     inject_lshw_result,
     inject_result,
@@ -646,3 +650,26 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger(name='commissioningscript'))
         update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
+
+
+class TestGetBuiltinCommissioningScripts(MAASServerTestCase):
+
+    def test__includes_all_builtin_commissioning_scripts_by_default(self):
+        self.assertItemsEqual(
+            BUILTIN_COMMISSIONING_SCRIPTS,
+            get_builtin_commissioning_scripts(),
+        )
+
+    def test__excludes_dhcp_discovery_when_disabled(self):
+        Config.objects.set_config(
+            'enable_dhcp_discovery_on_unconfigured_interfaces', False)
+        self.assertNotIn(
+            DHCP_UNCONFIGURED_INTERFACES_NAME,
+            get_builtin_commissioning_scripts())
+
+    def test__includes_dhcp_discovery_when_enabled(self):
+        Config.objects.set_config(
+            'enable_dhcp_discovery_on_unconfigured_interfaces', True)
+        self.assertIn(
+            DHCP_UNCONFIGURED_INTERFACES_NAME,
+            get_builtin_commissioning_scripts())

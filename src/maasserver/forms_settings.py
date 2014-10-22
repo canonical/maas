@@ -266,6 +266,16 @@ CONFIG_ITEMS = {
                 "Erase nodes' disks prior to releasing.")
         }
     },
+    'enable_dhcp_discovery_on_unconfigured_interfaces': {
+        'default': False,
+        'form': forms.BooleanField,
+        'form_kwargs': {
+            'required': False,
+            'label': (
+                "Perform DHCP discovery on unconfigured network "
+                "interfaces of commissioning nodes."),
+        }
+    },
 }
 
 

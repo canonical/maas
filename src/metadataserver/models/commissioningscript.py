@@ -14,8 +14,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'BUILTIN_COMMISSIONING_SCRIPTS',
     'CommissioningScript',
+    'get_builtin_commissioning_scripts',
     'inject_lldp_result',
     'inject_lshw_result',
     'inject_result',
@@ -43,6 +43,7 @@ from django.db.models import (
     )
 from lxml import etree
 from maasserver.fields import MAC
+from maasserver.models import Config
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.enum import RESULT_TYPE
@@ -346,6 +347,7 @@ def set_node_routers(node, output, exit_status):
 LIST_MODALIASES_OUTPUT_NAME = '00-maas-04-list-modaliases.out'
 LIST_MODALIASES_SCRIPT = \
     'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
+DHCP_UNCONFIGURED_INTERFACES_NAME = '00-maas-05-dhcp-unconfigured-ifaces'
 
 
 def null_hook(node, output, exit_status):
@@ -391,7 +393,7 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
         'content': LIST_MODALIASES_SCRIPT.encode('ascii'),
         'hook': null_hook,
     },
-    '00-maas-05-dhcp-unconfigured-ifaces': {
+    DHCP_UNCONFIGURED_INTERFACES_NAME: {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
     },
@@ -424,6 +426,20 @@ def add_names_to_scripts(scripts):
 add_names_to_scripts(BUILTIN_COMMISSIONING_SCRIPTS)
 
 
+def get_builtin_commissioning_scripts():
+    """Get the builtin commissioning scripts.
+
+    The builtin scripts exposed may vary based on config settings.
+    """
+    scripts = BUILTIN_COMMISSIONING_SCRIPTS.copy()
+
+    config_key = 'enable_dhcp_discovery_on_unconfigured_interfaces'
+    if not Config.objects.get_config(config_key):
+        del scripts[DHCP_UNCONFIGURED_INTERFACES_NAME]
+
+    return scripts
+
+
 def add_script_to_archive(tarball, name, content, mtime):
     """Add a commissioning script to an archive of commissioning scripts."""
     assert isinstance(content, bytes), "Script content must be binary."
@@ -441,7 +457,7 @@ class CommissioningScriptManager(Manager):
     """Utility for the collection of `CommissioningScript`s."""
 
     def _iter_builtin_scripts(self):
-        for script in BUILTIN_COMMISSIONING_SCRIPTS.itervalues():
+        for script in get_builtin_commissioning_scripts().itervalues():
             yield script['name'], script['content']
 
     def _iter_user_scripts(self):
@@ -494,8 +510,9 @@ def inject_result(node, name, output, exit_status=0):
     NodeResult.objects.store_data(
         node, name, script_result=exit_status,
         result_type=RESULT_TYPE.COMMISSIONING, data=Bin(output))
-    if name in BUILTIN_COMMISSIONING_SCRIPTS:
-        postprocess_hook = BUILTIN_COMMISSIONING_SCRIPTS[name]['hook']
+    builtin_commissioning_scripts = get_builtin_commissioning_scripts()
+    if name in builtin_commissioning_scripts:
+        postprocess_hook = builtin_commissioning_scripts[name]['hook']
         postprocess_hook(node=node, output=output, exit_status=exit_status)
 
 
