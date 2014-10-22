@@ -414,7 +414,10 @@ class NodeManager(Manager):
         for node in nodes:
             if node.status == NODE_STATUS.ALLOCATED:
                 claims = node.claim_static_ip_addresses()
-                static_mappings[node.nodegroup].update(claims)
+                # If the PXE mac is on a managed interface then we can ask
+                # the cluster to generate the DHCP host map(s).
+                if node.is_pxe_mac_on_managed_interface():
+                    static_mappings[node.nodegroup].update(claims)
                 node.start_deployment()
 
         # XXX 2014-06-17 bigjools bug=1330765
@@ -1550,3 +1553,11 @@ class Node(CleanSave, TimestampedModel):
             return self.pxe_mac
 
         return self.macaddress_set.first()
+
+    def is_pxe_mac_on_managed_interface(self):
+        pxe_mac = self.get_pxe_mac()
+        if pxe_mac is not None:
+            cluster_interface = pxe_mac.cluster_interface
+            if cluster_interface is not None:
+                return cluster_interface.is_managed
+        return False

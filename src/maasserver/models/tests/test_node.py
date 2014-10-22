@@ -1834,6 +1834,28 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(node.macaddress_set.first(), node.get_pxe_mac())
 
 
+class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
+
+    def test__returns_true_if_managed(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        self.assertTrue(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_no_pxe_mac(self):
+        node = factory.make_Node()
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_no_attached_cluster_interface(self):
+        node = factory.make_Node()
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+    def test__returns_false_if_cluster_interface_unmanaged(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        self.assertFalse(node.is_pxe_mac_on_managed_interface())
+
+
 class NodeRoutersTest(MAASServerTestCase):
 
     def test_routers_stores_mac_address(self):
@@ -2374,6 +2396,47 @@ class NodeManagerTest_StartNodes(MAASServerTestCase):
         # test__only_returns_nodes_for_which_power_commands_have_been_sent()
         # demonstrates this behaviour.
         self.assertItemsEqual([node1], nodes_started)
+
+    def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
+        cluster = factory.make_NodeGroup()
+        managed_interface = factory.make_NodeGroupInterface(
+            nodegroup=cluster,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        unmanaged_interface = factory.make_NodeGroupInterface(
+            nodegroup=cluster,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT)
+        user = factory.make_User()
+        [node1, node2] = self.make_acquired_nodes_with_macs(
+            user, nodegroup=cluster, count=2)
+        # Give the node a PXE MAC address on the cluster's interface.
+        node1_mac = node1.get_pxe_mac()
+        node1_mac.cluster_interface = managed_interface
+        node1_mac.save()
+        node2_mac = node1.get_pxe_mac()
+        node2_mac.cluster_interface = unmanaged_interface
+        node2_mac.save()
+
+        node1_ip = factory.make_ipv4_address()
+        claim_static_ip_addresses = self.patch(
+            node_module.Node, 'claim_static_ip_addresses')
+        claim_static_ip_addresses.side_effect = [
+            [(node1_ip, node1_mac.mac_address)],
+            [(factory.make_ipv4_address(), node2_mac.mac_address)],
+            ]
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        Node.objects.start_nodes([node1.system_id, node2.system_id], user)
+        self.expectThat(update_host_maps, MockCalledOnceWith(ANY))
+
+        observed_static_mappings = update_host_maps.call_args[0][0]
+
+        [observed_cluster] = observed_static_mappings.keys()
+        self.expectThat(observed_cluster.uuid, Equals(cluster.uuid))
+
+        observed_claims = observed_static_mappings.values()
+        self.expectThat(
+            observed_claims,
+            Equals([{node1_ip: node1_mac.mac_address}]))
 
 
 class NodeManagerTest_StopNodes(MAASServerTestCase):
