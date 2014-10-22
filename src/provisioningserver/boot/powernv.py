@@ -62,7 +62,7 @@ def format_bootif(mac):
     """Formats a mac address into the BOOTIF format, expected by
     the linux kernel."""
     mac = mac.replace(':', '-')
-    mac = mac.upper()
+    mac = mac.lower()
     return '%02x-%s' % (ARP_HTYPE.ETHERNET, mac)
 
 
