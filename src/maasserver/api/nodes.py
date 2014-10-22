@@ -157,7 +157,13 @@ class NodeHandler(OperationsHandler):
         old_allocated_status_aliases = [
             NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYING,
             NODE_STATUS.DEPLOYED, NODE_STATUS.FAILED_DEPLOYMENT]
-        if node.status in old_allocated_status_aliases:
+        old_deployed_status_aliases = [
+            NODE_STATUS.RELEASING, NODE_STATUS.DISK_ERASING,
+            NODE_STATUS.FAILED_RELEASING, NODE_STATUS.FAILED_DISK_ERASING,
+            ]
+        deployed_aliases = (
+            old_allocated_status_aliases + old_deployed_status_aliases)
+        if node.status in deployed_aliases:
             return 6  # Old allocated status.
         else:
             return node.status
