@@ -280,9 +280,17 @@ class Action(Command):
 
         If the response is textual, a trailing \n is appended.
         """
-        file.write(content)
-        if is_response_textual(response) and file.isatty():
-            file.write("\n")
+        if file.isatty():
+            if is_response_textual(response) and response.status == 200:
+                file.write("Success.\n")
+                file.write("Machine-readable output follows:\n")
+
+            file.write(content)
+
+            if is_response_textual(response):
+                file.write("\n")
+        else:
+            file.write(content)
 
 
 class ActionHelp(argparse.Action):
