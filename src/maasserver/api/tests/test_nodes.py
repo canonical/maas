@@ -1405,6 +1405,10 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         ('deploying', dict(status=NODE_STATUS.DEPLOYING)),
         ('deployed', dict(status=NODE_STATUS.DEPLOYED)),
         ('failed_deployment', dict(status=NODE_STATUS.FAILED_DEPLOYMENT)),
+        ('releasing', dict(status=NODE_STATUS.RELEASING)),
+        ('failed_releasing', dict(status=NODE_STATUS.FAILED_RELEASING)),
+        ('disk_erasing', dict(status=NODE_STATUS.DISK_ERASING)),
+        ('failed_disk_erasing', dict(status=NODE_STATUS.FAILED_DISK_ERASING)),
         ]
 
     old_allocated_status = 6
