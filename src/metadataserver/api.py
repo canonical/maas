@@ -281,7 +281,15 @@ class VersionIndexHandler(MetadataViewHandler):
 
         if node.status == NODE_STATUS.COMMISSIONING:
             self._store_commissioning_results(node, request)
-            store_node_power_parameters(node, request)
+            # XXX 2014-10-21 newell, bug=1382075
+            # Auto detection for IPMI tries to save power parameters
+            # for Moonshot.  This causes issues if the node's power type
+            # is already MSCM as it uses SSH instead of IPMI.  This fix
+            # is temporary as power parameters should not be overwritten
+            # during commissioning because MAAS already has knowledge to
+            # boot the node.
+            if node.power_type != "mscm":
+                store_node_power_parameters(node, request)
             target_status = self.signaling_statuses.get(status)
         elif node.status == NODE_STATUS.DEPLOYING:
             self._store_installing_results(node, request)
