@@ -61,6 +61,7 @@ from metadataserver.models import (
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
 from netaddr import IPAddress
+from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
 
 
@@ -259,6 +260,16 @@ class TestNodeAPI(APITestCase):
         self.assertThat(
             node_stop,
             MockCalledOnceWith(self.logged_in_user, stop_mode=stop_mode))
+
+    def test_POST_stop_returns_503_when_power_op_already_in_progress(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        exc_text = factory.make_name("exc_text")
+        self.patch(
+            node_module.Node,
+            'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
+        response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn(exc_text, response.content)
 
     def test_POST_start_checks_permission(self):
         node = factory.make_Node()

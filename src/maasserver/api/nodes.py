@@ -82,7 +82,10 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.power_schema import UNKNOWN_POWER_TYPE
 from provisioningserver.rpc.cluster import PowerQuery
-from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from provisioningserver.rpc.exceptions import (
+    NoConnectionsAvailable,
+    PowerActionAlreadyInProgress,
+    )
 import simplejson as json
 
 # Node's fields exposed on the API.
@@ -265,7 +268,10 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
-        power_action_sent = node.stop(request.user, stop_mode=stop_mode)
+        try:
+            power_action_sent = node.stop(request.user, stop_mode=stop_mode)
+        except PowerActionAlreadyInProgress as e:
+            raise PowerProblem(e)
         if power_action_sent:
             return node
         else:
