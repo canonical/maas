@@ -1511,7 +1511,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         else:
             self.fail("Found more than one matching tag: %s" % results_display)
 
-    def get_results_link(self, display):
+    def get_commissioning_results_link(self, display):
         """Find the results link in `display`.
 
         :param display: Results display section for a node, as returned by
@@ -1528,12 +1528,29 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         else:
             self.fail("Found more than one link: %s" % links)
 
+    def get_installing_results_link(self, display):
+        """Find the results link in `display`.
+
+        :param display: Results display section for a node, as returned by
+            `request_results_display`.
+        :return: `lxml.html.HtmlElement` for the link to the node's
+            installation results, as found in `display`; or `None` if it was
+            not present.
+        """
+        links = display.cssselect('a')
+        if len(links) == 0:
+            return None
+        elif len(links) == 1:
+            return links[0]
+        elif len(links) > 1:
+            return links
+
     def test_view_node_links_to_commissioning_results_if_appropriate(self):
         self.client_log_in(as_admin=True)
         result = factory.make_NodeResult_for_commissioning()
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
-        link = self.get_results_link(section)
+        link = self.get_commissioning_results_link(section)
         results_list = reverse('nodecommissionresult-list')
         self.assertEqual(
             results_list + '?node=%s' % result.node.system_id,
@@ -1554,7 +1571,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         result = factory.make_NodeResult_for_commissioning(node=node)
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
-        link = self.get_results_link(section)
+        link = self.get_commissioning_results_link(section)
         self.assertEqual(
             "1 output file",
             normalise_whitespace(link.text_content()))
@@ -1575,7 +1592,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         result = factory.make_NodeResult_for_commissioning()
         section = self.request_results_display(
             result.node, RESULT_TYPE.COMMISSIONING)
-        link = self.get_results_link(section)
+        link = self.get_commissioning_results_link(section)
         self.assertEqual(
             "1 output file",
             normalise_whitespace(link.text_content()))
@@ -1588,7 +1605,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
             factory.make_NodeResult_for_commissioning(node=node)
         section = self.request_results_display(
             node, RESULT_TYPE.COMMISSIONING)
-        link = self.get_results_link(section)
+        link = self.get_commissioning_results_link(section)
         self.assertEqual(
             "%d output files" % num_results,
             normalise_whitespace(link.text_content()))
@@ -1608,7 +1625,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         result = factory.make_NodeResult_for_installing(node=node)
         section = self.request_results_display(
             result.node, RESULT_TYPE.INSTALLING)
-        link = self.get_results_link(section)
+        link = self.get_installing_results_link(section)
         self.assertNotIn(
             normalise_whitespace(link.text_content()),
             ('', None))
@@ -1623,6 +1640,32 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         self.assertIsNone(
             self.request_results_display(
                 result.node, RESULT_TYPE.INSTALLING))
+
+    def test_view_node_shows_single_installing_result(self):
+        self.client_log_in(as_admin=True)
+        result = factory.make_NodeResult_for_installing()
+        section = self.request_results_display(
+            result.node, RESULT_TYPE.INSTALLING)
+        link = self.get_installing_results_link(section)
+        self.assertEqual(
+            "install log",
+            normalise_whitespace(link.text_content()))
+
+    def test_view_node_shows_multiple_installing_results(self):
+        self.client_log_in(as_admin=True)
+        node = factory.make_Node()
+        num_results = randint(2, 5)
+        results_names = []
+        for _ in range(num_results):
+            node_result = factory.make_NodeResult_for_installing(node=node)
+            results_names.append(node_result.name)
+        section = self.request_results_display(
+            node, RESULT_TYPE.INSTALLING)
+        links = self.get_installing_results_link(section)
+        self.assertEqual(
+            ' '.join(reversed(results_names)),
+            ' '.join([
+                normalise_whitespace(link.text_content()) for link in links]))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):
