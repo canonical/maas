@@ -396,7 +396,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 
 class TestStopNodeNodeAction(MAASServerTestCase):
 
-    def test_StopNode_stops_deployed_node(self):
+    def test__stops_deployed_node(self):
         user = factory.make_User()
         params = dict(
             power_address=factory.make_string(),
@@ -412,7 +412,22 @@ class TestStopNodeNodeAction(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(user))
 
-    def test_StopNode_actionnable_for_failed_states(self):
+    def test__stops_Ready_node(self):
+        admin = factory.make_admin()
+        params = dict(
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.READY,
+            power_type='ipmi', power_parameters=params)
+        node_stop = self.patch_autospec(node, 'stop')
+
+        StopNode(node, admin).execute()
+
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+
+    def test__actionnable_for_failed_states(self):
         status = random.choice(FAILED_STATUSES)
         node = factory.make_Node(status=status, power_type='ipmi')
         actions = compile_node_actions(

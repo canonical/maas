@@ -365,7 +365,7 @@ class StopNode(NodeAction):
     display = "Stop node"
     display_bulk = "Stop selected nodes"
     actionable_statuses = (
-        [NODE_STATUS.DEPLOYED] +
+        [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
         # Also let a user ask a failed node to shutdown: this
         # is useful to try to recover from power failures.
         FAILED_STATUSES
