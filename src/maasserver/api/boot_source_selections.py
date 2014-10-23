@@ -31,6 +31,7 @@ from piston.utils import rc
 
 DISPLAYED_BOOTSOURCESELECTION_FIELDS = (
     'id',
+    'os',
     'release',
     'arches',
     'subarches',
