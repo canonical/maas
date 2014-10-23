@@ -343,6 +343,37 @@ class DeferredValue:
 
         self.set(failure)
 
+    def capture(self, d):
+        """Capture the result of `d`.
+
+        The result (or failure) coming out of `d` will be saved in this
+        `DeferredValue`, and the result passed down `d`'s chain will be
+        `None`.
+
+        :param d: :py:class:`Deferred`.
+        """
+        return d.addCallbacks(self.set, self.fail)
+
+    def observe(self, d):
+        """Observe the result of `d`.
+
+        The result (or failure) coming out of `d` will be saved in this
+        `DeferredValue`, but the result (or failure) will be propagated
+        intact.
+
+        :param d: :py:class:`Deferred`.
+        """
+        def set_and_return(value):
+            self.set(value)
+            return value
+
+        def fail_and_return(failure):
+            self.fail(failure)
+            return failure
+
+        return d.addCallbacks(
+            set_and_return, fail_and_return)
+
     def get(self, timeout=None):
         """Get a promise for the value.
 

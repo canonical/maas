@@ -733,3 +733,45 @@ class TestDeferredValue(MAASTestCase):
     def test__value_is_not_available_until_set(self):
         dvalue = DeferredValue()
         self.assertRaises(AttributeError, lambda: dvalue.value)
+
+    def test__capture_captures_callback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        d.callback(sentinel.result)
+        self.assertEqual(sentinel.result, extract_result(waiter))
+        self.assertIsNone(extract_result(d))
+
+    def test__capture_captures_errback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        exception = factory.make_exception()
+        d.errback(exception)
+        self.assertRaises(type(exception), extract_result, waiter)
+        self.assertIsNone(extract_result(d))
+
+    def test__observe_observes_callback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        d.callback(sentinel.result)
+        self.assertEqual(sentinel.result, extract_result(waiter))
+        self.assertEqual(sentinel.result, extract_result(d))
+
+    def test__observe_observes_errback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        exception = factory.make_exception()
+        d.errback(exception)
+        self.assertRaises(type(exception), extract_result, waiter)
+        self.assertRaises(type(exception), extract_result, d)
