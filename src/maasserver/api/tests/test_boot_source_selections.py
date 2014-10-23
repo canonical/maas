@@ -115,8 +115,10 @@ class TestBootSourceSelectionAPI(APITestCase):
     def test_PUT_updates_boot_source_selection(self):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
+        new_os = factory.make_name('os')
         new_release = factory.make_name('release')
         new_values = {
+            'os': new_os,
             'release': new_release,
             'arches': [factory.make_name('arch'), factory.make_name('arch')],
             'subarches': [
