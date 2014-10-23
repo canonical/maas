@@ -823,9 +823,14 @@ class TestClusterClient(MAASTestCase):
         self.patch_authenticate_for_success(client)
         self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
+        wait_for_authenticated = client.authenticated.get()
+        self.assertThat(wait_for_authenticated, IsUnfiredDeferred())
         wait_for_ready = client.ready.get()
         self.assertThat(wait_for_ready, IsUnfiredDeferred())
         client.connectionMade()
+        # authenticated has been set to True, denoting a successfully
+        # authenticated region.
+        self.assertTrue(extract_result(wait_for_authenticated))
         # ready has been set with the name of the event-loop.
         self.assertEqual(client.eventloop, extract_result(wait_for_ready))
         self.assertEqual(
@@ -843,6 +848,9 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
+        # authenticated was set to None to signify that authentication was not
+        # attempted.
+        self.assertIsNone(extract_result(client.authenticated.get()))
         # ready was set with KeyError to signify that a connection to the
         # same event-loop already existed.
         self.assertRaises(KeyError, extract_result, client.ready.get())
@@ -864,6 +872,9 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
+        # authenticated was set to None to signify that authentication was not
+        # attempted.
+        self.assertIsNone(extract_result(client.authenticated.get()))
         # ready was set with RuntimeError to signify that the client
         # service was not running.
         self.assertRaises(RuntimeError, extract_result, client.ready.get())
@@ -883,6 +894,8 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
+        # authenticated was set to False.
+        self.assertIs(False, extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
             exceptions.AuthenticationFailed, extract_result,
@@ -906,8 +919,12 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # ready was set with AuthenticationFailed.
-        self.assertRaises(exception_type, extract_result, client.ready.get())
+        # authenticated errbacks with the error.
+        self.assertRaises(
+            exception_type, extract_result, client.authenticated.get())
+        # ready also errbacks with the same error.
+        self.assertRaises(
+            exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
@@ -933,6 +950,8 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
+        # authenticated was set to True because it succeeded.
+        self.assertIs(True, extract_result(client.authenticated.get()))
         # ready was set with AuthenticationFailed.
         self.assertRaises(
             exceptions.RegistrationFailed, extract_result,
@@ -956,6 +975,8 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
+        # authenticated was set to True because it succeeded.
+        self.assertIs(True, extract_result(client.authenticated.get()))
         # ready was set with the exception we made.
         self.assertRaises(exception_type, extract_result, client.ready.get())
 

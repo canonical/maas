@@ -399,6 +399,12 @@ class ClusterClient(Cluster):
     :ivar service: A reference to the :class:`ClusterClientService` that
         made self.
 
+    :ivar authenticated: A py:class:`DeferredValue` that will be set when the
+        region has been authenticated. If the region has been authenticated,
+        this will be ``True``, otherwise it will be ``False``. If there was an
+        error, it will return a :py:class:`twisted.python.failure.Failure` via
+        errback.
+
     :ivar ready: A py:class:`DeferredValue` that will be set when this
         connection is up and has performed authentication on the region. If
         everything has gone smoothly it will be set to the name of the
@@ -418,6 +424,7 @@ class ClusterClient(Cluster):
         self.eventloop = eventloop
         self.service = service
         # Events for this protocol's life-cycle.
+        self.authenticated = DeferredValue()
         self.ready = DeferredValue()
 
     @property
@@ -461,7 +468,10 @@ class ClusterClient(Cluster):
 
     @inlineCallbacks
     def performHandshake(self):
-        authenticated = yield self.authenticateRegion()
+        d_authenticate = self.authenticateRegion()
+        self.authenticated.observe(d_authenticate)
+        authenticated = yield d_authenticate
+
         if authenticated:
             log.msg("Event-loop '%s' authenticated." % self.ident)
             registered = yield self.registerWithRegion()
@@ -507,12 +517,14 @@ class ClusterClient(Cluster):
                 "Event-loop '%s' will be disconnected; the cluster's "
                 "client service is not running." % self.ident)
             self.transport.loseConnection()
+            self.authenticated.set(None)
             self.ready.fail(RuntimeError("Service not running."))
         elif self.eventloop in self.service.connections:
             log.msg(
                 "Event-loop '%s' is already connected; "
                 "dropping connection." % self.ident)
             self.transport.loseConnection()
+            self.authenticated.set(None)
             self.ready.fail(KeyError(
                 "Event-loop '%s' already connected." % self.eventloop))
         else:
