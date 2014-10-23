@@ -592,9 +592,12 @@ class NodeView(NodeViewMixin, UpdateView):
 
         installation_results = NodeResult.objects.filter(
             node=node, result_type=RESULT_TYPE.INSTALLING)
-        if len(installation_results) > 0:
+        if len(installation_results) > 1:
             for result in installation_results:
                 result.name = re.sub('[_.]', ' ', result.name)
+            context['nodeinstallresults'] = installation_results
+        elif len(installation_results) == 1:
+            installation_results[0].name = "install log"
             context['nodeinstallresults'] = installation_results
 
         context['third_party_drivers_enabled'] = Config.objects.get_config(
