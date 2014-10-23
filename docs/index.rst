@@ -108,7 +108,6 @@ Command-line Tools
 
    man/maas-region-admin.8
    man/maas.8
-   man/maas-import-pxe-files.8
 
 
 ***************
