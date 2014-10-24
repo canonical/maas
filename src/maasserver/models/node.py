@@ -1213,10 +1213,6 @@ class Node(CleanSave, TimestampedModel):
                 unicode(ex))
             raise
 
-        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
-        self.delete_host_maps(deallocated_ips)
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones([self.nodegroup])
         if self.power_state == POWER_STATE.OFF:
             # Node is already off.
             self.status = NODE_STATUS.READY
@@ -1238,6 +1234,14 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ''
         self.license_key = ''
         self.save()
+
+        # Do these after updating the node to avoid creating deadlocks with
+        # other node editing operations.
+        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
+        self.delete_host_maps(deallocated_ips)
+        from maasserver.dns.config import change_dns_zones
+        change_dns_zones([self.nodegroup])
+
         # We explicitly commit here because during bulk node actions we
         # want to make sure that each successful state transition is
         # recorded in the DB.
