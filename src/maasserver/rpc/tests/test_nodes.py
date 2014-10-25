@@ -140,6 +140,24 @@ class TestCreateNode(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(power_parameters, node.power_parameters)
 
+    def test__forces_generic_subarchitecture_if_missing(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self, subarch_name='generic')
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        arch, subarch = architecture.split('/')
+        node = create_node(
+            cluster.uuid, arch, power_type, power_parameters,
+            mac_addresses)
+
+        self.assertEqual(architecture, node.architecture)
+
 
 class TestMarkNodeFailed(MAASServerTestCase):
 

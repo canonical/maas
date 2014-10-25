@@ -122,6 +122,12 @@ def create_node(cluster_uuid, architecture, power_type,
         raise NodeAlreadyExists(
             "One of the MACs %s is already in use by a node." %
             mac_addresses)
+
+    # It is possible that the enlistment code did not provide a subarchitecture
+    # for the give architecture; assume 'generic'.
+    if '/' not in architecture:
+        architecture = '%s/generic' % architecture
+
     cluster = NodeGroup.objects.get_by_natural_key(cluster_uuid)
     data = {
         'power_type': power_type,
