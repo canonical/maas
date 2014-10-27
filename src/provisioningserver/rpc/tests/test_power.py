@@ -401,7 +401,7 @@ class TestChangePowerState(MAASTestCase):
             call(1, reactor),  # pause(1, reactor)
             call(power_change='query', **context),
             call(power_change=power_change, **context),
-            call(1, reactor),  # pause(1, reactor)
+            call(2, reactor),  # pause(1, reactor)
             call(power_change='query', **context),
         ))
 

@@ -147,7 +147,7 @@ def power_change_starting(system_id, hostname, power_change):
     yield send_event_node(event_type, system_id, hostname)
 
 
-default_waiting_policy = (1, 1, 1, 1, 1, 3, 5)
+default_waiting_policy = (1, 2, 2, 4, 6, 8, 12)
 
 
 @asynchronous
