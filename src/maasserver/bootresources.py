@@ -21,6 +21,8 @@ __all__ = [
     "SIMPLESTREAMS_URL_REGEXP",
 ]
 
+from datetime import timedelta
+from subprocess import CalledProcessError
 import threading
 import time
 
@@ -66,6 +68,7 @@ from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import tempdir
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import synchronous
 from simplestreams import util as sutil
 from simplestreams.mirrors import (
@@ -76,6 +79,7 @@ from simplestreams.objectstores import ObjectStore
 from twisted.application.internet import TimerService
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
+from twisted.python import log
 
 
 maaslog = get_maas_logger("bootresources")
@@ -908,6 +912,23 @@ def _import_resources(force=False):
         lock_thread.join()
 
 
+def _import_resources_in_thread(force=False):
+    """Import boot resources in a thread managed by Twisted.
+
+    Errors are logged. The returned `Deferred` will never errback so it's safe
+    to use in a `TimerService`, for example.
+    """
+    def coerce_subprocess_failures(failure):
+        failure.trap(CalledProcessError)
+        failure.value.__class__ = ExternalProcessError
+        return failure
+
+    d = deferToThread(_import_resources, force=force)
+    d.addErrback(coerce_subprocess_failures)
+    d.addErrback(log.err, "Importing boot resources failed.")
+    return d
+
+
 def import_resources():
     """Starts the importing of boot resources.
 
@@ -915,7 +936,7 @@ def import_resources():
     doesn't wait for it to be finished, as it can take several minutes to
     complete.
     """
-    reactor.callFromThread(deferToThread, _import_resources, force=True)
+    reactor.callFromThread(_import_resources_in_thread, force=True)
 
 
 def is_import_resources_running():
@@ -930,6 +951,6 @@ class ImportResourcesService(TimerService, object):
     though the interval can be overridden by passing it to the constructor.
     """
 
-    def __init__(self, interval=(60 * 60)):
+    def __init__(self, interval=timedelta(hours=1)):
         super(ImportResourcesService, self).__init__(
-            interval, deferToThread, _import_resources)
+            interval.total_seconds(), _import_resources_in_thread)

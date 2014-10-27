@@ -19,6 +19,7 @@ import json
 from os import environ
 from random import randint
 from StringIO import StringIO
+from subprocess import CalledProcessError
 
 from django.core.urlresolvers import reverse
 from django.db import (
@@ -63,7 +64,11 @@ from mock import (
     sentinel,
     )
 from provisioningserver.import_images.product_mapping import ProductMapping
+from provisioningserver.rpc.testing import TwistedLoggerFixture
+from testtools.deferredruntest import extract_result
 from testtools.matchers import ContainsAll
+from twisted.application.internet import TimerService
+from twisted.internet.defer import fail
 
 
 def make_boot_resource_file_with_stream():
@@ -1105,3 +1110,73 @@ class TestImportImages(MAASTestCase):
         self.assertThat(
             nodegroup.objects.import_boot_images_on_accepted_clusters,
             MockCalledOnceWith())
+
+
+class TestImportResourcesInThread(MAASTestCase):
+    """Tests for `_import_resources_in_thread`."""
+
+    def test__defers__import_resources_to_thread(self):
+        deferToThread = self.patch(bootresources, "deferToThread")
+        bootresources._import_resources_in_thread(force=sentinel.force)
+        self.assertThat(
+            deferToThread, MockCalledOnceWith(
+                bootresources._import_resources, force=sentinel.force))
+
+    def tests__defaults_force_to_False(self):
+        deferToThread = self.patch(bootresources, "deferToThread")
+        bootresources._import_resources_in_thread()
+        self.assertThat(
+            deferToThread, MockCalledOnceWith(
+                bootresources._import_resources, force=False))
+
+    def test__logs_errors_and_does_not_errback(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+        exception_type = factory.make_exception_type()
+        deferToThread = self.patch(bootresources, "deferToThread")
+        deferToThread.return_value = fail(exception_type())
+        d = bootresources._import_resources_in_thread(force=sentinel.force)
+        self.assertIsNone(extract_result(d))
+        self.assertDocTestMatches(
+            """\
+            Importing boot resources failed.
+            Traceback (most recent call last):
+            ...
+            """,
+            logger.output)
+
+    def test__logs_subprocess_output_on_error(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+        exception = CalledProcessError(
+            2, [factory.make_name("command")],
+            factory.make_name("output"))
+        deferToThread = self.patch(bootresources, "deferToThread")
+        deferToThread.return_value = fail(exception)
+        d = bootresources._import_resources_in_thread(force=sentinel.force)
+        self.assertIsNone(extract_result(d))
+        self.assertDocTestMatches(
+            """\
+            Importing boot resources failed.
+            Traceback (most recent call last):
+            Failure: subprocess.CalledProcessError:
+              Command `command-...` returned non-zero exit status 2:
+            output-...
+            """,
+            logger.output)
+
+
+class TestImportResourcesService(MAASTestCase):
+    """Tests for `ImportResourcesService`."""
+
+    def test__is_a_TimerService(self):
+        service = bootresources.ImportResourcesService()
+        self.assertIsInstance(service, TimerService)
+
+    def test__runs_once_an_hour(self):
+        service = bootresources.ImportResourcesService()
+        self.assertEqual(3600, service.step)
+
+    def test__calls__import_resources_in_thread(self):
+        service = bootresources.ImportResourcesService()
+        self.assertEqual(
+            (bootresources._import_resources_in_thread, (), {}),
+            service.call)
