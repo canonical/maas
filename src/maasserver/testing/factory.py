@@ -436,7 +436,7 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
-    def make_NodeResult_for_installing(
+    def make_NodeResult_for_installation(
             self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from installing a node."""
         if node is None:
@@ -449,7 +449,7 @@ class Factory(maastesting.factory.Factory):
             script_result = random.randint(0, 10)
         ncr = NodeResult(
             node=node, name=name, script_result=script_result,
-            result_type=RESULT_TYPE.INSTALLING, data=Bin(data))
+            result_type=RESULT_TYPE.INSTALLATION, data=Bin(data))
         ncr.save()
         return ncr
 

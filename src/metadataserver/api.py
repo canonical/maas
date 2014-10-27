@@ -216,13 +216,13 @@ class VersionIndexHandler(MetadataViewHandler):
             shown_fields.remove('user-data')
         return make_list_response(sorted(shown_fields))
 
-    def _store_installing_results(self, node, request):
-        """Store installing result file for `node`."""
+    def _store_installation_results(self, node, request):
+        """Store installation result file for `node`."""
         for name, uploaded_file in request.FILES.items():
             raw_content = uploaded_file.read()
             NodeResult.objects.store_data(
                 node, name, script_result=0,
-                result_type=RESULT_TYPE.INSTALLING, data=Bin(raw_content))
+                result_type=RESULT_TYPE.INSTALLATION, data=Bin(raw_content))
 
     def _store_commissioning_results(self, node, request):
         """Store commissioning result files for `node`."""
@@ -240,18 +240,19 @@ class VersionIndexHandler(MetadataViewHandler):
 
     @operation(idempotent=False)
     def signal(self, request, version=None, mac=None):
-        """Signal commissioning/installing status.
+        """Signal commissioning/installation status.
 
         A commissioning/installing node can call this to report progress of
-        the commissioning/installing process to the metadata server.
+        the commissioning/installation process to the metadata server.
 
         Calling this from a node that is not Allocated, Commissioning, Ready,
         or Failed Tests is an error. Signaling completion more than once is
         not an error; all but the first successful call are ignored.
 
-        :param status: A commissioning/installing status code. This can be "OK"
-            (to signal that commissioning has completed successfully), or
-            "FAILED" (to signal failure), or "WORKING" (for progress reports).
+        :param status: A commissioning/installation status code. This can be
+            "OK" (to signal that commissioning/installation has completed
+            successfully), or "FAILED" (to signal failure), or "WORKING" (for
+            progress reports).
         :param script_result: If this call uploads files, this parameter must
             be provided and will be stored as the return value for the script
             which produced these files.
@@ -270,7 +271,7 @@ class VersionIndexHandler(MetadataViewHandler):
         # and deploying.
         if status not in self.signaling_statuses:
             raise MAASAPIBadRequest(
-                "Unknown commissioning/installing status: '%s'" % status)
+                "Unknown commissioning/installation status: '%s'" % status)
 
         if node.status not in self.effective_signalable_states:
             # If commissioning, it is already registered.  Nothing to be done.
@@ -282,7 +283,7 @@ class VersionIndexHandler(MetadataViewHandler):
             store_node_power_parameters(node, request)
             target_status = self.signaling_statuses.get(status)
         elif node.status == NODE_STATUS.DEPLOYING:
-            self._store_installing_results(node, request)
+            self._store_installation_results(node, request)
             if status == SIGNAL_STATUS.FAILED:
                 node.mark_failed("Failed to get installation result.")
             target_status = None

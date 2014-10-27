@@ -1482,7 +1482,7 @@ class ConstructThirdPartyDriversNoticeTest(MAASServerTestCase):
 
 
 class NodeResultsDisplayTest(MAASServerTestCase):
-    """Tests for the link to node commissioning/installing
+    """Tests for the link to node commissioning/installation
     results on the Node page.
     """
 
@@ -1502,7 +1502,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         doc = fromstring(response.content)
         if result_type == RESULT_TYPE.COMMISSIONING:
             results_display = doc.cssselect('#nodecommissionresults')
-        elif result_type == RESULT_TYPE.INSTALLING:
+        elif result_type == RESULT_TYPE.INSTALLATION:
             results_display = doc.cssselect('#nodeinstallresults')
         if len(results_display) == 0:
             return None
@@ -1528,7 +1528,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         else:
             self.fail("Found more than one link: %s" % links)
 
-    def get_installing_results_link(self, display):
+    def get_installation_results_link(self, display):
         """Find the results link in `display`.
 
         :param display: Results display section for a node, as returned by
@@ -1610,58 +1610,58 @@ class NodeResultsDisplayTest(MAASServerTestCase):
             "%d output files" % num_results,
             normalise_whitespace(link.text_content()))
 
-    def test_view_node_shows_installing_results_only_if_present(self):
+    def test_view_node_shows_installation_results_only_if_present(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node()
         self.assertIsNone(
-            self.request_results_display(node, RESULT_TYPE.INSTALLING))
+            self.request_results_display(node, RESULT_TYPE.INSTALLATION))
 
-    def test_view_node_shows_installing_results_with_edit_perm(self):
+    def test_view_node_shows_installation_results_with_edit_perm(self):
         password = 'test'
         user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_NodeResult_for_installing(node=node)
+        result = factory.make_NodeResult_for_installation(node=node)
         section = self.request_results_display(
-            result.node, RESULT_TYPE.INSTALLING)
-        link = self.get_installing_results_link(section)
+            result.node, RESULT_TYPE.INSTALLATION)
+        link = self.get_installation_results_link(section)
         self.assertNotIn(
             normalise_whitespace(link.text_content()),
             ('', None))
 
-    def test_view_node_shows_installing_results_requires_edit_perm(self):
+    def test_view_node_shows_installation_results_requires_edit_perm(self):
         password = 'test'
         user = factory.make_User(password=password)
         node = factory.make_Node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_NodeResult_for_installing(node=node)
+        result = factory.make_NodeResult_for_installation(node=node)
         self.assertIsNone(
             self.request_results_display(
-                result.node, RESULT_TYPE.INSTALLING))
+                result.node, RESULT_TYPE.INSTALLATION))
 
-    def test_view_node_shows_single_installing_result(self):
+    def test_view_node_shows_single_installation_result(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_NodeResult_for_installing()
+        result = factory.make_NodeResult_for_installation()
         section = self.request_results_display(
-            result.node, RESULT_TYPE.INSTALLING)
-        link = self.get_installing_results_link(section)
+            result.node, RESULT_TYPE.INSTALLATION)
+        link = self.get_installation_results_link(section)
         self.assertEqual(
             "install log",
             normalise_whitespace(link.text_content()))
 
-    def test_view_node_shows_multiple_installing_results(self):
+    def test_view_node_shows_multiple_installation_results(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node()
         num_results = randint(2, 5)
         results_names = []
         for _ in range(num_results):
-            node_result = factory.make_NodeResult_for_installing(node=node)
+            node_result = factory.make_NodeResult_for_installation(node=node)
             results_names.append(node_result.name)
         section = self.request_results_display(
-            node, RESULT_TYPE.INSTALLING)
-        links = self.get_installing_results_link(section)
+            node, RESULT_TYPE.INSTALLATION)
+        links = self.get_installation_results_link(section)
         self.assertEqual(
             ' '.join(reversed(results_names)),
             ' '.join([

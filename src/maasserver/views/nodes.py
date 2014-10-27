@@ -591,7 +591,7 @@ class NodeView(NodeViewMixin, UpdateView):
         context['nodecommissionresults'] = commissioning_results
 
         installation_results = NodeResult.objects.filter(
-            node=node, result_type=RESULT_TYPE.INSTALLING)
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
         if len(installation_results) > 1:
             for result in installation_results:
                 result.name = re.sub('[_.]', ' ', result.name)
