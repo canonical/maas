@@ -350,10 +350,14 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
 
     handled_exceptions = {
         NoConnectionsAvailable: httplib.SERVICE_UNAVAILABLE,
-        PowerActionAlreadyInProgress: httplib.CONFLICT,
+        PowerActionAlreadyInProgress: httplib.SERVICE_UNAVAILABLE,
         MultipleFailures: httplib.INTERNAL_SERVER_ERROR,
         TimeoutError: httplib.GATEWAY_TIMEOUT,
         }
+
+    # Default 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
+    # responses.
+    RETRY_AFTER_SERVICE_UNAVAILABLE = 5
 
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
@@ -380,6 +384,10 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
             error_message = get_error_message_for_exception(exception)
 
         encoding = b'utf-8'
-        return HttpResponse(
+        response = HttpResponse(
             content=error_message.encode(encoding), status=status,
             mimetype=b"text/plain; charset=%s" % encoding)
+        if status == httplib.SERVICE_UNAVAILABLE:
+            response['Retry-After'] = (
+                self.RETRY_AFTER_SERVICE_UNAVAILABLE)
+        return response
