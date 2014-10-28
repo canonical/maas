@@ -494,6 +494,19 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
             (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
             (response.status_code, response.content))
 
+    def test_multiple_failures_with_one_exception(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        expected_error_message = factory.make_name("error")
+        unique_exception = PowerActionAlreadyInProgress(expected_error_message)
+        exception = MultipleFailures(Failure(unique_exception))
+        response = middleware.process_exception(request, exception)
+
+        self.assertEqual(
+            (httplib.SERVICE_UNAVAILABLE, expected_error_message),
+            (response.status_code, response.content))
+
     def test_handles_TimeoutError(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(

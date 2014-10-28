@@ -357,7 +357,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
 
     # Default 'Retry-After' header sent for httplib.SERVICE_UNAVAILABLE
     # responses.
-    RETRY_AFTER_SERVICE_UNAVAILABLE = 5
+    RETRY_AFTER_SERVICE_UNAVAILABLE = 10
 
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
@@ -374,6 +374,12 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
 
         status = self.handled_exceptions[exception.__class__]
         if isinstance(exception, MultipleFailures):
+            # If only one exception has been raised, process this exception:
+            # this allows MAAS to convert this exception into the proper
+            # type of response (e.g. 503) instead of the 500 response that
+            # MultipleFailures is transformed into.
+            if len(exception.args) == 1:
+                return self.process_exception(request, exception.args[0].value)
             for failure in exception.args:
                 logging.exception(exception)
             error_message = "\n".join(
