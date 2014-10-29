@@ -1662,10 +1662,10 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         section = self.request_results_display(
             node, RESULT_TYPE.INSTALLATION)
         links = self.get_installation_results_link(section)
-        self.assertEqual(
-            ' '.join(reversed(results_names)),
-            ' '.join([
-                normalise_whitespace(link.text_content()) for link in links]))
+        self.assertThat(
+            results_names,
+            ContainsAll(
+                [normalise_whitespace(link.text_content()) for link in links]))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):
