@@ -12,6 +12,12 @@ $TTL    300
               )
 
     IN  NS  {{domain}}.
+{{for type, directive in generate_directives.items()}}
+{{for iterator_values, rdns, hostname in directive}}
+$GENERATE {{iterator_values}} {{rdns}} IN {{type}} {{hostname}}
+{{endfor}}
+{{endfor}}
+
 {{for type, mapping in mappings.items()}}
 {{for item_from, item_to in mapping}}
 {{item_from}} IN {{type}} {{item_to}}

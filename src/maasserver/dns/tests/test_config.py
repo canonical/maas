@@ -165,15 +165,15 @@ class TestDNSServer(MAASServerTestCase):
         # A forward lookup on the hostname returns the IP address.
         fqdn = "%s.%s" % (hostname, domain)
         forward_lookup_result = self.dig_resolve(fqdn, version=version)
-        self.assertEqual(
-            [ip], forward_lookup_result,
+        self.expectThat(
+            forward_lookup_result, Contains(ip),
             "Failed to resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(forward_lookup_result)))
         # A reverse lookup on the IP address returns the hostname.
         reverse_lookup_result = self.dig_reverse_resolve(
             ip, version=version)
-        self.assertEqual(
-            ["%s." % fqdn], reverse_lookup_result,
+        self.expectThat(
+            reverse_lookup_result, Contains("%s." % fqdn),
             "Failed to reverse resolve '%s' (results: '%s')." % (
                 fqdn, ','.join(reverse_lookup_result)))
 

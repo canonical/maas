@@ -393,14 +393,28 @@ class TestZoneGenerator(MAASServerTestCase):
         [interface] = nodegroup.get_managed_interfaces()
         networks_dict = ZoneGenerator._get_networks()
         retrieved_interface = networks_dict[nodegroup]
-        self.assertEqual([interface.network], retrieved_interface)
+        self.assertEqual(
+            [
+                (
+                    interface.network,
+                    (interface.ip_range_low, interface.ip_range_high)
+                )
+            ],
+            retrieved_interface)
 
     def test_get_networks_returns_multiple_networks(self):
         nodegroups = [self.make_node_group() for _ in range(3)]
         networks_dict = ZoneGenerator._get_networks()
         for nodegroup in nodegroups:
             [interface] = nodegroup.get_managed_interfaces()
-            self.assertEqual([interface.network], networks_dict[nodegroup])
+            self.assertEqual(
+                [
+                    (
+                        interface.network,
+                        (interface.ip_range_low, interface.ip_range_high),
+                    ),
+                ],
+                networks_dict[nodegroup])
 
     def test_get_networks_returns_managed_networks(self):
         nodegroups = [
@@ -415,7 +429,10 @@ class TestZoneGenerator(MAASServerTestCase):
         self.assertEqual(
             {
                 nodegroup: [
-                    interface.network
+                    (
+                        interface.network,
+                        (interface.ip_range_low, interface.ip_range_high),
+                    )
                     for interface in nodegroup.get_managed_interfaces()
                     ]
                 for nodegroup in nodegroups
