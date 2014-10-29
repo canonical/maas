@@ -46,10 +46,6 @@ def get_file(url):
     :param url: URL to download file
     :returns: File data, or None
     """
-    from urllib import getproxies
-    from twisted.python import log
-    log.msg("Proxies: %s" % getproxies())
-
     # Build a new opener so that the environment is checked for proxy
     # URLs. Using urllib2.urlopen() means that we'd only be using the
     # proxies as defined when urlopen() was called the first time.
