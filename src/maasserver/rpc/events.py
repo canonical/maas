@@ -19,6 +19,7 @@ __all__ = [
 ]
 
 
+from maasserver import locks
 from maasserver.models import (
     Event,
     EventType,
@@ -41,13 +42,14 @@ def register_event_type(name, description, level):
 
     for :py:class:`~provisioningserver.rpc.region.RegisterEventType`.
     """
-    if not EventType.objects.filter(name=name).exists():
-        # We don't use EventType.objects.get_or_create here, because
-        # it won't cope with situations where `name` is identical but
-        # `description` has changed, and we'll still get an error
-        # because `name` has to be unique.
-        EventType.objects.create(
-            name=name, description=description, level=level)
+    with locks.events:
+        if not EventType.objects.filter(name=name).exists():
+            # We don't use EventType.objects.get_or_create here, because
+            # it won't cope with situations where `name` is identical but
+            # `description` has changed, and we'll still get an error
+            # because `name` has to be unique.
+            EventType.objects.create(
+                name=name, description=description, level=level)
 
 
 @synchronous
