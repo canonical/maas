@@ -59,6 +59,7 @@ Setting up a MAAS server
    bootsources
    nodes
    hardware-enablement-kernels
+   sstreams-mirror
    networks
    kernel-options
    installing-ubuntu
