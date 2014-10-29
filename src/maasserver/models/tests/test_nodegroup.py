@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
 from django.db.models.signals import post_save
@@ -26,6 +27,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
+    Config,
     NodeGroup,
     nodegroup as nodegroup_module,
     )
@@ -381,6 +383,8 @@ class TestNodeGroup(MAASServerTestCase):
             mock_getClientFor, MockCalledOnceWith(nodegroup.uuid, timeout=1))
 
     def test_import_boot_images_calls_client_with_resource_endpoint(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
         sources = [get_simplestream_endpoint()]
         fake_client = Mock()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
@@ -389,7 +393,9 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup.import_boot_images()
         self.assertThat(
             fake_client,
-            MockCalledOnceWith(ImportBootImages, sources=sources))
+            MockCalledOnceWith(
+                ImportBootImages, sources=sources,
+                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
 
     def test_import_boot_images_does_nothing_if_no_connection_to_cluster(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
@@ -401,6 +407,8 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertThat(mock_get_simplestreams_endpoint, MockNotCalled())
 
     def test_import_boot_images_end_to_end(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
 
         self.useFixture(RegionEventLoopFixture("rpc"))
@@ -413,7 +421,9 @@ class TestNodeGroup(MAASServerTestCase):
 
         self.assertThat(
             protocol.ImportBootImages,
-            MockCalledOnceWith(ANY, sources=[get_simplestream_endpoint()]))
+            MockCalledOnceWith(
+                ANY, sources=[get_simplestream_endpoint()],
+                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
 
     def test_is_connected_returns_true_if_connection(self):
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')

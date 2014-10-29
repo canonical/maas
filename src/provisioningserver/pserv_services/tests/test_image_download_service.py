@@ -14,8 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-
 from datetime import timedelta
+from urlparse import urlparse
 
 from fixtures import FakeLogger
 from maastesting.factory import factory
@@ -139,10 +139,15 @@ class TestPeriodicImageDownloadService(PservTestCase):
             tftppath, 'maas_meta_last_modified')
         one_week = timedelta(minutes=15).total_seconds()
         maas_meta_last_modified.return_value = clock.seconds() - one_week
+        http_proxy = factory.make_simple_http_url()
+        https_proxy = factory.make_simple_http_url()
         rpc_client = Mock()
         client_call = Mock()
         client_call.side_effect = [
             defer.succeed(dict(sources=sentinel.sources)),
+            defer.succeed(dict(
+                http=urlparse(http_proxy),
+                https=urlparse(https_proxy))),
             ]
         rpc_client.getClient.return_value = client_call
 
@@ -158,7 +163,8 @@ class TestPeriodicImageDownloadService(PservTestCase):
         service.startService()
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                _run_import, sentinel.sources))
+                _run_import, sentinel.sources, http_proxy=http_proxy,
+                https_proxy=https_proxy))
 
     def test_no_download_if_no_rpc_connections(self):
         rpc_client = Mock()

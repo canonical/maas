@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+from random import randint
 
 from maastesting.factory import factory
 from maastesting.matchers import (
@@ -30,6 +31,7 @@ from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
     _run_import,
+    get_hosts_from_sources,
     import_boot_images,
     is_import_boot_images_running,
     list_boot_images,
@@ -37,8 +39,23 @@ from provisioningserver.rpc.boot_images import (
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
 from provisioningserver.utils.twisted import pause
+from testtools.matchers import Equals
 from twisted.internet import defer
 from twisted.internet.task import Clock
+
+
+def make_sources():
+    hosts = [factory.make_name('host').lower() for _ in range(3)]
+    urls = [
+        'http://%s:%s/images-stream/streams/v1/index.json' % (
+            host, randint(1, 1000))
+        for host in hosts
+        ]
+    sources = [
+        {'url': url, 'selections': []}
+        for url in urls
+        ]
+    return sources, hosts
 
 
 class TestListBootImages(PservTestCase):
@@ -54,6 +71,13 @@ class TestListBootImages(PservTestCase):
         self.assertThat(
             mock_list_boot_images,
             MockCalledOnceWith(sentinel.resource_root))
+
+
+class TestGetHostsFromSources(PservTestCase):
+
+    def test__returns_set_of_hosts_from_sources(self):
+        sources, hosts = make_sources()
+        self.assertItemsEqual(hosts, get_hosts_from_sources(sources))
 
 
 class TestRunImport(PservTestCase):
@@ -95,22 +119,29 @@ class TestRunImport(PservTestCase):
         _run_import(sources=[])
         self.assertEqual(home, fake.env['GNUPGHOME'])
 
+    def test__run_import_sets_proxy_if_given(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        fake = self.patch_boot_resources_function()
+        _run_import(sources=[], http_proxy=proxy, https_proxy=proxy)
+        self.expectThat(fake.env['http_proxy'], Equals(proxy))
+        self.expectThat(fake.env['https_proxy'], Equals(proxy))
+
+    def test__run_import_sets_proxy_for_loopback(self):
+        fake = self.patch_boot_resources_function()
+        _run_import(sources=[])
+        self.assertEqual(fake.env['no_proxy'], "localhost,127.0.0.1,::1")
+
+    def test__run_import_sets_proxy_for_source_host(self):
+        sources, hosts = make_sources()
+        fake = self.patch_boot_resources_function()
+        _run_import(sources=sources)
+        self.assertItemsEqual(
+            fake.env['no_proxy'].split(','),
+            ["localhost", "127.0.0.1", "::1"] + hosts)
+
     def test__run_import_accepts_sources_parameter(self):
         fake = self.patch(boot_resources, 'import_images')
-        sources = [
-            {
-                'path': "http://example.com",
-                'selections': [
-                    {
-                        'os': "ubuntu",
-                        'release': "trusty",
-                        'arches': ["amd64"],
-                        'subarches': ["generic"],
-                        'labels': ["release"]
-                    },
-                ],
-            },
-        ]
+        sources, _ = make_sources()
         _run_import(sources=sources)
         self.assertThat(fake, MockCalledOnceWith(sources))
 
@@ -136,7 +167,8 @@ class TestImportBootImages(PservTestCase):
         yield import_boot_images(sentinel.sources)
         self.assertThat(
             deferToThread, MockCalledOnceWith(
-                _run_import, sentinel.sources))
+                _run_import, sentinel.sources,
+                http_proxy=None, https_proxy=None))
 
     def test__takes_lock_when_running(self):
         clock = Clock()

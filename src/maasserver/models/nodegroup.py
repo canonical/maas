@@ -17,6 +17,7 @@ __all__ = [
     'NODEGROUP_CLUSTER_NAME_TEMPLATE',
     ]
 
+from urlparse import urlparse
 
 from apiclient.creds import convert_tuple_to_string
 from crochet import TimeoutError
@@ -295,6 +296,7 @@ class NodeGroup(TimestampedModel):
         the images that are exposed there.
         """
         # Avoid circular imports
+        from maasserver.models import Config
         from maasserver.bootresources import get_simplestream_endpoint
         try:
             client = getClientFor(self.uuid, timeout=1)
@@ -303,7 +305,12 @@ class NodeGroup(TimestampedModel):
             # the cluster is down, it will do an import on start up.
             return
         sources = [get_simplestream_endpoint()]
-        return client(ImportBootImages, sources=sources)
+        http_proxy = Config.objects.get_config("http_proxy")
+        if http_proxy is not None:
+            http_proxy = urlparse(http_proxy)
+        return client(
+            ImportBootImages, sources=sources,
+            http_proxy=http_proxy, https_proxy=http_proxy)
 
     def add_seamicro15k(self, mac, username, password, power_control=None):
         """ Add all of the specified cards the Seamicro SM15000 chassis at the

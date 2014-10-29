@@ -323,7 +323,26 @@ class TestClusterProtocol_ImportBootImages(MAASTestCase):
 
         self.assertThat(
             import_boot_images,
-            MockCalledOnceWith(sources))
+            MockCalledOnceWith(sources, http_proxy=None, https_proxy=None))
+
+    @inlineCallbacks
+    def test_import_boot_images_calls_import_boot_images_with_proxies(self):
+        import_boot_images = self.patch(clusterservice, "import_boot_images")
+
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        parsed_proxy = urlparse(proxy)
+
+        yield call_responder(
+            Cluster(), cluster.ImportBootImages, {
+                'sources': [],
+                'http_proxy': parsed_proxy,
+                'https_proxy': parsed_proxy,
+                })
+
+        self.assertThat(
+            import_boot_images,
+            MockCalledOnceWith(
+                [], http_proxy=proxy, https_proxy=proxy))
 
 
 class TestClusterProtocol_IsImportBootImagesRunning(MAASTestCase):
