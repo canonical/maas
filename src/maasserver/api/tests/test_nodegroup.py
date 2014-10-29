@@ -17,6 +17,7 @@ __all__ = []
 import httplib
 import json
 from textwrap import dedent
+from urlparse import urlparse
 
 import bson
 from django.contrib.auth.models import AnonymousUser
@@ -27,6 +28,7 @@ from maasserver.enum import (
     NODEGROUP_STATUS_CHOICES,
     )
 from maasserver.models import (
+    Config,
     DownloadProgress,
     NodeGroup,
     nodegroup as nodegroup_module,
@@ -472,6 +474,8 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
         self.assertItemsEqual([node.system_id], parsed_result)
 
     def test_nodegroup_import_boot_images_calls_ImportBootImages(self):
+        proxy = 'http://%s.example.com' % factory.make_name('proxy')
+        Config.objects.set_config('http_proxy', proxy)
         sources = [get_simplestream_endpoint()]
         fake_client = Mock()
         mock_getClientFor = self.patch(nodegroup_module, 'getClientFor')
@@ -488,7 +492,9 @@ class TestNodeGroupAPIAuth(MAASServerTestCase):
             explain_unexpected_response(httplib.OK, response))
         self.assertThat(
             fake_client,
-            MockCalledOnceWith(ImportBootImages, sources=sources))
+            MockCalledOnceWith(
+                ImportBootImages, sources=sources,
+                http_proxy=urlparse(proxy), https_proxy=urlparse(proxy)))
 
     def test_nodegroup_import_boot_images_denied_if_not_admin(self):
         nodegroup = factory.make_NodeGroup()

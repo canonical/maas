@@ -138,13 +138,16 @@ class Cluster(RPCProtocol):
         return {"images": list_boot_images()}
 
     @cluster.ImportBootImages.responder
-    def import_boot_images(self, sources):
+    def import_boot_images(self, sources, http_proxy=None, https_proxy=None):
         """import_boot_images()
 
         Implementation of
         :py:class:`~provisioningserver.rpc.cluster.ImportBootImages`.
         """
-        import_boot_images(sources)
+        get_proxy_url = lambda url: None if url is None else url.geturl()
+        import_boot_images(
+            sources, http_proxy=get_proxy_url(http_proxy),
+            https_proxy=get_proxy_url(https_proxy))
         return {}
 
     @cluster.IsImportBootImagesRunning.responder

@@ -26,6 +26,7 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.region import (
     GetBootSources,
     GetBootSourcesV2,
+    GetProxies,
     )
 from provisioningserver.utils.twisted import (
     pause,
@@ -108,7 +109,16 @@ class ImageDownloadService(TimerService, object):
 
         # Get sources from region
         sources = yield self._get_boot_sources(client)
-        yield import_boot_images(sources.get("sources"))
+        # Get http proxy from region
+        proxies = yield client(GetProxies)
+
+        def get_proxy_url(scheme):
+            url = proxies.get(scheme)  # url is a ParsedResult.
+            return None if url is None else url.geturl()
+
+        yield import_boot_images(
+            sources.get("sources"), get_proxy_url("http"),
+            get_proxy_url("https"))
 
     @inlineCallbacks
     def maybe_start_download(self):

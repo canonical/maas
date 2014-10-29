@@ -353,6 +353,8 @@ class ImportBootImages(amp.Command):
                   (b"arches", amp.ListOf(amp.Unicode())),
                   (b"subarches", amp.ListOf(amp.Unicode())),
                   (b"labels", amp.ListOf(amp.Unicode()))]))])),
+        (b"http_proxy", ParsedURL(optional=True)),
+        (b"https_proxy", ParsedURL(optional=True)),
     ]
     response = []
     errors = []
