@@ -446,7 +446,21 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
             (httplib.SERVICE_UNAVAILABLE, error_message),
             (response.status_code, response.content))
 
-    def test_power_action_already_in_progress_returned_as_409(self):
+    def test_503_response_includes_retry_after_header_by_default(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        error = NoConnectionsAvailable(factory.make_name())
+        response = middleware.process_exception(request, error)
+
+        self.assertEqual(
+            (
+                httplib.SERVICE_UNAVAILABLE,
+                '%s' % middleware.RETRY_AFTER_SERVICE_UNAVAILABLE,
+            ),
+            (response.status_code, response['Retry-after']))
+
+    def test_power_action_already_in_progress_returned_as_503(self):
         middleware = APIRPCErrorsMiddleware()
         request = factory.make_fake_request(
             "/api/1.0/" + factory.make_string(), 'POST')
@@ -457,7 +471,7 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         response = middleware.process_exception(request, error)
 
         self.assertEqual(
-            (httplib.CONFLICT, error_message),
+            (httplib.SERVICE_UNAVAILABLE, error_message),
             (response.status_code, response.content))
 
     def test_multiple_failures_returned_as_500(self):
@@ -478,6 +492,19 @@ class APIRPCErrorsMiddlewareTest(MAASServerTestCase):
         expected_error_message = "\n".join(error_messages)
         self.assertEqual(
             (httplib.INTERNAL_SERVER_ERROR, expected_error_message),
+            (response.status_code, response.content))
+
+    def test_multiple_failures_with_one_exception(self):
+        middleware = APIRPCErrorsMiddleware()
+        request = factory.make_fake_request(
+            "/api/1.0/" + factory.make_string(), 'POST')
+        expected_error_message = factory.make_name("error")
+        unique_exception = PowerActionAlreadyInProgress(expected_error_message)
+        exception = MultipleFailures(Failure(unique_exception))
+        response = middleware.process_exception(request, exception)
+
+        self.assertEqual(
+            (httplib.SERVICE_UNAVAILABLE, expected_error_message),
             (response.status_code, response.content))
 
     def test_handles_TimeoutError(self):
