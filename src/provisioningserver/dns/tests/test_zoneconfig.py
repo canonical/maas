@@ -22,10 +22,12 @@ import os.path
 import random
 
 from maastesting.factory import factory
+from maastesting.matchers import MockNotCalled
 from maastesting.testcase import MAASTestCase
 from netaddr import (
     IPAddress,
     IPNetwork,
+    IPRange,
     )
 from provisioningserver.dns.config import (
     get_dns_config_dir,
@@ -35,11 +37,14 @@ from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
+    intersect_iprange,
     )
 from testtools.matchers import (
     Contains,
     ContainsAll,
+    Equals,
     FileContains,
+    HasLength,
     IsInstance,
     MatchesAll,
     MatchesStructure,
@@ -187,10 +192,13 @@ class TestDNSForwardZoneConfig(MAASTestCase):
             ipv4_hostname: [ipv4_ip],
             ipv6_hostname: [ipv6_ip],
         }
+        expected_generate_directives = (
+            DNSForwardZoneConfig.get_GENERATE_directives(network))
         srv = self.make_srv_record()
         dns_zone_config = DNSForwardZoneConfig(
             domain, serial=random.randint(1, 100),
-            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv])
+            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv],
+            dynamic_ranges=[IPRange(network.first, network.last)])
         dns_zone_config.write_config()
         self.assertThat(
             os.path.join(target_dir, 'zone.%s' % domain),
@@ -201,6 +209,12 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                             srv.service, self.get_srv_item_output(srv)),
                         '%s IN A %s' % (ipv4_hostname, ipv4_ip),
                         '%s IN AAAA %s' % (ipv6_hostname, ipv6_ip),
+                    ] +
+                    [
+                        '$GENERATE %s %s IN A %s' % (
+                            iterator_values, reverse_dns, hostname)
+                        for iterator_values, reverse_dns, hostname in
+                        expected_generate_directives
                     ]
                 )
             )
@@ -221,6 +235,31 @@ class TestDNSForwardZoneConfig(MAASTestCase):
                         'IN  NS  %s.' % dns_zone_config.domain,
                         '%s. IN A %s' % (dns_zone_config.domain, dns_ip),
                     ])))
+
+    def test_ignores_generate_directives_for_v6_dynamic_ranges(self):
+        patch_dns_config_path(self)
+        domain = factory.make_string()
+        network = factory.make_ipv4_network()
+        dns_ip = factory.pick_ip_in_network(network)
+        ipv4_hostname = factory.make_name('host')
+        ipv4_ip = factory.pick_ip_in_network(network)
+        ipv6_hostname = factory.make_name('host')
+        ipv6_ip = factory.make_ipv6_address()
+        ipv6_network = factory.make_ipv6_network()
+        dynamic_range = IPRange(ipv6_network.first, ipv6_network.last)
+        mapping = {
+            ipv4_hostname: [ipv4_ip],
+            ipv6_hostname: [ipv6_ip],
+        }
+        srv = self.make_srv_record()
+        dns_zone_config = DNSForwardZoneConfig(
+            domain, serial=random.randint(1, 100),
+            mapping=mapping, dns_ip=dns_ip, srv_mapping=[srv],
+            dynamic_ranges=[dynamic_range])
+        get_generate_directives = self.patch(
+            dns_zone_config, 'get_GENERATE_directives')
+        dns_zone_config.write_config()
+        self.assertThat(get_generate_directives, MockNotCalled())
 
     def test_config_file_is_world_readable(self):
         patch_dns_config_path(self)
@@ -350,15 +389,42 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         target_dir = patch_dns_config_path(self)
         domain = factory.make_string()
         network = IPNetwork('192.168.0.1/22')
+        dynamic_network = IPNetwork('192.168.0.1/28')
         dns_zone_config = DNSReverseZoneConfig(
-            domain, serial=random.randint(1, 100), network=network)
+            domain, serial=random.randint(1, 100), network=network,
+            dynamic_ranges=[
+                IPRange(dynamic_network.first, dynamic_network.last)])
         dns_zone_config.write_config()
         reverse_file_name = 'zone.168.192.in-addr.arpa'
-        expected = Contains(
-            'IN  NS  %s' % domain)
+        expected_generate_directives = dns_zone_config.get_GENERATE_directives(
+            dynamic_network, domain)
+        expected = ContainsAll(
+            [
+                'IN  NS  %s' % domain
+            ] +
+            [
+                '$GENERATE %s %s IN PTR %s' % (
+                    iterator_values, reverse_dns, hostname)
+                for iterator_values, reverse_dns, hostname in
+                expected_generate_directives
+            ])
         self.assertThat(
             os.path.join(target_dir, reverse_file_name),
             FileContains(matcher=expected))
+
+    def test_ignores_generate_directives_for_v6_dynamic_ranges(self):
+        patch_dns_config_path(self)
+        domain = factory.make_string()
+        network = IPNetwork('192.168.0.1/22')
+        dynamic_network = IPNetwork("%s/64" % factory.make_ipv6_address())
+        dns_zone_config = DNSReverseZoneConfig(
+            domain, serial=random.randint(1, 100), network=network,
+            dynamic_ranges=[
+                IPRange(dynamic_network.first, dynamic_network.last)])
+        get_generate_directives = self.patch(
+            dns_zone_config, 'get_GENERATE_directives')
+        dns_zone_config.write_config()
+        self.assertThat(get_generate_directives, MockNotCalled())
 
     def test_reverse_config_file_is_world_readable(self):
         patch_dns_config_path(self)
@@ -368,3 +434,286 @@ class TestDNSReverseZoneConfig(MAASTestCase):
         dns_zone_config.write_config()
         filepath = FilePath(dns_zone_config.target_path)
         self.assertTrue(filepath.getPermissions().other.read)
+
+
+class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
+    """Tests for `DNSReverseZoneConfig.get_GENERATE_directives()`."""
+
+    def test_excplicitly(self):
+        # The other tests in this TestCase rely on
+        # get_expected_generate_directives(), which is quite dense. Here
+        # we test get_GENERATE_directives() explicitly.
+        ip_range = IPRange('192.168.0.1', '192.168.2.128')
+        expected_directives = [
+            ("1-255", "$.0.168.192.in-addr.arpa.", "192-168-0-$.domain."),
+            ("0-255", "$.1.168.192.in-addr.arpa.", "192-168-1-$.domain."),
+            ("0-128", "$.2.168.192.in-addr.arpa.", "192-168-2-$.domain."),
+            ]
+        self.assertItemsEqual(
+            expected_directives,
+            DNSReverseZoneConfig.get_GENERATE_directives(
+                ip_range, domain="domain"))
+
+    def get_expected_generate_directives(self, network, domain):
+        ip_parts = network.network.format().split('.')
+        relevant_ip_parts = ip_parts[:-2]
+
+        first_address = IPAddress(network.first).format()
+        first_address_parts = first_address.split(".")
+
+        if network.size < 256:
+            last_address = IPAddress(network.last).format()
+            iterator_low = int(first_address_parts[-1])
+            iterator_high = last_address.split('.')[-1]
+        else:
+            iterator_low = 0
+            iterator_high = 255
+
+        second_octet_offset = int(first_address_parts[-2])
+        expected_generate_directives = []
+        directives_needed = network.size / 256
+
+        if directives_needed == 0:
+            directives_needed = 1
+        for num in range(directives_needed):
+            expected_address_base = "%s-%s" % tuple(relevant_ip_parts)
+            expected_address = "%s-%s-$" % (
+                expected_address_base, num + second_octet_offset)
+            relevant_ip_parts.reverse()
+            expected_rdns_base = (
+                "%s.%s.in-addr.arpa." % tuple(relevant_ip_parts))
+            expected_rdns_template = "$.%s.%s" % (
+                num + second_octet_offset, expected_rdns_base)
+            expected_generate_directives.append(
+                (
+                    "%s-%s" % (iterator_low, iterator_high),
+                    expected_rdns_template,
+                    "%s.%s." % (expected_address, domain)
+                ))
+            relevant_ip_parts.reverse()
+        return expected_generate_directives
+
+    def test_returns_single_entry_for_slash_24_network(self):
+        network = IPNetwork("%s/24" % factory.make_ipv4_address())
+        domain = factory.make_string()
+        expected_generate_directives = self.get_expected_generate_directives(
+            network, domain)
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            network, domain)
+        self.expectThat(directives, HasLength(1))
+        self.assertItemsEqual(expected_generate_directives, directives)
+
+    def test_returns_single_entry_for_tiny_network(self):
+        network = IPNetwork("%s/28" % factory.make_ipv4_address())
+        domain = factory.make_string()
+
+        expected_generate_directives = self.get_expected_generate_directives(
+            network, domain)
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            network, domain)
+        self.expectThat(directives, HasLength(1))
+        self.assertItemsEqual(expected_generate_directives, directives)
+
+    def test_returns_single_entry_for_weird_small_range(self):
+        ip_range = IPRange('10.0.0.1', '10.0.0.255')
+        domain = factory.make_string()
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            ip_range, domain)
+        self.expectThat(directives, HasLength(1))
+
+    def test_dtrt_for_larger_networks(self):
+        # For every other network size that we're not explicitly
+        # testing here,
+        # DNSReverseZoneConfig.get_GENERATE_directives() will return
+        # one GENERATE directive for every 255 addresses in the network.
+        for prefixlen in range(23, 17):
+            network = IPNetwork(
+                "%s/%s" % (factory.make_ipv4_address(), prefixlen))
+            domain = factory.make_string()
+            directives = DNSReverseZoneConfig.get_GENERATE_directives(
+                network, domain)
+            self.expectThat(directives, HasLength(network.size / 256))
+
+    def test_returns_two_entries_for_slash_23_network(self):
+        network = IPNetwork(factory.make_ipv4_network(slash=23))
+        domain = factory.make_string()
+
+        expected_generate_directives = self.get_expected_generate_directives(
+            network, domain)
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            network, domain)
+        self.expectThat(directives, HasLength(2))
+        self.assertItemsEqual(expected_generate_directives, directives)
+
+    def test_rejects_network_larger_than_slash_16(self):
+        network = IPNetwork("%s/15" % factory.make_ipv4_address())
+        error = self.assertRaises(
+            AssertionError, DNSReverseZoneConfig.get_GENERATE_directives,
+            network, None)
+        self.assertEqual(
+            "Cannot generate reverse zone mapping for any network larger "
+            "than /16.",
+            unicode(error))
+
+    def test_sorts_output_by_hostname(self):
+        network = IPNetwork("10.0.0.1/23")
+        domain = factory.make_string()
+
+        expected_hostname = "10-0-%s-$." + domain + "."
+        expected_rdns = "$.%s.0.10.in-addr.arpa."
+
+        directives = list(DNSReverseZoneConfig.get_GENERATE_directives(
+            network, domain))
+        self.expectThat(
+            directives[0], Equals(
+                ("0-255", expected_rdns % "0", expected_hostname % "0")))
+        self.expectThat(
+            directives[1], Equals(
+                ("0-255", expected_rdns % "1", expected_hostname % "1")))
+
+
+class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
+    """Tests for `DNSForwardZoneConfig.get_GENERATE_directives()`."""
+
+    def test_excplicitly(self):
+        # The other tests in this TestCase rely on
+        # get_expected_generate_directives(), which is quite dense. Here
+        # we test get_GENERATE_directives() explicitly.
+        ip_range = IPRange('192.168.0.1', '192.168.2.128')
+        expected_directives = [
+            ("1-255", "192-168-0-$", "192.168.0.$"),
+            ("0-255", "192-168-1-$", "192.168.1.$"),
+            ("0-128", "192-168-2-$", "192.168.2.$"),
+            ]
+        self.assertItemsEqual(
+            expected_directives,
+            DNSForwardZoneConfig.get_GENERATE_directives(ip_range))
+
+    def get_expected_generate_directives(self, network):
+        ip_parts = network.network.format().split('.')
+        ip_parts[-1] = "$"
+        expected_hostname = "%s" % "-".join(ip_parts)
+        expected_address = ".".join(ip_parts)
+
+        first_address = IPAddress(network.first).format()
+        first_address_parts = first_address.split(".")
+        last_address = IPAddress(network.last).format()
+        last_address_parts = last_address.split(".")
+
+        if network.size < 256:
+            iterator_low = int(first_address_parts[-1])
+            if iterator_low == 0:
+                iterator_low = 1
+            iterator_high = last_address_parts[-1]
+        else:
+            iterator_low = 0
+            iterator_high = 255
+
+        expected_iterator_values = "%s-%s" % (iterator_low, iterator_high)
+
+        directives_needed = network.size / 256
+        if directives_needed == 0:
+            directives_needed = 1
+        expected_directives = []
+        for num in range(directives_needed):
+            ip_parts[-2] = unicode(num + int(ip_parts[-2]))
+            expected_address = ".".join(ip_parts)
+            expected_hostname = "%s" % "-".join(ip_parts)
+            expected_directives.append(
+                (
+                    expected_iterator_values,
+                    expected_hostname,
+                    expected_address
+                ))
+        return expected_directives
+
+    def test_returns_single_entry_for_slash_24_network(self):
+        network = IPNetwork("%s/24" % factory.make_ipv4_address())
+        expected_directives = self.get_expected_generate_directives(network)
+        directives = DNSForwardZoneConfig.get_GENERATE_directives(
+            network)
+        self.expectThat(directives, HasLength(1))
+        self.assertItemsEqual(expected_directives, directives)
+
+    def test_returns_single_entry_for_tiny_network(self):
+        network = IPNetwork("%s/31" % factory.make_ipv4_address())
+
+        expected_directives = self.get_expected_generate_directives(network)
+        directives = DNSForwardZoneConfig.get_GENERATE_directives(
+            network)
+        self.assertEqual(1, len(expected_directives))
+        self.assertItemsEqual(expected_directives, directives)
+
+    def test_returns_two_entries_for_slash_23_network(self):
+        network = IPNetwork("%s/23" % factory.make_ipv4_address())
+
+        expected_directives = self.get_expected_generate_directives(network)
+        directives = DNSForwardZoneConfig.get_GENERATE_directives(
+            network)
+        self.assertEqual(2, len(expected_directives))
+        self.assertItemsEqual(expected_directives, directives)
+
+    def test_dtrt_for_larger_networks(self):
+        # For every other network size that we're not explicitly
+        # testing here,
+        # DNSForwardZoneConfig.get_GENERATE_directives() will return
+        # one GENERATE directive for every 255 addresses in the network.
+        for prefixlen in range(23, 16):
+            network = IPNetwork(
+                "%s/%s" % (factory.make_ipv4_address(), prefixlen))
+            directives = DNSForwardZoneConfig.get_GENERATE_directives(
+                network)
+            self.assertIsEqual(network.size / 256, len(directives))
+
+    def test_rejects_network_larger_than_slash_16(self):
+        network = IPNetwork("%s/15" % factory.make_ipv4_address())
+        error = self.assertRaises(
+            AssertionError, DNSForwardZoneConfig.get_GENERATE_directives,
+            network)
+        self.assertEqual(
+            "Cannot generate reverse zone mapping for any network larger "
+            "than /16.",
+            unicode(error))
+
+    def test_sorts_output(self):
+        network = IPNetwork("10.0.0.0/23")
+
+        expected_hostname = "10-0-%s-$"
+        expected_address = "10.0.%s.$"
+
+        directives = list(DNSForwardZoneConfig.get_GENERATE_directives(
+            network))
+        self.expectThat(len(directives), Equals(2))
+        self.expectThat(
+            directives[0], Equals(
+                ("0-255", expected_hostname % "0", expected_address % "0")))
+        self.expectThat(
+            directives[1], Equals(
+                ("0-255", expected_hostname % "1", expected_address % "1")))
+
+
+class TestIntersectIPRange(MAASTestCase):
+    """Tests for `intersect_iprange()`."""
+
+    def test_finds_intersection_between_two_ranges(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.255')
+        range_2 = IPRange('10.0.0.128', '10.0.0.200')
+        intersect = intersect_iprange(range_1, range_2)
+        self.expectThat(
+            IPAddress(intersect.first), Equals(IPAddress('10.0.0.128')))
+        self.expectThat(
+            IPAddress(intersect.last), Equals(IPAddress('10.0.0.200')))
+
+    def test_ignores_non_intersecting_ranges(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.255')
+        range_2 = IPRange('10.0.1.128', '10.0.1.200')
+        self.assertIsNone(intersect_iprange(range_1, range_2))
+
+    def test_finds_partial_intersection(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.128')
+        range_2 = IPRange('10.0.0.64', '10.0.0.200')
+        intersect = intersect_iprange(range_1, range_2)
+        self.expectThat(
+            IPAddress(intersect.first), Equals(IPAddress('10.0.0.64')))
+        self.expectThat(
+            IPAddress(intersect.last), Equals(IPAddress('10.0.0.128')))

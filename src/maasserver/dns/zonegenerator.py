@@ -29,7 +29,10 @@ from maasserver.exceptions import MAASException
 from maasserver.models.config import Config
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.server_address import get_maas_facing_server_address
-from netaddr import IPAddress
+from netaddr import (
+    IPAddress,
+    IPRange,
+    )
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
@@ -180,9 +183,18 @@ class ZoneGenerator:
 
     @staticmethod
     def _get_networks():
-        """Return a lazily evaluated nodegroup:network dict."""
-        return lazydict(lambda ng: [
-            interface.network for interface in ng.get_managed_interfaces()])
+        """Return a lazily evaluated nodegroup:network_details dict.
+
+        network_details takes the form of a tuple of (network,
+        (network.ip_range_low, network.ip_range_high)).
+        """
+
+        def get_network(nodegroup):
+            return [
+                (iface.network, (iface.ip_range_low, iface.ip_range_high))
+                for iface in nodegroup.get_managed_interfaces()
+            ]
+        return lazydict(get_network)
 
     @staticmethod
     def _get_srv_mappings():
@@ -209,6 +221,12 @@ class ZoneGenerator:
         forward_nodegroups = sorted(nodegroups, key=get_domain)
         for domain, nodegroups in groupby(forward_nodegroups, get_domain):
             nodegroups = list(nodegroups)
+            dynamic_ranges = [
+                interface.get_dynamic_ip_range()
+                for nodegroup in nodegroups
+                for interface in nodegroup.get_managed_interfaces()
+            ]
+
             # A forward zone encompassing all nodes in the same domain.
             yield DNSForwardZoneConfig(
                 domain, serial=serial, dns_ip=dns_ip,
@@ -217,7 +235,8 @@ class ZoneGenerator:
                     for nodegroup in nodegroups
                     for hostname, ip in mappings[nodegroup].items()
                     },
-                srv_mapping=set(srv_mappings)
+                srv_mapping=set(srv_mappings),
+                dynamic_ranges=dynamic_ranges,
             )
 
     @staticmethod
@@ -226,11 +245,11 @@ class ZoneGenerator:
         get_domain = lambda nodegroup: nodegroup.name
         reverse_nodegroups = sorted(nodegroups, key=networks.get)
         for nodegroup in reverse_nodegroups:
-            for network in networks[nodegroup]:
+            for network, dynamic_range in networks[nodegroup]:
                 mapping = mappings[nodegroup]
                 yield DNSReverseZoneConfig(
                     get_domain(nodegroup), serial=serial, mapping=mapping,
-                    network=network
+                    network=network, dynamic_ranges=[IPRange(*dynamic_range)]
                 )
 
     def __iter__(self):
