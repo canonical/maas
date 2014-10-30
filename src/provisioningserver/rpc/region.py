@@ -43,6 +43,7 @@ __all__ = [
 from provisioningserver.rpc.arguments import (
     Bytes,
     Choice,
+    CompressedAmpList,
     ParsedURL,
     StructureAsJSON,
     )
@@ -163,7 +164,7 @@ class UpdateLeases(amp.Command):
     arguments = [
         # The cluster UUID.
         (b"uuid", amp.Unicode()),
-        (b"mappings", amp.AmpList(
+        (b"mappings", CompressedAmpList(
             [(b"ip", amp.Unicode()),
              (b"mac", amp.Unicode())]))
     ]
