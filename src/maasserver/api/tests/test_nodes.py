@@ -1456,6 +1456,41 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(self.old_allocated_status, parsed_result['status'])
 
+    def test_GET_list_allocated_exposes_substatus(self):
+        node = factory.make_Node(
+            status=self.status, owner=self.logged_in_user,
+            token=get_auth_tokens(self.logged_in_user)[0])
+
+        response = self.client.get(self.get_nodes_uri(), {
+            'op': 'list_allocated'})
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertThat(parsed_result, HasLength(1))
+        result_node = parsed_result[0]
+        self.assertEqual(node.system_id, result_node.get('system_id'))
+        self.assertEqual(node.status, result_node.get('substatus'))
+
+    def test_GET_node_exposes_substatus(self):
+        node = factory.make_Node(status=self.status)
+        response = self.client.get(self.get_node_uri(node))
+
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(node.system_id, parsed_result['system_id'])
+        self.assertEqual(self.status, parsed_result['substatus'])
+
+    def test_PUT_updates_exposes_substatus(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, status=self.status,
+            architecture=make_usable_architecture(self))
+        response = self.client_put(
+            self.get_node_uri(node), {'hostname': factory.make_name('host')})
+        parsed_result = json.loads(response.content)
+
+        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(node.status, parsed_result['substatus'])
+
 
 class TestPowerState(APITestCase):
 
