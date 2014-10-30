@@ -119,3 +119,20 @@ class StructureAsJSON(amp.Argument):
 
     def fromString(self, inString):
         return json.loads(zlib.decompress(inString))
+
+
+class CompressedAmpList(amp.AmpList):
+    """An :py:class:`amp.AmpList` that's compressed on the wire.
+
+    The serialised form is transparently compressed and decompressed with
+    zlib. This can be useful when there's a lot of repetition in the list
+    being transmitted.
+    """
+
+    def toStringProto(self, inObject, proto):
+        toStringProto = super(CompressedAmpList, self).toStringProto
+        return zlib.compress(toStringProto(inObject, proto))
+
+    def fromStringProto(self, inString, proto):
+        fromStringProto = super(CompressedAmpList, self).fromStringProto
+        return fromStringProto(zlib.decompress(inString), proto)
