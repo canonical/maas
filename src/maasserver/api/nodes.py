@@ -96,6 +96,7 @@ DISPLAYED_NODE_FIELDS = (
     'memory',
     'storage',
     'status',
+    'substatus',
     'osystem',
     'distro_series',
     'netboot',
@@ -167,6 +168,18 @@ class NodeHandler(OperationsHandler):
             return 6  # Old allocated status.
         else:
             return node.status
+
+    @classmethod
+    def substatus(handler, node):
+        """Return the substatus of the node.
+
+        The node's status as exposed on the API corresponds to a subset of the
+        actual possible statuses.  This was done to preserve backward
+        compatiblity between MAAS releases.  This 'substatus' field exposes
+        all the node's possible statuses as designed after the lifecyle of a
+        node got reworked.
+        """
+        return node.status
 
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.
