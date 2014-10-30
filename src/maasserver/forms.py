@@ -616,7 +616,7 @@ class AdminNodeForm(NodeForm):
     memory = forms.IntegerField(
         required=False, initial=0, label="Memory (MB)")
     storage = forms.IntegerField(
-        required=False, initial=0, label="Disk space (GB)")
+        required=False, initial=0, label="Disk space (MB)")
 
     class Meta:
         model = Node
