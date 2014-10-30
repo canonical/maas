@@ -616,6 +616,36 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(764435, node.storage)
 
+    def test_hardware_updates_storage_1387380_bad(self):
+        # Hardware data from bug 1387380 (the "bad" node).
+        node = factory.make_Node()
+        xmlbytes = dedent("""\
+            <node id="disk" claimed="true"
+                    class="disk" handle="SCSI:00:00:00:00">
+                <size units="bytes">120034123776</size>
+            </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(114473, node.storage)
+
+    def test_hardware_updates_storage_1387380_good(self):
+        # Hardware data from bug 1387380 (the "good" node).
+        node = factory.make_Node()
+        xmlbytes = dedent("""\
+            <node id="disk" claimed="true"
+                    class="disk" handle="SCSI:00:00:00:00">
+                <size units="bytes">120034123776</size>
+                <node id="volume" claimed="true" class="volume" handle="">
+                    <size units="bytes">120033075200</size>
+                    <capacity>120033075200</capacity>
+                </node>
+            </node>
+        """).encode("utf-8")
+        update_hardware_details(node, xmlbytes, 0)
+        node = reload_object(node)
+        self.assertEqual(114473, node.storage)
+
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.
