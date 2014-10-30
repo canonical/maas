@@ -67,9 +67,11 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
     )
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
     Contains,
+    Equals,
     Not,
     )
 from twisted.python.failure import Failure
@@ -81,23 +83,29 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         """Return a path to handle exceptions for."""
         return "/%s" % factory.make_string()
 
-    def make_middleware(self, base_path):
+    def make_middleware(self, base_path, retry_after=None):
         """Create an ExceptionMiddleware for base_path."""
         class TestingExceptionMiddleware(ExceptionMiddleware):
             path_regex = base_path
 
-        return TestingExceptionMiddleware()
+        testing_middleware = TestingExceptionMiddleware()
+        if retry_after is not None:
+            testing_middleware.RETRY_AFTER_SERVICE_UNAVAILABLE = retry_after
 
-    def process_exception(self, exception):
+        return testing_middleware
+
+    def process_exception(self, exception, retry_after=None):
         """Run a given exception through a fake ExceptionMiddleware.
 
         :param exception: The exception to simulate.
         :type exception: Exception
+        :param retry_after: Value of the RETRY_AFTER_SERVICE_UNAVAILABLE to
+            use in the fake middleware.
         :return: The response as returned by the ExceptionMiddleware.
         :rtype: HttpResponse or None.
         """
         base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
+        middleware = self.make_middleware(base_path, retry_after)
         request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
@@ -169,6 +177,16 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         error_text = factory.make_string()
         self.process_exception(Exception(error_text))
         self.assertThat(logger.output, Contains(error_text))
+
+    def test_reports_ExternalProcessError_as_ServiceUnavailable(self):
+        error_text = factory.make_string()
+        exception = ExternalProcessError(1, ["cmd"], error_text)
+        retry_after = random.randint(0, 10)
+        response = self.process_exception(exception, retry_after)
+        self.expectThat(
+            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
+        self.expectThat(response.content, Equals(unicode(exception)))
+        self.expectThat(response['Retry-After'], Equals("%s" % retry_after))
 
 
 class APIErrorsMiddlewareTest(MAASServerTestCase):

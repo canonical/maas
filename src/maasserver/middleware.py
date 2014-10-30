@@ -60,6 +60,7 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
     )
+from provisioningserver.utils.shell import ExternalProcessError
 
 
 try:
@@ -238,6 +239,21 @@ class ExceptionMiddleware:
             return HttpResponseForbidden(
                 content=unicode(exception).encode(encoding),
                 mimetype=b"text/plain; charset=%s" % encoding)
+        elif isinstance(exception, ExternalProcessError):
+            # Catch problems interacting with processes that the
+            # appserver spawns, e.g. rndc.
+            #
+            # While this is a serious error, it should be a temporary
+            # one as the admin should be checking and fixing, or it
+            # could be spurious.  There's no way of knowing, so the best
+            # course of action is to ask the caller to repeat.
+            response = HttpResponse(
+                content=unicode(exception).encode(encoding),
+                status=httplib.SERVICE_UNAVAILABLE,
+                mimetype=b"text/plain; charset=%s" % encoding)
+            response['Retry-After'] = (
+                self.RETRY_AFTER_SERVICE_UNAVAILABLE)
+            return response
         else:
             # Print a traceback.
             self.log_exception(exception)

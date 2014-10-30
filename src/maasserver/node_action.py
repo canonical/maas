@@ -55,6 +55,7 @@ from provisioningserver.rpc.exceptions import (
     PowerActionAlreadyInProgress,
     )
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.shell import ExternalProcessError
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
@@ -200,7 +201,7 @@ class Commission(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node commissioning started."
@@ -219,7 +220,7 @@ class AbortCommissioning(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_commissioning(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node commissioning aborted."
@@ -238,7 +239,7 @@ class AbortOperation(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_operation(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node operation aborted."
@@ -347,7 +348,7 @@ class StartNode(NodeAction):
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node has been asked to start up."
@@ -376,7 +377,7 @@ class StopNode(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.stop(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node has been asked to shut down."
@@ -398,7 +399,7 @@ class ReleaseNode(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase()
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node is no longer allocated to you."

@@ -57,6 +57,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
 from provisioningserver.rpc.exceptions import MultipleFailures
+from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
 from twisted.python.failure import Failure
 
@@ -561,18 +562,24 @@ class TestMarkFixedAction(MAASServerTestCase):
         self.assertItemsEqual([], actions)
 
 
-class TestRPCActionsErrorHandling(MAASServerTestCase):
-    """Tests for error handling in actions that need RPC."""
+class TestActionsErrorHandling(MAASServerTestCase):
+    """Tests for error handling in actions.
 
+    This covers RPC exceptions and `ExternalProcessError`s.
+    """
+    exceptions = RPC_EXCEPTIONS + (ExternalProcessError,)
     scenarios = [
         (exception_class.__name__, {"exception_class": exception_class})
-        for exception_class in RPC_EXCEPTIONS
+        for exception_class in exceptions
         ]
 
     def make_exception(self):
         if self.exception_class is MultipleFailures:
             exception = self.exception_class(
                 Failure(Exception(factory.make_name("exception"))))
+        elif self.exception_class is ExternalProcessError:
+            exception = self.exception_class(
+                1, ["cmd"], factory.make_name("exception"))
         else:
             exception = self.exception_class(factory.make_name("exception"))
         return exception
