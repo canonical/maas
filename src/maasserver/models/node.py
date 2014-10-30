@@ -105,6 +105,8 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models import NodeResult
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.logger import get_maas_logger
@@ -1237,6 +1239,10 @@ class Node(CleanSave, TimestampedModel):
         self.license_key = ''
         self.save()
 
+        # Clear installation results
+        NodeResult.objects.filter(
+            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
+
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
@@ -1328,6 +1334,10 @@ class Node(CleanSave, TimestampedModel):
         self.osystem = ''
         self.distro_series = ''
         self.save()
+
+        # Clear installation results
+        NodeResult.objects.filter(
+            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
 
     def update_power_state(self, power_state):
         """Update a node's power state """

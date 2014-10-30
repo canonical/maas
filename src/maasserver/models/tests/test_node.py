@@ -929,6 +929,20 @@ class NodeTest(MAASServerTestCase):
             remove_host_maps, MockCalledOnceWith(
                 {node.nodegroup: expected}))
 
+    def test_release_clears_installation_results(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        node_result = factory.make_NodeResult_for_installation(node=node)
+        self.assertEquals(
+            [node_result], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        node.release()
+        self.assertEquals(
+            [], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_Node()
         macs = [factory.make_MACAddress(node=node) for _ in range(2)]
@@ -1600,6 +1614,17 @@ class NodeTest(MAASServerTestCase):
             NODE_STATUS_CHOICES, but_not=[NODE_STATUS.BROKEN])
         node = factory.make_Node(status=status)
         self.assertRaises(NodeStateViolation, node.mark_fixed)
+
+    def test_mark_fixed_clears_installation_results(self):
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_result = factory.make_NodeResult_for_installation(node=node)
+        self.assertEquals(
+            [node_result], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        node.mark_fixed()
+        self.assertEquals(
+            [], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
 
     def test_update_power_state(self):
         node = factory.make_Node()
