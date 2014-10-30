@@ -21,6 +21,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.forms import (
+    ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S,
     ERROR_MESSAGE_STATIC_RANGE_IN_USE,
     NodeGroupInterfaceForm,
     )
@@ -220,6 +221,63 @@ class TestNodeGroupInterfaceForm(MAASServerTestCase):
         self.assertEqual(
             [ERROR_MESSAGE_STATIC_RANGE_IN_USE],
             form._errors['static_ip_range_high'])
+
+    def test_rejects_ipv4_dynamic_ranges_across_multiple_slash_16s(self):
+        # Even if a dynamic range is < 65536 addresses, it can't cross
+        # two /16 networks.
+        network = IPNetwork("10.1.0.0/8")
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network, static_ip_range_low=None,
+            static_ip_range_high=None)
+        [interface] = nodegroup.get_managed_interfaces()
+        form = NodeGroupInterfaceForm(
+            data={
+                'ip_range_low': '10.1.255.255',
+                'ip_range_high': '10.2.0.1',
+                },
+            instance=interface)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            [ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S],
+            form._errors['ip_range_low'])
+        self.assertEqual(
+            [ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S],
+            form._errors['ip_range_low'])
+
+    def test_allows_sane_ipv4_dynamic_range_size(self):
+        network = IPNetwork("10.1.0.0/8")
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network, static_ip_range_low=None,
+            static_ip_range_high=None)
+        [interface] = nodegroup.get_managed_interfaces()
+        form = NodeGroupInterfaceForm(
+            data={
+                'ip_range_low': '10.0.0.1',
+                'ip_range_high': '10.0.1.255',
+                },
+            instance=interface)
+        self.assertTrue(form.is_valid())
+
+    def test_allows_any_size_ipv6_dynamic_range(self):
+        network = factory.make_ipv6_network(slash=64)
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            network=network)
+        [interface] = nodegroup.get_managed_interfaces()
+        form = NodeGroupInterfaceForm(
+            data={
+                'ip_range_low': IPAddress(network.first).format(),
+                'ip_range_high': IPAddress(network.last).format(),
+                'static_ip_range_low': '',
+                'static_ip_range_high': '',
+                },
+            instance=interface)
+        self.assertTrue(form.is_valid())
 
     def test_calls_get_duplicate_fqdns_when_appropriate(self):
         # Check for duplicate FQDNs if the NodeGroupInterface has a
