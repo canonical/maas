@@ -43,6 +43,3 @@ dns = DatabaseXactLock(6)
 
 # Lock to prevent concurrent acquisition of nodes.
 node_acquire = DatabaseXactLock(7)
-
-# Lock to prevent concurrent event registration and the like.
-events = DatabaseXactLock(8)
