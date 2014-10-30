@@ -139,9 +139,15 @@ _xpath_memory_bytes = """\
     div 1024 div 1024
 """
 
+# Select <node class="disk"><size units="bytes">1234</size></node>, or,
+# failing that, <node class="volume"><size units="bytes">1234</size></node>
+# that's not nested within a <node class="disk"></node>.
 _xpath_storage_bytes = """\
-    sum(//node[@class='volume']/size[@units='bytes'])
-    div 1024 div 1024
+    (
+        //node[@class='disk'] |
+        //node[not(ancestor::node[@class='disk']) and @class='volume']
+    )
+    /size[@units='bytes'] div 1024 div 1024
 """
 
 
