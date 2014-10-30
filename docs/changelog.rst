@@ -5,6 +5,44 @@ Changelog
 1.7.0
 =====
 
+Important announcements
+-----------------------
+
+Re-import your boot images
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+You must re-import your boot images, see below for details.
+
+Update Curtin preseed files
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Two changes were made to Curtin preseed files that need your attention
+if you made any customisations:
+
+ *  The OS name must now appear in the filename.  The new schema is shown
+    here, each file pattern is tried in turn until a match is found::
+
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}
+    {prefix}_{osystem}_{node_arch}
+    {prefix}_{osystem}
+    {prefix}
+
+ * If you are modifying ``/etc/network/interfaces`` in the preseed, it must be
+   moved so it is processed last in ``late_commands`` since MAAS now writes
+   to this file itself as part of IPv6 setup.  For example::
+
+    late_commands:
+      bonding_02: ["curtin", "in-target", "--", "wget", "-O", "/etc/network/interfaces", "http://[...snip...]"]
+
+   must now look like this::
+
+    late_commands:
+      zz_write_ifaces: ["curtin", "in-target", "--", "wget", "-O", "/etc/network/interfaces", "http://[...snip...]"]
+
+   The leading ``zz`` ensures the command sorts to the end of the
+   ``late_commands`` list.
+
+
 Major new features
 ------------------
 
@@ -453,30 +491,25 @@ of the power parameters is empty.
 #1322606    maas-import-pxe-files fails when run from the command line
 #1324237    call_and_check does not report error output
 #1328659    import_boot_images task fails on utopic
-#1332596    AddrFormatError: failed to detect a valid IP address from None execu
-ting upload_dhcp_leases task
+#1332596    AddrFormatError: failed to detect a valid IP address from None executing upload_dhcp_leases task
 #1250370    "sudo maas-import-ephemerals" steps on ~/.gnupg/pubring.gpg
-#1250435    CNAME record leaks into juju's private-address, breaks host based ac
-cess control
+#1250435    CNAME record leaks into juju's private-address, breaks host based access control
 #1305758    Import fails while writing maas.meta: No such file or directory
 #1308292    Unhelpful error when re-enlisting a previously enlisted node
 #1309601    maas-enlist prints "successfully enlisted" even when enlistment fail
 s.
 #1309729    Fast path installer is not the default
-#1310844    find_ip_via_arp() results in unpredictable, and in some cases, incor
-rect IP addresses
+#1310844    find_ip_via_arp() results in unpredictable, and in some cases, incorrect IP addresses
 #1310846    amt template gives up way too easily
 #1312863    MAAS fails to detect SuperMicro-based server's power type
 #1314536    Copyright date in web UI is 2012
 #1315160    no support for different operating systems
 #1316627    API needed to allocate and return an extra IP for a container
 #1323291    Can't re-commission a commissioning node
-#1324268    maas-cli 'nodes list' or 'node read <system_id>' doesn't display the
- osystem or distro_series node fields
+#1324268    maas-cli 'nodes list' or 'node read <system_id>' doesn't display the osystem or distro_series node fields
 #1325093    install centos using curtin
 #1325927    YUI.Array.each not working as expected
-#1328656    MAAS sends multiple stop_dhcp_server tasks even though there's no dh
-cp server running.
+#1328656    MAAS sends multiple stop_dhcp_server tasks even though there's no dhcp server running.
 #1331139    IP is inconsistently capitalized on the 'edit a cluster interface' p
 age
 #1331148    When editing a cluster interface, last 3 fields are unintuitive

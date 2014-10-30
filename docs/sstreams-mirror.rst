@@ -32,7 +32,7 @@ Configuring MAAS to use the local mirror
 ----------------------------------------
 
 You can do this using the API or the web UI.  To do this via the API you
-can use the ``maas`` (see :doc:`maas-cli`) command, logged in as the admin
+can use the ``maas`` (see :doc:`maascli`) command, logged in as the admin
 user::
 
   $ maas <profile> boot-sources create url=http://<server>keyring_filename=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
