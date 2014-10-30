@@ -395,6 +395,11 @@ class BootResourceStore(ObjectStore):
                 rtype=BOOT_RESOURCE_TYPE.SYNCED)
             }
 
+        # XXX blake_r 2014-10-30 bug=1387133: We store a copy of the resources
+        # to delete, so we can check if all the same resources will be delete
+        # in the finalize call.
+        self._init_resources_to_delete = set(self._resources_to_delete)
+
     def prevent_resource_deletion(self, resource):
         """Remove the `BootResource` from the resources to delete list.
 
@@ -605,7 +610,7 @@ class BootResourceStore(ObjectStore):
         else:
             ident = self.get_resource_file_log_identifier(
                 rfile, resource_set, resource)
-            maaslog.debug('Boot resource already up-to-date %s.' % ident)
+            maaslog.debug('Boot image already up-to-date %s.', ident)
 
     def write_content(self, rfile, reader):
         """Writes the data from the given reader, into the object storage
@@ -613,7 +618,7 @@ class BootResourceStore(ObjectStore):
         ident = self.get_resource_file_log_identifier(rfile)
         cksummer = sutil.checksummer(
             {'sha256': rfile.largefile.sha256})
-        maaslog.debug("Syncing boot resource %s." % ident)
+        maaslog.debug("Finalizing boot image %s.", ident)
 
         # Write the contents into the database, while calculating the sha256
         # hash for the read data.
@@ -630,14 +635,13 @@ class BootResourceStore(ObjectStore):
             # simplestreams is telling us it should be. This resource file
             # will be deleted since it is corrupt.
             maaslog.error(
-                "Failed to sync boot resource %s. Unexpected "
-                "checksum '%s' (found: %s expected: %s)" % (
-                    ident, cksummer.algorithm,
-                    cksummer.hexdigest(), cksummer.expected,
-                    ))
+                "Failed to finalize boot image %s. Unexpected "
+                "checksum '%s' (found: %s expected: %s)",
+                ident, cksummer.algorithm,
+                cksummer.hexdigest(), cksummer.expected)
             rfile.delete()
         else:
-            maaslog.debug('Finished syncing boot resource %s.' % ident)
+            maaslog.debug('Finalized boot image %s.', ident)
 
     @transactional
     def write_content_thread(self, rid, reader):
@@ -689,6 +693,9 @@ class BootResourceStore(ObjectStore):
                     rtype=BOOT_RESOURCE_TYPE.SYNCED,
                     name=name, architecture=architecture))
             if delete_resource is not None:
+                maaslog.debug(
+                    "Deleting boot image %s.",
+                    self.get_resource_identity(delete_resource))
                 delete_resource.delete()
 
     @transactional
@@ -727,6 +734,25 @@ class BootResourceStore(ObjectStore):
         This will remove the un-needed `BootResource`'s and write the
         file data into the large object store.
         """
+        # XXX blake_r 2014-10-30 bug=1387133: A scenario can occur where insert
+        # never gets called by the writer, causing this method to delete all
+        # of the synced resources. The actual cause of this issue is unknown,
+        # but we want to handle the case or all the images will be deleted and
+        # no nodes will be able to be provisioned.
+        maaslog.debug(
+            "Finalize will delete %d images(s).",
+            len(self._resources_to_delete))
+        maaslog.debug(
+            "Finalize will save %d new images(s).",
+            len(self._content_to_finalize))
+        if (self._resources_to_delete == self._init_resources_to_delete and
+                len(self._content_to_finalize) == 0):
+            maaslog.error(
+                "Finalization of imported images skipped, "
+                "or all %s synced images would be deleted.",
+                self._resources_to_delete)
+            close_old_connections()
+            return
         self.resource_cleaner()
         self.perform_write()
         self.resource_set_cleaner()
@@ -799,13 +825,16 @@ def download_all_boot_resources(sources, product_mapping, store=None):
     :param product_mapping: A `ProductMapping` describing the resources to be
         downloaded.
     """
+    maaslog.debug("Initializing BootResourceStore.")
     if store is None:
         store = BootResourceStore()
     assert isinstance(store, BootResourceStore)
     for source in sources:
+        maaslog.info("Importing images from source: %s", source['url'])
         download_boot_resources(
             source['url'], store, product_mapping,
             keyring_file=source.get('keyring'))
+    maaslog.debug("Finalizing BootResourceStore.")
     store.finalize()
 
 
@@ -851,6 +880,7 @@ def _import_resources(force=False):
     """
     # If the lock is already held, then import is already running.
     if locks.import_images.is_locked():
+        maaslog.debug("Skipping import as another import is already running.")
         return
 
     # If we're not being forced, don't sync unless we've already done it once
@@ -878,7 +908,8 @@ def _import_resources(force=False):
         # Timeout occurred, kill the thread and exit.
         kill_event.set()
         lock_thread.join()
-        maaslog.error("Another import task is already running.")
+        maaslog.debug(
+            "Unable to grab import lock, another import is already running.")
         return
 
     try:
@@ -890,20 +921,24 @@ def _import_resources(force=False):
             env['http_proxy'] = http_proxy
             env['https_proxy'] = http_proxy
         with environment_variables(env), tempdir('keyrings') as keyrings_path:
-            maaslog.info("Started importing of boot resources.")
             sources = get_boot_sources()
             sources = write_all_keyrings(keyrings_path, sources)
+            maaslog.info(
+                "Started importing of boot images from %d source(s).",
+                len(sources))
 
             image_descriptions = download_all_image_descriptions(sources)
             if image_descriptions.is_empty():
                 maaslog.warn(
-                    "Unable to import boot resources, no image "
+                    "Unable to import boot images, no image "
                     "descriptions avaliable.")
                 return
             product_mapping = map_products(image_descriptions)
 
             download_all_boot_resources(sources, product_mapping)
-            maaslog.info("Finished importing of boot resources.")
+            maaslog.info(
+                "Finished importing of boot images from %d source(s).",
+                len(sources))
 
         # Tell the clusters to download the data from the region.
         NodeGroup.objects.import_boot_images_on_accepted_clusters()
