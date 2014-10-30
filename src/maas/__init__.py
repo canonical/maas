@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = [
     "import_settings",
     "import_local_settings",
+    "log_sstreams",
     ]
 
 import sys
@@ -57,6 +58,25 @@ def import_local_settings():
         source = find_settings(whence)
         target = sys._getframe(1).f_globals
         target.update(source)
+
+
+def log_sstreams(LOGGING):
+    """Turn on simplestreams logging.
+
+    Copies the exact logging configuration for maasserver into sstreams,
+    unless a sstreams config already exists.
+    """
+    if 'loggers' not in LOGGING:
+        # No loggers in LOGGING, can't do anthing.
+        return
+    if 'sstreams' in LOGGING['loggers']:
+        # Already have a simplestreams config for logging.
+        return
+    if 'maasserver' not in LOGGING['loggers']:
+        # No maasserver logger present to copy, no way of know what it
+        # should be set to.
+        return
+    LOGGING['loggers']['sstreams'] = LOGGING['loggers']['maasserver']
 
 
 try:

@@ -757,15 +757,40 @@ class TestBootResourceStore(MAASServerTestCase):
         store.write_content(rfile, reader)
         self.assertFalse(BootResourceFile.objects.filter(id=rfile.id).exists())
 
-    def test_finalize_calls_methods(self):
+    def test_finalize_does_nothing_if_resources_to_delete_hasnt_changed(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
         store = BootResourceStore()
         mock_resource_cleaner = self.patch(store, 'resource_cleaner')
         mock_perform_write = self.patch(store, 'perform_write')
         mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
         store.finalize()
-        self.assertTrue(mock_resource_cleaner, MockCalledOnceWith())
-        self.assertTrue(mock_perform_write, MockCalledOnceWith())
-        self.assertTrue(mock_resource_set_cleaner, MockCalledOnceWith())
+        self.expectThat(mock_resource_cleaner, MockNotCalled())
+        self.expectThat(mock_perform_write, MockNotCalled())
+        self.expectThat(mock_resource_set_cleaner, MockNotCalled())
+
+    def test_finalize_calls_methods_if_new_resources_need_to_be_saved(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store = BootResourceStore()
+        store._content_to_finalize = [sentinel.content]
+        mock_resource_cleaner = self.patch(store, 'resource_cleaner')
+        mock_perform_write = self.patch(store, 'perform_write')
+        mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
+        store.finalize()
+        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
+        self.expectThat(mock_perform_write, MockCalledOnceWith())
+        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
+
+    def test_finalize_calls_methods_if_resources_to_delete_has_changed(self):
+        factory.make_BootResource(rtype=BOOT_RESOURCE_TYPE.SYNCED)
+        store = BootResourceStore()
+        store._resources_to_delete = set()
+        mock_resource_cleaner = self.patch(store, 'resource_cleaner')
+        mock_perform_write = self.patch(store, 'perform_write')
+        mock_resource_set_cleaner = self.patch(store, 'resource_set_cleaner')
+        store.finalize()
+        self.expectThat(mock_resource_cleaner, MockCalledOnceWith())
+        self.expectThat(mock_perform_write, MockCalledOnceWith())
+        self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
 
 
 class TestBootResourceTransactional(TransactionTestCase):
@@ -1036,7 +1061,7 @@ class TestImportImages(MAASTestCase):
     def test__import_resources_calls_functions_with_correct_parameters(self):
         fake_write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
-        fake_write_all_keyrings.return_value = sentinel.sources
+        fake_write_all_keyrings.return_value = [sentinel.source]
         fake_image_descriptions = self.patch(
             bootresources, 'download_all_image_descriptions')
         descriptions = Mock()
@@ -1055,13 +1080,13 @@ class TestImportImages(MAASTestCase):
             MockCalledOnceWith(ANY, []))
         self.assertThat(
             fake_image_descriptions,
-            MockCalledOnceWith(sentinel.sources))
+            MockCalledOnceWith([sentinel.source]))
         self.assertThat(
             fake_map_products,
             MockCalledOnceWith(descriptions))
         self.assertThat(
             fake_download_all_boot_resources,
-            MockCalledOnceWith(sentinel.sources, sentinel.mapping))
+            MockCalledOnceWith([sentinel.source], sentinel.mapping))
 
     def test__import_resources_has_env_GNUPGHOME_set(self):
         fake_image_descriptions = self.patch(

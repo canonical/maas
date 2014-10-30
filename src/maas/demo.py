@@ -73,6 +73,10 @@ LOGGING = {
         'twisted': {
             'handlers': ['console'],
             'propagate': True,
+        },
+        'sstreams': {
+            'handlers': ['console'],
+            'propagate': True,
         }
     },
 }
