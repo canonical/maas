@@ -16,7 +16,7 @@ __all__ = []
 
 from functools import partial
 import json
-from os import path
+import os
 from socket import (
     AF_INET,
     AF_INET6,
@@ -140,7 +140,7 @@ class TestTFTPBackend(MAASTestCase):
 
     def get_reader(self, data):
         temp_file = self.make_file(name="example", contents=data)
-        temp_dir = path.dirname(temp_file)
+        temp_dir = os.path.dirname(temp_file)
         backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
         return backend.get_reader("example")
 
@@ -152,6 +152,27 @@ class TestTFTPBackend(MAASTestCase):
         self.patch(tftp_module, 'get_remote_mac')
         data = factory.make_string().encode("ascii")
         reader = yield self.get_reader(data)
+        self.addCleanup(reader.finish)
+        self.assertEqual(len(data), reader.size)
+        self.assertEqual(data, reader.read(len(data)))
+        self.assertEqual(b"", reader.read(1))
+
+    @inlineCallbacks
+    def test_get_reader_handles_backslashes_in_path(self):
+        self.patch(tftp_module, 'send_event_node_mac_address')
+        self.patch(tftp_module, 'get_remote_mac')
+
+        data = factory.make_string().encode("ascii")
+        temp_dir = self.make_dir()
+        subdir = factory.make_name('subdir')
+        filename = factory.make_name('file')
+        os.mkdir(os.path.join(temp_dir, subdir))
+        factory.make_file(os.path.join(temp_dir, subdir), filename, data)
+
+        path = '\\%s\\%s' % (subdir, filename)
+        backend = TFTPBackend(temp_dir, "http://nowhere.example.com/")
+        reader = yield backend.get_reader(path)
+
         self.addCleanup(reader.finish)
         self.assertEqual(len(data), reader.size)
         self.assertEqual(data, reader.read(len(data)))

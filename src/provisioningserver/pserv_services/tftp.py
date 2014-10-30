@@ -209,6 +209,10 @@ class TFTPBackend(FilesystemSynchronousBackend):
         from that boot method. Otherwise the filesystem is used to service
         the response.
         """
+        # It is possible for a client to request the file with '\' instead
+        # of '/', example being 'bootx64.efi'. Convert all '\' to '/' to be
+        # unix compatiable.
+        file_name = file_name.replace('\\', '/')
         mac_address = get_remote_mac()
         if mac_address is not None:
             send_event_node_mac_address(
