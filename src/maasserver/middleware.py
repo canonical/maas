@@ -23,11 +23,13 @@ from abc import (
     ABCMeta,
     abstractproperty,
     )
+import datetime
 import httplib
 import json
 import logging
 import re
 import sys
+import time
 import traceback
 
 from crochet import TimeoutError
@@ -55,6 +57,7 @@ from maasserver.enum import (
     )
 from maasserver.models.bootresource import BootResource
 from maasserver.models.nodegroup import NodeGroup
+from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
@@ -141,6 +144,27 @@ class AccessMiddleware:
 class ExternalComponentsMiddleware:
     """Middleware to check external components at regular intervals."""
 
+    CLUSTER_UPDATE_INTERVAL = datetime.timedelta(minutes=5)
+
+    def __init__(self):
+        self._cluster_images = None
+        self._cluster_images_updated = None
+
+    def _get_cluster_images(self):
+        """Return the boot images that are on the cluster.
+
+        This caches this value for `CLUSTER_UPDATE_INTERVAL`.
+        """
+        if self._cluster_images_updated is None:
+            self._cluster_images = list_boot_images()
+            self._cluster_images_updated = time.time()
+            return self._cluster_images
+        timediff = (time.time() - self._cluster_images_updated)
+        if timediff > self.CLUSTER_UPDATE_INTERVAL.total_seconds():
+            self._cluster_images = list_boot_images()
+            self._cluster_images_updated = time.time()
+        return self._cluster_images
+
     def _check_cluster_connectivity(self):
         """Check each accepted cluster to see if it's connected.
 
@@ -162,11 +186,22 @@ class ExternalComponentsMiddleware:
     def _check_boot_image_import_process(self):
         """Add a persistent error if the boot image import hasn't started."""
         if not BootResource.objects.all().exists():
-            warning = (
-                "Boot image import process not started. Nodes will not "
-                "be able to provision without boot images. Visit the "
-                "<a href=\"%s\">boot images</a> page to start the import." % (
-                    reverse('images')))
+            # If the cluster is on the same machine as the region, its possible
+            # that the cluster has images and the region does not. We can
+            # provide a better message to the user in this case.
+            if len(self._get_cluster_images()) > 0:
+                warning = (
+                    "Your cluster currently has boot images, but your region "
+                    "does not. Nodes will not be able to provision until you "
+                    "import boot images into the region. Visit the "
+                    "<a href=\"%s\">boot images</a> page to start the "
+                    "import." % reverse('images'))
+            else:
+                warning = (
+                    "Boot image import process not started. Nodes will not "
+                    "be able to provision without boot images. Visit the "
+                    "<a href=\"%s\">boot images</a> page to start the "
+                    "import." % reverse('images'))
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)
         else:
             discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)

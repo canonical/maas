@@ -66,6 +66,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
+    boot_images,
     cluster,
     clusterservice,
     common,
@@ -103,7 +104,6 @@ from provisioningserver.rpc.testing.doubles import (
     StubOS,
     )
 from provisioningserver.security import set_shared_secret_on_filesystem
-from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -248,12 +248,12 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
         # Create a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
+        current_dir = os.path.join(tftpdir, 'current')
+        os.makedirs(current_dir)
         for options in product(osystems, archs, subarchs, releases, labels):
-            os.makedirs(os.path.join(tftpdir, *options))
+            os.makedirs(os.path.join(current_dir, *options))
             make_osystem(self, options[0], purposes)
-
-        # Ensure that list_boot_images() uses the above TFTP file tree.
-        self.useFixture(set_tftp_root(tftpdir))
+        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', tftpdir)
 
         expected_images = [
             {

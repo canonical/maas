@@ -18,12 +18,13 @@ __all__ = [
     "is_import_boot_images_running",
     ]
 
+import os
 from urlparse import urlparse
 
 from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
-from provisioningserver.config import Config
+from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
@@ -33,7 +34,7 @@ from twisted.internet.threads import deferToThread
 def list_boot_images():
     """List the boot images that exist on the cluster."""
     return tftppath.list_boot_images(
-        Config.load_from_cache()['tftp']['resource_root'])
+        os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
 
 
 def get_hosts_from_sources(sources):
