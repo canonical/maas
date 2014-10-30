@@ -37,7 +37,6 @@ from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
     DNSForwardZoneConfig,
     DNSReverseZoneConfig,
-    intersect_iprange,
     )
 from testtools.matchers import (
     Contains,
@@ -443,9 +442,9 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         # The other tests in this TestCase rely on
         # get_expected_generate_directives(), which is quite dense. Here
         # we test get_GENERATE_directives() explicitly.
-        ip_range = IPRange('192.168.0.1', '192.168.2.128')
+        ip_range = IPRange('192.168.0.55', '192.168.2.128')
         expected_directives = [
-            ("1-255", "$.0.168.192.in-addr.arpa.", "192-168-0-$.domain."),
+            ("55-255", "$.0.168.192.in-addr.arpa.", "192-168-0-$.domain."),
             ("0-255", "$.1.168.192.in-addr.arpa.", "192-168-1-$.domain."),
             ("0-128", "$.2.168.192.in-addr.arpa.", "192-168-2-$.domain."),
             ]
@@ -545,15 +544,21 @@ class TestDNSReverseZoneConfig_GetGenerateDirectives(MAASTestCase):
         self.expectThat(directives, HasLength(2))
         self.assertItemsEqual(expected_generate_directives, directives)
 
-    def test_rejects_network_larger_than_slash_16(self):
+    def test_ignores_network_larger_than_slash_16(self):
         network = IPNetwork("%s/15" % factory.make_ipv4_address())
-        error = self.assertRaises(
-            AssertionError, DNSReverseZoneConfig.get_GENERATE_directives,
-            network, None)
         self.assertEqual(
-            "Cannot generate reverse zone mapping for any network larger "
-            "than /16.",
-            unicode(error))
+            [],
+            DNSReverseZoneConfig.get_GENERATE_directives(
+                network, factory.make_string()))
+
+    def test_ignores_networks_that_span_slash_16s(self):
+        # If the upper and lower bounds of a range span two /16 networks
+        # (but contain between them no more than 65536 addresses),
+        # get_GENERATE_directives() will return early
+        ip_range = IPRange('10.0.0.55', '10.1.0.54')
+        directives = DNSReverseZoneConfig.get_GENERATE_directives(
+            ip_range, factory.make_string())
+        self.assertEqual([], directives)
 
     def test_sorts_output_by_hostname(self):
         network = IPNetwork("10.0.0.1/23")
@@ -579,9 +584,9 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         # The other tests in this TestCase rely on
         # get_expected_generate_directives(), which is quite dense. Here
         # we test get_GENERATE_directives() explicitly.
-        ip_range = IPRange('192.168.0.1', '192.168.2.128')
+        ip_range = IPRange('192.168.0.55', '192.168.2.128')
         expected_directives = [
-            ("1-255", "192-168-0-$", "192.168.0.$"),
+            ("55-255", "192-168-0-$", "192.168.0.$"),
             ("0-255", "192-168-1-$", "192.168.1.$"),
             ("0-128", "192-168-2-$", "192.168.2.$"),
             ]
@@ -665,15 +670,20 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
                 network)
             self.assertIsEqual(network.size / 256, len(directives))
 
-    def test_rejects_network_larger_than_slash_16(self):
+    def test_ignores_network_larger_than_slash_16(self):
         network = IPNetwork("%s/15" % factory.make_ipv4_address())
-        error = self.assertRaises(
-            AssertionError, DNSForwardZoneConfig.get_GENERATE_directives,
-            network)
         self.assertEqual(
-            "Cannot generate reverse zone mapping for any network larger "
-            "than /16.",
-            unicode(error))
+            [],
+            DNSForwardZoneConfig.get_GENERATE_directives(network))
+
+    def test_ignores_networks_that_span_slash_16s(self):
+        # If the upper and lower bounds of a range span two /16 networks
+        # (but contain between them no more than 65536 addresses),
+        # get_GENERATE_directives() will return early
+        ip_range = IPRange('10.0.0.55', '10.1.0.54')
+        directives = DNSForwardZoneConfig.get_GENERATE_directives(
+            ip_range)
+        self.assertEqual([], directives)
 
     def test_sorts_output(self):
         network = IPNetwork("10.0.0.0/23")
@@ -690,30 +700,3 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
         self.expectThat(
             directives[1], Equals(
                 ("0-255", expected_hostname % "1", expected_address % "1")))
-
-
-class TestIntersectIPRange(MAASTestCase):
-    """Tests for `intersect_iprange()`."""
-
-    def test_finds_intersection_between_two_ranges(self):
-        range_1 = IPRange('10.0.0.1', '10.0.0.255')
-        range_2 = IPRange('10.0.0.128', '10.0.0.200')
-        intersect = intersect_iprange(range_1, range_2)
-        self.expectThat(
-            IPAddress(intersect.first), Equals(IPAddress('10.0.0.128')))
-        self.expectThat(
-            IPAddress(intersect.last), Equals(IPAddress('10.0.0.200')))
-
-    def test_ignores_non_intersecting_ranges(self):
-        range_1 = IPRange('10.0.0.1', '10.0.0.255')
-        range_2 = IPRange('10.0.1.128', '10.0.1.200')
-        self.assertIsNone(intersect_iprange(range_1, range_2))
-
-    def test_finds_partial_intersection(self):
-        range_1 = IPRange('10.0.0.1', '10.0.0.128')
-        range_2 = IPRange('10.0.0.64', '10.0.0.200')
-        intersect = intersect_iprange(range_1, range_2)
-        self.expectThat(
-            IPAddress(intersect.first), Equals(IPAddress('10.0.0.64')))
-        self.expectThat(
-            IPAddress(intersect.last), Equals(IPAddress('10.0.0.128')))

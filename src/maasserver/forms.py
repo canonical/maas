@@ -152,6 +152,8 @@ from metadataserver.fields import Bin
 from metadataserver.models import CommissioningScript
 from netaddr import (
     IPAddress,
+    IPNetwork,
+    IPRange,
     valid_ipv6,
     )
 from provisioningserver.logger import get_maas_logger
@@ -160,7 +162,10 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     NoSuchOperatingSystem,
     )
-from provisioningserver.utils.network import make_network
+from provisioningserver.utils.network import (
+    ip_range_within_network,
+    make_network,
+    )
 
 
 maaslog = get_maas_logger()
@@ -1305,6 +1310,39 @@ ERROR_MESSAGE_STATIC_RANGE_IN_USE = (
     "in that range.")
 
 
+ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S = (
+    "All addresses in the dynamic range must be within the same /16 "
+    "network.")
+
+
+def validate_new_dynamic_range_size(instance, ip_range_low, ip_range_high):
+    """Check that a ip address range is of a manageable size.
+
+    :raises ValidationError: If the ip range is larger than a /16
+        network.
+    """
+    # Return early if the instance is not already managed, its dynamic
+    # IP range hasn't changed, or the new values are blank.
+    if not instance.is_managed:
+        return True
+    # Deliberately vague check to allow for empty strings.
+    if (not ip_range_low and not ip_range_high):
+        return True
+    if (ip_range_low == instance.ip_range_low and
+       ip_range_high == instance.ip_range_high):
+        return True
+    ip_range = IPRange(ip_range_low, ip_range_high)
+
+    # Allow any size of dynamic range for v6 networks, but limit v4
+    # networks to /16s.
+    if ip_range.version == 6:
+        return True
+
+    slash_16_network = IPNetwork("%s/16" % IPAddress(ip_range.first))
+    if not ip_range_within_network(ip_range, slash_16_network):
+        raise ValidationError(ERROR_MESSAGE_DYNAMIC_RANGE_SPANS_SLASH_16S)
+
+
 def validate_new_static_ip_ranges(instance, static_ip_range_low,
                                   static_ip_range_high):
     """Check that new static IP ranges don't exclude allocated addresses.
@@ -1551,6 +1589,15 @@ class NodeGroupInterfaceForm(MAASModelForm):
             if netmask in (None, ''):
                 netmask = 'ffff:ffff:ffff:ffff::'
             cleaned_data['subnet_mask'] = unicode(netmask)
+
+        dynamic_range_low = cleaned_data.get('ip_range_low')
+        dynamic_range_high = cleaned_data.get('ip_range_high')
+        try:
+            validate_new_dynamic_range_size(
+                self.instance, dynamic_range_low, dynamic_range_high)
+        except forms.ValidationError as exception:
+            set_form_error(self, 'ip_range_low', exception.message)
+            set_form_error(self, 'ip_range_high', exception.message)
 
         static_ip_range_low = cleaned_data.get('static_ip_range_low')
         static_ip_range_high = cleaned_data.get('static_ip_range_high')

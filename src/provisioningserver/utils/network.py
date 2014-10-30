@@ -20,6 +20,8 @@ __all__ = [
     'get_all_interface_addresses',
     'make_network',
     'resolve_hostname',
+    'intersect_iprange',
+    'ip_range_within_network',
     ]
 
 
@@ -35,6 +37,7 @@ from socket import (
 from netaddr import (
     IPAddress,
     IPNetwork,
+    IPRange,
     )
 import netifaces
 from provisioningserver.utils.shell import call_and_check
@@ -196,3 +199,27 @@ def resolve_hostname(hostname, ip_version=4):
         IPAddress(sockaddr[0])
         for family, socktype, proto, canonname, sockaddr in address_info
         }
+
+
+def intersect_iprange(network, iprange):
+    """Return the intersection between two IPNetworks or IPRanges.
+
+    IPSet is notoriously inefficient so we intersect ourselves here.
+    """
+    if network.last >= iprange.first and network.first <= iprange.last:
+        first = max(network.first, iprange.first)
+        last = min(network.last, iprange.last)
+        return IPRange(first, last)
+    else:
+        return None
+
+
+def ip_range_within_network(ip_range, network):
+    """Check that the whole of a given IP range is within a given network."""
+    # Make sure that ip_range is an IPRange and not an IPNetwork,
+    # otherwise this won't work.
+    if isinstance(ip_range, IPNetwork):
+        ip_range = IPRange(
+            IPAddress(network.first), IPAddress(network.last))
+    return all([
+        intersect_iprange(cidr, network) for cidr in ip_range.cidrs()])

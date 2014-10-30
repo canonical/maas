@@ -28,6 +28,7 @@ import mock
 from netaddr import (
     IPAddress,
     IPNetwork,
+    IPRange,
     )
 import netifaces
 from netifaces import (
@@ -43,9 +44,12 @@ from provisioningserver.utils.network import (
     find_mac_via_arp,
     get_all_addresses_for_interface,
     get_all_interface_addresses,
+    intersect_iprange,
+    ip_range_within_network,
     make_network,
     resolve_hostname,
     )
+from testtools.matchers import Equals
 
 
 class TestMakeNetwork(MAASTestCase):
@@ -433,3 +437,53 @@ class TestResolveHostname(MAASTestCase):
         self.assertRaises(
             KeyError,
             resolve_hostname, factory.make_hostname(), 4)
+
+
+class TestIntersectIPRange(MAASTestCase):
+    """Tests for `intersect_iprange()`."""
+
+    def test_finds_intersection_between_two_ranges(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.255')
+        range_2 = IPRange('10.0.0.128', '10.0.0.200')
+        intersect = intersect_iprange(range_1, range_2)
+        self.expectThat(
+            IPAddress(intersect.first), Equals(IPAddress('10.0.0.128')))
+        self.expectThat(
+            IPAddress(intersect.last), Equals(IPAddress('10.0.0.200')))
+
+    def test_ignores_non_intersecting_ranges(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.255')
+        range_2 = IPRange('10.0.1.128', '10.0.1.200')
+        self.assertIsNone(intersect_iprange(range_1, range_2))
+
+    def test_finds_partial_intersection(self):
+        range_1 = IPRange('10.0.0.1', '10.0.0.128')
+        range_2 = IPRange('10.0.0.64', '10.0.0.200')
+        intersect = intersect_iprange(range_1, range_2)
+        self.expectThat(
+            IPAddress(intersect.first), Equals(IPAddress('10.0.0.64')))
+        self.expectThat(
+            IPAddress(intersect.last), Equals(IPAddress('10.0.0.128')))
+
+
+class TestIPRangeWithinNetwork(MAASTestCase):
+
+    def test_returns_true_when_ip_range_is_within_network(self):
+        ip_range = IPRange('10.0.0.55', '10.0.255.55')
+        ip_network = IPNetwork('10.0.0.0/16')
+        self.assertTrue(ip_range_within_network(ip_range, ip_network))
+
+    def test_returns_false_when_ip_range_is_within_network(self):
+        ip_range = IPRange('192.0.0.55', '192.0.255.55')
+        ip_network = IPNetwork('10.0.0.0/16')
+        self.assertFalse(ip_range_within_network(ip_range, ip_network))
+
+    def test_returns_false_when_ip_range_is_partially_within_network(self):
+        ip_range = IPRange('10.0.0.55', '10.1.0.55')
+        ip_network = IPNetwork('10.0.0.0/16')
+        self.assertFalse(ip_range_within_network(ip_range, ip_network))
+
+    def test_works_with_two_ip_networks(self):
+        network_1 = IPNetwork('10.0.0.0/16')
+        network_2 = IPNetwork('10.0.0.0/24')
+        self.assertTrue(ip_range_within_network(network_2, network_1))

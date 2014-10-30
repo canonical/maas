@@ -25,7 +25,7 @@ import math
 
 from netaddr import (
     IPAddress,
-    IPRange,
+    IPNetwork,
     spanning_cidr,
     )
 from netaddr.core import AddrFormatError
@@ -35,19 +35,10 @@ from provisioningserver.dns.config import (
     report_missing_config_dir,
     )
 from provisioningserver.utils.fs import incremental_write
-
-
-def intersect_iprange(network, iprange):
-    """Return the intersection between two IPNetworks or IPRanges.
-
-    IPSet is notoriously inefficient so we intersect ourselves here.
-    """
-    if network.last >= iprange.first and network.first <= iprange.last:
-        first = max(network.first, iprange.first)
-        last = min(network.last, iprange.last)
-        return IPRange(first, last)
-    else:
-        return None
+from provisioningserver.utils.network import (
+    intersect_iprange,
+    ip_range_within_network,
+    )
 
 
 def get_fqdn_or_ip_address(target):
@@ -255,9 +246,13 @@ class DNSForwardZoneConfig(DNSZoneConfigBase):
     def get_GENERATE_directives(cls, dynamic_range):
         """Return the GENERATE directives for the forward zone of a network.
         """
-        assert dynamic_range.size <= 256 ** 2, (
-            "Cannot generate reverse zone mapping for any network larger than "
-            "/16.")
+        slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
+        if (dynamic_range.size > 256 ** 2 or
+           not ip_range_within_network(dynamic_range, slash_16)):
+            # We can't issue a sane set of $GENERATEs for any network
+            # larger than a /16, or for one that spans two /16s, so we
+            # don't try.
+            return []
 
         generate_directives = set()
         subnets, prefix, _ = get_details_for_ip_range(dynamic_range)
@@ -387,9 +382,13 @@ class DNSReverseZoneConfig(DNSZoneConfigBase):
     @classmethod
     def get_GENERATE_directives(cls, dynamic_range, domain):
         """Return the GENERATE directives for the reverse zone of a network."""
-        assert dynamic_range.size <= 256 ** 2, (
-            "Cannot generate reverse zone mapping for any network larger than "
-            "/16.")
+        slash_16 = IPNetwork("%s/16" % IPAddress(dynamic_range.first))
+        if (dynamic_range.size > 256 ** 2 or
+           not ip_range_within_network(dynamic_range, slash_16)):
+            # We can't issue a sane set of $GENERATEs for any network
+            # larger than a /16, or for one that spans two /16s, so we
+            # don't try.
+            return []
 
         generate_directives = set()
         subnets, prefix, rdns_suffix = get_details_for_ip_range(dynamic_range)
