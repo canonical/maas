@@ -232,12 +232,14 @@ created.
 Import the boot images
 ----------------------
 
-MAAS will check for and download new Ubuntu images every hour.  On a new
-installation you'll need to start the import process manually once you have
-set up your MAAS region.
+Since version 1.7, MAAS stores the boot images in the region controller's
+database, from where the cluster controllers will synchronise with the region
+and pull images from the region to the cluster's local disk.  This process
+is automatic and MAAS will check for and download new Ubuntu images every hour.
 
-There are two ways to start the import: through the web user interface, or
-through the remote API.
+However, on a new installation you'll need to start the import process manually
+once you have set up your MAAS region controller.  There are two ways to start
+the import: through the web user interface, or through the remote API.
 
 To do it in the web user interface, go to the Images tab, check the boxes to
 say which images you want to import, and click the "Import images" button at
@@ -272,6 +274,12 @@ By default, the import is configured to download the most recent LTS release
 only for the amd64 architecture.  Although this should suit most needs, you can
 change the selections on the Images tab, or over the API.  Read
 :doc:`customise boot sources </bootsources>` to see examples on how to do that.
+
+
+Speeding up repeated image imports by using a local mirror
+----------------------------------------------------------
+See :doc:`sstreams-mirror` for information on how to set up a mirror and
+configure MAAS to use it.
 
 
 Configure DHCP
