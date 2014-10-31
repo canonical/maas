@@ -8,14 +8,12 @@ Changelog
 Important announcements
 -----------------------
 
-Re-import your boot images
-^^^^^^^^^^^^^^^^^^^^^^^^^^
-You must re-import your boot images, see below for details.
+**Re-import your boot images**
+ You must re-import your boot images, see below for details.
 
-Update Curtin preseed files
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Two changes were made to Curtin preseed files that need your attention
-if you made any customisations:
+**Update Curtin preseed files**
+ Two changes were made to Curtin preseed files that need your attention
+ if you made any customisations:
 
  *  The OS name must now appear in the filename.  The new schema is shown
     here, each file pattern is tried in turn until a match is found::
@@ -46,7 +44,7 @@ if you made any customisations:
 Major new features
 ------------------
 
-Improved image downloading and reporting.
+**Improved image downloading and reporting.**
   MAAS boot images are now downloaded centrally by the region controller
   and disseminated to all registered cluster controllers.  This change includes
   a new web UI under the `Images` tab that allows the admin to select
@@ -57,7 +55,7 @@ Improved image downloading and reporting.
 
   This process is also completely controllable using the API.
 
-Note:
+.. Note::
   Unfortunately due to a format change in the way images are stored, it
   was not possible to migrate previously downloaded images to the new region
   storage.  The cluster(s) will still be able to use the existing images,
@@ -68,7 +66,7 @@ Note:
   This means that the first thing to do after upgrading to 1.7 is go to the
   `Images` tab and re-import the images.
 
-Increased robustness.
+**Increased robustness.**
   A large amount of effort has been given to ensuring that MAAS remains
   robust in the face of adversity.  An updated node state model has been
   implemented that takes into account more of the situations in which a
@@ -83,7 +81,7 @@ Increased robustness.
   handles retries when changing the power state of hardware, removing the
   requirement that each power template handle it individually.
 
-RPC security.
+**RPC security.**
   As a step towards mutually verified TLS connections between MAAS's
   components, 1.7 introduces a simple shared-secret mechanism to
   authenticate the region with the clusters and vice-versa. For those
@@ -105,7 +103,7 @@ RPC security.
   That's it; the upgraded cluster controller will find the secret
   without needing to be told.
 
-RPC connections.
+**RPC connections.**
   Each cluster maintains a persistent connection to each region
   controller process that's running. The ports on which the region is
   listening are all high-numbered, and they are allocated randomly by
@@ -113,15 +111,15 @@ RPC connections.
   each cluster controller needs unfiltered access to each machine in the
   region on all high-numbered TCP ports.
 
-Node event log.
+**Node event log.**
   For every major event on nodes, it is now logged in a node-specific log.
   This includes events such as power changes, deployments and any failures.
 
-IPv6.
+**IPv6.**
   It is now possible to deploy Ubuntu nodes that have IPv6 enabled.
   See :doc:`ipv6` for more details.
 
-Removal of Celery and RabbitMQ.
+**Removal of Celery and RabbitMQ.**
   While Celery was found to be very reliable it ultimately did not suit
   the project's requirements as it is a largely fire-and-forget mechanism.
   Additionally it was another moving part that caused some headaches for
@@ -134,18 +132,18 @@ Removal of Celery and RabbitMQ.
   Since a constant connection is maintained, as a side effect the web UI now
   shows whether each cluster is connected or not.
 
-Support for other OSes.
+**Support for other OSes.**
   Non-Ubuntu OSes are fully supported now. This includes:
    - Windows
    - Centos
    - SuSE
 
-Custom Images.
+**Custom Images.**
   MAAS now supports the deployment of Custom Images. Custom images can be
   uploaded via the API. The usage of custom images allows the deployment of
   other Ubuntu Flavors, such as Ubuntu Desktop.
 
-maas-proxy.
+**maas-proxy.**
   MAAS now uses maas-proxy as the default proxy solution instead of
   squid-deb-proxy. On a fresh install, MAAS will use maas-proxy by default.
   On upgrades from previous releases, MAAS will install maas-proxy instead of
@@ -154,12 +152,23 @@ maas-proxy.
 Minor notable changes
 ---------------------
 
-Better handling of networks.
+**Better handling of networks.**
   All networks referred to by cluster interfaces are now automatically
   registered on the Network page.  Any node network interfaces are
   automatically linked to the relevant Network.
 
-Improved logging.
+.. Note::
+  Commissioning currently requires an IP address to be available for each
+  network interface on a network that MAAS manages; this allows MAAS to
+  auto-populate its networks database.  In general you should use a
+  well-sized network (/16 recommended if you will be using containers and
+  VMs) and dynamic pool. If this feature risks causing IP exhaustion for
+  your deployment and you do not need the auto-populate functionality, you
+  can disable it by running the following command on your region controller::
+
+    sudo maas <profile> maas set-config name=enable_dhcp_discovery_on_unconfigured_interfaces value=False
+
+**Improved logging.**
   A total overhaul of where logging is produced was undertaken, and now
   all the main events in MAAS are selectively reported to syslog with the
   "maas" prefix from both the region and cluster controllers alike.  If MAAS
@@ -170,238 +179,296 @@ Improved logging.
   On the region controller appservers, maas-django.log contains only appserver
   errors.
 
-Static IP selection.
+**Static IP selection.**
  The API was extended so that specific IPs can be pre-allocated for network
  interfaces on nodes and for user-allocated IPs.
 
-Pronounceable random hostnames.
+**Pronounceable random hostnames.**
  The old auto-generated 5-letter names were replaced with a pseudo-random
  name that is produced from a dictionary giving names of the form
  'adjective-noun'.
 
-Bugs fixed in this release
---------------------------
+
+Known Problems & Workarounds
+----------------------------
+
+**Upgrade issues**
+ There may be upgrade issues for users currently on MAAS 1.5 and 1.6; while we
+ have attempted to reproduce and address all the issues reported, some bugs
+ remain inconclusive. We recommend a full, tested backup of the MAAS servers
+ before attempting the upgrade to 1.7. If you do encounter issues, please file
+ these and flag them to the attention of the MAAS team and we will address them
+ in point-releases.  See bugs `1381058`_, `1382266`_, `1379890`_, `1379532`_,
+ and `1379144`_.
+
+.. _1381058:
+  https://launchpad.net/bugs/1381058
+.. _1382266:
+  https://launchpad.net/bugs/1382266
+.. _1379890:
+  https://launchpad.net/bugs/1379890
+.. _1379532:
+  https://launchpad.net/bugs/1379532
+.. _1379144:
+  https://launchpad.net/bugs/1379144
+
+**Split Region/Cluster set-ups**
+ If you site your cluster on a separate host to the region, it needs a
+ security key to be manually installed by running
+ ``maas-provision install-shared-secret`` on the cluster host.
+
+**Private boot streams**
+ If you had private boot image stream information configured in MAAS 1.5 or
+ 1.6, upgrading to 1.7 will not take that into account and it will need to be
+ manually entered on the settings page in the MAAS UI (bug `1379890`_)
+
+.. _1379890:
+  https://launchpad.net/bugs/1379890
+
+**Concurrency issues**
+ Concurrency issues expose us to races when simultaneous operations are
+ triggered. This is the source of many hard to reproduce issues which will
+ require us to change the default database isolation level. We intend to address
+ this in the first point release of 1.7.
+
+**Destroying a Juju environment**
+ When attempting to "juju destroy" an environment, nodes must be in the DEPLOYED
+ state; otherwise, the destroy will fail. You should wait for all in-progress
+ actions on the MAAS cluster to conclude before issuing the command. (bug
+ `1381619`_)
+
+.. _1381619:
+  https://launchpad.net/bugs/_1381619
+
+**AMT power control**
+ A few AMT-related issues remain, with workarounds:
+
+  * Commissioning NUC reboots instead of shutting down (bug `1368685`_).  There
+    is `a workaround in the power template`_
+
+  * MAAS (amttool) cannot control AMT version > 8. See `workaround described in
+    bug 1331214`_
+
+  * AMT NUC stuck at boot prompt instead of powering down (no ACPI support in
+    syslinux poweroff) (bug `1376716`_). See the `ACPI-only workaround`_
+
+.. _1368685:
+  https://bugs.launchpad.net/maas/+bug/1368685
+.. _a workaround in the power template:
+  https://bugs.launchpad.net/maas/+bug/1368685/comments/8
+.. _workaround described in bug 1331214:
+  https://bugs.launchpad.net/maas/+bug/1331214/comments/18
+.. _1376716:
+  https://bugs.launchpad.net/maas/+bug/1376716
+.. _ACPI-only workaround:
+  https://bugs.launchpad.net/maas/+bug/1376716/comments/12
+
+
+**Disk wiping**
+ If you enable disk wiping, juju destroy-environment may fail for you. The
+ current workaround is to wait and re-issue the command.  This will be fixed in
+ future versions of MAAS & Juju. (bug `1386327`_)
+
+.. _1386327:
+  https://bugs.launchpad.net/maas/+bug/1386327
+
+**BIND with DNSSEC**
+ If you are using BIND with a forwarder that uses DNSSEC and have not
+ configured certificates, you will need to explicitly disable that feature in
+ your BIND configuration (1384334)
+
+.. _1384334:
+  https://bugs.launchpad.net/maas/+bug/1384334
+
+**Boot source selections on the API**
+ Use of API to change image selections can leave DB in a bad state
+ (bug `1376812`_).  It can be fixed by issuing direct database updates.
+
+.. _1376812:
+  https://bugs.launchpad.net/maas/+bug/1376812
+
+**Disabling DNS**
+ Disabling DNS may not work (bug `1383768`_)
+
+.. _1383768:
+  https://bugs.launchpad.net/maas/+bug/1383768
+
+**Stale DNS zone files**
+ Stale DNS zone files may be left behind if the MAAS domainname is changed
+ (bug `1383329`_)
+
+.. _1383329:
+  https://bugs.launchpad.net/maas/+bug/1383329
+
+
+
+Major bugs fixed in this release
+--------------------------------
+
+See https://launchpad.net/maas/+milestone/1.7.0 for full details.
+
 #1081660    If maas-enlist fails to reach a DNS server, the node will be named ";; connection timed out; no servers could be reached"
+
 #1087183    MaaS cloud-init configuration specifies 'manage_etc_hosts: localhost'
+
 #1328351    ConstipationError: When the cluster runs the "import boot images" task it blocks other tasks
-#1340208    DoesNotExist: NodeGroupInterface has no nodegroup
-#1340896    MAAS upgrade from 1.5.2+bzr2282-0ubuntu0.2 to experiment failed
+
 #1342117    CLI command to set up node-group-interface fails with /usr/lib/python2.7/dist-packages/maascli/__main__.py: error: u'name'
-#1342395    power_on: ipmi failed: name 'power_off_mode' is not defined at line 12 column 18 in file /etc/maas/templates/power/ipmi.template
-#1347579    Schema migration 0091 is broken (node boot type)
+
 #1349254    Duplicate FQDN can be configured on MAAS via CLI or API
+
 #1352575    BMC password showing in the apache2 logs
-#1353598    maas-import-pxe-files logger import error for logger
-#1355014    Can't run tests without a net connection
+
 #1355534    UnknownPowerType traceback in appserver log
-#1356788    Test failure: “One or more services are registered” etc.
-#1359029    Power status monitoring does not scale
-#1359517    Periodic DHCP probe breaks: "Don't log exceptions to maaslog"
-#1359551    create_Network_from_NodeGroupInterface is missing a catch for IntegrityError
-#1360004    UI becomes unresponsive (unaccessible) if RPC to cluster fails
-#1360008    Data migration fails with django.db.utils.InternalError: current transaction is aborted, commands ignored until end of transaction block
-#1360676    KeyError raised importing boot images
-#1361799    absolute_reverse returns incorrect url if base_url is missing ending /
-#1362397    django.core.exceptions.ValidationError: {'power_state': [u'Ensure this value has at most 10 characters (it has 18).']}
-#1363105    Change in absolute_reverse breaks netbooting on installed MAAS
-#1363116    DHCP Probe timer service fails
-#1363138    DHCP Probe TimerService fails with 'NoneType' object has no attribute 'encode'
-#1363474    exceptions.KeyError: u'subarches' when syncing uploaded image from region to cluster
-#1363525    preseed path for generated tgz doesn't match actual path
-#1363722    Boot resource upload failed: error: length too large
+
 #1363850    Auto-enlistment not reporting power parameters
+
 #1363900    Dev server errors while trying to write to '/var/lib/maas'
+
 #1363999    Not assigning static IP addresses
-#1364062    New download boot resources method doesn't use the configured proxy
+
 #1364481    http 500 error doesn't contain a stack trace
+
 #1364993    500 error when trying to acquire a commissioned node (AddrFormatError: failed to detect a valid IP address from None)
+
 #1365130    django-admin prints spurious messages to stdout, breaking scripts
-#1365175    bootloader import code goes directly to archive.ubuntu.com rather than the configured archive
+
 #1365850    DHCP scan using cluster interface name as network interface?
-#1366104    [FFe] OperationError when large object greater than 2gb
+
 #1366172    NUC does not boot after power off/power on
+
 #1366212    Large dhcp leases file leads to tftp timeouts
+
 #1366652    Leaking temporary directories
-#1366726    CI breakage: Deployed nodes don't get a static IP address
+
 #1368269    internal server error when deleting a node
+
 #1368590    Power actions are not serialized.
+
 #1370534    Recurrent update of the power state of nodes crashes if the connection to the BMC fails.
+
 #1370958    excessive pserv logging
-#1371033    A node can get stuck in the 'RELEASING' state if the power change command fails to power down the node.
-#1371064    Spurious test failure: maasserver.rpc.tests.test_nodes.TestCreateNode.test_creates_node
-#1371236    power parameters for probe-and-enlist mscm no longer saved for enlisted nodes
-#1372408    PowerQuery RPC method crashes with exceptions.TypeError: get_power_state() got an unexpected keyword argument 'power_change'
-#1372732    ImportError running src/metadataserver/tests/test_fields.py
-#1372735    Deprecation warning breaks Node model tests
+
 #1372767    Twisted web client does not support IPv6 address
+
 #1372944    Twisted web client fails looking up IPv6 address hostname
+
 #1373031    Cannot register cluster
+
 #1373103    compose_curtin_network_preseed breaks installation of all other operating systems
-#1373207    Can't build package
-#1373237    maas-cluster-controller installation breaks: __main__.py: error: unrecognized arguments: -u maas -g maas
-#1373265    Where did the “Import boot images” button go?
-#1373357    register_event_type fails: already exists
+
 #1373368    Conflicting power actions being dropped on the floor can result in leaving a node in an inconsistent state
-#1373477    Circular import between preseed.py and models/node.py
-#1373658    request_node_info_by_mac_address errors during enlistment: MACAddress matching query does not exist
+
 #1373699    Cluster Listing Page lacks feedback about the images each cluster has
-#1373710    Machines fail to PXE Boot
+
 #1374102    No retries for AMT power?
-#1374388    UI checkbox for Node.disable_ipv4 never unchecks
-#1374793    Cluster page no longer shows whether the cluster is connected or not.
-#1375594    After a fresh install, cluster can't connect to region
-#1375664    Node powering on but not deploying
-#1375835    Can't create node in the UI with 1.7 beta 4
-#1375970    Timeout leads to inconsistency between maas and real world state, can't commission or start nodes
+
 #1375980    Nodes failed to transition out of "New" state on bulk commission
-#1376000    oops: 'NoneType' object has no attribute 'encode'
+
 #1376023    After performing bulk action on maas nodes, Internal Server Error
-#1376028    maasserver Unable to identify boot image for (ubuntu/amd64/generic/trusty/poweroff): cluster 'maas' does not have matching boot image.
-#1376031    WebUI became unresponsive after disconnecting Remote Cluster Controller (powered node off)
-#1376303    Can't commission a node: xceptions.AttributeError: 'NoneType' object has no attribute 'addCallback'
-#1376304    Timeout errors in RPC commands cause 500 errors
-#1376782    Node stuck with: "another action is already in progress for that node."
+
 #1376888    Nodes can't be deleted if DHCP management is off.
+
 #1377099    Bulk operation leaves nodes in inconsistent state
-#1377860    Nodes not configured with IPv6 DNS server address
-#1379154    "boot-images" link in the "Visit the boot images page to start the import." is a 404
+
 #1379209    When a node has multiple interfaces on a network MAAS manages, MAAS assigns static IP addresses to all of them
-#1379568    maas-cluster fails to register if the host has an IPv6 address
-#1379591    nodes with two interfaces fail to deploy in maas 1.7 beta5
-#1379641    IPv6 netmasks aren't *always* 64 bits, but we only configure 64-bit ones
-#1379649    Invalid transition - 'Releasing Failed' to 'Disk Erasing'
+
 #1379744    Cluster registration is fragile and insecure
-#1379924    maas 1.7 flooded with OOPSs
-#1380927    Default Cluster does not autoconnect after a fresh install
+
 #1380932    MAAS does not cope with changes of the dhcp daemons
+
 #1381605    Not all the DNS records are being added when deploying multiple nodes
-#1381714    Nodes release API bypasses disk erase
+
 #1012954    If a power script fails, there is no UI feedback
-#1057250    TestGetLongpollContext.test_get_longpoll_context is causing test failures in metadataserver
+
 #1186196    "Starting a node" has different meanings in the UI and in the API.
+
 #1237215    maas and curtin do not indicate failure reasonably
+
 #1273222    MAAS doesn't check return values of power actions
+
 #1288502    archive and proxy settings not honoured for commissioning
-#1300554    If the rabbit password changes, clusters are not informed
-#1315161    cannot deploy Windows
+
 #1316919    Checks don't exist to confirm a node will actually boot
+
 #1321885    IPMI detection and automatic setting fail in ubuntu 14.04 maas
+
 #1325610    node marked "Ready" before poweroff complete
+
 #1325638    Add hardware enablement for Universal Management Gateway
-#1333954    global registry of license keys
-#1334963    Nodegroupinterface.clean_ip_ranges() is very slow with large networks
-#1337437    [SRU] maas needs utopic support
-#1338169    Non-Ubuntu preseed templates are not tested
-#1339868    No way to list supported operating systems via RPC
-#1339903    No way to validate an OS license key via RPC
+
 #1340188    unallocated node started manually, causes AssertionError for purpose poweroff
-#1340305    No way to get the title for a release from OperatingSystem
+
 #1341118    No feedback when IPMI credentials fail
+
 #1341121    No feedback to user when cluster is not running
+
 #1341581    power state is not represented in api and ui
-#1341619    NodeGroupInterface is not linked to Network
-#1341772    No way to get extra preseed data from OperatingSystem via RPC
+
 #1341800    MAAS doesn't support soft power off through the API
-#1343425    deprecate use-fastpath-installer tag and use a property on node instead
+
 #1344177    hostnames can't be changed while a node is acquired
+
 #1347518    Confusing error message when API key is wrong
+
 #1349496    Unable to request a specific static IP on the API
+
 #1349736    MAAS logging is too verbose and not very useful
+
 #1349917    guess_server_address() can return IPAddress or hostname
+
 #1350103    No support for armhf/keystone architecture
+
 #1350856    Can't constrain acquisition of nodes by not having a tag
-#1350948    IPMI power template treats soft as an option rather than a command
-#1354014    clusters should sync boot images from the region
-#1356490    Metadataserver api needs tests for _store_installing_results
-#1356780    maaslog items are logged twice
+
 #1356880    MAAS shouldn't allow changing the hostname of a deployed node
-#1357071    When a power template fails, the content of the event from the node event log is not readable (it contains the whole template)
-#1357685    docs/bootsources.rst:: WARNING: document isn't included in any toctree
+
 #1357714    Virsh power driver does not seem to work at all
-#1358177    maas-region-admin requires root privileges [docs]
-#1358337    [docs] MAAS documentation suggests to execute 'juju --sync-tools'
-#1358829    IPMI power query fails when trying to commit config changes
+
 #1358859    Commissioning output xml is hard to understand, would be nice to have yaml as an output option.
+
 #1359169    MAAS should handle invalid consumers gracefully
+
 #1359822    Gateway is missing in network definition
-#1361897    exceptions in PeriodicImageDownloadService will cause it to stop running
-#1361941    erlang upgrade makes maas angry
-#1361967    NodePowerMonitorService has no tests
+
 #1363913    Impossible to remove last MAC from network in UI
+
 #1364228    Help text for node hostname is wrong
+
 #1364591    MAAS Archive Mirror does not respect non-default port
-#1364617    ipmipower returns a zero exit status when password invalid
-#1364713    selenium test will not pass with new Firefox
+
 #1365616    Non-admin access to cluster controller config
+
 #1365619    DNS should be an optional field in the network definition
-#1365722    NodeStateViolation when commissioning
-#1365742    Logged OOPS ... NoSuchEventType: Event type with name=NODE_POWER_ON_FAILED could not be found.
+
 #1365776    commissioning results view for a node also shows installation results
+
 #1366812    Old boot resources are not being removed on clusters
+
 #1367455    MAC address for node's IPMI is reversed looked up to yield IP address using case sensitive comparison
-#1368398    Can't mark systems that 'Failed commissioning' as 'Broken'
-#1368916    No resources found in Simplestreams repository
-#1370860    Node power monitor doesn't cope with power template answers other than "on" or "off"
-#1370887    No event is registered on a node for when the power monitor sees a problem
-#1371663    Node page Javascript crashes when there is no lshw output to display yet
-#1371763    Need to use RPC for validating license key.
-#1372974    No "installation complete" event
-#1373272    "No boot images are available.…" message doesn't disappear when images are imported
+
 #1373580    [SRU] Glen m700 cartridge list as ARM64/generic after enlist
+
 #1373723    Releasing a node without power parameters ends up in not being able to release a node
-#1373727    PXE node event logs provide too much info
-#1373900    New install of MAAS can't download boot images
-#1374153    Stuck in "power controller problem"
-#1374321    Internal server error when attempting to perform an action when the cluster is down
-#1375360    Automatic population of managed networks for eth1 and beyond
-#1375427    Need to remove references to older import images button
-#1375647    'static-ipaddresses' capability in 1.6 not documented.
-#1375681    "Importing images . . .​" message on the image page never disappears
-#1375953    bootsourcecache is not refreshed when sources change
-#1376016    MAAS lacks a setting for the Simple Streams Image repository location
-#1376481    Wrong error messages in UI
-#1376620    maas-url config question doesn't make clear that localhost won't do
-#1376990    Elusive JavaScript lint
-#1378366    When there are no images, clusters should show that there
-#1378527    Images UI doesn't handle HWE images
-#1378643    Periodic test failure for compose_curtin_network_preseed_for
-#1378837    "Abort operation" action name is vague and misleading
-#1378910    Call the install log 'install log' rather than 'curtin log'
-#1379401    Race in EventManager.register_event_and_event_type
-#1379816    disable_ipv4 has a default setting on the cluster, but it's not visible
-#1380470    Event log says node was allocated but doesn't say to *whom*
-#1380805    uprade from 1.5.4 to 1.7 overwrote my cluster name
-#1381007    "Acquire and start node" button appears on node page for admins who don't own an allocated but unstarted node
-#1381213    mark_fixed should clear the osystem and distro_series fields
-#1381747    APIRPCErrorsMiddleware isn't installed
-#1381796    license_key is not given in the curtin_userdata preseed for Windows
-#1172773    Web UI has no indication of image download status.
+
 #1233158    no way to get power parameters in api
+
 #1319854    `maas login` tells you you're logged in successfully when you're not
-#1351451    Impossible to release a BROKEN node via the API.
-#1361040    Weird log message: "Power state has changed from unknown to connection timeout."
-#1366170    Node Event log doesn't currently display anything apart from power on/off
+
 #1368480    Need API to gather image metadata across all of MAAS
-#1370306    commissioning output XML and YAML tabs are not vertical
-#1371122    WindowsBootMethod request pxeconfig from API for every file
-#1376030    Unable to get RPC connection for cluster 'maas' <-- 'maas' is the DNS zone name
-#1378358    Missing images warning should contain a link to images page
+
 #1281406    Disk/memory space on Node edit page have no units
+
 #1299231    MAAS DHCP/DNS can't manage more than a /16 network
+
 #1357381    maas-region-admin createadmin shows error if not params given
-#1357686    Caching in get_worker_user() looks like premature optimisation
-#1358852    Tons of Linking <mac address> to <cluster interface> spam in log
-#1359178    Docs - U1 still listed for uploading data
-#1359947    Spelling Errors/Inconsistencies with MAAS Documentation
-#1365396    UI: top link to “<name> MAAS” only appears on some pages
-#1365591    "Start node" UI button does not allocate node before starting in 1.7
-#1365603    No "stop node" button on the page of a node with status "failed deployment"
-#1371658    Wasted space in the "Discovery data" section of the node page
+
 #1376393    powerkvm boot loader installs even when not needed
-#1376956    commissioning results page with YAML/XML output tabs are not centered on page.
+
 #1287224    MAAS random generated hostnames are not pronounceable
+
 #1348364    non-maas managed subnets cannot query maas DNS
-#1381543    Disabling Disk Erasing with node in 'Failed Erasing' state leads to Invalid transition: Failed disk erasing -> Ready.
+
 
 1.6.1
 =====
