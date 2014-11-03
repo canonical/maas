@@ -1827,10 +1827,13 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                  % Delete.display_bulk,),
             ),
         ]
-        for params, snippets in params_and_snippets:
-            message = message_from_form_stats(*params)
+        # level precedence is worst-case for the concantenation of messages
+        levels = ['error', 'info', 'error', 'error']
+        for index, (params, snippets) in enumerate(params_and_snippets):
+            message, level = message_from_form_stats(*params)
             for snippet in snippets:
                 self.assertIn(snippet, message)
+            self.assertEqual(level, levels[index])
 
 
 class NodeEnlistmentPreseedViewTest(MAASServerTestCase):

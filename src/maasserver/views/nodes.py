@@ -146,7 +146,7 @@ def message_from_form_stats(action, done, not_actionable, not_permitted):
         (not_actionable, not_actionable_templates),
         (not_permitted, not_permitted_templates)]
     message = []
-    for number, message_templates in number_message:
+    for index, (number, message_templates) in enumerate(number_message):
         singular, plural = message_templates
         if number != 0:
             message_template = singular if number == 1 else plural
@@ -154,7 +154,8 @@ def message_from_form_stats(action, done, not_actionable, not_permitted):
             # Override the action name so that only the first sentence will
             # contain the full name of the action.
             action_name = 'It'
-    return ' '.join(message)
+            level = index
+    return ' '.join(message), ('info', 'warning', 'error')[level]
 
 
 def prefetch_nodes_listing(nodes_query):
@@ -293,8 +294,8 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             action_class = SetZoneBulkAction
         else:
             action_class = ACTIONS_DICT[form.cleaned_data['action']]
-        message = message_from_form_stats(action_class, *stats)
-        messages.info(self.request, message)
+        message, level = message_from_form_stats(action_class, *stats)
+        getattr(messages, level)(self.request, message)
         return super(NodeListView, self).form_valid(form)
 
     def _compose_sort_order(self):
