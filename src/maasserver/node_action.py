@@ -415,7 +415,7 @@ class MarkBroken(NodeAction):
     actionable_statuses = [
         NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
         NODE_STATUS.ALLOCATED, NODE_STATUS.RELEASING,
-        NODE_STATUS.DEPLOYING] + FAILED_STATUSES
+        NODE_STATUS.DEPLOYING, NODE_STATUS.DISK_ERASING] + FAILED_STATUSES
     permission = NODE_PERMISSION.EDIT
 
     def execute(self, allow_redirect=True):

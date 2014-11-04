@@ -26,6 +26,7 @@ from maasserver import forms
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODE_STATUS_CHOICES,
     NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.fields import (
@@ -1212,6 +1213,18 @@ class TestMarkBroken(APITestCase):
         response = self.client.post(
             self.get_node_uri(node), {'op': 'mark_broken'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
+
+    def test_mark_broken_allowed_from_any_other_state(self):
+        for status, _ in NODE_STATUS_CHOICES:
+            if status == NODE_STATUS.BROKEN:
+                continue
+
+            node = factory.make_Node(status=status, owner=self.logged_in_user)
+            response = self.client.post(
+                self.get_node_uri(node), {'op': 'mark_broken'})
+            self.expectThat(response.status_code, Equals(httplib.OK), response)
+            node = reload_object(node)
+            self.expectThat(node.status, Equals(NODE_STATUS.BROKEN))
 
 
 class TestMarkFixed(APITestCase):
