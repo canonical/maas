@@ -35,6 +35,7 @@ from urllib import urlencode
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.http import QueryDict
 from django.shortcuts import (
     get_object_or_404,
@@ -228,6 +229,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
+        self.test_query = request.GET.get("test")
         self.query_error = None
         self.sort_by = request.GET.get("sort")
         self.sort_dir = request.GET.get("dir")
@@ -253,7 +255,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         These are sorting and search option we want a POST request to
         preserve so that the display after a POST request is similar
         to the display before the request."""
-        return ["dir", "query", "page", "sort"]
+        return ["dir", "query", "test", "page", "sort"]
 
     def get_preserved_query(self):
         params = {
@@ -323,7 +325,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         :param nodes_query: A query set of nodes.
         :return: A query set of nodes that returns a subset of `nodes_query`.
         """
-        data = _parse_constraints(self.query)
+        data = _parse_constraints(self.test_query)
         form = AcquireNodeForm.Strict(data=data)
         # Change the field names of the AcquireNodeForm object to
         # conform to Juju's naming.
@@ -336,12 +338,30 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
                  for field, errors in form.errors.items()])
             return Node.objects.none()
 
+    def _search_nodes(self, nodes_query):
+        """Filter the given nodes query by searching field data.
+
+        The search query is substring matched non-case sensitively
+        against some fields in the nodes.
+
+        :param nodes_query: A queryset of nodes.
+        :return: A query set of nodes that returns a subset of `nodes_query`.
+        """
+        name_clause = Q(hostname__icontains=self.query)
+        arch_clause = Q(architecture__icontains=self.query)
+        tag_clause = Q(tags__name__icontains=self.query)
+
+        query = nodes_query.filter(name_clause | arch_clause | tag_clause)
+        return query.distinct()
+
     def get_queryset(self):
         nodes = Node.objects.get_nodes(
             user=self.request.user, perm=NODE_PERMISSION.VIEW)
         nodes = nodes.order_by(*self._compose_sort_order())
-        if self.query:
+        if self.test_query:
             nodes = self._constrain_nodes(nodes)
+        if self.query:
+            nodes = self._search_nodes(nodes)
         nodes = prefetch_nodes_listing(nodes)
         return configure_macs(nodes)
 
@@ -391,6 +411,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         context["preserved_query"] = self.get_preserved_query()
         context["form"] = form
         context["input_query"] = self.query
+        context["input_test"] = self.test_query
         context["input_query_error"] = self.query_error
         links, classes = self._prepare_sort_links()
         context["sort_links"] = links

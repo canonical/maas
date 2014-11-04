@@ -94,7 +94,9 @@ from metadataserver.models.commissioningscript import (
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
+    Contains,
     ContainsAll,
+    Equals,
     HasLength,
     Not,
     )
@@ -1029,31 +1031,31 @@ class NodeViewsTest(MAASServerTestCase):
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))
 
-    def test_node_list_query_includes_current(self):
+    def test_node_list_constraint_test_query_includes_current(self):
         self.client_log_in()
         qs = factory.make_string()
-        response = self.client.get(reverse('node-list'), {"query": qs})
+        response = self.client.get(reverse('node-list'), {"test": qs})
         query_value = fromstring(response.content).xpath(
-            "string(//div[@id='nodes']//input[@name='query']/@value)")
+            "string(//div[@id='nodes']//input[@name='test']/@value)")
         self.assertIn(qs, query_value)
 
-    def test_node_list_query_error_on_missing_tag(self):
+    def test_node_list_constraint_test_query_error_on_missing_tag(self):
         self.client_log_in()
         response = self.client.get(
-            reverse('node-list'), {"query": "maas-tags=missing"})
+            reverse('node-list'), {"test": "maas-tags=missing"})
         error_string = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//p[@class='form-errors'])")
         self.assertIn("No such tag(s): 'missing'", error_string)
 
-    def test_node_list_query_error_on_unknown_constraint(self):
+    def test_node_list_constraint_test_query_error_on_unknown_constraint(self):
         self.client_log_in()
         response = self.client.get(
-            reverse('node-list'), {"query": "color=red"})
+            reverse('node-list'), {"test": "color=red"})
         error_string = fromstring(response.content).xpath(
             "string(//div[@id='nodes']//p[@class='form-errors'])")
         self.assertEqual("color: No such constraint.", error_string.strip())
 
-    def test_node_list_query_selects_subset(self):
+    def test_node_list_constraint_test_query_selects_subset(self):
         self.client_log_in()
         tag = factory.make_Tag("shiny")
         node1 = factory.make_Node(cpu_count=1)
@@ -1063,7 +1065,7 @@ class NodeViewsTest(MAASServerTestCase):
         node2.tags = [tag]
         node3.tags = []
         response = self.client.get(
-            reverse('node-list'), {"query": "maas-tags=shiny cpu=2"})
+            reverse('node-list'), {"test": "maas-tags=shiny cpu=2"})
         node2_link = reverse('node-view', args=[node2.system_id])
         document = fromstring(response.content)
         node_links = document.xpath(
@@ -1116,7 +1118,7 @@ class NodeViewsTest(MAASServerTestCase):
             [(a.text.lower(), a.get("href"))
              for a in expr_page_anchors(page3)])
 
-    def test_node_list_query_paginates(self):
+    def test_node_list_constraint_test_query_paginates(self):
         """Node list query subset is split across multiple pages with links"""
         self.client_log_in()
         # Set a very small page size to save creating lots of nodes
@@ -1130,7 +1132,7 @@ class NodeViewsTest(MAASServerTestCase):
         last_node_link = reverse('node-view', args=[nodes[0].system_id])
         response = self.client.get(
             reverse('node-list'),
-            {"query": "maas-tags=odd", "page": 3})
+            {"test": "maas-tags=odd", "page": 3})
         document = fromstring(response.content)
         self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
         self.assertEqual(
@@ -1138,8 +1140,8 @@ class NodeViewsTest(MAASServerTestCase):
             document.xpath("//div[@id='nodes']/form/table/tr/td[3]/a/@href"))
         self.assertEqual(
             [
-                ("first", "?query=maas-tags%3Dodd"),
-                ("previous", "?query=maas-tags%3Dodd&page=2")
+                ("first", "?test=maas-tags%3Dodd"),
+                ("previous", "?test=maas-tags%3Dodd&page=2")
             ],
             [
                 (a.text.lower(), a.get("href"))
@@ -1367,6 +1369,128 @@ class NodeViewsTest(MAASServerTestCase):
         node_event_list = reverse(
             'node-event-list-view', args=[node.system_id])
         self.assertIn(node_event_list, get_content_links(response))
+
+
+class TestNodesViewSearch(MAASServerTestCase):
+
+    def test_node_list_search_query_includes_current_clause(self):
+        self.client_log_in()
+        qs = factory.make_string()
+        response = self.client.get(reverse('node-list'), {"query": qs})
+        query_value = fromstring(response.content).xpath(
+            "string(//div[@id='nodes']//input[@name='query']/@value)")
+        self.assertIn(qs, query_value)
+
+    def test_node_list_search_query_finds_by_hostname(self):
+        self.client_log_in()
+        [factory.make_Node() for i in range(10)]
+        hostname = factory.make_name("hostname")
+        node = factory.make_Node(hostname=hostname)
+        node2 = factory.make_Node(hostname=hostname[:-1])
+        node_link = reverse('node-view', args=[node.system_id])
+        node2_link = reverse('node-view', args=[node2.system_id])
+        response = self.client.get(reverse('node-list'), {"query": hostname})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, Equals([node_link]))
+
+        # A substring search also matches.  Here it also picks up the
+        # other node with the exact name match.
+        response = self.client.get(
+            reverse('node-list'), {"query": hostname[:-1]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, Equals([node_link, node2_link]))
+
+    def test_node_list_search_query_finds_by_arch(self):
+        self.client_log_in()
+        amd64_node = factory.make_Node(architecture="amd64/generic")
+        factory.make_Node(architecture="i386/generic")
+        factory.make_Node(architecture="armhf/generic")
+
+        node_link = reverse('node-view', args=[amd64_node.system_id])
+        response = self.client.get(reverse('node-list'), {"query": "amd64"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, Equals([node_link]))
+
+    def test_node_list_search_doesnt_show_duplicates(self):
+        # Unioning several query sets can result in dupes, check that
+        # the query uses distinct.
+        self.client_log_in()
+        node = factory.make_Node(
+            hostname="arthur", architecture="amd64/generic")
+        node.tags = [factory.make_Tag() for i in range(3)]
+        node.save()
+        nodes = [node]
+        nodes.append(factory.make_Node(
+            hostname="andrew", architecture="i386/generic"))
+        response = self.client.get(reverse('node-list'), {"query": "a"})
+        document = fromstring(response.content)
+        expected_node_links = [
+            reverse('node-view', args=[n.system_id]) for n in nodes]
+        doc_node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(expected_node_links, doc_node_links)
+
+    def test_node_list_search_query_finds_by_tags(self):
+        self.client_log_in()
+        nodes = [factory.make_Node() for i in range(10)]
+        tag = factory.make_Tag("odd")
+        for node in nodes[::2]:
+            node.tags = [tag]
+        response = self.client.get(
+            reverse('node-list'), {"query": "odd"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        expected_node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in nodes[::2]]
+        self.expectThat(node_links, ContainsAll(expected_node_links))
+
+        # Substrings match tags too.
+        response = self.client.get(
+            reverse('node-list'), {"query": "od"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, ContainsAll(expected_node_links))
+
+    def test_node_list_search_query_paginates(self):
+        """Node list query subset is split across multiple pages with links"""
+        self.client_log_in()
+        # Set a very small page size to save creating lots of nodes
+        self.patch(nodes_views.NodeListView, 'paginate_by', 2)
+        nodes = [
+            factory.make_Node(created="2012-10-12 12:00:%02d" % i)
+            for i in range(10)]
+        tag = factory.make_Tag("odd")
+        for node in nodes[::2]:
+            node.tags = [tag]
+        last_node_link = reverse('node-view', args=[nodes[0].system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": "odd", "page": 3})
+        document = fromstring(response.content)
+        self.expectThat(
+            document.xpath("string(//h1)"), Contains("5 matching nodes"))
+        self.expectThat(
+            [last_node_link],
+            Equals(
+                document.xpath(
+                    "//div[@id='nodes']/form/table/tr/td[3]/a/@href")))
+        self.assertEqual(
+            [
+                ("first", "?query=odd"),
+                ("previous", "?query=odd&page=2")
+            ],
+            [
+                (a.text.lower(), a.get("href"))
+                for a in document.xpath("//div[@class='pagination']//a")
+            ])
 
 
 class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
