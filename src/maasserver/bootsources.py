@@ -17,11 +17,15 @@ __all__ = [
     "get_boot_sources",
     "get_os_info_from_boot_sources",
     "cache_boot_sources",
-    "BootSourceCacheService",
+    "cache_boot_sources_in_thread",
 ]
 
-
 from maasserver import locks
+from maasserver.components import (
+    discard_persistent_error,
+    register_persistent_error,
+    )
+from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootSource,
     BootSourceCache,
@@ -37,10 +41,9 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import tempdir
-from twisted.application.internet import TimerService
+from requests.exceptions import ConnectionError
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
-from twisted.python import log
 
 
 maaslog = get_maas_logger("bootsources")
@@ -101,11 +104,13 @@ def get_os_info_from_boot_sources(os):
 
 
 @transactional
-def _cache_boot_sources():
+def cache_boot_sources():
     """Cache all image information in boot sources."""
     # If the lock is already held, then cache is already running.
     if locks.cache_sources.is_locked():
         return
+
+    source_errors = []
 
     # Hold the lock while performing the cache
     with locks.cache_sources:
@@ -114,7 +119,14 @@ def _cache_boot_sources():
             for source in BootSource.objects.all():
                 sources = write_all_keyrings(
                     keyrings_path, [source.to_dict_without_selections()])
-                image_descriptions = download_all_image_descriptions(sources)
+                try:
+                    image_descriptions = download_all_image_descriptions(
+                        sources)
+                except (IOError, ConnectionError) as e:
+                    source_errors.append(
+                        "Failed to import images from boot source %s: %s" % (
+                            source.url, unicode(e)))
+                    continue
 
                 # We clear the cache once the information has been retrieved,
                 # because if an error occurs getting the information then the
@@ -133,8 +145,15 @@ def _cache_boot_sources():
                             )
         maaslog.info("Updated boot sources cache.")
 
+        # Update the component errors while still holding the lock.
+        if len(source_errors) > 0:
+            register_persistent_error(
+                COMPONENT.REGION_IMAGE_IMPORT, "\n".join(source_errors))
+        else:
+            discard_persistent_error(COMPONENT.REGION_IMAGE_IMPORT)
 
-def cache_boot_sources():
+
+def cache_boot_sources_in_thread():
     """Starts the caching of image information in boot sources.
 
     Note: This function returns immediately. It only starts the process, it
@@ -144,35 +163,4 @@ def cache_boot_sources():
     # "OperationalError: could not serialize access due to concurrent update"
     # The wait will make sure the transaction that started the update will
     # have finished and been committed.
-    reactor.callLater(1, deferToThread, _cache_boot_sources)
-
-
-class BootSourceCacheService(TimerService, object):
-    """Service to periodically cache boot source information.
-
-    This will run immediately when it's started, then once again every hour,
-    though the interval can be overridden by passing it to the constructor.
-    """
-
-    def __init__(self, interval=(60 * 60)):
-        super(BootSourceCacheService, self).__init__(
-            interval, self.try_cache_boot_sources)
-
-    def try_cache_boot_sources(self):
-        """Attempt to cache boot sources.
-
-        Log errors on failure, but do not propagate them up; that will
-        stop the timed loop from running.
-        """
-
-        def cache_boot_sources_failed(failure):
-            # Log the error in full to the Twisted log.
-            log.err(failure)
-            # Log something concise to the MAAS log.
-            maaslog.error(
-                "Failed to update boot source cache: %s",
-                failure.getErrorMessage())
-
-        d = deferToThread(_cache_boot_sources)
-        d.addErrback(cache_boot_sources_failed)
-        return d
+    reactor.callLater(1, deferToThread, cache_boot_sources)

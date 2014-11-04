@@ -18,12 +18,17 @@ from os import environ
 
 from maasserver import bootsources
 from maasserver.bootsources import (
-    _cache_boot_sources,
     cache_boot_sources,
+    cache_boot_sources_in_thread,
     ensure_boot_source_definition,
     get_boot_sources,
     get_os_info_from_boot_sources,
     )
+from maasserver.components import (
+    get_persistent_error,
+    register_persistent_error,
+    )
+from maasserver.enum import COMPONENT
 from maasserver.models import (
     BootSource,
     BootSourceCache,
@@ -34,10 +39,14 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import MagicMock
+from provisioningserver.import_images import (
+    download_descriptions as download_descriptions_module,
+    )
 from provisioningserver.import_images.boot_image_mapping import (
     BootImageMapping,
     )
 from provisioningserver.import_images.helpers import ImageSpec
+from requests.exceptions import ConnectionError
 from testtools.matchers import HasLength
 from twisted.internet import reactor
 from twisted.internet.threads import deferToThread
@@ -170,7 +179,7 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
         factory.make_BootSource(keyring_data='1234')
-        _cache_boot_sources()
+        cache_boot_sources()
         self.assertEqual(
             bootsources.get_maas_user_gpghome(),
             capture.env['GNUPGHOME'])
@@ -181,7 +190,7 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
         factory.make_BootSource(keyring_data='1234')
-        _cache_boot_sources()
+        cache_boot_sources()
         self.assertEqual(
             (proxy_address, proxy_address),
             (capture.env['http_proxy'], capture.env['http_proxy']))
@@ -192,7 +201,7 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
         mock_download.return_value = make_boot_image_mapping()
-        _cache_boot_sources()
+        cache_boot_sources()
         self.assertEqual(0, BootSourceCache.objects.all().count())
 
     def test__returns_adds_entries_to_cache_for_source(self):
@@ -204,7 +213,7 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         mock_download = self.patch(
             bootsources, 'download_all_image_descriptions')
         mock_download.return_value = make_boot_image_mapping(image_specs)
-        _cache_boot_sources()
+        cache_boot_sources()
         cached_releases = [
             cache.release
             for cache in BootSourceCache.objects.filter(boot_source=source)
@@ -213,11 +222,45 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
         self.assertItemsEqual(releases, cached_releases)
 
 
+class TestBadConnectionHandling(MAASServerTestCase):
+
+    def test__catches_connection_errors_and_sets_component_error(self):
+        sources = [
+            factory.make_BootSource(keyring_data='1234') for _ in range(3)]
+        download_image_descriptions = self.patch(
+            download_descriptions_module, 'download_image_descriptions')
+        error_text = factory.make_name("error_text")
+        # Make two of the downloads fail.
+        download_image_descriptions.side_effect = [
+            ConnectionError(error_text),
+            BootImageMapping(),
+            IOError(error_text),
+            ]
+        cache_boot_sources()
+        base_error = "Failed to import images from boot source {url}: {err}"
+        error_part_one = base_error.format(url=sources[0].url, err=error_text)
+        error_part_two = base_error.format(url=sources[2].url, err=error_text)
+        expected_error = error_part_one + '\n' + error_part_two
+        actual_error = get_persistent_error(COMPONENT.REGION_IMAGE_IMPORT)
+        self.assertEqual(expected_error, actual_error)
+
+    def test__clears_component_error_when_successful(self):
+        register_persistent_error(
+            COMPONENT.REGION_IMAGE_IMPORT, factory.make_string())
+        [factory.make_BootSource(keyring_data='1234') for _ in range(3)]
+        download_image_descriptions = self.patch(
+            download_descriptions_module, 'download_image_descriptions')
+        # Make all of the downloads successful.
+        download_image_descriptions.return_value = BootImageMapping()
+        cache_boot_sources()
+        self.assertIsNone(get_persistent_error(COMPONENT.REGION_IMAGE_IMPORT))
+
+
 class TestCacheBootSources(MAASServerTestCase):
 
     def test__calls_callLater_in_reactor(self):
         mock_callLater = self.patch(reactor, 'callLater')
-        cache_boot_sources()
+        cache_boot_sources_in_thread()
         self.assertThat(
             mock_callLater,
-            MockCalledOnceWith(1, deferToThread, _cache_boot_sources))
+            MockCalledOnceWith(1, deferToThread, cache_boot_sources))

@@ -39,6 +39,7 @@ from django.http import (
 from django.shortcuts import get_object_or_404
 from maasserver import locks
 from maasserver.bootsources import (
+    cache_boot_sources,
     ensure_boot_source_definition,
     get_boot_sources,
     )
@@ -882,6 +883,9 @@ def _import_resources(force=False):
     if locks.import_images.is_locked():
         maaslog.debug("Skipping import as another import is already running.")
         return
+
+    # Keep the descriptions cache up-to-date.
+    cache_boot_sources()
 
     # If we're not being forced, don't sync unless we've already done it once
     # before, i.e. we've been asked to explicitly sync by a user.

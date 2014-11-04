@@ -1030,7 +1030,7 @@ class TestImportImages(MAASTestCase):
         # lock is already held.
         self.assertThat(has_synced_resources, MockNotCalled())
 
-    def test__import_resources_exists_early_without_force(self):
+    def test__import_resources_exits_early_without_force(self):
         has_synced_resources = self.patch(
             bootresources, "has_synced_resources")
         bootresources._import_resources(force=False)
@@ -1059,33 +1059,37 @@ class TestImportImages(MAASTestCase):
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
     def test__import_resources_calls_functions_with_correct_parameters(self):
-        fake_write_all_keyrings = self.patch(
+        cache_boot_sources = self.patch(
+            bootresources, 'cache_boot_sources')
+        write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
-        fake_write_all_keyrings.return_value = [sentinel.source]
-        fake_image_descriptions = self.patch(
+        write_all_keyrings.return_value = [sentinel.source]
+        image_descriptions = self.patch(
             bootresources, 'download_all_image_descriptions')
         descriptions = Mock()
         descriptions.is_empty.return_value = False
-        fake_image_descriptions.return_value = descriptions
-        fake_map_products = self.patch(
+        image_descriptions.return_value = descriptions
+        map_products = self.patch(
             bootresources, 'map_products')
-        fake_map_products.return_value = sentinel.mapping
-        fake_download_all_boot_resources = self.patch(
+        map_products.return_value = sentinel.mapping
+        download_all_boot_resources = self.patch(
             bootresources, 'download_all_boot_resources')
 
         bootresources._import_resources(force=True)
 
-        self.assertThat(
-            fake_write_all_keyrings,
+        self.expectThat(
+            cache_boot_sources, MockCalledOnceWith())
+        self.expectThat(
+            write_all_keyrings,
             MockCalledOnceWith(ANY, []))
-        self.assertThat(
-            fake_image_descriptions,
+        self.expectThat(
+            image_descriptions,
             MockCalledOnceWith([sentinel.source]))
-        self.assertThat(
-            fake_map_products,
+        self.expectThat(
+            map_products,
             MockCalledOnceWith(descriptions))
-        self.assertThat(
-            fake_download_all_boot_resources,
+        self.expectThat(
+            download_all_boot_resources,
             MockCalledOnceWith([sentinel.source], sentinel.mapping))
 
     def test__import_resources_has_env_GNUPGHOME_set(self):

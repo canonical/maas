@@ -106,7 +106,7 @@ def update_boot_source_cache(sender, instance, **kwargs):
     """Update the `BootSourceCache` with information for the updated
     source."""
     # Avoid circular import
-    from maasserver.bootsources import cache_boot_sources
-    cache_boot_sources()
+    from maasserver.bootsources import cache_boot_sources_in_thread
+    cache_boot_sources_in_thread()
 
 post_save.connect(update_boot_source_cache, BootSource)

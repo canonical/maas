@@ -18,7 +18,6 @@ from crochet import wait_for_reactor
 from django.db import connections
 from maasserver import (
     bootresources,
-    bootsources,
     eventloop,
     nonces_cleanup,
     )
@@ -145,15 +144,6 @@ class TestFactories(MAASTestCase):
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_ImportResourcesService,
-            {factory for _, factory in eventloop.loop.factories})
-
-    def test_make_BootSourceCacheService(self):
-        service = eventloop.make_BootSourceCacheService()
-        self.assertThat(service, IsInstance(
-            bootsources.BootSourceCacheService))
-        # It is registered as a factory in RegionEventLoop.
-        self.assertIn(
-            eventloop.make_BootSourceCacheService,
             {factory for _, factory in eventloop.loop.factories})
 
 
