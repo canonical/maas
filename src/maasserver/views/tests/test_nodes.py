@@ -717,28 +717,15 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertFalse(Node.objects.filter(id=node.id).exists())
 
-    def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
+    def test_allocated_node_can_be_deleted(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        node_view_link = reverse('node-view', args=[node.system_id])
-        response = self.client.get(node_view_link)
-        node_delete_link = reverse('node-delete', args=[node.system_id])
 
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertNotIn(node_delete_link, get_content_links(response))
-        self.assertIn(
-            "You cannot delete this node because",
-            response.content)
-
-    def test_allocated_node_cannot_be_deleted(self):
-        self.client_log_in(as_admin=True)
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.get(node_delete_link)
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_view_someone_elses_node(self):
         self.client_log_in()

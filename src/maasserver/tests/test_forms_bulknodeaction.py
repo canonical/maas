@@ -134,7 +134,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data=dict(
-                action=Delete.name,
+                action=StartNode.name,
                 system_id=[node.system_id]))
         self.assertTrue(form.is_valid(), form._errors)
         done, not_actionable, not_permitted = form.save()

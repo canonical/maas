@@ -383,9 +383,11 @@ class NodeTest(MAASServerTestCase):
         self.assertRaises(
             MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
 
-    def test_cannot_delete_allocated_node(self):
+    def test_can_delete_allocated_node(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        self.assertRaises(NodeStateViolation, node.delete)
+        system_id = node.system_id
+        node.delete()
+        self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
     def test_delete_node_also_deletes_related_static_IPs(self):
         self.patch_autospec(node_module, "remove_host_maps")

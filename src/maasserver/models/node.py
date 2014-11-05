@@ -880,12 +880,6 @@ class Node(CleanSave, TimestampedModel):
 
     def delete(self):
         """Delete this node."""
-        # Allocated nodes can't be deleted.
-        if self.status == NODE_STATUS.ALLOCATED:
-            raise NodeStateViolation(
-                "Cannot delete node %s: node is in state %s."
-                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
-
         maaslog.info("%s: Deleting node", self.hostname)
 
         # Ensure that all static IPs are deleted, and keep track of the IP

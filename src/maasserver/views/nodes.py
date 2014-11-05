@@ -33,7 +33,6 @@ from textwrap import dedent
 from urllib import urlencode
 
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import QueryDict
@@ -721,8 +720,6 @@ class NodeDelete(HelpfulDeleteView):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=self.request.user,
             perm=NODE_PERMISSION.ADMIN)
-        if node.status == NODE_STATUS.ALLOCATED:
-            raise PermissionDenied()
         return node
 
     def get_next_url(self):

@@ -195,19 +195,6 @@ class TestNodeAction(MAASServerTestCase):
 
 class TestDeleteNodeAction(MAASServerTestCase):
 
-    def test_Delete_inhibit_when_node_is_allocated(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        action = Delete(node, factory.make_admin())
-        inhibition = action.inhibit()
-        self.assertEqual(
-            "You cannot delete this node because it's in use.", inhibition)
-
-    def test_Delete_does_not_inhibit_otherwise(self):
-        node = factory.make_Node(status=NODE_STATUS.FAILED_COMMISSIONING)
-        action = Delete(node, factory.make_admin())
-        inhibition = action.inhibit()
-        self.assertIsNone(inhibition)
-
     def test_Delete_redirects_to_node_delete_view(self):
         node = factory.make_Node()
         action = Delete(node, factory.make_admin())

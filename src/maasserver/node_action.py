@@ -169,11 +169,6 @@ class Delete(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
-    def inhibit(self):
-        if self.node.status == NODE_STATUS.ALLOCATED:
-            return "You cannot delete this node because it's in use."
-        return None
-
     def execute(self, allow_redirect=True):
         """Redirect to the delete view's confirmation page.
 
