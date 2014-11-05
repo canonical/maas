@@ -1355,21 +1355,15 @@ class Node(CleanSave, TimestampedModel):
         if mac is None:
             return []
 
-        # XXX 2014-10-09 jhobbs bug=1379370
-        # It's not clear to me that this transaction needs to be here
-        # since this doesn't allocate IP addresses across multiple
-        # interfaces. This needs to be looked at some more when there is
-        # more time.
-        with transaction.atomic():
-            try:
-                static_ips = mac.claim_static_ips()
-            except StaticIPAddressTypeClash:
-                # There's already a non-AUTO IP.
-                return []
+        try:
+            static_ips = mac.claim_static_ips()
+        except StaticIPAddressTypeClash:
+            # There's already a non-AUTO IP.
+            return []
 
-            # Return a list instead of yielding mappings as they're ready
-            # because it's all-or-nothing (hence the atomic context).
-            return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
+        # Return a list instead of yielding mappings as they're ready
+        # because it's all-or-nothing (hence the atomic context).
+        return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
     def get_boot_purpose(self):
         """
