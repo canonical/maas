@@ -70,7 +70,7 @@ class NodeAnonAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(NodeAnonAPITest, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
@@ -98,7 +98,7 @@ class NodesAPILoggedInTest(MAASServerTestCase):
 
     def setUp(self):
         super(NodesAPILoggedInTest, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
@@ -118,7 +118,7 @@ class TestNodeAPI(APITestCase):
 
     def setUp(self):
         super(TestNodeAPI, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -287,7 +287,7 @@ class TestNodeAPI(APITestCase):
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_start_sets_osystem_and_distro_series(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
@@ -327,7 +327,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_sets_license_key(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',

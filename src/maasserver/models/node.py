@@ -115,34 +115,26 @@ from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
     )
-from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import DeferredList
 from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("node")
 
 
-def wait_for_power_commands(deferreds):
-    """Wait for a collection of power command deferreds to return or fail.
+@asynchronous(timeout=30)
+def wait_for_power_command(d):
+    """Wait for a  power command deferred to return or fail.
 
-    :param deferreds: A collection of deferreds upon which to wait.
-    :raises: MultipleFailures if any of the deferreds fail.
+    :param d: A the deferred for which to wait.
+    :raises: Any exception that caused the deferred to fail.
     """
-    @asynchronous(timeout=30)
-    def block_until_commands_complete():
-        return DeferredList(deferreds, consumeErrors=True)
-
-    results = block_until_commands_complete()
-
-    failures = list(
-        result for success, result in results if not success)
-
-    if len(failures) != 0:
-        raise MultipleFailures(*failures)
+    # asynchronous() will raise any exception that caused the deferred
+    # to fail. All we have to do is return the deferred to make sure
+    # that asynchronous() blocks until it's finished.
+    return d
 
 
 def generate_node_system_id():
@@ -887,10 +879,7 @@ class Node(CleanSave, TimestampedModel):
             maaslog.info("%s: Commissioning aborted", self.hostname)
 
     def delete(self):
-        """Delete this node.
-
-        :raises MultipleFailures: If host maps cannot be deleted.
-        """
+        """Delete this node."""
         # Allocated nodes can't be deleted.
         if self.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
@@ -928,11 +917,6 @@ class Node(CleanSave, TimestampedModel):
 
         :param for_ips: The set of IP addresses to remove host maps for.
         :type for_ips: `set`
-
-        :raises MultipleFailures: When there are failures originating from a
-            remote process. There could be one or more failures -- it's not
-            strictly *multiple* -- but they do all originate from comms with
-            remote processes.
         """
         assert isinstance(for_ips, set), "%r is not a set" % (for_ips,)
         if len(for_ips) > 0:
@@ -941,7 +925,8 @@ class Node(CleanSave, TimestampedModel):
             remove_host_maps_failures = list(
                 remove_host_maps(removal_mapping))
             if len(remove_host_maps_failures) != 0:
-                raise MultipleFailures(*remove_host_maps_failures)
+                # There's only ever one failure here.
+                raise remove_host_maps_failures[0].raiseException()
 
     def set_random_hostname(self):
         """Set `hostname` from a shuffled list of candidate names.
@@ -1217,8 +1202,6 @@ class Node(CleanSave, TimestampedModel):
 
     def release(self):
         """Mark allocated or reserved node as available again and power off.
-
-        :raises MultipleFailures: If host maps cannot be deleted.
         """
         maaslog.info("%s: Releasing node", self.hostname)
         try:
@@ -1460,10 +1443,6 @@ class Node(CleanSave, TimestampedModel):
             previous user data is used.
         :type user_data: unicode
 
-        :raises MultipleFailures: When there are failures originating from a
-            remote process. There could be one or more failures -- it's not
-            strictly *multiple* -- but they do all originate from comms with
-            remote processes.
         :raises: `StaticIPAddressExhaustion` if there are not enough IP
             addresses left in the static range for this node toget all
             the addresses it needs.
@@ -1495,11 +1474,15 @@ class Node(CleanSave, TimestampedModel):
                 update_host_maps_failures = list(
                     update_host_maps(static_mappings))
                 if len(update_host_maps_failures) != 0:
-                    # We've hit errors, so release any IPs we've claimed
-                    # and then raise the errors for the call site to
+                    # We've hit an error, so release any IPs we've claimed
+                    # and then raise the error for the call site to
                     # handle.
                     StaticIPAddress.objects.deallocate_by_node(self)
-                    raise MultipleFailures(*update_host_maps_failures)
+                    # We know there's only one error because we only
+                    # sent one mapping to update_host_maps(), so we
+                    # extract the exception from the Failure and raise
+                    # it.
+                    raise update_host_maps_failures[0].raiseException()
 
         if self.status == NODE_STATUS.ALLOCATED:
             self.start_deployment()
@@ -1521,9 +1504,11 @@ class Node(CleanSave, TimestampedModel):
 
         try:
             # Send the power on command to the node and wait for it to
-            # return.
-            deferreds = power_on_nodes([start_info]).viewvalues()
-            wait_for_power_commands(deferreds)
+            # return. There will be only one deferred since we're only
+            # sending the one power action to power_on_nodes()(), so
+            # extract that and pass it to wait_for_power_command().
+            d = power_on_nodes([start_info]).values().pop()
+            wait_for_power_command(d)
         except:
             # If we encounter any failure here, we deallocate the static
             # IPs we claimed earlier. We don't try to handle the error;
@@ -1538,8 +1523,6 @@ class Node(CleanSave, TimestampedModel):
         :type by_user: User_
         :param stop_mode: Power off mode - usually 'soft' or 'hard'.
         :type stop_mode: unicode
-        :raises MultipleFailures: When there are failures originating
-            from the RPC power action.
         :return: True if the power action was sent to the node; False if
             it wasn't sent. If the user doesn't have permission to stop
             the node, return None.
@@ -1564,7 +1547,9 @@ class Node(CleanSave, TimestampedModel):
             self.system_id, self.hostname, self.nodegroup.uuid, power_info)
 
         # Request that the node be powered off and wait for the command
-        # to return or fail.
-        deferreds = power_off_nodes([stop_info]).viewvalues()
-        wait_for_power_commands(deferreds)
+        # to return or fail. There will be only one deferred since we're
+        # only sending the one power action to power_off_nodes(), so
+        # extract that and pass it to wait_for_power_command().
+        d = power_off_nodes([stop_info]).values().pop()
+        wait_for_power_command(d)
         return True

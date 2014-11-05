@@ -928,7 +928,7 @@ class NodeViewsTest(MAASServerTestCase):
 
         # Stub-out real-world RPC calls.
         self.patch(node_module, "update_host_maps").return_value = []
-        self.patch(node_module, "power_on_nodes").return_value = {}
+        self.patch(node_module, "wait_for_power_commands")
 
         self.client_log_in()
         factory.make_SSHKey(self.logged_in_user)

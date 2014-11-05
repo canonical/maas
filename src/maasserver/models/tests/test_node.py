@@ -59,7 +59,6 @@ from maasserver.models.staticipaddress import (
     StaticIPAddressManager,
     )
 from maasserver.models.user import create_auth_token
-from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
@@ -104,17 +103,13 @@ from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
-from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
-    NoConnectionsAvailable,
-    )
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Equals,
     Is,
-    IsInstance,
     MatchesStructure,
     )
 from twisted.internet import defer
@@ -763,17 +758,15 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         generate_user_data = self.patch(disk_erasing, 'generate_user_data')
         node_start = self.patch(node, 'start')
-        node_start.side_effect = MultipleFailures(
-            Failure(NoConnectionsAvailable())),
+        node_start.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 node.start_disk_erasing(admin)
-            except RPC_EXCEPTIONS:
-                # Suppress all the expected errors coming out of
-                # start_disk_erasing() because they're tested
-                # eleswhere.
-                pass
+        except node_start.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
         self.assertThat(
             node_start, MockCalledOnceWith(
@@ -822,17 +815,15 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, power_type="virsh")
         node_stop = self.patch(node, 'stop')
-        node_stop.side_effect = MultipleFailures(
-            Failure(NoConnectionsAvailable()))
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 node.abort_disk_erasing(admin)
-            except RPC_EXCEPTIONS:
-                # Suppress all the expected errors coming out of
-                # abort_disk_erasing() because they're tested
-                # eleswhere.
-                pass
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
         self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
@@ -853,7 +844,7 @@ class NodeTest(MAASServerTestCase):
                 node.hostname, unicode(exception)))
 
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use a "controlled" power type (i.e. a power type for which we
@@ -874,7 +865,7 @@ class NodeTest(MAASServerTestCase):
         self.expectThat(node.license_key, Equals(''))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use an "uncontrolled" power type (i.e. a power type for which we
@@ -1175,7 +1166,7 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(deallocate, MockCalledOnceWith(node))
 
     def test_release_updates_dns(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         change_dns_zones = self.patch(dns_config, 'change_dns_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
@@ -1206,16 +1197,15 @@ class NodeTest(MAASServerTestCase):
             status=NODE_STATUS.DEPLOYED, power_type="virsh",
             owner=factory.make_User())
         node_stop = self.patch(node, 'stop')
-        node_stop.side_effect = MultipleFailures(
-            Failure(NoConnectionsAvailable()))
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 node.release()
-            except RPC_EXCEPTIONS:
-                # Suppress all expected errors; we test for them
-                # elsewhere.
-                pass
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
         self.assertThat(node_stop, MockCalledOnceWith(node.owner))
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
@@ -1351,16 +1341,15 @@ class NodeTest(MAASServerTestCase):
         self.patch(node, 'start_transition_monitor')
         generate_user_data = self.patch(commissioning, 'generate_user_data')
         node_start = self.patch(node, 'start')
-        node_start.side_effect = MultipleFailures(
-            Failure(NoConnectionsAvailable()))
+        node_start.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 node.start_commissioning(admin)
-            except RPC_EXCEPTIONS:
-                # Suppress all expected errors; we test for them
-                # elsewhere.
-                pass
+        except node_start.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
         self.assertThat(
             node_start,
@@ -1392,16 +1381,15 @@ class NodeTest(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, power_type="virsh")
         self.patch(node, 'stop_transition_monitor')
         node_stop = self.patch(node, 'stop')
-        node_stop.side_effect = MultipleFailures(
-            Failure(NoConnectionsAvailable()))
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            try:
+        try:
+            with transaction.atomic():
                 node.abort_commissioning(admin)
-            except RPC_EXCEPTIONS:
-                # Suppress all expected errors; we test for them
-                # elsewhere.
-                pass
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
@@ -2291,6 +2279,7 @@ class TestNode_Start(MAASServerTestCase):
         self.assertThat(claim_static_ip_addresses, MockNotCalled())
 
     def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
+        self.patch(node_module, 'wait_for_power_command')
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
         self.patch(
@@ -2322,16 +2311,13 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
 
+        exception_type = factory.make_exception_type()
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = [
-            Failure(AssertionError("Please, don't do that.")),
+            Failure(exception_type("Please, don't do that.")),
             ]
 
-        error = self.assertRaises(
-            MultipleFailures, node.start, user)
-
-        self.assertSequenceEqual(
-            update_host_maps.return_value, error.args)
+        self.assertRaises(exception_type, node.start, user)
 
     def test__updates_dns(self):
         user = factory.make_User()
@@ -2350,7 +2336,9 @@ class TestNode_Start(MAASServerTestCase):
         power_info = node.get_effective_power_info()
 
         power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {}
+        power_on_nodes.return_value = {
+            node.system_id: defer.succeed(True),
+            }
 
         node.start(user)
 
@@ -2383,9 +2371,7 @@ class TestNode_Start(MAASServerTestCase):
 
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
-        failures = self.assertRaises(MultipleFailures, node.start, user)
-        [failure] = failures.args
-        self.assertThat(failure.value, IsInstance(PraiseBeToJTVException))
+        self.assertRaises(PraiseBeToJTVException, node.start, user)
 
     def test__marks_allocated_node_as_deploying(self):
         user = factory.make_User()
@@ -2435,8 +2421,8 @@ class TestNode_Start(MAASServerTestCase):
         self.assertThat(power_on_nodes, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
-        wait_for_power_commands = self.patch_autospec(
-            node_module, 'wait_for_power_commands')
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
         power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
         owner = factory.make_User()
         node = self.make_acquired_node_with_mac(owner)
@@ -2445,13 +2431,14 @@ class TestNode_Start(MAASServerTestCase):
         node.start(admin)
 
         self.expectThat(power_on_nodes, MockCalledOnceWith(ANY))
-        self.expectThat(wait_for_power_commands, MockCalledOnceWith(ANY))
+        self.expectThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
     def test__releases_static_ips_when_power_action_fails(self):
+        exception_type = factory.make_exception_type()
         power_on_nodes = self.patch(node_module, "power_on_nodes")
         power_on_nodes.return_value = {
             factory.make_name("system_id"): defer.fail(
-                factory.make_exception("He's fallen in the water!"))
+                exception_type("He's fallen in the water!"))
         }
         deallocate_ips = self.patch(
             node_module.StaticIPAddress.objects, 'deallocate_by_node')
@@ -2459,13 +2446,14 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
 
-        self.assertRaises(MultipleFailures, node.start, user)
+        self.assertRaises(exception_type, node.start, user)
         self.assertThat(deallocate_ips, MockCalledOnceWith(node))
 
     def test__releases_static_ips_when_update_host_maps_fails(self):
+        exception_type = factory.make_exception_type()
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = [
-            Failure(factory.make_exception("You steaming nit, you!"))
+            Failure(exception_type("You steaming nit, you!"))
             ]
         deallocate_ips = self.patch(
             node_module.StaticIPAddress.objects, 'deallocate_by_node')
@@ -2473,7 +2461,7 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
 
-        self.assertRaises(MultipleFailures, node.start, user)
+        self.assertRaises(exception_type, node.start, user)
         self.assertThat(deallocate_ips, MockCalledOnceWith(node))
 
 
@@ -2488,8 +2476,8 @@ class TestNode_Stop(MAASServerTestCase):
         return node
 
     def test__stops_nodes(self):
-        wait_for_power_commands = self.patch_autospec(
-            node_module, 'wait_for_power_commands')
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
         power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
         power_off_nodes.side_effect = lambda nodes: {
             system_id: Deferred() for system_id, _, _, _ in nodes}
@@ -2502,7 +2490,7 @@ class TestNode_Stop(MAASServerTestCase):
         node.stop(user, stop_mode)
 
         self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
-        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
         nodes_stop_info_observed = power_off_nodes.call_args[0][0]
         nodes_stop_info_expected = [
@@ -2530,8 +2518,8 @@ class TestNode_Stop(MAASServerTestCase):
         self.assertThat(power_off_nodes, MockNotCalled())
 
     def test__allows_admin_to_stop_any_node(self):
-        wait_for_power_commands = self.patch_autospec(
-            node_module, 'wait_for_power_commands')
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
         power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
         owner = factory.make_User()
         node = self.make_node_with_mac(owner)
@@ -2540,7 +2528,7 @@ class TestNode_Stop(MAASServerTestCase):
         node.stop(admin)
 
         self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
-        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
     def test__does_not_attempt_power_off_if_no_power_type(self):
         # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
@@ -2577,9 +2565,7 @@ class TestNode_Stop(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_node_with_mac(user)
 
-        error = self.assertRaises(MultipleFailures, node.stop, user)
-        [failure] = error.args
-        self.assertThat(failure.value, IsInstance(fake_exception_type))
+        self.assertRaises(fake_exception_type, node.stop, user)
 
     def test__returns_false_if_power_action_not_sent(self):
         user = factory.make_User()
@@ -2592,5 +2578,5 @@ class TestNode_Stop(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_node_with_mac(user, power_type="virsh")
 
-        self.patch_autospec(node_module, "power_off_nodes")
+        self.patch_autospec(node_module, "wait_for_power_command")
         self.assertIs(True, node.stop(user))
