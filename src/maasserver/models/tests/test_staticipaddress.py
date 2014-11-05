@@ -16,6 +16,7 @@ __all__ = []
 
 
 from django.core.exceptions import ValidationError
+from maasserver import locks
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     StaticIPAddressExhaustion,
@@ -25,6 +26,10 @@ from maasserver.exceptions import (
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from mock import sentinel
 from netaddr import (
     IPAddress,
@@ -105,6 +110,17 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
             StaticIPAddressUnavailable, StaticIPAddress.objects.allocate_new,
             low, high, requested_address=requested_address)
 
+    def test_allocate_new_does_not_use_lock_for_requested_ip(self):
+        # When requesting a specific IP address, there's no need to
+        # acquire the lock.
+        lock = self.patch(locks, 'staticip_acquire')
+        low, high = factory.make_ip_range()
+        requested_address = low + 1
+        ipaddress = StaticIPAddress.objects.allocate_new(
+            low, high, requested_address=requested_address)
+        self.assertIsInstance(ipaddress, StaticIPAddress)
+        self.assertThat(lock.__enter__, MockNotCalled())
+
     def test_allocate_new_raises_when_requested_IP_out_of_range(self):
         low, high = factory.make_ip_range()
         requested_address = low - 1
@@ -133,6 +149,15 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
         self.assertEqual(
             "IP address type 12345 is not a member of IPADDRESS_TYPE.",
             unicode(error))
+
+    def test_allocate_new_uses_staticip_acquire_lock(self):
+        lock = self.patch(locks, 'staticip_acquire')
+        low, high = factory.make_ip_range()
+        ipaddress = StaticIPAddress.objects.allocate_new(low, high)
+        self.assertIsInstance(ipaddress, StaticIPAddress)
+        self.assertThat(lock.__enter__, MockCalledOnceWith())
+        self.assertThat(
+            lock.__exit__, MockCalledOnceWith(None, None, None))
 
     def test_deallocate_by_node_removes_addresses(self):
         node = factory.make_Node()
