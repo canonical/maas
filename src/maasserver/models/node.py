@@ -1312,6 +1312,9 @@ class Node(CleanSave, TimestampedModel):
             maaslog.error(
                 "%s: Marking node failed: %s", self.hostname,
                 error_description)
+        elif self.status == NODE_STATUS.NEW:
+            # Silently ignore, failing a new node makes no sense.
+            pass
         elif is_failed_status(self.status):
             # Silently ignore a request to fail an already failed node.
             pass

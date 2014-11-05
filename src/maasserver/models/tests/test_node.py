@@ -1589,6 +1589,7 @@ class NodeTest(MAASServerTestCase):
     def test_mark_failed_raises_for_unauthorized_node_status(self):
         but_not = NODE_FAILURE_STATUS_TRANSITIONS.keys()
         but_not.extend(NODE_FAILURE_STATUS_TRANSITIONS.viewvalues())
+        but_not.append(NODE_STATUS.NEW)
         status = factory.pick_choice(NODE_STATUS_CHOICES, but_not=but_not)
         node = factory.make_Node(status=status)
         description = factory.make_name('error-description')
@@ -1601,6 +1602,12 @@ class NodeTest(MAASServerTestCase):
         description = factory.make_name('error-description')
         node.mark_failed(description)
         self.assertEqual(status, node.status)
+
+    def test_mark_failed_ignores_if_status_is_NEW(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        description = factory.make_name('error-description')
+        node.mark_failed(description)
+        self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_mark_broken_changes_status_to_broken(self):
         node = factory.make_Node(
