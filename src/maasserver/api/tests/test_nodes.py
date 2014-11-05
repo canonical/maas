@@ -997,6 +997,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_accept_gets_node_out_of_declared_state(self):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
+        self.patch_autospec(Node, 'start_transition_monitor')
         self.become_admin()
         target_state = NODE_STATUS.COMMISSIONING
 
@@ -1066,6 +1067,7 @@ class TestNodesAPI(APITestCase):
     def test_POST_accept_accepts_multiple_nodes(self):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
+        self.patch_autospec(Node, 'start_transition_monitor')
         self.become_admin()
         target_state = NODE_STATUS.COMMISSIONING
 
@@ -1083,6 +1085,7 @@ class TestNodesAPI(APITestCase):
             [reload_object(node).status for node in nodes])
 
     def test_POST_accept_returns_actually_accepted_nodes(self):
+        self.patch_autospec(Node, 'start_transition_monitor')
         self.become_admin()
         acceptable_nodes = [
             factory.make_Node(status=NODE_STATUS.NEW)

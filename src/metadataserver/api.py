@@ -281,6 +281,7 @@ class VersionIndexHandler(MetadataViewHandler):
         if node.status == NODE_STATUS.COMMISSIONING:
             self._store_commissioning_results(node, request)
             store_node_power_parameters(node, request)
+            node.stop_transition_monitor()
             target_status = self.signaling_statuses.get(status)
         elif node.status == NODE_STATUS.DEPLOYING:
             self._store_installation_results(node, request)

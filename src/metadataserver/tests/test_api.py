@@ -41,6 +41,7 @@ from maasserver.models import (
     SSHKey,
     Tag,
     )
+from maasserver.models.node import Node
 from maasserver.rpc.testing.mixins import PreseedRPCMixin
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
@@ -501,6 +502,10 @@ class TestInstallingAPI(MAASServerTestCase):
 
 class TestCommissioningAPI(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestCommissioningAPI, self).setUp()
+        self.patch(Node, 'stop_transition_monitor')
+
     def test_commissioning_scripts(self):
         script = factory.make_CommissioningScript()
         response = make_node_client().get(
@@ -620,6 +625,13 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
+    def test_signalling_commissioning_success_cancels_monitor(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+
     def test_signaling_commissioning_success_is_idempotent(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
@@ -644,6 +656,13 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_COMMISSIONING, reload_object(node).status)
+
+    def test_signalling_commissioning_failure_cancels_monitor(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node=node)
+        response = call_signal(client, status='FAILED')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
 
     def test_signaling_commissioning_failure_is_idempotent(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)

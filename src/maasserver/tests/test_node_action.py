@@ -233,6 +233,7 @@ class TestCommissionNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=self.status,
             power_type='ether_wake')
+        self.patch_autospec(node, 'start_transition_monitor')
         node_start = self.patch(node, 'start')
         admin = factory.make_admin()
         action = Commission(node, admin)
@@ -248,6 +249,7 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.COMMISSIONING,
             power_type='virsh')
+        self.patch_autospec(node, 'stop_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
         admin = factory.make_admin()
 
@@ -588,6 +590,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
         exception = self.make_exception()
         self.patch(node, 'start').side_effect = exception
         self.patch(node, 'stop').side_effect = exception
+        self.patch_autospec(node, 'start_transition_monitor')
+        self.patch_autospec(node, 'stop_transition_monitor')
 
     def make_action(self, action_class, node_status):
         node = factory.make_Node(

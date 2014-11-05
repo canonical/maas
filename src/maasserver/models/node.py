@@ -543,10 +543,21 @@ class Node(CleanSave, TimestampedModel):
         return self.hostname
 
     def get_deployment_time(self):
-        """Return the deployment time of this node (in seconds)."""
+        """Return the deployment time of this node (in seconds).
+
+        This is the maximum time the deployment is allowed to take.
+        """
         # Return a *very* conservative estimate for now.
         # Something that shouldn't conflict with any deployment.
         return timedelta(minutes=40).total_seconds()
+
+    def get_commissioning_time(self):
+        """Return the commissioning time of this node (in seconds).
+
+        This is the maximum time the commissioning is allowed to take.
+        """
+        # Return a *very* conservative estimate for now.
+        return timedelta(minutes=20).total_seconds()
 
     def start_deployment(self):
         """Mark a node as being deployed."""
@@ -824,7 +835,6 @@ class Node(CleanSave, TimestampedModel):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
         from metadataserver.user_data.commissioning import generate_user_data
-        from metadataserver.models import NodeResult
 
         commissioning_user_data = generate_user_data(node=self)
         NodeResult.objects.clear_results(self)
@@ -838,6 +848,7 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.COMMISSIONING
         self.save()
         transaction.commit()
+        self.start_transition_monitor(self.get_commissioning_time())
         try:
             self.start(user, user_data=commissioning_user_data)
         except Exception as ex:
@@ -862,6 +873,7 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         maaslog.info(
             "%s: Aborting commissioning", self.hostname)
+        self.stop_transition_monitor()
         try:
             self.stop(user)
         except Exception as ex:
