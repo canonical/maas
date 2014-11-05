@@ -395,8 +395,6 @@ See https://launchpad.net/maas/+milestone/1.7.0 for full details.
 
 #1325610    node marked "Ready" before poweroff complete
 
-#1325638    Add hardware enablement for Universal Management Gateway
-
 #1340188    unallocated node started manually, causes AssertionError for purpose poweroff
 
 #1341118    No feedback when IPMI credentials fail
