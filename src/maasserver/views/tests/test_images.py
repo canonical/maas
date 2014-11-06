@@ -690,11 +690,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
-    def test_combines_hwe_resources_into_one_resource(self):
+    def test_combines_subarch_resources_into_one_resource(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -705,11 +705,11 @@ class TestImageAjax(MAASServerTestCase):
             1, len(json_obj['resources']),
             'More than one resource was returned.')
 
-    def test_combined_hwe_resource_calculates_unique_size(self):
+    def test_combined_subarch_resource_calculates_unique_size(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         largefile = factory.make_LargeFile()
         for subarch in subarches:
             resource = factory.make_BootResource(
@@ -723,13 +723,13 @@ class TestImageAjax(MAASServerTestCase):
         self.assertEqual(
             format_size(largefile.total_size), json_resource['size'])
 
-    def test_combined_hwe_resource_calculates_number_of_nodes_deployed(self):
+    def test_combined_subarch_resource_calculates_num_of_nodes_deployed(self):
         self.client_log_in()
         osystem = 'ubuntu'
         series = factory.make_name('series')
         name = '%s/%s' % (osystem, series)
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -749,11 +749,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertEqual(number_of_nodes, json_resource['numberOfNodes'])
 
-    def test_combined_hwe_resource_calculates_complete_True(self):
+    def test_combined_subarch_resource_calculates_complete_True(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         resources = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -768,11 +768,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertTrue(json_resource['complete'])
 
-    def test_combined_hwe_resource_calculates_complete_False(self):
+    def test_combined_subarch_resource_calculates_complete_False(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         incomplete_subarch = subarches.pop()
         factory.make_BootResource(
             rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -786,11 +786,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertFalse(json_resource['complete'])
 
-    def test_combined_hwe_resource_calculates_progress(self):
+    def test_combined_subarch_resource_calculates_progress(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         largefile = factory.make_LargeFile()
         largefile.total_size = largefile.total_size * 2
         largefile.save()
@@ -805,11 +805,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertEqual("Downloading  50%", json_resource['status'])
 
-    def test_combined_hwe_resource_shows_queued_if_no_progress(self):
+    def test_combined_subarch_resource_shows_queued_if_no_progress(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         largefile = factory.make_LargeFile(content="")
         for subarch in subarches:
             resource = factory.make_BootResource(
@@ -822,11 +822,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertEqual("Queued for download", json_resource['status'])
 
-    def test_combined_hwe_resource_shows_complete_status(self):
+    def test_combined_subarch_resource_shows_complete_status(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         resources = [
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -841,11 +841,11 @@ class TestImageAjax(MAASServerTestCase):
         json_resource = json_obj['resources'][0]
         self.assertEqual("Complete", json_resource['status'])
 
-    def test_combined_hwe_resource_shows_waiting_for_cluster_to_sync(self):
+    def test_combined_subarch_resource_shows_waiting_for_cluster_to_sync(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
@@ -859,11 +859,11 @@ class TestImageAjax(MAASServerTestCase):
         self.assertEqual(
             "Waiting for clusters to sync", json_resource['status'])
 
-    def test_combined_hwe_resource_shows_clusters_syncing(self):
+    def test_combined_subarch_resource_shows_clusters_syncing(self):
         self.client_log_in()
         name = 'ubuntu/%s' % factory.make_name('series')
         arch = factory.make_name('arch')
-        subarches = [factory.make_name('hwe') for _ in range(3)]
+        subarches = [factory.make_name('subarch') for _ in range(3)]
         for subarch in subarches:
             factory.make_usable_boot_resource(
                 rtype=BOOT_RESOURCE_TYPE.SYNCED,
