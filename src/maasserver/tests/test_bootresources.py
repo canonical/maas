@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import os
 from os import environ
 from random import randint
 from StringIO import StringIO
@@ -28,6 +29,7 @@ from django.db import (
     )
 from django.http import StreamingHttpResponse
 from django.test.client import Client
+from fixtures import Fixture
 from maasserver import bootresources
 from maasserver.bootresources import (
     BootResourceStore,
@@ -63,6 +65,7 @@ from mock import (
     Mock,
     sentinel,
     )
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from testtools.deferredruntest import extract_result
@@ -93,6 +96,18 @@ class TestHelpers(MAASServerTestCase):
                 kwargs={'filename': 'index.json'}),
             endpoint['url'])
         self.assertEqual([], endpoint['selections'])
+
+
+class SimplestreamsEnvFixture(Fixture):
+    """Clears the env variables set by the methods that interact with
+    simplestreams."""
+
+    def setUp(self):
+        super(SimplestreamsEnvFixture, self).setUp()
+        prior_env = {}
+        for key in ['GNUPGHOME', 'http_proxy', 'https_proxy']:
+            prior_env[key] = os.environ.get(key, '')
+        self.addCleanup(os.environ.update, prior_env)
 
 
 class TestSimpleStreamsHandler(MAASServerTestCase):
@@ -966,6 +981,10 @@ class TestBootResourceTransactional(TransactionTestCase):
 
 class TestImportImages(MAASTestCase):
 
+    def setUp(self):
+        super(TestImportImages, self).setUp()
+        self.useFixture(SimplestreamsEnvFixture())
+
     def patch_and_capture_env_for_download_all_boot_resources(self):
         class CaptureEnv:
             """Fake function; records a copy of the environment."""
@@ -1103,8 +1122,7 @@ class TestImportImages(MAASTestCase):
 
         bootresources._import_resources(force=True)
         self.assertEqual(
-            bootresources.get_maas_user_gpghome(),
-            capture.env['GNUPGHOME'])
+            get_maas_user_gpghome(), capture.env['GNUPGHOME'])
 
     def test__import_resources_has_env_http_and_https_proxy_set(self):
         proxy_address = factory.make_name('proxy')

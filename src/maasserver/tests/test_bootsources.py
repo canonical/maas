@@ -37,6 +37,7 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.tests.test_bootresources import SimplestreamsEnvFixture
 from maastesting.matchers import MockCalledOnceWith
 from mock import MagicMock
 from provisioningserver.import_images import (
@@ -175,6 +176,10 @@ class TestGetOSInfoFromBootSources(MAASServerTestCase):
 
 class TestPrivateCacheBootSources(MAASServerTestCase):
 
+    def setUp(self):
+        super(TestPrivateCacheBootSources, self).setUp()
+        self.useFixture(SimplestreamsEnvFixture())
+
     def test__has_env_GNUPGHOME_set(self):
         capture = (
             patch_and_capture_env_for_download_all_image_descriptions(self))
@@ -223,6 +228,10 @@ class TestPrivateCacheBootSources(MAASServerTestCase):
 
 
 class TestBadConnectionHandling(MAASServerTestCase):
+
+    def setUp(self):
+        super(TestBadConnectionHandling, self).setUp()
+        self.useFixture(SimplestreamsEnvFixture())
 
     def test__catches_connection_errors_and_sets_component_error(self):
         sources = [

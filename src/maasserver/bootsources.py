@@ -20,6 +20,8 @@ __all__ = [
     "cache_boot_sources_in_thread",
 ]
 
+import os
+
 from maasserver import locks
 from maasserver.components import (
     discard_persistent_error,
@@ -39,7 +41,6 @@ from provisioningserver.import_images.download_descriptions import (
     )
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import tempdir
 from requests.exceptions import ConnectionError
 from twisted.internet import reactor
@@ -84,6 +85,17 @@ def get_simplestreams_env():
     return env
 
 
+def set_simplestreams_env():
+    """Set the environment variable simplestreams needs."""
+    # We simply set the env variables here as another simplestreams-based
+    # import might be running concurrently
+    # (bootresources._import_resources) and we don't want to use the
+    # environment_variables context manager that would reset the
+    # environment variables (they are global to the entire process)
+    # while the other import is still running.
+    os.environ.update(get_simplestreams_env())
+
+
 def get_os_info_from_boot_sources(os):
     """Return sources, list of releases, and list of architectures that exists
     for the given operating system from the `BootSource`'s.
@@ -114,8 +126,8 @@ def cache_boot_sources():
 
     # Hold the lock while performing the cache
     with locks.cache_sources:
-        env = get_simplestreams_env()
-        with environment_variables(env), tempdir('keyrings') as keyrings_path:
+        set_simplestreams_env()
+        with tempdir('keyrings') as keyrings_path:
             for source in BootSource.objects.all():
                 sources = write_all_keyrings(
                     keyrings_path, [source.to_dict_without_selections()])

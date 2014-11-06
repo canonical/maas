@@ -42,6 +42,7 @@ from maasserver.bootsources import (
     cache_boot_sources,
     ensure_boot_source_definition,
     get_boot_sources,
+    set_simplestreams_env,
     )
 from maasserver.enum import BOOT_RESOURCE_TYPE
 from maasserver.fields import LargeObjectFile
@@ -49,14 +50,12 @@ from maasserver.models import (
     BootResource,
     BootResourceFile,
     BootResourceSet,
-    Config,
     LargeFile,
     NodeGroup,
     )
 from maasserver.utils import absolute_reverse
 from maasserver.utils.async import transactional
 from maasserver.utils.orm import get_one
-from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )
@@ -67,7 +66,6 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import synchronous
@@ -917,14 +915,8 @@ def _import_resources(force=False):
         return
 
     try:
-        env = {
-            'GNUPGHOME': get_maas_user_gpghome(),
-            }
-        http_proxy = Config.objects.get_config('http_proxy')
-        if http_proxy is not None:
-            env['http_proxy'] = http_proxy
-            env['https_proxy'] = http_proxy
-        with environment_variables(env), tempdir('keyrings') as keyrings_path:
+        set_simplestreams_env()
+        with tempdir('keyrings') as keyrings_path:
             sources = get_boot_sources()
             sources = write_all_keyrings(keyrings_path, sources)
             maaslog.info(
