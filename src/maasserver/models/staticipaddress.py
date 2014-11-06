@@ -35,7 +35,10 @@ from django.db.models import (
     IntegerField,
     Manager,
     )
-from maasserver import DefaultMeta
+from maasserver import (
+    DefaultMeta,
+    locks,
+    )
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     StaticIPAddressExhaustion,
@@ -144,6 +147,22 @@ class StaticIPAddressManager(Manager):
         static_range = IPRange(range_low, range_high)
 
         if requested_address is None:
+            return self._find_free_ip(
+                range_low, range_high, static_range, alloc_type, user)
+        else:
+            requested_address = IPAddress(requested_address)
+            if requested_address not in static_range:
+                raise StaticIPAddressOutOfRange(
+                    "%s is not inside the range %s to %s" % (
+                        requested_address.format(), range_low.format(),
+                        range_high.format()))
+            return self._attempt_allocation(
+                requested_address, alloc_type, user)
+
+    def _find_free_ip(self, range_low, range_high, static_range, alloc_type,
+                      user):
+        """Helper function that finds a free IP address using a lock."""
+        with locks.staticip_acquire:
             # The set of _allocated_ addresses in the range is going to be
             # smaller or at least no bigger than the set of addresses in the
             # whole range, so we materialise a Python set of only allocated
@@ -170,19 +189,11 @@ class StaticIPAddressManager(Manager):
                     except StaticIPAddressUnavailable:
                         # That address has been taken since we obtained the
                         # list of existing addresses from the database. This
-                        # is a race!
+                        # is a race!  It also ought to be impossible as
+                        # this critical section is in a lock...
                         continue
             else:
                 raise StaticIPAddressExhaustion()
-        else:
-            requested_address = IPAddress(requested_address)
-            if requested_address not in static_range:
-                raise StaticIPAddressOutOfRange(
-                    "%s is not inside the range %s to %s" % (
-                        requested_address.format(), range_low.format(),
-                        range_high.format()))
-            return self._attempt_allocation(
-                requested_address, alloc_type, user)
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset
