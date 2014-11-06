@@ -27,6 +27,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
+    POWER_STATE,
     )
 from maasserver.fields import (
     MAC,
@@ -416,7 +417,8 @@ class TestNodeAPI(APITestCase):
             ]
         owned_nodes = [
             factory.make_Node(
-                owner=self.logged_in_user, status=status, power_type='ipmi')
+                owner=self.logged_in_user, status=status, power_type='ipmi',
+                power_state=POWER_STATE.ON)
             for status in owned_statuses]
         responses = [
             self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -432,7 +434,7 @@ class TestNodeAPI(APITestCase):
         owned_node = factory.make_Node(
             owner=self.logged_in_user,
             status=NODE_STATUS.FAILED_DEPLOYMENT,
-            power_type='ipmi')
+            power_type='ipmi', power_state=POWER_STATE.ON)
         response = self.client.post(
             self.get_node_uri(owned_node), {'op': 'release'})
         self.assertEqual(
@@ -499,7 +501,7 @@ class TestNodeAPI(APITestCase):
     def test_POST_release_allows_admin_to_release_anyones_node(self):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
-            power_type='ipmi')
+            power_type='ipmi', power_state=POWER_STATE.ON)
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -507,7 +509,9 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
-        node = factory.make_Node(status=NODE_STATUS.READY, power_type='ipmi')
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, power_type='ipmi',
+            power_state=POWER_STATE.ON)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)

@@ -27,8 +27,7 @@
       display:none;
   }
 
-  input.search-input,
-  input.search-test {
+  input.search-input {
     line-height: 23px;
     outline: none;
   }
@@ -100,14 +99,6 @@
 
 {% block content %}
   <div id="nodes" style="position: relative;">
-    <form id="node_listing_constraint_form"
-          action="{% url 'node-list' %}?{{preserved_query}}"
-          method="get" class="search-test">
-      <input type="search" name="test" placeholder="Test Juju constraints"
-             class="search-test" value="{{input_test|default_if_none:''}}" />
-      <input id="search_button" type="submit"
-             class="search-test-submit" />
-    </form>
     <form id="node_listing_search_form"
           action="{% url 'node-list' %}?{{preserved_query}}"
           method="get" class="search">

@@ -447,7 +447,7 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             power_pass=factory.make_string())
         node = factory.make_Node(
             mac=True, status=self.actionable_status,
-            power_type='ipmi',
+            power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
         node_stop = self.patch_autospec(node, 'stop')
 

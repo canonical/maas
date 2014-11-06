@@ -246,6 +246,7 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             nodegroup=nodegroup, routers=routers, zone=zone,
             power_type=power_type, disable_ipv4=disable_ipv4,
+            power_state=power_state,
             **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited

@@ -57,6 +57,7 @@ from maasserver.enum import (
     NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
@@ -99,6 +100,19 @@ from netaddr import (
     NotRegisteredError,
     )
 from provisioningserver.tags import merge_details_cleanly
+
+# Fields on the Node model that will be searched.
+NODE_SEARCH_FIELDS = {
+    'status': 'status__in',
+    'hostname': 'hostname__icontains',
+    'owner': 'owner__username__icontains',
+    'arch': 'architecture__icontains',
+    'zone': 'zone__name__icontains',
+    'power': 'power_state__icontains',
+    'cluster': 'nodegroup__name__icontains',
+    'tag': 'tags__name__icontains',
+    'mac': 'macaddress__mac_address__icontains',
+    }
 
 
 def _parse_constraints(query_string):
@@ -217,6 +231,19 @@ def configure_macs(nodes):
     return nodes
 
 
+def convert_query_status(value):
+    """Convert the given value into a list of status integers."""
+    value = value.lower()
+    ids = []
+    for status_id, status_text in NODE_STATUS_CHOICES_DICT.items():
+        status_text = status_text.lower()
+        if value in status_text:
+            ids.append(status_id)
+    if len(ids) == 0:
+        return None
+    return ids
+
+
 class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
@@ -228,7 +255,6 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     def populate_modifiers(self, request):
         self.query = request.GET.get("query")
-        self.test_query = request.GET.get("test")
         self.query_error = None
         self.sort_by = request.GET.get("sort")
         self.sort_dir = request.GET.get("dir")
@@ -315,7 +341,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             order_by = (custom_order, )
         return order_by + ('-created', )
 
-    def _constrain_nodes(self, nodes_query):
+    def _constrain_nodes(self, nodes_query, query):
         """Filter the given nodes query by user-specified constraints.
 
         If the specified constraints are invalid, this will set an error and
@@ -324,7 +350,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         :param nodes_query: A query set of nodes.
         :return: A query set of nodes that returns a subset of `nodes_query`.
         """
-        data = _parse_constraints(self.test_query)
+        data = _parse_constraints(query)
         form = AcquireNodeForm.Strict(data=data)
         # Change the field names of the AcquireNodeForm object to
         # conform to Juju's naming.
@@ -337,28 +363,93 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
                  for field, errors in form.errors.items()])
             return Node.objects.none()
 
+    def _query_all_fields(self, term):
+        """Build query that will search all fields in the node table."""
+        sub_query = Q()
+        for field, query_term in NODE_SEARCH_FIELDS.items():
+            if field == 'status':
+                status_ids = convert_query_status(term)
+                if status_ids is None:
+                    continue
+                sub_query = sub_query | Q(**{query_term: status_ids})
+            else:
+                sub_query = sub_query | Q(**{query_term: term})
+        return sub_query
+
+    def _query_specific_field(self, field, value):
+        """Build query that will search the specific field from the given term
+        in the node table.
+
+        This supports the term as "field:value", allowing users to be
+        specific on which field they want to search.
+        """
+        if field == 'status':
+            value = convert_query_status(value)
+            if value is None:
+                return Q()
+        # Perform the query based on the ORM matcher specified
+        # in NODE_SEARCH_FIELDS.
+        if field in NODE_SEARCH_FIELDS:
+            return Q(**{NODE_SEARCH_FIELDS[field]: value})
+        return Q()
+
+    def _query_mac_address_field(self, term):
+        """Build query that will search the MAC addresses in the node table.
+
+        Note: If you want to query the mac address using only the first
+        two octets, then you need to use 'mac:aa:bb' or the first octet will
+        be mistaken as the field to search.
+        """
+        term = term.replace('mac:', '')
+        return Q(**{NODE_SEARCH_FIELDS['mac']: term})
+
     def _search_nodes(self, nodes_query):
         """Filter the given nodes query by searching field data.
 
         The search query is substring matched non-case sensitively
-        against some fields in the nodes.
+        against some fields in the nodes. See `NODE_SEARCH_FIELDS`.
 
         :param nodes_query: A queryset of nodes.
         :return: A query set of nodes that returns a subset of `nodes_query`.
         """
-        name_clause = Q(hostname__icontains=self.query)
-        arch_clause = Q(architecture__icontains=self.query)
-        tag_clause = Q(tags__name__icontains=self.query)
+        # Split the query into different terms.
+        terms = self.query.split(' ')
 
-        query = nodes_query.filter(name_clause | arch_clause | tag_clause)
+        # If any of the terms contain '=' then its a juju constraint and all
+        # other terms not using '=' are ignored.
+        constraint_terms = [
+            term
+            for term in terms
+            if '=' in term
+            ]
+        if len(constraint_terms) > 0:
+            return self._constrain_nodes(
+                nodes_query, ' '.join(constraint_terms))
+
+        # Loop through the terms building the search query.
+        query = Q()
+        for term in terms:
+            colon_count = term.count(':')
+            if colon_count == 0:
+                query = query & self._query_all_fields(term)
+            elif colon_count == 1:
+                field, value = term.split(':', 1)
+                if field == '':
+                    # In the case the user miss typed and placed a colon at
+                    # the beginning of the term without the field, just search
+                    # all fields with the value.
+                    query = query & self._query_all_fields(value)
+                else:
+                    query = query & self._query_specific_field(field, value)
+            elif colon_count > 1:
+                query = query & self._query_mac_address_field(term)
+        query = nodes_query.filter(query)
         return query.distinct()
 
     def get_queryset(self):
         nodes = Node.objects.get_nodes(
             user=self.request.user, perm=NODE_PERMISSION.VIEW)
         nodes = nodes.order_by(*self._compose_sort_order())
-        if self.test_query:
-            nodes = self._constrain_nodes(nodes)
         if self.query:
             nodes = self._search_nodes(nodes)
         nodes = prefetch_nodes_listing(nodes)
@@ -410,7 +501,6 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         context["preserved_query"] = self.get_preserved_query()
         context["form"] = form
         context["input_query"] = self.query
-        context["input_test"] = self.test_query
         context["input_query_error"] = self.query_error
         links, classes = self._prepare_sort_links()
         context["sort_links"] = links
