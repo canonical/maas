@@ -61,11 +61,9 @@ from metadataserver.models import NodeKey
 from metadataserver.user_data.snippets import get_snippet_context
 from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
-from provisioningserver.utils import (
-    compose_URL,
-    locate_config,
-    )
+from provisioningserver.utils import locate_config
 from provisioningserver.utils.fs import read_text_file
+from provisioningserver.utils.url import compose_URL
 import tempita
 import yaml
 

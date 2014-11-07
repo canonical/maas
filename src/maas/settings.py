@@ -25,7 +25,7 @@ from maas import (
     )
 from maas.monkey import patch_get_script_prefix
 from metadataserver.address import guess_server_host
-from provisioningserver.utils import compose_URL
+from provisioningserver.utils.url import compose_URL
 from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 
