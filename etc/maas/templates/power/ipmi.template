@@ -60,8 +60,14 @@ issue_ipmi_command() {
     if [ "$power_change" != "query" ]
     then
         # Use C locale to force English error messages.
-        result=$(echo workaround |\
-        LC_ALL=C ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config} 2>&1)
+	if [ -z "$power_user" ]
+	then
+            result=$(echo workaround |\
+            LC_ALL=C ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -p ${power_pass} --commit --filename ${config} 2>&1)
+	else
+            result=$(echo workaround |\
+            LC_ALL=C ${ipmi_chassis_config} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} --commit --filename ${config} 2>&1)
+	fi
 
         if echo $result | grep -q "password invalid"
         then
@@ -71,8 +77,14 @@ issue_ipmi_command() {
     fi
 
     # Use C locale to force English error messages.
-    result=$(echo workaround |\
-    LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
+    if [ -z "$power_user" ]
+    then
+	result=$(echo workaround |\
+        LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -p ${power_pass} "$@")
+    else
+	result=$(echo workaround |\
+        LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} -u ${power_user} -p ${power_pass} "$@")
+    fi
 
     if echo $result | grep -q "password invalid"
     then
