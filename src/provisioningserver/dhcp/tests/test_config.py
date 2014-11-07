@@ -139,6 +139,24 @@ class TestGetConfig(PservTestCase):
             config.get_config('dhcpd.conf.template', **params))
         self.assertNotIn("ntp-servers", rendered)
 
+    def test__renders_router_ip_if_present(self):
+        params = make_sample_params()
+        router_ip = factory.make_ipv4_address()
+        params['dhcp_subnets'][0]['router_ip'] = router_ip
+        self.assertThat(
+            config.get_config('dhcpd.conf.template', **params),
+            Contains(router_ip))
+
+    def test__renders_without_router_ip(self):
+        params = make_sample_params()
+        params['dhcp_subnets'][0]['router_ip'] = ''
+        template = self.patch_template()
+        rendered = template.substitute(params)
+        self.assertEqual(
+            rendered,
+            config.get_config('dhcpd.conf.template', **params))
+        self.assertNotIn("routers", rendered)
+
 
 class TestComposeConditionalBootloader(PservTestCase):
     """Tests for `compose_conditional_bootloader`."""

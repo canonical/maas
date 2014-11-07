@@ -271,7 +271,6 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
             mandatory_fields = [
                 'interface',
                 'subnet_mask',
-                'router_ip',
                 'ip_range_low',
                 'ip_range_high',
             ]

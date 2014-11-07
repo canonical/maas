@@ -18,7 +18,9 @@ subnet {{dhcp_subnet['subnet']}} netmask {{dhcp_subnet['subnet_mask']}} {
        option domain-name-servers {{dhcp_subnet['dns_servers']}};
        {{endif}}
        option domain-name "{{dhcp_subnet['domain_name']}}";
+       {{if dhcp_subnet['router_ip'] }}
        option routers {{dhcp_subnet['router_ip']}};
+       {{endif}}
        {{if dhcp_subnet.get('ntp_server')}}
        option ntp-servers {{dhcp_subnet['ntp_server']}};
        {{endif}}

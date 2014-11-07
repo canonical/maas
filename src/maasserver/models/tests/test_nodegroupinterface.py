@@ -155,7 +155,6 @@ class TestNodeGroupInterface(MAASServerTestCase):
         checked_fields = [
             'interface',
             'subnet_mask',
-            'router_ip',
             'ip_range_low',
             'ip_range_high',
             ]
@@ -186,6 +185,22 @@ class TestNodeGroupInterface(MAASServerTestCase):
             setattr(interface, field, '')
             # This doesn't raise a validation error.
             interface.full_clean()
+            self.assertEqual('', getattr(interface, field))
+
+    def test_clean_network_config_if_managed_accepts_empty_router_ip(self):
+        network = IPNetwork('192.168.0.3/24')
+        checked_fields = [
+            'router_ip',
+            ]
+        for field in checked_fields:
+            nodegroup = factory.make_NodeGroup(
+                network=network,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            [interface] = nodegroup.get_managed_interfaces()
+            setattr(interface, field, '')
+            # This doesn't raise a validation error.
+            interface.full_clean()
+            self.assertEqual('', getattr(interface, field))
 
     def test_clean_network_config_sets_default_if_netmask_not_given(self):
         network = factory.make_ipv4_network()

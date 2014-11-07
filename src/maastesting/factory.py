@@ -231,7 +231,7 @@ class Factory:
     def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:
             but_not = []
-        but_not = [IPAddress(but) for but in but_not]
+        but_not = [IPAddress(but) for but in but_not if but is not None]
         address = IPAddress(random.randint(network.first, network.last))
         for _ in range(100):
             address = IPAddress(random.randint(network.first, network.last))
