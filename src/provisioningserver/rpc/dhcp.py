@@ -213,7 +213,7 @@ def create_host_maps(mappings, shared_key):
             maaslog.error(
                 "Could not create host map for %s with address %s: %s",
                 mac_address, ip_address, unicode(e))
-            raise CannotCreateHostMap("%s \u2192 %s: %s" % (
+            raise CannotCreateHostMap("%s -> %s: %s" % (
                 mac_address, ip_address, e.output_as_unicode))
 
 

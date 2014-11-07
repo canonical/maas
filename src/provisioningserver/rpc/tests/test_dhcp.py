@@ -189,7 +189,7 @@ class TestCreateHostMaps(MAASTestCase):
         # The CannotCreateHostMap exception includes a message describing the
         # problematic mapping.
         self.assertDocTestMatches(
-            "%s \u2192 %s: ..." % (mac_address, ip_address),
+            "%s -> %s: ..." % (mac_address, ip_address),
             unicode(error))
         # A message is also written to the maas.dhcp logger that describes the
         # problematic mapping.
