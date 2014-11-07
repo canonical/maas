@@ -4,8 +4,7 @@
 .center-page-wrapper {
     text-align: center;
     margin: 0 auto;
-    width: 95%;
-    min-width: 976px;
+    width: 976px;
     }
 
 .center-page-content {
@@ -16,7 +15,7 @@
     Header
 */
 #global-header {
-    background-color: #221e1b;
+    background-color: #2c001e;
     padding: 6px 8px;
     }
 
@@ -29,8 +28,11 @@
     }
 
 #header {
-    height: 48px;
-    background-color: #221e1b;
+    min-height: 64px;
+    background: #dd4814 url(../?img/header_stripes.png) repeat-x top left;
+    -moz-border-radius: 0 0 4px 4px;
+    -webkit-border-radius: 0 0 4px 4px;
+    border-radius: 0 0 4px 4px;
     }
 
 #global-header,
@@ -49,40 +51,24 @@
 #right-nav li a,
 #main-nav li a {
     display: block;
-    height: 31px;
-    padding: 17px 15px 0 15px;
+    height: 41px;
+    padding: 23px 15px 0 15px;
     }
 
+#right-nav li.icon a,
 #main-nav li.icon a {
-    padding-top: 9px;
-    height: 39px;
-    }
-
-#main-nav li.icon:hover a,
-#main-nav li.icon.active a {
-    background-color: #221e1b;
+    padding-top: 18px;
+    height: 46px;
     }
 
 #main-nav li.icon.large a {
-    padding-top: 16px;
-    height: 30px;
+    padding-top: 13px;
+    height: 51px;
     }
 
 #right-nav li.active a,
-#main-nav li.active a,
-#main-nav li:hover a,
-#right-nav li:hover a {
-    background-color: #dd4814;
-    }
-
-#right-nav li:hover li a,
-#right-nav li li:hover a {
-    background-color: #fff;
-    }
-
-#right-nav li li a {
-    padding: 11px 0 0 15px;
-    height: 28px;
+#main-nav li.active a {
+    background: rgba(0,0,0,0.2) url(../?img/header_tail.png) no-repeat bottom center;
     }
 
 #right-nav {
@@ -90,30 +76,36 @@
     margin-right: 5px;
     }
 
+#right-nav li.active a {
+    background-color: transparent;
+    }
+
 /******************************************************************************
     Content
 */
 #body {
+    background-color: #2C001E;
     clear: both;
     margin: 0;
     padding-top: 1px;
-    margin-bottom: 10px;
     }
 
 #page-title {
+    /* Need to set relative so the tail appears above shadows. */
+    position: relative;
     font-size: 36px;
-    color: #333;
+    color: #fff;
     margin: 0 20px;
     padding: 14px 0 20px 0;
+    background: transparent url(../?img/content_tail.png) no-repeat 50px bottom;
     }
 
 #content {
     padding: 20px 20px 40px 20px;
     background-color: #fff;
-    border-radius: 3px;
-    -moz-border-radius: 3px;
-    -webkit-border-radius: 3px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1),-1px 0 0 rgba(0,0,0,0.03);
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border-radius: 4px;
     }
 
 /******************************************************************************
@@ -126,17 +118,16 @@
 /******************************************************************************
     Content modifier: login
 */
-.login #body {
-    margin-top: 100px;
-    }
-
-.login #body .center-page-wrapper {
-    min-width: 0;
+.login .center-page-wrapper {
     width: 440px;
     }
 
-.login.no-users #body .center-page-wrapper {
+.login.no-users .center-page-wrapper {
     width: 670px;
+    }
+
+.login #body {
+    margin-top: 100px;
     }
 
 .login #page-title {
@@ -146,7 +137,7 @@
 .login #content {
     padding: 30px 40px;
     -webkit-box-shadow: 0 0 15px 0 rgba(0,0,0,1);
-    box-shadow: 0 0 8px 0 rgba(0,0,0,0.1);
+    box-shadow: 0 0 15px 0 rgba(0,0,0,1);
     }
 
 .login #content h2:first-child {
@@ -159,15 +150,6 @@
 
 .login #footer {
     margin: 0 auto;
-    }
-
-.login #footer .center-page-wrapper {
-    min-width: 0;
-    width: 440px;
-    }
-
-.login.no-users #footer .center-page-wrapper {
-    width: 670px;
     }
 
 /******************************************************************************
@@ -230,13 +212,12 @@
     Footer
 */
 #footer {
+    margin-bottom: 20px;
     padding: 12px 0;
-    color: #333;
+    color: #aea79f;
     font-size: 12px;
-    width: 100%;
     }
 
 #footer img {
     float: right;
-    margin-top: -9px;
     }

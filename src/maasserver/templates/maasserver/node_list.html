@@ -31,8 +31,6 @@
     line-height: 23px;
     outline: none;
   }
-
-
   </style>
   <script type="text/javascript">
   <!--
@@ -113,6 +111,7 @@
           method="post">
       <div class="block full-width">
         {% csrf_token %}
+        Bulk action:&nbsp;
         {{ form.action }}
         <input type="submit" value="Go" />
         {% if form.zone %}
