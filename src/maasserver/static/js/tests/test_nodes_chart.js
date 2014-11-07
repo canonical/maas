@@ -59,6 +59,7 @@ suite.add(new Y.maas.testing.TestCase({
                 event: 'hover.allocated.over',
                 action: 'mouseover',
                 fired: false,
+                nodes: initialStats.allocated,
                 node: this.chart._outer_paths[0].node
                 },
             {
@@ -71,6 +72,7 @@ suite.add(new Y.maas.testing.TestCase({
                 event: 'hover.commissioned.over',
                 action: 'mouseover',
                 fired: false,
+                nodes: initialStats.commissioned,
                 node: this.chart._outer_paths[1].node
                 },
             {
@@ -83,6 +85,7 @@ suite.add(new Y.maas.testing.TestCase({
                 event: 'hover.queued.over',
                 action: 'mouseover',
                 fired: false,
+                nodes: initialStats.queued,
                 node: this.chart._outer_paths[2].node
                 },
             {
@@ -95,6 +98,7 @@ suite.add(new Y.maas.testing.TestCase({
                 event: 'hover.offline.over',
                 action: 'mouseover',
                 fired: false,
+                nodes: initialStats.offline,
                 node: this.chart._offline_circle[0].node
                 },
             {
@@ -107,6 +111,7 @@ suite.add(new Y.maas.testing.TestCase({
                 event: 'hover.added.over',
                 action: 'mouseover',
                 fired: false,
+                nodes: initialStats.added,
                 node: this.chart._added_circle[0].node
                 },
             {
@@ -120,11 +125,15 @@ suite.add(new Y.maas.testing.TestCase({
         Y.Array.each(events, function(event) {
             this.chart.on(event.event, function(e, event) {
                 event.fired = true;
+                event.e = e;
             }, null, event);
             Y.one(event.node).simulate(event.action);
             Y.Assert.isTrue(
                 event.fired,
                 'Event ' + event.event + ' should have fired');
+            if (event.nodes) {
+                Y.Assert.areEqual(event.e.nodes, event.nodes);
+            }
         }, this);
     },
 
