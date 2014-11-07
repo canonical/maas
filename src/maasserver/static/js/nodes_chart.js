@@ -128,7 +128,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
         var outer_nodes = [
             {
                 nodes: stats.allocated,
-                name: 'allocated_nodes',
+                name: 'allocated',
                 colour: OUTER_COLOURS[0],
                 events: {
                     over: 'hover.allocated.over',
@@ -137,7 +137,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 },
             {
                 nodes: stats.commissioned,
-                name: 'commissioned_nodes',
+                name: 'commissioned',
                 colour: OUTER_COLOURS[2],
                 events: {
                     over: 'hover.commissioned.over',
@@ -146,7 +146,7 @@ Y.extend(NodesChartWidget, Y.Widget, {
                 },
             {
                 nodes: stats.queued,
-                name: 'queued_nodes',
+                name: 'queued',
                 colour: OUTER_COLOURS[1],
                 events: {
                     over: 'hover.queued.over',
@@ -186,7 +186,8 @@ Y.extend(NodesChartWidget, Y.Widget, {
                     Y.one(slice.node).on(
                         'hover',
                         function(e, over, out, name, widget) {
-                            widget.fire(over, {nodes: widget.get(name)});
+                            widget.fire(over, {
+                                nodes: widget.get('stats').get(name)});
                         },
                         function(e, over, out, nodes, widget) {
                             widget.fire(out);
