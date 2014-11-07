@@ -36,6 +36,7 @@ from maasserver.fields import (
     VerboseRegexValidator,
     )
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
@@ -43,7 +44,10 @@ from netaddr import (
     )
 from netaddr.core import AddrFormatError
 from provisioningserver.network import REVEAL_IPv6
-from provisioningserver.utils.network import make_network
+from provisioningserver.utils.network import (
+    intersect_iprange,
+    make_network,
+    )
 
 # UI explanation for subnet_mask field.
 SUBNET_MASK_HELP = "e.g. 255.255.255.0"
@@ -397,6 +401,42 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
                 }
             raise ValidationError(errors)
 
+    def clean_overlapping_networks(self):
+        """Ensure that this interface's network doesn't overlap those of
+        other interfaces on this cluster.
+        """
+        try:
+            nodegroup = self.nodegroup
+        except NodeGroup.DoesNotExist:
+            # We're likely being called on nodegroup creation, so
+            # there's no nodegroup linked to this interface yet. Since
+            # we don't have a nodegroup we can't check whether any other
+            # interfaces on this nodegroup have overlapping network
+            # settings.
+            return
+
+        if not self.is_managed:
+            return
+
+        network = self.network
+        current_cluster_interfaces = (
+            NodeGroupInterface.objects.filter(nodegroup=nodegroup)
+            .exclude(management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+            .exclude(id=self.id))
+        network_overlaps_other_interfaces = any(
+            intersect_iprange(network, interface.network) is not None
+            for interface in current_cluster_interfaces
+            )
+        if network_overlaps_other_interfaces:
+            message = (
+                "This interface's network must not overlap with other "
+                "networks on this cluster.")
+            errors = {
+                'ip': [message],
+                'subnet_mask': [message],
+            }
+            raise ValidationError(errors)
+
     def clean_fields(self, *args, **kwargs):
         super(NodeGroupInterface, self).clean_fields(*args, **kwargs)
         self.clean_network_valid()
@@ -404,3 +444,4 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
         self.clean_network_config_if_managed()
         self.clean_ip_range_bounds()
         self.clean_ip_ranges()
+        self.clean_overlapping_networks()

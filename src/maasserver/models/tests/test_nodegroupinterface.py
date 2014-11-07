@@ -28,7 +28,11 @@ from netaddr import (
     IPAddress,
     IPNetwork,
     )
-from testtools.matchers import HasLength
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Not,
+    )
 
 
 def make_interface(network=None):
@@ -306,6 +310,76 @@ class TestNodeGroupInterface(MAASServerTestCase):
                     interface.static_ip_range_high)],
             }
         self.assertEqual(errors, exception.message_dict)
+
+    def test_clean_overlapping_networks_rejects_overlaps(self):
+        network_1 = IPNetwork("10.1.0.0/16")
+        interface_1 = make_interface(network_1)
+        interface_1.save()
+
+        network_2 = IPNetwork("10.1.0.0/24")
+        interface_2 = NodeGroupInterface(
+            nodegroup=interface_1.nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            ip=IPAddress(network_2.first).format(),
+            subnet_mask=network_2.netmask.format(),
+            interface=factory.make_name(), router_ip="10.1.0.1",
+            ip_range_low="10.1.0.2", ip_range_high="10.1.0.3")
+        exception = self.assertRaises(ValidationError, interface_2.full_clean)
+        message = (
+            "This interface's network must not overlap with other "
+            "networks on this cluster.")
+        errors = {
+            'ip': [message],
+            'subnet_mask': [message],
+        }
+        self.assertEqual(errors, exception.message_dict)
+
+    def test_clean_overlapping_networks_ignores_unmanaged_interface(self):
+        network_1 = IPNetwork("10.1.0.0/16")
+        interface_1 = make_interface(network_1)
+        interface_1.save()
+
+        interface_2 = NodeGroupInterface(
+            nodegroup=interface_1.nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip="10.1.0.1")
+        interface_2.save()
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            interface_2.management)
+
+    def test_clean_overlapping_networks_ignores_other_unmanaged_iface(self):
+        nodegroup = factory.make_NodeGroup()
+        interface_1 = NodeGroupInterface(
+            nodegroup=nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED,
+            ip="10.1.0.1", subnet_mask="255.255.255.0")
+        interface_1.save()
+
+        interface_2 = NodeGroupInterface(
+            nodegroup=nodegroup,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            ip="10.1.0.1", subnet_mask="255.255.255.0",
+            ip_range_high="10.1.0.255", ip_range_low="10.1.0.2",
+            router_ip="10.1.0.1", interface=factory.make_name("eth"),
+            name=factory.make_name("interface"))
+        interface_2.save()
+        self.assertEqual(
+            NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            interface_2.management)
+
+    def test_clean_overlapping_networks_ignores_other_clusters(self):
+        network_1 = IPNetwork("10.1.0.0/16")
+        interface_1 = make_interface(network_1)
+        interface_1.save()
+
+        network_2 = IPNetwork("10.1.0.0/24")
+        interface_2 = make_interface(network_2)
+        interface_2.save()
+
+        self.assertThat(
+            interface_2.nodegroup, Not(Equals(interface_1.nodegroup)))
+        self.assertEqual(network_2, interface_2.network)
 
     def test_manages_static_range_returns_False_if_not_managed(self):
         cluster = factory.make_NodeGroup()
