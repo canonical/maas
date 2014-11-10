@@ -195,7 +195,9 @@ class StaticIPAddressManager(Manager):
                         # this critical section is in a lock...
                         continue
             else:
-                raise StaticIPAddressExhaustion()
+                raise StaticIPAddressExhaustion(
+                    "No more IPs available in range %s-%s" % (
+                        range_low.format(), range_high.format()))
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset

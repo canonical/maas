@@ -56,9 +56,12 @@ class StaticIPAddressManagerTest(MAASServerTestCase):
     def test_allocate_new_raises_when_addresses_exhausted(self):
         low = high = "192.168.230.1"
         StaticIPAddress.objects.allocate_new(low, high)
-        self.assertRaises(
+        e = self.assertRaises(
             StaticIPAddressExhaustion,
             StaticIPAddress.objects.allocate_new, low, high)
+        self.assertEqual(
+            "No more IPs available in range %s-%s" % (low, high),
+            unicode(e))
 
     def test_allocate_new_sets_user(self):
         low, high = factory.make_ip_range()
