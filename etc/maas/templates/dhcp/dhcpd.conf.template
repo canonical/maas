@@ -2,8 +2,8 @@
 # changes made there.
 #
 # Instead, edit /etc/maas/templates/dhcp/dhcpd.conf.template and your changes
-# will be present whenever MAAS rewrites the DHCP configuration.  Edit and save
-# the nodegroup's configuration in MAAS to trigger an update.
+# will be present whenever MAAS rewrites the DHCP configuration.  Update and save
+# the cluster's configuration in MAAS to trigger an update to this file.
 
 option arch code 93 = unsigned integer 16; # RFC4578
 option path-prefix code 210 = text; #RFC5071
