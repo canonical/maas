@@ -159,6 +159,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
     )
+from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
@@ -1174,6 +1175,13 @@ class TestRegionServer(MAASServerTestCase):
             Traceback (most recent call last):...
             """,
             logger.dump())
+
+    def test_handshakeFailed_does_not_log_when_connection_is_closed(self):
+        server = RegionServer()
+        with TwistedLoggerFixture() as logger:
+            server.handshakeFailed(Failure(ConnectionClosed()))
+        # Nothing was logged.
+        self.assertEqual("", logger.output)
 
     def make_running_server(self):
         service = RegionService()

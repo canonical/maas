@@ -129,8 +129,10 @@ from twisted.internet.defer import (
     succeed,
     )
 from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
 from twisted.protocols import amp
+from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection
 from zope.interface.verify import verifyObject
@@ -1012,6 +1014,17 @@ class TestClusterClient(MAASTestCase):
         # immediately disconnects.
         self.assertEqual(client.service.connections, {})
         self.assertFalse(client.connected)
+
+    def test_handshakeFailed_does_not_log_when_connection_is_closed(self):
+        client = self.make_running_client()
+        with TwistedLoggerFixture() as logger:
+            client.handshakeFailed(Failure(ConnectionClosed()))
+        # ready was set with ConnectionClosed.
+        self.assertRaises(
+            ConnectionClosed, extract_result,
+            client.ready.get())
+        # Nothing was logged.
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_secureConnection_calls_StartTLS_and_Identify(self):

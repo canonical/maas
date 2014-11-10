@@ -92,7 +92,10 @@ from twisted.internet.endpoints import (
     connectProtocol,
     TCP4ClientEndpoint,
     )
-from twisted.internet.error import ConnectError
+from twisted.internet.error import (
+    ConnectError,
+    ConnectionClosed,
+    )
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 from twisted.python import log
@@ -506,11 +509,17 @@ class ClusterClient(Cluster):
 
     def handshakeFailed(self, failure):
         """The handshake (identify and authenticate) failed."""
-        log.err(
-            failure, "Event-loop '%s' handshake failed; "
-            "dropping connection." % self.ident)
-        self.transport.loseConnection()
-        self.ready.fail(failure)
+        if failure.check(ConnectionClosed):
+            # There has been a disconnection, clean or otherwise. There's
+            # nothing we can do now, so do nothing. The reason will have been
+            # logged elsewhere.
+            self.ready.fail(failure)
+        else:
+            log.err(
+                failure, "Event-loop '%s' handshake failed; "
+                "dropping connection." % self.ident)
+            self.transport.loseConnection()
+            self.ready.fail(failure)
 
     def connectionMade(self):
         super(ClusterClient, self).connectionMade()
