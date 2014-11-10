@@ -278,6 +278,12 @@ class VersionIndexHandler(MetadataViewHandler):
             # If it is installing, should be in deploying state.
             return rc.ALL_OK
 
+        # Ensure that any IP addresses are forcefully released in case
+        # the host didn't bother doing that. No static IPs are assigned
+        # at this stage, so we just deal with the dynamic ones.
+        if status != SIGNAL_STATUS.WORKING:
+            node.delete_host_maps(set(node.dynamic_ip_addresses()))
+
         if node.status == NODE_STATUS.COMMISSIONING:
             self._store_commissioning_results(node, request)
             store_node_power_parameters(node, request)

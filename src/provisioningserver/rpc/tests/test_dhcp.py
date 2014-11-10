@@ -200,6 +200,11 @@ class TestCreateHostMaps(MAASTestCase):
 
 class TestRemoveHostMaps(MAASTestCase):
 
+    def setUp(self):
+        super(TestRemoveHostMaps, self).setUp()
+        self.patch(Omshell, "remove")
+        self.patch(Omshell, "nullify_lease")
+
     def test_removes_omshell(self):
         omshell = self.patch(dhcp, "Omshell")
         dhcp.remove_host_maps([], sentinel.shared_key)
@@ -208,17 +213,22 @@ class TestRemoveHostMaps(MAASTestCase):
         ))
 
     def test_calls_omshell_remove(self):
-        omshell_remove = self.patch(Omshell, "remove")
         ip_addresses = [factory.make_ipv4_address() for _ in range(5)]
         dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
-        self.assertThat(omshell_remove, MockCallsMatch(*(
+        self.assertThat(Omshell.remove, MockCallsMatch(*(
+            call(ip_address) for ip_address in ip_addresses
+        )))
+
+    def test_calls_omshell_nullify_lease(self):
+        ip_addresses = [factory.make_ipv4_address() for _ in range(5)]
+        dhcp.remove_host_maps(ip_addresses, sentinel.shared_key)
+        self.assertThat(Omshell.nullify_lease, MockCallsMatch(*(
             call(ip_address) for ip_address in ip_addresses
         )))
 
     def test_raises_error_when_omshell_crashes(self):
         error_message = factory.make_name("error").encode("ascii")
-        omshell_remove = self.patch(Omshell, "remove")
-        omshell_remove.side_effect = ExternalProcessError(
+        Omshell.remove.side_effect = ExternalProcessError(
             returncode=2, cmd=("omshell",), output=error_message)
         ip_address = factory.make_ipv4_address()
         with FakeLogger("maas.dhcp") as logger:

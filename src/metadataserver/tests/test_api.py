@@ -48,7 +48,10 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.djangotestcase import DjangoTestCase
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.utils import sample_binary_data
 from metadataserver import api
 from metadataserver.api import (
@@ -505,6 +508,7 @@ class TestCommissioningAPI(MAASServerTestCase):
     def setUp(self):
         super(TestCommissioningAPI, self).setUp()
         self.patch(Node, 'stop_transition_monitor')
+        self.patch(Node, 'delete_host_maps')
 
     def test_commissioning_scripts(self):
         script = factory.make_CommissioningScript()
@@ -856,6 +860,24 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(
             (httplib.BAD_REQUEST, "Failed to parse JSON power_parameters"),
             (response.status_code, response.content))
+
+    def test_signal_clears_dynamic_ip_address_leases_if_not_WORKING(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        ips = [factory.make_ipv4_address() for _ in range(2)]
+        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(node.delete_host_maps, MockCalledOnceWith(set(ips)))
+
+    def test_signal_does_not_clear_dynamic_ip_address_leases_if_WORKING(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        ips = [factory.make_ipv4_address() for _ in range(2)]
+        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
+        client = make_node_client(node=node)
+        response = call_signal(client, status='WORKING')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(node.delete_host_maps, MockNotCalled())
 
 
 class TestDiskErasingAPI(MAASServerTestCase):
