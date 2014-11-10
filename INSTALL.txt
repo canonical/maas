@@ -4,7 +4,7 @@
 Installing MAAS
 ===============
 
-There are two main ways to install MAAS
+There are two main ways to install MAAS:
 
  * :ref:`From Ubuntu's package archive on an existing Ubuntu
    install. <pkg-install>`
@@ -12,7 +12,15 @@ There are two main ways to install MAAS
    media. <disc-install>`
 
 If you are interested in testing the latest development version you
-can also check out the very latest source and build MAAS yourself.
+can also check out the very latest source and build MAAS — see
+the :doc:`hacking guide <hacking>` — or use the `Testing PPA`_ or the
+`Daily PPA`_. Note that these PPAs contain development versions of
+MAAS that are potentially unstable, so use with caution.
+
+.. _Testing PPA:
+  https://launchpad.net/~maas-maintainers/+archive/ubuntu/testing
+.. _Daily PPA:
+  https://launchpad.net/~maas-maintainers/+archive/ubuntu/dailybuilds
 
 
 .. _pkg-install:

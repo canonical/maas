@@ -15,15 +15,18 @@ Getting it
 ----------
 
 In a cunning move, the current documentation always lives, and is
-built from, the main MAAS source code. That means that whatever MAAS
-package you have installed, or even if you are really living life on
-the edge and have checked out a development version from Launchpad,
-this documentation should be the latest and most appropriate version
-for the software you are running.  However, it is also possible that
-there have been further sections or more helpful, or clearer bits
-added since the package you are using was made. For this reason you
-can always find the latest documentation online here:
-http://maas.ubuntu.com
+built from, the main MAAS source code (in the top-level ``docs/``
+directory). That means that whatever MAAS package you have installed,
+or even if you are really living life on the edge and have checked out
+a development version from Launchpad, this documentation should be the
+latest and most appropriate version for the software you are running.
+However, it is also possible that there have been additional sections,
+or more helpful and clearer bits added since the package you are using
+was made. For this reason you can always find the latest documentation
+online here: `http://maas.ubuntu.com`_.
+
+.. _http://maas.ubuntu.com:
+  http://maas.ubuntu.com
 
 
 Contributing
@@ -44,4 +47,4 @@ If you see something wrong with this documentation, you can help us fix it.
 Download the source to MAAS by following the instructions in
 :doc:`the hacking guide <hacking>`, make your changes, and propose a merge
 against lp:maas on Launchpad.  The documentation source lives in the top-level
-``doc/`` directory.
+``docs/`` directory.
