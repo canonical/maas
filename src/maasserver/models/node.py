@@ -551,6 +551,13 @@ class Node(CleanSave, TimestampedModel):
         # Return a *very* conservative estimate for now.
         return timedelta(minutes=20).total_seconds()
 
+    def get_releasing_time(self):
+        """Return the releasing time of this node (in seconds).
+
+        This is the maximum time that releasing is allowed to take.
+        """
+        return timedelta(minutes=1).total_seconds()
+
     def start_deployment(self):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
@@ -1215,6 +1222,7 @@ class Node(CleanSave, TimestampedModel):
             # state): update_power_state() will take care of making the node
             # READY and unowned when the power is finally off.
             self.status = NODE_STATUS.RELEASING
+            self.start_transition_monitor(self.get_releasing_time())
         else:
             # Uncontrolled power type (one for which we can't query the power
             # state): mark the node ready.
@@ -1342,6 +1350,7 @@ class Node(CleanSave, TimestampedModel):
             # down.
             self.status = NODE_STATUS.READY
             self.owner = None
+            self.stop_transition_monitor()
         self.save()
 
     def claim_static_ip_addresses(self):

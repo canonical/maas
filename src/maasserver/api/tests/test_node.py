@@ -411,6 +411,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
     def test_POST_release_releases_owned_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         owned_statuses = [
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
@@ -431,6 +432,7 @@ class TestNodeAPI(APITestCase):
             [node.status for node in reload_objects(Node, owned_nodes)])
 
     def test_POST_release_releases_failed_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         owned_node = factory.make_Node(
             owner=self.logged_in_user,
             status=NODE_STATUS.FAILED_DEPLOYMENT,
@@ -499,6 +501,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
             power_type='ipmi', power_state=POWER_STATE.ON)
@@ -509,6 +512,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',
             power_state=POWER_STATE.ON)

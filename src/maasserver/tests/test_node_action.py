@@ -396,6 +396,7 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
+        self.patch(node, 'start_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
 
         StopNode(node, user).execute()
@@ -449,6 +450,7 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             mac=True, status=self.actionable_status,
             power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
+        self.patch(node, 'start_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
 
         ReleaseNode(node, user).execute()

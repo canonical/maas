@@ -855,8 +855,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
+        self.expectThat(
+            node.start_transition_monitor,
+            MockCalledOnceWith(node.get_releasing_time()))
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -882,8 +886,10 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
+        self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
         self.expectThat(node.agent_name, Equals(''))
@@ -898,8 +904,10 @@ class NodeTest(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.OFF
         node.release()
+        self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
         self.expectThat(node.agent_name, Equals(''))
@@ -915,6 +923,7 @@ class NodeTest(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
+        self.patch(node, 'start_transition_monitor')
         sips = node.get_primary_mac().claim_static_ips()
         node.release()
         expected = {sip.ip.format() for sip in sips}
@@ -927,6 +936,7 @@ class NodeTest(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        self.patch(node, 'start_transition_monitor')
         node_result = factory.make_NodeResult_for_installation(node=node)
         self.assertEquals(
             [node_result], list(NodeResult.objects.filter(
@@ -1153,6 +1163,7 @@ class NodeTest(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh')
+        self.patch(node, 'start_transition_monitor')
         node_stop = self.patch(node, 'stop')
         node.release()
         self.assertThat(
@@ -1662,6 +1673,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
+        self.patch(node, 'stop_transition_monitor')
         node.update_power_state(POWER_STATE.OFF)
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
@@ -1671,6 +1683,21 @@ class NodeTest(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+
+    def test_update_power_state_stops_monitor_if_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
+            owner=None)
+        self.patch(node, 'stop_transition_monitor')
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+
+    def test_update_power_state_does_not_stop_monitor_if_not_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
+        self.patch(node, 'stop_transition_monitor')
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.stop_transition_monitor, MockNotCalled())
 
     def test_update_power_state_does_not_change_status_if_not_off(self):
         node = factory.make_Node(
