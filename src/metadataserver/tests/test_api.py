@@ -879,6 +879,15 @@ class TestCommissioningAPI(MAASServerTestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertThat(node.delete_host_maps, MockNotCalled())
 
+    def test_signal_doesnt_clear_dynamic_ip_leases_if_not_commissioning(self):
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        ips = [factory.make_ipv4_address() for _ in range(2)]
+        self.patch(Node, 'dynamic_ip_addresses').return_value = ips
+        client = make_node_client(node=node)
+        response = call_signal(client, status='OK')
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertThat(node.delete_host_maps, MockNotCalled())
+
 
 class TestDiskErasingAPI(MAASServerTestCase):
 
