@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.core.exceptions import ValidationError
 from maasserver.forms import BootSourceSelectionForm
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -54,3 +55,27 @@ class TestBootSourceSelectionForm(MAASServerTestCase):
         self.assertTrue(form.is_valid(), form._errors)
         boot_source_selection = form.save()
         self.assertAttributes(boot_source_selection, params)
+
+    def test_cannot_create_duplicate_entry(self):
+        boot_source = factory.make_BootSource()
+        params = {
+            'os': factory.make_name('os'),
+            'release': factory.make_name('release'),
+            'arches': [factory.make_name('arch'), factory.make_name('arch')],
+            'subarches': [
+                factory.make_name('subarch'), factory.make_name('subarch')],
+            'labels': [factory.make_name('label'), factory.make_name('label')],
+        }
+        form = BootSourceSelectionForm(boot_source=boot_source, data=params)
+        self.assertTrue(form.is_valid(), form._errors)
+        form.save()
+
+        # Duplicates should be detected for the same boot_source, os and
+        # release, the other fields are irrelevant.
+        dup_params = {
+            'os': params['os'],
+            'release': params['release'],
+            }
+        form = BootSourceSelectionForm(
+            boot_source=boot_source, data=dup_params)
+        self.assertRaises(ValidationError, form.save)

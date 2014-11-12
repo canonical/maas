@@ -37,6 +37,7 @@ class BootSourceSelection(CleanSave, TimestampedModel):
 
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
+        unique_together = ("boot_source", "os", "release")
 
     objects = BootSourceSelectionManager()
 
