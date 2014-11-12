@@ -816,6 +816,21 @@ class TestCommissioningAPI(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(0, len(node.tags.all()))
 
+    def test_signal_current_power_type_mscm_does_not_store_params(self):
+        node = factory.make_Node(
+            power_type="mscm", status=NODE_STATUS.COMMISSIONING)
+        client = make_node_client(node=node)
+        params = dict(
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        response = call_signal(
+            client, power_type="moonshot", power_parameters=json.dumps(params))
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        node = reload_object(node)
+        self.assertEqual("mscm", node.power_type)
+        self.assertNotEqual(params, node.power_parameters)
+
     def test_signal_refuses_bad_power_type(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         client = make_node_client(node=node)
