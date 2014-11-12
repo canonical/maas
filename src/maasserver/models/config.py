@@ -98,17 +98,6 @@ class ConfigManager(Manager):
         except Config.MultipleObjectsReturned as error:
             raise Config.MultipleObjectsReturned("%s (%s)" (error, name))
 
-    def get_config_list(self, name):
-        """Return the config value list corresponding to the given config
-        name.
-
-        :param name: The name of the config items.
-        :type name: unicode
-        :return: A list of the config values.
-        :rtype: list
-        """
-        return [config.value for config in self.filter(name=name)]
-
     def set_config(self, name, value):
         """Set or overwrite a config value.
 
@@ -158,7 +147,7 @@ class Config(Model):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
 
-    name = CharField(max_length=255, unique=False)
+    name = CharField(max_length=255, unique=True)
     value = JSONObjectField(null=True)
 
     objects = ConfigManager()
