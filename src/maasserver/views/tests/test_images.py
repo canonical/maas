@@ -534,6 +534,18 @@ class UploadedImagesTest(MAASServerTestCase):
             'table#uploaded-resources')[0].text_content()
         self.assertThat(table_content, ContainsAll(names))
 
+    def test_shows_uploaded_resources_name_if_title_blank(self):
+        self.client_log_in()
+        name = factory.make_name('name')
+        resource = self.make_uploaded_resource(name)
+        resource.extra['title'] = ''
+        resource.save()
+        response = self.client.get(reverse('images'))
+        doc = fromstring(response.content)
+        name_col = doc.cssselect(
+            'table#uploaded-resources > tbody > tr > td')[1].text_content()
+        self.assertEqual(name, name_col.strip())
+
     def test_shows_delete_button_for_uploaded_resource(self):
         self.client_log_in(as_admin=True)
         self.make_uploaded_resource()

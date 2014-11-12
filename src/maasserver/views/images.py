@@ -242,7 +242,7 @@ class ImagesView(TemplateView, FormMixin, ProcessFormView):
                 else:
                     return title
         else:
-            if 'title' in resource.extra:
+            if 'title' in resource.extra and len(resource.extra['title']) > 0:
                 return resource.extra['title']
             else:
                 return resource.name
