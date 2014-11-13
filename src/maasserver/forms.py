@@ -109,6 +109,7 @@ from maasserver.models import (
     BootResourceFile,
     BootResourceSet,
     BootSource,
+    BootSourceCache,
     BootSourceSelection,
     Config,
     DownloadProgress,
@@ -2353,6 +2354,61 @@ class BootSourceSelectionForm(MAASModelForm):
             self.boot_source = kwargs['instance'].boot_source
         else:
             self.boot_source = boot_source
+
+    def clean(self):
+        cleaned_data = super(BootSourceSelectionForm, self).clean()
+
+        # Don't filter on OS if not provided. This is to maintain
+        # backwards compatibility for when OS didn't exist in the API.
+        if cleaned_data['os']:
+            cache = BootSourceCache.objects.filter(
+                boot_source=self.boot_source, os=cleaned_data['os'],
+                release=cleaned_data['release'])
+        else:
+            cache = BootSourceCache.objects.filter(
+                boot_source=self.boot_source, release=cleaned_data['release'])
+
+        if not cache.exists():
+            set_form_error(
+                self, "os",
+                "OS %s with release %s has no available images for download" %
+                (cleaned_data['os'], cleaned_data['release']))
+            return cleaned_data
+
+        values = cache.values_list("arch", "subarch", "label")
+        arches, subarches, labels = zip(*values)
+
+        # Validate architectures.
+        required_arches_set = set(arch for arch in cleaned_data['arches'])
+        wildcard_arches = '*' in required_arches_set
+        if not wildcard_arches and not required_arches_set <= set(arches):
+            set_form_error(
+                self, "arches",
+                "No available images to download for %s" %
+                cleaned_data['arches'])
+
+        # Validate subarchitectures.
+        required_subarches_set = set(sa for sa in cleaned_data['subarches'])
+        wildcard_subarches = '*' in required_subarches_set
+        if (
+            not wildcard_subarches and
+            not required_subarches_set <= set(subarches)
+                ):
+            set_form_error(
+                self, "subarches",
+                "No available images to download for %s" %
+                cleaned_data['subarches'])
+
+        # Validate labels.
+        required_labels_set = set(label for label in cleaned_data['labels'])
+        wildcard_labels = '*' in required_labels_set
+        if not wildcard_labels and not required_labels_set <= set(labels):
+            set_form_error(
+                self, "labels",
+                "No available images to download for %s" %
+                cleaned_data['labels'])
+
+        return cleaned_data
 
     def save(self, *args, **kwargs):
         boot_source_selection = super(

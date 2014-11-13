@@ -891,6 +891,12 @@ class Factory(maastesting.factory.Factory):
             boot_source=boot_source, os=os, arch=arch,
             subarch=subarch, release=release, label=label)
 
+    def make_many_BootSourceCaches(self, number, **kwargs):
+        caches = list()
+        for _ in range(number):
+            caches.append(self.make_BootSourceCache(**kwargs))
+        return caches
+
     def make_BootSourceSelection(self, boot_source=None, os=None,
                                  release=None, arches=None, subarches=None,
                                  labels=None):
