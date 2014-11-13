@@ -77,7 +77,6 @@ issue_ipmi_command() {
     # Use C locale to force English error messages.
     result=$(echo workaround |\
     LC_ALL=C ${ipmipower} ${workarounds} ${driver_option} -h ${power_address} ${user_option} -p ${power_pass} "$@")
-    fi
 
     if echo $result | grep -q "password invalid"
     then
