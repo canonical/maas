@@ -15,16 +15,15 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
-import random
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.drivers.osystem.centos import (
     BOOT_IMAGE_PURPOSE,
     CentOS,
-    DISTRO_SERIES_CHOICES,
     DISTRO_SERIES_DEFAULT,
     )
+from testtools.matchers import Equals
 
 
 class TestCentOS(MAASTestCase):
@@ -44,14 +43,37 @@ class TestCentOS(MAASTestCase):
                 BOOT_IMAGE_PURPOSE.XINSTALL,
                 ])
 
+    def test_is_release_supported(self):
+        name_supported = {
+            "centos6": True,
+            "centos65": True,
+            "centos7": True,
+            "centos71": True,
+            "cent65": False,
+            "cent": False,
+            "centos711": False,
+            }
+        osystem = CentOS()
+        for name, supported in name_supported.items():
+            self.expectThat(
+                osystem.is_release_supported(name), Equals(supported))
+
     def test_get_default_release(self):
         osystem = CentOS()
         expected = osystem.get_default_release()
         self.assertEqual(expected, DISTRO_SERIES_DEFAULT)
 
     def test_get_release_title(self):
+        name_titles = {
+            "centos6": "CentOS 6.0",
+            "centos65": "CentOS 6.5",
+            "centos7": "CentOS 7.0",
+            "centos71": "CentOS 7.1",
+            "cent65": None,
+            "cent": None,
+            "centos711": None,
+            }
         osystem = CentOS()
-        release = random.choice(DISTRO_SERIES_CHOICES.keys())
-        self.assertEqual(
-            DISTRO_SERIES_CHOICES[release],
-            osystem.get_release_title(release))
+        for name, title in name_titles.items():
+            self.expectThat(
+                osystem.get_release_title(name), Equals(title))
