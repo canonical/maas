@@ -55,19 +55,22 @@
   YUI().use('node', function (Y) {
     Y.on('load', function() {
       var master = Y.one('#all_system_id_control');
-      var checkboxes = Y.one('table#node_list').all('input[name="system_id"]');
-      // Uncheck the master checkbox if one of the row checkboxes gets
-      // unchecked
-      checkboxes.on('change', function(e) {
-        var notChecked = checkboxes.filter('input:not(:checked)');
-        master.set('checked', (notChecked.size() == 0));
-      });
-      // Check/uncheck all the row checkboxes if the master checkbox gets
-      // checked/unchecked.
-      master.on('change', function(e) {
-        var checked = e.target.get('checked');
-        checkboxes.set('checked', checked);
-      });
+      var nodelist = Y.one('table#node_list');
+      if (Y.Lang.isValue(nodelist)) {
+        var checkboxes = nodelist.all('input[name="system_id"]');
+        // Uncheck the master checkbox if one of the row checkboxes gets
+        // unchecked
+        checkboxes.on('change', function(e) {
+          var notChecked = checkboxes.filter('input:not(:checked)');
+          master.set('checked', (notChecked.size() == 0));
+        });
+        // Check/uncheck all the row checkboxes if the master checkbox gets
+        // checked/unchecked.
+        master.on('change', function(e) {
+          var checked = e.target.get('checked');
+          checkboxes.set('checked', checked);
+        });
+      }
     });
   });
   // Reveal the zone widget only when the "set zone" action is selected.
@@ -118,6 +121,17 @@
       });
       view.addLoader(poller.get("io"));
       poller.poll();
+    });
+  });
+  // Submit the search form, when the search event is fired on the search box.
+  YUI().use('node', function (Y) {
+    Y.on('domready', function() {
+      // on('search') does not work with YUI, so have to set the event
+      // handler directly.
+      var searchBox = Y.one('input[name="query"]');
+      searchBox._node.onsearch = function() {
+          Y.one("#node_listing_search_form").submit();
+      };
     });
   });
   // -->
