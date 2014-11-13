@@ -101,6 +101,7 @@ DISPLAYED_NODE_FIELDS = (
     'distro_series',
     'netboot',
     'power_type',
+    'power_state',
     'tag_names',
     'ip_addresses',
     'routers',

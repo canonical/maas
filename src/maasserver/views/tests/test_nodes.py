@@ -16,6 +16,7 @@ __all__ = []
 
 from cgi import escape
 import httplib
+import json
 import logging
 from operator import attrgetter
 import os
@@ -24,6 +25,7 @@ from random import (
     randint,
     )
 from textwrap import dedent
+import time
 from unittest import skip
 from urlparse import (
     parse_qsl,
@@ -83,7 +85,9 @@ from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import (
+    configure_macs,
     message_from_form_stats,
+    node_to_dict,
     NodeEventListView,
     NodeView,
     )
@@ -106,6 +110,44 @@ from testtools.matchers import (
 
 def normalize_text(text):
     return ' '.join(text.split())
+
+
+class TestHelpers(MAASServerTestCase):
+
+    def test_node_to_dict_keys(self):
+        node = factory.make_Node()
+        node = configure_macs([node])[0]
+        self.assertThat(
+            node_to_dict(node),
+            ContainsAll([
+                'id', 'system_id', 'url', 'hostname', 'fqdn',
+                'status', 'owner', 'cpu_count', 'memory', 'storage',
+                'power_state', 'zone', 'zone_url', 'mac', 'vendor', 'macs']))
+
+    def test_node_to_dict_values(self):
+        node = factory.make_Node(mac=True)
+        node = configure_macs([node])[0]
+        dict_node = node_to_dict(node)
+        self.expectThat(dict_node['id'], Equals(node.id))
+        self.expectThat(dict_node['system_id'], Equals(node.system_id))
+        self.expectThat(
+            dict_node['url'],
+            Equals(reverse('node-view', args=[node.system_id])))
+        self.expectThat(dict_node['hostname'], Equals(node.hostname))
+        self.expectThat(dict_node['fqdn'], Equals(node.fqdn))
+        self.expectThat(dict_node['status'], Equals(node.display_status()))
+        self.expectThat(dict_node['owner'], Equals(''))
+        self.expectThat(dict_node['cpu_count'], Equals(node.cpu_count))
+        self.expectThat(dict_node['memory'], Equals(node.display_memory()))
+        self.expectThat(dict_node['storage'], Equals(node.display_storage()))
+        self.expectThat(dict_node['power_state'], Equals(node.power_state))
+        self.expectThat(dict_node['zone'], Equals(node.zone.name))
+        self.expectThat(
+            dict_node['zone_url'],
+            Equals(reverse('zone-view', args=[node.zone.name])))
+        self.expectThat(dict_node['mac'], Equals(node.primary_mac))
+        self.expectThat(dict_node['vendor'], Equals(node.primary_mac_vendor))
+        self.expectThat(dict_node['macs'], Equals(node.extra_macs))
 
 
 class TestGenerateJSPowerTypes(MAASServerTestCase):
@@ -162,6 +204,14 @@ class NodeViewsTest(MAASServerTestCase):
         profile = self.logged_in_user.get_profile()
         consumer, token = profile.create_authorisation_token()
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
+
+    def get_node_list_ajax(self, ids=None):
+        """Get result of AJAX request for node list."""
+        url = reverse('node-list')
+        if ids is not None and len(ids) > 0:
+            url += '?id=' + '&id='.join(ids)
+        return self.client.get(
+            url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
     def test_node_list_contains_link_to_node_view(self):
         self.client_log_in()
@@ -442,6 +492,28 @@ class NodeViewsTest(MAASServerTestCase):
         # We see more nodes, yet the number of queries is unchanged.
         self.assertEqual(20, count_node_links(response))
         self.assertEqual(num_queries, num_bonus_queries)
+
+    def test_node_list_ajax_returns_json(self):
+        self.client_log_in()
+        response = self.get_node_list_ajax()
+        self.assertEqual('application/json', response['Content-Type'])
+
+    def test_node_list_ajax_returns_empty_list_when_no_ids(self):
+        self.client_log_in()
+        response = self.get_node_list_ajax()
+        json_obj = json.loads(response.content)
+        self.assertEqual([], json_obj)
+
+    def test_node_list_ajax_returns_node_info(self):
+        self.client_log_in()
+        nodes = [factory.make_Node() for _ in range(3)]
+        nodes = configure_macs(nodes)
+        ids = [node.system_id for node in nodes]
+        response = self.get_node_list_ajax(ids=ids)
+        json_obj = json.loads(response.content)
+        self.assertItemsEqual(
+            [node_to_dict(node) for node in nodes],
+            json_obj)
 
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
@@ -1318,7 +1390,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link, node2_link]))
+        self.assertItemsEqual(node_links, [node_link, node2_link])
 
     def test_node_list_search_query_finds_by_field_hostname(self):
         self.client_log_in()
@@ -1341,7 +1413,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link, node2_link]))
+        self.assertItemsEqual(node_links, [node_link, node2_link])
 
     def test_node_list_search_query_finds_by_all_fields_arch(self):
         self.client_log_in()
@@ -1355,7 +1427,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_field_arch(self):
         self.client_log_in()
@@ -1369,7 +1441,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_field_power_state(self):
         self.client_log_in()
@@ -1383,7 +1455,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_all_fields_full_mac(self):
         self.client_log_in()
@@ -1397,7 +1469,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_all_fields_partial_mac(self):
         self.client_log_in()
@@ -1412,7 +1484,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_field_mac_partial_mac(self):
         self.client_log_in()
@@ -1427,7 +1499,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_all_fields_status(self):
         self.client_log_in()
@@ -1442,7 +1514,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_field_status(self):
         self.client_log_in()
@@ -1458,7 +1530,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node_link]))
+        self.assertItemsEqual(node_links, [node_link])
 
     def test_node_list_search_query_finds_by_field_status_patial_deploy(self):
         self.client_log_in()
@@ -1474,7 +1546,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node1_link, node2_link]))
+        self.assertItemsEqual(node_links, [node1_link, node2_link])
 
     def test_node_list_search_query_finds_by_all_fields_for_miss_field(self):
         self.client_log_in()
@@ -1490,7 +1562,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([node1_link, node2_link]))
+        self.assertItemsEqual(node_links, [node1_link, node2_link])
 
     def test_node_list_search_query_returns_empty_for_missing_field(self):
         self.client_log_in()
@@ -1502,7 +1574,7 @@ class TestNodesViewSearch(MAASServerTestCase):
         document = fromstring(response.content)
         node_links = document.xpath(
             "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.expectThat(node_links, Equals([]))
+        self.assertItemsEqual(node_links, [])
 
     def test_node_list_search_doesnt_show_duplicates(self):
         # Unioning several query sets can result in dupes, check that
@@ -1966,6 +2038,94 @@ class NodeResultsDisplayTest(MAASServerTestCase):
             results_names,
             ContainsAll(
                 [normalise_whitespace(link.text_content()) for link in links]))
+
+
+class NodeListingJSReloader(SeleniumTestCase):
+
+    # JS Script that will load a new NodeTableReloader view, placing the
+    # object on the window.
+    RELOADER_SCRIPT = dedent("""\
+        YUI().use(
+          'maas.node_views', 'maas.shortpoll',
+          function (Y) {
+            // Place the reloader on the window, giving the ability for
+            // selenium to access the view.
+            window.reloader_view = new Y.maas.node_views.NodesTableReloader({
+              srcNode: '#node_list'});
+
+            // Start the poller so it makes the request to retrieve the
+            // node data.
+            var ids = window.reloader_view.getNodesList();
+            var op_url = "";
+            Y.Array.each(ids, function(id) {
+              op_url += "&id=" + id;
+            });
+            if (op_url.length > 0) {
+              op_url = "?" + op_url.substr(1);
+            }
+            var poller = new Y.maas.shortpoll.ShortPollManager({
+              uri: "%s" + op_url
+            });
+            window.reloader_view.addLoader(poller.get("io"));
+            poller.poll();
+        });
+        """)
+
+    def get_nodes(self):
+        """Return the loaded nodes from JS NodesTableReloader."""
+        self.get_page('node-list')
+
+        # We execute a script to create a new reloader view. This needs to
+        # be done to get access to the view. As the view code does not place
+        # the object on a global variable, which is a good thing.
+        self.selenium.execute_script(
+            self.RELOADER_SCRIPT % reverse('node-list'))
+
+        # Extract the loaded nodes list from javascript, to check that
+        # it loads the correct information. Due to the nature of JS and the
+        # poller requesting the nodes, we cannot assume that the result
+        # will be their immediately. We will try for a maximum of
+        # 5 seconds before giving up.
+        for _ in range(10):
+            js_nodes = self.selenium.execute_script(
+                "return window.reloader_view.nodes;")
+            if js_nodes is not None:
+                break
+            time.sleep(0.5)
+        if js_nodes is None:
+            self.fail("Unable to retrieve the loaded nodes from selenium.")
+        return js_nodes
+
+    def test_node_table_reloader_loads_nodes(self):
+        self.log_in()
+        js_nodes = self.get_nodes()
+        self.assertEquals(
+            Node.objects.count(),
+            len(js_nodes),
+            "NodesTableReloader didn't load all the nodes.")
+
+    def test_node_table_reloader_loads_node_with_correct_attributes(self):
+        self.log_in()
+        js_nodes = self.get_nodes()
+        for node in js_nodes:
+            self.expectThat(node, ContainsAll([
+                'id',
+                'system_id',
+                'url',
+                'hostname',
+                'fqdn',
+                'status',
+                'owner',
+                'cpu_count',
+                'memory',
+                'storage',
+                'power_state',
+                'zone',
+                'zone_url',
+                'mac',
+                'vendor',
+                'macs',
+                ]))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):

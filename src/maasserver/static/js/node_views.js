@@ -1,4 +1,4 @@
-/* Copyright 2012 Canonical Ltd.  This software is licensed under the
+/* Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
  * GNU Affero General Public License version 3 (see the file LICENSE).
  *
  * Node model.
@@ -398,6 +398,154 @@ module.NodesDashboard = Y.Base.create(
         return Y.Array.filter(this.modelList.toArray(), function (model) {
             return model.get('status') !== NODE_STATUS.RETIRED;
         }).length;
+    }
+});
+
+/**
+ * A customized view based on NodeListLoader that will reload the node
+ * information in the table provided in srcNode.
+ *
+ * This should only be used on an element type of "table". It also requires
+ * that the table contain a "tbody" as that is used to identify the "tr".
+ *
+ * This view uses data-* attributed to update the elements in the view. The
+ * data-field attribute sets which attribute on the node object should be bound
+ * to that element. By default when the node listing is updated, that element's
+ * text will be set to that value. Two modifiers exist that allow the
+ * modification of this behaviour. data-field-attr changes which attribute the
+ * value from the object should be set on that attribute. data-field-class
+ * allows the ability to set a class using the value from the node object.
+ * data-field-class uses a prefix to identify the previous class on the element
+ * before the value of the node object changed (e.g. "power-").
+ */
+module.NodesTableReloader = Y.Base.create('nodesTableReloader', Y.View, [], {
+
+    initializer: function(config) {
+        this.srcNode = Y.one(config.srcNode);
+    },
+
+    /**
+     * Add a loader, a Y.IO object. Events fired by this IO object will
+     * be followed, and will drive updates to this object's model.
+     *
+     * @method addLoader
+     */
+    addLoader: function(loader) {
+        loader.on("io:success", function(id, request) {
+            this.loadNodes(request.responseText);
+        }, this);
+    },
+
+    /**
+     * Load the nodes from the given data.
+     *
+     * @method loadNodes
+     */
+    loadNodes: function(data) {
+        try {
+            var nodes = JSON.parse(data);
+            this.nodes = nodes;
+        }
+        catch(e) {
+            console.log("Failed to decode node listing JSON data.");
+            return;
+        }
+        // Record that at least one load has been done.
+        this.loaded = true;
+        this.render();
+    },
+
+   /**
+    * Update the contents in the srcNode, based on the data attributes.
+    *
+    * @method render
+    */
+    render: function () {
+        var self = this;
+        var tbody = this.srcNode.one('tbody');
+        Y.Array.each(this.nodes, function(node) {
+            var row = self.getRowWithSystemId(tbody.all('tr'), node.system_id);
+            if (Y.Lang.isValue(row)) {
+                var elements = row.all('[data-field]');
+                self.updateElements(elements, node);
+            }
+        });
+    },
+
+   /**
+    * Return list of node system_ids in the table.
+    *
+    * @method getNodesList
+    */
+    getNodesList: function () {
+        var rows = this.srcNode.one('tbody').all('tr');
+        var system_ids = [];
+        rows.each(function(row) {
+            var id = row.getData('system-id');
+            if (Y.Lang.isValue(id)) {
+                system_ids.push(id);
+            }
+        });
+        return system_ids;
+    },
+
+   /**
+    * Return the "tr" that contains the data-system-id="system_id".
+    *
+    * This is needed for Firefox, as it fails to return a "tr" when using
+    * [data-system-id="system_id"] selector.
+    *
+    * @method getRowWithSystemId
+    */
+    getRowWithSystemId: function(rows, system_id) {
+        var foundRow = null;
+        rows.each(function(row) {
+            if (Y.Lang.isValue(foundRow)) {
+                // Alread found the row.
+                return;
+            }
+            var sysid = Y.one(row).getData('system-id');
+            if (Y.Lang.isValue(sysid) && sysid === system_id) {
+                foundRow = row;
+            }
+        });
+        return foundRow;
+    },
+
+   /**
+    * Update all of the elements with data-field attributes with the
+    * attributes on the given node.
+    *
+    * @method updateElements
+    */
+    updateElements: function(elements, node) {
+        elements.each(function(element) {
+            // Sets the given attribute as the text of the element, unless
+            // data-field-attr is present, then it is set on that
+            // attribute of the element.
+            var nodeAttr = element.getData('field');
+            var fieldAttr = element.getData('field-attr');
+            if (Y.Lang.isValue(fieldAttr)) {
+                element.set(fieldAttr, node[nodeAttr]);
+            } else {
+                element.set('text', node[nodeAttr]);
+            }
+
+            // Handle the data-field-class attribute. If a class
+            // starts with the value held in the attribute, it is removed
+            // from the element. The attribute value is then concat with the
+            // value of the node attribute and set as a class on the element.
+            var fieldClass = element.getData('field-class');
+            if (Y.Lang.isValue(fieldClass)) {
+                var classes = element.get('className').split(' ');
+                Y.Array.each(classes, function(cls) {
+                    if (cls.indexOf(fieldClass) === 0) {
+                        element.removeClass(cls);
+                    }
+                });
+                element.addClass(fieldClass + node[nodeAttr]);
+            }
+        });
     }
 });
 

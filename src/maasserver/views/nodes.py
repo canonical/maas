@@ -26,6 +26,7 @@ __all__ = [
     ]
 
 from cgi import escape
+import json
 import logging
 from operator import attrgetter
 import re
@@ -35,7 +36,10 @@ from urllib import urlencode
 from django.contrib import messages
 from django.core.urlresolvers import reverse
 from django.db.models import Q
-from django.http import QueryDict
+from django.http import (
+    HttpResponse,
+    QueryDict,
+    )
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -231,6 +235,32 @@ def configure_macs(nodes):
     return nodes
 
 
+def node_to_dict(node):
+    """Convert `Node` to a dictionary."""
+    if node.owner is None:
+        owner = ""
+    else:
+        owner = '%s' % node.owner
+    return dict(
+        id=node.id,
+        system_id=node.system_id,
+        url=reverse('node-view', args=[node.system_id]),
+        hostname=node.hostname,
+        fqdn=node.fqdn,
+        status=node.display_status(),
+        owner=owner,
+        cpu_count=node.cpu_count,
+        memory=node.display_memory(),
+        storage=node.display_storage(),
+        power_state=node.power_state,
+        zone=node.zone.name,
+        zone_url=reverse('zone-view', args=[node.zone.name]),
+        mac=node.primary_mac,
+        vendor=node.primary_mac_vendor,
+        macs=node.extra_macs,
+        )
+
+
 def convert_query_status(value):
     """Convert the given value into a list of status integers."""
     value = value.lower()
@@ -261,6 +291,9 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     def get(self, request, *args, **kwargs):
         """Handle a GET request."""
+        if request.is_ajax():
+            return self.handle_ajax_request(request, *args, **kwargs)
+
         self.populate_modifiers(request)
 
         if Config.objects.get_config("enable_third_party_drivers"):
@@ -507,6 +540,23 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         context["sort_classes"] = classes
         context['power_types'] = generate_js_power_types()
         return context
+
+    def handle_ajax_request(self, request):
+        """JSON response to update the nodes listing.
+
+        :param id: An list of system ids.  Only nodes with
+            matching system ids will be returned.
+        """
+        match_ids = request.GET.getlist('id')
+        if len(match_ids) == 0:
+            nodes = []
+        else:
+            nodes = Node.objects.get_nodes(
+                request.user, NODE_PERMISSION.VIEW, ids=match_ids)
+            nodes = prefetch_nodes_listing(nodes)
+            nodes = configure_macs(nodes)
+        nodes = [node_to_dict(node) for node in nodes]
+        return HttpResponse(json.dumps(nodes), mimetype='application/json')
 
 
 def enlist_preseed_view(request):

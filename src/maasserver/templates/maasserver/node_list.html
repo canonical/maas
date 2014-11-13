@@ -91,6 +91,35 @@
       set_zone_widget_visibility();
     });
   });
+  YUI().use(
+    'maas.node', 'maas.node_views', 'maas.shortpoll',
+    function (Y) {
+    Y.on('domready', function() {
+      if(!Y.Lang.isValue(Y.one('#node_list')))
+        return;
+
+      // Create the nodes reloader view.
+      var view = new Y.maas.node_views.NodesTableReloader({
+        srcNode: '#node_list'});
+
+      // Create the query url, filtered by system_ids.
+      var ids = view.getNodesList();
+      var op_url = "";
+      Y.Array.each(ids, function(id) {
+        op_url += "&id=" + id;
+      });
+      if (op_url.length > 0) {
+        op_url = "?" + op_url.substr(1);
+      }
+
+      // Start the poller.
+      var poller = new Y.maas.shortpoll.ShortPollManager({
+        uri: "{% url 'node-list' %}" + op_url
+      });
+      view.addLoader(poller.get("io"));
+      poller.poll();
+    });
+  });
   // -->
   </script>
 {% endblock %}

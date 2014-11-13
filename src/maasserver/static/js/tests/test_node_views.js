@@ -626,6 +626,161 @@ suite.add(new Y.maas.testing.TestCase({
 
 }));
 
+suite.add(new Y.maas.testing.TestCase({
+    name: 'test-node-views-NodeTableReloader',
+
+    setUp : function () {
+        Y.one('#placeholder').empty();
+        this.data = [
+            {
+                id: 1,
+                system_id: 'sys1',
+                url: '/nodes/sys1/view',
+                fqdn: 'host1.local',
+                status: 'New',
+                owner: '',
+                power_state: 'off'
+            },
+            {
+                id: 2,
+                system_id: 'sys2',
+                url: '/nodes/sys2/view',
+                fqdn: 'host2.local',
+                status: 'Allocated',
+                owner: 'admin',
+                power_state: 'off'
+            },
+            {
+                id: 3,
+                system_id: 'sys3',
+                url: '/nodes/sys3/view',
+                fqdn: 'host3.local',
+                status: 'Deploying',
+                owner: 'admin',
+                power_state: 'on'
+            },
+            {
+                id: 4,
+                system_id: 'sys4',
+                url: '/nodes/sys4/view',
+                fqdn: 'host4.local',
+                status: 'Deployed',
+                owner: 'admin',
+                power_state: 'off'
+            },
+            {
+                id: 5,
+                system_id: 'sys5',
+                url: '/nodes/sys5/view',
+                fqdn: 'host5.local',
+                status: 'Broken',
+                owner: '',
+                power_state: 'error'
+            }
+        ];
+    },
+
+    /**
+     * Create a table, hook it into the reloader, and arrange for cleanup.
+     *
+     * The "data" parameter defaults to this.data.
+     */
+    makeTableReloader: function(data) {
+        if (data === undefined) {
+            data = this.data;
+        }
+        var table = Y.Node.create('<table />');
+        var tbody = Y.Node.create('<tbody />');
+        table.append(tbody);
+        Y.Array.each(data, function(node) {
+            var tableRow = Y.Node.create('<tr />')
+                .setAttribute('data-system-id', node.system_id);
+            var nameRow = Y.Node.create('<td />')
+                .append(Y.Node.create('<a />')
+                    .setAttribute('data-field', 'url')
+                    .setAttribute('data-field-attr', 'href')
+                    .set('href', node.url)
+                    .append(Y.Node.create('<span />')
+                        .setAttribute('data-field', 'fqdn')
+                        .set('text', node.fqdn)));
+            var statusRow = Y.Node.create('<td />')
+                .setAttribute('data-field', 'status')
+                .set('text', node.status);
+            var ownerRow = Y.Node.create('<td />')
+                .setAttribute('data-field', 'owner')
+                .set('text', node.owner);
+            var powerStateRow = Y.Node.create('<td />')
+                .setAttribute('data-field', 'power_state')
+                .setAttribute('data-field-class', 'power-')
+                .addClass('power-' + node.power_state);
+            tableRow.append(nameRow);
+            tableRow.append(statusRow);
+            tableRow.append(ownerRow);
+            tableRow.append(powerStateRow);
+            tbody.append(tableRow);
+        });
+        Y.one('#placeholder').append(table);
+
+        var response = Y.JSON.stringify(data);
+        var view = new Y.maas.node_views.NodesTableReloader({
+            srcNode: Y.one('#placeholder').one('table')
+        });
+        view.loadNodes(response);
+        this.addCleanup(function() { view.destroy(); });
+        return view;
+    },
+
+    testInitializer: function() {
+        var view = this.makeTableReloader();
+        Y.Assert.areEqual(
+            this.data.length,
+            view.srcNode.one('tbody').all('tr').size(),
+            "The number of table rows should equal the number of nodes.");
+    },
+
+    testGetNodesList_returns_all_system_ids: function() {
+        var view = this.makeTableReloader();
+        var system_ids = [];
+        Y.Array.each(this.data, function(node) {
+            system_ids.push(node.system_id);
+        });
+        Y.ArrayAssert.itemsAreEqual(
+            system_ids, view.getNodesList(),
+            "The node system_id's from the table doesn't match the data.");
+    },
+
+    testRender_updates_node: function() {
+        var view = this.makeTableReloader();
+
+        // Update a random node.
+        var node = view.nodes[Math.floor(Math.random()*view.nodes.length)];
+        node.url = 'new/url';
+        node.fqdn = 'new-hostname.local';
+        node.status = 'updated';
+        node.owner = 'new-user';
+        node.power_state = 'new-state';
+        view.render();
+
+        var row = view.srcNode.one(
+            'tr[data-system-id="' + node.system_id + '"]');
+        Y.Assert.areSame(
+            node.url, row.one('a[data-field="url"]').getAttribute('href'));
+        Y.Assert.areSame(
+            node.fqdn, row.one('span[data-field="fqdn"]').get('text'));
+        Y.Assert.areSame(
+            node.status, row.one('td[data-field="status"]').get('text'));
+        Y.Assert.areSame(
+            node.owner, row.one('td[data-field="owner"]').get('text'));
+        Y.Assert.areSame(
+            node.power_state,
+            row.one('td[data-field="power_state"]').get('text'));
+        Y.Assert.isTrue(
+            row.one(
+                'td[data-field="power_state"]').hasClass('power-new-state'));
+    }
+
+}));
+
 
 function create_dashboard_view(data, self, root_node_descriptor) {
     var response = Y.JSON.stringify(data);
