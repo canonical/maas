@@ -18,6 +18,7 @@ from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from provisioningserver.utils.curtin import (
     compose_mv_command,
+    compose_recursive_copy,
     compose_write_text_file,
     )
 from testtools.matchers import (
@@ -38,14 +39,37 @@ class TestComposeMvCommand(MAASTestCase):
     def test__runs_command_in_target(self):
         command = compose_mv_command(
             factory.make_name('source'), factory.make_name('dest'))
-        self.assertEqual(['curtin', 'in-target', '--'], command[:3])
+        curtin_prefix = ['curtin', 'in-target', '--']
+        self.assertEqual(curtin_prefix, command[:len(curtin_prefix)])
 
     def test__moves_file(self):
         source = factory.make_name('source')
         dest = factory.make_name('dest')
-        self.assertEqual(
-            ['mv', '--', source, dest],
-            compose_mv_command(source, dest)[-4:])
+        command = compose_mv_command(source, dest)
+        mv_suffix = ['mv', '--', source, dest]
+        self.assertEqual(mv_suffix, command[-len(mv_suffix):])
+
+
+class TestComposeRecursiveCopy(MAASTestCase):
+
+    def test__returns_command_list(self):
+        command = compose_recursive_copy(
+            factory.make_name('source'), factory.make_name('dest'))
+        self.expectThat(command, IsInstance(list))
+        self.expectThat(command, AllMatch(IsInstance(unicode)))
+
+    def test__runs_command_in_target(self):
+        command = compose_recursive_copy(
+            factory.make_name('source'), factory.make_name('dest'))
+        curtin_prefix = ['curtin', 'in-target', '--']
+        self.assertEqual(curtin_prefix, command[:len(curtin_prefix)])
+
+    def test__copies(self):
+        source = factory.make_name('source')
+        dest = factory.make_name('dest')
+        command = compose_recursive_copy(source, dest)
+        cp_suffix = ['cp', '-r', '-p', '--', source, dest]
+        self.assertEqual(cp_suffix, command[-len(cp_suffix):])
 
 
 class TestComposeWriteTextFile(MAASTestCase):
