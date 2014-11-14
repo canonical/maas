@@ -49,6 +49,9 @@ def get_name_and_vlan_from_cluster_interface(cluster_name, interface):
     vlan_tag = None
     if '.' in name:
         _, vlan_tag = name.split('.', 1)
+        if ':' in vlan_tag:
+            # Nasty: there's an alias after the VLAN tag.
+            vlan_tag, _ = vlan_tag.split(':', 1)
         name = name.replace('.', '-')
     name = name.replace(':', '-')
     network_name = "-".join((cluster_name, name))

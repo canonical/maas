@@ -80,8 +80,7 @@ class TestGetNameAndVlanFromClusterInterface(MAASTestCase):
             (expected_name, '%d' % vlan_tag),
             get_name_and_vlan_from_cluster_interface(cluster, interface))
 
-    def test_returns_name_with_crazy_colon_and_vlan(self):
-        # For truly twisted network admins.
+    def test_returns_name_with_alias_and_vlan_tag(self):
         cluster = factory.make_name('cluster')
         base_interface = self.make_interface()
         vlan_tag = factory.make_vlan_tag()
@@ -92,6 +91,22 @@ class TestGetNameAndVlanFromClusterInterface(MAASTestCase):
             base_interface,
             alias,
             vlan_tag,
+            )
+        self.assertEqual(
+            (expected_name, '%d' % vlan_tag),
+            get_name_and_vlan_from_cluster_interface(cluster, interface))
+
+    def test_returns_name_with_vlan_tag_and_alias(self):
+        cluster = factory.make_name('cluster')
+        base_interface = self.make_interface()
+        vlan_tag = factory.make_vlan_tag()
+        alias = randint(0, 99)
+        interface = '%s.%d:%d' % (base_interface, vlan_tag, alias)
+        expected_name = '%s-%s-%d-%d' % (
+            cluster,
+            base_interface,
+            vlan_tag,
+            alias,
             )
         self.assertEqual(
             (expected_name, '%d' % vlan_tag),
