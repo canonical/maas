@@ -1,4 +1,5 @@
 # Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
+
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test the factory where appropriate.  Don't overdo this."""
@@ -17,6 +18,7 @@ __all__ = []
 from datetime import datetime
 from itertools import count
 import os.path
+import random
 from random import randint
 import subprocess
 
@@ -25,6 +27,7 @@ from maastesting.factory import (
     TooManyRandomRetries,
     )
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import FakeRandInt
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -51,6 +54,23 @@ class TestFactory(MAASTestCase):
 
     def test_pick_port_returns_int(self):
         self.assertIsInstance(factory.pick_port(), int)
+
+    def test_make_vlan_tag_excludes_None_by_default(self):
+        # Artificially limit randint to a very narrow range, to guarantee
+        # some repetition in its output, and virtually guarantee that we test
+        # both outcomes of the flip-a-coin call in make_vlan_tag.
+        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
+        outcomes = {factory.make_vlan_tag() for _ in range(1000)}
+        self.assertEqual({1}, outcomes)
+
+    def test_make_vlan_tag_includes_None_if_allow_none(self):
+        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
+        self.assertEqual(
+            {None, 1},
+            {
+                factory.make_vlan_tag(allow_none=True)
+                for _ in range(1000)
+            })
 
     def test_make_ipv4_address(self):
         ip_address = factory.make_ipv4_address()

@@ -125,7 +125,6 @@ from maasserver.models import (
     Tag,
     Zone,
     )
-from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.node import (
     fqdn_is_duplicate,
     nodegroup_fqdn,
@@ -138,7 +137,10 @@ from maasserver.node_action import (
     )
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.interfaces import make_name_from_interface
+from maasserver.utils.interfaces import (
+    get_name_and_vlan_from_cluster_interface,
+    make_name_from_interface,
+    )
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
@@ -1409,7 +1411,8 @@ def create_Network_from_NodeGroupInterface(interface):
         # Can be None or empty string, do nothing if so.
         return
 
-    name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+    name, vlan_tag = get_name_and_vlan_from_cluster_interface(
+        interface.name, interface.interface)
     ipnetwork = make_network(interface.ip, interface.subnet_mask)
     network = Network(
         name=name,

@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'get_name_and_vlan_from_cluster_interface',
     'make_name_from_interface',
     ]
 
@@ -34,3 +35,21 @@ def make_name_from_interface(interface):
     else:
         base_name = interface
     return re.sub(u'[^\w:.-]', '--', base_name)
+
+
+def get_name_and_vlan_from_cluster_interface(cluster_name, interface):
+    """Return a name suitable for a `Network` managed by a cluster interface.
+
+    :param interface: Network interface name, e.g. `eth0:1`.
+    :param cluster_name: Name of the cluster.
+    :return: a tuple of the new name and the interface's VLAN tag.  The VLAN
+        tag may be None.
+    """
+    name = interface
+    vlan_tag = None
+    if '.' in name:
+        _, vlan_tag = name.split('.', 1)
+        name = name.replace('.', '-')
+    name = name.replace(':', '-')
+    network_name = "-".join((cluster_name, name))
+    return network_name, vlan_tag

@@ -24,28 +24,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.factory import TooManyRandomRetries
-
-
-class FakeRandInt:
-    """Fake `randint` which forced limitations on its range.
-
-    This lets you set a forced minimum, and/or a forced maximum, on the range
-    of any call.  For example, if you pass `forced_maximum=3`, then a call
-    will never return more than 3.  If you don't set a maximum, or if the
-    call's maximum argument is less than the forced maximum, then the call's
-    maximum will be respected.
-    """
-    def __init__(self, real_randint, forced_minimum=None, forced_maximum=None):
-        self.real_randint = real_randint
-        self.minimum = forced_minimum
-        self.maximum = forced_maximum
-
-    def __call__(self, minimum, maximum):
-        if self.minimum is not None:
-            minimum = max(minimum, self.minimum)
-        if self.maximum is not None:
-            maximum = min(maximum, self.maximum)
-        return self.real_randint(minimum, maximum)
+from maastesting.utils import FakeRandInt
 
 
 class TestFactory(MAASServerTestCase):
@@ -127,23 +106,6 @@ class TestFactory(MAASServerTestCase):
         node = reload_object(node)
         self.assertEqual(previous_zone, node.zone)
 
-    def test_make_vlan_tag_excludes_None_by_default(self):
-        # Artificially limit randint to a very narrow range, to guarantee
-        # some repetition in its output, and virtually guarantee that we test
-        # both outcomes of the flip-a-coin call in make_vlan_tag.
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
-        outcomes = {factory.make_vlan_tag() for _ in range(1000)}
-        self.assertEqual({1}, outcomes)
-
-    def test_make_vlan_tags_includes_None_if_allow_none(self):
-        self.patch(random, 'randint', FakeRandInt(random.randint, 0, 1))
-        self.assertEqual(
-            {None, 1},
-            {
-                factory.make_vlan_tag(allow_none=True)
-                for _ in range(1000)
-            })
-
     def test_make_Networks_lowers_names_if_sortable_name(self):
         networks = factory.make_Networks(10, sortable_name=True)
         self.assertEqual(
@@ -183,4 +145,5 @@ class TestFactory(MAASServerTestCase):
     def test_make_Networks_gives_up_if_random_tags_keep_clashing(self):
         self.patch(factory, 'make_Network')
         self.patch(random, 'randint', lambda *args: 1)
+        self.patch(factory, 'pick_bool', lambda *args: False)
         self.assertRaises(TooManyRandomRetries, factory.make_Networks, 2)
