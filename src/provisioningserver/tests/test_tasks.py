@@ -31,8 +31,6 @@ from provisioningserver import tasks
 from provisioningserver.dns.config import (
     MAAS_NAMED_CONF_NAME,
     MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME,
-    MAAS_NAMED_RNDC_CONF_NAME,
-    MAAS_RNDC_CONF_NAME,
     )
 from provisioningserver.dns.testing import patch_dns_config_path
 from provisioningserver.dns.zoneconfig import (
@@ -42,7 +40,6 @@ from provisioningserver.dns.zoneconfig import (
 from provisioningserver.tasks import (
     rndc_command,
     RNDC_COMMAND_MAX_RETRY,
-    setup_rndc_configuration,
     write_dns_config,
     write_dns_zone_config,
     write_full_dns_config,
@@ -139,28 +136,6 @@ class TestDNSTasks(PservTestCase):
                     FileExists(),
                     FileExists(),
                     Equals([((command, ), {})]),
-                )),
-            result)
-
-    def test_setup_rndc_configuration_writes_files(self):
-        command = factory.make_string()
-        result = setup_rndc_configuration.delay(
-            callback=rndc_command.subtask(args=[command]))
-
-        self.assertThat(
-            (
-                result.successful(),
-                os.path.join(self.dns_conf_dir, MAAS_RNDC_CONF_NAME),
-                os.path.join(
-                    self.dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME),
-                self.rndc_recorder.calls,
-            ),
-            MatchesListwise(
-                (
-                    Equals(True),
-                    FileExists(),
-                    FileExists(),
-                    Equals([((command,), {})]),
                 )),
             result)
 

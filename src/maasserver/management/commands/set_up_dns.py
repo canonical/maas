@@ -29,7 +29,7 @@ from django.core.management.base import BaseCommand
 from provisioningserver.dns.config import (
     DNSConfig,
     set_up_options_conf,
-    setup_rndc,
+    set_up_rndc,
     )
 
 
@@ -49,7 +49,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         no_clobber = options.get('no_clobber')
-        setup_rndc()
+        set_up_rndc()
         set_up_options_conf(
             overwrite=not no_clobber)
         config = DNSConfig()

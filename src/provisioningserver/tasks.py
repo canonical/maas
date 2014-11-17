@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = [
     'rndc_command',
-    'setup_rndc_configuration',
     'write_dns_config',
     'write_dns_zone_config',
     'write_full_dns_config',
@@ -29,7 +28,6 @@ from provisioningserver.dns.config import (
     DNSConfig,
     execute_rndc_command,
     set_up_options_conf,
-    setup_rndc,
     )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.logger.utils import log_call
@@ -151,20 +149,5 @@ def write_dns_zone_config(zones, callback=None, **kwargs):
     """
     for zone in zones:
         zone.write_config()
-    if callback is not None:
-        callback.delay()
-
-
-@task
-@log_call()
-@log_exception_text
-def setup_rndc_configuration(callback=None):
-    """Write out the two rndc configuration files (rndc.conf and
-    named.conf.rndc).
-
-    :param callback: Callback subtask.
-    :type callback: callable
-    """
-    setup_rndc()
     if callback is not None:
         callback.delay()
