@@ -55,7 +55,7 @@ class FileStorageManager(Manager):
         being created.
 
         :param content: File-like object.
-        :returns: `LargeFile`.
+        :return: `LargeFile`.
         """
         sha256 = hashlib.sha256()
         for data in content:

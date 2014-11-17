@@ -1101,7 +1101,7 @@ class Node(CleanSave, TimestampedModel):
         to control this node's power, but there are *no* guarantees. The same
         goes for ``can-be-stopped``.
 
-        :returns: :py:class:`PowerInfo` (a `namedtuple`)
+        :return: :py:class:`PowerInfo` (a `namedtuple`)
         """
         power_params = self.get_effective_power_parameters()
         try:
@@ -1356,7 +1356,7 @@ class Node(CleanSave, TimestampedModel):
     def claim_static_ip_addresses(self):
         """Assign static IPs to the node's PXE MAC.
 
-        :returns: A list of ``(ip-address, mac-address)`` tuples.
+        :return: A list of ``(ip-address, mac-address)`` tuples.
         :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
         """
         mac = self.get_pxe_mac()

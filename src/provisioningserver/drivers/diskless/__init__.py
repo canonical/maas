@@ -77,7 +77,7 @@ class DisklessDriver:
         :param system_id: `Node.system_id`
         :param source_path: Path to the source data
         :param kwargs: Settings user set from `get_settings`.
-        :returns: Path to the newly created disk.
+        :return: Path to the newly created disk.
         """
 
     @abstractmethod

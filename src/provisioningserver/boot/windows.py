@@ -218,7 +218,7 @@ class WindowsPXEBootMethod(BootMethod):
 
         :param backend: requesting backend
         :param path: requested path
-        :returns: dict of match params from path, None if no match
+        :return: dict of match params from path, None if no match
         """
         # If the node is requesting the initial bootloader, then we
         # need to see if this node is set to boot Windows first.
@@ -303,7 +303,7 @@ class WindowsPXEBootMethod(BootMethod):
         """Composes the Windows boot configuration data.
 
         :param kernel_params: An instance of `KernelParameters`.
-        :returns: Binary data
+        :return: Binary data
         """
         preseed_url = self.compose_preseed_url(kernel_params.preseed_url)
         release_path = "%s\\source" % kernel_params.release

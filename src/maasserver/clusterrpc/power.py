@@ -41,7 +41,7 @@ def power_nodes(command, nodes):
     :param command: The `amp.Command` to call.
     :param nodes: A sequence of ``(system-id, hostname, cluster-uuid,
         power-info)`` tuples.
-    :returns: A mapping of each node's system ID to a
+    :return: A mapping of each node's system ID to a
         :py:class:`twisted.internet.defer.Deferred` that will fire when
         the `command` call completes.
 

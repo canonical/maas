@@ -292,7 +292,7 @@ def clean_distro_series_field(form, field, os_field):
     :param form: `Form` class
     :param field: distro_series field name
     :param os_field: osystem field name
-    :returns: clean distro_series field value
+    :return: clean distro_series field value
     """
     new_distro_series = form.cleaned_data.get(field)
     if '*' in new_distro_series:

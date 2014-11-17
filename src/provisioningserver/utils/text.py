@@ -33,7 +33,7 @@ def make_bullet_list(messages):
     asterisk in the first column.
 
     :type messages: An iterable of strings.
-    :returns: A string.
+    :return: A string.
     """
     fill = TextWrapper(72, initial_indent="* ", subsequent_indent="  ").fill
     return "\n".join(fill(message) for message in messages)

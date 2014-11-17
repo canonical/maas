@@ -200,7 +200,7 @@ def get_seamicro15k_api(version, ip, username, password):
     """Gets the api client depending on the version.
     Supports v0.9 and v2.0.
 
-    :returns: api for version, None if version not supported
+    :return: api for version, None if version not supported
     """
     if version == 'v0.9':
         api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
@@ -225,7 +225,7 @@ def get_seamicro15k_servers(version, ip, username, password):
     """Gets a list of tuples containing (server_id, mac_address) from the
     sm15k api version. Supports v0.9 and v2.0.
 
-    :returns: list of (server_id, mac_address), None if version not supported
+    :return: list of (server_id, mac_address), None if version not supported
     """
     api = get_seamicro15k_api(version, ip, username, password)
     if api:

@@ -108,7 +108,7 @@ class PowerAction:
         """Execute raw shell script (as rendered from a template).
 
         :param commands: String containing shell script.
-        :returns: Standard output and standard error returned by the execution
+        :return: Standard output and standard error returned by the execution
             of the shell script.
         :raises: :class:`PowerActionFail`
         """
@@ -124,7 +124,7 @@ class PowerAction:
     def execute(self, **context):
         """Execute the template.
 
-        :returns: Standard output and standard error returned by the execution
+        :return: Standard output and standard error returned by the execution
             of the template.
 
         Any supplied parameters will be passed to the template as substitution

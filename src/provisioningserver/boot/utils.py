@@ -44,7 +44,7 @@ def get_file(url):
     """Downloads the file from the URL.
 
     :param url: URL to download file
-    :returns: File data, or None
+    :return: File data, or None
     """
     # Build a new opener so that the environment is checked for proxy
     # URLs. Using urllib2.urlopen() means that we'd only be using the

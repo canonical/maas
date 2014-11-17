@@ -66,7 +66,7 @@ def get_shared_secret_from_filesystem():
     written. If the directory does not already exist, this will attempt to
     create it, including all parent directories.
 
-    :returns: A byte string of arbitrary length.
+    :return: A byte string of arbitrary length.
     """
     secret_path = get_shared_secret_filesystem_path()
     ensure_dir(dirname(secret_path))

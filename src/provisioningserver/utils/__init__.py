@@ -398,7 +398,7 @@ def flatten(*things):
       >>> sorted(flatten([1, 2, {3, 4, (5, 6)}]))
       [1, 2, 3, 4, 5, 6]
 
-    :returns: An iterator.
+    :return: An iterator.
     """
     def _flatten(things):
         if isinstance(things, basestring):
