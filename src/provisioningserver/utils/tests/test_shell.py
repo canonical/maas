@@ -18,6 +18,7 @@ import os
 from random import randint
 import re
 import signal
+from subprocess import CalledProcessError
 import time
 
 from maastesting.factory import factory
@@ -31,6 +32,11 @@ from provisioningserver.utils.shell import (
     )
 import provisioningserver.utils.shell as shell_module
 from testtools import ExpectedException
+from testtools.matchers import (
+    Is,
+    IsInstance,
+    Not,
+    )
 
 
 class TestCallAndCheck(MAASTestCase):
@@ -70,6 +76,34 @@ class TestCallAndCheck(MAASTestCase):
 
 class TestExternalProcessError(MAASTestCase):
     """Tests for the ExternalProcessError class."""
+
+    def test_upgrade_upgrades_CalledProcessError(self):
+        error = factory.make_CalledProcessError()
+        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        ExternalProcessError.upgrade(error)
+        self.expectThat(error, IsInstance(ExternalProcessError))
+
+    def test_upgrade_does_not_change_CalledProcessError_subclasses(self):
+        error_type = factory.make_exception_type(bases=(CalledProcessError,))
+        error = factory.make_CalledProcessError()
+        error.__class__ = error_type  # Change the class.
+        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        ExternalProcessError.upgrade(error)
+        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        self.expectThat(error.__class__, Is(error_type))
+
+    def test_upgrade_does_not_change_other_errors(self):
+        error_type = factory.make_exception_type()
+        error = error_type()
+        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        ExternalProcessError.upgrade(error)
+        self.expectThat(error, Not(IsInstance(ExternalProcessError)))
+        self.expectThat(error.__class__, Is(error_type))
+
+    def test_upgrade_returns_None(self):
+        self.expectThat(
+            ExternalProcessError.upgrade(factory.make_exception()),
+            Is(None))
 
     def test_to_unicode_decodes_to_unicode(self):
         # Byte strings are decoded as ASCII by _to_unicode(), replacing

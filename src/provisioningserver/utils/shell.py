@@ -68,6 +68,27 @@ class ExternalProcessError(CalledProcessError):
 
     """
 
+    @classmethod
+    def upgrade(cls, error):
+        """Upgrade the given error to an instance of this class.
+
+        If `error` is an instance of :py:class:`CalledProcessError`, this will
+        change its class, in-place, to :py:class:`ExternalProcessError`.
+
+        There are two ways we could have done this:
+
+        1. Change the class of `error` in-place.
+
+        2. Capture ``exc_info``, create a new exception based on `error`, then
+           re-raise with the 3-argument version of ``raise``.
+
+        #1 seems a lot simpler so that's what this method does. The caller
+        needs then only use a naked ``raise`` to get the utility of this class
+        without losing the traceback.
+        """
+        if type(error) is CalledProcessError:
+            error.__class__ = cls
+
     @staticmethod
     def _to_unicode(string):
         if isinstance(string, bytes):

@@ -480,6 +480,12 @@ class Factory:
 
         return (stdin, stdout, stderr)
 
+    def make_CalledProcessError(self):
+        """Make a fake :py:class:`subprocess.CalledProcessError`."""
+        return subprocess.CalledProcessError(
+            returncode=random.randint(1, 10),
+            cmd=[self.make_name("command")],
+            output=factory.make_bytes())
 
 # Create factory singleton.
 factory = Factory()

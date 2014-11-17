@@ -951,7 +951,11 @@ def _import_resources_in_thread(force=False):
     """
     def coerce_subprocess_failures(failure):
         failure.trap(CalledProcessError)
-        failure.value.__class__ = ExternalProcessError
+        # Upgrade CalledProcessError to ExternalProcessError in-place so that
+        # we get the niceness of the latter but without losing the traceback.
+        # That may not so relevant here because Failure will have captured the
+        # traceback already, but it makes sense to be consistent.
+        ExternalProcessError.upgrade(failure.value)
         return failure
 
     d = deferToThread(_import_resources, force=force)
