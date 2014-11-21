@@ -246,7 +246,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('text/plain', response['Content-Type'])
         self.assertEqual(
-            "Unrecognised signature: POST None",
+            "Unrecognised signature: method=POST op=None",
             response.content)
 
     def test_POST_new_fails_if_autodetect_nodegroup_required(self):
@@ -305,7 +305,7 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertEqual(
-            "Unrecognised signature: POST invalid_operation",
+            "Unrecognised signature: method=POST op=invalid_operation",
             response.content)
 
     def test_POST_new_rejects_invalid_data(self):

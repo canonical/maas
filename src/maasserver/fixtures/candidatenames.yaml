@@ -1,0 +1,61 @@
+- fields: {name: edwin, position: 1}
+  model: maasserver.candidatename
+  pk: 10001
+- fields: {name: hubble, position: 2}
+  model: maasserver.candidatename
+  pk: 20001
+- fields: {name: george, position: 1}
+  model: maasserver.candidatename
+  pk: 10002
+- fields: {name: boole, position: 2}
+  model: maasserver.candidatename
+  pk: 20002
+- fields: {name: gottfried, position: 1}
+  model: maasserver.candidatename
+  pk: 10003
+- fields: {name: leibniz, position: 2}
+  model: maasserver.candidatename
+  pk: 20003
+- fields: {name: henri, position: 1}
+  model: maasserver.candidatename
+  pk: 10004
+- fields: {name: poincare, position: 2}
+  model: maasserver.candidatename
+  pk: 20004
+- fields: {name: isaac, position: 1}
+  model: maasserver.candidatename
+  pk: 10005
+- fields: {name: newton, position: 2}
+  model: maasserver.candidatename
+  pk: 20005
+- fields: {name: james, position: 1}
+  model: maasserver.candidatename
+  pk: 10006
+- fields: {name: maxwell, position: 2}
+  model: maasserver.candidatename
+  pk: 20006
+- fields: {name: joseph, position: 1}
+  model: maasserver.candidatename
+  pk: 10007
+- fields: {name: fourier, position: 2}
+  model: maasserver.candidatename
+  pk: 20007
+- fields: {name: leonhard, position: 1}
+  model: maasserver.candidatename
+  pk: 10008
+- fields: {name: euler, position: 2}
+  model: maasserver.candidatename
+  pk: 20008
+- fields: {name: srinivasa, position: 1}
+  model: maasserver.candidatename
+  pk: 10009
+- fields: {name: ramanujan, position: 2}
+  model: maasserver.candidatename
+  pk: 20009
+- fields: {name: tom, position: 1}
+  model: maasserver.candidatename
+  pk: 10010
+- fields: {name: lehrer, position: 2}
+  model: maasserver.candidatename
+  pk: 20010
+

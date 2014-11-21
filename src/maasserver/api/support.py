@@ -181,12 +181,25 @@ class OperationsHandlerMixin:
         signature = request.method.upper(), request.REQUEST.get("op")
         function = self.exports.get(signature)
         if function is None:
-            # Can't use MAASAPIBadRequest here because it derives from
-            # Exception, which gets Piston all confused for some reason.
             raise MAASAPIBadRequest(
-                "Unrecognised signature: %s %s" % signature)
+                "Unrecognised signature: method=%s op=%s" % signature)
         else:
             return function(self, request, *args, **kwargs)
+
+    def decorate(self, func):
+        """Decorate all exported operations with the given function.
+
+        Exports are typically available as a class attribute. This creates an
+        instance attribute that shadows that, with all the operation functions
+        decorated with `decorate`. This can be called multiple times to add
+        additional layers of decoration.
+
+        :param func: A single-argument callable.
+        """
+        self.exports = {
+            name: func(export)
+            for name, export in self.exports.viewitems()
+        }
 
 
 class OperationsHandler(

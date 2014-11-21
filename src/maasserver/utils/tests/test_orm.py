@@ -17,19 +17,31 @@ __all__ = []
 from itertools import repeat
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.db import (
+    connection,
+    transaction,
+    )
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
 from maasserver.testing.testcase import SerializationFailureTestCase
+from maasserver.utils import orm
 from maasserver.utils.orm import (
+    commit_within_atomic_block,
     get_first,
     get_one,
     is_serialization_failure,
     macs_contain,
     macs_do_not_contain,
+    make_serialization_failure,
+    outside_atomic_block,
+    request_transaction_retry,
     retry_on_serialization_failure,
     )
 from maastesting.factory import factory
-from maastesting.matchers import MockCallsMatch
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import (
     call,
@@ -37,6 +49,7 @@ from mock import (
     sentinel,
     )
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
+from testtools.matchers import MatchesPredicate
 
 
 class FakeModel:
@@ -224,7 +237,8 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
         function.side_effect = self.cause_serialization_failure
         function_wrapped = retry_on_serialization_failure(function)
         self.assertRaises(OperationalError, function_wrapped)
-        self.assertThat(function, MockCallsMatch(call(), call(), call()))
+        expected_calls = [call()] * 10
+        self.assertThat(function, MockCallsMatch(*expected_calls))
 
     def test_retries_on_serialization_failure_until_successful(self):
         serialization_error = self.assertRaises(
@@ -241,3 +255,76 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
         self.assertEqual(
             (sentinel.a, sentinel.b),
             function_wrapped(sentinel.a, b=sentinel.b))
+
+
+class TestMakeSerializationFailure(MAASTestCase):
+    """Tests for `make_serialization_failure`."""
+
+    def test__makes_a_serialization_failure(self):
+        exception = make_serialization_failure()
+        self.assertThat(exception, MatchesPredicate(
+            is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestRequestTransactionRetry(MAASTestCase):
+    """Tests for `request_transaction_retry`."""
+
+    def test__raises_a_serialization_failure(self):
+        exception = self.assertRaises(
+            OperationalError, request_transaction_retry)
+        self.assertThat(exception, MatchesPredicate(
+            is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestOutsideAtomicBlock(MAASTestCase):
+    """Tests for `outside_atomic_block`."""
+
+    def test__leaves_and_restores_atomic_block(self):
+        self.assertFalse(connection.in_atomic_block)
+        with transaction.atomic():
+            self.assertTrue(connection.in_atomic_block)
+            with outside_atomic_block():
+                self.assertFalse(connection.in_atomic_block)
+            self.assertTrue(connection.in_atomic_block)
+        self.assertFalse(connection.in_atomic_block)
+
+    def test__leaves_and_restores_multiple_levels_of_atomic_blocks(self):
+        self.assertFalse(connection.in_atomic_block)
+        with transaction.atomic():
+            with transaction.atomic():
+                with transaction.atomic():
+                    with transaction.atomic():
+                        with outside_atomic_block():
+                            # It leaves the multiple levels of atomic blocks,
+                            # but puts the same number of levels back in place
+                            # on exit.
+                            self.assertFalse(connection.in_atomic_block)
+                        self.assertTrue(connection.in_atomic_block)
+                    self.assertTrue(connection.in_atomic_block)
+                self.assertTrue(connection.in_atomic_block)
+            self.assertTrue(connection.in_atomic_block)
+        self.assertFalse(connection.in_atomic_block)
+
+    def test__restores_atomic_block_even_on_error(self):
+        with transaction.atomic():
+            exception_type = factory.make_exception_type()
+            try:
+                with outside_atomic_block():
+                    raise exception_type()
+            except exception_type:
+                self.assertTrue(connection.in_atomic_block)
+
+
+class TestCommitWithinAtomicBlock(MAASTestCase):
+    """Tests for `commit_within_atomic_block`."""
+
+    def test__relies_on_outside_atomic_block(self):
+        outside_atomic_block = self.patch(orm, "outside_atomic_block")
+        with transaction.atomic():
+            commit_within_atomic_block()
+        self.expectThat(outside_atomic_block, MockCalledOnceWith("default"))
+        context_manager = outside_atomic_block.return_value
+        self.expectThat(
+            context_manager.__enter__, MockCalledOnceWith())
+        self.expectThat(
+            context_manager.__exit__, MockCalledOnceWith(None, None, None))

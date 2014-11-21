@@ -31,6 +31,7 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
+from maasserver.utils.orm import request_transaction_retry
 
 # Describes how the log levels are displayed in the UI.
 LOGGING_LEVELS = {
@@ -55,9 +56,15 @@ class EventTypeManager(Manager):
                     name=name, description=description, level=level)
         except IntegrityError:
             # We may be in a situation where the event type already existed,
-            # or that another thread has created the event type concurrently
+            # or that another session has created the event type concurrently
             # with this thread. Proceed on that assumption.
-            return self.get(name=name)
+            try:
+                return self.get(name=name)
+            except EventType.DoesNotExist:
+                # PostgreSQL's indexes do not grok MVCC. Another session has
+                # created this event-type, but we cannot see it yet in this
+                # session. We need to retry the whole transaction.
+                request_transaction_retry()
 
 
 class EventType(CleanSave, TimestampedModel):

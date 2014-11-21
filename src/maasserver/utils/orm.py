@@ -13,19 +13,25 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'commit_within_atomic_block',
     'get_exception_class',
     'get_first',
     'get_one',
     'is_serialization_failure',
     'macs_contain',
     'macs_do_not_contain',
+    'make_serialization_failure',
+    'outside_atomic_block',
+    'request_transaction_retry',
     'retry_on_serialization_failure',
     ]
 
+from contextlib import contextmanager
 from functools import wraps
 from itertools import islice
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.db import transaction
 from django.db.utils import OperationalError
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 
@@ -136,10 +142,36 @@ def is_serialization_failure(exception):
         return False
 
 
+def make_serialization_failure():
+    """Make a serialization exception.
+
+    :returns: an instance of :py:class:`OperationalError` that will pass an
+        `is_serialization_failure` predicate.
+    """
+    exception = OperationalError()
+    exception.__cause__ = Exception()
+    exception.__cause__.pgcode = SERIALIZATION_FAILURE
+    assert is_serialization_failure(exception)
+    return exception
+
+
+def request_transaction_retry():
+    """Raise a serialization exception.
+
+    This depends on the retry machinery being higher up in the stack, catching
+    this, and then retrying the transaction, though it may choose to re-raise
+    the error if too many retries have already been attempted.
+
+    :raises OperationalError:
+    """
+    raise make_serialization_failure()
+
+
 def retry_on_serialization_failure(func):
     """Retry the wrapped function when it raises a serialization failure.
 
-    It will retry twice, meaning it will call `func` a maximum of three times.
+    It will call `func` a maximum of ten times, and will only retry if a
+    serialization failure is detected.
 
     BE CAREFUL WHERE YOU USE THIS.
 
@@ -147,10 +179,11 @@ def retry_on_serialization_failure(func):
     transactional block, e.g. outside of an `atomic` decorator. This is
     because we want a new transaction to be started on the way in, and rolled
     back on the way out before this function attempts to retry.
+
     """
     @wraps(func)
     def retrier(*args, **kwargs):
-        for _ in (1, 2):
+        for _ in xrange(9):
             try:
                 return func(*args, **kwargs)
             except OperationalError as error:
@@ -159,3 +192,39 @@ def retry_on_serialization_failure(func):
         else:
             return func(*args, **kwargs)
     return retrier
+
+
+def commit_within_atomic_block(using="default"):
+    """Exits an atomic block then immediately re-enters a new one.
+
+    This relies on the fact that an atomic block commits when exiting the
+    outer-most context.
+    """
+    with outside_atomic_block(using):
+        pass  # We just want to exit and enter.
+
+
+@contextmanager
+def outside_atomic_block(using="default"):
+    """A context manager that guarantees to not contain an atomic block.
+
+    On entry into this context, this will exit all nested and unnested atomic
+    blocks until it reaches clear air.
+
+    On exit from this context, the same level of nesting will be
+    reestablished.
+    """
+    connection = transaction.get_connection(using)
+    atomic_context = transaction.atomic(using)
+    assert connection.in_atomic_block
+
+    depth = 0
+    while connection.in_atomic_block:
+        atomic_context.__exit__(None, None, None)
+        depth = depth + 1
+    try:
+        yield
+    finally:
+        while depth > 0:
+            atomic_context.__enter__()
+            depth = depth - 1

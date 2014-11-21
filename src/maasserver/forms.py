@@ -47,6 +47,7 @@ __all__ = [
     ]
 
 import collections
+from collections import Counter
 import json
 import pipes
 from random import randint
@@ -136,12 +137,16 @@ from maasserver.node_action import (
     compile_node_actions,
     )
 from maasserver.utils import strip_domain
+from maasserver.utils.async import transactional
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
     make_name_from_interface,
     )
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    outside_atomic_block,
+    )
 from maasserver.utils.osystems import (
     get_distro_series_initial,
     get_release_requires_key,
@@ -2013,6 +2018,42 @@ class BulkNodeActionForm(forms.Form):
                 "Some of the given system ids are invalid system ids.")
         return system_ids
 
+    @transactional
+    def _perform_action_on_node(self, system_id, action_class):
+        """Perform a node action on the identified node.
+
+        This is *transactional*, meaning it will commit its changes on
+        success, and roll-back if not.
+
+        Returns a string describing what was done, one of:
+
+        * not_actionable
+        * not_permitted
+        * done
+
+        :param system_id: A `Node.system_id` value.
+        :param action_class: A value from `ACTIONS_DICT`.
+        """
+        node = Node.objects.get(system_id=system_id)
+        if node.status in action_class.actionable_statuses:
+            action_instance = action_class(node=node, user=self.user)
+            if action_instance.inhibit() is not None:
+                return "not_actionable"
+            else:
+                if action_instance.is_permitted():
+                    # Do not let execute() raise a redirect exception
+                    # because this action is part of a bulk operation.
+                    try:
+                        action_instance.execute(allow_redirect=False)
+                    except NodeActionError:
+                        return "not_actionable"
+                    else:
+                        return "done"
+                else:
+                    return "not_permitted"
+        else:
+            return "not_actionable"
+
     def perform_action(self, action_name, system_ids):
         """Perform a node action on the identified nodes.
 
@@ -2021,30 +2062,11 @@ class BulkNodeActionForm(forms.Form):
         :return: A tuple as returned by `save`.
         """
         action_class = ACTIONS_DICT.get(action_name)
-        not_actionable = 0
-        not_permitted = 0
-        done = 0
-        for system_id in system_ids:
-            node = Node.objects.get(system_id=system_id)
-            if node.status in action_class.actionable_statuses:
-                action_instance = action_class(node=node, user=self.user)
-                if action_instance.inhibit() is not None:
-                    not_actionable += 1
-                else:
-                    if action_instance.is_permitted():
-                        # Do not let execute() raise a redirect exception
-                        # because this action is part of a bulk operation.
-                        try:
-                            action_instance.execute(allow_redirect=False)
-                        except NodeActionError:
-                            not_actionable += 1
-                        else:
-                            done += 1
-                    else:
-                        not_permitted += 1
-            else:
-                not_actionable += 1
-        return done, not_actionable, not_permitted
+        with outside_atomic_block():
+            stats = Counter(
+                self._perform_action_on_node(system_id, action_class)
+                for system_id in system_ids)
+        return stats["done"], stats["not_actionable"], stats["not_permitted"]
 
     def get_selected_zone(self):
         """Return the zone which the user has selected (or `None`).

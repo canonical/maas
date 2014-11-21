@@ -82,14 +82,15 @@ def fix_up_databases(databases):
                         % (isolation_level, ISOLATION_LEVEL_SERIALIZABLE),
                         RuntimeWarning, 2)
             options["isolation_level"] = ISOLATION_LEVEL_SERIALIZABLE
-            # Wrap each HTTP request in a transaction.
+            # Disable ATOMIC_REQUESTS: MAAS manually manages this so it can
+            # retry transactions that fail with serialisation errors.
             if "ATOMIC_REQUESTS" in database:
                 atomic_requests = database["ATOMIC_REQUESTS"]
-                if not atomic_requests:
+                if atomic_requests:
                     warnings.warn(
-                        "ATOMIC_REQUESTS is set to %r; overriding to True."
+                        "ATOMIC_REQUESTS is set to %r; overriding to False."
                         % (atomic_requests,), RuntimeWarning, 2)
-            database["ATOMIC_REQUESTS"] = True
+            database["ATOMIC_REQUESTS"] = False
 
 
 def log_sstreams(LOGGING):

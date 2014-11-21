@@ -16,12 +16,10 @@ __all__ = [
     'urlpatterns',
     ]
 
-from django.conf.urls import (
-    patterns,
-    url,
-    )
+from django.conf.urls import patterns
 from maasserver.api.auth import api_auth
 from maasserver.api.support import OperationsResource
+from maasserver.utils.views import retry_url as url
 from metadataserver.api import (
     AnonMetaDataHandler,
     CommissioningScriptsHandler,

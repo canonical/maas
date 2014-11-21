@@ -57,6 +57,14 @@ class MAASServerTestCase(DjangoTestCase):
     :ivar client: Django http test client.
     """
 
+    # For each piece of default data introduced via migrations we need
+    # to also include a data fixture. This needs to be representative,
+    # but can be a reduced set.
+    fixtures = [
+        "candidatenames.yaml",
+        "defaultzone.yaml",
+    ]
+
     @classmethod
     def setUpClass(cls):
         register_mac_type(connection.cursor())

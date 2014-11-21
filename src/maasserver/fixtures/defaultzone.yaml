@@ -1,0 +1,4 @@
+- fields: {created: ! '2014-11-12 09:40:51.575470', description: '', name: default,
+    updated: ! '2014-11-12 09:40:51.575470'}
+  model: maasserver.zone
+  pk: 1

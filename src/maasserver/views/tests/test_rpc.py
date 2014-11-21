@@ -20,7 +20,7 @@ from crochet import run_in_reactor
 from django.core.urlresolvers import reverse
 from maasserver import eventloop
 from maasserver.testing.eventloop import RegionEventLoopFixture
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import TransactionTestCase
 from netaddr import IPAddress
 from provisioningserver.utils.network import get_all_interface_addresses
 from testtools.matchers import (
@@ -41,7 +41,7 @@ is_valid_port = MatchesAll(
     IsInstance(int), GreaterThan(0), LessThan(2 ** 16))
 
 
-class RPCViewTest(MAASServerTestCase):
+class RPCViewTest(TransactionTestCase):
 
     def test_rpc_info_when_rpc_advertise_not_present(self):
         getServiceNamed = self.patch_autospec(

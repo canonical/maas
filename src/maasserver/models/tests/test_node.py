@@ -1223,13 +1223,6 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(node_stop, MockCalledOnceWith(node.owner))
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
-    def test_release_commits_after_status_change(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(node, 'stop')
-        commit = self.patch(transaction, 'commit')
-        node.release()
-        self.assertThat(commit, MockCalledOnceWith())
-
     def test_accept_enlistment_gets_node_out_of_declared_state(self):
         # If called on a node in New state, accept_enlistment()
         # changes the node's status, and returns the node.
@@ -1710,35 +1703,10 @@ class NodeTest(MAASServerTestCase):
         node.end_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
 
-    def test_end_deployment_commits_after_status_change(self):
-        node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
-        commit = self.patch(transaction, 'commit')
-        node.end_deployment()
-        self.assertThat(commit, MockCalledOnceWith())
-
     def test_start_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        # Do not start the transaction monitor.
-        self.patch(node, 'start_transition_monitor')
         node.start_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
-
-    def test_start_deployment_starts_monitor(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        monitor_timeout = random.randint(1, 100)
-        self.patch(node, 'get_deployment_time').return_value = monitor_timeout
-        mock_start_transition_monitor = self.patch(
-            node, 'start_transition_monitor')
-        node.start_deployment()
-        self.assertThat(
-            mock_start_transition_monitor, MockCalledOnceWith(monitor_timeout))
-
-    def test_start_deployment_commits_after_status_change(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        self.patch(node, 'start_transition_monitor')
-        commit = self.patch(transaction, 'commit')
-        node.start_deployment()
-        self.assertThat(commit, MockCalledOnceWith())
 
     def test_handle_monitor_expired_marks_node_as_failed(self):
         status = random.choice(MONITORED_STATUSES)
@@ -2364,6 +2332,9 @@ class TestNode_Start(MAASServerTestCase):
         node = self.make_acquired_node_with_mac(user)
         power_info = node.get_effective_power_info()
 
+        start_transition_monitor = self.patch_autospec(
+            node, 'start_transition_monitor')
+
         power_on_nodes = self.patch(node_module, "power_on_nodes")
         power_on_nodes.return_value = {
             node.system_id: defer.succeed(True),
@@ -2384,6 +2355,11 @@ class TestNode_Start(MAASServerTestCase):
         self.assertItemsEqual(
             nodes_start_info_expected,
             nodes_start_info_observed)
+
+        # A transition monitor was started.
+        self.assertThat(
+            start_transition_monitor, MockCalledOnceWith(
+                node.get_deployment_time()))
 
     def test__raises_failures_when_power_action_fails(self):
         class PraiseBeToJTVException(Exception):

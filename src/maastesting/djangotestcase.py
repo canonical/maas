@@ -19,16 +19,19 @@ __all__ = [
     'TransactionTestCase',
     ]
 
+from contextlib import closing
 
 from django.conf import settings
 from django.core.management.commands import syncdb
 from django.core.signals import request_started
 from django.db import (
+    connection,
     connections,
     DEFAULT_DB_ALIAS,
     reset_queries,
     )
 from django.db.models import loading
+from django.db.utils import DatabaseError
 import django.test
 from maastesting.testcase import MAASTestCase
 
@@ -79,6 +82,39 @@ class DjangoTestCase(MAASTestCase, django.test.TestCase):
 
     Supports test resources and fixtures.
     """
+
+    def __get_connection_txid(self):
+        """Get PostgreSQL's current transaction ID."""
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT txid_current()")
+            return cursor.fetchone()[0]
+
+    def _fixture_setup(self):
+        """Record the transaction ID before the test is run."""
+        super(DjangoTestCase, self)._fixture_setup()
+        self.__txid_before = self.__get_connection_txid()
+
+    def _fixture_teardown(self):
+        """Compare the transaction ID now to before the test ran.
+
+        If they differ, do a full database flush because the new transaction
+        could have been the result of a commit, and we don't want to leave
+        stale test state around.
+        """
+        try:
+            self.__txid_after = self.__get_connection_txid()
+        except DatabaseError:
+            # We don't know if a transaction was committed to disk or if the
+            # transaction simply broke, so assume the worse and flush all
+            # databases.
+            super(DjangoTestCase, self)._fixture_teardown()
+            django.test.TransactionTestCase._fixture_teardown(self)
+        else:
+            super(DjangoTestCase, self)._fixture_teardown()
+            if self.__txid_after != self.__txid_before:
+                # We're in a different transaction now to the one we started
+                # in, so force a flush of all databases to ensure all's well.
+                django.test.TransactionTestCase._fixture_teardown(self)
 
 
 class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):

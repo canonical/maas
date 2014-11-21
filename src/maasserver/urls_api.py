@@ -14,10 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from django.conf.urls import (
-    patterns,
-    url,
-    )
+from django.conf.urls import patterns
 from maasserver.api.account import AccountHandler
 from maasserver.api.auth import api_auth
 from maasserver.api.boot_images import BootImagesHandler
@@ -103,6 +100,7 @@ from maasserver.api.zones import (
     ZoneHandler,
     ZonesHandler,
     )
+from maasserver.utils.views import retry_url as url
 
 
 account_handler = RestrictedResource(AccountHandler, authentication=api_auth)

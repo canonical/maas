@@ -16,7 +16,6 @@ __all__ = []
 
 import random
 import threading
-import time
 
 from django.db import IntegrityError
 from maasserver.models.eventtype import (
@@ -28,9 +27,11 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.async import transactional
 from maastesting.djangotestcase import TransactionTestCase
 from testtools.matchers import (
+    AfterPreprocessing,
     AllMatch,
     Equals,
-    HasLength,
+    GreaterThan,
+    MatchesAny,
     MatchesStructure,
     )
 
@@ -103,9 +104,7 @@ class EventTypeConcurrencyTest(TransactionTestCase):
         def make_event_type():
             # Create the event type then wait a short time to increase the
             # chances that transactions between threads overlap.
-            event_type = EventType.objects.register(name, desc, level)
-            time.sleep(random.random() / 5.0)
-            return event_type
+            return EventType.objects.register(name, desc, level)
 
         # Only save the event type when the txn that make_event_type() runs is
         # has been committed. This is when we're likely to see errors.
@@ -127,8 +126,17 @@ class EventTypeConcurrencyTest(TransactionTestCase):
         for thread in threads:
             thread.join()
 
-        # All but one thread fails to create the event type.
-        self.expectThat(create_errors, HasLength(len(event_types) - 1))
+        # All but one thread fails to create the event type at least once.
+        # Each /may/ fail more than once, if the event-type is not yet visible
+        # in that thread's transaction; see the comments in register().
+        expected_create_errors_min = len(threads) - 1
+        expected_create_errors_count = MatchesAny(
+            Equals(expected_create_errors_min),
+            GreaterThan(expected_create_errors_min),
+        )
+        self.expectThat(
+            create_errors, AfterPreprocessing(
+                len, expected_create_errors_count))
         # All threads return the same event type.
         self.expectThat(len(threads), Equals(len(event_types)))
         self.expectThat(

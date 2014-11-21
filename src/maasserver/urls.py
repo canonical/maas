@@ -18,7 +18,6 @@ __all__ = []
 from django.conf.urls import (
     include,
     patterns,
-    url,
     )
 from django.contrib.auth.decorators import user_passes_test
 from maasserver.bootresources import (
@@ -27,6 +26,7 @@ from maasserver.bootresources import (
     )
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Node
+from maasserver.utils.views import retry_url as url
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
@@ -74,6 +74,7 @@ from maasserver.views.prefs import (
     SSLKeyDeleteView,
     userprefsview,
     )
+from maasserver.views.rpc import info
 from maasserver.views.settings import (
     AccountsAdd,
     AccountsDelete,
@@ -332,5 +333,5 @@ urlpatterns += patterns(
 # RPC URLs.
 urlpatterns += patterns(
     'maasserver.views.rpc',
-    url(r'^rpc/$', 'info', name="rpc-info"),
+    url(r'^rpc/$', info, name="rpc-info"),
 )

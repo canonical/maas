@@ -116,13 +116,13 @@ class TestDatabaseConfiguration(DjangoTestCase):
         self.assertThat(
             connections.databases, ContainsDict({
                 "default": ContainsDict({
-                    "ATOMIC_REQUESTS": Is(True),
+                    "ATOMIC_REQUESTS": Is(False),
                 }),
             }),
         )
 
-    def test_isolation_level_is_read_committed(self):
-        # Transactions *must* be READ COMMITTED for the default connection.
+    def test_isolation_level_is_serializable(self):
+        # Transactions *must* be SERIALIZABLE for the default connection.
         self.assertThat(
             connections.databases, ContainsDict({
                 "default": ContainsDict({

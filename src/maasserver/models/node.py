@@ -38,7 +38,6 @@ from django.core.exceptions import (
     PermissionDenied,
     ValidationError,
     )
-from django.db import transaction
 from django.db.models import (
     BooleanField,
     CharField,
@@ -105,6 +104,7 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
+from maasserver.utils.orm import commit_within_atomic_block
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import IPAddress
@@ -562,21 +562,11 @@ class Node(CleanSave, TimestampedModel):
         """Mark a node as being deployed."""
         self.status = NODE_STATUS.DEPLOYING
         self.save()
-        # We explicitly commit here because during bulk node actions we
-        # want to make sure that each successful state transition is
-        # recorded in the DB.
-        transaction.commit()
-        deployment_time = self.get_deployment_time()
-        self.start_transition_monitor(deployment_time)
 
     def end_deployment(self):
         """Mark a node as successfully deployed."""
         self.status = NODE_STATUS.DEPLOYED
         self.save()
-        # We explicitly commit here because during bulk node actions we
-        # want to make sure that each successful state transition is
-        # recorded in the DB.
-        transaction.commit()
 
     def start_transition_monitor(self, timeout):
         """Start cluster-side transition monitor."""
@@ -598,7 +588,10 @@ class Node(CleanSave, TimestampedModel):
             maaslog.error(
                 "%s: Unable to start transition monitor: %s",
                 self.hostname, error)
-        maaslog.info("%s: Starting monitor: %s", self.hostname, monitors[0])
+        else:
+            maaslog.info(
+                "%s: Starting transition monitor: %s",
+                self.hostname, monitors[0])
 
     def stop_transition_monitor(self):
         """Stop cluster-side transition monitor."""
@@ -610,7 +603,10 @@ class Node(CleanSave, TimestampedModel):
             maaslog.error(
                 "%s: Unable to stop transition monitor: %s",
                 self.hostname, error)
-        maaslog.info("%s: Stopping monitor: %s", self.hostname, self.system_id)
+        else:
+            maaslog.info(
+                "%s: Stopping transition monitor: %s",
+                self.hostname, self.system_id)
 
     def handle_monitor_expired(self, context):
         """Handle a monitor expired event."""
@@ -837,30 +833,37 @@ class Node(CleanSave, TimestampedModel):
 
         commissioning_user_data = generate_user_data(node=self)
         NodeResult.objects.clear_results(self)
-        # The commissioning profile is handled in start_nodes.
-        maaslog.info(
-            "%s: Starting commissioning", self.hostname)
         # We need to mark the node as COMMISSIONING now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
         # case the power action fails.
         old_status = self.status
         self.status = NODE_STATUS.COMMISSIONING
         self.save()
-        transaction.commit()
-        self.start_transition_monitor(self.get_commissioning_time())
+
+        # There's a limit on how long we allow commissioning to take.
+        transition_timeout = self.get_commissioning_time()
+
+        # Commit before starting the node (and before logging about it).
+        commit_within_atomic_block()
+        maaslog.info("%s: Starting commissioning", self.hostname)
+
         try:
             self.start(user, user_data=commissioning_user_data)
         except Exception as ex:
-            maaslog.error(
-                "%s: Unable to start node: %s",
-                self.hostname, unicode(ex))
+            # Reverting the status /may/ break if the node's status has been
+            # changed elsewhere during the call to start() and the transition
+            # from that status to `old_status` is not allowed.
             self.status = old_status
             self.save()
-            transaction.commit()
+            commit_within_atomic_block()
+            maaslog.error(
+                "%s: Unable to start node: %s", self.hostname,
+                unicode(ex))
             # Let the exception bubble up, since the UI or API will have to
             # deal with it.
             raise
         else:
+            self.start_transition_monitor(transition_timeout)
             maaslog.info("%s: Commissioning started", self.hostname)
 
     def abort_commissioning(self, user):
@@ -877,8 +880,8 @@ class Node(CleanSave, TimestampedModel):
             self.stop(user)
         except Exception as ex:
             maaslog.error(
-                "%s: Unable to shut node down: %s",
-                self.hostname, unicode(ex))
+                "%s: Unable to shut node down: %s", self.hostname,
+                unicode(ex))
             raise
         else:
             self.status = NODE_STATUS.NEW
@@ -1140,26 +1143,28 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.disk_erasing import generate_user_data
 
         disk_erase_user_data = generate_user_data(node=self)
-        maaslog.info(
-            "%s: Starting disk erasure", self.hostname)
         # Change the status of the node now to avoid races when starting
         # nodes in bulk.
         self.status = NODE_STATUS.DISK_ERASING
         self.save()
-        transaction.commit()
+        # Commit before starting the node.
+        commit_within_atomic_block()
+        maaslog.info("%s: Starting disk erasure", self.hostname)
         try:
             self.start(user, user_data=disk_erase_user_data)
         except Exception as ex:
-            maaslog.error(
-                "%s: Unable to start node: %s",
-                self.hostname, unicode(ex))
             # We always mark the node as failed here, although we could
-            # potentially move it back to the state it was in
-            # previously. For now, though, this is safer, since it marks
-            # the node as needing attention.
+            # potentially move it back to the state it was in previously. For
+            # now, though, this is safer, since it marks the node as needing
+            # attention. Reverting the status /may/ break if the node's status
+            # has been changed elsewhere during the call to start() and the
+            # transition from that status to this is not allowed.
             self.status = NODE_STATUS.FAILED_DISK_ERASING
             self.save()
-            transaction.commit()
+            commit_within_atomic_block()
+            maaslog.error(
+                "%s: Unable to start node: %s", self.hostname,
+                unicode(ex))
             raise
         else:
             maaslog.info(
@@ -1181,8 +1186,8 @@ class Node(CleanSave, TimestampedModel):
             self.stop(user)
         except Exception as ex:
             maaslog.error(
-                "%s: Unable to shut node down: %s",
-                self.hostname, unicode(ex))
+                "%s: Unable to shut node down: %s", self.hostname,
+                unicode(ex))
             raise
         else:
             self.status = NODE_STATUS.FAILED_DISK_ERASING
@@ -1246,11 +1251,6 @@ class Node(CleanSave, TimestampedModel):
         self.delete_host_maps(deallocated_ips)
         from maasserver.dns.config import change_dns_zones
         change_dns_zones([self.nodegroup])
-
-        # We explicitly commit here because during bulk node actions we
-        # want to make sure that each successful state transition is
-        # recorded in the DB.
-        transaction.commit()
 
     def release_or_erase(self):
         """Either release the node or erase the node then release it, depending
@@ -1482,7 +1482,10 @@ class Node(CleanSave, TimestampedModel):
                     raise update_host_maps_failures[0].raiseException()
 
         if self.status == NODE_STATUS.ALLOCATED:
+            transition_timeout = self.get_deployment_time()
             self.start_deployment()
+        else:
+            transition_timeout = None
 
         # Update the DNS zone with the new static IP info as necessary.
         change_dns_zones(self.nodegroup)
@@ -1499,6 +1502,9 @@ class Node(CleanSave, TimestampedModel):
         start_info = (
             self.system_id, self.hostname, self.nodegroup.uuid, power_info,)
 
+        # Commit before starting the node.
+        commit_within_atomic_block()
+
         try:
             # Send the power on command to the node and wait for it to
             # return. There will be only one deferred since we're only
@@ -1511,7 +1517,11 @@ class Node(CleanSave, TimestampedModel):
             # IPs we claimed earlier. We don't try to handle the error;
             # that's the job of the call site.
             StaticIPAddress.objects.deallocate_by_node(self)
+            commit_within_atomic_block()
             raise
+        else:
+            if transition_timeout is not None:
+                self.start_transition_monitor(transition_timeout)
 
     def stop(self, by_user, stop_mode='hard'):
         """Request that the node be powered down.

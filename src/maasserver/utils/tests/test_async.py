@@ -195,4 +195,5 @@ class TestTransactionalRetries(SerializationFailureTestCase):
         decorated_function = async.transactional(function)
 
         self.assertRaises(OperationalError, decorated_function)
-        self.assertThat(function, MockCallsMatch(call(), call(), call()))
+        expected_calls = [call()] * 10
+        self.assertThat(function, MockCallsMatch(*expected_calls))
