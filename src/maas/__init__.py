@@ -67,7 +67,7 @@ def fix_up_databases(databases):
 
     Does not modify connections to non-PostgreSQL databases.
     """
-    from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
+    from psycopg2.extensions import ISOLATION_LEVEL_SERIALIZABLE
     for _, database in databases.viewitems():
         engine = database.get("ENGINE")
         if engine == 'django.db.backends.postgresql_psycopg2':
@@ -76,12 +76,12 @@ def fix_up_databases(databases):
             # particular transaction isolation level, and it enforces it.
             if "isolation_level" in options:
                 isolation_level = options["isolation_level"]
-                if isolation_level != ISOLATION_LEVEL_READ_COMMITTED:
+                if isolation_level != ISOLATION_LEVEL_SERIALIZABLE:
                     warnings.warn(
                         "isolation_level is set to %r; overriding to %r."
-                        % (isolation_level, ISOLATION_LEVEL_READ_COMMITTED),
+                        % (isolation_level, ISOLATION_LEVEL_SERIALIZABLE),
                         RuntimeWarning, 2)
-            options["isolation_level"] = ISOLATION_LEVEL_READ_COMMITTED
+            options["isolation_level"] = ISOLATION_LEVEL_SERIALIZABLE
             # Wrap each HTTP request in a transaction.
             if "ATOMIC_REQUESTS" in database:
                 atomic_requests = database["ATOMIC_REQUESTS"]

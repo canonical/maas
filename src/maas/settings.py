@@ -27,7 +27,6 @@ from maas import (
 from maas.monkey import patch_get_script_prefix
 from metadataserver.address import guess_server_host
 from provisioningserver.utils.url import compose_URL
-from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 
 
 django.template.add_to_builtins('django.templatetags.future')
@@ -131,9 +130,6 @@ DATABASES = {
         # Unix socket directory.
         'HOST': '',
         'PORT': '',
-        'OPTIONS': {
-            'isolation_level': ISOLATION_LEVEL_READ_COMMITTED,
-        },
     },
 }
 

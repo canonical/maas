@@ -74,9 +74,6 @@ LOGGING = {
 }
 
 # Database access configuration.
-from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
-
-
 DATABASES = {
     'default': {
         # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
@@ -85,8 +82,5 @@ DATABASES = {
         'USER': '',
         'PASSWORD': '',
         'HOST': 'localhost',
-        'OPTIONS': {
-            'isolation_level': ISOLATION_LEVEL_READ_COMMITTED,
-        },
     }
 }
