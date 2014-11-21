@@ -20,6 +20,7 @@ from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from maasserver.models import Network
 from maasserver.models.network import (
+    ensure_unique_network_name,
     get_specifier_type,
     IPSpecifier,
     NameSpecifier,
@@ -419,3 +420,40 @@ class TestNetwork(MAASServerTestCase):
         self.assertRaises(
             ValidationError, factory.make_Network,
             network=IPNetwork('10.0.1.0/24'))
+
+
+class TestEnsureUniqueNetworkName(MAASServerTestCase):
+    """Tests for `ensure_unique_network_name()`."""
+
+    def test_converts_invalid_name_to_valid_name(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        new_name = ensure_unique_network_name(invalid_name, set())
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy",
+            new_name)
+
+    def test_converts_invalid_name_to_valid_unique_name(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        existing_name = "foo-bar-bob-hands-knees-and-bumps-a-daisy"
+        new_name = ensure_unique_network_name(
+            invalid_name, set([existing_name]))
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-1",
+            new_name)
+
+    def test_converts_invalid_name_to_valid_unique_name_incrementally(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        existing_names = set([
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy",
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-1",
+            ])
+        new_name = ensure_unique_network_name(
+            invalid_name, existing_names)
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-2",
+            new_name)
+
+    def test_does_not_change_valid_name(self):
+        valid_name = "foo-bar-baz"
+        new_name = ensure_unique_network_name(valid_name, set([valid_name]))
+        self.assertEqual(valid_name, new_name)
