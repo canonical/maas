@@ -17,16 +17,26 @@ __all__ = []
 from itertools import repeat
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.db.utils import OperationalError
 from maasserver.fields import MAC
+from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils.orm import (
     get_first,
     get_one,
+    is_serialization_failure,
     macs_contain,
     macs_do_not_contain,
+    retry_on_serialization_failure,
     )
 from maastesting.factory import factory
+from maastesting.matchers import MockCallsMatch
 from maastesting.testcase import MAASTestCase
-from mock import Mock
+from mock import (
+    call,
+    Mock,
+    sentinel,
+    )
+from psycopg2.errorcodes import SERIALIZATION_FAILURE
 
 
 class FakeModel:
@@ -160,3 +170,74 @@ class TestGetPredicateUtilities(MAASTestCase):
                 ),
                 macs,
             ))
+
+
+class TestSerializationFailure(SerializationFailureTestCase):
+    """Detecting SERIALIZABLE isolation failures."""
+
+    def test_serialization_failure_detectable_via_error_cause(self):
+        error = self.assertRaises(
+            OperationalError, self.cause_serialization_failure)
+        self.assertEqual(
+            SERIALIZATION_FAILURE, error.__cause__.pgcode)
+
+
+class TestIsSerializationFailure(SerializationFailureTestCase):
+    """Tests relating to MAAS's use of SERIALIZABLE isolation."""
+
+    def test_detects_operational_error_with_matching_cause(self):
+        error = self.assertRaises(
+            OperationalError, self.cause_serialization_failure)
+        self.assertTrue(is_serialization_failure(error))
+
+    def test_rejects_operational_error_without_matching_cause(self):
+        error = OperationalError()
+        cause = self.patch(error, "__cause__")
+        cause.pgcode = factory.make_name("pgcode")
+        self.assertFalse(is_serialization_failure(error))
+
+    def test_rejects_operational_error_with_unrelated_cause(self):
+        error = OperationalError()
+        error.__cause__ = object()
+        self.assertFalse(is_serialization_failure(error))
+
+    def test_rejects_operational_error_without_cause(self):
+        error = OperationalError()
+        self.assertFalse(is_serialization_failure(error))
+
+    def test_rejects_non_operational_error_with_matching_cause(self):
+        error = factory.make_exception()
+        cause = self.patch(error, "__cause__")
+        cause.pgcode = SERIALIZATION_FAILURE
+        self.assertFalse(is_serialization_failure(error))
+
+
+class TestRetryOnSerializationFailure(SerializationFailureTestCase):
+
+    def make_mock_function(self):
+        function_name = factory.make_name("function")
+        function = Mock(__name__=function_name.encode("ascii"))
+        return function
+
+    def test_retries_twice_on_serialization_failure(self):
+        function = self.make_mock_function()
+        function.side_effect = self.cause_serialization_failure
+        function_wrapped = retry_on_serialization_failure(function)
+        self.assertRaises(OperationalError, function_wrapped)
+        self.assertThat(function, MockCallsMatch(call(), call(), call()))
+
+    def test_retries_on_serialization_failure_until_successful(self):
+        serialization_error = self.assertRaises(
+            OperationalError, self.cause_serialization_failure)
+        function = self.make_mock_function()
+        function.side_effect = [serialization_error, sentinel.result]
+        function_wrapped = retry_on_serialization_failure(function)
+        self.assertEqual(sentinel.result, function_wrapped())
+        self.assertThat(function, MockCallsMatch(call(), call()))
+
+    def test_passes_args_to_wrapped_function(self):
+        function = lambda a, b: (a, b)
+        function_wrapped = retry_on_serialization_failure(function)
+        self.assertEqual(
+            (sentinel.a, sentinel.b),
+            function_wrapped(sentinel.a, b=sentinel.b))

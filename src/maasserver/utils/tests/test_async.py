@@ -19,14 +19,19 @@ from time import time
 
 import crochet
 from django.db import connection
+from django.db.utils import OperationalError
 from maasserver.exceptions import IteratorReusedError
+from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import async
+from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCallsMatch,
     MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    call,
     Mock,
     sentinel,
     )
@@ -125,7 +130,7 @@ class TestUseOnceIterator(MAASTestCase):
         self.assertRaises(IteratorReusedError, iterator.next)
 
 
-class TestTransactional(MAASTestCase):
+class TestTransactional(TransactionTestCase):
 
     def test__calls_function_within_transaction_then_closes_connections(self):
         close_old_connections = self.patch(async, "close_old_connections")
@@ -176,3 +181,18 @@ class TestTransactional(MAASTestCase):
         self.assertEqual("outer > inner", outer())
         # Old connections have been closed only once.
         self.assertThat(close_old_connections, MockCalledOnceWith())
+
+
+class TestTransactionalRetries(SerializationFailureTestCase):
+
+    def test__retries_upon_serialization_failures(self):
+        # No-op close_old_connections().
+        self.patch(async, "close_old_connections")
+
+        function = Mock()
+        function.__name__ = self.getUniqueString()
+        function.side_effect = self.cause_serialization_failure
+        decorated_function = async.transactional(function)
+
+        self.assertRaises(OperationalError, decorated_function)
+        self.assertThat(function, MockCallsMatch(call(), call(), call()))

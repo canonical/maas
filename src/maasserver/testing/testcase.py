@@ -15,9 +15,11 @@ __metaclass__ = type
 __all__ = [
     'MAASServerTestCase',
     'SeleniumTestCase',
+    'SerializationFailureTestCase',
     'TestWithoutCrochetMixin',
     ]
 
+from contextlib import closing
 import SocketServer
 import threading
 from unittest import SkipTest
@@ -26,7 +28,10 @@ import wsgiref
 import crochet
 import django
 from django.core.urlresolvers import reverse
-from django.db import connection
+from django.db import (
+    connection,
+    transaction,
+    )
 from django.test.client import encode_multipart
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
@@ -230,3 +235,73 @@ class TestWithoutCrochetMixin:
             crochet._watchdog._canary = self._dead_thread
             crochet._watchdog.join()  # Wait for the watchdog to stop.
             self.assertFalse(crochet.reactor.running)
+
+
+class SerializationFailureTestCase(TransactionTestCase):
+
+    def create_stest_table(self):
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("CREATE TABLE IF NOT EXISTS stest (a INTEGER)")
+
+    def drop_stest_table(self):
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("DROP TABLE IF EXISTS stest")
+
+    def setUp(self):
+        super(SerializationFailureTestCase, self).setUp()
+        self.create_stest_table()
+        # Put something into the stest table upon which to trigger a
+        # serialization failure.
+        with transaction.atomic():
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("INSERT INTO stest VALUES (1)")
+
+    def tearDown(self):
+        super(SerializationFailureTestCase, self).tearDown()
+        self.drop_stest_table()
+
+    def cause_serialization_failure(self):
+        """Trigger an honest, from the database, serialization failure."""
+        # Helper to switch the transaction to SERIALIZABLE.
+        def set_serializable():
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("SET TRANSACTION ISOLATION LEVEL SERIALIZABLE")
+
+        # Perform a conflicting update. This must run in a separate thread. It
+        # also must begin after the beginning of the transaction in which we
+        # will trigger a serialization failure AND commit before that other
+        # transaction commits. This doesn't need to run with serializable
+        # isolation.
+        def do_conflicting_update():
+            with transaction.atomic():
+                with closing(connection.cursor()) as cursor:
+                    cursor.execute("UPDATE stest SET a = 2")
+
+        def trigger_serialization_failure():
+            # Fetch something first. This ensures that we're inside the
+            # transaction, and that the database has a reference point for
+            # calculating serialization failures.
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("SELECT * FROM stest")
+                cursor.fetchall()
+
+            # Run do_conflicting_update() in a separate thread.
+            thread = threading.Thread(target=do_conflicting_update)
+            thread.start()
+            thread.join()
+
+            # Updating the same rows as do_conflicting_update() did will
+            # trigger a serialization failure. We have to check the __cause__
+            # to confirm the failure type as reported by PostgreSQL.
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("UPDATE stest SET a = 4")
+
+        if connection.in_atomic_block:
+            # We're already in a transaction.
+            set_serializable()
+            trigger_serialization_failure()
+        else:
+            # Start a transaction in this thread.
+            with transaction.atomic():
+                set_serializable()
+                trigger_serialization_failure()

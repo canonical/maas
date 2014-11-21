@@ -13,16 +13,21 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'macs_contain',
-    'macs_do_not_contain',
     'get_exception_class',
     'get_first',
     'get_one',
+    'is_serialization_failure',
+    'macs_contain',
+    'macs_do_not_contain',
+    'retry_on_serialization_failure',
     ]
 
+from functools import wraps
 from itertools import islice
 
 from django.core.exceptions import MultipleObjectsReturned
+from django.db.utils import OperationalError
+from psycopg2.errorcodes import SERIALIZATION_FAILURE
 
 
 def get_exception_class(items):
@@ -109,3 +114,48 @@ def macs_do_not_contain(key, macs):
         "%s " % key + "@> ARRAY[%s]::macaddr[]"] * len(macs))
     where_clause = "((%s IS NULL) OR NOT (%s))" % (key, contains_any)
     return where_clause, macs
+
+
+def is_serialization_failure(exception):
+    """Does `exception` represent a serialization failure?
+
+    PostgreSQL sets a specific error code, "40001", when a transaction breaks
+    because of a serialization failure. This is normally about the right time
+    to try again.
+
+    :see: http://www.postgresql.org/docs/9.3/static/transaction-iso.html
+    """
+    if isinstance(exception, OperationalError):
+        try:
+            pgcode = exception.__cause__.pgcode
+        except AttributeError:
+            return False  # Presumably no __cause__.
+        else:
+            return pgcode == SERIALIZATION_FAILURE
+    else:
+        return False
+
+
+def retry_on_serialization_failure(func):
+    """Retry the wrapped function when it raises a serialization failure.
+
+    It will retry twice, meaning it will call `func` a maximum of three times.
+
+    BE CAREFUL WHERE YOU USE THIS.
+
+    In general it only makes sense to use this to wrap the *outermost*
+    transactional block, e.g. outside of an `atomic` decorator. This is
+    because we want a new transaction to be started on the way in, and rolled
+    back on the way out before this function attempts to retry.
+    """
+    @wraps(func)
+    def retrier(*args, **kwargs):
+        for _ in (1, 2):
+            try:
+                return func(*args, **kwargs)
+            except OperationalError as error:
+                if not is_serialization_failure(error):
+                    raise
+        else:
+            return func(*args, **kwargs)
+    return retrier

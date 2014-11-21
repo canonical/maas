@@ -28,6 +28,7 @@ from django.db import (
     transaction,
     )
 from maasserver.exceptions import IteratorReusedError
+from maasserver.utils.orm import retry_on_serialization_failure
 from twisted.internet import reactor
 from twisted.internet.defer import maybeDeferred
 from twisted.python import log
@@ -143,16 +144,27 @@ def gather(calls, timeout=10.0):
 def transactional(func):
     """Decorator that wraps calls to `func` in a Django-managed transaction.
 
-    It also ensures that connections are closed if necessary. This keeps
-    Django happy, especially in the test suite.
+    It ensures that connections are closed if necessary. This keeps Django
+    happy, especially in the test suite.
+
+    In addition, if `func` is being invoked from outside of a transaction,
+    this will retry if it fails with a serialization failure.
     """
+    func_within_txn = transaction.atomic(func)  # For savepoints.
+    func_outside_txn = retry_on_serialization_failure(func_within_txn)
+
     @wraps(func)
     def call_within_transaction(*args, **kwargs):
         try:
-            with transaction.atomic():
-                return func(*args, **kwargs)
+            # Don't use the retry-capable function if we're already in a
+            # transaction; retrying is pointless when the txn is broken.
+            if connection.in_atomic_block:
+                return func_within_txn(*args, **kwargs)
+            else:
+                return func_outside_txn(*args, **kwargs)
         finally:
             # Close connections if we've left the outer-most atomic block.
             if not connection.in_atomic_block:
                 close_old_connections()
+
     return call_within_transaction
