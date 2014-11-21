@@ -21,6 +21,8 @@ import sys
 from textwrap import dedent
 from unittest import skipIf
 
+from django.conf import settings
+from django.db import connections
 from fixtures import PythonPathEntry
 from maas import (
     find_settings,
@@ -29,6 +31,12 @@ from maas import (
     )
 from maastesting.djangotestcase import DjangoTestCase
 from maastesting.factory import factory
+from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
+from testtools.matchers import (
+    ContainsDict,
+    Equals,
+    Is,
+    )
 
 
 class TestSettingsHelpers(DjangoTestCase):
@@ -92,3 +100,36 @@ class TestSettingsHelpers(DjangoTestCase):
     def test_import_local_settings_2(self):
         # The local settings module has been imported, so test with that.
         self._test_import_local_settings()
+
+
+class TestDatabaseConfiguration(DjangoTestCase):
+
+    def test_transactionmiddleware_is_not_used(self):
+        # The 'TransactionMiddleware' is not enabled (it has been
+        # deprecated by the Django project).
+        self.assertNotIn(
+            'django.middleware.transaction.TransactionMiddleware',
+            settings.MIDDLEWARE_CLASSES)
+
+    def test_atomic_requests_are_enabled(self):
+        # ATOMIC_REQUESTS *must* be set for the default connection.
+        self.assertThat(
+            connections.databases, ContainsDict({
+                "default": ContainsDict({
+                    "ATOMIC_REQUESTS": Is(True),
+                }),
+            }),
+        )
+
+    def test_isolation_level_is_read_committed(self):
+        # Transactions *must* be READ COMMITTED for the default connection.
+        self.assertThat(
+            connections.databases, ContainsDict({
+                "default": ContainsDict({
+                    "OPTIONS": ContainsDict({
+                        "isolation_level": Equals(
+                            ISOLATION_LEVEL_READ_COMMITTED),
+                    }),
+                }),
+            }),
+        )

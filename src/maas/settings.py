@@ -20,6 +20,7 @@ from urlparse import urljoin
 # https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
 from maas import (
+    fix_up_databases,
     import_local_settings,
     log_sstreams,
     )
@@ -239,7 +240,6 @@ MIDDLEWARE_CLASSES = (
     'maasserver.middleware.RPCErrorsMiddleware',
     'maasserver.middleware.APIRPCErrorsMiddleware',
     'metadataserver.middleware.MetadataErrorsMiddleware',
-    'django.middleware.transaction.TransactionMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -321,6 +321,9 @@ import_local_settings()
 
 # Patch the get_script_prefix method to allow twisted to work with django.
 patch_get_script_prefix()
+
+# Fix crooked settings.
+fix_up_databases(DATABASES)
 
 # Enable the logging of simplestreams
 log_sstreams(LOGGING)

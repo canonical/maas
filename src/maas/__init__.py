@@ -13,12 +13,14 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "import_settings",
+    "fix_up_databases",
     "import_local_settings",
+    "import_settings",
     "log_sstreams",
     ]
 
 import sys
+import warnings
 
 
 def find_settings(whence):
@@ -58,6 +60,36 @@ def import_local_settings():
         source = find_settings(whence)
         target = sys._getframe(1).f_globals
         target.update(source)
+
+
+def fix_up_databases(databases):
+    """Increase isolation level, use atomic requests.
+
+    Does not modify connections to non-PostgreSQL databases.
+    """
+    from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
+    for _, database in databases.viewitems():
+        engine = database.get("ENGINE")
+        if engine == 'django.db.backends.postgresql_psycopg2':
+            options = database.setdefault("OPTIONS", {})
+            # Explicitly set the transaction isolation level. MAAS needs a
+            # particular transaction isolation level, and it enforces it.
+            if "isolation_level" in options:
+                isolation_level = options["isolation_level"]
+                if isolation_level != ISOLATION_LEVEL_READ_COMMITTED:
+                    warnings.warn(
+                        "isolation_level is set to %r; overriding to %r."
+                        % (isolation_level, ISOLATION_LEVEL_READ_COMMITTED),
+                        RuntimeWarning, 2)
+            options["isolation_level"] = ISOLATION_LEVEL_READ_COMMITTED
+            # Wrap each HTTP request in a transaction.
+            if "ATOMIC_REQUESTS" in database:
+                atomic_requests = database["ATOMIC_REQUESTS"]
+                if not atomic_requests:
+                    warnings.warn(
+                        "ATOMIC_REQUESTS is set to %r; overriding to True."
+                        % (atomic_requests,), RuntimeWarning, 2)
+            database["ATOMIC_REQUESTS"] = True
 
 
 def log_sstreams(LOGGING):
