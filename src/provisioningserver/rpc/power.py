@@ -243,15 +243,13 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
 
 
 @asynchronous
-@inlineCallbacks
 def power_state_update(system_id, state):
     """Update a node's power state"""
     client = getRegionClient()
-    yield client(
+    return client(
         UpdateNodePowerState,
         system_id=system_id,
-        power_state=state,
-    )
+        power_state=state)
 
 
 @asynchronous
@@ -274,16 +272,21 @@ def perform_power_query(system_id, hostname, power_type, context):
     log the final error.
     """
     action = PowerAction(power_type)
+    # `power_change` is a misnomer here.
     return action.execute(power_change='query', **context)
 
 
 @asynchronous
 @inlineCallbacks
 def get_power_state(system_id, hostname, power_type, context, clock=reactor):
-    """Return the power state ('on', 'off', 'error') of the given node.
+    """Return the power state of the given node.
 
     A side-effect of calling this method is that the power state recorded in
     the database is updated.
+
+    :return: The string "on" or "off".
+    :raises PowerActionFail: When `power_type` is not queryable, or when
+        there's a failure when querying the node's power state.
     """
     if power_type not in QUERY_POWER_TYPES:
         # query_all_nodes() won't call this with an un-queryable power
@@ -319,23 +322,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     raise PowerActionFail(error)
 
 
-def maaslog_query_failure(node, failure):
-    """Log failure to query node."""
-    if failure.check(PowerActionFail):
-        maaslog.error(
-            "%s: Failed to query power state: %s.",
-            node['hostname'], failure.getErrorMessage())
-    elif failure.check(NoSuchNode):
-        maaslog.debug(
-            "%s: Could not update power status; "
-            "no such node.", node['hostname'])
-    else:
-        maaslog.error(
-            "%s: Failed to query power state, unknown error: %s",
-            node['hostname'], failure.getErrorMessage())
-
-
-def maaslog_query(node, power_state):
+def maaslog_report_success(node, power_state):
     """Log change in power state for node."""
     if node['power_state'] != power_state:
         maaslog.info(
@@ -344,25 +331,47 @@ def maaslog_query(node, power_state):
     return power_state
 
 
-def _query_node(node, clock):
-    """Performs `power_query` on the given node."""
-    # Start the query of the power state for the given node, logging to
-    # maaslog as errors and power states change.
+def maaslog_report_failure(node, failure):
+    """Log failure to query node."""
+    if failure.check(PowerActionFail):
+        maaslog.error(
+            "%s: Could not query power state: %s.",
+            node['hostname'], failure.getErrorMessage())
+    elif failure.check(NoSuchNode):
+        maaslog.debug(
+            "%s: Could not update power state: "
+            "no such node.", node['hostname'])
+    else:
+        maaslog.error(
+            "%s: Failed to refresh power state: %s",
+            node['hostname'], failure.getErrorMessage())
+
+
+def query_node(node, clock):
+    """Calls `get_power_state` on the given node.
+
+    Logs to maaslog as errors and power states change.
+    """
     d = get_power_state(
         node['system_id'], node['hostname'],
         node['power_type'], node['context'],
         clock=clock)
     d.addCallbacks(
-        partial(maaslog_query, node),
-        partial(maaslog_query_failure, node))
+        partial(maaslog_report_success, node),
+        partial(maaslog_report_failure, node))
     return d
 
 
 def query_all_nodes(nodes, max_concurrency=5, clock=reactor):
-    """Performs `power_query` on all nodes. If the nodes state has changed,
-    then that is sent back to the region."""
+    """Queries the given nodes for their power state.
+
+    Nodes' states are reported back to the region.
+
+    :return: A deferred, which fires once all nodes have been queried,
+        successfully or not.
+    """
     semaphore = DeferredSemaphore(tokens=max_concurrency)
-    return DeferredList(
-        semaphore.run(_query_node, node, clock)
-        for node in nodes
-        if node['power_type'] in QUERY_POWER_TYPES)
+    queries = (
+        semaphore.run(query_node, node, clock)
+        for node in nodes if node['power_type'] in QUERY_POWER_TYPES)
+    return DeferredList(queries, consumeErrors=True)

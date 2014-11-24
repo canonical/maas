@@ -54,7 +54,10 @@ from testtools.deferredruntest import (
     assert_fails_with,
     extract_result,
     )
-from testtools.matchers import IsInstance
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+    )
 from twisted.internet import reactor
 from twisted.internet.defer import (
     Deferred,
@@ -181,11 +184,10 @@ class TestPowerHelpers(MAASTestCase):
         system_id = factory.make_name('system_id')
         state = random.choice(['on', 'off'])
         protocol, io = self.patch_rpc_methods()
-        d = power.power_state_update(
-            system_id, state)
+        d = power.power_state_update(system_id, state)
         # This blocks until the deferred is complete
         io.flush()
-        self.assertIsNone(extract_result(d))
+        self.expectThat(extract_result(d), Equals({}))
         self.assertThat(
             protocol.UpdateNodePowerState,
             MockCalledOnceWith(
@@ -675,7 +677,7 @@ class TestPowerQueryAsync(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            hostname-...: Failed to query power state: %s.
+            hostname-...: Could not query power state: %s.
             hostname-...: Power state has changed from ... to ...
             """ % error_msg,
             maaslog.output)
@@ -693,7 +695,7 @@ class TestPowerQueryAsync(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            hostname-...: Could not update power status; no such node.
+            hostname-...: Could not update power state: no such node.
             hostname-...: Power state has changed from ... to ...
             """,
             maaslog.output)
@@ -711,7 +713,7 @@ class TestPowerQueryAsync(MAASTestCase):
 
         self.assertDocTestMatches(
             """\
-            hostname-...: Failed to query power state, unknown error: unknown
+            hostname-...: Failed to refresh power state: unknown
             hostname-...: Power state has changed from ... to ...
             """,
             maaslog.output)
