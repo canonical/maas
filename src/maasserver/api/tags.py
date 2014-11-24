@@ -62,7 +62,10 @@ class TagHandler(OperationsHandler):
         )
 
     def read(self, request, name):
-        """Read a specific Tag"""
+        """Read a specific Tag.
+
+        Returns 404 if the tag is not found.
+        """
         return Tag.objects.get_tag_or_404(name=name, user=request.user)
 
     def update(self, request, name):
@@ -74,6 +77,8 @@ class TagHandler(OperationsHandler):
             It is meant as a human readable description of the tag.
         :param definition: An XPATH query that will be evaluated against the
             hardware_details stored for all nodes (output of `lshw -xml`).
+
+        Returns 404 if the tag is not found.
         """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
@@ -90,7 +95,11 @@ class TagHandler(OperationsHandler):
             raise ValidationError(form.errors)
 
     def delete(self, request, name):
-        """Delete a specific Tag."""
+        """Delete a specific Tag.
+
+        Returns 404 if the tag is not found.
+        Returns 204 if the tag is successfully deleted.
+        """
         tag = Tag.objects.get_tag_or_404(
             name=name, user=request.user, to_edit=True)
         tag.delete()
@@ -98,7 +107,10 @@ class TagHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def nodes(self, request, name):
-        """Get the list of nodes that have this tag."""
+        """Get the list of nodes that have this tag.
+
+        Returns 404 if the tag is not found.
+        """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         return Node.objects.get_nodes(
             request.user, NODE_PERMISSION.VIEW, from_nodes=tag.node_set.all())
@@ -120,6 +132,8 @@ class TagHandler(OperationsHandler):
         This is considered a maintenance operation, which should normally not
         be necessary. Adding nodes or updating a tag's definition should
         automatically trigger the appropriate changes.
+
+        Returns 404 if the tag is not found.
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user,
                                          to_edit=True)
@@ -141,6 +155,10 @@ class TagHandler(OperationsHandler):
             supplied, then the requester must be the worker associated with
             that nodegroup, and only nodes that are part of that nodegroup can
             be updated.
+
+        Returns 404 if the tag is not found.
+        Returns 401 if the user does not have permission to update the nodes.
+        Returns 409 if 'definition' doesn't match the current definition.
         """
         tag = Tag.objects.get_tag_or_404(name=name, user=request.user)
         nodegroup = None
@@ -196,6 +214,8 @@ class TagsHandler(OperationsHandler):
             value overrides the global 'kernel_opts' setting. If more than one
             tag is associated with a node, the one with the lowest alphabetical
             name will be picked (eg 01-my-tag will be taken over 99-tag-name).
+
+        Returns 401 if the user is not an admin.
         """
         if not request.user.is_superuser:
             raise PermissionDenied()

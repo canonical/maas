@@ -92,7 +92,10 @@ class NodeGroupsHandler(OperationsHandler):
         :param uuid: The UUID (or list of UUIDs) of the nodegroup(s) to accept.
         :type name: unicode (or list of unicodes)
 
-        This method is reserved to admin users.
+        This method is reserved to admin users and returns 403 if the
+        user is not an admin.
+
+        Returns 404 if the nodegroup (cluster) is not found.
         """
         uuids = request.data.getlist('uuid')
         for uuid in uuids:
@@ -125,7 +128,10 @@ class NodeGroupsHandler(OperationsHandler):
         :param uuid: The UUID (or list of UUIDs) of the nodegroup(s) to reject.
         :type name: unicode (or list of unicodes)
 
-        This method is reserved to admin users.
+        This method is reserved to admin users and returns 403 if the
+        user is not an admin.
+
+        Returns 404 if the nodegroup (cluster) is not found.
         """
         uuids = request.data.getlist('uuid')
         for uuid in uuids:
@@ -173,7 +179,10 @@ class NodeGroupHandler(OperationsHandler):
     fields = DISPLAYED_NODEGROUP_FIELDS
 
     def read(self, request, uuid):
-        """GET a node group."""
+        """GET a node group.
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        """
         return get_object_or_404(NodeGroup, uuid=uuid)
 
     @classmethod
@@ -195,6 +204,8 @@ class NodeGroupHandler(OperationsHandler):
         :param status: The new status for this cluster (see
             vocabulary `NODEGROUP_STATUS`).
         :type status: int
+
+        Returns 404 if the nodegroup (cluster) is not found.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         form = NodeGroupEdit(instance=nodegroup, data=request.data)
@@ -206,7 +217,10 @@ class NodeGroupHandler(OperationsHandler):
     @admin_method
     @operation(idempotent=False)
     def import_boot_images(self, request, uuid):
-        """Import the pxe files on this cluster controller."""
+        """Import the pxe files on this cluster controller.
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         nodegroup.import_boot_images()
         return HttpResponse(
@@ -215,7 +229,10 @@ class NodeGroupHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def list_nodes(self, request, uuid):
-        """Get the list of node ids that are part of this group."""
+        """Get the list of node ids that are part of this group.
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
             check_nodegroup_access(request, nodegroup)
@@ -250,6 +267,8 @@ class NodeGroupHandler(OperationsHandler):
         b) Requests for nodes that are not part of the nodegroup are
            just ignored.
 
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have access to the nodegroup.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
@@ -318,6 +337,10 @@ class NodeGroupHandler(OperationsHandler):
         :param error: Optional error string.  A download that has submitted an
             error with its last progress report is considered to have failed.
         :type error: unicode
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have access to the nodegroup.
+        Returns 400 if the required parameters were not passed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         check_nodegroup_access(request, nodegroup)
@@ -372,6 +395,10 @@ class NodeGroupHandler(OperationsHandler):
         :param power_pass: The password to use, when qemu+ssh is given as a
             connection string and ssh key authentication is not being used.
         :type power_pass: unicode
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have access to the nodegroup.
+        Returns 400 if the required parameters were not passed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
@@ -409,6 +436,9 @@ class NodeGroupHandler(OperationsHandler):
         :param password: The password for the API.
         :type password: unicode
 
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have access to the nodegroup.
+        Returns 400 if the required parameters were not passed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
@@ -432,6 +462,9 @@ class NodeGroupHandler(OperationsHandler):
         :param password: The password for the MSCM.
         :type password: unicode
 
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have access to the nodegroup.
+        Returns 400 if the required parameters were not passed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 

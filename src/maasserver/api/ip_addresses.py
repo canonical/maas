@@ -79,6 +79,9 @@ class IPAddressesHandler(OperationsHandler):
         :param network: CIDR representation of the network on which the IP
             reservation is required. e.g. 10.1.2.0/24
         :type network: unicode
+
+        Returns 400 if there is no network in MAAS matching the provided one.
+        Returns 503 if there are no more IP addresses available.
         """
         network = get_mandatory_param(request.POST, "network")
         requested_address = get_optional_param(
@@ -111,6 +114,8 @@ class IPAddressesHandler(OperationsHandler):
 
         :param ip: The IP address to release.
         :type ip: unicode
+
+        Returns 404 if the provided IP address is not found.
         """
         ip = get_mandatory_param(request.POST, "ip")
         staticaddress = get_object_or_404(

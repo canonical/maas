@@ -83,7 +83,11 @@ class SSLKeyHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, keyid):
-        """GET an SSL key."""
+        """GET an SSL key.
+
+        Returns 404 if the keyid is not found.
+        Returns 401 if the key does not belong to the requesting user.
+        """
         key = get_object_or_404(SSLKey, id=keyid)
         if key.user != request.user:
             return HttpResponse(
@@ -92,7 +96,11 @@ class SSLKeyHandler(OperationsHandler):
 
     @operation(idempotent=True)
     def delete(self, request, keyid):
-        """DELETE an SSL key."""
+        """DELETE an SSL key.
+
+        Returns 401 if the key does not belong to the requesting user.
+        Returns 204 if the key is successfully deleted.
+        """
         key = get_object_or_404(SSLKey, id=keyid)
         if key.user != request.user:
             return HttpResponse(

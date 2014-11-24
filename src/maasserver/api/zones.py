@@ -48,12 +48,18 @@ class ZoneHandler(OperationsHandler):
     create = None
 
     def read(self, request, name):
-        """GET request.  Return zone."""
+        """GET request.  Return zone.
+
+        Returns 404 if the zone is not found.
+        """
         return get_object_or_404(Zone, name=name)
 
     @admin_method
     def update(self, request, name):
-        """PUT request.  Update zone."""
+        """PUT request.  Update zone.
+
+        Returns 404 if the zone is not found.
+        """
         zone = get_object_or_404(Zone, name=name)
         form = ZoneForm(instance=zone, data=request.data)
         if not form.is_valid():
@@ -62,7 +68,11 @@ class ZoneHandler(OperationsHandler):
 
     @admin_method
     def delete(self, request, name):
-        """DELETE request.  Delete zone."""
+        """DELETE request.  Delete zone.
+
+        Returns 404 if the zone is not found.
+        Returns 204 if the zone is successfully deleted.
+        """
         zone = get_one(Zone.objects.filter(name=name))
         if zone is not None:
             zone.delete()

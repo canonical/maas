@@ -184,6 +184,11 @@ class FilesHandler(OperationsHandler):
         :type filename: string
         :param file: Actual file data with content type
             application/octet-stream
+
+        Returns 400 if any of these conditions apply:
+         - The filename is missing from the parameters
+         - The file data is missing
+         - More than one file is supplied
         """
         filename = request.data.get("filename", None)
         if not filename:
