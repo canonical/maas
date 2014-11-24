@@ -125,7 +125,7 @@ class MACAddress(CleanSave, TimestampedModel):
     .. _MAC address: http://en.wikipedia.org/wiki/MAC_address
     """
     mac_address = MACAddressField(unique=True)
-    node = ForeignKey('Node', editable=False)
+    node = ForeignKey('Node', editable=False, null=True, blank=True)
 
     networks = ManyToManyField('maasserver.Network', blank=True)
 
