@@ -47,7 +47,7 @@ class TestMACAddressForm(MAASServerTestCase):
 
     def test_MACAddressForm_displays_error_message_if_mac_already_used(self):
         mac = factory.make_mac_address()
-        node = factory.make_MACAddress(address=mac)
+        node = factory.make_MACAddress_with_Node(address=mac)
         node = factory.make_Node()
         form = MACAddressForm(node=node, data={'mac_address': mac})
         self.assertFalse(form.is_valid())

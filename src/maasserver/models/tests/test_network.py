@@ -264,19 +264,21 @@ class TestNetwork(MAASServerTestCase):
 
     def test_get_connected_nodes_returns_connected_nodes(self):
         network = factory.make_Network()
-        macs = [factory.make_MACAddress(networks=[network]) for _ in range(4)]
+        macs = [
+            factory.make_MACAddress_with_Node(networks=[network])
+            for _ in range(4)]
         nodes = [mac.node for mac in macs]
         # Create a handful of MAC addresses not connected to the network.
-        [factory.make_MACAddress() for _ in range(3)]
+        [factory.make_MACAddress_with_Node() for _ in range(3)]
         self.assertItemsEqual(nodes, network.get_connected_nodes())
 
     def test_get_connected_nodes_doesnt_count_multiple_connections_twice(self):
         network = factory.make_Network()
         node1 = factory.make_Node()
         node2 = factory.make_Node()
-        [factory.make_MACAddress(
+        [factory.make_MACAddress_with_Node(
             node=node1, networks=[network]) for _ in range(3)]
-        [factory.make_MACAddress(
+        [factory.make_MACAddress_with_Node(
             node=node2, networks=[network]) for _ in range(3)]
         self.assertItemsEqual([node1, node2], network.get_connected_nodes())
 

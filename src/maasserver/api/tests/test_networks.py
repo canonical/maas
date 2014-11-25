@@ -94,7 +94,7 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_filters_by_node(self):
         networks = factory.make_Networks(5)
-        mac = factory.make_MACAddress(networks=networks[1:3])
+        mac = factory.make_MACAddress_with_Node(networks=networks[1:3])
         node = mac.node
         response = self.client.get(
             reverse('networks_handler'),
@@ -107,8 +107,8 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_combines_node_filters_as_intersection_of_networks(self):
         networks = factory.make_Networks(5)
-        mac1 = factory.make_MACAddress(networks=networks[1:3])
-        mac2 = factory.make_MACAddress(networks=networks[2:4])
+        mac1 = factory.make_MACAddress_with_Node(networks=networks[1:3])
+        mac2 = factory.make_MACAddress_with_Node(networks=networks[2:4])
         node1 = mac1.node
         # Attach another MAC address to node1.
         factory.make_MACAddress(networks=networks[1:2], node=node1)
@@ -135,7 +135,8 @@ class TestNetworksAPI(APITestCase):
 
     def test_GET_ignores_duplicates(self):
         factory.make_Network()
-        mac = factory.make_MACAddress(networks=[factory.make_Network()])
+        mac = factory.make_MACAddress_with_Node(
+            networks=[factory.make_Network()])
         node = mac.node
         response = self.client.get(
             reverse('networks_handler'),

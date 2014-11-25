@@ -280,7 +280,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         params = self.get_default_params()
         params['mac'] = mac
         self.assertEqual(
@@ -420,14 +420,14 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertEqual(None, pxe_config['extra_opts'])
 
     def test_pxeconfig_returns_poweroff_for_insane_state(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual('poweroff', pxe_config['purpose'])
 
     def test_pxeconfig_returns_poweroff_for_ready_node(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         mac.node.status = NODE_STATUS.READY
         mac.node.save()
         params = self.get_default_params()

@@ -1551,7 +1551,7 @@ class NodeTest(MAASServerTestCase):
         unmanaged_interface = factory.make_NodeGroupInterface(
             nodegroup=node.nodegroup,
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
-        mac_with_unmanaged_interface = factory.make_MACAddress(
+        mac_with_unmanaged_interface = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=unmanaged_interface)
         ignore_unused(mac_with_no_interface, mac_with_unmanaged_interface)
 

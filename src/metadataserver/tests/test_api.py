@@ -140,11 +140,11 @@ class TestHelpers(DjangoTestCase):
             MAASAPINotFound, get_node_for_mac, factory.make_mac_address())
 
     def test_get_node_for_mac_finds_node_by_mac(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         self.assertEqual(mac.node, get_node_for_mac(mac.mac_address))
 
     def test_get_queried_node_looks_up_by_mac_if_given(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         self.assertEqual(
             mac.node,
             get_queried_node(object(), for_mac=mac.mac_address))
@@ -928,7 +928,7 @@ class TestDiskErasingAPI(MAASServerTestCase):
 class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_retrieves_node_metadata_by_mac(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         url = reverse(
             'metadata-meta-data-by-mac',
             args=['latest', mac.mac_address, 'instance-id'])
@@ -938,7 +938,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
             (response.status_code, response.content))
 
     def test_api_retrieves_node_userdata_by_mac(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         user_data = factory.make_string().encode('ascii')
         NodeUserData.objects.set_user_data(mac.node, user_data)
         url = reverse(
@@ -950,7 +950,7 @@ class TestByMACMetadataAPI(DjangoTestCase):
 
     def test_api_normally_disallows_anonymous_node_metadata_access(self):
         self.patch(settings, 'ALLOW_UNSAFE_METADATA_ACCESS', False)
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         url = reverse(
             'metadata-meta-data-by-mac',
             args=['latest', mac.mac_address, 'instance-id'])

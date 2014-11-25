@@ -471,6 +471,16 @@ class Factory(maastesting.factory.Factory):
             mac.networks.add(*networks)
         return mac
 
+    def make_MACAddress_with_Node(self, address=None, node=None, networks=None,
+                                  **kwargs):
+        """Create a `MACAddress` model that is guaranteed to be linked
+        to a node.
+        """
+        if node is None:
+            node = self.make_Node()
+        return self.make_MACAddress(
+            node=node, address=address, networks=networks, **kwargs)
+
     def make_node_with_mac_attached_to_nodegroupinterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             network=None, disable_ipv4=False, **kwargs):
