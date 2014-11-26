@@ -97,26 +97,20 @@ class TestAdminMethodDecorator(APITestCase):
 class TestOperationsHandlerMixin(MAASTestCase):
     """Tests for :py:class:`maasserver.api.support.OperationsHandlerMixin`."""
 
+    def make_handler(self, **namespace):
+        return type(b"TestHandler", (OperationsHandlerMixin,), namespace)
+
     def test__decorate_decorates_exports(self):
-        mixin = OperationsHandlerMixin()
-        mixin.exports = {
-            "foo": sentinel.foo,
-            "bar": sentinel.bar,
-        }
-        mixin.decorate(lambda thing: unicode(thing).upper())
+        handler = self.make_handler(
+            exports={"foo": sentinel.foo, "bar": sentinel.bar})
+        handler.decorate(lambda thing: unicode(thing).upper())
         self.assertEqual(
             {"foo": "SENTINEL.FOO", "bar": "SENTINEL.BAR"},
-            mixin.exports)
+            handler.exports)
 
-    def test__decorate_shadows_class_attribute(self):
-        exports = {
-            "foo": sentinel.foo,
-            "bar": sentinel.bar,
-        }
-        self.patch(OperationsHandlerMixin, "exports", exports)
-        mixin = OperationsHandlerMixin()
-        mixin.decorate(lambda thing: None)
-        self.assertEqual({"foo": None, "bar": None}, mixin.exports)
-        # Remove the new exports attribute and the class attribute is back.
-        del mixin.exports
-        self.assertEqual(exports, mixin.exports)
+    def test__decorate_decorates_anonymous_exports(self):
+        handler = self.make_handler(exports={"foo": sentinel.foo})
+        handler.anonymous = self.make_handler(exports={"bar": sentinel.bar})
+        handler.decorate(lambda thing: unicode(thing).upper())
+        self.assertEqual({"foo": "SENTINEL.FOO"}, handler.exports)
+        self.assertEqual({"bar": "SENTINEL.BAR"}, handler.anonymous.exports)

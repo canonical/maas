@@ -177,6 +177,12 @@ class OperationsHandlerMixin:
     :class:`OperationsHandlerType`.
     """
 
+    # Populated by OperationsHandlerType.
+    exports = None
+
+    # Specified by subclasses.
+    anonymous = None
+
     def dispatch(self, request, *args, **kwargs):
         signature = request.method.upper(), request.REQUEST.get("op")
         function = self.exports.get(signature)
@@ -186,20 +192,25 @@ class OperationsHandlerMixin:
         else:
             return function(self, request, *args, **kwargs)
 
-    def decorate(self, func):
+    @classmethod
+    def decorate(cls, func):
         """Decorate all exported operations with the given function.
 
-        Exports are typically available as a class attribute. This creates an
-        instance attribute that shadows that, with all the operation functions
-        decorated with `decorate`. This can be called multiple times to add
-        additional layers of decoration.
+        Exports are stored in a class attribute. Calling this function
+        replaces that attribute, with all the exported functions decorated
+        with `decorate`. This can be called multiple times to add additional
+        layers of decoration.
 
         :param func: A single-argument callable.
         """
-        self.exports = {
+        cls.exports = {
             name: func(export)
-            for name, export in self.exports.viewitems()
+            for name, export in cls.exports.viewitems()
         }
+        # Now also decorate the anonymous handler, if present.
+        if cls.anonymous is not None and bool(cls.anonymous):
+            if issubclass(cls.anonymous, OperationsHandlerMixin):
+                cls.anonymous.decorate(func)
 
 
 class OperationsHandler(
