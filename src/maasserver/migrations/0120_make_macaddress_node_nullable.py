@@ -1,6 +1,6 @@
+# -*- coding: utf-8 -*-
 from django.db import models
 from south.db import db
-# -*- coding: utf-8 -*-
 from south.utils import datetime_utils as datetime
 from south.v2 import SchemaMigration
 
@@ -104,7 +104,7 @@ class Migration(SchemaMigration):
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
         u'maasserver.bootsourceselection': {
-            'Meta': {'object_name': 'BootSourceSelection'},
+            'Meta': {'unique_together': "((u'boot_source', u'os', u'release'),)", 'object_name': 'BootSourceSelection'},
             'arches': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'text'", 'null': 'True', 'blank': 'True'}),
             'boot_source': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.BootSource']"}),
             'created': ('django.db.models.fields.DateTimeField', [], {}),
@@ -132,7 +132,7 @@ class Migration(SchemaMigration):
         u'maasserver.config': {
             'Meta': {'object_name': 'Config'},
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
+            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'}),
             'value': ('maasserver.fields.JSONObjectField', [], {'null': 'True'})
         },
         u'maasserver.dhcplease': {
