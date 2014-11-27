@@ -111,6 +111,7 @@ from testtools.matchers import (
     Equals,
     Is,
     MatchesStructure,
+    Not,
     )
 from twisted.internet import defer
 from twisted.internet.defer import Deferred
@@ -1787,6 +1788,13 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(mac=True)
         factory.make_MACAddress(node=node)
         self.assertEqual(node.macaddress_set.first(), node.get_pxe_mac())
+
+    def test_pxe_mac_deletion_does_not_delete_node(self):
+        node = factory.make_Node(mac=True)
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
+        node.pxe_mac.delete()
+        self.assertThat(reload_object(node), Not(Is(None)))
 
 
 class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
