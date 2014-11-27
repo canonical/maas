@@ -18,13 +18,13 @@ __all__ = [
     ]
 
 
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.node_groups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import NodeGroupInterfaceForm
 from maasserver.models import (
     NodeGroup,
@@ -107,7 +107,7 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, nodegroup=None):
@@ -189,7 +189,7 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, uuid, name):
         """Delete a specific NodeGroupInterface.

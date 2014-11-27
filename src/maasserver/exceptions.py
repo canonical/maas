@@ -31,10 +31,12 @@ __all__ = [
 
 import httplib
 
+from django.core.exceptions import ValidationError
 from django.http import (
     HttpResponse,
     HttpResponseRedirect,
     )
+import simplejson as json
 
 
 class MAASException(Exception):
@@ -76,6 +78,26 @@ class MAASAPINotFound(MAASAPIException):
 
 class MAASAPIForbidden(MAASAPIException):
     api_error = httplib.FORBIDDEN
+
+
+class MAASAPIValidationError(MAASAPIBadRequest, ValidationError):
+    """A validation error raised during a MAAS API request."""
+
+    def make_http_response(self):
+        """Create an :class:`HttpResponse` representing this exception."""
+        mimetype = b"application/json"
+        if hasattr(self, 'error_dict'):
+            messages = json.dumps(self.message_dict)
+        elif len(self.messages) == 1:
+            messages = self.messages[0]
+            mimetype = b"text/plain"
+        else:
+            messages = json.dumps(self.messages)
+
+        encoding = b'utf-8'
+        return HttpResponse(
+            status=self.api_error, content=messages,
+            mimetype=b"%s; charset=%s" % (mimetype, encoding))
 
 
 class Unauthorized(MAASAPIException):

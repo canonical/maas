@@ -19,13 +19,13 @@ __all__ = [
 
 import httplib
 
-from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import SSHKeyForm
 from maasserver.models import SSHKey
 from piston.emitters import JSONEmitter
@@ -64,7 +64,7 @@ class SSHKeysHandler(OperationsHandler):
                 stream, mimetype='application/json; charset=utf-8',
                 status=httplib.CREATED)
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @classmethod
     def resource_uri(cls, *args, **kwargs):

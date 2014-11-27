@@ -18,9 +18,9 @@ __all__ = [
     ]
 
 
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceSelectionForm
 from maasserver.models import (
     BootSource,
@@ -72,7 +72,7 @@ class BootSourceSelectionHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, boot_source_id, id):
         """Delete a specific boot source."""
@@ -166,7 +166,7 @@ class BootSourceSelectionsHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
 
 class BootSourceSelectionsBackwardHandler(BootSourceSelectionsHandler):

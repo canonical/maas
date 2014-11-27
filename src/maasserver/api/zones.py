@@ -17,12 +17,12 @@ __all__ = [
     'ZonesHandler',
     ]
 
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
     OperationsHandler,
     )
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import ZoneForm
 from maasserver.models import Zone
 from maasserver.utils.orm import get_one
@@ -63,7 +63,7 @@ class ZoneHandler(OperationsHandler):
         zone = get_object_or_404(Zone, name=name)
         form = ZoneForm(instance=zone, data=request.data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.save()
 
     @admin_method
@@ -110,7 +110,7 @@ class ZonesHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def read(self, request):
         """List zones.

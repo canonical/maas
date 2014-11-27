@@ -18,9 +18,9 @@ __all__ = [
     ]
 
 
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import LicenseKeyForm
 from maasserver.models import LicenseKey
 from maasserver.utils.orm import get_one
@@ -52,7 +52,7 @@ class LicenseKeysHandler(OperationsHandler):
             data = {}
         form = LicenseKeyForm(data=data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.save()
 
     @classmethod
@@ -89,7 +89,7 @@ class LicenseKeyHandler(OperationsHandler):
             data = {}
         form = LicenseKeyForm(instance=license_key, data=data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.save()
 
     def delete(self, request, osystem, distro_series):

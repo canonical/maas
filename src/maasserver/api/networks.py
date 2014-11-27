@@ -18,7 +18,6 @@ __all__ = [
     ]
 
 
-from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     admin_method,
@@ -26,6 +25,7 @@ from maasserver.api.support import (
     OperationsHandler,
     )
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import (
     NetworkConnectMACsForm,
     NetworkDisconnectMACsForm,
@@ -77,7 +77,7 @@ class NetworkHandler(OperationsHandler):
             instance=network, data=request.data,
             delete_macs_if_not_present=False)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.save()
 
     @admin_method
@@ -107,7 +107,7 @@ class NetworkHandler(OperationsHandler):
         network = get_object_or_404(Network, name=name)
         form = NetworkConnectMACsForm(network=network, data=request.data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         form.save()
 
     @admin_method
@@ -123,7 +123,7 @@ class NetworkHandler(OperationsHandler):
         network = get_object_or_404(Network, name=name)
         form = NetworkDisconnectMACsForm(network=network, data=request.data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         form.save()
 
     @operation(idempotent=True)
@@ -165,7 +165,7 @@ class NetworksHandler(OperationsHandler):
         """
         form = NetworksListingForm(data=request.GET)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.filter_networks(Network.objects.all())
 
     @admin_method
@@ -186,7 +186,7 @@ class NetworksHandler(OperationsHandler):
         """
         form = NetworkForm(request.data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         return form.save()
 
     @classmethod

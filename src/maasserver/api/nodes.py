@@ -22,10 +22,7 @@ from base64 import b64decode
 import bson
 import crochet
 from django.conf import settings
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver import locks
@@ -50,6 +47,7 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import (
     MAASAPIBadRequest,
+    MAASAPIValidationError,
     NodesNotAvailable,
     NodeStateViolation,
     PowerProblem,
@@ -246,7 +244,7 @@ class NodeHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, system_id):
         """Delete a specific Node.
@@ -341,7 +339,7 @@ class NodeHandler(OperationsHandler):
             if form.is_valid():
                 form.save()
             else:
-                raise ValidationError(form.errors)
+                raise MAASAPIValidationError(form.errors)
 
         try:
             node.start(request.user, user_data=user_data)
@@ -396,7 +394,7 @@ class NodeHandler(OperationsHandler):
             node = form.save(allow_redirect=False)
             return node
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=True)
     def details(self, request, system_id):
@@ -622,7 +620,7 @@ def create_node(request):
     if given_arch and '/' in given_arch:
         if given_subarch:
             # Architecture with a '/' and a subarchitecture: error.
-            raise ValidationError('Subarchitecture cannot be specified twice.')
+            raise MAASAPIValidationError('Subarchitecture cannot be specified twice.')
         # Architecture with a '/' in it: use normally.
     elif given_arch:
         if given_subarch:
@@ -644,7 +642,7 @@ def create_node(request):
             # We insist on this to protect command-line API users who
             # are manually enlisting nodes.  You can't use the origin's
             # IP address to indicate in which nodegroup the new node belongs.
-            raise ValidationError(
+            raise MAASAPIValidationError(
                 "'autodetect_nodegroup' must be specified if 'nodegroup' "
                 "parameter missing")
         nodegroup = find_nodegroup(request)
@@ -660,7 +658,7 @@ def create_node(request):
         maaslog.info("%s: Enlisted new node", node.hostname)
         return node
     else:
-        raise ValidationError(form.errors)
+        raise MAASAPIValidationError(form.errors)
 
 
 class AnonNodesHandler(AnonymousOperationsHandler):
@@ -940,7 +938,7 @@ class NodesHandler(OperationsHandler):
             invalid_macs = [
                 mac for mac in match_macs if MAC_RE.match(mac) is None]
             if len(invalid_macs) != 0:
-                raise ValidationError(
+                raise MAASAPIValidationError(
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
 
         # Fetch nodes and apply filters.
@@ -1040,7 +1038,7 @@ class NodesHandler(OperationsHandler):
             request.user.username, request.data)
 
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
@@ -1085,7 +1083,7 @@ class NodesHandler(OperationsHandler):
         }
         form = BulkNodeActionForm(request.user, data=data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         form.save()
 
     @admin_method

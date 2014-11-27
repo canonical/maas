@@ -17,7 +17,6 @@ __all__ = [
     ]
 
 
-from django.core.exceptions import ValidationError
 from django.http import HttpResponse
 from formencode import validators
 from maasserver.api.support import (
@@ -25,6 +24,7 @@ from maasserver.api.support import (
     OperationsHandler,
     )
 from maasserver.api.utils import get_mandatory_param
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms_settings import (
     get_config_doc,
     get_config_form,
@@ -56,7 +56,7 @@ class MaasHandler(OperationsHandler):
         value = get_mandatory_param(request.data, 'value')
         form = get_config_form(name, {name: value})
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         form.save()
         return rc.ALL_OK
 

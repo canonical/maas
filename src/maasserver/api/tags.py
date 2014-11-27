@@ -20,10 +20,7 @@ __all__ = [
 
 import httplib
 
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
 from maasserver.api.node_groups import check_nodegroup_access
@@ -33,6 +30,7 @@ from maasserver.api.support import (
     )
 from maasserver.api.utils import get_list_from_dict_or_multidict
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import TagForm
 from maasserver.models import (
     Node,
@@ -89,10 +87,10 @@ class TagHandler(OperationsHandler):
                 new_tag.save()
                 form.save_m2m()
             except DatabaseError as e:
-                raise ValidationError(e)
+                raise MAASAPIValidationError(e)
             return new_tag
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, name):
         """Delete a specific Tag.
@@ -223,7 +221,7 @@ class TagsHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @operation(idempotent=True)
     def list(self, request):

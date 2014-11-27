@@ -20,11 +20,11 @@ __all__ = [
 from base64 import b64encode
 import httplib
 
-from django.core.exceptions import ValidationError
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import OperationsHandler
+from maasserver.exceptions import MAASAPIValidationError
 from maasserver.forms import BootSourceForm
 from maasserver.models import BootSource
 from piston.emitters import JSONEmitter
@@ -94,7 +94,7 @@ class BootSourceHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     def delete(self, request, id):
         """Delete a specific boot source."""
@@ -176,7 +176,7 @@ class BootSourcesHandler(OperationsHandler):
                 stream, mimetype='application/json; charset=utf-8',
                 status=httplib.CREATED)
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
 
 class BootSourcesBackwardHandler(BootSourcesHandler):

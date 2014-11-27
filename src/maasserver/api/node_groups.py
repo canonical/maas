@@ -21,10 +21,7 @@ __all__ = [
 import httplib
 
 import bson
-from django.core.exceptions import (
-    PermissionDenied,
-    ValidationError,
-    )
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from formencode import validators
@@ -43,7 +40,10 @@ from maasserver.api.utils import (
 from maasserver.clusterrpc.power_parameters import (
     get_all_power_types_from_clusters,
     )
-from maasserver.exceptions import Unauthorized
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    Unauthorized,
+    )
 from maasserver.forms import (
     DownloadProgressForm,
     NodeGroupEdit,
@@ -212,7 +212,7 @@ class NodeGroupHandler(OperationsHandler):
         if form.is_valid():
             return form.save()
         else:
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
 
     @admin_method
     @operation(idempotent=False)
@@ -356,7 +356,7 @@ class NodeGroupHandler(OperationsHandler):
 
         form = DownloadProgressForm(data=request.data, instance=download)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         form.save()
 
         return HttpResponse(status=httplib.OK)

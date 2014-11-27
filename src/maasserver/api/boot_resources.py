@@ -21,7 +21,6 @@ __all__ = [
 import httplib
 import os
 
-from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.urlresolvers import reverse
 from django.http import HttpResponse
@@ -40,6 +39,7 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     MAASAPIForbidden,
+    MAASAPIValidationError,
     )
 from maasserver.forms import (
     BootResourceForm,
@@ -205,7 +205,7 @@ class BootResourcesHandler(OperationsHandler):
         else:
             form = BootResourceNoContentForm(data=data)
         if not form.is_valid():
-            raise ValidationError(form.errors)
+            raise MAASAPIValidationError(form.errors)
         resource = form.save()
 
         # If an upload contained the full file, then we can have the clusters

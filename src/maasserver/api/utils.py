@@ -23,10 +23,12 @@ __all__ = [
     'get_overridden_query_dict',
     ]
 
-from django.core.exceptions import ValidationError
 from django.http import QueryDict
 from formencode.validators import Invalid
-from maasserver.exceptions import Unauthorized
+from maasserver.exceptions import (
+    MAASAPIValidationError,
+    Unauthorized,
+    )
 from piston.models import Token
 
 
@@ -69,12 +71,12 @@ def get_mandatory_param(data, key, validator=None):
     """
     value = data.get(key, None)
     if value is None:
-        raise ValidationError("No provided %s!" % key)
+        raise MAASAPIValidationError("No provided %s!" % key)
     if validator is not None:
         try:
             return validator.to_python(value)
         except Invalid as e:
-            raise ValidationError("Invalid %s: %s" % (key, e.msg))
+            raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
     else:
         return value
 
@@ -103,7 +105,7 @@ def get_optional_param(data, key, default=None, validator=None):
         try:
             return validator.to_python(value)
         except Invalid as e:
-            raise ValidationError("Invalid %s: %s" % (key, e.msg))
+            raise MAASAPIValidationError("Invalid %s: %s" % (key, e.msg))
     else:
         return value
 
