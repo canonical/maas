@@ -18,16 +18,26 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from maasserver.api import ip_addresses as ip_addresses_module
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
     )
 from maasserver.models import StaticIPAddress
+from maasserver.models.macaddress import MACAddress
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
-from testtools.matchers import Equals
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
+from testtools.matchers import (
+    Equals,
+    HasLength,
+    Is,
+    Not,
+    )
+from twisted.python.failure import Failure
 
 
 class TestNetworksAPI(APITestCase):
@@ -36,19 +46,22 @@ class TestNetworksAPI(APITestCase):
         cluster = factory.make_NodeGroup(status=status, **kwargs)
         return factory.make_NodeGroupInterface(cluster)
 
-    def post_reservation_request(self, net, requested_address=None):
+    def post_reservation_request(self, net, requested_address=None, mac=None):
         params = {
             'op': 'reserve',
             'network': unicode(net),
         }
         if requested_address is not None:
             params["requested_address"] = requested_address
+        if mac is not None:
+            params["mac"] = mac
         return self.client.post(reverse('ipaddresses_handler'), params)
 
-    def post_release_request(self, ip):
+    def post_release_request(self, ip, mac=None):
         params = {
             'op': 'release',
             'ip': ip,
+            'mac': mac,
         }
         return self.client.post(reverse('ipaddresses_handler'), params)
 
@@ -83,6 +96,77 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
         self.assertEqual(self.logged_in_user, staticipaddress.user)
+
+    def test_POST_reserve_with_MAC_links_MAC_to_ip_address(self):
+        update_host_maps = self.patch(ip_addresses_module, 'update_host_maps')
+        interface = self.make_interface()
+        net = interface.network
+        mac = factory.make_mac_address()
+
+        response = self.post_reservation_request(net, mac=mac)
+        self.assertEqual(httplib.OK, response.status_code)
+        returned_address = json.loads(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            staticipaddress.macaddress_set.first().mac_address,
+            Equals(mac))
+
+        # DHCP Host maps have been updated.
+        self.expectThat(
+            update_host_maps,
+            MockCalledOnceWith(
+                {interface.nodegroup: {returned_address['ip']: mac}}))
+
+    def test_POST_reserve_with_MAC_returns_503_if_hostmap_update_fails(self):
+        update_host_maps = self.patch(ip_addresses_module, 'update_host_maps')
+        # We a specific exception here because update_host_maps() will
+        # fail with RPC-specific errors.
+        update_host_maps.return_value = [
+            Failure(
+                NoConnectionsAvailable(
+                    "Are you sure you're not Elvis?"))
+            ]
+        interface = self.make_interface()
+        net = interface.network
+        mac = factory.make_mac_address()
+
+        response = self.post_reservation_request(net, mac=mac)
+        self.expectThat(
+            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
+        # No static IP has been created.
+        self.expectThat(
+            StaticIPAddress.objects.all(), HasLength(0))
+        # No MAC address has been created, either.
+        self.expectThat(
+            MACAddress.objects.all(), HasLength(0))
+
+    def test_POST_returns_CONFLICT_when_static_ip_for_MAC_already_exists(self):
+        interface = self.make_interface()
+        mac = factory.make_MACAddress(cluster_interface=interface)
+        mac.claim_static_ips()
+        net = interface.network
+
+        response = self.post_reservation_request(net, mac=mac.mac_address)
+        self.expectThat(
+            response.status_code, Equals(httplib.CONFLICT))
+        # No new static IP has been created.
+        self.expectThat(
+            StaticIPAddress.objects.all().count(),
+            Equals(1))
+
+    def test_POST_allows_claiming_of_new_static_ips_for_existing_MAC(self):
+        self.patch(ip_addresses_module, 'update_host_maps')
+
+        interface = self.make_interface()
+        net = interface.network
+        mac = factory.make_MACAddress(cluster_interface=interface)
+
+        response = self.post_reservation_request(net, mac=mac.mac_address)
+        self.expectThat(response.status_code, Equals(httplib.OK))
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.assertEqual(
+            staticipaddress.macaddress_set.first().mac_address,
+            mac.mac_address)
 
     def test_POST_reserve_errors_for_no_matching_interface(self):
         interface = self.make_interface()
@@ -201,6 +285,70 @@ class TestNetworksAPI(APITestCase):
         response = self.post_release_request(ipaddress.ip)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertIsNone(reload_object(ipaddress))
+
+    def test_POST_release_deletes_floating_MAC_address(self):
+        self.patch(ip_addresses_module, 'remove_host_maps')
+
+        interface = self.make_interface()
+        floating_mac = factory.make_MACAddress(cluster_interface=interface)
+        [ipaddress] = floating_mac.claim_static_ips(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+
+        self.post_release_request(ipaddress.ip)
+        self.assertIsNone(reload_object(floating_mac))
+
+    def test_POST_release_does_not_delete_MACs_linked_to_nodes(self):
+        self.patch(ip_addresses_module, 'remove_host_maps')
+
+        interface = self.make_interface()
+        node = factory.make_Node(nodegroup=interface.nodegroup)
+        attached_mac = factory.make_MACAddress(
+            node=node, cluster_interface=interface)
+        [ipaddress] = attached_mac.claim_static_ips(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+
+        self.post_release_request(ipaddress.ip)
+        self.assertEqual(attached_mac, reload_object(attached_mac))
+
+    def test_POST_release_updates_DNS_and_DHCP(self):
+        remove_host_maps = self.patch(ip_addresses_module, 'remove_host_maps')
+
+        interface = self.make_interface()
+        floating_mac = factory.make_MACAddress(cluster_interface=interface)
+        [ipaddress] = floating_mac.claim_static_ips(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+
+        self.post_release_request(ipaddress.ip)
+        self.expectThat(
+            remove_host_maps, MockCalledOnceWith(
+                {interface.nodegroup: [ipaddress.ip]}))
+
+    def test_POST_release_raises_503_if_removing_host_maps_errors(self):
+        remove_host_maps = self.patch(ip_addresses_module, 'remove_host_maps')
+        # Failures in remove_host_maps() will be RPC-related exceptions,
+        # so we use one of those explicitly.
+        remove_host_maps.return_value = [
+            Failure(
+                NoConnectionsAvailable(
+                    "The wizard's staff has a knob on the end."))
+            ]
+
+        interface = self.make_interface()
+        floating_mac = factory.make_MACAddress(cluster_interface=interface)
+        [ipaddress] = floating_mac.claim_static_ips(
+            alloc_type=IPADDRESS_TYPE.USER_RESERVED, user=self.logged_in_user)
+
+        response = self.post_release_request(ipaddress.ip)
+        self.expectThat(
+            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
+
+        # The static IP hasn't been deleted.
+        self.expectThat(
+            reload_object(ipaddress), Not(Is(None)))
+
+        # Neither has the DHCPHost.
+        self.expectThat(
+            reload_object(floating_mac), Not(Is(None)))
 
     def test_POST_release_does_not_delete_IP_that_I_dont_own(self):
         ipaddress = factory.make_StaticIPAddress(user=factory.make_User())

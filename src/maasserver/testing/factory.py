@@ -461,8 +461,6 @@ class Factory(maastesting.factory.Factory):
     def make_MACAddress(self, address=None, node=None, networks=None,
                         **kwargs):
         """Create a `MACAddress` model object."""
-        if node is None:
-            node = self.make_Node()
         if address is None:
             address = self.make_mac_address()
         mac = MACAddress(mac_address=MAC(address), node=node, **kwargs)

@@ -645,6 +645,16 @@ class TestClaimStaticIPs(MAASServerTestCase):
         [sip] = allocation
         self.assertEqual(IPAddress(requested_ip), IPAddress(sip.ip))
 
+    def test__links_static_ip_to_user_if_passed(self):
+        cluster = factory.make_NodeGroup()
+        cluster_interface = factory.make_NodeGroupInterface(cluster)
+        mac_address = factory.make_MACAddress(
+            cluster_interface=cluster_interface)
+        user = factory.make_User()
+        [sip] = mac_address.claim_static_ips(
+            user=user, alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+        self.assertEqual(sip.user, user)
+
 
 class TestGetClusterInterfaces(MAASServerTestCase):
     """Tests for `MACAddress.get_cluster_interfaces`."""

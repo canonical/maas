@@ -205,7 +205,7 @@ class MACAddress(CleanSave, TimestampedModel):
         return allocations
 
     def _allocate_static_address(self, cluster_interface, alloc_type,
-                                 requested_address=None):
+                                 requested_address=None, user=None):
         """Allocate a `StaticIPAddress` for this MAC."""
         # Avoid circular imports.
         from maasserver.models import (
@@ -216,12 +216,13 @@ class MACAddress(CleanSave, TimestampedModel):
         new_sip = StaticIPAddress.objects.allocate_new(
             cluster_interface.static_ip_range_low,
             cluster_interface.static_ip_range_high,
-            alloc_type, requested_address=requested_address)
+            alloc_type, requested_address=requested_address,
+            user=user)
         MACStaticIPAddressLink(mac_address=self, ip_address=new_sip).save()
         return new_sip
 
     def claim_static_ips(self, alloc_type=IPADDRESS_TYPE.AUTO,
-                         requested_address=None):
+                         requested_address=None, user=None):
         """Assign static IP addresses to this MAC.
 
         Allocates one address per managed cluster interface connected to this
@@ -236,6 +237,8 @@ class MACAddress(CleanSave, TimestampedModel):
             the range defined on some cluster interface to which this
             MACAddress is related.  If given, no allocations will be made on
             any other cluster interfaces the MAC may be connected to.
+        :param user: Optional User who will be given ownership of any
+            `StaticIPAddress`es claimed.
         :return: A list of :class:`StaticIPAddress`.  Returns empty if
             the cluster_interface is not yet known, or the
             static_ip_range_low/high values values are not set on the
@@ -258,9 +261,13 @@ class MACAddress(CleanSave, TimestampedModel):
         # different representations for "none" values in IP addresses.
         if self.cluster_interface is None:
             # No known cluster interface.  Nothing we can do.
+            if self.node is not None:
+                hostname_string = "%s: " % self.node.hostname
+            else:
+                hostname_string = ""
             maaslog.error(
-                "%s: Tried to allocate an IP to MAC %s but its cluster "
-                "interface is not known", self.node.hostname, self)
+                "%sTried to allocate an IP to MAC %s but its cluster "
+                "interface is not known", hostname_string, self)
             return []
         cluster_interfaces = [
             interface
@@ -302,7 +309,7 @@ class MACAddress(CleanSave, TimestampedModel):
             if allocations[interface] is None:
                 # No IP address yet on this cluster interface.  Get one.
                 allocations[interface] = self._allocate_static_address(
-                    interface, alloc_type, requested_address)
+                    interface, alloc_type, requested_address, user=user)
 
         # We now have a static IP allocated to each of our cluster interfaces.
         # Ignore the clashes.  Return the ones that have the right type: those
