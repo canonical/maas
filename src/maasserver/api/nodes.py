@@ -620,7 +620,8 @@ def create_node(request):
     if given_arch and '/' in given_arch:
         if given_subarch:
             # Architecture with a '/' and a subarchitecture: error.
-            raise MAASAPIValidationError('Subarchitecture cannot be specified twice.')
+            raise MAASAPIValidationError(
+                'Subarchitecture cannot be specified twice.')
         # Architecture with a '/' in it: use normally.
     elif given_arch:
         if given_subarch:
