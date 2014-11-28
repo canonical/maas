@@ -265,6 +265,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
 
         :return: py:class:`twisted.test.iosim.IOPump`
         """
+        self.ensureSharedSecret()
         eventloop = self.getEventLoopName(protocol)
         address = factory.make_ipv4_address(), factory.pick_port()
         client = ClusterClient(address, eventloop, self.rpc_service)
@@ -328,7 +329,6 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
         This ought to always return the correct digest because it'll be using
         the same shared-secret as the cluster.
         """
-        self.ensureSharedSecret()
         return Cluster().authenticate(message)
 
 
