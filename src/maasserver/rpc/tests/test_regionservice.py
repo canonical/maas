@@ -159,6 +159,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     succeed,
     )
+from twisted.internet.error import ConnectionClosed
 from twisted.internet.interfaces import IStreamServerEndpoint
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
@@ -929,7 +930,7 @@ class TestRegionProtocol_SendEvent(TransactionTestCase):
 
         def check(result):
             self.assertThat(
-                maaslog.warning, MockCalledOnceWith(
+                maaslog.debug, MockCalledOnceWith(
                     "Event '%s: %s' sent for non-existent node '%s'.",
                     name, event_description, system_id))
 
@@ -1032,7 +1033,7 @@ class TestRegionProtocol_SendEventMACAddress(TransactionTestCase):
 
         def check(result):
             self.assertThat(
-                maaslog.warning, MockCalledOnceWith(
+                maaslog.debug, MockCalledOnceWith(
                     "Event '%s: %s' sent for non-existent node with MAC "
                     "address '%s'.",
                     name, event_description, mac_address))
@@ -1174,6 +1175,13 @@ class TestRegionServer(MAASServerTestCase):
             Traceback (most recent call last):...
             """,
             logger.dump())
+
+    def test_handshakeFailed_does_not_log_when_connection_is_closed(self):
+        server = RegionServer()
+        with TwistedLoggerFixture() as logger:
+            server.handshakeFailed(Failure(ConnectionClosed()))
+        # Nothing was logged.
+        self.assertEqual("", logger.output)
 
     def make_running_server(self):
         service = RegionService()

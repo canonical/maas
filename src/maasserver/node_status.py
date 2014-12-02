@@ -184,6 +184,26 @@ COMMISSIONING_LIKE_STATUSES = [
     NODE_STATUS.DISK_ERASING,
 ]
 
+# Node state transitions that perform query actions. This is to keep the
+# power state of the node up-to-date when transitions occur that do not
+# perform a power action directly.
+QUERY_TRANSITIONS = {
+    None: [
+        NODE_STATUS.NEW,
+        ],
+    NODE_STATUS.COMMISSIONING: [
+        NODE_STATUS.FAILED_COMMISSIONING,
+        NODE_STATUS.READY,
+        ],
+    NODE_STATUS.DEPLOYING: [
+        NODE_STATUS.FAILED_DEPLOYMENT,
+        NODE_STATUS.DEPLOYED,
+    ],
+    NODE_STATUS.DISK_ERASING: [
+        NODE_STATUS.FAILED_DISK_ERASING,
+        ],
+    }
+
 
 def get_failed_status(status):
     """Returns the failed status corresponding to the given status.

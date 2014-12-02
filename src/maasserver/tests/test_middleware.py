@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import datetime
 import httplib
 import json
 import logging
@@ -29,6 +30,8 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.http.request import build_request_repr
 from fixtures import FakeLogger
+from maasserver import middleware as middleware_module
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
@@ -67,9 +70,11 @@ from provisioningserver.rpc.exceptions import (
     NoConnectionsAvailable,
     PowerActionAlreadyInProgress,
     )
+from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
     Contains,
+    Equals,
     Not,
     )
 from twisted.python.failure import Failure
@@ -81,23 +86,29 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         """Return a path to handle exceptions for."""
         return "/%s" % factory.make_string()
 
-    def make_middleware(self, base_path):
+    def make_middleware(self, base_path, retry_after=None):
         """Create an ExceptionMiddleware for base_path."""
         class TestingExceptionMiddleware(ExceptionMiddleware):
             path_regex = base_path
 
-        return TestingExceptionMiddleware()
+        testing_middleware = TestingExceptionMiddleware()
+        if retry_after is not None:
+            testing_middleware.RETRY_AFTER_SERVICE_UNAVAILABLE = retry_after
 
-    def process_exception(self, exception):
+        return testing_middleware
+
+    def process_exception(self, exception, retry_after=None):
         """Run a given exception through a fake ExceptionMiddleware.
 
         :param exception: The exception to simulate.
         :type exception: Exception
+        :param retry_after: Value of the RETRY_AFTER_SERVICE_UNAVAILABLE to
+            use in the fake middleware.
         :return: The response as returned by the ExceptionMiddleware.
         :rtype: HttpResponse or None.
         """
         base_path = self.make_base_path()
-        middleware = self.make_middleware(base_path)
+        middleware = self.make_middleware(base_path, retry_after)
         request = factory.make_fake_request(base_path)
         return middleware.process_exception(request, exception)
 
@@ -169,6 +180,16 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         error_text = factory.make_string()
         self.process_exception(Exception(error_text))
         self.assertThat(logger.output, Contains(error_text))
+
+    def test_reports_ExternalProcessError_as_ServiceUnavailable(self):
+        error_text = factory.make_string()
+        exception = ExternalProcessError(1, ["cmd"], error_text)
+        retry_after = random.randint(0, 10)
+        response = self.process_exception(exception, retry_after)
+        self.expectThat(
+            response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
+        self.expectThat(response.content, Equals(unicode(exception)))
+        self.expectThat(response['Retry-After'], Equals("%s" % retry_after))
 
 
 class APIErrorsMiddlewareTest(MAASServerTestCase):
@@ -626,9 +647,31 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         middleware.process_request(request)
         self.assertIsNone(get_persistent_error(COMPONENT.CLUSTERS))
 
+    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+        middleware = ExternalComponentsMiddleware()
+
+        self.patch(
+            middleware,
+            '_get_cluster_images').return_value = [make_rpc_boot_image()]
+        request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware.process_request(request)
+
+        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        self.assertEqual(
+            normalise_whitespace(
+                "Your cluster currently has boot images, but your region "
+                "does not. Nodes will not be able to provision until you "
+                "import boot images into the region. Visit the "
+                "<a href=\"%s\">boot images</a> page to start the "
+                "import." % reverse('images')),
+            error)
+
     def test__adds_warning_if_boot_image_import_not_started(self):
         middleware = ExternalComponentsMiddleware()
 
+        self.patch(
+            middleware,
+            '_get_cluster_images').return_value = []
         request = factory.make_fake_request(factory.make_string(), 'GET')
         middleware.process_request(request)
 
@@ -655,3 +698,41 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
 
         error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
         self.assertIsNone(error)
+
+    def test_get_cluster_images_calls_caches_on_first_call(self):
+        middleware = ExternalComponentsMiddleware()
+
+        images = [make_rpc_boot_image()]
+        mock_list = self.patch(middleware_module, 'list_boot_images')
+        mock_list.return_value = images
+        self.expectThat(images, Equals(middleware._get_cluster_images()))
+        self.expectThat(images, Equals(middleware._cluster_images))
+        self.expectThat(mock_list, MockCalledOnceWith())
+
+    def test_get_cluster_images_calls_doesnt_cache_on_second_call(self):
+        middleware = ExternalComponentsMiddleware()
+
+        images = [make_rpc_boot_image()]
+        mock_list = self.patch(middleware_module, 'list_boot_images')
+        mock_list.return_value = images
+        self.expectThat(images, Equals(middleware._get_cluster_images()))
+        mock_list.return_value = []
+        self.expectThat(images, Equals(middleware._get_cluster_images()))
+        self.expectThat(images, Equals(middleware._cluster_images))
+
+    def test_get_cluster_images_calls_cache_after_5mins(self):
+        middleware = ExternalComponentsMiddleware()
+
+        images = [make_rpc_boot_image()]
+        mock_list = self.patch(middleware_module, 'list_boot_images')
+        mock_list.return_value = images
+        self.expectThat(images, Equals(middleware._get_cluster_images()))
+
+        # Set the last update time 5 minutes ago, so it will
+        # call list_boot_images again.
+        middleware._cluster_images_updated -= datetime.timedelta(
+            minutes=5).total_seconds()
+
+        mock_list.return_value = []
+        self.expectThat([], Equals(middleware._get_cluster_images()))
+        self.expectThat([], Equals(middleware._cluster_images))

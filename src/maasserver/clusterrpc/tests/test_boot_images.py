@@ -37,12 +37,14 @@ from provisioningserver.boot.tftppath import (
     compose_image_path,
     locate_tftp_path,
     )
-from provisioningserver.rpc import clusterservice
+from provisioningserver.rpc import (
+    boot_images,
+    clusterservice,
+    )
 from provisioningserver.testing.boot_images import (
     make_boot_image_storage_params,
     make_image,
     )
-from provisioningserver.testing.config import set_tftp_root
 from twisted.internet.defer import succeed
 
 
@@ -139,8 +141,10 @@ class TestGetBootImages(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetBootImages, self).setUp()
-        self.tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(self.tftproot))
+        resource_dir = self.make_dir()
+        self.tftproot = os.path.join(resource_dir, 'current')
+        os.mkdir(self.tftproot)
+        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def test_returns_boot_images(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
@@ -165,8 +169,10 @@ class TestGetAvailableBootImages(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetAvailableBootImages, self).setUp()
-        self.tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(self.tftproot))
+        resource_dir = self.make_dir()
+        self.tftproot = os.path.join(resource_dir, 'current')
+        os.mkdir(self.tftproot)
+        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def test_returns_boot_images_for_one_cluster(self):
         factory.make_NodeGroup().accept()
@@ -252,8 +258,10 @@ class TestGetBootImagesFor(MAASServerTestCase):
 
     def setUp(self):
         super(TestGetBootImagesFor, self).setUp()
-        self.tftproot = self.make_dir()
-        self.useFixture(set_tftp_root(self.tftproot))
+        resource_dir = self.make_dir()
+        self.tftproot = os.path.join(resource_dir, 'current')
+        os.mkdir(self.tftproot)
+        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def make_boot_images(self):
         purposes = ['install', 'commissioning', 'xinstall']

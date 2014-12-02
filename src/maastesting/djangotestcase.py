@@ -21,7 +21,6 @@ __all__ = [
 
 
 from django.conf import settings
-from django.core.management import call_command
 from django.core.management.commands import syncdb
 from django.core.signals import request_started
 from django.db import (
@@ -82,33 +81,14 @@ class DjangoTestCase(MAASTestCase, django.test.TestCase):
     """
 
 
-def cleanup_db(testcase):
-    # Force a flush of the db: this is called by test classes based on
-    # django.test.TransactionTestCase at the beginning of each
-    # TransactionTestCase test but not at the end.  The Django test runner
-    # avoids any problem by running all the TestCase tests and *then*
-    # all the TransactionTestCase tests.  Since we use nose, we don't
-    # have that ordering and thus we need to manually flush the db after
-    # each TransactionTestCase test.  Le Sigh.
-    if getattr(testcase, 'multi_db', False):
-        databases = connections
-    else:
-        databases = [DEFAULT_DB_ALIAS]
-    for db in databases:
-        call_command('flush', verbosity=0, interactive=False, database=db)
-
-
 class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):
-    """`TransactionTestCase` for Metal as a Service.
+    """`TransactionTestCase` for MAAS.
 
     A version of MAASTestCase that supports transactions.
 
     The basic Django TestCase class uses transactions to speed up tests
-    so this class should be used when tests involve transactions.
+    so this class should only be used when tests involve transactions.
     """
-    def _fixture_teardown(self):
-        cleanup_db(self)
-        super(TransactionTestCase, self)._fixture_teardown()
 
 
 class TestModelMixin:

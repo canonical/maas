@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'compose_mv_command',
+    'compose_recursive_copy',
     'compose_write_text_file',
     ]
 
@@ -41,11 +42,14 @@ def compose_mv_command(source, dest):
     as an entry in `late_commands` dict.
     """
     return [
-        'curtin',
-        'in-target',
-        '--',
-        'mv',
-        '--',
-        source,
-        dest,
+        'curtin', 'in-target', '--',
+        'mv', '--', source, dest,
+        ]
+
+
+def compose_recursive_copy(source, dest):
+    """Return preseed for running a recursive `cp` in the install target."""
+    return [
+        'curtin', 'in-target', '--',
+        'cp', '-r', '-p', '--', source, dest,
         ]

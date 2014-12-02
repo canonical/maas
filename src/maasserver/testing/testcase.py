@@ -33,7 +33,6 @@ from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maastesting.djangotestcase import (
-    cleanup_db,
     DjangoTestCase,
     TransactionTestCase,
     )
@@ -169,10 +168,6 @@ class SeleniumTestCase(TransactionTestCase, LiveServerTestCase):
             raise SkipTest(
                 "Live tests only enabled if Django.version >=1.4.")
         super(SeleniumTestCase, self).setUp()
-
-    def tearDown(self):
-        super(SeleniumTestCase, self).tearDown()
-        cleanup_db(self)
 
     @classmethod
     def tearDownClass(cls):

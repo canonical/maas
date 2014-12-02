@@ -192,3 +192,6 @@ ignore_unused(monitor_connect)
 
 from maasserver import event_connect
 ignore_unused(event_connect)
+
+from maasserver import node_query
+ignore_unused(node_query)

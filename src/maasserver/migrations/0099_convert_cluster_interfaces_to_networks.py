@@ -5,26 +5,13 @@ from django.db import (
     transaction,
     )
 from django.db.utils import IntegrityError
+from maasserver.utils.interfaces import (
+    get_name_and_vlan_from_cluster_interface,
+    )
 from netaddr import IPNetwork
 from south.db import db
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
-
-
-def get_name_and_vlan_from_cluster_interface(cluster_interface):
-    """Given a `NodeGroupInterface`, return a name suitable for a `Network`.
-
-    :return: a tuple of the new name and vlan tag. vlan tag may be None
-    """
-    name = cluster_interface.interface
-    nodegroup_name = cluster_interface.nodegroup.name
-    vlan_tag = None
-    if '.' in name:
-        _, vlan_tag = name.split('.', 1)
-        name = name.replace('.', '-')
-    name = name.replace(':', '-')
-    network_name = "-".join((nodegroup_name, name))
-    return network_name, vlan_tag
 
 
 class Migration(DataMigration):
@@ -36,8 +23,10 @@ class Migration(DataMigration):
                 # Can be None or empty string, do nothing if so.
                 continue
 
-            name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-            ipnetwork = IPNetwork("%s/%s" % (interface.ip, interface.subnet_mask))
+            name, vlan_tag = get_name_and_vlan_from_cluster_interface(
+                interface.nodegroup.name, interface.interface)
+            ipnetwork = IPNetwork(
+                "%s/%s" % (interface.ip, interface.subnet_mask))
             network = orm['maasserver.Network'](
                 name=name,
                 ip=unicode(ipnetwork.network),

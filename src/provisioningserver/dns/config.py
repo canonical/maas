@@ -15,7 +15,7 @@ __metaclass__ = type
 __all__ = [
     'DNSConfig',
     'MAAS_NAMED_CONF_OPTIONS_INSIDE_NAME',
-    'setup_rndc',
+    'set_up_rndc',
     'set_up_options_conf',
     ]
 
@@ -145,7 +145,7 @@ def get_rndc_conf_path():
     return compose_config_path(MAAS_RNDC_CONF_NAME)
 
 
-def setup_rndc():
+def set_up_rndc():
     """Writes out the two files needed to enable MAAS to use rndc commands:
     MAAS_RNDC_CONF_NAME and MAAS_NAMED_RNDC_CONF_NAME.
     """

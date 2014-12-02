@@ -16,6 +16,7 @@ __all__ = []
 
 from socket import gethostname
 
+from django.db import IntegrityError
 from fixtures import TestWithFixtures
 from maasserver.models import Config
 import maasserver.models.config
@@ -65,6 +66,13 @@ class CallRecorder:
 class ConfigTest(MAASServerTestCase):
     """Testing of the :class:`Config` model and its related manager class."""
 
+    def test_config_name_uniqueness_enforced(self):
+        name = factory.make_name('name')
+        Config.objects.create(name=name, value=factory.make_name('value'))
+        self.assertRaises(
+            IntegrityError,
+            Config.objects.create, name=name, value=factory.make_name('value'))
+
     def test_manager_get_config_found(self):
         Config.objects.create(name='name', value='config')
         config = Config.objects.get_config('name')
@@ -94,12 +102,6 @@ class ConfigTest(MAASServerTestCase):
         config.update({'key2': 'value2'})
 
         self.assertEqual({'key': 'value'}, Config.objects.get_config(name))
-
-    def test_manager_get_config_list_returns_config_list(self):
-        Config.objects.create(name='name', value='config1')
-        Config.objects.create(name='name', value='config2')
-        config_list = Config.objects.get_config_list('name')
-        self.assertItemsEqual(['config1', 'config2'], config_list)
 
     def test_manager_set_config_creates_config(self):
         Config.objects.set_config('name', 'config1')

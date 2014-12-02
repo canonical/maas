@@ -18,7 +18,6 @@ __all__ = [
     "send_event_mac_address",
 ]
 
-
 from maasserver.models import (
     Event,
     EventType,
@@ -41,13 +40,7 @@ def register_event_type(name, description, level):
 
     for :py:class:`~provisioningserver.rpc.region.RegisterEventType`.
     """
-    if not EventType.objects.filter(name=name).exists():
-        # We don't use EventType.objects.get_or_create here, because
-        # it won't cope with situations where `name` is identical but
-        # `description` has changed, and we'll still get an error
-        # because `name` has to be unique.
-        EventType.objects.create(
-            name=name, description=description, level=level)
+    EventType.objects.register(name, description, level)
 
 
 @synchronous
@@ -68,7 +61,9 @@ def send_event(system_id, type_name, description=''):
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a
         # node that we don't know about yet.
-        maaslog.warning(
+        # This is most likely to happen when a new node is trying to
+        # enlist.
+        maaslog.debug(
             "Event '%s: %s' sent for non-existent node '%s'.",
             type_name, description, system_id)
         return
@@ -95,7 +90,9 @@ def send_event_mac_address(mac_address, type_name, description=''):
         # The node doesn't exist, but we don't raise an exception - it's
         # entirely possible the cluster has started sending events for a
         # node that we don't know about yet.
-        maaslog.warning(
+        # This is most likely to happen when a new node is trying to
+        # enlist.
+        maaslog.debug(
             "Event '%s: %s' sent for non-existent node with MAC "
             "address '%s'.",
             type_name, description, mac_address)

@@ -263,7 +263,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
 
         The `protocol` should be an instance of `amp.AMP`.
 
-        :returns: py:class:`twisted.test.iosim.IOPump`
+        :return: py:class:`twisted.test.iosim.IOPump`
         """
         eventloop = self.getEventLoopName(protocol)
         address = factory.make_ipv4_address(), factory.pick_port()
@@ -298,7 +298,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
 
         :type cluster: `twisted.internet.interfaces.IProtocol`
         :type region: `twisted.internet.interfaces.IProtocol`
-        :returns: ...
+        :return: ...
         """
 
     def _get_rpc_info_url(self):
@@ -361,7 +361,7 @@ class MockClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
 
         :type cluster: `twisted.internet.interfaces.IProtocol`
         :type region: `twisted.internet.interfaces.IProtocol`
-        :returns: py:class:`twisted.test.iosim.IOPump`
+        :return: py:class:`twisted.test.iosim.IOPump`
         """
         return iosim.connect(
             region, iosim.makeFakeServer(region),
@@ -450,7 +450,7 @@ class MockLiveClusterToRegionRPCFixture(MockClusterToRegionRPCFixtureBase):
         # been capped-off by now (see ClusterClient.connectionMade) this will
         # not raise any exceptions. In some ways this is convenient because it
         # allows the resulting issues to be encountered within test code.
-        yield client.onReady
+        yield client.ready.get()
 
         @inlineCallbacks
         def shutdown():
@@ -533,7 +533,7 @@ def capture_result(d):
     Rather than at the end of a callback chain.
 
     :type d: :py:class:`defer.Deferred`.
-    :returns: A no-argument callable that will extract the current result from
+    :return: A no-argument callable that will extract the current result from
         the given `Deferred`, or raise an exception if it has not yet fired.
         See py:func:`extract_result`.
     """

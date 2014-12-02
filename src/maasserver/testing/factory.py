@@ -246,6 +246,7 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             nodegroup=nodegroup, routers=routers, zone=zone,
             power_type=power_type, disable_ipv4=disable_ipv4,
+            power_state=power_state,
             **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited
@@ -436,7 +437,7 @@ class Factory(maastesting.factory.Factory):
         ncr.save()
         return ncr
 
-    def make_NodeResult_for_installing(
+    def make_NodeResult_for_installation(
             self, node=None, name=None, script_result=None, data=None):
         """Create a `NodeResult` as one would see from installing a node."""
         if node is None:
@@ -449,7 +450,7 @@ class Factory(maastesting.factory.Factory):
             script_result = random.randint(0, 10)
         ncr = NodeResult(
             node=node, name=name, script_result=script_result,
-            result_type=RESULT_TYPE.INSTALLING, data=Bin(data))
+            result_type=RESULT_TYPE.INSTALLATION, data=Bin(data))
         ncr.save()
         return ncr
 
@@ -747,29 +748,6 @@ class Factory(maastesting.factory.Factory):
 
     make_zone = make_Zone
 
-    def make_vlan_tag(self, allow_none=False, but_not=None):
-        """Create a random VLAN tag.
-
-        :param allow_none: Whether `None` ("no VLAN") can be allowed as an
-            outcome.  If `True`, `None` will be included in the possible
-            results with a deliberately over-represented probability, in order
-            to help trip up bugs that might only show up once in about 4094
-            calls otherwise.
-        :param but_not: A list of tags that should not be returned.  Any zero
-            or `None` entries will be ignored.
-        """
-        if but_not is None:
-            but_not = []
-        if allow_none and random.randint(0, 1) == 0:
-            return None
-        else:
-            for _ in range(100):
-                vlan_tag = random.randint(1, 0xffe)
-                if vlan_tag not in but_not:
-                    return vlan_tag
-            raise maastesting.factory.TooManyRandomRetries(
-                "Could not find an available VLAN tag.")
-
     def make_Network(self, name=None, network=None, vlan_tag=NO_VALUE,
                      description=None, sortable_name=False,
                      disjoint_from=None, default_gateway=None,
@@ -889,6 +867,12 @@ class Factory(maastesting.factory.Factory):
         return BootSourceCache.objects.create(
             boot_source=boot_source, os=os, arch=arch,
             subarch=subarch, release=release, label=label)
+
+    def make_many_BootSourceCaches(self, number, **kwargs):
+        caches = list()
+        for _ in range(number):
+            caches.append(self.make_BootSourceCache(**kwargs))
+        return caches
 
     def make_BootSourceSelection(self, boot_source=None, os=None,
                                  release=None, arches=None, subarches=None,

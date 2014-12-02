@@ -51,7 +51,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 
     def setUp(self):
         super(EnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(Node, 'start_transition_monitor')
 
     def test_POST_new_creates_node(self):
         architecture = make_usable_architecture(self)
@@ -353,7 +354,8 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
 
     def setUp(self):
         super(NodeHostnameEnlistmentTest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(Node, 'start_transition_monitor')
 
     scenarios = [
         ('anon', dict(userfactory=lambda: AnonymousUser())),
@@ -462,7 +464,7 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
 
     def setUp(self):
         super(NonAdminEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
 
     def test_POST_non_admin_creates_node_in_declared_state(self):
         # Upon non-admin enlistment, a node goes into the New
@@ -489,7 +491,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(AnonymousEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
 
     def test_POST_accept_not_allowed(self):
         # An anonymous user is not allowed to accept an anonymously
@@ -525,6 +527,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'power_type',
+                'power_state',
                 'tag_names',
                 'ip_addresses',
                 'resource_uri',
@@ -543,7 +546,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(SimpleUserLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
@@ -620,6 +623,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'power_type',
+                'power_state',
                 'resource_uri',
                 'tag_names',
                 'ip_addresses',
@@ -638,7 +642,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(AdminLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_commands')
+        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(Node, 'start_transition_monitor')
 
     def test_POST_new_sets_power_type_if_admin(self):
         self.client_log_in(as_admin=True)
@@ -715,9 +720,9 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'mac_addresses': ['AA:BB:CC:DD:EE:FF'],
                 })
 
+        self.assertEqual(httplib.OK, response.status_code, response.content)
         node = Node.objects.get(
             system_id=json.loads(response.content)['system_id'])
-        self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             {'param': param},
             reload_object(node).power_parameters)
@@ -768,6 +773,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'distro_series',
                 'netboot',
                 'power_type',
+                'power_state',
                 'resource_uri',
                 'tag_names',
                 'ip_addresses',

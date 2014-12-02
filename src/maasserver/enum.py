@@ -42,6 +42,7 @@ class COMPONENT:
     PSERV = 'provisioning server'
     IMPORT_PXE_FILES = 'maas-import-pxe-files script'
     CLUSTERS = 'clusters'
+    REGION_IMAGE_IMPORT = 'Image importer'
 
 
 class NODE_STATUS:

@@ -20,7 +20,7 @@ from django.core.exceptions import ValidationError
 from django.db.models.query import QuerySet
 from maasserver.models import Network
 from maasserver.models.network import (
-    get_name_and_vlan_from_cluster_interface,
+    ensure_unique_network_name,
     get_specifier_type,
     IPSpecifier,
     NameSpecifier,
@@ -30,7 +30,6 @@ from maasserver.models.network import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from mock import sentinel
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -130,43 +129,6 @@ class TestParseNetworkSpec(MAASServerTestCase):
         # If this becomes a stumbling block, it would be possible to accept
         # plain IP addresses as network specifiers.
         self.assertRaises(ValidationError, parse_network_spec, '10.4.4.4')
-
-
-class TestGetNameAndVlanFromClusterInterface(MAASServerTestCase):
-    """Tests for `get_name_and_vlan_from_cluster_interface`."""
-
-    def make_interface_name(self, basename):
-        interface = sentinel.interface
-        interface.nodegroup = sentinel.nodegroup
-        interface.nodegroup.name = factory.make_name('name')
-        interface.interface = basename
-        return interface
-
-    def test_returns_simple_name_unaltered(self):
-        interface = self.make_interface_name(factory.make_name('iface'))
-        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-        expected_name = '%s-%s' % (
-            interface.nodegroup.name, interface.interface)
-        self.assertEqual((expected_name, None), (name, vlan_tag))
-
-    def test_substitutes_colon(self):
-        interface = self.make_interface_name('eth0:0')
-        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-        expected_name = '%s-eth0-0' % interface.nodegroup.name
-        self.assertEqual((expected_name, None), (name, vlan_tag))
-
-    def test_returns_with_vlan_tag(self):
-        interface = self.make_interface_name('eth0.5')
-        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-        expected_name = '%s-eth0-5' % interface.nodegroup.name
-        self.assertEqual((expected_name, '5'), (name, vlan_tag))
-
-    def test_returns_name_with_crazy_colon_and_vlan(self):
-        # For truly twisted network admins.
-        interface = self.make_interface_name('eth0:2.3')
-        name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
-        expected_name = '%s-eth0-2-3' % interface.nodegroup.name
-        self.assertEqual((expected_name, '3'), (name, vlan_tag))
 
 
 class TestNetworkManager(MAASServerTestCase):
@@ -458,3 +420,40 @@ class TestNetwork(MAASServerTestCase):
         self.assertRaises(
             ValidationError, factory.make_Network,
             network=IPNetwork('10.0.1.0/24'))
+
+
+class TestEnsureUniqueNetworkName(MAASServerTestCase):
+    """Tests for `ensure_unique_network_name()`."""
+
+    def test_converts_invalid_name_to_valid_name(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        new_name = ensure_unique_network_name(invalid_name, set())
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy",
+            new_name)
+
+    def test_converts_invalid_name_to_valid_unique_name(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        existing_name = "foo-bar-bob-hands-knees-and-bumps-a-daisy"
+        new_name = ensure_unique_network_name(
+            invalid_name, set([existing_name]))
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-1",
+            new_name)
+
+    def test_converts_invalid_name_to_valid_unique_name_incrementally(self):
+        invalid_name = "foo.bar#bob$hands!knees@and.bumps-a-daisy"
+        existing_names = set([
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy",
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-1",
+            ])
+        new_name = ensure_unique_network_name(
+            invalid_name, existing_names)
+        self.assertEqual(
+            "foo-bar-bob-hands-knees-and-bumps-a-daisy-2",
+            new_name)
+
+    def test_does_not_change_valid_name(self):
+        valid_name = "foo-bar-baz"
+        new_name = ensure_unique_network_name(valid_name, set([valid_name]))
+        self.assertEqual(valid_name, new_name)

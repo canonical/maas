@@ -16,18 +16,20 @@ __all__ = [
     "CentOS",
     ]
 
+import re
+
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
     )
 
 
-DISTRO_SERIES_CHOICES = {
-    'centos65': 'CentOS 6.5',
-}
-
 DISTRO_SERIES_DEFAULT = 'centos65'
-assert DISTRO_SERIES_DEFAULT in DISTRO_SERIES_CHOICES
+
+# Regex matcher that is used to check if the release is supported.
+# It needs to match the name "centosXY". Where "X" is the major version
+# and "Y" is the minor version.
+DISTRO_MATCHER = re.compile("centos(?P<major>[0-9])(?P<minor>[0-9])?\Z")
 
 
 class CentOS(OperatingSystem):
@@ -44,7 +46,8 @@ class CentOS(OperatingSystem):
 
     def is_release_supported(self, release):
         """Return True when the release is supported, False otherwise."""
-        return release in DISTRO_SERIES_CHOICES
+        matched = DISTRO_MATCHER.match(release)
+        return matched is not None
 
     def get_default_release(self):
         """Gets the default release to use when a release is not
@@ -53,4 +56,12 @@ class CentOS(OperatingSystem):
 
     def get_release_title(self, release):
         """Return the title for the given release."""
-        return DISTRO_SERIES_CHOICES.get(release)
+        matched = DISTRO_MATCHER.match(release)
+        if matched is None:
+            return None
+        matched_dict = matched.groupdict()
+        major = matched_dict['major']
+        minor = matched_dict['minor']
+        if minor is None:
+            minor = '0'
+        return "CentOS %s.%s" % (major, minor)

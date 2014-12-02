@@ -213,13 +213,20 @@ def create_host_maps(mappings, shared_key):
             maaslog.error(
                 "Could not create host map for %s with address %s: %s",
                 mac_address, ip_address, unicode(e))
-            raise CannotCreateHostMap("%s \u2192 %s: %s" % (
+            raise CannotCreateHostMap("%s -> %s: %s" % (
                 mac_address, ip_address, e.output_as_unicode))
 
 
 @synchronous
 def remove_host_maps(ip_addresses, shared_key):
     """Remove DHCP host maps for the given IP addresses.
+
+    Additionally, this will ensure that any lease present for the IP
+    address(es) supplied is also forcefully expired.  Generally, host
+    maps don't create leases unless the host map is inside the dynamic
+    range, however this is still safe to call and can be called to
+    guarantee that any IP address is left expired regardless of whether
+    it's in the dynamic range or not.
 
     :param ip_addresses: A list of IP addresses.
     :param shared_key: The key used to access the DHCP server via OMAPI.
@@ -229,6 +236,7 @@ def remove_host_maps(ip_addresses, shared_key):
     for ip_address in ip_addresses:
         try:
             omshell.remove(ip_address)
+            omshell.nullify_lease(ip_address)
         except ExternalProcessError as e:
             maaslog.error(
                 "Could not remove host map for %s: %s",

@@ -20,12 +20,10 @@ import random
 from django.db import IntegrityError
 from maasserver.models import (
     Event,
-    event as event_module,
     EventType,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maastesting.matchers import MockCalledOnceWith
 from provisioningserver.events import EVENT_TYPES
 
 
@@ -76,7 +74,6 @@ class EventTest(MAASServerTestCase):
         node = factory.make_Node()
         type_name = factory.make_name('type_name')
         description = factory.make_name('description')
-        maaslog = self.patch(event_module, 'maaslog')
 
         Event.objects.register_event_and_event_type(
             system_id=node.system_id, type_name=type_name,
@@ -88,13 +85,7 @@ class EventTest(MAASServerTestCase):
         # Patch EventTypes.object.get() so that it raises DoesNotExist.
         # This will cause the creation code to be run, which is where
         # the IntegrityError occurs.
-        event_type = EventType.objects.get(name=type_name)
-        self.patch(EventType.objects, 'get').side_effect = [
-            EventType.DoesNotExist(),
-            event_type,
-            ]
-        self.patch(EventType.objects, 'create').side_effect = (
-            IntegrityError)
+        self.patch(EventType.objects, 'create').side_effect = IntegrityError
         Event.objects.register_event_and_event_type(
             system_id=node.system_id, type_name=type_name,
             type_description=description,
@@ -104,11 +95,6 @@ class EventTest(MAASServerTestCase):
 
         # If we get this far then we have the event type and the
         # events, and more importantly no errors got raised.
+        event_type = EventType.objects.get(name=type_name)
         self.assertIsNotNone(event_type)
         self.assertEqual(2, Event.objects.filter(node=node).count())
-
-        # We log a debug message to say that we've hit the race.
-        self.assertThat(
-            maaslog.debug, MockCalledOnceWith(
-                "IntegrityError caught in register_event_and_event_type; "
-                "Trying to fetch event type '%s' again", type_name))

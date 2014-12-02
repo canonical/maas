@@ -117,17 +117,20 @@ class TestBootSourceSelectionAPI(APITestCase):
         boot_source_selection = factory.make_BootSourceSelection()
         new_os = factory.make_name('os')
         new_release = factory.make_name('release')
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2, boot_source=boot_source_selection.boot_source, os=new_os,
+            release=new_release)
         new_values = {
             'os': new_os,
             'release': new_release,
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
+            'arches': [boot_source_caches[0].arch, boot_source_caches[1].arch],
             'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label')],
+                boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+            'labels': [boot_source_caches[0].label],
         }
         response = self.client_put(
             get_boot_source_selection_uri(boot_source_selection), new_values)
-        self.assertEqual(httplib.OK, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
         boot_source_selection = reload_object(boot_source_selection)
         self.assertAttributes(boot_source_selection, new_values)
 
@@ -216,12 +219,15 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         self.become_admin()
         boot_source_selection = factory.make_BootSourceSelection()
         new_release = factory.make_name('release')
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2, boot_source=boot_source_selection.boot_source,
+            release=new_release)
         new_values = {
             'release': new_release,
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
+            'arches': [boot_source_caches[0].arch, boot_source_caches[1].arch],
             'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label')],
+                boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+            'labels': [boot_source_caches[0].label],
         }
         response = self.client_put(
             get_boot_source_selection_backward_uri(
@@ -279,12 +285,15 @@ class TestBootSourceSelectionsAPI(APITestCase):
         self.become_admin()
         boot_source = factory.make_BootSource()
         new_release = factory.make_name('release')
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2, boot_source=boot_source,
+            release=new_release)
         params = {
             'release': new_release,
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
+            'arches': [boot_source_caches[0].arch, boot_source_caches[1].arch],
             'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label')],
+                boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+            'labels': [boot_source_caches[0].label],
         }
         response = self.client.post(
             reverse(
@@ -373,12 +382,14 @@ class TestBootSourceSelectionsBackwardAPI(APITestCase):
         self.become_admin()
         boot_source = factory.make_BootSource()
         new_release = factory.make_name('release')
+        boot_source_caches = factory.make_many_BootSourceCaches(
+            2, boot_source=boot_source, release=new_release)
         params = {
             'release': new_release,
-            'arches': [factory.make_name('arch'), factory.make_name('arch')],
+            'arches': [boot_source_caches[0].arch, boot_source_caches[1].arch],
             'subarches': [
-                factory.make_name('subarch'), factory.make_name('subarch')],
-            'labels': [factory.make_name('label')],
+                boot_source_caches[0].subarch, boot_source_caches[1].subarch],
+            'labels': [boot_source_caches[0].label],
         }
         response = self.client.post(self.get_uri(boot_source), params)
         self.assertEqual(httplib.OK, response.status_code)

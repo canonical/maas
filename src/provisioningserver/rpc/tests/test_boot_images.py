@@ -26,7 +26,7 @@ from maastesting.testcase import MAASTwistedRunTest
 from mock import sentinel
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
-from provisioningserver.config import Config
+from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.import_images import boot_resources
 from provisioningserver.rpc import boot_images
 from provisioningserver.rpc.boot_images import (
@@ -60,17 +60,13 @@ def make_sources():
 
 class TestListBootImages(PservTestCase):
 
-    def test__calls_list_boot_images_with_resource_root(self):
-        self.patch(Config, 'load_from_cache').return_value = {
-            'tftp': {
-                'resource_root': sentinel.resource_root,
-                }
-            }
+    def test__calls_list_boot_images_with_boot_resource_storage(self):
         mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
         list_boot_images()
         self.assertThat(
             mock_list_boot_images,
-            MockCalledOnceWith(sentinel.resource_root))
+            MockCalledOnceWith(
+                os.path.join(BOOT_RESOURCES_STORAGE, "current")))
 
 
 class TestGetHostsFromSources(PservTestCase):

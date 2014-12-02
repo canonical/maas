@@ -47,10 +47,7 @@ from maasserver.exceptions import (
     Redirect,
     StaticIPAddressExhaustion,
     )
-from maasserver.models import (
-    Node,
-    SSHKey,
-    )
+from maasserver.models import SSHKey
 from maasserver.node_status import is_failed_status
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -58,6 +55,7 @@ from provisioningserver.rpc.exceptions import (
     PowerActionAlreadyInProgress,
     )
 from provisioningserver.utils.enum import map_enum
+from provisioningserver.utils.shell import ExternalProcessError
 
 # All node statuses.
 ALL_STATUSES = set(NODE_STATUS_CHOICES_DICT.keys())
@@ -171,11 +169,6 @@ class Delete(NodeAction):
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
-    def inhibit(self):
-        if self.node.status == NODE_STATUS.ALLOCATED:
-            return "You cannot delete this node because it's in use."
-        return None
-
     def execute(self, allow_redirect=True):
         """Redirect to the delete view's confirmation page.
 
@@ -203,7 +196,7 @@ class Commission(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.start_commissioning(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node commissioning started."
@@ -222,7 +215,7 @@ class AbortCommissioning(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_commissioning(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node commissioning aborted."
@@ -241,7 +234,7 @@ class AbortOperation(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.abort_operation(self.user)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "Node operation aborted."
@@ -345,12 +338,12 @@ class StartNode(NodeAction):
             self.node.acquire(self.user, token=None)
 
         try:
-            Node.objects.start_nodes([self.node.system_id], self.user)
+            self.node.start(self.user)
         except StaticIPAddressExhaustion:
             raise NodeActionError(
                 "%s: Failed to start, static IP addresses are exhausted."
                 % self.node.hostname)
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node has been asked to start up."
@@ -368,7 +361,7 @@ class StopNode(NodeAction):
     display = "Stop node"
     display_bulk = "Stop selected nodes"
     actionable_statuses = (
-        [NODE_STATUS.DEPLOYED] +
+        [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
         # Also let a user ask a failed node to shutdown: this
         # is useful to try to recover from power failures.
         FAILED_STATUSES
@@ -378,8 +371,8 @@ class StopNode(NodeAction):
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
         try:
-            Node.objects.stop_nodes([self.node.system_id], self.user)
-        except RPC_EXCEPTIONS as exception:
+            self.node.stop(self.user)
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node has been asked to shut down."
@@ -401,7 +394,7 @@ class ReleaseNode(NodeAction):
         """See `NodeAction.execute`."""
         try:
             self.node.release_or_erase()
-        except RPC_EXCEPTIONS as exception:
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
             raise NodeActionError(exception)
         else:
             return "This node is no longer allocated to you."

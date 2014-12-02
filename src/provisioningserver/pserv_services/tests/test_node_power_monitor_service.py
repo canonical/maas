@@ -21,7 +21,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     ANY,
     call,
@@ -47,6 +50,8 @@ from twisted.internet.task import Clock
 
 
 class TestNodePowerMonitorService(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_init_sets_up_timer_correctly(self):
         cluster_uuid = factory.make_UUID()
@@ -118,7 +123,9 @@ class TestNodePowerMonitorService(MAASTestCase):
         self.assertEqual(None, extract_result(d))
         self.assertThat(
             query_all_nodes,
-            MockCalledOnceWith([], clock=service.clock))
+            MockCalledOnceWith(
+                [], max_concurrency=service.max_nodes_at_once,
+                clock=service.clock))
 
     def test_query_nodes_copes_with_NoSuchCluster(self):
         cluster_uuid, service = self.make_monitor_service()

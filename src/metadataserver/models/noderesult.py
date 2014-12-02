@@ -85,7 +85,7 @@ class NodeResultManager(Manager):
 
 
 class NodeResult(CleanSave, TimestampedModel):
-    """Storage for data returned from node commissioning/installing.
+    """Storage for data returned from node commissioning/installation.
 
     Commissioning/Installing a node results in various bits of data that
     need to be stored, such as lshw output.  This model allows storing of
@@ -95,7 +95,7 @@ class NodeResult(CleanSave, TimestampedModel):
     :ivar script_result: If this data results from the execution of a script,
         this is the status of this execution.  This can be "OK", "FAILED" or
         "WORKING" for progress reports.
-    :ivar result_type: This can be either commissioning or installing.
+    :ivar result_type: This can be either commissioning or installation.
     :ivar name: A unique name to use for the data being stored.
     :ivar data: The file's actual data, unicode only.
     """

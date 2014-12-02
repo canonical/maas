@@ -178,10 +178,6 @@ class MACAddress(CleanSave, TimestampedModel):
         # short term: "for IPv6, use whatever network interface on the cluster
         # also manages the node's IPv4 address."
         if self.cluster_interface is None:
-            # No known cluster interface.  Nothing we can do.
-            maaslog.error(
-                "%s: Tried to allocate an IP to MAC %s but its cluster "
-                "interface is not known", self.node.hostname, self)
             return []
         else:
             return NodeGroupInterface.objects.filter(
@@ -259,6 +255,12 @@ class MACAddress(CleanSave, TimestampedModel):
         # We're only interested in cluster interfaces with a static range.
         # The check for a static range is deliberately kept vague; Django uses
         # different representations for "none" values in IP addresses.
+        if self.cluster_interface is None:
+            # No known cluster interface.  Nothing we can do.
+            maaslog.error(
+                "%s: Tried to allocate an IP to MAC %s but its cluster "
+                "interface is not known", self.node.hostname, self)
+            return []
         cluster_interfaces = [
             interface
             for interface in self.get_cluster_interfaces()

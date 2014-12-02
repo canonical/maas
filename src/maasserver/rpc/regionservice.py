@@ -83,6 +83,7 @@ from twisted.internet.defer import (
     returnValue,
     )
 from twisted.internet.endpoints import TCP4ServerEndpoint
+from twisted.internet.error import ConnectionClosed
 from twisted.internet.protocol import Factory
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
@@ -415,15 +416,21 @@ class RegionServer(Region):
 
     def handshakeFailed(self, failure):
         """The handshake (identify and authenticate) failed."""
-        if self.ident is None:
+        if failure.check(ConnectionClosed):
+            # There has been a disconnection, clean or otherwise. There's
+            # nothing we can do now, so do nothing. The reason will have been
+            # logged elsewhere.
+            return
+        elif self.ident is None:
             log.err(
                 failure, "Cluster could not be identified; "
                 "dropping connection.")
+            return self.transport.loseConnection()
         else:
             log.err(
                 failure, "Cluster '%s' could not be authenticated; "
                 "dropping connection." % self.ident)
-        return self.transport.loseConnection()
+            return self.transport.loseConnection()
 
     def connectionMade(self):
         super(RegionServer, self).connectionMade()

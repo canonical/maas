@@ -19,16 +19,24 @@ import re
 from StringIO import StringIO
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockAnyCall,
+    MockCalledOnceWith,
+    MockCalledWith,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import Mock
 from provisioningserver.drivers.hardware.mscm import (
     cartridge_mapping,
     MSCM_CLI_API,
+    MSCMError,
+    MSCMState,
     power_control_mscm,
+    power_state_mscm,
     probe_and_enlist_mscm,
     )
 import provisioningserver.utils as utils
+from testtools.matchers import Equals
 
 
 def make_mscm_api():
@@ -56,10 +64,19 @@ def make_show_node_macaddr(length=10):
                    for _ in xrange(length))
 
 
-class TestRunCliCommand(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.run_cli_command``."""
+class TestMSCMCliApi(MAASTestCase):
+    """Tests for `MSCM_CLI_API`."""
 
-    def test_returns_output(self):
+    scenarios = [
+        ('power_node_on',
+            dict(method='power_node_on')),
+        ('power_node_off',
+            dict(method='power_node_off')),
+        ('configure_node_bootonce_pxe',
+            dict(method='configure_node_bootonce_pxe')),
+    ]
+
+    def test_run_cli_command_returns_output(self):
         api = make_mscm_api()
         ssh_mock = self.patch(api, '_ssh')
         expected = factory.make_name('output')
@@ -69,18 +86,18 @@ class TestRunCliCommand(MAASTestCase):
         output = api._run_cli_command(factory.make_name('command'))
         self.assertEqual(expected, output)
 
-    def test_connects_and_closes_ssh_client(self):
+    def test_run_cli_command_connects_and_closes_ssh_client(self):
         api = make_mscm_api()
         ssh_mock = self.patch(api, '_ssh')
         ssh_mock.exec_command = Mock(return_value=factory.make_streams())
         api._run_cli_command(factory.make_name('command'))
-        self.assertThat(
+        self.expectThat(
             ssh_mock.connect,
             MockCalledOnceWith(
                 api.host, username=api.username, password=api.password))
-        self.assertThat(ssh_mock.close, MockCalledOnceWith())
+        self.expectThat(ssh_mock.close, MockCalledOnceWith())
 
-    def test_closes_when_exception_raised(self):
+    def test_run_cli_command_closes_when_exception_raised(self):
         api = make_mscm_api()
         ssh_mock = self.patch(api, '_ssh')
 
@@ -90,11 +107,7 @@ class TestRunCliCommand(MAASTestCase):
         ssh_mock.exec_command = Mock(side_effect=fail)
         command = factory.make_name('command')
         self.assertRaises(Exception, api._run_cli_command, command)
-        self.assertThat(ssh_mock.close, MockCalledOnceWith())
-
-
-class TestDiscoverNodes(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.discover_nodes``."""
+        self.expectThat(ssh_mock.close, MockCalledOnceWith())
 
     def test_discover_nodes(self):
         api = make_mscm_api()
@@ -106,10 +119,6 @@ class TestDiscoverNodes(MAASTestCase):
         output = api.discover_nodes()
         self.assertEqual(expected, output)
 
-
-class TestNodeMACAddress(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.get_node_macaddr``."""
-
     def test_get_node_macaddr(self):
         api = make_mscm_api()
         expected = make_show_node_macaddr()
@@ -119,10 +128,6 @@ class TestNodeMACAddress(MAASTestCase):
         output = api.get_node_macaddr(node_id)
         self.assertEqual(re.findall(r':'.join(['[0-9a-f]{2}'] * 6),
                                     expected), output)
-
-
-class TestNodeArch(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.get_node_arch``."""
 
     def test_get_node_arch(self):
         api = make_mscm_api()
@@ -134,36 +139,17 @@ class TestNodeArch(MAASTestCase):
         key = expected.split('Product Name: ')[1].splitlines()[0]
         self.assertEqual(cartridge_mapping[key], output)
 
-
-class TestGetNodePowerStatus(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.get_node_power_status``."""
-
-    def test_get_node_power_status(self):
+    def test_get_node_power_state(self):
         api = make_mscm_api()
         expected = '\r\n  Node #1\r\n    Power State: On\r\n'
         cli_mock = self.patch(api, '_run_cli_command')
         cli_mock.return_value = expected
         node_id = make_node_id()
-        output = api.get_node_power_status(node_id)
+        output = api.get_node_power_state(node_id)
         self.assertEqual(expected.split('Power State: ')[1].splitlines()[0],
                          output)
 
-
-class TestPowerAndConfigureNode(MAASTestCase):
-    """Tests for ``MSCM_CLI_API.configure_node_bootonce_pxe,
-    MSCM_CLI_API.power_node_on, and MSCM_CLI_API.power_node_off``.
-    """
-
-    scenarios = [
-        ('power_node_on()',
-            dict(method='power_node_on')),
-        ('power_node_off()',
-            dict(method='power_node_off')),
-        ('configure_node_bootonce_pxe()',
-            dict(method='configure_node_bootonce_pxe')),
-    ]
-
-    def test_returns_expected_outout(self):
+    def test_power_and_configure_node_returns_expected_outout(self):
         api = make_mscm_api()
         ssh_mock = self.patch(api, '_ssh')
         expected = factory.make_name('output')
@@ -174,60 +160,8 @@ class TestPowerAndConfigureNode(MAASTestCase):
         self.assertEqual(expected, output)
 
 
-class TestPowerControlMSCM(MAASTestCase):
-    """Tests for ``power_control_ucsm``."""
-
-    def test_power_control_mscm_on_on(self):
-        # power_change and power_status are both 'on'
-        host = factory.make_hostname('mscm')
-        username = factory.make_name('user')
-        password = factory.make_name('password')
-        node_id = make_node_id()
-        bootonce_mock = self.patch(MSCM_CLI_API, 'configure_node_bootonce_pxe')
-        power_status_mock = self.patch(MSCM_CLI_API, 'get_node_power_status')
-        power_status_mock.return_value = 'On'
-        power_node_on_mock = self.patch(MSCM_CLI_API, 'power_node_on')
-        power_node_off_mock = self.patch(MSCM_CLI_API, 'power_node_off')
-
-        power_control_mscm(host, username, password, node_id,
-                           power_change='on')
-        self.assertThat(bootonce_mock, MockCalledOnceWith(node_id))
-        self.assertThat(power_node_off_mock, MockCalledOnceWith(node_id))
-        self.assertThat(power_node_on_mock, MockCalledOnceWith(node_id))
-
-    def test_power_control_mscm_on_off(self):
-        # power_change is 'on' and power_status is 'off'
-        host = factory.make_hostname('mscm')
-        username = factory.make_name('user')
-        password = factory.make_name('password')
-        node_id = make_node_id()
-        bootonce_mock = self.patch(MSCM_CLI_API, 'configure_node_bootonce_pxe')
-        power_status_mock = self.patch(MSCM_CLI_API, 'get_node_power_status')
-        power_status_mock.return_value = 'Off'
-        power_node_on_mock = self.patch(MSCM_CLI_API, 'power_node_on')
-
-        power_control_mscm(host, username, password, node_id,
-                           power_change='on')
-        self.assertThat(bootonce_mock, MockCalledOnceWith(node_id))
-        self.assertThat(power_node_on_mock, MockCalledOnceWith(node_id))
-
-    def test_power_control_mscm_off_on(self):
-        # power_change is 'off' and power_status is 'on'
-        host = factory.make_hostname('mscm')
-        username = factory.make_name('user')
-        password = factory.make_name('password')
-        node_id = make_node_id()
-        power_status_mock = self.patch(MSCM_CLI_API, 'get_node_power_status')
-        power_status_mock.return_value = 'On'
-        power_node_off_mock = self.patch(MSCM_CLI_API, 'power_node_off')
-
-        power_control_mscm(host, username, password, node_id,
-                           power_change='off')
-        self.assertThat(power_node_off_mock, MockCalledOnceWith(node_id))
-
-
-class TestProbeAndEnlistMSCM(MAASTestCase):
-    """Tests for ``probe_and_enlist_mscm``."""
+class TestMSCMProbeAndEnlist(MAASTestCase):
+    """Tests for `probe_and_enlist_mscm`."""
 
     def test_probe_and_enlist(self):
         host = factory.make_hostname('mscm')
@@ -244,16 +178,134 @@ class TestProbeAndEnlistMSCM(MAASTestCase):
         node_macs_mock = self.patch(MSCM_CLI_API, 'get_node_macaddr')
         node_macs_mock.return_value = macs
         create_node_mock = self.patch(utils, 'create_node')
-        probe_and_enlist_mscm(host, username, password)
-        self.assertThat(discover_nodes_mock, MockCalledOnceWith())
-        self.assertThat(boot_m2_mock, MockCalledOnceWith(node_id))
-        self.assertThat(node_arch_mock, MockCalledOnceWith(node_id))
-        self.assertThat(node_macs_mock, MockCalledOnceWith(node_id))
         params = {
             'power_address': host,
             'power_user': username,
             'power_pass': password,
             'node_id': node_id,
         }
-        self.assertThat(create_node_mock,
+
+        probe_and_enlist_mscm(host, username, password)
+        self.expectThat(discover_nodes_mock, MockAnyCall())
+        self.expectThat(boot_m2_mock, MockCalledWith(node_id))
+        self.expectThat(node_arch_mock, MockCalledOnceWith(node_id))
+        self.expectThat(node_macs_mock, MockCalledOnceWith(node_id))
+        self.expectThat(create_node_mock,
                         MockCalledOnceWith(macs, arch, 'mscm', params))
+
+    def test_probe_and_enlist_discover_nodes_failure(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        discover_nodes_mock = self.patch(MSCM_CLI_API, 'discover_nodes')
+        discover_nodes_mock.side_effect = MSCMError('error')
+        self.assertRaises(
+            MSCMError, probe_and_enlist_mscm, host, username, password)
+
+
+class TestMSCMPowerControl(MAASTestCase):
+    """Tests for `power_control_mscm`."""
+
+    def test_power_control_error_on_unknown_power_change(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_change = factory.make_name('error')
+        self.assertRaises(
+            MSCMError, power_control_mscm, host,
+            username, password, node_id, power_change)
+
+    def test_power_control_power_change_on_power_state_on(self):
+        # power_change and current power_state are both 'on'
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.return_value = MSCMState.ON
+        power_node_off_mock = self.patch(MSCM_CLI_API, 'power_node_off')
+        bootonce_mock = self.patch(MSCM_CLI_API, 'configure_node_bootonce_pxe')
+        power_node_on_mock = self.patch(MSCM_CLI_API, 'power_node_on')
+
+        power_control_mscm(host, username, password, node_id,
+                           power_change='on')
+        self.expectThat(power_state_mock, MockCalledOnceWith(node_id))
+        self.expectThat(power_node_off_mock, MockCalledOnceWith(node_id))
+        self.expectThat(bootonce_mock, MockCalledOnceWith(node_id))
+        self.expectThat(power_node_on_mock, MockCalledOnceWith(node_id))
+
+    def test_power_control_power_change_on_power_state_off(self):
+        # power_change is 'on' and current power_state is 'off'
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.return_value = MSCMState.OFF
+        bootonce_mock = self.patch(MSCM_CLI_API, 'configure_node_bootonce_pxe')
+        power_node_on_mock = self.patch(MSCM_CLI_API, 'power_node_on')
+
+        power_control_mscm(host, username, password, node_id,
+                           power_change='on')
+        self.expectThat(power_state_mock, MockCalledOnceWith(node_id))
+        self.expectThat(bootonce_mock, MockCalledOnceWith(node_id))
+        self.expectThat(power_node_on_mock, MockCalledOnceWith(node_id))
+
+    def test_power_control_power_change_off_power_state_on(self):
+        # power_change is 'off' and current power_state is 'on'
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_node_off_mock = self.patch(MSCM_CLI_API, 'power_node_off')
+
+        power_control_mscm(host, username, password, node_id,
+                           power_change='off')
+        self.expectThat(power_node_off_mock, MockCalledOnceWith(node_id))
+
+
+class TestMSCMPowerState(MAASTestCase):
+    """Tests for `power_state_mscm`."""
+
+    def test_power_state_failed_to_get_state(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.side_effect = MSCMError('error')
+        self.assertRaises(
+            MSCMError, power_state_mscm, host, username, password, node_id)
+
+    def test_power_state_get_off(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.return_value = MSCMState.OFF
+        self.assertThat(
+            power_state_mscm(host, username, password, node_id),
+            Equals('off'))
+
+    def test_power_state_get_on(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.return_value = MSCMState.ON
+        self.assertThat(
+            power_state_mscm(host, username, password, node_id),
+            Equals('on'))
+
+    def test_power_state_error_on_unknown_state(self):
+        host = factory.make_hostname('mscm')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        node_id = make_node_id()
+        power_state_mock = self.patch(MSCM_CLI_API, 'get_node_power_state')
+        power_state_mock.return_value = factory.make_name('error')
+        self.assertRaises(
+            MSCMError, power_state_mscm, host, username, password, node_id)

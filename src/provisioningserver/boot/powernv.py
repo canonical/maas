@@ -88,7 +88,7 @@ class PowerNVBootMethod(BootMethod):
 
         :param backend: requesting backend
         :param path: requested path
-        :returns: dict of match params from path, None if no match
+        :return: dict of match params from path, None if no match
         """
         params = self.get_params(backend, path)
         if params is None:

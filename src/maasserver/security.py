@@ -133,7 +133,7 @@ def get_shared_secret():
     If called from another thread it will return the secret directly, but may
     block for up to 10 seconds. If it times-out, an exception is raised.
 
-    :returns: The shared-secret, a short byte string, or a `Deferred` if
+    :return: The shared-secret, a short byte string, or a `Deferred` if
         called from the IO/reactor thread.
     :raises crochet.TimeoutError: when it times-out after being called from
         thread other than the IO/reactor thread.

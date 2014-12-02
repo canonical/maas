@@ -105,6 +105,8 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models import NodeResult
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.logger import get_maas_logger
@@ -113,34 +115,26 @@ from provisioningserver.rpc.cluster import (
     CancelMonitor,
     StartMonitors,
     )
-from provisioningserver.rpc.exceptions import MultipleFailures
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import asynchronous
-from twisted.internet.defer import DeferredList
 from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("node")
 
 
-def wait_for_power_commands(deferreds):
-    """Wait for a collection of power command deferreds to return or fail.
+@asynchronous(timeout=30)
+def wait_for_power_command(d):
+    """Wait for a  power command deferred to return or fail.
 
-    :param deferreds: A collection of deferreds upon which to wait.
-    :raises: MultipleFailures if any of the deferreds fail.
+    :param d: A the deferred for which to wait.
+    :raises: Any exception that caused the deferred to fail.
     """
-    @asynchronous(timeout=30)
-    def block_until_commands_complete():
-        return DeferredList(deferreds, consumeErrors=True)
-
-    results = block_until_commands_complete()
-
-    failures = list(
-        result for success, result in results if not success)
-
-    if len(failures) != 0:
-        raise MultipleFailures(*failures)
+    # asynchronous() will raise any exception that caused the deferred
+    # to fail. All we have to do is return the deferred to make sure
+    # that asynchronous() blocks until it's finished.
+    return d
 
 
 def generate_node_system_id():
@@ -324,143 +318,6 @@ class NodeManager(Manager):
         """
         available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
         return available_nodes.filter(status=NODE_STATUS.READY)
-
-    def stop_nodes(self, ids, by_user, stop_mode='hard'):
-        """Request on given user's behalf that the given nodes be shut down.
-
-        Shutdown is only requested for nodes that the user has ownership
-        privileges for; any other nodes in the request are ignored.
-
-        :param ids: The `system_id` values for nodes to be shut down.
-        :type ids: Sequence
-        :param by_user: Requesting user.
-        :type by_user: User_
-        :param stop_mode: Power off mode - usually 'soft' or 'hard'.
-        :type stop_mode: unicode
-        :return: Those Nodes for which shutdown was actually requested.
-        :rtype: list
-        """
-        # Obtain node model objects for each node specified.
-        nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-
-        # Helper function to whittle the list of nodes down to those that we
-        # can actually stop, and keep hold of their power control info.
-        def gen_power_info(nodes):
-            for node in nodes:
-                power_info = node.get_effective_power_info()
-                if power_info.can_be_stopped:
-                    # Smuggle in a hint about how to power-off the node.
-                    power_info.power_parameters['power_off_mode'] = stop_mode
-                    yield node, power_info
-
-        # Create info that we can pass into the reactor (no model objects).
-        nodes_stop_info = list(
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            for node, power_info in gen_power_info(nodes))
-        powered_systems = [
-            system_id for system_id, _, _, _ in nodes_stop_info]
-
-        # Request that these nodes be powered off and wait for the
-        # commands to return or fail.
-        deferreds = power_off_nodes(nodes_stop_info).viewvalues()
-        wait_for_power_commands(deferreds)
-
-        # Return a list of those nodes that we've sent power commands for.
-        return list(
-            node for node in nodes if node.system_id in powered_systems)
-
-    def start_nodes(self, ids, by_user, user_data=None):
-        """Request on given user's behalf that the given nodes be started up.
-
-        Power-on is only requested for nodes that the user has ownership
-        privileges for; any other nodes in the request are ignored.
-
-        Nodes are also ignored if they don't have a valid power type
-        configured.
-
-        :param ids: The `system_id` values for nodes to be started.
-        :type ids: Sequence
-        :param by_user: Requesting user.
-        :type by_user: User_
-        :param user_data: Optional blob of user-data to be made available to
-            the nodes through the metadata service.  If not given, any
-            previous user data is used.
-        :type user_data: unicode
-        :return: Those Nodes for which power-on was actually requested.
-        :rtype: list
-
-        :raises MultipleFailures: When there are failures originating from a
-            remote process. There could be one or more failures -- it's not
-            strictly *multiple* -- but they do all originate from comms with
-            remote processes.
-        :raises: `StaticIPAddressExhaustion` if there are not enough IP
-            addresses left in the static range..
-        """
-        # Avoid circular imports.
-        from metadataserver.models import NodeUserData
-
-        # Obtain node model objects for each node specified.
-        nodes = self.get_nodes(by_user, NODE_PERMISSION.EDIT, ids=ids)
-
-        # Record the same user data for all nodes we've been *requested* to
-        # start, regardless of whether or not we actually can; the user may
-        # choose to manually start them.
-        NodeUserData.objects.bulk_set_user_data(nodes, user_data)
-
-        # Claim static IP addresses for all nodes we've been *requested* to
-        # start, such that they're recorded in the database. This results in a
-        # mapping of nodegroups to (ips, macs).
-        static_mappings = defaultdict(dict)
-        for node in nodes:
-            if node.status == NODE_STATUS.ALLOCATED:
-                claims = node.claim_static_ip_addresses()
-                # If the PXE mac is on a managed interface then we can ask
-                # the cluster to generate the DHCP host map(s).
-                if node.is_pxe_mac_on_managed_interface():
-                    static_mappings[node.nodegroup].update(claims)
-                node.start_deployment()
-
-        # XXX 2014-06-17 bigjools bug=1330765
-        # If the above fails it needs to release the static IPs back to the
-        # pool. An enclosing transaction or savepoint from the caller may take
-        # care of this, given that a serious problem above will result in an
-        # exception. If we're being belt-n-braces though it ought to clear up
-        # before returning too. As part of the robustness work coming up, it
-        # also needs to inform the user.
-
-        # Update host maps and wait for them so that we can report failures
-        # directly to the caller.
-        update_host_maps_failures = list(update_host_maps(static_mappings))
-        if len(update_host_maps_failures) != 0:
-            raise MultipleFailures(*update_host_maps_failures)
-
-        # Update the DNS zone with the new static IP info as necessary.
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones({node.nodegroup for node in nodes})
-
-        # Helper function to whittle the list of nodes down to those that we
-        # can actually start, and keep hold of their power control info.
-        def gen_power_info(nodes):
-            for node in nodes:
-                power_info = node.get_effective_power_info()
-                if power_info.can_be_started:
-                    yield node, power_info
-
-        # Create info that we can pass into the reactor (no model objects).
-        nodes_start_info = list(
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            for node, power_info in gen_power_info(nodes))
-        powered_systems = [
-            system_id for system_id, _, _, _ in nodes_start_info]
-
-        # Request that these nodes be powered off and wait for the
-        # commands to return or fail.
-        deferreds = power_on_nodes(nodes_start_info).viewvalues()
-        wait_for_power_commands(deferreds)
-
-        # Return a list of those nodes that we've sent power commands for.
-        return list(
-            node for node in nodes if node.system_id in powered_systems)
 
 
 def patch_pgarray_types():
@@ -678,10 +535,28 @@ class Node(CleanSave, TimestampedModel):
         return self.hostname
 
     def get_deployment_time(self):
-        """Return the deployment time of this node (in seconds)."""
+        """Return the deployment time of this node (in seconds).
+
+        This is the maximum time the deployment is allowed to take.
+        """
         # Return a *very* conservative estimate for now.
         # Something that shouldn't conflict with any deployment.
         return timedelta(minutes=40).total_seconds()
+
+    def get_commissioning_time(self):
+        """Return the commissioning time of this node (in seconds).
+
+        This is the maximum time the commissioning is allowed to take.
+        """
+        # Return a *very* conservative estimate for now.
+        return timedelta(minutes=20).total_seconds()
+
+    def get_releasing_time(self):
+        """Return the releasing time of this node (in seconds).
+
+        This is the maximum time that releasing is allowed to take.
+        """
+        return timedelta(minutes=1).total_seconds()
 
     def start_deployment(self):
         """Mark a node as being deployed."""
@@ -959,7 +834,6 @@ class Node(CleanSave, TimestampedModel):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
         from metadataserver.user_data.commissioning import generate_user_data
-        from metadataserver.models import NodeResult
 
         commissioning_user_data = generate_user_data(node=self)
         NodeResult.objects.clear_results(self)
@@ -973,12 +847,9 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.COMMISSIONING
         self.save()
         transaction.commit()
+        self.start_transition_monitor(self.get_commissioning_time())
         try:
-            # We don't check for which nodes we've started here, because
-            # it's possible we can't start the node - its power type may not
-            # allow us to do that.
-            Node.objects.start_nodes(
-                [self.system_id], user, user_data=commissioning_user_data)
+            self.start(user, user_data=commissioning_user_data)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to start node: %s",
@@ -1001,11 +872,9 @@ class Node(CleanSave, TimestampedModel):
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
         maaslog.info(
             "%s: Aborting commissioning", self.hostname)
+        self.stop_transition_monitor()
         try:
-            # We don't check for which nodes we've stopped here, because
-            # it's possible we can't stop the node - its power type may
-            # not allow us to do that.
-            Node.objects.stop_nodes([self.system_id], user)
+            self.stop(user)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s",
@@ -1017,16 +886,7 @@ class Node(CleanSave, TimestampedModel):
             maaslog.info("%s: Commissioning aborted", self.hostname)
 
     def delete(self):
-        """Delete this node.
-
-        :raises MultipleFailures: If host maps cannot be deleted.
-        """
-        # Allocated nodes can't be deleted.
-        if self.status == NODE_STATUS.ALLOCATED:
-            raise NodeStateViolation(
-                "Cannot delete node %s: node is in state %s."
-                % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
-
+        """Delete this node."""
         maaslog.info("%s: Deleting node", self.hostname)
 
         # Ensure that all static IPs are deleted, and keep track of the IP
@@ -1058,11 +918,6 @@ class Node(CleanSave, TimestampedModel):
 
         :param for_ips: The set of IP addresses to remove host maps for.
         :type for_ips: `set`
-
-        :raises MultipleFailures: When there are failures originating from a
-            remote process. There could be one or more failures -- it's not
-            strictly *multiple* -- but they do all originate from comms with
-            remote processes.
         """
         assert isinstance(for_ips, set), "%r is not a set" % (for_ips,)
         if len(for_ips) > 0:
@@ -1071,7 +926,8 @@ class Node(CleanSave, TimestampedModel):
             remove_host_maps_failures = list(
                 remove_host_maps(removal_mapping))
             if len(remove_host_maps_failures) != 0:
-                raise MultipleFailures(*remove_host_maps_failures)
+                # There's only ever one failure here.
+                raise remove_host_maps_failures[0].raiseException()
 
     def set_random_hostname(self):
         """Set `hostname` from a shuffled list of candidate names.
@@ -1245,7 +1101,7 @@ class Node(CleanSave, TimestampedModel):
         to control this node's power, but there are *no* guarantees. The same
         goes for ``can-be-stopped``.
 
-        :returns: :py:class:`PowerInfo` (a `namedtuple`)
+        :return: :py:class:`PowerInfo` (a `namedtuple`)
         """
         power_params = self.get_effective_power_parameters()
         try:
@@ -1292,8 +1148,7 @@ class Node(CleanSave, TimestampedModel):
         self.save()
         transaction.commit()
         try:
-            Node.objects.start_nodes(
-                [self.system_id], user, user_data=disk_erase_user_data)
+            self.start(user, user_data=disk_erase_user_data)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to start node: %s",
@@ -1323,7 +1178,7 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info(
             "%s: Aborting disk erasing", self.hostname)
         try:
-            Node.objects.stop_nodes([self.system_id], user)
+            self.stop(user)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s",
@@ -1348,12 +1203,10 @@ class Node(CleanSave, TimestampedModel):
 
     def release(self):
         """Mark allocated or reserved node as available again and power off.
-
-        :raises MultipleFailures: If host maps cannot be deleted.
         """
         maaslog.info("%s: Releasing node", self.hostname)
         try:
-            Node.objects.stop_nodes([self.system_id], self.owner)
+            self.stop(self.owner)
         except Exception as ex:
             maaslog.error(
                 "%s: Unable to shut node down: %s", self.hostname,
@@ -1369,6 +1222,7 @@ class Node(CleanSave, TimestampedModel):
             # state): update_power_state() will take care of making the node
             # READY and unowned when the power is finally off.
             self.status = NODE_STATUS.RELEASING
+            self.start_transition_monitor(self.get_releasing_time())
         else:
             # Uncontrolled power type (one for which we can't query the power
             # state): mark the node ready.
@@ -1381,6 +1235,10 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ''
         self.license_key = ''
         self.save()
+
+        # Clear installation results
+        NodeResult.objects.filter(
+            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
 
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
@@ -1439,6 +1297,9 @@ class Node(CleanSave, TimestampedModel):
             maaslog.error(
                 "%s: Marking node failed: %s", self.hostname,
                 error_description)
+        elif self.status == NODE_STATUS.NEW:
+            # Silently ignore, failing a new node makes no sense.
+            pass
         elif is_failed_status(self.status):
             # Silently ignore a request to fail an already failed node.
             pass
@@ -1470,7 +1331,13 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s: Marking node fixed", self.hostname)
         self.status = NODE_STATUS.READY
         self.error_description = ''
+        self.osystem = ''
+        self.distro_series = ''
         self.save()
+
+        # Clear installation results
+        NodeResult.objects.filter(
+            node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
 
     def update_power_state(self, power_state):
         """Update a node's power state """
@@ -1483,12 +1350,13 @@ class Node(CleanSave, TimestampedModel):
             # down.
             self.status = NODE_STATUS.READY
             self.owner = None
+            self.stop_transition_monitor()
         self.save()
 
     def claim_static_ip_addresses(self):
         """Assign static IPs to the node's PXE MAC.
 
-        :returns: A list of ``(ip-address, mac-address)`` tuples.
+        :return: A list of ``(ip-address, mac-address)`` tuples.
         :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
         """
         mac = self.get_pxe_mac()
@@ -1496,21 +1364,15 @@ class Node(CleanSave, TimestampedModel):
         if mac is None:
             return []
 
-        # XXX 2014-10-09 jhobbs bug=1379370
-        # It's not clear to me that this transaction needs to be here
-        # since this doesn't allocate IP addresses across multiple
-        # interfaces. This needs to be looked at some more when there is
-        # more time.
-        with transaction.atomic():
-            try:
-                static_ips = mac.claim_static_ips()
-            except StaticIPAddressTypeClash:
-                # There's already a non-AUTO IP.
-                return []
+        try:
+            static_ips = mac.claim_static_ips()
+        except StaticIPAddressTypeClash:
+            # There's already a non-AUTO IP.
+            return []
 
-            # Return a list instead of yielding mappings as they're ready
-            # because it's all-or-nothing (hence the atomic context).
-            return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
+        # Return a list instead of yielding mappings as they're ready
+        # because it's all-or-nothing (hence the atomic context).
+        return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
     def get_boot_purpose(self):
         """
@@ -1567,3 +1429,124 @@ class Node(CleanSave, TimestampedModel):
             if cluster_interface is not None:
                 return cluster_interface.is_managed
         return False
+
+    def start(self, by_user, user_data=None):
+        """Request on given user's behalf that the node be started up.
+
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :param user_data: Optional blob of user-data to be made available to
+            the node through the metadata service.  If not given, any
+            previous user data is used.
+        :type user_data: unicode
+
+        :raises: `StaticIPAddressExhaustion` if there are not enough IP
+            addresses left in the static range for this node toget all
+            the addresses it needs.
+        """
+        # Avoid circular imports.
+        from metadataserver.models import NodeUserData
+        from maasserver.dns.config import change_dns_zones
+
+        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't stop a node you don't own unless you're an
+            # admin, so we return early.  This is consistent with the
+            # behaviour of NodeManager.stop_nodes(); it may be better to
+            # raise an error here.
+            return
+
+        # Record the user data for the node. Note that we do this
+        # whether or not we can actually send power commands to the
+        # node; the user may choose to start it manually.
+        NodeUserData.objects.set_user_data(self, user_data)
+
+        # Claim static IP addresses for the node if it's ALLOCATED.
+        if self.status == NODE_STATUS.ALLOCATED:
+            static_mappings = defaultdict(dict)
+            claims = self.claim_static_ip_addresses()
+            # If the PXE mac is on a managed interface then we can ask
+            # the cluster to generate the DHCP host map(s).
+            if self.is_pxe_mac_on_managed_interface():
+                static_mappings[self.nodegroup].update(claims)
+                update_host_maps_failures = list(
+                    update_host_maps(static_mappings))
+                if len(update_host_maps_failures) != 0:
+                    # We've hit an error, so release any IPs we've claimed
+                    # and then raise the error for the call site to
+                    # handle.
+                    StaticIPAddress.objects.deallocate_by_node(self)
+                    # We know there's only one error because we only
+                    # sent one mapping to update_host_maps(), so we
+                    # extract the exception from the Failure and raise
+                    # it.
+                    raise update_host_maps_failures[0].raiseException()
+
+        if self.status == NODE_STATUS.ALLOCATED:
+            self.start_deployment()
+
+        # Update the DNS zone with the new static IP info as necessary.
+        change_dns_zones(self.nodegroup)
+
+        power_info = self.get_effective_power_info()
+        if not power_info.can_be_started:
+            # The node can't be powered on by MAAS, so return early.
+            # Everything we've done up to this point is still valid;
+            # this is not an error state.
+            return
+
+        # We need to convert the node into something that we can
+        # pass into the reactor.
+        start_info = (
+            self.system_id, self.hostname, self.nodegroup.uuid, power_info,)
+
+        try:
+            # Send the power on command to the node and wait for it to
+            # return. There will be only one deferred since we're only
+            # sending the one power action to power_on_nodes()(), so
+            # extract that and pass it to wait_for_power_command().
+            d = power_on_nodes([start_info]).values().pop()
+            wait_for_power_command(d)
+        except:
+            # If we encounter any failure here, we deallocate the static
+            # IPs we claimed earlier. We don't try to handle the error;
+            # that's the job of the call site.
+            StaticIPAddress.objects.deallocate_by_node(self)
+            raise
+
+    def stop(self, by_user, stop_mode='hard'):
+        """Request that the node be powered down.
+
+        :param by_user: Requesting user.
+        :type by_user: User_
+        :param stop_mode: Power off mode - usually 'soft' or 'hard'.
+        :type stop_mode: unicode
+        :return: True if the power action was sent to the node; False if
+            it wasn't sent. If the user doesn't have permission to stop
+            the node, return None.
+        """
+        if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
+            # You can't stop a node you don't own unless you're an
+            # admin, so we return early.  This is consistent with the
+            # behaviour of NodeManager.stop_nodes(); it may be better to
+            # raise an error here.
+            return
+
+        power_info = self.get_effective_power_info()
+        if not power_info.can_be_stopped:
+            # We can't stop this node, so just return; trying to stop a
+            # node we don't know how to stop isn't an error state, but
+            # it's a no-op.
+            return False
+
+        # Smuggle in a hint about how to power-off the self.
+        power_info.power_parameters['power_off_mode'] = stop_mode
+        stop_info = (
+            self.system_id, self.hostname, self.nodegroup.uuid, power_info)
+
+        # Request that the node be powered off and wait for the command
+        # to return or fail. There will be only one deferred since we're
+        # only sending the one power action to power_off_nodes(), so
+        # extract that and pass it to wait_for_power_command().
+        d = power_off_nodes([stop_info]).values().pop()
+        wait_for_power_command(d)
+        return True

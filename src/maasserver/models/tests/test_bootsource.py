@@ -18,7 +18,7 @@ import os
 from unittest import skip
 
 from django.core.exceptions import ValidationError
-from maasserver.bootsources import _cache_boot_sources
+from maasserver.bootsources import cache_boot_sources
 from maasserver.models import BootSource
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -108,4 +108,5 @@ class TestBootSource(MAASServerTestCase):
             url="http://test.test/", keyring_data=b"1234")
         self.assertThat(
             mock_callLater,
-            MockCalledOnceWith(1, deferToThread, _cache_boot_sources))
+            MockCalledOnceWith(
+                1, deferToThread, cache_boot_sources))

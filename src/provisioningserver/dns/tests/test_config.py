@@ -42,7 +42,7 @@ from provisioningserver.dns.config import (
     render_dns_template,
     report_missing_config_dir,
     set_up_options_conf,
-    setup_rndc,
+    set_up_rndc,
     uncomment_named_conf,
     )
 from provisioningserver.dns.testing import (
@@ -120,9 +120,9 @@ class TestRNDCUtilities(MAASTestCase):
         # named_content does not include any comment.
         self.assertNotIn('\n#', named_content)
 
-    def test_setup_rndc_writes_configurations(self):
+    def test_set_up_rndc_writes_configurations(self):
         dns_conf_dir = patch_dns_config_path(self)
-        setup_rndc()
+        set_up_rndc()
         expected = (
             (MAAS_RNDC_CONF_NAME, '# Start of rndc.conf'),
             (MAAS_NAMED_RNDC_CONF_NAME, 'controls {'))
@@ -159,7 +159,7 @@ class TestRNDCUtilities(MAASTestCase):
     def test_rndc_config_includes_default_controls(self):
         dns_conf_dir = patch_dns_config_path(self)
         patch_dns_default_controls(self, enable=True)
-        setup_rndc()
+        set_up_rndc()
         rndc_file = os.path.join(dns_conf_dir, MAAS_NAMED_RNDC_CONF_NAME)
         with open(rndc_file, "rb") as stream:
             conf_content = stream.read()

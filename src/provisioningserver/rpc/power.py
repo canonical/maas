@@ -18,6 +18,7 @@ __all__ = [
 ]
 
 from datetime import timedelta
+from functools import partial
 
 from provisioningserver.events import (
     EVENT_TYPES,
@@ -46,6 +47,8 @@ from provisioningserver.utils.twisted import (
     )
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    DeferredList,
+    DeferredSemaphore,
     inlineCallbacks,
     returnValue,
     )
@@ -58,7 +61,7 @@ from twisted.python import log
 # state for these power types.
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
-QUERY_POWER_TYPES = ['amt', 'ipmi', 'virsh']
+QUERY_POWER_TYPES = ['amt', 'ipmi', 'mscm', 'virsh']
 
 
 # Timeout for change_power_state(). We set it to 2 minutes by default,
@@ -283,6 +286,8 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     the database is updated.
     """
     if power_type not in QUERY_POWER_TYPES:
+        # query_all_nodes() won't call this with an un-queryable power
+        # type, however this is left here to prevent PEBKAC.
         raise PowerActionFail("Unknown power_type '%s'" % power_type)
 
     # Use increasing waiting times to work around race conditions that could
@@ -314,29 +319,50 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
     raise PowerActionFail(error)
 
 
-@asynchronous
-@inlineCallbacks
-def query_all_nodes(nodes, clock=reactor):
+def maaslog_query_failure(node, failure):
+    """Log failure to query node."""
+    if failure.check(PowerActionFail):
+        maaslog.error(
+            "%s: Failed to query power state: %s.",
+            node['hostname'], failure.getErrorMessage())
+    elif failure.check(NoSuchNode):
+        maaslog.debug(
+            "%s: Could not update power status; "
+            "no such node.", node['hostname'])
+    else:
+        maaslog.error(
+            "%s: Failed to query power state, unknown error: %s",
+            node['hostname'], failure.getErrorMessage())
+
+
+def maaslog_query(node, power_state):
+    """Log change in power state for node."""
+    if node['power_state'] != power_state:
+        maaslog.info(
+            "%s: Power state has changed from %s to %s.", node['hostname'],
+            node['power_state'], power_state)
+    return power_state
+
+
+def _query_node(node, clock):
+    """Performs `power_query` on the given node."""
+    # Start the query of the power state for the given node, logging to
+    # maaslog as errors and power states change.
+    d = get_power_state(
+        node['system_id'], node['hostname'],
+        node['power_type'], node['context'],
+        clock=clock)
+    d.addCallbacks(
+        partial(maaslog_query, node),
+        partial(maaslog_query_failure, node))
+    return d
+
+
+def query_all_nodes(nodes, max_concurrency=5, clock=reactor):
     """Performs `power_query` on all nodes. If the nodes state has changed,
     then that is sent back to the region."""
-    for node in nodes:
-        system_id = node['system_id']
-        hostname = node['hostname']
-        power_state_recorded = node['power_state']
-        try:
-            power_state_observed = yield get_power_state(
-                system_id, hostname, node['power_type'], node['context'],
-                clock=clock)
-        except PowerActionFail as e:
-            maaslog.error(
-                "%s: Failed to query power state: %s.", hostname, e)
-            continue
-        except NoSuchNode:
-            maaslog.debug(
-                "%s: Could not update power status; "
-                "no such node.", hostname)
-            continue
-        if power_state_observed != power_state_recorded:
-            maaslog.info(
-                "%s: Power state has changed from %s to %s.", hostname,
-                power_state_recorded, power_state_observed)
+    semaphore = DeferredSemaphore(tokens=max_concurrency)
+    return DeferredList(
+        semaphore.run(_query_node, node, clock)
+        for node in nodes
+        if node['power_type'] in QUERY_POWER_TYPES)

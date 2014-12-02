@@ -195,8 +195,9 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "Power password"),
             make_json_field(
                 'mac_address',
-                "MAC address - the IP is looked up with ARP and is used if "
-                "IP address is empty. This is better when the BMC uses DHCP."),
+                "Use ARP on this MAC address to discover the BMC's IP "
+                "address if its IP is likely to change, e.g. if it's "
+                "assigned via DHCP.")
         ],
     },
     {
@@ -231,8 +232,9 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_pass', "Power password"),
             make_json_field(
                 'power_address',
-                "An IP address to use instead of the node's primary NIC's IP "
-                "(i.e. the IP of the MAC above, looked up with ARP)."),
+                "Use ARP on this MAC address to discover the AMT IP "
+                "address if its IP is likely to change, e.g. if it's "
+                "assigned via DHCP.")
         ],
     },
     {
@@ -266,16 +268,6 @@ JSON_POWER_TYPE_PARAMETERS = [
                 'node_id',
                 "Node ID - Must adhere to cXnY format "
                 "(X=cartridge number, Y=node number)."),
-        ],
-    },
-    {
-        'name': 'umg',
-        'description': "Universal Management Gateway",
-        'fields': [
-            make_json_field('system_alias', "System Alias"),
-            make_json_field('power_address', "UMG hostname or IP address"),
-            make_json_field('power_user', "Power user"),
-            make_json_field('power_pass', "Power password"),
         ],
     },
 ]

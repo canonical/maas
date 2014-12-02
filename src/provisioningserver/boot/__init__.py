@@ -155,7 +155,7 @@ class BootMethod:
 
         :param backend: requesting backend
         :param path: requested path
-        :returns: dict of match params from path, None if no match
+        :return: dict of match params from path, None if no match
         """
 
     @abstractmethod
@@ -191,7 +191,7 @@ class BootMethod:
         :param purpose: The boot purpose, e.g. "local".
         :param arch: Main machine architecture.
         :param subarch: Sub-architecture, or "generic" if there is none.
-        :returns: `tempita.Template`
+        :return: `tempita.Template`
         """
         pxe_templates_dir = self.get_template_dir()
         for filename in gen_template_filenames(purpose, arch, subarch):

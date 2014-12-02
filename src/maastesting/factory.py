@@ -133,6 +133,28 @@ class Factory:
         assert port_min >= 0 and port_max <= 65535
         return random.randint(port_min, port_max)
 
+    def make_vlan_tag(self, allow_none=False, but_not=None):
+        """Create a random VLAN tag.
+
+        :param allow_none: Whether `None` ("no VLAN") can be allowed as an
+            outcome.  If `True`, `None` will be included in the possible
+            results with a deliberately over-represented probability, in order
+            to help trip up bugs that might only show up once in about 4094
+            calls otherwise.
+        :param but_not: A list of tags that should not be returned.  Any zero
+            or `None` entries will be ignored.
+        """
+        if but_not is None:
+            but_not = []
+        if allow_none and self.pick_bool():
+            return None
+        else:
+            for _ in range(100):
+                vlan_tag = random.randint(1, 0xffe)
+                if vlan_tag not in but_not:
+                    return vlan_tag
+            raise TooManyRandomRetries("Could not find an available VLAN tag.")
+
     def make_ipv4_address(self):
         octets = islice(self.random_octets, 4)
         return '%d.%d.%d.%d' % tuple(octets)
@@ -231,7 +253,7 @@ class Factory:
     def pick_ip_in_network(self, network, but_not=None):
         if but_not is None:
             but_not = []
-        but_not = [IPAddress(but) for but in but_not]
+        but_not = [IPAddress(but) for but in but_not if but is not None]
         address = IPAddress(random.randint(network.first, network.last))
         for _ in range(100):
             address = IPAddress(random.randint(network.first, network.last))
@@ -458,6 +480,12 @@ class Factory:
 
         return (stdin, stdout, stderr)
 
+    def make_CalledProcessError(self):
+        """Make a fake :py:class:`subprocess.CalledProcessError`."""
+        return subprocess.CalledProcessError(
+            returncode=random.randint(1, 10),
+            cmd=[self.make_name("command")],
+            output=factory.make_bytes())
 
 # Create factory singleton.
 factory = Factory()

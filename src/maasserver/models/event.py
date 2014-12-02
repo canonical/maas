@@ -18,7 +18,6 @@ __all__ = [
 
 import logging
 
-from django.db import IntegrityError
 from django.db.models import (
     ForeignKey,
     Manager,
@@ -39,33 +38,18 @@ maaslog = get_maas_logger('models.event')
 class EventManager(Manager):
     """A utility to manage the collection of Events."""
 
-    def register_event_and_event_type(self, system_id, type_name,
-                                      type_description='',
-                                      type_level=logging.INFO,
-                                      event_description=''):
+    def register_event_and_event_type(
+            self, system_id, type_name, type_description='',
+            type_level=logging.INFO, event_description=''):
         """Register EventType if it does not exist, then register the Event."""
-        # Check if event type is registered.
+        node = Node.objects.get(system_id=system_id)
         try:
+            # Be optimistic; try to retrieve the event type first.
             event_type = EventType.objects.get(name=type_name)
         except EventType.DoesNotExist:
-            # Create the event type.
-            try:
-                event_type = EventType.objects.create(
-                    name=type_name, description=type_description,
-                    level=type_level)
-            except IntegrityError:
-                # If we get an integrity error then we've probably ended
-                # up in a situation where another thread has created the
-                # EventType already. This is a bit inelegant, but short
-                # of locking the table it's the only sane way to do
-                # things given the shortcomings of Django's ORM.
-                maaslog.debug(
-                    "IntegrityError caught in register_event_and_event_type; "
-                    "Trying to fetch event type '%s' again", type_name)
-                event_type = EventType.objects.get(name=type_name)
-
-        node = Node.objects.get(system_id=system_id)
-
+            # We didn't find it so register it.
+            event_type = EventType.objects.register(
+                type_name, type_description, type_level)
         Event.objects.create(
             node=node, type=event_type, description=event_description)
 

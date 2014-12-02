@@ -23,6 +23,7 @@ from textwrap import dedent
 from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
 from maastesting.fixtures import TempDirectory
+from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
@@ -218,6 +219,89 @@ class TestOmshell(MAASTestCase):
         output = "obj: <null>\nobj: host\ncan't open object: not found\n"
         self.patch(shell, '_run').return_value = (0, output)
         self.assertIsNone(shell.remove(ip_address))
+
+
+class Test_Omshell_nullify_lease(MAASTestCase):
+    """Tests for Omshell.nullify_lease"""
+
+    def test__calls_omshell_correctly(self):
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        shell = Omshell(server_address, shared_key)
+
+        # Instead of calling a real omshell, we'll just record the
+        # parameters passed to Popen.
+        run = self.patch(shell, '_run')
+        run.return_value = (0, '\nends = 00:00:00:00')
+        expected_script = dedent("""\
+            server {server}
+            key omapi_key {key}
+            connect
+            new lease
+            set ip-address = {ip}
+            open
+            set ends = 00:00:00:00
+            update
+            """)
+        expected_script = expected_script.format(
+            server=server_address, key=shared_key, ip=ip_address)
+        shell.nullify_lease(ip_address)
+        self.assertThat(run, MockCalledOnceWith(expected_script))
+
+    def test__considers_nonexistent_lease_a_success(self):
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        shell = Omshell(server_address, shared_key)
+
+        output = (
+            "obj: <null>\nobj: lease\nobj: lease\n"
+            "can't open object: not found\nobj: lease\n")
+        self.patch(shell, '_run').return_value = (0, output)
+        shell.nullify_lease(ip_address)  # No exception.
+        self.assertThat(shell._run, MockCalledOnceWith(ANY))
+
+    def test__catches_invalid_error(self):
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        shell = Omshell(server_address, shared_key)
+
+        output = "obj: <null>\nobj: lease\ninvalid value."
+        self.patch(shell, '_run').return_value = (0, output)
+        self.assertRaises(
+            ExternalProcessError, shell.nullify_lease, ip_address)
+
+    def test__catches_failed_update(self):
+        server_address = factory.make_string()
+        shared_key = factory.make_string()
+        ip_address = factory.make_ipv4_address()
+        shell = Omshell(server_address, shared_key)
+
+        # make "ends" different to what we asked, so the post-run check
+        # should fail.
+        output = dedent("""\
+            obj: <null>
+            obj: lease
+            obj: lease
+            ip-address = 0a:00:00:72
+            state = 00:00:00:01
+            subnet = 00:00:00:03
+            pool = 00:00:00:04
+            hardware-address = 00:16:3e:06:45:5e
+            hardware-type = 00:00:00:01
+            ends = 00:00:00:FF
+            starts = "T@v'"
+            tstp = 54:41:1e:e7
+            tsfp = 00:00:00:00
+            atsfp = 00:00:00:00
+            cltt = "T@v'"
+            flags = 00
+            """)
+        self.patch(shell, '_run').return_value = (0, output)
+        self.assertRaises(
+            ExternalProcessError, shell.nullify_lease, ip_address)
 
 
 class Test_generate_omapi_key(MAASTestCase):

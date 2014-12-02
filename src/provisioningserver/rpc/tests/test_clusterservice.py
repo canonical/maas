@@ -66,6 +66,7 @@ from provisioningserver.power.poweraction import (
     )
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import (
+    boot_images,
     cluster,
     clusterservice,
     common,
@@ -95,7 +96,6 @@ from provisioningserver.rpc.testing import (
     always_succeed_with,
     are_valid_tls_parameters,
     call_responder,
-    capture_result,
     MockLiveClusterToRegionRPCFixture,
     TwistedLoggerFixture,
     )
@@ -104,7 +104,6 @@ from provisioningserver.rpc.testing.doubles import (
     StubOS,
     )
 from provisioningserver.security import set_shared_secret_on_filesystem
-from provisioningserver.testing.config import set_tftp_root
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
@@ -130,8 +129,10 @@ from twisted.internet.defer import (
     succeed,
     )
 from twisted.internet.endpoints import TCP4ClientEndpoint
+from twisted.internet.error import ConnectionClosed
 from twisted.internet.task import Clock
 from twisted.protocols import amp
+from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
 from twisted.test.proto_helpers import StringTransportWithDisconnection
 from zope.interface.verify import verifyObject
@@ -249,12 +250,12 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
         # Create a TFTP file tree with a variety of subdirectories.
         tftpdir = self.make_dir()
+        current_dir = os.path.join(tftpdir, 'current')
+        os.makedirs(current_dir)
         for options in product(osystems, archs, subarchs, releases, labels):
-            os.makedirs(os.path.join(tftpdir, *options))
+            os.makedirs(os.path.join(current_dir, *options))
             make_osystem(self, options[0], purposes)
-
-        # Ensure that list_boot_images() uses the above TFTP file tree.
-        self.useFixture(set_tftp_root(tftpdir))
+        self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', tftpdir)
 
         expected_images = [
             {
@@ -840,21 +841,25 @@ class TestClusterClient(MAASTestCase):
 
     def test_connecting(self):
         client = self.make_running_client()
-        getOnReadyResult = capture_result(client.onReady)
         self.patch_authenticate_for_success(client)
         self.patch_register_for_success(client)
         self.assertEqual(client.service.connections, {})
-        self.assertThat(client.onReady, IsUnfiredDeferred())
+        wait_for_authenticated = client.authenticated.get()
+        self.assertThat(wait_for_authenticated, IsUnfiredDeferred())
+        wait_for_ready = client.ready.get()
+        self.assertThat(wait_for_ready, IsUnfiredDeferred())
         client.connectionMade()
-        # onReady has fired with the name of the event-loop.
-        self.assertEqual(client.eventloop, getOnReadyResult())
+        # authenticated has been set to True, denoting a successfully
+        # authenticated region.
+        self.assertTrue(extract_result(wait_for_authenticated))
+        # ready has been set with the name of the event-loop.
+        self.assertEqual(client.eventloop, extract_result(wait_for_ready))
         self.assertEqual(
             client.service.connections,
             {client.eventloop: client})
 
     def test_disconnects_when_there_is_an_existing_connection(self):
         client = self.make_running_client()
-        getOnReadyResult = capture_result(client.onReady)
 
         # Pretend that a connection already exists for this address.
         client.service.connections[client.eventloop] = sentinel.connection
@@ -864,9 +869,12 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with KeyError to signify that a connection to the
+        # authenticated was set to None to signify that authentication was not
+        # attempted.
+        self.assertIsNone(extract_result(client.authenticated.get()))
+        # ready was set with KeyError to signify that a connection to the
         # same event-loop already existed.
-        self.assertRaises(KeyError, getOnReadyResult)
+        self.assertRaises(KeyError, extract_result, client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -879,16 +887,18 @@ class TestClusterClient(MAASTestCase):
     def test_disconnects_when_service_is_not_running(self):
         client = self.make_running_client()
         client.service.running = False
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with RuntimeError to signify that the client
+        # authenticated was set to None to signify that authentication was not
+        # attempted.
+        self.assertIsNone(extract_result(client.authenticated.get()))
+        # ready was set with RuntimeError to signify that the client
         # service was not running.
-        self.assertRaises(RuntimeError, getOnReadyResult)
+        self.assertRaises(RuntimeError, extract_result, client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -899,15 +909,18 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         self.patch_authenticate_for_failure(client)
         self.patch_register_for_success(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exceptions.AuthenticationFailed, getOnReadyResult)
+        # authenticated was set to False.
+        self.assertIs(False, extract_result(client.authenticated.get()))
+        # ready was set with AuthenticationFailed.
+        self.assertRaises(
+            exceptions.AuthenticationFailed, extract_result,
+            client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -919,7 +932,6 @@ class TestClusterClient(MAASTestCase):
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_error(client, exception_type())
         self.patch_register_for_success(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -928,8 +940,12 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exception_type, getOnReadyResult)
+        # authenticated errbacks with the error.
+        self.assertRaises(
+            exception_type, extract_result, client.authenticated.get())
+        # ready also errbacks with the same error.
+        self.assertRaises(
+            exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
@@ -949,15 +965,18 @@ class TestClusterClient(MAASTestCase):
         client = self.make_running_client()
         self.patch_authenticate_for_success(client)
         self.patch_register_for_failure(client)
-        getOnReadyResult = capture_result(client.onReady)
 
         # Connect via an in-memory transport.
         transport = StringTransportWithDisconnection()
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exceptions.RegistrationFailed, getOnReadyResult)
+        # authenticated was set to True because it succeeded.
+        self.assertIs(True, extract_result(client.authenticated.get()))
+        # ready was set with AuthenticationFailed.
+        self.assertRaises(
+            exceptions.RegistrationFailed, extract_result,
+            client.ready.get())
 
         # The connections list is unchanged because the new connection
         # immediately disconnects.
@@ -969,7 +988,6 @@ class TestClusterClient(MAASTestCase):
         exception_type = factory.make_exception_type()
         self.patch_authenticate_for_success(client)
         self.patch_register_for_error(client, exception_type())
-        getOnReadyResult = capture_result(client.onReady)
 
         logger = self.useFixture(TwistedLoggerFixture())
 
@@ -978,8 +996,10 @@ class TestClusterClient(MAASTestCase):
         transport.protocol = client
         client.makeConnection(transport)
 
-        # onReady was fired with AuthenticationFailed.
-        self.assertRaises(exception_type, getOnReadyResult)
+        # authenticated was set to True because it succeeded.
+        self.assertIs(True, extract_result(client.authenticated.get()))
+        # ready was set with the exception we made.
+        self.assertRaises(exception_type, extract_result, client.ready.get())
 
         # The log was written to.
         self.assertDocTestMatches(
@@ -994,6 +1014,17 @@ class TestClusterClient(MAASTestCase):
         # immediately disconnects.
         self.assertEqual(client.service.connections, {})
         self.assertFalse(client.connected)
+
+    def test_handshakeFailed_does_not_log_when_connection_is_closed(self):
+        client = self.make_running_client()
+        with TwistedLoggerFixture() as logger:
+            client.handshakeFailed(Failure(ConnectionClosed()))
+        # ready was set with ConnectionClosed.
+        self.assertRaises(
+            ConnectionClosed, extract_result,
+            client.ready.get())
+        # Nothing was logged.
+        self.assertEqual("", logger.output)
 
     @inlineCallbacks
     def test_secureConnection_calls_StartTLS_and_Identify(self):

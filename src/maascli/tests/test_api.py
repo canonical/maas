@@ -264,6 +264,7 @@ class TestAction(MAASTestCase):
         # to a TTY, print_response() prints the response with a trailing
         # \n.
         response = httplib2.Response({
+            'status': httplib.NOT_FOUND,
             'content': "Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })
@@ -277,6 +278,7 @@ class TestAction(MAASTestCase):
         # connected to a TTY, print_response() prints the response
         # without a trailing \n.
         response = httplib2.Response({
+            'status': httplib.FOUND,
             'content': "Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })
@@ -296,6 +298,23 @@ class TestAction(MAASTestCase):
         self.patch(buf, 'isatty').return_value = True
         api.Action.print_response(response, response['content'], buf)
         self.assertEqual(response['content'], buf.getvalue())
+
+    def test_print_response_prints_textual_response_with_success_msg(self):
+        # When the response has a status code of 200, and the response
+        # body is textual print_response() will print a success message
+        # to the TTY.
+        response = httplib2.Response({
+            'status': httplib.OK,
+            'content': "Lorem ipsum dolor sit amet.",
+            'content-type': 'text/unicode',
+            })
+        buf = io.StringIO()
+        self.patch(buf, 'isatty').return_value = True
+        api.Action.print_response(response, response['content'], buf)
+        self.assertEqual(
+            "Success.\n"
+            "Machine-readable output follows:\n" +
+            response['content'] + "\n", buf.getvalue())
 
 
 class TestActionHelp(MAASTestCase):

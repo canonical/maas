@@ -23,7 +23,8 @@ import urllib2
 import urlparse
 
 from provisioningserver.logger import get_maas_logger
-import provisioningserver.utils as utils
+from provisioningserver.utils import create_node
+from provisioningserver.utils.url import compose_URL
 from seamicroclient import exceptions as seamicro_exceptions
 from seamicroclient.v2 import client as seamicro_client
 
@@ -199,10 +200,10 @@ def get_seamicro15k_api(version, ip, username, password):
     """Gets the api client depending on the version.
     Supports v0.9 and v2.0.
 
-    :returns: api for version, None if version not supported
+    :return: api for version, None if version not supported
     """
     if version == 'v0.9':
-        api = SeaMicroAPIV09(utils.compose_URL('http:///v0.9/', ip))
+        api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
         try:
             api.login(username, password)
         except urllib2.URLError:
@@ -210,7 +211,7 @@ def get_seamicro15k_api(version, ip, username, password):
             return None
         return api
     elif version == 'v2.0':
-        url = utils.compose_URL('http:///v2.0', ip)
+        url = compose_URL('http:///v2.0', ip)
         try:
             api = seamicro_client.Client(
                 auth_url=url, username=username, password=password)
@@ -224,7 +225,7 @@ def get_seamicro15k_servers(version, ip, username, password):
     """Gets a list of tuples containing (server_id, mac_address) from the
     sm15k api version. Supports v0.9 and v2.0.
 
-    :returns: list of (server_id, mac_address), None if version not supported
+    :return: list of (server_id, mac_address), None if version not supported
     """
     api = get_seamicro15k_api(version, ip, username, password)
     if api:
@@ -288,13 +289,13 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
         maaslog.info(
             "Found seamicro15k node with macs %s; adding to MAAS with "
             "params : %s", macs, params)
-        utils.create_node(macs, 'amd64', 'sm15k', params)
+        create_node(macs, 'amd64', 'sm15k', params)
 
 
 def power_control_seamicro15k_v09(ip, username, password, server_id,
                                   power_change, retry_count=5, retry_wait=1):
     server_id = '%s/0' % server_id
-    api = SeaMicroAPIV09(utils.compose_URL('http:///v0.9/', ip))
+    api = SeaMicroAPIV09(compose_URL('http:///v0.9/', ip))
 
     while retry_count > 0:
         api.login(username, password)

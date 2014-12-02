@@ -26,7 +26,7 @@ from provisioningserver.drivers.osystem.debian_networking import (
     )
 from provisioningserver.udev import compose_network_interfaces_udev_rules
 from provisioningserver.utils.curtin import (
-    compose_mv_command,
+    compose_recursive_copy,
     compose_write_text_file,
     )
 
@@ -110,21 +110,16 @@ class UbuntuOS(OperatingSystem):
         write_files = {
             'write_files': {
                 'etc_network_interfaces': compose_write_text_file(
-                    '/tmp/maas-etc-network-interfaces', interfaces_file,
+                    '/tmp/maas/etc/network/interfaces', interfaces_file,
                     permissions=0644),
                 'udev_persistent_net': compose_write_text_file(
-                    '/tmp/maas-udev-70-persistent-net.rules', udev_rules,
-                    permissions=0644),
+                    '/tmp/maas/etc/udev/rules.d/70-persistent-net.rules',
+                    udev_rules, permissions=0644),
             },
         }
         late_commands = {
             'late_commands': {
-                'etc_network_interfaces': compose_mv_command(
-                    '/tmp/maas-etc-network-interfaces',
-                    '/etc/network/interfaces'),
-                'udev_persistent_net': compose_mv_command(
-                    '/tmp/maas-udev-70-persistent-net.rules',
-                    '/etc/udev/rules.d/70-persistent-net.rules')
+                'copy_etc': compose_recursive_copy('/tmp/maas/etc', '/'),
             },
         }
         return [write_files, late_commands]

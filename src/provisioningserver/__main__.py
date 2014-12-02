@@ -17,6 +17,7 @@ __metaclass__ = type
 from provisioningserver import security
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub
+import provisioningserver.configure_maas_url
 import provisioningserver.customize_config
 import provisioningserver.dhcp.writer
 import provisioningserver.upgrade_cluster
@@ -29,6 +30,7 @@ from provisioningserver.utils.script import (
 script_commands = {
     'atomic-write': AtomicWriteScript,
     'check-for-shared-secret': security.CheckForSharedSecretScript,
+    'configure-maas-url': provisioningserver.configure_maas_url,
     'customize-config': provisioningserver.customize_config,
     'generate-dhcp-config': provisioningserver.dhcp.writer,
     'install-shared-secret': security.InstallSharedSecretScript,

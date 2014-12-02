@@ -28,6 +28,7 @@ from provisioningserver.drivers.osystem.debian_networking import (
 from provisioningserver.drivers.osystem.ubuntu import UbuntuOS
 import provisioningserver.drivers.osystem.ubuntu as ubuntu_module
 from provisioningserver.udev import compose_network_interfaces_udev_rules
+from provisioningserver.utils.curtin import compose_recursive_copy
 from testtools.matchers import (
     AllMatch,
     HasLength,
@@ -92,6 +93,13 @@ class TestUbuntuOS(MAASTestCase):
 
 class TestComposeCurtinNetworkPreseed(MAASTestCase):
 
+    def find_preseed(self, preseeds, key):
+        """Extract from list of `preseeds` the first one containing `key`."""
+        for preseed in preseeds:
+            if key in preseed:
+                return preseed
+        return None
+
     def test__returns_list_of_dicts(self):
         preseed = UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
         self.assertIsInstance(preseed, list)
@@ -112,35 +120,33 @@ class TestComposeCurtinNetworkPreseed(MAASTestCase):
             late_commands['late_commands'].values(),
             AllMatch(IsInstance(list)))
 
-    def test__installs_and_moves_network_interfaces_file(self):
+    def test__writes_network_interfaces_file(self):
         interfaces_file = compose_network_interfaces([], [], {}, {})
         write_text_file = self.patch_autospec(
             ubuntu_module, 'compose_write_text_file')
-        mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
 
         UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
 
-        temp_path = '/tmp/maas-etc-network-interfaces'
+        temp_path = '/tmp/maas/etc/network/interfaces'
         self.expectThat(
             write_text_file,
             MockAnyCall(temp_path, interfaces_file, permissions=0644))
-        self.expectThat(
-            mv_command,
-            MockAnyCall(temp_path, '/etc/network/interfaces'))
 
-    def test__installs_and_moves_udev_rules_file(self):
+    def test__writes_udev_rules_file(self):
         udev_file = compose_network_interfaces_udev_rules([])
         write_text_file = self.patch_autospec(
             ubuntu_module, 'compose_write_text_file')
-        mv_command = self.patch_autospec(ubuntu_module, 'compose_mv_command')
 
         UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
 
-        temp_path = '/tmp/maas-udev-70-persistent-net.rules'
+        temp_path = '/tmp/maas/etc/udev/rules.d/70-persistent-net.rules'
         self.expectThat(
             write_text_file,
             MockAnyCall(temp_path, udev_file, permissions=0644))
-        self.expectThat(
-            mv_command,
-            MockAnyCall(
-                temp_path, '/etc/udev/rules.d/70-persistent-net.rules'))
+
+    def test__copies_temp_etc_to_real_etc(self):
+        preseed = UbuntuOS().compose_curtin_network_preseed([], [], {}, {})
+        late_commands = self.find_preseed(preseed, 'late_commands')
+        self.assertEqual(
+            {'copy_etc': compose_recursive_copy('/tmp/maas/etc', '/')},
+            late_commands['late_commands'])

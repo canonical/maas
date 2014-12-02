@@ -193,7 +193,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
 
         The `protocol` should be an instance of `amp.AMP`.
 
-        :returns: py:class:`twisted.test.iosim.IOPump`
+        :return: py:class:`twisted.test.iosim.IOPump`
         """
         server_factory = Factory.forProtocol(RegionServer)
         server_factory.service = self.rpc
@@ -216,7 +216,7 @@ class MockRegionToClusterRPCFixture(fixtures.Fixture):
         has to succeed or the connection will never been added to the RPC
         service's list of connections.
 
-        :returns: A 2-tuple of the protocol instance created and the
+        :return: A 2-tuple of the protocol instance created and the
             py:class:`twisted.test.iosim.IOPump` as returned by `addCluster`.
         """
         if cluster.Identify not in commands:
@@ -317,7 +317,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
 
         The `protocol` should be an instance of `amp.AMP`.
 
-        :returns: A `Deferred` that fires with the connected protocol
+        :return: A `Deferred` that fires with the connected protocol
             instance.
         """
         endpoint = endpoints.UNIXClientEndpoint(reactor, self.sockfile)
@@ -336,7 +336,7 @@ class MockLiveRegionToClusterRPCFixture(fixtures.Fixture):
         has to succeed or the connection will never been added to the RPC
         service's list of connections.
 
-        :returns: The protocol instance created.
+        :return: The protocol instance created.
         """
         if cluster.Identify not in commands:
             commands = commands + (cluster.Identify,)

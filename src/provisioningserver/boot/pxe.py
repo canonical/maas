@@ -100,7 +100,7 @@ class PXEBootMethod(BootMethod):
 
         :param backend: requesting backend
         :param path: requested path
-        :returns: dict of match params from path, None if no match
+        :return: dict of match params from path, None if no match
         """
         match = re_config_file.match(path)
         if match is None:

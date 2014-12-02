@@ -16,6 +16,7 @@ __all__ = []
 
 from cgi import escape
 import httplib
+import json
 import logging
 from operator import attrgetter
 import os
@@ -24,6 +25,7 @@ from random import (
     randint,
     )
 from textwrap import dedent
+import time
 from unittest import skip
 from urlparse import (
     parse_qsl,
@@ -42,8 +44,10 @@ from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_BOOT,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    POWER_STATE,
     )
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
@@ -81,7 +85,9 @@ from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import (
+    configure_macs,
     message_from_form_stats,
+    node_to_dict,
     NodeEventListView,
     NodeView,
     )
@@ -94,7 +100,9 @@ from metadataserver.models.commissioningscript import (
 from provisioningserver.utils.enum import map_enum
 from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
+    Contains,
     ContainsAll,
+    Equals,
     HasLength,
     Not,
     )
@@ -102,6 +110,44 @@ from testtools.matchers import (
 
 def normalize_text(text):
     return ' '.join(text.split())
+
+
+class TestHelpers(MAASServerTestCase):
+
+    def test_node_to_dict_keys(self):
+        node = factory.make_Node()
+        node = configure_macs([node])[0]
+        self.assertThat(
+            node_to_dict(node),
+            ContainsAll([
+                'id', 'system_id', 'url', 'hostname', 'fqdn',
+                'status', 'owner', 'cpu_count', 'memory', 'storage',
+                'power_state', 'zone', 'zone_url', 'mac', 'vendor', 'macs']))
+
+    def test_node_to_dict_values(self):
+        node = factory.make_Node(mac=True)
+        node = configure_macs([node])[0]
+        dict_node = node_to_dict(node)
+        self.expectThat(dict_node['id'], Equals(node.id))
+        self.expectThat(dict_node['system_id'], Equals(node.system_id))
+        self.expectThat(
+            dict_node['url'],
+            Equals(reverse('node-view', args=[node.system_id])))
+        self.expectThat(dict_node['hostname'], Equals(node.hostname))
+        self.expectThat(dict_node['fqdn'], Equals(node.fqdn))
+        self.expectThat(dict_node['status'], Equals(node.display_status()))
+        self.expectThat(dict_node['owner'], Equals(''))
+        self.expectThat(dict_node['cpu_count'], Equals(node.cpu_count))
+        self.expectThat(dict_node['memory'], Equals(node.display_memory()))
+        self.expectThat(dict_node['storage'], Equals(node.display_storage()))
+        self.expectThat(dict_node['power_state'], Equals(node.power_state))
+        self.expectThat(dict_node['zone'], Equals(node.zone.name))
+        self.expectThat(
+            dict_node['zone_url'],
+            Equals(reverse('zone-view', args=[node.zone.name])))
+        self.expectThat(dict_node['mac'], Equals(node.primary_mac))
+        self.expectThat(dict_node['vendor'], Equals(node.primary_mac_vendor))
+        self.expectThat(dict_node['macs'], Equals(node.extra_macs))
 
 
 class TestGenerateJSPowerTypes(MAASServerTestCase):
@@ -158,6 +204,14 @@ class NodeViewsTest(MAASServerTestCase):
         profile = self.logged_in_user.get_profile()
         consumer, token = profile.create_authorisation_token()
         self.patch(maasserver.api, 'get_oauth_token', lambda request: token)
+
+    def get_node_list_ajax(self, ids=None):
+        """Get result of AJAX request for node list."""
+        url = reverse('node-list')
+        if ids is not None and len(ids) > 0:
+            url += '?id=' + '&id='.join(ids)
+        return self.client.get(
+            url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
     def test_node_list_contains_link_to_node_view(self):
         self.client_log_in()
@@ -439,6 +493,28 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(20, count_node_links(response))
         self.assertEqual(num_queries, num_bonus_queries)
 
+    def test_node_list_ajax_returns_json(self):
+        self.client_log_in()
+        response = self.get_node_list_ajax()
+        self.assertEqual('application/json', response['Content-Type'])
+
+    def test_node_list_ajax_returns_empty_list_when_no_ids(self):
+        self.client_log_in()
+        response = self.get_node_list_ajax()
+        json_obj = json.loads(response.content)
+        self.assertEqual([], json_obj)
+
+    def test_node_list_ajax_returns_node_info(self):
+        self.client_log_in()
+        nodes = [factory.make_Node() for _ in range(3)]
+        nodes = configure_macs(nodes)
+        ids = [node.system_id for node in nodes]
+        response = self.get_node_list_ajax(ids=ids)
+        json_obj = json.loads(response.content)
+        self.assertItemsEqual(
+            [node_to_dict(node) for node in nodes],
+            json_obj)
+
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
         self.client_log_in()
@@ -715,28 +791,15 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertFalse(Node.objects.filter(id=node.id).exists())
 
-    def test_allocated_node_view_page_says_node_cannot_be_deleted(self):
+    def test_allocated_node_can_be_deleted(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
-        node_view_link = reverse('node-view', args=[node.system_id])
-        response = self.client.get(node_view_link)
-        node_delete_link = reverse('node-delete', args=[node.system_id])
 
-        self.assertEqual(httplib.OK, response.status_code)
-        self.assertNotIn(node_delete_link, get_content_links(response))
-        self.assertIn(
-            "You cannot delete this node because",
-            response.content)
-
-    def test_allocated_node_cannot_be_deleted(self):
-        self.client_log_in(as_admin=True)
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
         node_delete_link = reverse('node-delete', args=[node.system_id])
         response = self.client.get(node_delete_link)
 
-        self.assertEqual(httplib.FORBIDDEN, response.status_code)
+        self.assertEqual(httplib.OK, response.status_code)
 
     def test_user_can_view_someone_elses_node(self):
         self.client_log_in()
@@ -926,7 +989,7 @@ class NodeViewsTest(MAASServerTestCase):
 
         # Stub-out real-world RPC calls.
         self.patch(node_module, "update_host_maps").return_value = []
-        self.patch(node_module, "power_on_nodes").return_value = {}
+        self.patch(node_module, "wait_for_power_commands")
 
         self.client_log_in()
         factory.make_SSHKey(self.logged_in_user)
@@ -1029,47 +1092,6 @@ class NodeViewsTest(MAASServerTestCase):
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))
 
-    def test_node_list_query_includes_current(self):
-        self.client_log_in()
-        qs = factory.make_string()
-        response = self.client.get(reverse('node-list'), {"query": qs})
-        query_value = fromstring(response.content).xpath(
-            "string(//div[@id='nodes']//input[@name='query']/@value)")
-        self.assertIn(qs, query_value)
-
-    def test_node_list_query_error_on_missing_tag(self):
-        self.client_log_in()
-        response = self.client.get(
-            reverse('node-list'), {"query": "maas-tags=missing"})
-        error_string = fromstring(response.content).xpath(
-            "string(//div[@id='nodes']//p[@class='form-errors'])")
-        self.assertIn("No such tag(s): 'missing'", error_string)
-
-    def test_node_list_query_error_on_unknown_constraint(self):
-        self.client_log_in()
-        response = self.client.get(
-            reverse('node-list'), {"query": "color=red"})
-        error_string = fromstring(response.content).xpath(
-            "string(//div[@id='nodes']//p[@class='form-errors'])")
-        self.assertEqual("color: No such constraint.", error_string.strip())
-
-    def test_node_list_query_selects_subset(self):
-        self.client_log_in()
-        tag = factory.make_Tag("shiny")
-        node1 = factory.make_Node(cpu_count=1)
-        node2 = factory.make_Node(cpu_count=2)
-        node3 = factory.make_Node(cpu_count=2)
-        node1.tags = [tag]
-        node2.tags = [tag]
-        node3.tags = []
-        response = self.client.get(
-            reverse('node-list'), {"query": "maas-tags=shiny cpu=2"})
-        node2_link = reverse('node-view', args=[node2.system_id])
-        document = fromstring(response.content)
-        node_links = document.xpath(
-            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
-        self.assertEqual([node2_link], node_links)
-
     def test_node_list_paginates(self):
         """Node listing is split across multiple pages with links"""
         self.client_log_in()
@@ -1115,36 +1137,6 @@ class NodeViewsTest(MAASServerTestCase):
             [("first", "."), ("previous", "?page=2")],
             [(a.text.lower(), a.get("href"))
              for a in expr_page_anchors(page3)])
-
-    def test_node_list_query_paginates(self):
-        """Node list query subset is split across multiple pages with links"""
-        self.client_log_in()
-        # Set a very small page size to save creating lots of nodes
-        self.patch(nodes_views.NodeListView, 'paginate_by', 2)
-        nodes = [
-            factory.make_Node(created="2012-10-12 12:00:%02d" % i)
-            for i in range(10)]
-        tag = factory.make_Tag("odd")
-        for node in nodes[::2]:
-            node.tags = [tag]
-        last_node_link = reverse('node-view', args=[nodes[0].system_id])
-        response = self.client.get(
-            reverse('node-list'),
-            {"query": "maas-tags=odd", "page": 3})
-        document = fromstring(response.content)
-        self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
-        self.assertEqual(
-            [last_node_link],
-            document.xpath("//div[@id='nodes']/form/table/tr/td[3]/a/@href"))
-        self.assertEqual(
-            [
-                ("first", "?query=maas-tags%3Dodd"),
-                ("previous", "?query=maas-tags%3Dodd&page=2")
-            ],
-            [
-                (a.text.lower(), a.get("href"))
-                for a in document.xpath("//div[@class='pagination']//a")
-            ])
 
     def test_node_list_performs_bulk_action(self):
         self.client_log_in(as_admin=True)
@@ -1367,6 +1359,388 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertIn(node_event_list, get_content_links(response))
 
 
+class TestNodesViewSearch(MAASServerTestCase):
+
+    def test_node_list_search_query_includes_current_clause(self):
+        self.client_log_in()
+        qs = factory.make_string()
+        response = self.client.get(reverse('node-list'), {"query": qs})
+        query_value = fromstring(response.content).xpath(
+            "string(//div[@id='nodes']//input[@name='query']/@value)")
+        self.assertIn(qs, query_value)
+
+    def test_node_list_search_query_finds_by_all_fields_hostname(self):
+        self.client_log_in()
+        [factory.make_Node() for i in range(10)]
+        hostname = factory.make_name("hostname")
+        node = factory.make_Node(hostname=hostname)
+        node2 = factory.make_Node(hostname=hostname[:-1])
+        node_link = reverse('node-view', args=[node.system_id])
+        node2_link = reverse('node-view', args=[node2.system_id])
+        response = self.client.get(reverse('node-list'), {"query": hostname})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, Equals([node_link]))
+
+        # A substring search also matches.  Here it also picks up the
+        # other node with the exact name match.
+        response = self.client.get(
+            reverse('node-list'), {"query": hostname[:-1]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link, node2_link])
+
+    def test_node_list_search_query_finds_by_field_hostname(self):
+        self.client_log_in()
+        [factory.make_Node() for i in range(10)]
+        hostname = factory.make_name("hostname")
+        node = factory.make_Node(hostname=hostname)
+        node2 = factory.make_Node(hostname=hostname[:-1])
+        node_link = reverse('node-view', args=[node.system_id])
+        node2_link = reverse('node-view', args=[node2.system_id])
+        response = self.client.get(reverse('node-list'), {"query": hostname})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, Equals([node_link]))
+
+        # A substring search also matches.  Here it also picks up the
+        # other node with the exact name match.
+        response = self.client.get(
+            reverse('node-list'), {"query": "hostname:%s" % hostname[:-1]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link, node2_link])
+
+    def test_node_list_search_query_finds_by_all_fields_arch(self):
+        self.client_log_in()
+        amd64_node = factory.make_Node(architecture="amd64/generic")
+        factory.make_Node(architecture="i386/generic")
+        factory.make_Node(architecture="armhf/generic")
+
+        node_link = reverse('node-view', args=[amd64_node.system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": "amd64"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_field_arch(self):
+        self.client_log_in()
+        amd64_node = factory.make_Node(architecture="amd64/generic")
+        factory.make_Node(architecture="i386/generic")
+        factory.make_Node(architecture="armhf/generic")
+
+        node_link = reverse('node-view', args=[amd64_node.system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": "arch:amd64"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_field_power_state(self):
+        self.client_log_in()
+        power_on_node = factory.make_Node(power_state=POWER_STATE.ON)
+        factory.make_Node(power_state=POWER_STATE.OFF)
+        factory.make_Node(power_state=POWER_STATE.UNKNOWN)
+
+        node_link = reverse('node-view', args=[power_on_node.system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": "power:on"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_all_fields_full_mac(self):
+        self.client_log_in()
+        node = factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": '%s' % node.get_pxe_mac()})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_all_fields_partial_mac(self):
+        self.client_log_in()
+        node = factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+
+        node_link = reverse('node-view', args=[node.system_id])
+        mac = '%s' % node.get_pxe_mac()
+        response = self.client.get(
+            reverse('node-list'), {"query": mac[:8]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_field_mac_partial_mac(self):
+        self.client_log_in()
+        node = factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+        factory.make_Node(mac=True)
+
+        node_link = reverse('node-view', args=[node.system_id])
+        mac = '%s' % node.get_pxe_mac()
+        response = self.client.get(
+            reverse('node-list'), {"query": 'mac:%s' % mac[:5]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_all_fields_status(self):
+        self.client_log_in()
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
+        factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        factory.make_Node(status=NODE_STATUS.DEPLOYED)
+
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": NODE_STATUS_CHOICES_DICT[NODE_STATUS.ALLOCATED]})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_field_status(self):
+        self.client_log_in()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        factory.make_Node(status=NODE_STATUS.ALLOCATED)
+
+        node_link = reverse('node-view', args=[node.system_id])
+        status_text = NODE_STATUS_CHOICES_DICT[NODE_STATUS.DEPLOYED]
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": 'status:%s' % status_text})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node_link])
+
+    def test_node_list_search_query_finds_by_field_status_patial_deploy(self):
+        self.client_log_in()
+        node1 = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node2 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        factory.make_Node(status=NODE_STATUS.ALLOCATED)
+
+        node1_link = reverse('node-view', args=[node1.system_id])
+        node2_link = reverse('node-view', args=[node2.system_id])
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": 'status:deploy'})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node1_link, node2_link])
+
+    def test_node_list_search_query_finds_by_all_fields_for_miss_field(self):
+        self.client_log_in()
+        node1 = factory.make_Node(status=NODE_STATUS.DEPLOYED)
+        node2 = factory.make_Node(status=NODE_STATUS.DEPLOYING)
+        factory.make_Node(status=NODE_STATUS.ALLOCATED)
+
+        node1_link = reverse('node-view', args=[node1.system_id])
+        node2_link = reverse('node-view', args=[node2.system_id])
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": ':deploy'})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [node1_link, node2_link])
+
+    def test_node_list_search_query_returns_empty_for_missing_field(self):
+        self.client_log_in()
+        for _ in range(3):
+            factory.make_Node()
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": ':deploy'})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(node_links, [])
+
+    def test_node_list_search_doesnt_show_duplicates(self):
+        # Unioning several query sets can result in dupes, check that
+        # the query uses distinct.
+        self.client_log_in()
+        node = factory.make_Node(
+            hostname="arthur", architecture="amd64/generic")
+        node.tags = [factory.make_Tag() for i in range(3)]
+        node.save()
+        nodes = [node]
+        nodes.append(factory.make_Node(
+            hostname="andrew", architecture="i386/generic"))
+        response = self.client.get(reverse('node-list'), {"query": "a"})
+        document = fromstring(response.content)
+        expected_node_links = [
+            reverse('node-view', args=[n.system_id]) for n in nodes]
+        doc_node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertItemsEqual(expected_node_links, doc_node_links)
+
+    def test_node_list_search_query_finds_by_tags(self):
+        self.client_log_in()
+        nodes = [factory.make_Node() for i in range(10)]
+        tag = factory.make_Tag("odd")
+        for node in nodes[::2]:
+            node.tags = [tag]
+        response = self.client.get(
+            reverse('node-list'), {"query": "odd"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        expected_node_links = [
+            reverse('node-view', args=[node.system_id])
+            for node in nodes[::2]]
+        self.expectThat(node_links, ContainsAll(expected_node_links))
+
+        # Substrings match tags too.
+        response = self.client.get(
+            reverse('node-list'), {"query": "od"})
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.expectThat(node_links, ContainsAll(expected_node_links))
+
+    def test_node_list_search_query_paginates(self):
+        """Node list query subset is split across multiple pages with links"""
+        self.client_log_in()
+        # Set a very small page size to save creating lots of nodes
+        self.patch(nodes_views.NodeListView, 'paginate_by', 2)
+        nodes = [
+            factory.make_Node(created="2012-10-12 12:00:%02d" % i)
+            for i in range(10)]
+        tag = factory.make_Tag("odd")
+        for node in nodes[::2]:
+            node.tags = [tag]
+        last_node_link = reverse('node-view', args=[nodes[0].system_id])
+        response = self.client.get(
+            reverse('node-list'), {"query": "odd", "page": 3})
+        document = fromstring(response.content)
+        self.expectThat(
+            document.xpath("string(//h1)"), Contains("5 matching nodes"))
+        self.expectThat(
+            [last_node_link],
+            Equals(
+                document.xpath(
+                    "//div[@id='nodes']/form/table/tr/td[3]/a/@href")))
+        self.assertEqual(
+            [
+                ("first", "?query=odd"),
+                ("previous", "?query=odd&page=2")
+            ],
+            [
+                (a.text.lower(), a.get("href"))
+                for a in document.xpath("//div[@class='pagination']//a")
+            ])
+
+    def test_node_list_query_constraint_includes_current(self):
+        self.client_log_in()
+        qs = factory.make_string()
+        response = self.client.get(reverse('node-list'), {"query": qs})
+        query_value = fromstring(response.content).xpath(
+            "string(//div[@id='nodes']//input[@name='query']/@value)")
+        self.assertIn(qs, query_value)
+
+    def test_node_list_query_constraint_error_on_missing_tag(self):
+        self.client_log_in()
+        response = self.client.get(
+            reverse('node-list'), {"query": "maas-tags=missing"})
+        error_string = fromstring(response.content).xpath(
+            "string(//div[@id='nodes']//p[@class='form-errors'])")
+        self.assertIn("No such tag(s): 'missing'", error_string)
+
+    def test_node_list_query_constraint_error_on_unknown_constraint(self):
+        self.client_log_in()
+        response = self.client.get(
+            reverse('node-list'), {"query": "color=red"})
+        error_string = fromstring(response.content).xpath(
+            "string(//div[@id='nodes']//p[@class='form-errors'])")
+        self.assertEqual("color: No such constraint.", error_string.strip())
+
+    def test_node_list_query_constraint_selects_subset(self):
+        self.client_log_in()
+        tag = factory.make_Tag("shiny")
+        node1 = factory.make_Node(cpu_count=1)
+        node2 = factory.make_Node(cpu_count=2)
+        node3 = factory.make_Node(cpu_count=2)
+        node1.tags = [tag]
+        node2.tags = [tag]
+        node3.tags = []
+        response = self.client.get(
+            reverse('node-list'), {"query": "maas-tags=shiny cpu=2"})
+        node2_link = reverse('node-view', args=[node2.system_id])
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertEqual([node2_link], node_links)
+
+    def test_node_list_query_constraint_selects_subset_ignoring_others(self):
+        self.client_log_in()
+        tag = factory.make_Tag("shiny")
+        node1 = factory.make_Node(cpu_count=1)
+        node2 = factory.make_Node(cpu_count=2)
+        node3 = factory.make_Node(cpu_count=2)
+        node1.tags = [tag]
+        node2.tags = [tag]
+        node3.tags = []
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": "maas-tags=shiny cpu=2 status:new"})
+        node2_link = reverse('node-view', args=[node2.system_id])
+        document = fromstring(response.content)
+        node_links = document.xpath(
+            "//div[@id='nodes']/form/table/tr/td[3]/a/@href")
+        self.assertEqual([node2_link], node_links)
+
+    def test_node_list_query_constraint_paginates(self):
+        """Node list query subset is split across multiple pages with links"""
+        self.client_log_in()
+        # Set a very small page size to save creating lots of nodes
+        self.patch(nodes_views.NodeListView, 'paginate_by', 2)
+        nodes = [
+            factory.make_Node(created="2012-10-12 12:00:%02d" % i)
+            for i in range(10)]
+        tag = factory.make_Tag("odd")
+        for node in nodes[::2]:
+            node.tags = [tag]
+        last_node_link = reverse('node-view', args=[nodes[0].system_id])
+        response = self.client.get(
+            reverse('node-list'),
+            {"query": "maas-tags=odd", "page": 3})
+        document = fromstring(response.content)
+        self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
+        self.assertEqual(
+            [last_node_link],
+            document.xpath("//div[@id='nodes']/form/table/tr/td[3]/a/@href"))
+        self.assertEqual(
+            [
+                ("first", "?query=maas-tags%3Dodd"),
+                ("previous", "?query=maas-tags%3Dodd&page=2")
+            ],
+            [
+                (a.text.lower(), a.get("href"))
+                for a in document.xpath("//div[@class='pagination']//a")
+            ])
+
+
 class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
 
     def test__warns_for_IPv6_address_on_non_ubuntu_OS(self):
@@ -1480,7 +1854,7 @@ class ConstructThirdPartyDriversNoticeTest(MAASServerTestCase):
 
 
 class NodeResultsDisplayTest(MAASServerTestCase):
-    """Tests for the link to node commissioning/installing
+    """Tests for the link to node commissioning/installation
     results on the Node page.
     """
 
@@ -1500,7 +1874,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         doc = fromstring(response.content)
         if result_type == RESULT_TYPE.COMMISSIONING:
             results_display = doc.cssselect('#nodecommissionresults')
-        elif result_type == RESULT_TYPE.INSTALLING:
+        elif result_type == RESULT_TYPE.INSTALLATION:
             results_display = doc.cssselect('#nodeinstallresults')
         if len(results_display) == 0:
             return None
@@ -1526,7 +1900,7 @@ class NodeResultsDisplayTest(MAASServerTestCase):
         else:
             self.fail("Found more than one link: %s" % links)
 
-    def get_installing_results_link(self, display):
+    def get_installation_results_link(self, display):
         """Find the results link in `display`.
 
         :param display: Results display section for a node, as returned by
@@ -1608,65 +1982,150 @@ class NodeResultsDisplayTest(MAASServerTestCase):
             "%d output files" % num_results,
             normalise_whitespace(link.text_content()))
 
-    def test_view_node_shows_installing_results_only_if_present(self):
+    def test_view_node_shows_installation_results_only_if_present(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node()
         self.assertIsNone(
-            self.request_results_display(node, RESULT_TYPE.INSTALLING))
+            self.request_results_display(node, RESULT_TYPE.INSTALLATION))
 
-    def test_view_node_shows_installing_results_with_edit_perm(self):
+    def test_view_node_shows_installation_results_with_edit_perm(self):
         password = 'test'
         user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_NodeResult_for_installing(node=node)
+        result = factory.make_NodeResult_for_installation(node=node)
         section = self.request_results_display(
-            result.node, RESULT_TYPE.INSTALLING)
-        link = self.get_installing_results_link(section)
+            result.node, RESULT_TYPE.INSTALLATION)
+        link = self.get_installation_results_link(section)
         self.assertNotIn(
             normalise_whitespace(link.text_content()),
             ('', None))
 
-    def test_view_node_shows_installing_results_requires_edit_perm(self):
+    def test_view_node_shows_installation_results_requires_edit_perm(self):
         password = 'test'
         user = factory.make_User(password=password)
         node = factory.make_Node()
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_NodeResult_for_installing(node=node)
+        result = factory.make_NodeResult_for_installation(node=node)
         self.assertIsNone(
             self.request_results_display(
-                result.node, RESULT_TYPE.INSTALLING))
+                result.node, RESULT_TYPE.INSTALLATION))
 
-    def test_view_node_shows_single_installing_result(self):
+    def test_view_node_shows_single_installation_result(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_NodeResult_for_installing()
+        result = factory.make_NodeResult_for_installation()
         section = self.request_results_display(
-            result.node, RESULT_TYPE.INSTALLING)
-        link = self.get_installing_results_link(section)
+            result.node, RESULT_TYPE.INSTALLATION)
+        link = self.get_installation_results_link(section)
         self.assertEqual(
             "install log",
             normalise_whitespace(link.text_content()))
 
-    def test_view_node_shows_multiple_installing_results(self):
+    def test_view_node_shows_multiple_installation_results(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node()
         num_results = randint(2, 5)
         results_names = []
         for _ in range(num_results):
-            node_result = factory.make_NodeResult_for_installing(node=node)
+            node_result = factory.make_NodeResult_for_installation(node=node)
             results_names.append(node_result.name)
         section = self.request_results_display(
-            node, RESULT_TYPE.INSTALLING)
-        links = self.get_installing_results_link(section)
-        expected_results_names = list(reversed(results_names))
-        observed_results_names = list(
-            normalise_whitespace(link.text_content())
-            for link in links)
-        self.assertListEqual(
-            expected_results_names,
-            observed_results_names)
+            node, RESULT_TYPE.INSTALLATION)
+        links = self.get_installation_results_link(section)
+        self.assertThat(
+            results_names,
+            ContainsAll(
+                [normalise_whitespace(link.text_content()) for link in links]))
+
+
+class NodeListingJSReloader(SeleniumTestCase):
+
+    # JS Script that will load a new NodeTableReloader view, placing the
+    # object on the window.
+    RELOADER_SCRIPT = dedent("""\
+        YUI().use(
+          'maas.node_views', 'maas.shortpoll',
+          function (Y) {
+            // Place the reloader on the window, giving the ability for
+            // selenium to access the view.
+            window.reloader_view = new Y.maas.node_views.NodesTableReloader({
+              srcNode: '#node_list'});
+
+            // Start the poller so it makes the request to retrieve the
+            // node data.
+            var ids = window.reloader_view.getNodesList();
+            var op_url = "";
+            Y.Array.each(ids, function(id) {
+              op_url += "&id=" + id;
+            });
+            if (op_url.length > 0) {
+              op_url = "?" + op_url.substr(1);
+            }
+            var poller = new Y.maas.shortpoll.ShortPollManager({
+              uri: "%s" + op_url
+            });
+            window.reloader_view.addLoader(poller.get("io"));
+            poller.poll();
+        });
+        """)
+
+    def get_nodes(self):
+        """Return the loaded nodes from JS NodesTableReloader."""
+        self.get_page('node-list')
+
+        # We execute a script to create a new reloader view. This needs to
+        # be done to get access to the view. As the view code does not place
+        # the object on a global variable, which is a good thing.
+        self.selenium.execute_script(
+            self.RELOADER_SCRIPT % reverse('node-list'))
+
+        # Extract the loaded nodes list from javascript, to check that
+        # it loads the correct information. Due to the nature of JS and the
+        # poller requesting the nodes, we cannot assume that the result
+        # will be their immediately. We will try for a maximum of
+        # 5 seconds before giving up.
+        for _ in range(10):
+            js_nodes = self.selenium.execute_script(
+                "return window.reloader_view.nodes;")
+            if js_nodes is not None:
+                break
+            time.sleep(0.5)
+        if js_nodes is None:
+            self.fail("Unable to retrieve the loaded nodes from selenium.")
+        return js_nodes
+
+    def test_node_table_reloader_loads_nodes(self):
+        self.log_in()
+        js_nodes = self.get_nodes()
+        self.assertEquals(
+            Node.objects.count(),
+            len(js_nodes),
+            "NodesTableReloader didn't load all the nodes.")
+
+    def test_node_table_reloader_loads_node_with_correct_attributes(self):
+        self.log_in()
+        js_nodes = self.get_nodes()
+        for node in js_nodes:
+            self.expectThat(node, ContainsAll([
+                'id',
+                'system_id',
+                'url',
+                'hostname',
+                'fqdn',
+                'status',
+                'owner',
+                'cpu_count',
+                'memory',
+                'storage',
+                'power_state',
+                'zone',
+                'zone_url',
+                'mac',
+                'vendor',
+                'macs',
+                ]))
 
 
 class NodeListingSelectionJSControls(SeleniumTestCase):
@@ -1828,10 +2287,13 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                  % Delete.display_bulk,),
             ),
         ]
-        for params, snippets in params_and_snippets:
-            message = message_from_form_stats(*params)
+        # level precedence is worst-case for the concantenation of messages
+        levels = ['error', 'info', 'error', 'error']
+        for index, (params, snippets) in enumerate(params_and_snippets):
+            message, level = message_from_form_stats(*params)
             for snippet in snippets:
                 self.assertIn(snippet, message)
+            self.assertEqual(level, levels[index])
 
 
 class NodeEnlistmentPreseedViewTest(MAASServerTestCase):

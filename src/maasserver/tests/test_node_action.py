@@ -33,7 +33,6 @@ from maasserver.exceptions import (
     Redirect,
     )
 from maasserver.models import StaticIPAddress
-from maasserver.models.node import Node
 from maasserver.node_action import (
     AbortCommissioning,
     AbortOperation,
@@ -58,6 +57,7 @@ from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
 from provisioningserver.rpc.exceptions import MultipleFailures
+from provisioningserver.utils.shell import ExternalProcessError
 from testtools.matchers import Equals
 from twisted.python.failure import Failure
 
@@ -195,19 +195,6 @@ class TestNodeAction(MAASServerTestCase):
 
 class TestDeleteNodeAction(MAASServerTestCase):
 
-    def test_Delete_inhibit_when_node_is_allocated(self):
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        action = Delete(node, factory.make_admin())
-        inhibition = action.inhibit()
-        self.assertEqual(
-            "You cannot delete this node because it's in use.", inhibition)
-
-    def test_Delete_does_not_inhibit_otherwise(self):
-        node = factory.make_Node(status=NODE_STATUS.FAILED_COMMISSIONING)
-        action = Delete(node, factory.make_admin())
-        inhibition = action.inhibit()
-        self.assertIsNone(inhibition)
-
     def test_Delete_redirects_to_node_delete_view(self):
         node = factory.make_Node()
         action = Delete(node, factory.make_admin())
@@ -230,17 +217,17 @@ class TestCommissionNodeAction(MAASServerTestCase):
     )
 
     def test_Commission_starts_commissioning(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
         node = factory.make_Node(
             mac=True, status=self.status,
             power_type='ether_wake')
+        self.patch_autospec(node, 'start_transition_monitor')
+        node_start = self.patch(node, 'start')
         admin = factory.make_admin()
         action = Commission(node, admin)
         action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
-            start_nodes, MockCalledOnceWith(
-                [node.system_id], admin, user_data=ANY))
+            node_start, MockCalledOnceWith(admin, user_data=ANY))
 
 
 class TestAbortCommissioningNodeAction(MAASServerTestCase):
@@ -249,14 +236,13 @@ class TestAbortCommissioningNodeAction(MAASServerTestCase):
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.COMMISSIONING,
             power_type='virsh')
-        stop_nodes = self.patch(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch_autospec(node, 'stop_transition_monitor')
+        node_stop = self.patch_autospec(node, 'stop')
         admin = factory.make_admin()
 
         AbortCommissioning(node, admin).execute()
         self.assertEqual(NODE_STATUS.NEW, node.status)
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], admin))
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
 
 
 class TestAbortOperationNodeAction(MAASServerTestCase):
@@ -265,14 +251,12 @@ class TestAbortOperationNodeAction(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=owner)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch_autospec(node, 'stop')
 
         AbortOperation(node, owner).execute()
 
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], owner))
+        self.assertThat(node_stop, MockCalledOnceWith(owner))
 
 
 class TestAcquireNodeNodeAction(MAASServerTestCase):
@@ -314,14 +298,14 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertIn("SSH key", inhibition)
 
     def test_StartNode_starts_node(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
+        node_start = self.patch(node, 'start')
         StartNode(node, user).execute()
         self.assertThat(
-            start_nodes, MockCalledOnceWith([node.system_id], user))
+            node_start, MockCalledOnceWith(user))
 
     def test_StartNode_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
@@ -351,9 +335,9 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertFalse(StartNode(node, user).is_permitted())
 
     def test_StartNode_allocates_node_if_node_not_already_allocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         action = StartNode(node, user)
         action.execute()
 
@@ -361,16 +345,16 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
     def test_StartNode_label_shows_allocate_if_unallocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         action = StartNode(node, user)
         self.assertEqual("Acquire and start node", action.display)
 
     def test_StartNode_label_hides_allocate_if_allocated(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         node.acquire(user)
         action = StartNode(node, user)
         self.assertEqual("Start node", action.display)
@@ -384,17 +368,17 @@ class TestStartNodeNodeAction(MAASServerTestCase):
         self.assertEqual("Start node", action.display)
 
     def test_StartNode_does_not_reallocate_when_run_by_non_owner(self):
-        self.patch(Node.objects, "start_nodes")
         user = factory.make_User()
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.READY)
+        self.patch(node, 'start')
         node.acquire(user)
         action = StartNode(node, admin)
 
         # This action.execute() will not fail because the non-owner is
         # an admin, so they can start the node. Even if they weren't an
-        # admin, the node still wouldn't start;
-        # NodeManager.start_nodes() would ignore it.
+        # admin, the node still wouldn't start; Node.start() would
+        # ignore it.
         action.execute()
         self.assertEqual(user, node.owner)
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
@@ -402,7 +386,7 @@ class TestStartNodeNodeAction(MAASServerTestCase):
 
 class TestStopNodeNodeAction(MAASServerTestCase):
 
-    def test_StopNode_stops_deployed_node(self):
+    def test__stops_deployed_node(self):
         user = factory.make_User()
         params = dict(
             power_address=factory.make_string(),
@@ -412,15 +396,29 @@ class TestStopNodeNodeAction(MAASServerTestCase):
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ipmi',
             owner=user, power_parameters=params)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node, 'start_transition_monitor')
+        node_stop = self.patch_autospec(node, 'stop')
 
         StopNode(node, user).execute()
 
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], user))
+        self.assertThat(node_stop, MockCalledOnceWith(user))
 
-    def test_StopNode_actionnable_for_failed_states(self):
+    def test__stops_Ready_node(self):
+        admin = factory.make_admin()
+        params = dict(
+            power_address=factory.make_string(),
+            power_user=factory.make_string(),
+            power_pass=factory.make_string())
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.READY,
+            power_type='ipmi', power_parameters=params)
+        node_stop = self.patch_autospec(node, 'stop')
+
+        StopNode(node, admin).execute()
+
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+
+    def test__actionnable_for_failed_states(self):
         status = random.choice(FAILED_STATUSES)
         node = factory.make_Node(status=status, power_type='ipmi')
         actions = compile_node_actions(
@@ -450,16 +448,16 @@ class TestReleaseNodeNodeAction(MAASServerTestCase):
             power_pass=factory.make_string())
         node = factory.make_Node(
             mac=True, status=self.actionable_status,
-            power_type='ipmi',
+            power_type='ipmi', power_state=POWER_STATE.ON,
             owner=user, power_parameters=params)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node, 'start_transition_monitor')
+        node_stop = self.patch_autospec(node, 'stop')
 
         ReleaseNode(node, user).execute()
 
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], user))
+            node_stop, MockCalledOnceWith(user))
 
 
 class TestUseCurtinNodeAction(MAASServerTestCase):
@@ -555,28 +553,34 @@ class TestMarkFixedAction(MAASServerTestCase):
         self.assertItemsEqual([], actions)
 
 
-class TestRPCActionsErrorHandling(MAASServerTestCase):
-    """Tests for error handling in actions that need RPC."""
+class TestActionsErrorHandling(MAASServerTestCase):
+    """Tests for error handling in actions.
 
+    This covers RPC exceptions and `ExternalProcessError`s.
+    """
+    exceptions = RPC_EXCEPTIONS + (ExternalProcessError,)
     scenarios = [
         (exception_class.__name__, {"exception_class": exception_class})
-        for exception_class in RPC_EXCEPTIONS
+        for exception_class in exceptions
         ]
 
     def make_exception(self):
         if self.exception_class is MultipleFailures:
             exception = self.exception_class(
                 Failure(Exception(factory.make_name("exception"))))
+        elif self.exception_class is ExternalProcessError:
+            exception = self.exception_class(
+                1, ["cmd"], factory.make_name("exception"))
         else:
             exception = self.exception_class(factory.make_name("exception"))
         return exception
 
-    def patch_rpc_methods(self):
+    def patch_rpc_methods(self, node):
         exception = self.make_exception()
-        self.patch(Node.objects, "start_nodes").side_effect = (
-            exception)
-        self.patch(Node.objects, "stop_nodes").side_effect = (
-            exception)
+        self.patch(node, 'start').side_effect = exception
+        self.patch(node, 'stop').side_effect = exception
+        self.patch_autospec(node, 'start_transition_monitor')
+        self.patch_autospec(node, 'stop_transition_monitor')
 
     def make_action(self, action_class, node_status):
         node = factory.make_Node(
@@ -586,56 +590,56 @@ class TestRPCActionsErrorHandling(MAASServerTestCase):
 
     def test_Commission_handles_rpc_errors(self):
         action = self.make_action(Commission, NODE_STATUS.READY)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.start_nodes.side_effect),
+                action.node.start.side_effect),
             unicode(exception))
 
     def test_AbortCommissioning_handles_rpc_errors(self):
         action = self.make_action(
             AbortCommissioning, NODE_STATUS.COMMISSIONING)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_AbortOperation_handles_rpc_errors(self):
         action = self.make_action(
             AbortOperation, NODE_STATUS.DISK_ERASING)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_StartNode_handles_rpc_errors(self):
         action = self.make_action(StartNode, NODE_STATUS.READY)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.start_nodes.side_effect),
+                action.node.start.side_effect),
             unicode(exception))
 
     def test_StopNode_handles_rpc_errors(self):
         action = self.make_action(StopNode, NODE_STATUS.DEPLOYED)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))
 
     def test_ReleaseNode_handles_rpc_errors(self):
         action = self.make_action(ReleaseNode, NODE_STATUS.ALLOCATED)
-        self.patch_rpc_methods()
+        self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
             get_error_message_for_exception(
-                Node.objects.stop_nodes.side_effect),
+                action.node.stop.side_effect),
             unicode(exception))

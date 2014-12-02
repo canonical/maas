@@ -27,7 +27,7 @@ from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
-    NODE_STATUS_CHOICES_DICT,
+    POWER_STATE,
     )
 from maasserver.fields import (
     MAC,
@@ -62,6 +62,7 @@ from metadataserver.models import (
 from metadataserver.nodeinituser import get_node_init_user
 from mock import ANY
 from netaddr import IPAddress
+from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
 
 
@@ -69,7 +70,7 @@ class NodeAnonAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(NodeAnonAPITest, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
@@ -97,7 +98,7 @@ class NodesAPILoggedInTest(MAASServerTestCase):
 
     def setUp(self):
         super(NodesAPILoggedInTest, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_nodes_GET_logged_in(self):
         # A (Django) logged-in user can access the API.
@@ -117,7 +118,7 @@ class TestNodeAPI(APITestCase):
 
     def setUp(self):
         super(TestNodeAPI, self).setUp()
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -216,28 +217,27 @@ class TestNodeAPI(APITestCase):
 
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
+        node_stop = self.patch(node, 'stop')
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
-        self.assertThat(stop_nodes, MockNotCalled())
+        self.assertThat(node_stop, MockNotCalled())
 
     def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
         # The node may not be stopped by stop_nodes because, for example, its
         # power type does not support it. In this case the node is not
         # returned to the caller.
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = []
+        node_stop = self.patch(node_module.Node, 'stop')
+        node_stop.return_value = False
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertIsNone(json.loads(response.content))
-        self.assertThat(stop_nodes, MockCalledOnceWith(
-            [node.system_id], ANY, stop_mode=ANY))
+        self.assertThat(node_stop, MockCalledOnceWith(
+            ANY, stop_mode=ANY))
 
     def test_POST_stop_returns_node(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node_module.Node, 'stop').return_value = True
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
@@ -247,23 +247,30 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake')
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch(node, 'stop')
         self.client.post(self.get_node_uri(node), {'op': 'stop'})
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_stop_stops_nodes(self):
         node = factory.make_Node(owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch(node_module.Node, 'stop')
         stop_mode = factory.make_name('stop_mode')
         self.client.post(
             self.get_node_uri(node), {'op': 'stop', 'stop_mode': stop_mode})
         self.assertThat(
-            stop_nodes,
-            MockCalledOnceWith(
-                [node.system_id], self.logged_in_user, stop_mode=stop_mode))
+            node_stop,
+            MockCalledOnceWith(self.logged_in_user, stop_mode=stop_mode))
+
+    def test_POST_stop_returns_503_when_power_op_already_in_progress(self):
+        node = factory.make_Node(owner=self.logged_in_user)
+        exc_text = factory.make_name("exc_text")
+        self.patch(
+            node_module.Node,
+            'stop').side_effect = PowerActionAlreadyInProgress(exc_text)
+        response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
+        self.assertResponseCode(httplib.SERVICE_UNAVAILABLE, response)
+        self.assertIn(exc_text, response.content)
 
     def test_POST_start_checks_permission(self):
         node = factory.make_Node()
@@ -280,7 +287,7 @@ class TestNodeAPI(APITestCase):
             node.system_id, json.loads(response.content)['system_id'])
 
     def test_POST_start_sets_osystem_and_distro_series(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
@@ -320,7 +327,7 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_sets_license_key(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
@@ -404,13 +411,15 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
     def test_POST_release_releases_owned_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         owned_statuses = [
             NODE_STATUS.RESERVED,
             NODE_STATUS.ALLOCATED,
             ]
         owned_nodes = [
             factory.make_Node(
-                owner=self.logged_in_user, status=status, power_type='ipmi')
+                owner=self.logged_in_user, status=status, power_type='ipmi',
+                power_state=POWER_STATE.ON)
             for status in owned_statuses]
         responses = [
             self.client.post(self.get_node_uri(node), {'op': 'release'})
@@ -423,10 +432,11 @@ class TestNodeAPI(APITestCase):
             [node.status for node in reload_objects(Node, owned_nodes)])
 
     def test_POST_release_releases_failed_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         owned_node = factory.make_Node(
             owner=self.logged_in_user,
             status=NODE_STATUS.FAILED_DEPLOYMENT,
-            power_type='ipmi')
+            power_type='ipmi', power_state=POWER_STATE.ON)
         response = self.client.post(
             self.get_node_uri(owned_node), {'op': 'release'})
         self.assertEqual(
@@ -491,9 +501,10 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
+        self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
-            power_type='ipmi')
+            power_type='ipmi', power_state=POWER_STATE.ON)
         self.become_admin()
         response = self.client.post(
             self.get_node_uri(node), {'op': 'release'})
@@ -501,7 +512,10 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
-        node = factory.make_Node(status=NODE_STATUS.READY, power_type='ipmi')
+        self.patch(node_module.Node, 'start_transition_monitor')
+        node = factory.make_Node(
+            status=NODE_STATUS.READY, power_type='ipmi',
+            power_state=POWER_STATE.ON)
         response = self.client.post(
             reverse('nodes_handler'), {'op': 'acquire'})
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
@@ -925,19 +939,6 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
-    def test_DELETE_cannot_delete_allocated_node(self):
-        # The api allows to delete a Node.
-        self.become_admin()
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        response = self.client.delete(self.get_node_uri(node))
-
-        self.assertEqual(
-            (httplib.CONFLICT,
-                "Cannot delete node %s: node is in state %s." % (
-                    node.system_id,
-                    NODE_STATUS_CHOICES_DICT[NODE_STATUS.ALLOCATED])),
-            (response.status_code, response.content))
-
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
         node = factory.make_Node(owner=self.logged_in_user)
@@ -1291,8 +1292,7 @@ class TestAbortOperation(APITestCase):
     def test_abort_operation_changes_state(self):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        self.patch_autospec(node_module.Node, "stop")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.OK, response.status_code)

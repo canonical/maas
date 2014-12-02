@@ -50,7 +50,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from mock import sentinel
 from netaddr import IPNetwork
 from provisioningserver import kernel_opts
@@ -60,6 +63,7 @@ from testtools.matchers import (
     Contains,
     ContainsAll,
     Equals,
+    Is,
     MatchesListwise,
     StartsWith,
     )
@@ -118,6 +122,16 @@ class TestGetBootImage(MAASServerTestCase):
                 sentinel.nodegroup, sentinel.osystem,
                 sentinel.architecture, subarch,
                 sentinel.series, purpose))
+
+    def test__returns_None_immediately_if_purpose_is_local(self):
+        self.patch(pxeconfig_module, 'get_boot_images_for')
+        self.expectThat(
+            get_boot_image(
+                sentinel.nodegroup, sentinel.osystem,
+                sentinel.architecture, sentinel.subarchitecture,
+                sentinel.series, "local"),
+            Is(None))
+        self.expectThat(pxeconfig_module.get_boot_images_for, MockNotCalled())
 
 
 class TestPXEConfigAPI(MAASServerTestCase):

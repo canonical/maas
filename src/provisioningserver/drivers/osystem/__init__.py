@@ -83,7 +83,7 @@ class OperatingSystem:
     def get_default_release(self):
         """Return the default release to use when none is specified.
 
-        :returns: default release to use
+        :return: default release to use
         """
 
     @abstractmethod
@@ -91,7 +91,7 @@ class OperatingSystem:
         """Return the given release's title.
 
         :type release: unicode
-        :returns: unicode
+        :return: unicode
         """
 
     @abstractmethod
@@ -102,14 +102,14 @@ class OperatingSystem:
         :param subarch: Sub-architecture of boot image.
         :param release: Release of boot image.
         :param label: Label of boot image.
-        :returns: list of supported purposes
+        :return: list of supported purposes
         """
 
     def format_release_choices(self, releases):
         """Format the release choices that are presented to the user.
 
         :param releases: list of installed boot image releases
-        :returns: Return Django "choices" list
+        :return: Return Django "choices" list
         """
         choices = []
         releases = sorted(releases, reverse=True)
@@ -136,7 +136,7 @@ class OperatingSystem:
         This is based off the boot images that the cluster currently has
         for this operating system.
 
-        :returns: set of supported releases
+        :return: set of supported releases
         """
         return set(self.gen_supported_releases())
 
@@ -164,7 +164,7 @@ class OperatingSystem:
         """Return whether the given release requires a license key.
 
         :param release: Release
-        :returns: True if requires license key, false otherwise.
+        :return: True if requires license key, false otherwise.
         """
         return False
 
@@ -175,7 +175,7 @@ class OperatingSystem:
 
         :param release: Release
         :param key: License key
-        :returns: True if valid, false otherwise
+        :return: True if valid, false otherwise
         """
         raise NotImplementedError()
 
@@ -188,7 +188,7 @@ class OperatingSystem:
         :param token: OAuth token for URL.
         :type token: :py:class:`Token`
         :param metadata_url: Metdata URL for node.
-        :returns: Preseed data for node.
+        :return: Preseed data for node.
         :raise:
             NotImplementedError: doesn't implement a custom preseed
         """
@@ -233,7 +233,7 @@ class OperatingSystem:
         :param subarch: Sub-architecture of boot image.
         :param release: Release of boot image.
         :param label: Label of boot image.
-        :returns: tuple with name of root image and image type
+        :return: tuple with name of root image and image type
         """
         return "root-tgz", "tgz"
 

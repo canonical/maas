@@ -40,7 +40,7 @@ class LicenseKeyManager(Manager):
 
         :param osystem: operating system
         :param distro_series: os distro series
-        :returns: license key
+        :return: license key
         :rtype: unicode
         """
         key = self.get_by_osystem_series(osystem, distro_series)

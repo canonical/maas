@@ -607,9 +607,7 @@ class TestDNSForwardZoneConfig_GetGenerateDirectives(MAASTestCase):
 
         if network.size < 256:
             iterator_low = int(first_address_parts[-1])
-            if iterator_low == 0:
-                iterator_low = 1
-            iterator_high = last_address_parts[-1]
+            iterator_high = int(last_address_parts[-1])
         else:
             iterator_low = 0
             iterator_high = 255

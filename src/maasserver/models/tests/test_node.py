@@ -18,9 +18,7 @@ from datetime import (
     datetime,
     timedelta,
     )
-from itertools import izip
 import random
-from unittest import skip
 
 import crochet
 from django.core.exceptions import ValidationError
@@ -61,7 +59,6 @@ from maasserver.models.staticipaddress import (
     StaticIPAddressManager,
     )
 from maasserver.models.user import create_auth_token
-from maasserver.node_action import RPC_EXCEPTIONS
 from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
@@ -85,7 +82,6 @@ from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledOnceWith,
-    MockCallsMatch,
     MockNotCalled,
     )
 from metadataserver.enum import RESULT_TYPE
@@ -100,7 +96,6 @@ from metadataserver.user_data import (
     )
 from mock import (
     ANY,
-    call,
     Mock,
     sentinel,
     )
@@ -108,21 +103,13 @@ from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
 from provisioningserver.rpc.cluster import StartMonitors
-from provisioningserver.rpc.exceptions import (
-    MultipleFailures,
-    NoConnectionsAvailable,
-    )
+from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
-from provisioningserver.rpc.testing import (
-    always_succeed_with,
-    TwistedLoggerFixture,
-    )
+from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Equals,
-    HasLength,
     Is,
-    IsInstance,
     MatchesStructure,
     )
 from twisted.internet import defer
@@ -396,9 +383,11 @@ class NodeTest(MAASServerTestCase):
         self.assertRaises(
             MACAddress.DoesNotExist, MACAddress.objects.get, id=mac.id)
 
-    def test_cannot_delete_allocated_node(self):
+    def test_can_delete_allocated_node(self):
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
-        self.assertRaises(NodeStateViolation, node.delete)
+        system_id = node.system_id
+        node.delete()
+        self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
     def test_delete_node_also_deletes_related_static_IPs(self):
         self.patch_autospec(node_module, "remove_host_maps")
@@ -441,11 +430,11 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
         mac.cluster_interface = (
-            node.nodegroup.nodegroupinterface_set.all()[:1].get())
+            node.nodegroup.nodegroupinterface_set.all().first())
         mac.save()
         lease1 = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
-            mac=node.macaddress_set.all()[:1].get().mac_address)
+            mac=node.macaddress_set.all().first().mac_address)
         lease2 = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
             mac=mac.mac_address)
@@ -741,13 +730,13 @@ class NodeTest(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
-        start_nodes = self.patch(Node.objects, "start_nodes")
+        node_start = self.patch(node, 'start')
         node.start_disk_erasing(owner)
-        self.assertEqual(
-            (owner, NODE_STATUS.DISK_ERASING, agent_name),
-            (node.owner, node.status, node.agent_name))
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], owner, user_data=ANY))
+        self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
+        self.expectThat(node.agent_name, Equals(agent_name))
+        self.assertThat(
+            node_start, MockCalledOnceWith(owner, user_data=ANY))
 
     def test_abort_disk_erasing_changes_state_and_stops_node(self):
         agent_name = factory.make_name('agent-name')
@@ -755,14 +744,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, owner=owner,
             agent_name=agent_name)
-        stop_nodes = self.patch(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch(node, 'stop')
         node.abort_disk_erasing(owner)
         self.assertEqual(
             (owner, NODE_STATUS.FAILED_DISK_ERASING, agent_name),
             (node.owner, node.status, node.agent_name))
-        self.assertThat(stop_nodes, MockCalledOnceWith(
-            [node.system_id], owner))
+        self.assertThat(node_stop, MockCalledOnceWith(owner))
 
     def test_start_disk_erasing_reverts_to_sane_state_on_error(self):
         # If start_disk_erasing encounters an error when calling
@@ -770,53 +757,33 @@ class NodeTest(MAASServerTestCase):
         # Failures encountered in one call to start_disk_erasing() won't
         # affect subsequent calls.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(
-                status=NODE_STATUS.ALLOCATED, power_type="virsh")
-            for _ in range(3)
-            ]
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         generate_user_data = self.patch(disk_erasing, 'generate_user_data')
-        start_nodes = self.patch(Node.objects, 'start_nodes')
-        start_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.start_disk_erasing(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all the expected errors coming out of
-                    # start_disk_erasing() because they're tested
-                    # eleswhere.
-                    pass
+        try:
+            with transaction.atomic():
+                node.start_disk_erasing(admin)
+        except node_start.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
-        expected_calls = (
-            call(
-                [node.system_id], admin,
-                user_data=generate_user_data.return_value)
-            for node in nodes)
         self.assertThat(
-            start_nodes, MockCallsMatch(*expected_calls))
-        self.assertEqual(
-            [
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING,
-                NODE_STATUS.DISK_ERASING,
-            ],
-            [node.status for node in nodes])
+            node_start, MockCalledOnceWith(
+                admin, user_data=generate_user_data.return_value))
+        self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         maaslog = self.patch(node_module, 'maaslog')
-        exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'start_nodes').side_effect = exception
+        exception_type = factory.make_exception_type()
+        exception = exception_type(factory.make_name())
+        self.patch(node, 'start').side_effect = exception
         self.assertRaises(
-            NoConnectionsAvailable, node.start_disk_erasing, admin)
+            exception_type, node.start_disk_erasing, admin)
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
@@ -847,51 +814,31 @@ class NodeTest(MAASServerTestCase):
         # Failures encountered in one call to start_disk_erasing() won't
         # affect subsequent calls.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(
-                status=NODE_STATUS.DISK_ERASING, power_type="virsh")
-            for _ in range(3)
-            ]
-        stop_nodes = self.patch(Node.objects, 'stop_nodes')
-        stop_nodes.return_value = [
-            [node] for node in nodes
-            ]
-        stop_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, power_type="virsh")
+        node_stop = self.patch(node, 'stop')
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.abort_disk_erasing(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all the expected errors coming out of
-                    # abort_disk_erasing() because they're tested
-                    # eleswhere.
-                    pass
+        try:
+            with transaction.atomic():
+                node.abort_disk_erasing(admin)
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
-        self.assertThat(
-            stop_nodes, MockCallsMatch(
-                *(call([node.system_id], admin) for node in nodes)))
-        self.assertEqual(
-            [
-                NODE_STATUS.FAILED_DISK_ERASING,
-                NODE_STATUS.DISK_ERASING,
-                NODE_STATUS.FAILED_DISK_ERASING,
-            ],
-            [node.status for node in nodes])
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
 
     def test_abort_disk_erasing_logs_and_raises_errors_in_stopping(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.DISK_ERASING)
         maaslog = self.patch(node_module, 'maaslog')
-        exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'stop_nodes').side_effect = exception
+        exception_class = factory.make_exception_type()
+        exception = exception_class(factory.make_name())
+        self.patch(node, 'stop').side_effect = exception
         self.assertRaises(
-            NoConnectionsAvailable, node.abort_disk_erasing, admin)
+            exception_class, node.abort_disk_erasing, admin)
         self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
@@ -899,7 +846,7 @@ class NodeTest(MAASServerTestCase):
                 node.hostname, unicode(exception)))
 
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use a "controlled" power type (i.e. a power type for which we
@@ -908,8 +855,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
+        self.expectThat(
+            node.start_transition_monitor,
+            MockCalledOnceWith(node.get_releasing_time()))
         self.expectThat(node.status, Equals(NODE_STATUS.RELEASING))
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.agent_name, Equals(''))
@@ -920,7 +871,7 @@ class NodeTest(MAASServerTestCase):
         self.expectThat(node.license_key, Equals(''))
 
     def test_release_node_that_has_power_on_and_uncontrolled_power_type(self):
-        self.patch(node_module, 'wait_for_power_commands')
+        self.patch(node_module, 'wait_for_power_command')
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
         # Use an "uncontrolled" power type (i.e. a power type for which we
@@ -935,8 +886,10 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
+        self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
         self.expectThat(node.agent_name, Equals(''))
@@ -951,8 +904,10 @@ class NodeTest(MAASServerTestCase):
         owner = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.OFF
         node.release()
+        self.expectThat(node.start_transition_monitor, MockNotCalled())
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
         self.expectThat(node.agent_name, Equals(''))
@@ -968,12 +923,28 @@ class NodeTest(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
+        self.patch(node, 'start_transition_monitor')
         sips = node.get_primary_mac().claim_static_ips()
         node.release()
         expected = {sip.ip.format() for sip in sips}
         self.assertThat(
             remove_host_maps, MockCalledOnceWith(
                 {node.nodegroup: expected}))
+
+    def test_release_clears_installation_results(self):
+        agent_name = factory.make_name('agent-name')
+        owner = factory.make_User()
+        node = factory.make_Node(
+            status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
+        self.patch(node, 'start_transition_monitor')
+        node_result = factory.make_NodeResult_for_installation(node=node)
+        self.assertEquals(
+            [node_result], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        node.release()
+        self.assertEquals(
+            [], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
 
     def test_dynamic_ip_addresses_queries_leases(self):
         node = factory.make_Node()
@@ -1189,13 +1160,14 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual("", node.distro_series)
 
     def test_release_powers_off_node(self):
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
         user = factory.make_User()
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user, power_type='virsh')
+        self.patch(node, 'start_transition_monitor')
+        node_stop = self.patch(node, 'stop')
         node.release()
         self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], user))
+            node_stop, MockCalledOnceWith(user))
 
     def test_release_deallocates_static_ips(self):
         deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
@@ -1207,6 +1179,7 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(deallocate, MockCalledOnceWith(node))
 
     def test_release_updates_dns(self):
+        self.patch(node_module, 'wait_for_power_command')
         change_dns_zones = self.patch(dns_config, 'change_dns_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
@@ -1220,9 +1193,10 @@ class NodeTest(MAASServerTestCase):
     def test_release_logs_and_raises_errors_in_stopping(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
         maaslog = self.patch(node_module, 'maaslog')
-        exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'stop_nodes').side_effect = exception
-        self.assertRaises(NoConnectionsAvailable, node.release)
+        exception_class = factory.make_exception_type()
+        exception = exception_class(factory.make_name())
+        self.patch(node, 'stop').side_effect = exception
+        self.assertRaises(exception_class, node.release)
         self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
@@ -1232,45 +1206,26 @@ class NodeTest(MAASServerTestCase):
     def test_release_reverts_to_sane_state_on_error(self):
         # If release() encounters an error when stopping the node, it
         # will leave the node in its previous state (i.e. DEPLOYED).
-        nodes = [
-            factory.make_Node(
-                status=NODE_STATUS.DEPLOYED, power_type="virsh")
-            for _ in range(3)
-            ]
-        stop_nodes = self.patch(Node.objects, 'stop_nodes')
-        stop_nodes.return_value = [
-            [node] for node in nodes
-            ]
-        stop_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node = factory.make_Node(
+            status=NODE_STATUS.DEPLOYED, power_type="virsh",
+            owner=factory.make_User())
+        node_stop = self.patch(node, 'stop')
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.release()
-                except RPC_EXCEPTIONS:
-                    # Suppress all expected errors; we test for them
-                    # elsewhere.
-                    pass
+        try:
+            with transaction.atomic():
+                node.release()
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
-        self.assertThat(
-            stop_nodes, MockCallsMatch(
-                *(call([node.system_id], None) for node in nodes)))
-        self.assertEqual(
-            [
-                NODE_STATUS.RELEASING,
-                NODE_STATUS.DEPLOYED,
-                NODE_STATUS.RELEASING,
-            ],
-            [node.status for node in nodes])
+        self.assertThat(node_stop, MockCalledOnceWith(node.owner))
+        self.assertEqual(NODE_STATUS.DEPLOYED, node.status)
 
     def test_release_commits_after_status_change(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
-        self.patch(Node.objects, 'stop_nodes')
+        self.patch(node, 'stop')
         commit = self.patch(transaction, 'commit')
         node.release()
         self.assertThat(commit, MockCalledOnceWith())
@@ -1281,6 +1236,7 @@ class NodeTest(MAASServerTestCase):
         target_state = NODE_STATUS.COMMISSIONING
 
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(node, 'start_transition_monitor')
         return_value = node.accept_enlistment(factory.make_User())
         self.assertEqual((node, target_state), (return_value, node.status))
 
@@ -1338,34 +1294,35 @@ class NodeTest(MAASServerTestCase):
     def test_start_commissioning_changes_status_and_starts_node(self):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
-        start_nodes = self.patch(Node.objects, "start_nodes")
-        start_nodes.return_value = [node]
+        node_start = self.patch(node, 'start')
         factory.make_MACAddress(node=node)
         admin = factory.make_admin()
+        self.patch(node, 'start_transition_monitor')
         node.start_commissioning(admin)
 
         expected_attrs = {
             'status': NODE_STATUS.COMMISSIONING,
         }
         self.assertAttributes(node, expected_attrs)
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], admin, user_data=ANY))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, user_data=ANY))
 
     def test_start_commissioning_sets_user_data(self):
-        start_nodes = self.patch(Node.objects, "start_nodes")
-
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        node_start = self.patch(node, 'start')
+        self.patch(node, 'start_transition_monitor')
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
             commissioning, 'generate_user_data')
         generate_user_data.return_value = user_data
         admin = factory.make_admin()
         node.start_commissioning(admin)
-        self.assertThat(start_nodes, MockCalledOnceWith(
-            [node.system_id], admin, user_data=user_data))
+        self.assertThat(node_start, MockCalledOnceWith(
+            admin, user_data=user_data))
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(node, 'start_transition_monitor')
         NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
@@ -1383,6 +1340,7 @@ class NodeTest(MAASServerTestCase):
             node, filename, script_result, RESULT_TYPE.COMMISSIONING,
             Bin(data))
         other_node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(other_node, 'start_transition_monitor')
         other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
             data, NodeResult.objects.get_data(node, filename))
@@ -1392,49 +1350,33 @@ class NodeTest(MAASServerTestCase):
         # start the node, it will revert the node to its previous
         # status.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(status=NODE_STATUS.NEW, power_type="ether_wake")
-            for _ in range(3)
-            ]
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(node, 'start_transition_monitor')
         generate_user_data = self.patch(commissioning, 'generate_user_data')
-        start_nodes = self.patch(Node.objects, 'start_nodes')
-        start_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node_start = self.patch(node, 'start')
+        node_start.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.start_commissioning(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all expected errors; we test for them
-                    # elsewhere.
-                    pass
+        try:
+            with transaction.atomic():
+                node.start_commissioning(admin)
+        except node_start.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
-        expected_calls = (
-            call(
-                [node.system_id], admin,
-                user_data=generate_user_data.return_value)
-            for node in nodes)
         self.assertThat(
-            start_nodes, MockCallsMatch(*expected_calls))
-        self.assertEqual(
-            [
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING
-            ],
-            [node.status for node in nodes])
+            node_start,
+            MockCalledOnceWith(
+                admin, user_data=generate_user_data.return_value))
+        self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
+        self.patch(node, 'start_transition_monitor')
         maaslog = self.patch(node_module, 'maaslog')
         exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'start_nodes').side_effect = exception
+        self.patch(node, 'start').side_effect = exception
         self.assertRaises(
             NoConnectionsAvailable, node.start_commissioning, admin)
         self.assertEqual(NODE_STATUS.NEW, node.status)
@@ -1448,50 +1390,52 @@ class NodeTest(MAASServerTestCase):
         # node, it will revert the node to the state it was in before
         # abort_commissioning() was called.
         admin = factory.make_admin()
-        nodes = [
-            factory.make_Node(
-                status=NODE_STATUS.COMMISSIONING, power_type="virsh")
-            for _ in range(3)
-            ]
-        stop_nodes = self.patch(Node.objects, 'stop_nodes')
-        stop_nodes.return_value = [
-            [node] for node in nodes
-            ]
-        stop_nodes.side_effect = [
-            None,
-            MultipleFailures(
-                Failure(NoConnectionsAvailable())),
-            None,
-            ]
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING, power_type="virsh")
+        self.patch(node, 'stop_transition_monitor')
+        node_stop = self.patch(node, 'stop')
+        node_stop.side_effect = factory.make_exception()
 
-        with transaction.atomic():
-            for node in nodes:
-                try:
-                    node.abort_commissioning(admin)
-                except RPC_EXCEPTIONS:
-                    # Suppress all expected errors; we test for them
-                    # elsewhere.
-                    pass
+        try:
+            with transaction.atomic():
+                node.abort_commissioning(admin)
+        except node_stop.side_effect.__class__:
+            # We don't care about the error here, so suppress it. It
+            # exists only to cause the transaction to abort.
+            pass
 
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
+        self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
+
+    def test_start_commissioning_starts_monitor(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        monitor_timeout = random.randint(1, 100)
+        self.patch(
+            node, 'get_commissioning_time').return_value = monitor_timeout
+        start_transition_monitor = self.patch(
+            node, 'start_transition_monitor')
+        admin = factory.make_admin()
+        node.start_commissioning(admin)
         self.assertThat(
-            stop_nodes, MockCallsMatch(
-                *(call([node.system_id], admin) for node in nodes)))
-        self.assertEqual(
-            [
-                NODE_STATUS.NEW,
-                NODE_STATUS.COMMISSIONING,
-                NODE_STATUS.NEW,
-            ],
-            [node.status for node in nodes])
+            start_transition_monitor, MockCalledOnceWith(monitor_timeout))
+
+    def test_abort_commissioning_stops_monitor(self):
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        stop_transition_monitor = self.patch(node, 'stop_transition_monitor')
+        admin = factory.make_admin()
+        node.abort_commissioning(admin)
+        self.assertThat(stop_transition_monitor, MockCalledOnceWith())
 
     def test_abort_commissioning_logs_and_raises_errors_in_stopping(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         maaslog = self.patch(node_module, 'maaslog')
-        exception = NoConnectionsAvailable(factory.make_name())
-        self.patch(Node.objects, 'stop_nodes').side_effect = exception
+        self.patch(node, 'stop_transition_monitor')
+        exception_class = factory.make_exception_type()
+        exception = exception_class(factory.make_name())
+        self.patch(node, 'stop').side_effect = exception
         self.assertRaises(
-            NoConnectionsAvailable, node.abort_commissioning, admin)
+            exception_class, node.abort_commissioning, admin)
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
@@ -1503,16 +1447,15 @@ class NodeTest(MAASServerTestCase):
             status=NODE_STATUS.COMMISSIONING, power_type='virsh')
         admin = factory.make_admin()
 
-        stop_nodes = self.patch_autospec(Node.objects, "stop_nodes")
-        stop_nodes.return_value = [node]
+        node_stop = self.patch(node, 'stop')
+        self.patch(node, 'stop_transition_monitor')
 
         node.abort_commissioning(admin)
         expected_attrs = {
             'status': NODE_STATUS.NEW,
         }
         self.assertAttributes(node, expected_attrs)
-        self.assertThat(
-            stop_nodes, MockCalledOnceWith([node.system_id], admin))
+        self.assertThat(node_stop, MockCalledOnceWith(admin))
 
     def test_abort_commisssioning_errors_if_node_is_not_commissioning(self):
         unaccepted_statuses = set(map_enum(NODE_STATUS).values())
@@ -1647,6 +1590,7 @@ class NodeTest(MAASServerTestCase):
     def test_mark_failed_raises_for_unauthorized_node_status(self):
         but_not = NODE_FAILURE_STATUS_TRANSITIONS.keys()
         but_not.extend(NODE_FAILURE_STATUS_TRANSITIONS.viewvalues())
+        but_not.append(NODE_STATUS.NEW)
         status = factory.pick_choice(NODE_STATUS_CHOICES, but_not=but_not)
         node = factory.make_Node(status=status)
         description = factory.make_name('error-description')
@@ -1659,6 +1603,12 @@ class NodeTest(MAASServerTestCase):
         description = factory.make_name('error-description')
         node.mark_failed(description)
         self.assertEqual(status, node.status)
+
+    def test_mark_failed_ignores_if_status_is_NEW(self):
+        node = factory.make_Node(status=NODE_STATUS.NEW)
+        description = factory.make_name('error-description')
+        node.mark_failed(description)
+        self.assertEqual(NODE_STATUS.NEW, node.status)
 
     def test_mark_broken_changes_status_to_broken(self):
         node = factory.make_Node(
@@ -1674,6 +1624,15 @@ class NodeTest(MAASServerTestCase):
         node.mark_broken(err_desc)
         self.expectThat(node.owner, Is(None))
         self.assertThat(release, MockCalledOnceWith())
+
+    def test_mark_fixed_sets_default_osystem_and_distro_series(self):
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node.osystem = factory.make_name('osystem')
+        node.distro_series = factory.make_name('distro_series')
+        node.mark_fixed()
+        expected_osystem = expected_distro_series = ''
+        self.expectThat(expected_osystem, Equals(node.osystem))
+        self.expectThat(expected_distro_series, Equals(node.distro_series))
 
     def test_mark_fixed_changes_status(self):
         node = factory.make_Node(status=NODE_STATUS.BROKEN)
@@ -1693,6 +1652,17 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(status=status)
         self.assertRaises(NodeStateViolation, node.mark_fixed)
 
+    def test_mark_fixed_clears_installation_results(self):
+        node = factory.make_Node(status=NODE_STATUS.BROKEN)
+        node_result = factory.make_NodeResult_for_installation(node=node)
+        self.assertEquals(
+            [node_result], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+        node.mark_fixed()
+        self.assertEquals(
+            [], list(NodeResult.objects.filter(
+                node=node, result_type=RESULT_TYPE.INSTALLATION)))
+
     def test_update_power_state(self):
         node = factory.make_Node()
         state = factory.pick_enum(POWER_STATE)
@@ -1703,6 +1673,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
             owner=None)
+        self.patch(node, 'stop_transition_monitor')
         node.update_power_state(POWER_STATE.OFF)
         self.expectThat(node.status, Equals(NODE_STATUS.READY))
         self.expectThat(node.owner, Is(None))
@@ -1712,6 +1683,21 @@ class NodeTest(MAASServerTestCase):
             power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
         node.update_power_state(POWER_STATE.OFF)
         self.assertThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+
+    def test_update_power_state_stops_monitor_if_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
+            owner=None)
+        self.patch(node, 'stop_transition_monitor')
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.stop_transition_monitor, MockCalledOnceWith())
+
+    def test_update_power_state_does_not_stop_monitor_if_not_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.ALLOCATED)
+        self.patch(node, 'stop_transition_monitor')
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(node.stop_transition_monitor, MockNotCalled())
 
     def test_update_power_state_does_not_change_status_if_not_off(self):
         node = factory.make_Node(
@@ -2124,419 +2110,6 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertThat(erase_mock, MockNotCalled())
 
 
-class NodeManagerTest_StartNodes(MAASServerTestCase):
-
-    def setUp(self):
-        super(NodeManagerTest_StartNodes, self).setUp()
-        self.useFixture(RegionEventLoopFixture("rpc"))
-        self.useFixture(RunningEventLoopFixture())
-        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
-
-    def prepare_rpc_to_cluster(self, nodegroup):
-        protocol = self.rpc_fixture.makeCluster(
-            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn,
-            cluster_module.StartMonitors)
-        protocol.CreateHostMaps.side_effect = always_succeed_with({})
-        protocol.StartMonitors.side_effect = always_succeed_with({})
-        protocol.PowerOn.side_effect = always_succeed_with({})
-        return protocol
-
-    def make_acquired_nodes_with_macs(self, user, nodegroup=None, count=3):
-        nodes = []
-        for _ in xrange(count):
-            node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-                nodegroup=nodegroup, status=NODE_STATUS.READY)
-            self.prepare_rpc_to_cluster(node.nodegroup)
-            node.acquire(user)
-            nodes.append(node)
-        return nodes
-
-    def test__sets_user_data(self):
-        user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
-        user_data = factory.make_bytes()
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes),
-                user, user_data=user_data)
-
-        # All three nodes have been given the same user data.
-        nuds = NodeUserData.objects.filter(
-            node_id__in=(node.id for node in nodes))
-        self.assertEqual({user_data}, {nud.data for nud in nuds})
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__resets_user_data(self):
-        user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes),
-                user, user_data=None)
-
-        # All three nodes have been given the same user data.
-        nuds = NodeUserData.objects.filter(
-            node_id__in=(node.id for node in nodes))
-        self.assertThat(list(nuds), HasLength(0))
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__claims_static_ip_addresses(self):
-        user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        nodes = self.make_acquired_nodes_with_macs(user, nodegroup)
-
-        claim_static_ip_addresses = self.patch_autospec(
-            Node, "claim_static_ip_addresses", spec_set=False)
-        claim_static_ip_addresses.return_value = {}
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes), user)
-
-        for node in nodes:
-            self.expectThat(claim_static_ip_addresses, MockAnyCall(node))
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__claims_static_ip_addresses_for_allocated_nodes_only(self):
-        user = factory.make_User()
-        nodegroup = factory.make_NodeGroup()
-        self.prepare_rpc_to_cluster(nodegroup)
-        nodes = self.make_acquired_nodes_with_macs(user, nodegroup, count=2)
-
-        # Change the status of the first node to something other than
-        # allocated.
-        broken_node, allocated_node = nodes
-        broken_node.status = NODE_STATUS.BROKEN
-        broken_node.save()
-
-        claim_static_ip_addresses = self.patch_autospec(
-            Node, "claim_static_ip_addresses", spec_set=False)
-        claim_static_ip_addresses.return_value = {}
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes), user)
-
-        # Only one call is made to claim_static_ip_addresses(), for the
-        # still-allocated node.
-        self.assertThat(
-            claim_static_ip_addresses,
-            MockCalledOnceWith(allocated_node))
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__updates_host_maps(self):
-        user = factory.make_User()
-        nodes = self.make_acquired_nodes_with_macs(user)
-
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = []  # No failures.
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes), user)
-
-        # Host maps are updated.
-        self.assertThat(
-            update_host_maps, MockCalledOnceWith({
-                node.nodegroup: {
-                    ip_address.ip: mac.mac_address
-                    for ip_address in mac.ip_addresses.all()
-                }
-                for node in nodes
-                for mac in node.mac_addresses_on_managed_interfaces()
-            }))
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__propagates_errors_when_updating_host_maps(self):
-        user = factory.make_User()
-        nodes = self.make_acquired_nodes_with_macs(user)
-
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = [
-            Failure(AssertionError("That is so not true")),
-            Failure(ZeroDivisionError("I cannot defy mathematics")),
-        ]
-
-        with TwistedLoggerFixture() as twisted_log:
-            error = self.assertRaises(
-                MultipleFailures, Node.objects.start_nodes,
-                list(node.system_id for node in nodes), user)
-
-        self.assertSequenceEqual(
-            update_host_maps.return_value, error.args)
-
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__updates_dns(self):
-        user = factory.make_User()
-        nodes = self.make_acquired_nodes_with_macs(user)
-
-        change_dns_zones = self.patch(dns_config, "change_dns_zones")
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes), user)
-
-        self.assertThat(
-            change_dns_zones, MockCalledOnceWith(
-                {node.nodegroup for node in nodes}))
-
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__starts_nodes(self):
-        user = factory.make_User()
-        nodes = self.make_acquired_nodes_with_macs(user)
-        power_infos = list(
-            node.get_effective_power_info()
-            for node in nodes)
-
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {}
-
-        with TwistedLoggerFixture() as twisted_log:
-            Node.objects.start_nodes(
-                list(node.system_id for node in nodes), user)
-
-        self.assertThat(power_on_nodes, MockCalledOnceWith(ANY))
-
-        nodes_start_info_observed = power_on_nodes.call_args[0][0]
-        nodes_start_info_expected = [
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            for node, power_info in izip(nodes, power_infos)
-        ]
-
-        # If the following fails the diff is big, but it's useful.
-        self.maxDiff = None
-
-        self.assertItemsEqual(
-            nodes_start_info_expected,
-            nodes_start_info_observed)
-
-        # No complaints are made to the Twisted log.
-        self.assertFalse(twisted_log.containsError(), twisted_log.output)
-
-    def test__raises_failures_for_nodes_that_cannot_be_started(self):
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
-            factory.make_name("system_id"): defer.fail(
-                ZeroDivisionError("Defiance is futile")),
-            factory.make_name("system_id"): defer.succeed({}),
-        }
-
-        failures = self.assertRaises(
-            MultipleFailures, Node.objects.start_nodes, [],
-            factory.make_User())
-        [failure] = failures.args
-        self.assertThat(failure.value, IsInstance(ZeroDivisionError))
-
-    def test__marks_allocated_node_as_deploying(self):
-        user = factory.make_User()
-        [node] = self.make_acquired_nodes_with_macs(user, count=1)
-        nodes_started = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([node], nodes_started)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYING, reload_object(node).status)
-
-    def test__does_not_change_state_of_deployed_node(self):
-        user = factory.make_User()
-        node = factory.make_Node(
-            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
-            owner=user)
-        factory.make_MACAddress(node=node)
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
-            node.system_id: defer.succeed({}),
-        }
-        nodes_started = Node.objects.start_nodes([node.system_id], user)
-        self.assertItemsEqual([node], nodes_started)
-        self.assertEqual(
-            NODE_STATUS.DEPLOYED, reload_object(node).status)
-
-    def test__only_returns_nodes_for_which_power_commands_have_been_sent(self):
-        user = factory.make_User()
-        node1, node2 = self.make_acquired_nodes_with_macs(user, count=2)
-        node1.power_type = 'ether_wake'  # Can be started.
-        node1.save()
-        node2.power_type = ''  # Undefined power type, cannot be started.
-        node2.save()
-        nodes_started = Node.objects.start_nodes(
-            [node1.system_id, node2.system_id], user)
-        self.assertItemsEqual([node1], nodes_started)
-
-    def test__does_not_try_to_start_nodes_not_allocated_to_user(self):
-        user1 = factory.make_User()
-        [node1] = self.make_acquired_nodes_with_macs(user1, count=1)
-        node1.power_type = 'ether_wake'  # can be started.
-        node1.save()
-        user2 = factory.make_User()
-        [node2] = self.make_acquired_nodes_with_macs(user2, count=1)
-        node2.power_type = 'ether_wake'  # can be started.
-        node2.save()
-
-        self.patch(node_module, 'power_on_nodes')
-        self.patch(node_module, 'wait_for_power_commands')
-        nodes_started = Node.objects.start_nodes(
-            [node1.system_id, node2.system_id], user1)
-
-        # Since no power commands were sent to the node, it isn't
-        # returned by start_nodes().
-        # test__only_returns_nodes_for_which_power_commands_have_been_sent()
-        # demonstrates this behaviour.
-        self.assertItemsEqual([node1], nodes_started)
-
-    # XXX: GavinPanella 2014-10-30 bug=1387696: Flaky test, returning wrong IP
-    # addresses. Appears unrelated to the changes that highlighted this.
-    @skip("Flaky; returns incorrect IP addresses")
-    def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
-        cluster = factory.make_NodeGroup()
-        managed_interface = factory.make_NodeGroupInterface(
-            nodegroup=cluster,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        unmanaged_interface = factory.make_NodeGroupInterface(
-            nodegroup=cluster,
-            management=NODEGROUPINTERFACE_MANAGEMENT.DEFAULT)
-        user = factory.make_User()
-        [node1, node2] = self.make_acquired_nodes_with_macs(
-            user, nodegroup=cluster, count=2)
-        # Give the node a PXE MAC address on the cluster's interface.
-        node1_mac = node1.get_pxe_mac()
-        node1_mac.cluster_interface = managed_interface
-        node1_mac.save()
-        node2_mac = node1.get_pxe_mac()
-        node2_mac.cluster_interface = unmanaged_interface
-        node2_mac.save()
-
-        node1_ip = factory.make_ipv4_address()
-        claim_static_ip_addresses = self.patch(
-            node_module.Node, 'claim_static_ip_addresses')
-        claim_static_ip_addresses.side_effect = [
-            [(node1_ip, node1_mac.mac_address)],
-            [(factory.make_ipv4_address(), node2_mac.mac_address)],
-            ]
-
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        Node.objects.start_nodes([node1.system_id, node2.system_id], user)
-        self.expectThat(update_host_maps, MockCalledOnceWith(ANY))
-
-        observed_static_mappings = update_host_maps.call_args[0][0]
-
-        [observed_cluster] = observed_static_mappings.keys()
-        self.expectThat(observed_cluster.uuid, Equals(cluster.uuid))
-
-        observed_claims = observed_static_mappings.values()
-        self.expectThat(
-            observed_claims,
-            Equals([{node1_ip: node1_mac.mac_address}]))
-
-
-class NodeManagerTest_StopNodes(MAASServerTestCase):
-
-    def make_nodes_with_macs(self, user, nodegroup=None, count=3):
-        nodes = []
-        for _ in xrange(count):
-            node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-                nodegroup=nodegroup, status=NODE_STATUS.READY,
-                power_type='virsh')
-            node.acquire(user)
-            nodes.append(node)
-        return nodes
-
-    def test_stop_nodes_stops_nodes(self):
-        wait_for_power_commands = self.patch_autospec(
-            node_module, 'wait_for_power_commands')
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
-        power_off_nodes.side_effect = lambda nodes: {
-            system_id: Deferred() for system_id, _, _, _ in nodes}
-
-        user = factory.make_User()
-        nodes = self.make_nodes_with_macs(user)
-        power_infos = list(node.get_effective_power_info() for node in nodes)
-
-        stop_mode = factory.make_name('stop-mode')
-        nodes_stopped = Node.objects.stop_nodes(
-            list(node.system_id for node in nodes), user, stop_mode)
-
-        self.assertItemsEqual(nodes, nodes_stopped)
-        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
-        self.assertThat(wait_for_power_commands, MockCalledOnceWith(ANY))
-
-        nodes_stop_info_observed = power_off_nodes.call_args[0][0]
-        nodes_stop_info_expected = [
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            for node, power_info in izip(nodes, power_infos)
-        ]
-
-        # The stop mode is added into the power info that's passed.
-        for _, _, _, power_info in nodes_stop_info_expected:
-            power_info.power_parameters['power_off_mode'] = stop_mode
-
-        # If the following fails the diff is big, but it's useful.
-        self.maxDiff = None
-
-        self.assertItemsEqual(
-            nodes_stop_info_expected,
-            nodes_stop_info_observed)
-
-    def test_stop_nodes_ignores_uneditable_nodes(self):
-        owner = factory.make_User()
-        nodes = self.make_nodes_with_macs(owner)
-
-        user = factory.make_User()
-        nodes_stopped = Node.objects.stop_nodes(
-            list(node.system_id for node in nodes), user)
-
-        self.assertItemsEqual([], nodes_stopped)
-
-    def test_stop_nodes_does_not_attempt_power_off_if_no_power_type(self):
-        # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop_nodes()
-        # won't attempt to power it off.
-        user = factory.make_User()
-        [node] = self.make_nodes_with_macs(user, count=1)
-        node.power_type = ""
-        node.save()
-
-        nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
-        self.assertItemsEqual([], nodes_stopped)
-
-    def test_stop_nodes_does_not_attempt_power_off_if_cannot_be_stopped(self):
-        # If the node has a power_type that MAAS knows stopping does not work,
-        # stop_nodes() won't attempt to power it off.
-        user = factory.make_User()
-        [node] = self.make_nodes_with_macs(user, count=1)
-        node.power_type = "ether_wake"
-        node.save()
-
-        nodes_stopped = Node.objects.stop_nodes([node.system_id], user)
-        self.assertItemsEqual([], nodes_stopped)
-
-    def test__raises_failures_for_nodes_that_cannot_be_stopped(self):
-        power_off_nodes = self.patch(node_module, "power_off_nodes")
-        power_off_nodes.return_value = {
-            factory.make_name("system_id"): defer.fail(
-                ZeroDivisionError("Ee by gum lad, that's a rum 'un.")),
-            factory.make_name("system_id"): defer.succeed({}),
-        }
-
-        failures = self.assertRaises(
-            MultipleFailures, Node.objects.stop_nodes, [], factory.make_User())
-        [failure] = failures.args
-        self.assertThat(failure.value, IsInstance(ZeroDivisionError))
-
-
 class TestNodeTransitionMonitors(MAASServerTestCase):
 
     def prepare_rpc(self):
@@ -2651,3 +2224,388 @@ class TestDeploymentStatus(MAASServerTestCase):
             )
         node = factory.make_Node(status=status)
         self.assertEqual("Not in deployment", node.get_deployment_status())
+
+
+class TestNode_Start(MAASServerTestCase):
+    """Tests for Node.start()."""
+
+    def setUp(self):
+        super(TestNode_Start, self).setUp()
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        self.rpc_fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+
+    def prepare_rpc_to_cluster(self, nodegroup):
+        protocol = self.rpc_fixture.makeCluster(
+            nodegroup, cluster_module.CreateHostMaps, cluster_module.PowerOn,
+            cluster_module.StartMonitors)
+        protocol.CreateHostMaps.side_effect = always_succeed_with({})
+        protocol.StartMonitors.side_effect = always_succeed_with({})
+        protocol.PowerOn.side_effect = always_succeed_with({})
+        return protocol
+
+    def make_acquired_node_with_mac(self, user, nodegroup=None):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup, status=NODE_STATUS.READY)
+        self.prepare_rpc_to_cluster(node.nodegroup)
+        node.acquire(user)
+        return node
+
+    def test__sets_user_data(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        user_data = factory.make_bytes()
+
+        node.start(user, user_data=user_data)
+
+        nud = NodeUserData.objects.get(node=node)
+        self.assertEqual(user_data, nud.data)
+
+    def test__resets_user_data(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        user_data = factory.make_bytes()
+        NodeUserData.objects.set_user_data(node, user_data)
+
+        node.start(user, user_data=None)
+
+        self.assertFalse(NodeUserData.objects.filter(node=node).exists())
+
+    def test__claims_static_ip_addresses(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+
+        claim_static_ip_addresses = self.patch_autospec(
+            node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        node.start(user)
+
+        self.expectThat(node.claim_static_ip_addresses, MockAnyCall())
+
+    def test__only_claims_static_addresses_when_allocated(self):
+        user = factory.make_User()
+        nodegroup = factory.make_NodeGroup()
+        self.prepare_rpc_to_cluster(nodegroup)
+        node = self.make_acquired_node_with_mac(user, nodegroup)
+        node.status = NODE_STATUS.BROKEN
+        node.save()
+
+        claim_static_ip_addresses = self.patch_autospec(
+            node, "claim_static_ip_addresses", spec_set=False)
+        claim_static_ip_addresses.return_value = {}
+
+        node.start(user)
+
+        # No calls are made to claim_static_ip_addresses, since the node
+        # isn't ALLOCATED.
+        self.assertThat(claim_static_ip_addresses, MockNotCalled())
+
+    def test__does_not_generate_host_maps_if_not_on_managed_interface(self):
+        self.patch(node_module, 'wait_for_power_command')
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        self.patch(
+            node, 'is_pxe_mac_on_managed_interface').return_value = False
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        node.start(user)
+        self.assertThat(update_host_maps, MockNotCalled())
+
+    def test__updates_host_maps(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+
+        node.start(user)
+
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                node.nodegroup: {
+                    ip_address.ip: mac.mac_address
+                    for ip_address in mac.ip_addresses.all()
+                }
+                for mac in node.mac_addresses_on_managed_interfaces()
+            }))
+
+    def test__propagates_errors_when_updating_host_maps(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        exception_type = factory.make_exception_type()
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = [
+            Failure(exception_type("Please, don't do that.")),
+            ]
+
+        self.assertRaises(exception_type, node.start, user)
+
+    def test__updates_dns(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        change_dns_zones = self.patch(dns_config, "change_dns_zones")
+
+        node.start(user)
+
+        self.assertThat(
+            change_dns_zones, MockCalledOnceWith(node.nodegroup))
+
+    def test__starts_nodes(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        power_info = node.get_effective_power_info()
+
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            node.system_id: defer.succeed(True),
+            }
+
+        node.start(user)
+
+        self.assertThat(power_on_nodes, MockCalledOnceWith(ANY))
+
+        nodes_start_info_observed = power_on_nodes.call_args[0][0]
+        nodes_start_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+        ]
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_start_info_expected,
+            nodes_start_info_observed)
+
+    def test__raises_failures_when_power_action_fails(self):
+        class PraiseBeToJTVException(Exception):
+            """A nonsense exception for this test.
+
+            (Though jtv is praiseworthy, and that's worth noting).
+            """
+
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                PraiseBeToJTVException("Defiance is futile")),
+        }
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        self.assertRaises(PraiseBeToJTVException, node.start, user)
+
+    def test__marks_allocated_node_as_deploying(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        node.start(user)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYING, reload_object(node).status)
+
+    def test__does_not_change_state_of_deployed_node(self):
+        user = factory.make_User()
+        # Create a node that we can execute power actions on, so that we
+        # exercise the whole of start().
+        node = factory.make_Node(
+            power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
+            owner=user)
+        factory.make_MACAddress(node=node)
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            node.system_id: defer.succeed({}),
+        }
+        node.start(user)
+        self.assertEqual(
+            NODE_STATUS.DEPLOYED, reload_object(node).status)
+
+    def test__does_not_try_to_start_nodes_that_cant_be_started_by_MAAS(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+        power_info = PowerInfo(
+            can_be_started=False,
+            can_be_stopped=True,
+            can_be_queried=True,
+            power_type=node.get_effective_power_type(),
+            power_parameters=node.get_effective_power_parameters(),
+            )
+        self.patch(node, 'get_effective_power_info').return_value = power_info
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        node.start(user)
+        self.assertThat(power_on_nodes, MockNotCalled())
+
+    def test__does_not_start_nodes_the_user_cannot_edit(self):
+        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_mac(owner)
+
+        user = factory.make_User()
+        node.start(user)
+        self.assertThat(power_on_nodes, MockNotCalled())
+
+    def test__allows_admin_to_start_any_node(self):
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
+        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        owner = factory.make_User()
+        node = self.make_acquired_node_with_mac(owner)
+
+        admin = factory.make_admin()
+        node.start(admin)
+
+        self.expectThat(power_on_nodes, MockCalledOnceWith(ANY))
+        self.expectThat(wait_for_power_command, MockCalledOnceWith(ANY))
+
+    def test__releases_static_ips_when_power_action_fails(self):
+        exception_type = factory.make_exception_type()
+        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                exception_type("He's fallen in the water!"))
+        }
+        deallocate_ips = self.patch(
+            node_module.StaticIPAddress.objects, 'deallocate_by_node')
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        self.assertRaises(exception_type, node.start, user)
+        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+
+    def test__releases_static_ips_when_update_host_maps_fails(self):
+        exception_type = factory.make_exception_type()
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = [
+            Failure(exception_type("You steaming nit, you!"))
+            ]
+        deallocate_ips = self.patch(
+            node_module.StaticIPAddress.objects, 'deallocate_by_node')
+
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        self.assertRaises(exception_type, node.start, user)
+        self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+
+
+class TestNode_Stop(MAASServerTestCase):
+    """Tests for Node.stop()."""
+
+    def make_node_with_mac(self, user, nodegroup=None, power_type="virsh"):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            nodegroup=nodegroup, status=NODE_STATUS.READY,
+            power_type=power_type)
+        node.acquire(user)
+        return node
+
+    def test__stops_nodes(self):
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_nodes.side_effect = lambda nodes: {
+            system_id: Deferred() for system_id, _, _, _ in nodes}
+
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+        power_info = node.get_effective_power_info()
+
+        stop_mode = factory.make_name('stop-mode')
+        node.stop(user, stop_mode)
+
+        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
+
+        nodes_stop_info_observed = power_off_nodes.call_args[0][0]
+        nodes_stop_info_expected = [
+            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
+            ]
+
+        # The stop mode is added into the power info that's passed.
+        for _, _, _, power_info in nodes_stop_info_expected:
+            power_info.power_parameters['power_off_mode'] = stop_mode
+
+        # If the following fails the diff is big, but it's useful.
+        self.maxDiff = None
+
+        self.assertItemsEqual(
+            nodes_stop_info_expected,
+            nodes_stop_info_observed)
+
+    def test__does_not_stop_nodes_the_user_cannot_edit(self):
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        owner = factory.make_User()
+        node = self.make_node_with_mac(owner)
+
+        user = factory.make_User()
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__allows_admin_to_stop_any_node(self):
+        wait_for_power_command = self.patch_autospec(
+            node_module, 'wait_for_power_command')
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        owner = factory.make_User()
+        node = self.make_node_with_mac(owner)
+
+        admin = factory.make_admin()
+        node.stop(admin)
+
+        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
+        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
+
+    def test__does_not_attempt_power_off_if_no_power_type(self):
+        # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
+        # won't attempt to power it off.
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+        node.power_type = ""
+        node.save()
+
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__does_not_attempt_power_off_if_cannot_be_stopped(self):
+        # If the node has a power_type that doesn't allow MAAS to power
+        # the node off, stop() won't attempt to send the power command.
+        user = factory.make_User()
+        node = self.make_node_with_mac(user, power_type="ether_wake")
+        node.save()
+
+        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        node.stop(user)
+        self.assertThat(power_off_nodes, MockNotCalled())
+
+    def test__propagates_failures_when_power_action_fails(self):
+        fake_exception_type = factory.make_exception_type()
+
+        power_off_nodes = self.patch(node_module, "power_off_nodes")
+        power_off_nodes.return_value = {
+            factory.make_name("system_id"): defer.fail(
+                fake_exception_type("Soon be the weekend!"))
+        }
+
+        user = factory.make_User()
+        node = self.make_node_with_mac(user)
+
+        self.assertRaises(fake_exception_type, node.stop, user)
+
+    def test__returns_false_if_power_action_not_sent(self):
+        user = factory.make_User()
+        node = self.make_node_with_mac(user, power_type="")
+
+        self.patch_autospec(node_module, "power_off_nodes")
+        self.assertIs(False, node.stop(user))
+
+    def test__returns_true_if_power_action_sent(self):
+        user = factory.make_User()
+        node = self.make_node_with_mac(user, power_type="virsh")
+
+        self.patch_autospec(node_module, "wait_for_power_command")
+        self.assertIs(True, node.stop(user))

@@ -106,7 +106,9 @@ class StaticIPAddressManager(Manager):
             ipaddress.save()
         except IntegrityError:
             # The address is already taken.
-            raise StaticIPAddressUnavailable()
+            raise StaticIPAddressUnavailable(
+                "The IP address %s is already in use." %
+                requested_address.format())
         else:
             # We deliberately do *not* save the user until now because it
             # might result in an IntegrityError, and we rely on the latter
@@ -193,7 +195,9 @@ class StaticIPAddressManager(Manager):
                         # this critical section is in a lock...
                         continue
             else:
-                raise StaticIPAddressExhaustion()
+                raise StaticIPAddressExhaustion(
+                    "No more IPs available in range %s-%s" % (
+                        range_low.format(), range_high.format()))
 
     def _deallocate(self, filter):
         """Helper func to deallocate the records in the supplied queryset

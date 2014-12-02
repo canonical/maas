@@ -56,7 +56,8 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
-            "No network found matching %s" % unicode(net),
+            "No network found matching %s; you may be requesting an IP "
+            "on a network with no static IP range defined." % unicode(net),
             response.content)
 
     def test_handler_path(self):
@@ -129,8 +130,10 @@ class TestNetworksAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code, response.content)
         # Do same request again and check it is rejected.
         response = self.post_reservation_request(net, ip_in_network)
-        self.assertEqual(
-            httplib.NOT_FOUND, response.status_code, response.content)
+        self.expectThat(response.status_code, Equals(httplib.NOT_FOUND))
+        self.expectThat(
+            response.content, Equals(
+                "The IP address %s is already in use." % ip_in_network))
 
     def test_POST_reserve_requested_address_detects_out_of_range_addr(self):
         interface = self.make_interface()

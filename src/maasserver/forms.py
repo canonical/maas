@@ -109,6 +109,7 @@ from maasserver.models import (
     BootResourceFile,
     BootResourceSet,
     BootSource,
+    BootSourceCache,
     BootSourceSelection,
     Config,
     DownloadProgress,
@@ -124,7 +125,6 @@ from maasserver.models import (
     Tag,
     Zone,
     )
-from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.node import (
     fqdn_is_duplicate,
     nodegroup_fqdn,
@@ -137,7 +137,10 @@ from maasserver.node_action import (
     )
 from maasserver.utils import strip_domain
 from maasserver.utils.forms import compose_invalid_choice_text
-from maasserver.utils.interfaces import make_name_from_interface
+from maasserver.utils.interfaces import (
+    get_name_and_vlan_from_cluster_interface,
+    make_name_from_interface,
+    )
 from maasserver.utils.orm import get_one
 from maasserver.utils.osystems import (
     get_distro_series_initial,
@@ -289,7 +292,7 @@ def clean_distro_series_field(form, field, os_field):
     :param form: `Form` class
     :param field: distro_series field name
     :param os_field: osystem field name
-    :returns: clean distro_series field value
+    :return: clean distro_series field value
     """
     new_distro_series = form.cleaned_data.get(field)
     if '*' in new_distro_series:
@@ -332,8 +335,14 @@ class NodeForm(MAASModelForm):
         # a parameter named 'request' because it is used interchangingly
         # with NodeAdminForm which actually uses this parameter.
 
+        instance = kwargs.get('instance')
+        if instance is None or instance.owner is None:
+            self.has_owner = False
+        else:
+            self.has_owner = True
+
         # Are we creating a new node object?
-        self.new_node = (kwargs.get('instance') is None)
+        self.new_node = (instance is None)
         if self.new_node:
             # Offer choice of nodegroup.
             self.fields['nodegroup'] = NodeGroupFormField(
@@ -354,7 +363,7 @@ class NodeForm(MAASModelForm):
                 self.instance.nodegroup.nodegroupinterface_set.all())
 
         self.set_up_architecture_field()
-        self.set_up_osystem_and_distro_series_fields(kwargs.get('instance'))
+        self.set_up_osystem_and_distro_series_fields(instance)
 
         if not allow_disable_ipv4:
             # Hide the disable_ipv4 field until support works properly.  The
@@ -364,6 +373,17 @@ class NodeForm(MAASModelForm):
             #
             # To enable the field, just remove this clause.
             self.fields['disable_ipv4'] = forms.BooleanField(
+                label="", required=False, widget=forms.HiddenInput())
+
+        # We only want the license key field to render in the UI if the `OS`
+        # and `Release` fields are also present.
+        if self.has_owner:
+            self.fields['license_key'] = forms.CharField(
+                label="License Key", required=False, help_text=(
+                    "License key for operating system"),
+                max_length=30)
+        else:
+            self.fields['license_key'] = forms.CharField(
                 label="", required=False, widget=forms.HiddenInput())
 
     def set_up_architecture_field(self):
@@ -392,19 +412,26 @@ class NodeForm(MAASModelForm):
         """
         osystems = list_all_usable_osystems()
         releases = list_all_usable_releases(osystems)
-        os_choices = list_osystem_choices(osystems)
-        distro_choices = list_release_choices(releases)
-        invalid_osystem_message = compose_invalid_choice_text(
-            'osystem', os_choices)
-        invalid_distro_series_message = compose_invalid_choice_text(
-            'distro_series', distro_choices)
-        self.fields['osystem'] = forms.ChoiceField(
-            label="OS", choices=os_choices, required=False, initial='',
-            error_messages={'invalid_choice': invalid_osystem_message})
-        self.fields['distro_series'] = forms.ChoiceField(
-            label="Release", choices=distro_choices,
-            required=False, initial='',
-            error_messages={'invalid_choice': invalid_distro_series_message})
+        if self.has_owner:
+            os_choices = list_osystem_choices(osystems)
+            distro_choices = list_release_choices(releases)
+            invalid_osystem_message = compose_invalid_choice_text(
+                'osystem', os_choices)
+            invalid_distro_series_message = compose_invalid_choice_text(
+                'distro_series', distro_choices)
+            self.fields['osystem'] = forms.ChoiceField(
+                label="OS", choices=os_choices, required=False, initial='',
+                error_messages={'invalid_choice': invalid_osystem_message})
+            self.fields['distro_series'] = forms.ChoiceField(
+                label="Release", choices=distro_choices,
+                required=False, initial='',
+                error_messages={
+                    'invalid_choice': invalid_distro_series_message})
+        else:
+            self.fields['osystem'] = forms.ChoiceField(
+                label="", required=False, widget=forms.HiddenInput())
+            self.fields['distro_series'] = forms.ChoiceField(
+                label="", required=False, widget=forms.HiddenInput())
         if instance is not None:
             initial_value = get_distro_series_initial(osystems, instance)
             if instance is not None:
@@ -550,11 +577,6 @@ class NodeForm(MAASModelForm):
             "by the domain defined on the cluster; if the cluster controller "
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
-
-    license_key = forms.CharField(
-        label="License Key", required=False, help_text=(
-            "License key for operating system"),
-        max_length=30)
 
     class Meta:
         model = Node
@@ -1389,7 +1411,8 @@ def create_Network_from_NodeGroupInterface(interface):
         # Can be None or empty string, do nothing if so.
         return
 
-    name, vlan_tag = get_name_and_vlan_from_cluster_interface(interface)
+    name, vlan_tag = get_name_and_vlan_from_cluster_interface(
+        interface.name, interface.interface)
     ipnetwork = make_network(interface.ip, interface.subnet_mask)
     network = Network(
         name=name,
@@ -2335,6 +2358,61 @@ class BootSourceSelectionForm(MAASModelForm):
         else:
             self.boot_source = boot_source
 
+    def clean(self):
+        cleaned_data = super(BootSourceSelectionForm, self).clean()
+
+        # Don't filter on OS if not provided. This is to maintain
+        # backwards compatibility for when OS didn't exist in the API.
+        if cleaned_data['os']:
+            cache = BootSourceCache.objects.filter(
+                boot_source=self.boot_source, os=cleaned_data['os'],
+                release=cleaned_data['release'])
+        else:
+            cache = BootSourceCache.objects.filter(
+                boot_source=self.boot_source, release=cleaned_data['release'])
+
+        if not cache.exists():
+            set_form_error(
+                self, "os",
+                "OS %s with release %s has no available images for download" %
+                (cleaned_data['os'], cleaned_data['release']))
+            return cleaned_data
+
+        values = cache.values_list("arch", "subarch", "label")
+        arches, subarches, labels = zip(*values)
+
+        # Validate architectures.
+        required_arches_set = set(arch for arch in cleaned_data['arches'])
+        wildcard_arches = '*' in required_arches_set
+        if not wildcard_arches and not required_arches_set <= set(arches):
+            set_form_error(
+                self, "arches",
+                "No available images to download for %s" %
+                cleaned_data['arches'])
+
+        # Validate subarchitectures.
+        required_subarches_set = set(sa for sa in cleaned_data['subarches'])
+        wildcard_subarches = '*' in required_subarches_set
+        if (
+            not wildcard_subarches and
+            not required_subarches_set <= set(subarches)
+                ):
+            set_form_error(
+                self, "subarches",
+                "No available images to download for %s" %
+                cleaned_data['subarches'])
+
+        # Validate labels.
+        required_labels_set = set(label for label in cleaned_data['labels'])
+        wildcard_labels = '*' in required_labels_set
+        if not wildcard_labels and not required_labels_set <= set(labels):
+            set_form_error(
+                self, "labels",
+                "No available images to download for %s" %
+                cleaned_data['labels'])
+
+        return cleaned_data
+
     def save(self, *args, **kwargs):
         boot_source_selection = super(
             BootSourceSelectionForm, self).save(commit=False)
@@ -2389,7 +2467,8 @@ class LicenseKeyForm(MAASModelForm):
             error_messages={'invalid_choice': invalid_osystem_message})
         self.fields['distro_series'] = forms.ChoiceField(
             label="Release", choices=distro_choices, required=True,
-            error_messages={'invalid_choice': invalid_distro_series_message})
+            error_messages={
+                'invalid_choice': invalid_distro_series_message})
         if instance is not None:
             initial_value = get_distro_series_initial(
                 osystems, instance, with_key_required=False)

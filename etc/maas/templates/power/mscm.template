@@ -2,13 +2,63 @@
 #
 # Control a system via Moonshot HP iLO Chassis Manager (MSCM).
 
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
+}
+
+issue_mscm_command() {
 python - << END
+import sys
 from provisioningserver.drivers.hardware.mscm import power_control_mscm
-power_control_mscm(
-    {{escape_py_literal(power_address) | safe}},
-    {{escape_py_literal(power_user) | safe}},
-    {{escape_py_literal(power_pass) | safe}},
-    {{escape_py_literal(node_id) | safe}},
-    {{escape_py_literal(power_change) | safe}},
-)
+try:
+    power_control_mscm(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(node_id) | safe}},
+        {{escape_py_literal(power_change) | safe}},
+    )
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
 END
+}
+
+query_state() {
+python - << END
+import sys
+from provisioningserver.drivers.hardware.mscm import power_state_mscm
+try:
+    print(power_state_mscm(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(node_id) | safe}},
+    ))
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+main() {
+    case $1 in
+    'on'|'off')
+        issue_mscm_command
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 2 "Unknown power command: '$1'"
+    esac
+}
+
+main "{{power_change}}"

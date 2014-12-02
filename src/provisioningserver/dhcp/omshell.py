@@ -197,3 +197,37 @@ class Omshell:
             pass
         else:
             raise ExternalProcessError(returncode, self.command, output)
+
+    def nullify_lease(self, ip_address):
+        """Reset an existing lease so it's no longer valid.
+
+        You can't delete leases with omshell, so we're setting the expiry
+        timestamp to the epoch instead.
+        """
+        stdin = dedent("""\
+            server {self.server_address}
+            key omapi_key {self.shared_key}
+            connect
+            new lease
+            set ip-address = {ip_address}
+            open
+            set ends = 00:00:00:00
+            update
+            """)
+        stdin = stdin.format(
+            self=self, ip_address=ip_address)
+
+        returncode, output = self._run(stdin)
+
+        if "can't open object: not found" in output:
+            # Consider nonexistent leases a success.
+            return None
+
+        # Catching "invalid" is a bit like catching a bare exception
+        # but omshell is so esoteric that this is probably quite safe.
+        # If the update succeeded, "ends = 00:00:00:00" will most certainly
+        # be in the output.  If it's not, there's been a failure.
+        if "invalid" not in output and "\nends = 00:00:00:00" in output:
+            return None
+
+        raise ExternalProcessError(returncode, self.command, output)

@@ -23,8 +23,10 @@ import re
 import time
 
 from crochet import EventualResult
+from maastesting.factory import factory
 from maastesting.matchers import (
     IsCallable,
+    IsUnfiredDeferred,
     MockCalledOnceWith,
     )
 from maastesting.testcase import (
@@ -39,6 +41,7 @@ from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
+    DeferredValue,
     deferWithTimeout,
     FOREVER,
     pause,
@@ -63,6 +66,7 @@ from testtools.matchers import (
 from testtools.testcase import ExpectedException
 from twisted.internet import reactor
 from twisted.internet.defer import (
+    AlreadyCalledError,
     CancelledError,
     Deferred,
     inlineCallbacks,
@@ -611,3 +615,163 @@ class TestCallOut(MAASTestCase):
     def test__does_not_suppress_errors(self):
         func_callout = callOut(operator.div, 0, 0)
         self.assertRaises(ZeroDivisionError, func_callout, sentinel.result)
+
+
+class TestDeferredValue(MAASTestCase):
+    """Tests for `DeferredValue`."""
+
+    def test__create(self):
+        dvalue = DeferredValue()
+        self.assertEqual({"waiters": set()}, vars(dvalue))
+
+    def test__get_returns_a_Deferred(self):
+        dvalue = DeferredValue()
+        self.assertThat(dvalue.get(), IsInstance(Deferred))
+
+    def test__get_returns_a_Deferred_with_a_timeout(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+        dvalue = DeferredValue()
+        waiter = dvalue.get(10)
+        self.assertThat(waiter, IsUnfiredDeferred())
+        clock.advance(9)
+        self.assertThat(waiter, IsUnfiredDeferred())
+        clock.advance(1)
+        self.assertRaises(CancelledError, extract_result, waiter)
+
+    def test__set_notifies_all_waiters(self):
+        dvalue = DeferredValue()
+        waiter1 = dvalue.get()
+        waiter2 = dvalue.get()
+        dvalue.set(sentinel.value)
+        self.expectThat(extract_result(waiter1), Is(sentinel.value))
+        self.expectThat(extract_result(waiter2), Is(sentinel.value))
+
+    def test__set_notifies_all_waiters_that_have_not_timed_out(self):
+        clock = self.patch(twisted_module, "reactor", Clock())
+        dvalue = DeferredValue()
+        waiter0 = dvalue.get()
+        waiter1 = dvalue.get(1)
+        waiter2 = dvalue.get(3)
+        clock.advance(2)
+        dvalue.set(sentinel.value)
+        self.expectThat(extract_result(waiter0), Is(sentinel.value))
+        self.expectThat(extract_result(waiter2), Is(sentinel.value))
+        self.assertRaises(CancelledError, extract_result, waiter1)
+
+    def test__get_after_set_returns_the_value(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.value)
+        waiter = dvalue.get()
+        self.expectThat(extract_result(waiter), Is(sentinel.value))
+
+    def test__get_can_be_cancelled(self):
+        dvalue = DeferredValue()
+        waiter = dvalue.get()
+        waiter.cancel()
+        self.assertRaises(CancelledError, extract_result, waiter)
+        self.assertEqual(set(), dvalue.waiters)
+
+    def test__set_can_only_be_called_once(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.value)
+        self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.foobar)
+
+    def test__cancel_stops_everything(self):
+        dvalue = DeferredValue()
+        waiter = dvalue.get()
+        dvalue.cancel()
+        self.assertRaises(CancelledError, extract_result, waiter)
+        self.assertRaises(CancelledError, extract_result, dvalue.get())
+        self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
+
+    def test__cancel_can_be_called_multiple_times(self):
+        dvalue = DeferredValue()
+        dvalue.cancel()
+        self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
+        dvalue.cancel()
+        self.assertRaises(AlreadyCalledError, dvalue.set, sentinel.value)
+
+    def test__cancel_does_nothing_if_value_already_set(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.value)
+        dvalue.cancel()
+        self.assertEqual(sentinel.value, extract_result(dvalue.get()))
+
+    def test__set_exception_results_in_a_callback(self):
+        exception = factory.make_exception()
+        dvalue = DeferredValue()
+        dvalue.set(exception)
+        self.assertIs(exception, dvalue.value)
+
+    def test__set_failure_results_in_an_errback(self):
+        exception_type = factory.make_exception_type()
+        dvalue = DeferredValue()
+        dvalue.set(Failure(exception_type()))
+        self.assertRaises(exception_type, extract_result, dvalue.get())
+
+    def test__fail_results_in_an_errback(self):
+        exception_type = factory.make_exception_type()
+        dvalue = DeferredValue()
+        dvalue.fail(exception_type())
+        self.assertRaises(exception_type, extract_result, dvalue.get())
+
+    def test__fail_None_results_in_an_errback_with_current_exception(self):
+        exception_type = factory.make_exception_type()
+        dvalue = DeferredValue()
+        try:
+            raise exception_type()
+        except exception_type:
+            dvalue.fail()
+        self.assertRaises(exception_type, extract_result, dvalue.get())
+
+    def test__fail_can_only_be_called_once(self):
+        exception = factory.make_exception()
+        dvalue = DeferredValue()
+        dvalue.fail(exception)
+        self.assertRaises(AlreadyCalledError, dvalue.fail, exception)
+
+    def test__value_is_not_available_until_set(self):
+        dvalue = DeferredValue()
+        self.assertRaises(AttributeError, lambda: dvalue.value)
+
+    def test__capture_captures_callback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        d.callback(sentinel.result)
+        self.assertEqual(sentinel.result, extract_result(waiter))
+        self.assertIsNone(extract_result(d))
+
+    def test__capture_captures_errback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        exception = factory.make_exception()
+        d.errback(exception)
+        self.assertRaises(type(exception), extract_result, waiter)
+        self.assertIsNone(extract_result(d))
+
+    def test__observe_observes_callback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        d.callback(sentinel.result)
+        self.assertEqual(sentinel.result, extract_result(waiter))
+        self.assertEqual(sentinel.result, extract_result(d))
+
+    def test__observe_observes_errback(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        waiter = dvalue.get()
+        self.assertThat(waiter, IsUnfiredDeferred())
+        exception = factory.make_exception()
+        d.errback(exception)
+        self.assertRaises(type(exception), extract_result, waiter)
+        self.assertRaises(type(exception), extract_result, d)

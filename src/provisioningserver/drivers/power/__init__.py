@@ -139,7 +139,7 @@ class PowerDriverBase:
 
         :param system_id: `Node.system_id`
         :param kwargs: Power settings for the node.
-        :returns: status of power on BMC. `on` or `off`.
+        :return: status of power on BMC. `on` or `off`.
         :raises PowerError: states unable to get status from BMC. It is
             up to this method to report the actual issue to the Region. The
             calling function should ignore this error, and continue on.

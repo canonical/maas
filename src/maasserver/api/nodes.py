@@ -101,6 +101,7 @@ DISPLAYED_NODE_FIELDS = (
     'distro_series',
     'netboot',
     'power_type',
+    'power_state',
     'tag_names',
     'ip_addresses',
     'routers',
@@ -278,12 +279,11 @@ class NodeHandler(OperationsHandler):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
-        nodes_stopped = Node.objects.stop_nodes(
-            [node.system_id], request.user, stop_mode=stop_mode)
-        if len(nodes_stopped) == 0:
-            return None
-        else:
+        power_action_sent = node.stop(request.user, stop_mode=stop_mode)
+        if power_action_sent:
             return node
+        else:
+            return None
 
     @operation(idempotent=False)
     def start(self, request, system_id):
@@ -304,12 +304,14 @@ class NodeHandler(OperationsHandler):
         user_data = request.POST.get('user_data', None)
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
+
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user,
+            perm=NODE_PERMISSION.EDIT)
+
         if user_data is not None:
             user_data = b64decode(user_data)
         if series is not None or license_key is not None:
-            node = Node.objects.get_node_or_404(
-                system_id=system_id, user=request.user,
-                perm=NODE_PERMISSION.EDIT)
             Form = get_node_edit_form(request.user)
             form = Form(instance=node)
             if series is not None:
@@ -320,19 +322,16 @@ class NodeHandler(OperationsHandler):
                 form.save()
             else:
                 raise ValidationError(form.errors)
+
         try:
-            nodes = Node.objects.start_nodes(
-                [system_id], request.user, user_data=user_data)
+            node.start(request.user, user_data=user_data)
         except StaticIPAddressExhaustion:
             # The API response should contain error text with the
             # system_id in it, as that is the primary API key to a node.
             raise StaticIPAddressExhaustion(
                 "%s: Unable to allocate static IP due to address"
                 " exhaustion." % system_id)
-        if len(nodes) == 0:
-            raise PermissionDenied(
-                "You are not allowed to start up this node.")
-        return nodes[0]
+        return node
 
     @operation(idempotent=False)
     def release(self, request, system_id):

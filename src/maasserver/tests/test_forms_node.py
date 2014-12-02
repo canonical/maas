@@ -69,7 +69,7 @@ class TestNodeForm(MAASServerTestCase):
                 'distro_series',
                 'license_key',
                 'disable_ipv4',
-                'nodegroup',
+                'nodegroup'
             ], list(form.fields))
 
     def test_changes_node(self):
@@ -128,33 +128,43 @@ class TestNodeForm(MAASServerTestCase):
             form.errors['architecture'])
 
     def test_accepts_osystem(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystem = make_usable_osystem(self)
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
             'osystem': osystem['name'],
-            })
+            },
+            instance=node)
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_rejects_invalid_osystem(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         patch_usable_osystems(self)
         form = NodeForm(data={
             'hostname': factory.make_name('host'),
             'architecture': make_usable_architecture(self),
             'osystem': factory.make_name('os'),
-            })
+            },
+            instance=node)
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['osystem'], form._errors.keys())
 
     def test_starts_with_default_osystem(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystems = [make_osystem_with_releases(self) for _ in range(5)]
         patch_usable_osystems(self, osystems)
-        form = NodeForm()
+        form = NodeForm(instance=node)
         self.assertEqual(
             '',
             form.fields['osystem'].initial)
 
     def test_accepts_osystem_distro_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
         form = NodeForm(data={
@@ -162,10 +172,13 @@ class TestNodeForm(MAASServerTestCase):
             'architecture': make_usable_architecture(self),
             'osystem': osystem['name'],
             'distro_series': '%s/%s' % (osystem['name'], release),
-            })
+            },
+            instance=node)
         self.assertTrue(form.is_valid(), form._errors)
 
     def test_rejects_invalid_osystem_distro_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystem = make_usable_osystem(self)
         release = factory.make_name('release')
         form = NodeForm(data={
@@ -173,19 +186,24 @@ class TestNodeForm(MAASServerTestCase):
             'architecture': make_usable_architecture(self),
             'osystem': osystem['name'],
             'distro_series': '%s/%s' % (osystem['name'], release),
-            })
+            },
+            instance=node)
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
     def test_starts_with_default_distro_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystems = [make_osystem_with_releases(self) for _ in range(5)]
         patch_usable_osystems(self, osystems)
-        form = NodeForm()
+        form = NodeForm(instance=node)
         self.assertEqual(
             '',
             form.fields['distro_series'].initial)
 
     def test_rejects_mismatch_osystem_distro_series(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         osystem = make_usable_osystem(self)
         release = osystem['default_release']
         invalid = factory.make_name('invalid_os')
@@ -194,30 +212,14 @@ class TestNodeForm(MAASServerTestCase):
             'architecture': make_usable_architecture(self),
             'osystem': osystem['name'],
             'distro_series': '%s/%s' % (invalid, release),
-            })
+            },
+            instance=node)
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['distro_series'], form._errors.keys())
 
-    def test_calls_validate_license_key_without_nodegroup(self):
-        release = make_rpc_release(requires_license_key=True)
-        osystem = make_rpc_osystem(releases=[release])
-        patch_usable_osystems(self, osystems=[osystem])
-        license_key = factory.make_name('key')
-        mock_validate = self.patch(forms, 'validate_license_key')
-        mock_validate.return_value = True
-        form = NodeForm(data={
-            'hostname': factory.make_name('host'),
-            'architecture': make_usable_architecture(self),
-            'osystem': osystem['name'],
-            'distro_series': '%s/%s*' % (osystem['name'], release['name']),
-            'license_key': license_key,
-            })
-        self.assertTrue(form.is_valid())
-        self.assertThat(
-            mock_validate,
-            MockCalledOnceWith(osystem['name'], release['name'], license_key))
-
     def test_rejects_when_validate_license_key_returns_False(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -230,12 +232,14 @@ class TestNodeForm(MAASServerTestCase):
             'osystem': osystem['name'],
             'distro_series': '%s/%s*' % (osystem['name'], release['name']),
             'license_key': license_key,
-            })
+            },
+            instance=node)
         self.assertFalse(form.is_valid())
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_calls_validate_license_key_for_with_nodegroup(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -256,7 +260,8 @@ class TestNodeForm(MAASServerTestCase):
                 node.nodegroup, osystem['name'], release['name'], license_key))
 
     def test_rejects_when_validate_license_key_for_returns_False(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -274,7 +279,8 @@ class TestNodeForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_connection(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -292,7 +298,8 @@ class TestNodeForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_timeout(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -310,7 +317,8 @@ class TestNodeForm(MAASServerTestCase):
         self.assertItemsEqual(['license_key'], form._errors.keys())
 
     def test_rejects_when_validate_license_key_for_raise_no_os(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         release = make_rpc_release(requires_license_key=True)
         osystem = make_rpc_osystem(releases=[release])
         patch_usable_osystems(self, osystems=[osystem])
@@ -472,7 +480,8 @@ class TestNodeForm(MAASServerTestCase):
 class TestAdminNodeForm(MAASServerTestCase):
 
     def test_AdminNodeForm_contains_limited_set_of_fields(self):
-        node = factory.make_Node()
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
         form = AdminNodeForm(instance=node)
 
         self.assertEqual(

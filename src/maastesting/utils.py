@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Testing utilities."""
@@ -17,6 +17,7 @@ __all__ = [
     "content_from_file",
     "extract_word_list",
     "get_write_time",
+    "FakeRandInt",
     "preexec_fn",
     "run_isolated",
     "sample_binary_data",
@@ -130,3 +131,25 @@ def run_isolated(cls, self, result):
 # (1) Provided, of course, that man know only about ASCII and
 # UTF.
 sample_binary_data = codecs.BOM64_LE + codecs.BOM64_BE + b'\x00\xff\x00'
+
+
+class FakeRandInt:
+    """Fake `randint` with forced limitations on its range.
+
+    This lets you set a forced minimum, and/or a forced maximum, on the range
+    of any call.  For example, if you pass `forced_maximum=3`, then a call
+    will never return more than 3.  If you don't set a maximum, or if the
+    call's maximum argument is less than the forced maximum, then the call's
+    maximum will be respected.
+    """
+    def __init__(self, real_randint, forced_minimum=None, forced_maximum=None):
+        self.real_randint = real_randint
+        self.minimum = forced_minimum
+        self.maximum = forced_maximum
+
+    def __call__(self, minimum, maximum):
+        if self.minimum is not None:
+            minimum = max(minimum, self.minimum)
+        if self.maximum is not None:
+            maximum = min(maximum, self.maximum)
+        return self.real_randint(minimum, maximum)

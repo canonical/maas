@@ -18,6 +18,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'power_control_mscm',
+    'power_state_mscm',
     'probe_and_enlist_mscm',
 ]
 
@@ -41,6 +42,15 @@ cartridge_mapping = {
     'ProLiant m800 Server Cartridge': 'armhf/keystone',
     'Default': 'amd64/generic',
 }
+
+
+class MSCMState:
+    OFF = "Off"
+    ON = "On"
+
+
+class MSCMError(Exception):
+    """Failure communicating to MSCM. """
 
 
 class MSCM_CLI_API:
@@ -117,7 +127,7 @@ class MSCM_CLI_API:
         else:
             return cartridge_mapping['Default']
 
-    def get_node_power_status(self, node_id):
+    def get_node_power_state(self, node_id):
         """Get power state of node (on/off).
 
         Example of stdout from running "show node power <node_id>":
@@ -152,30 +162,49 @@ def power_control_mscm(host, username, password, node_id, power_change):
     of 'mscm'.
     """
     mscm = MSCM_CLI_API(host, username, password)
-    power_status = mscm.get_node_power_status(node_id)
 
     if power_change == 'off':
         mscm.power_node_off(node_id)
-        return
+    elif power_change == 'on':
+        if mscm.get_node_power_state(node_id) == MSCMState.ON:
+            mscm.power_node_off(node_id)
+        mscm.configure_node_bootonce_pxe(node_id)
+        mscm.power_node_on(node_id)
+    else:
+        raise MSCMError("Unexpected maas power mode.")
 
-    if power_change != 'on':
-        raise AssertionError('Unexpected maas power mode.')
 
-    if power_status == 'On':
-        mscm.power_node_off(node_id)
+def power_state_mscm(host, username, password, node_id):
+    """Return the power state for the mscm machine."""
+    mscm = MSCM_CLI_API(host, username, password)
+    try:
+        power_state = mscm.get_node_power_state(node_id)
+    except:
+        raise MSCMError("Failed to retrieve power state.")
 
-    mscm.configure_node_bootonce_pxe(node_id)
-    mscm.power_node_on(node_id)
+    if power_state == MSCMState.OFF:
+        return 'off'
+    elif power_state == MSCMState.ON:
+        return 'on'
+    raise MSCMError('Unknown power state: %s' % power_state)
 
 
 def probe_and_enlist_mscm(host, username, password):
-    """ Extracts all of nodes from mscm, sets all of them to boot via HDD by,
+    """ Extracts all of nodes from mscm, sets all of them to boot via M.2 by,
     default, sets them to bootonce via PXE, and then enlists them into MAAS.
     """
     mscm = MSCM_CLI_API(host, username, password)
-    nodes = mscm.discover_nodes()
+    try:
+        # if discover_nodes works, we have access to the system
+        nodes = mscm.discover_nodes()
+    except:
+        raise MSCMError(
+            "Failed to probe nodes for mscm with host=%s, "
+            "username=%s, password=%s"
+            % (host, username, password))
+
     for node_id in nodes:
-        # Set default boot to HDD
+        # Set default boot to M.2
         mscm.configure_node_boot_m2(node_id)
         params = {
             'power_address': host,

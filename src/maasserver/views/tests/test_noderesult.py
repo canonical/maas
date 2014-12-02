@@ -56,43 +56,43 @@ class TestNodeInstallResultView(MAASServerTestCase):
         doc = html.fromstring(response.content)
         return get_one(doc.cssselect('#content'))
 
-    def test_installing_forbidden_without_edit_perm(self):
+    def test_installation_forbidden_without_edit_perm(self):
         self.client_log_in(as_admin=False)
-        result = factory.make_NodeResult_for_installing()
+        result = factory.make_NodeResult_for_installation()
         response = self.client.get(
             reverse('nodeinstallresult-view', args=[result.id]))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
-    def test_installing_allowed_with_edit_perm(self):
+    def test_installation_allowed_with_edit_perm(self):
         password = 'test'
         user = factory.make_User(password=password)
         node = factory.make_Node(owner=user)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-        result = factory.make_NodeResult_for_installing(node=node)
+        result = factory.make_NodeResult_for_installation(node=node)
         response = self.client.get(
             reverse('nodeinstallresult-view', args=[result.id]))
         self.assertEqual(httplib.OK, response.status_code)
 
-    def test_installing_escapes_html_in_output(self):
+    def test_installation_escapes_html_in_output(self):
         self.client_log_in(as_admin=True)
         # It's actually surprisingly hard to test for this, because lxml
         # un-escapes on parsing, and is very tolerant of malformed input.
         # Parsing an un-escaped A<B>C, however, would produce text "AC"
         # (because the <B> looks like a tag).
-        result = factory.make_NodeResult_for_installing(data=b'A<B>C')
+        result = factory.make_NodeResult_for_installation(data=b'A<B>C')
         doc = self.request_page(result)
         self.assertEqual('A<B>C', extract_field(doc, 'output', 'pre'))
 
-    def test_installing_escapes_binary_in_output(self):
+    def test_installation_escapes_binary_in_output(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_NodeResult_for_installing(data=b'A\xffB')
+        result = factory.make_NodeResult_for_installation(data=b'A\xffB')
         doc = self.request_page(result)
         self.assertEqual('A\ufffdB', extract_field(doc, 'output', 'pre'))
 
-    def test_installing_hides_output_if_empty(self):
+    def test_installation_hides_output_if_empty(self):
         self.client_log_in(as_admin=True)
-        result = factory.make_NodeResult_for_installing(data=b'')
+        result = factory.make_NodeResult_for_installation(data=b'')
         doc = self.request_page(result)
         field = get_one(doc.cssselect('#output'))
         self.assertEqual('', field.text_content().strip())
@@ -353,7 +353,7 @@ class TestNodeCommissionResultListView(MAASServerTestCase):
 
     def test_does_not_list_installation_results(self):
         self.client_log_in(as_admin=True)
-        factory.make_NodeResult_for_installing()
+        factory.make_NodeResult_for_installation()
         content = self.request_page()
         self.assertIsNotNone(
             get_one(content.cssselect('#no_results')))

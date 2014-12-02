@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import os
 from os import environ
 from random import randint
 from StringIO import StringIO
@@ -28,6 +29,7 @@ from django.db import (
     )
 from django.http import StreamingHttpResponse
 from django.test.client import Client
+from fixtures import Fixture
 from maasserver import bootresources
 from maasserver.bootresources import (
     BootResourceStore,
@@ -63,6 +65,7 @@ from mock import (
     Mock,
     sentinel,
     )
+from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.testing import TwistedLoggerFixture
 from testtools.deferredruntest import extract_result
@@ -93,6 +96,18 @@ class TestHelpers(MAASServerTestCase):
                 kwargs={'filename': 'index.json'}),
             endpoint['url'])
         self.assertEqual([], endpoint['selections'])
+
+
+class SimplestreamsEnvFixture(Fixture):
+    """Clears the env variables set by the methods that interact with
+    simplestreams."""
+
+    def setUp(self):
+        super(SimplestreamsEnvFixture, self).setUp()
+        prior_env = {}
+        for key in ['GNUPGHOME', 'http_proxy', 'https_proxy']:
+            prior_env[key] = os.environ.get(key, '')
+        self.addCleanup(os.environ.update, prior_env)
 
 
 class TestSimpleStreamsHandler(MAASServerTestCase):
@@ -966,6 +981,10 @@ class TestBootResourceTransactional(TransactionTestCase):
 
 class TestImportImages(MAASTestCase):
 
+    def setUp(self):
+        super(TestImportImages, self).setUp()
+        self.useFixture(SimplestreamsEnvFixture())
+
     def patch_and_capture_env_for_download_all_boot_resources(self):
         class CaptureEnv:
             """Fake function; records a copy of the environment."""
@@ -1030,7 +1049,7 @@ class TestImportImages(MAASTestCase):
         # lock is already held.
         self.assertThat(has_synced_resources, MockNotCalled())
 
-    def test__import_resources_exists_early_without_force(self):
+    def test__import_resources_exits_early_without_force(self):
         has_synced_resources = self.patch(
             bootresources, "has_synced_resources")
         bootresources._import_resources(force=False)
@@ -1059,33 +1078,37 @@ class TestImportImages(MAASTestCase):
         self.assertFalse(bootresources.locks.import_images.is_locked())
 
     def test__import_resources_calls_functions_with_correct_parameters(self):
-        fake_write_all_keyrings = self.patch(
+        cache_boot_sources = self.patch(
+            bootresources, 'cache_boot_sources')
+        write_all_keyrings = self.patch(
             bootresources, 'write_all_keyrings')
-        fake_write_all_keyrings.return_value = [sentinel.source]
-        fake_image_descriptions = self.patch(
+        write_all_keyrings.return_value = [sentinel.source]
+        image_descriptions = self.patch(
             bootresources, 'download_all_image_descriptions')
         descriptions = Mock()
         descriptions.is_empty.return_value = False
-        fake_image_descriptions.return_value = descriptions
-        fake_map_products = self.patch(
+        image_descriptions.return_value = descriptions
+        map_products = self.patch(
             bootresources, 'map_products')
-        fake_map_products.return_value = sentinel.mapping
-        fake_download_all_boot_resources = self.patch(
+        map_products.return_value = sentinel.mapping
+        download_all_boot_resources = self.patch(
             bootresources, 'download_all_boot_resources')
 
         bootresources._import_resources(force=True)
 
-        self.assertThat(
-            fake_write_all_keyrings,
+        self.expectThat(
+            cache_boot_sources, MockCalledOnceWith())
+        self.expectThat(
+            write_all_keyrings,
             MockCalledOnceWith(ANY, []))
-        self.assertThat(
-            fake_image_descriptions,
+        self.expectThat(
+            image_descriptions,
             MockCalledOnceWith([sentinel.source]))
-        self.assertThat(
-            fake_map_products,
+        self.expectThat(
+            map_products,
             MockCalledOnceWith(descriptions))
-        self.assertThat(
-            fake_download_all_boot_resources,
+        self.expectThat(
+            download_all_boot_resources,
             MockCalledOnceWith([sentinel.source], sentinel.mapping))
 
     def test__import_resources_has_env_GNUPGHOME_set(self):
@@ -1099,8 +1122,7 @@ class TestImportImages(MAASTestCase):
 
         bootresources._import_resources(force=True)
         self.assertEqual(
-            bootresources.get_maas_user_gpghome(),
-            capture.env['GNUPGHOME'])
+            get_maas_user_gpghome(), capture.env['GNUPGHOME'])
 
     def test__import_resources_has_env_http_and_https_proxy_set(self):
         proxy_address = factory.make_name('proxy')

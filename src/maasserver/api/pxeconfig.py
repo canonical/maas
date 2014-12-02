@@ -84,6 +84,13 @@ def get_boot_image(
         nodegroup, osystem, architecture, subarchitecture, series, purpose):
     """Obtain the first available boot image for this cluster for the given
     osystem, architecture, subarchitecute, series, and purpose."""
+    # When local booting a node we put it through a PXE cycle. In
+    # this case it requests a purpose of "local" when looking for
+    # boot images.  To avoid unnecessary work, we can shortcut that
+    # here and just return None right away.
+    if purpose == "local":
+        return None
+
     try:
         images = get_boot_images_for(
             nodegroup, osystem, architecture, subarchitecture, series)

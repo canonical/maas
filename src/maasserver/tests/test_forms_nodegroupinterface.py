@@ -29,10 +29,12 @@ from maasserver.models import (
     Network,
     NodeGroupInterface,
     )
-from maasserver.models.network import get_name_and_vlan_from_cluster_interface
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.interfaces import (
+    get_name_and_vlan_from_cluster_interface,
+    )
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import (
     IPAddress,
@@ -369,7 +371,8 @@ class TestNodeGroupInterfaceFormNetworkCreation(MAASServerTestCase):
         form = NodeGroupInterfaceForm(data=int_settings, instance=interface)
         form.save()
         [network] = Network.objects.all()
-        expected, _ = get_name_and_vlan_from_cluster_interface(interface)
+        expected, _ = get_name_and_vlan_from_cluster_interface(
+            interface.name, interface.interface)
         self.assertEqual(expected, network.name)
 
     def test_sets_vlan_tag(self):

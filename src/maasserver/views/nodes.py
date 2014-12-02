@@ -26,6 +26,7 @@ __all__ = [
     ]
 
 from cgi import escape
+import json
 import logging
 from operator import attrgetter
 import re
@@ -33,9 +34,12 @@ from textwrap import dedent
 from urllib import urlencode
 
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.core.urlresolvers import reverse
-from django.http import QueryDict
+from django.db.models import Q
+from django.http import (
+    HttpResponse,
+    QueryDict,
+    )
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -57,6 +61,7 @@ from maasserver.enum import (
     NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
+    NODE_STATUS_CHOICES_DICT,
     )
 from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
@@ -99,6 +104,19 @@ from netaddr import (
     NotRegisteredError,
     )
 from provisioningserver.tags import merge_details_cleanly
+
+# Fields on the Node model that will be searched.
+NODE_SEARCH_FIELDS = {
+    'status': 'status__in',
+    'hostname': 'hostname__icontains',
+    'owner': 'owner__username__icontains',
+    'arch': 'architecture__icontains',
+    'zone': 'zone__name__icontains',
+    'power': 'power_state__icontains',
+    'cluster': 'nodegroup__name__icontains',
+    'tag': 'tags__name__icontains',
+    'mac': 'macaddress__mac_address__icontains',
+    }
 
 
 def _parse_constraints(query_string):
@@ -146,7 +164,7 @@ def message_from_form_stats(action, done, not_actionable, not_permitted):
         (not_actionable, not_actionable_templates),
         (not_permitted, not_permitted_templates)]
     message = []
-    for number, message_templates in number_message:
+    for index, (number, message_templates) in enumerate(number_message):
         singular, plural = message_templates
         if number != 0:
             message_template = singular if number == 1 else plural
@@ -154,7 +172,8 @@ def message_from_form_stats(action, done, not_actionable, not_permitted):
             # Override the action name so that only the first sentence will
             # contain the full name of the action.
             action_name = 'It'
-    return ' '.join(message)
+            level = index
+    return ' '.join(message), ('info', 'warning', 'error')[level]
 
 
 def prefetch_nodes_listing(nodes_query):
@@ -216,6 +235,45 @@ def configure_macs(nodes):
     return nodes
 
 
+def node_to_dict(node):
+    """Convert `Node` to a dictionary."""
+    if node.owner is None:
+        owner = ""
+    else:
+        owner = '%s' % node.owner
+    return dict(
+        id=node.id,
+        system_id=node.system_id,
+        url=reverse('node-view', args=[node.system_id]),
+        hostname=node.hostname,
+        fqdn=node.fqdn,
+        status=node.display_status(),
+        owner=owner,
+        cpu_count=node.cpu_count,
+        memory=node.display_memory(),
+        storage=node.display_storage(),
+        power_state=node.power_state,
+        zone=node.zone.name,
+        zone_url=reverse('zone-view', args=[node.zone.name]),
+        mac=node.primary_mac,
+        vendor=node.primary_mac_vendor,
+        macs=node.extra_macs,
+        )
+
+
+def convert_query_status(value):
+    """Convert the given value into a list of status integers."""
+    value = value.lower()
+    ids = []
+    for status_id, status_text in NODE_STATUS_CHOICES_DICT.items():
+        status_text = status_text.lower()
+        if value in status_text:
+            ids.append(status_id)
+    if len(ids) == 0:
+        return None
+    return ids
+
+
 class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     context_object_name = "node_list"
@@ -233,6 +291,9 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
 
     def get(self, request, *args, **kwargs):
         """Handle a GET request."""
+        if request.is_ajax():
+            return self.handle_ajax_request(request, *args, **kwargs)
+
         self.populate_modifiers(request)
 
         if Config.objects.get_config("enable_third_party_drivers"):
@@ -252,7 +313,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         These are sorting and search option we want a POST request to
         preserve so that the display after a POST request is similar
         to the display before the request."""
-        return ["dir", "query", "page", "sort"]
+        return ["dir", "query", "test", "page", "sort"]
 
     def get_preserved_query(self):
         params = {
@@ -293,8 +354,8 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             action_class = SetZoneBulkAction
         else:
             action_class = ACTIONS_DICT[form.cleaned_data['action']]
-        message = message_from_form_stats(action_class, *stats)
-        messages.info(self.request, message)
+        message, level = message_from_form_stats(action_class, *stats)
+        getattr(messages, level)(self.request, message)
         return super(NodeListView, self).form_valid(form)
 
     def _compose_sort_order(self):
@@ -313,7 +374,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             order_by = (custom_order, )
         return order_by + ('-created', )
 
-    def _constrain_nodes(self, nodes_query):
+    def _constrain_nodes(self, nodes_query, query):
         """Filter the given nodes query by user-specified constraints.
 
         If the specified constraints are invalid, this will set an error and
@@ -322,7 +383,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         :param nodes_query: A query set of nodes.
         :return: A query set of nodes that returns a subset of `nodes_query`.
         """
-        data = _parse_constraints(self.query)
+        data = _parse_constraints(query)
         form = AcquireNodeForm.Strict(data=data)
         # Change the field names of the AcquireNodeForm object to
         # conform to Juju's naming.
@@ -335,12 +396,95 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
                  for field, errors in form.errors.items()])
             return Node.objects.none()
 
+    def _query_all_fields(self, term):
+        """Build query that will search all fields in the node table."""
+        sub_query = Q()
+        for field, query_term in NODE_SEARCH_FIELDS.items():
+            if field == 'status':
+                status_ids = convert_query_status(term)
+                if status_ids is None:
+                    continue
+                sub_query = sub_query | Q(**{query_term: status_ids})
+            else:
+                sub_query = sub_query | Q(**{query_term: term})
+        return sub_query
+
+    def _query_specific_field(self, field, value):
+        """Build query that will search the specific field from the given term
+        in the node table.
+
+        This supports the term as "field:value", allowing users to be
+        specific on which field they want to search.
+        """
+        if field == 'status':
+            value = convert_query_status(value)
+            if value is None:
+                return Q()
+        # Perform the query based on the ORM matcher specified
+        # in NODE_SEARCH_FIELDS.
+        if field in NODE_SEARCH_FIELDS:
+            return Q(**{NODE_SEARCH_FIELDS[field]: value})
+        return Q()
+
+    def _query_mac_address_field(self, term):
+        """Build query that will search the MAC addresses in the node table.
+
+        Note: If you want to query the mac address using only the first
+        two octets, then you need to use 'mac:aa:bb' or the first octet will
+        be mistaken as the field to search.
+        """
+        term = term.replace('mac:', '')
+        return Q(**{NODE_SEARCH_FIELDS['mac']: term})
+
+    def _search_nodes(self, nodes_query):
+        """Filter the given nodes query by searching field data.
+
+        The search query is substring matched non-case sensitively
+        against some fields in the nodes. See `NODE_SEARCH_FIELDS`.
+
+        :param nodes_query: A queryset of nodes.
+        :return: A query set of nodes that returns a subset of `nodes_query`.
+        """
+        # Split the query into different terms.
+        terms = self.query.split(' ')
+
+        # If any of the terms contain '=' then its a juju constraint and all
+        # other terms not using '=' are ignored.
+        constraint_terms = [
+            term
+            for term in terms
+            if '=' in term
+            ]
+        if len(constraint_terms) > 0:
+            return self._constrain_nodes(
+                nodes_query, ' '.join(constraint_terms))
+
+        # Loop through the terms building the search query.
+        query = Q()
+        for term in terms:
+            colon_count = term.count(':')
+            if colon_count == 0:
+                query = query & self._query_all_fields(term)
+            elif colon_count == 1:
+                field, value = term.split(':', 1)
+                if field == '':
+                    # In the case the user miss typed and placed a colon at
+                    # the beginning of the term without the field, just search
+                    # all fields with the value.
+                    query = query & self._query_all_fields(value)
+                else:
+                    query = query & self._query_specific_field(field, value)
+            elif colon_count > 1:
+                query = query & self._query_mac_address_field(term)
+        query = nodes_query.filter(query)
+        return query.distinct()
+
     def get_queryset(self):
         nodes = Node.objects.get_nodes(
             user=self.request.user, perm=NODE_PERMISSION.VIEW)
         nodes = nodes.order_by(*self._compose_sort_order())
         if self.query:
-            nodes = self._constrain_nodes(nodes)
+            nodes = self._search_nodes(nodes)
         nodes = prefetch_nodes_listing(nodes)
         return configure_macs(nodes)
 
@@ -396,6 +540,23 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         context["sort_classes"] = classes
         context['power_types'] = generate_js_power_types()
         return context
+
+    def handle_ajax_request(self, request):
+        """JSON response to update the nodes listing.
+
+        :param id: An list of system ids.  Only nodes with
+            matching system ids will be returned.
+        """
+        match_ids = request.GET.getlist('id')
+        if len(match_ids) == 0:
+            nodes = []
+        else:
+            nodes = Node.objects.get_nodes(
+                request.user, NODE_PERMISSION.VIEW, ids=match_ids)
+            nodes = prefetch_nodes_listing(nodes)
+            nodes = configure_macs(nodes)
+        nodes = [node_to_dict(node) for node in nodes]
+        return HttpResponse(json.dumps(nodes), mimetype='application/json')
 
 
 def enlist_preseed_view(request):
@@ -591,7 +752,7 @@ class NodeView(NodeViewMixin, UpdateView):
         context['nodecommissionresults'] = commissioning_results
 
         installation_results = NodeResult.objects.filter(
-            node=node, result_type=RESULT_TYPE.INSTALLING)
+            node=node, result_type=RESULT_TYPE.INSTALLATION)
         if len(installation_results) > 1:
             for result in installation_results:
                 result.name = re.sub('[_.]', ' ', result.name)
@@ -661,6 +822,12 @@ class NodeEdit(UpdateView):
     def get_form_class(self):
         return get_node_edit_form(self.request.user)
 
+    def get_has_owner(self):
+        node = self.get_object()
+        if node is None or node.owner is None:
+            return mark_safe("false")
+        return mark_safe("true")
+
     def get_form_kwargs(self):
         # This is here so the request can be passed to the form. The
         # form needs it because it sets error messages for the UI.
@@ -676,6 +843,9 @@ class NodeEdit(UpdateView):
         context = super(NodeEdit, self).get_context_data(**kwargs)
         context['power_types'] = generate_js_power_types(
             self.get_object().nodegroup)
+        # 'os_release' lets us know if we should render the `OS`
+        # and `Release` choice fields in the UI.
+        context['os_release'] = self.get_has_owner()
         return context
 
 
@@ -690,8 +860,6 @@ class NodeDelete(HelpfulDeleteView):
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=self.request.user,
             perm=NODE_PERMISSION.ADMIN)
-        if node.status == NODE_STATUS.ALLOCATED:
-            raise PermissionDenied()
         return node
 
     def get_next_url(self):

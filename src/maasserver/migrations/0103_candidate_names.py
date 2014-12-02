@@ -96,7 +96,7 @@ near neat necessary needy negative neglected negligible neighboring
 nervous new next nice nifty nimble nippy nocturnal noisy nonstop normal
 notable noted noteworthy novel noxious numb nutritious nutty obedient
 obese oblong obvious occasional odd oddball offbeat offensive official
-oily old onerlooked only open optimal optimistic opulent orange orderly
+oily old overlooked only open optimal optimistic opulent orange orderly
 ordinary organic original ornate ornery other our outgoing outlandish
 outlying outrageous outstanding oval overcooked overdue overjoyed
 palatable pale paltry parallel parched partial passionate past pastel

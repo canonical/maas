@@ -41,7 +41,6 @@ from provisioningserver.drivers.hardware.seamicro import (
     SeaMicroError,
     select_seamicro15k_api_version,
     )
-import provisioningserver.utils as utils
 
 
 class FakeResponse:
@@ -334,9 +333,7 @@ class TestSeaMicro(MAASTestCase):
         self.patch(
             SeaMicroAPIV09, 'get',
             Mock(return_value=result))
-        mock_create_node = self.patch(
-            utils,
-            'create_node')
+        mock_create_node = self.patch(seamicro, 'create_node')
 
         probe_seamicro15k_and_enlist(
             ip, username, password, power_control='restapi')
@@ -418,9 +415,7 @@ class TestSeaMicro(MAASTestCase):
             seamicro,
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
-        mock_create_node = self.patch(
-            utils,
-            'create_node')
+        mock_create_node = self.patch(seamicro, 'create_node')
 
         probe_seamicro15k_and_enlist(
             ip, username, password, power_control='restapi2')

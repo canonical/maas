@@ -19,9 +19,14 @@ __all__ = [
 
 import logging
 
+from django.db import (
+    IntegrityError,
+    transaction,
+    )
 from django.db.models import (
     CharField,
     IntegerField,
+    Manager,
     )
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
@@ -35,6 +40,24 @@ LOGGING_LEVELS = {
     logging.ERROR: 'ERROR',
     logging.CRITICAL: 'CRITICAL',
 }
+
+
+class EventTypeManager(Manager):
+    """A utility to manage the collection of Events."""
+
+    def register(self, name, description, level):
+        """Register EventType if it does not exist."""
+        try:
+            # Attempt to create the event type in a nested transaction so that
+            # we can continue using the outer transaction even if this breaks.
+            with transaction.atomic():
+                return self.create(
+                    name=name, description=description, level=level)
+        except IntegrityError:
+            # We may be in a situation where the event type already existed,
+            # or that another thread has created the event type concurrently
+            # with this thread. Proceed on that assumption.
+            return self.get(name=name)
 
 
 class EventType(CleanSave, TimestampedModel):
@@ -53,6 +76,8 @@ class EventType(CleanSave, TimestampedModel):
 
     level = IntegerField(blank=False, editable=False)
 
+    objects = EventTypeManager()
+
     @property
     def level_str(self):
         """A human-readable version of the log level."""
@@ -64,3 +89,8 @@ class EventType(CleanSave, TimestampedModel):
     def __unicode__(self):
         return "%s (level=%s, description=%s)" % (
             self.name, self.level, self.description)
+
+    def full_clean(self, exclude=None, validate_unique=False):
+        """Up-call, suppressing check for uniqueness before inserting."""
+        return super(EventType, self).full_clean(
+            exclude=exclude, validate_unique=validate_unique)
