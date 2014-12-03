@@ -205,6 +205,20 @@ class TestRetryView(MAASServerTestCase):
 
         self.assertThat(response, Is(sentinel.response))
 
+    def test__retries_API_calls(self):
+
+        def api_view(handler, request, attempt=count(1)):
+            if next(attempt) == 3:
+                return sentinel.response
+            else:
+                request_transaction_retry()
+
+        retry_view = views.RetryView.make(api_view, 4)
+
+        response = retry_view(factory.make_name(), HttpRequest())
+
+        self.assertThat(response, Is(sentinel.response))
+
     def test__make_does_not_double_wrap(self):
         view = lambda: None
         retry_view = views.RetryView.make(view)

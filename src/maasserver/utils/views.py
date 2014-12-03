@@ -20,6 +20,7 @@ __all__ = [
 from inspect import getmodule
 from textwrap import dedent
 
+from django import http
 from django.conf.urls import url
 from django.db import transaction
 from maasserver.utils.orm import is_serialization_failure
@@ -89,7 +90,30 @@ class RetryView:
             }
         )
 
-    def __call__(self, request, *args, **kwargs):
+    def extract_request(self, *args):
+        """Extract the request object from the arguments passed to a view.
+
+        The position of the request in the list of arguments is different
+        depending on the nature of the view: if the view is a UI view it's
+        the first argument and if the view is a piston-based API view, it's
+        the second argument.
+        """
+        if len(args) < 1:
+            assert False, (
+                "Couldn't find request in arguments (no argument).")
+        elif isinstance(args[0], http.HttpRequest):
+            # This is a UI view, the request is the first argument.
+            return args[0]
+        if len(args) < 2:
+            assert False, (
+                "Couldn't find request in arguments (no second argument).")
+        elif isinstance(args[1], http.HttpRequest):
+            # This is an API view, the request is the second argument (the
+            # handler is the first argument).
+            return args[1]
+        assert False, "Couldn't find request in arguments."
+
+    def __call__(self, *args, **kwargs):
         """Invoke the wrapped view with retry logic.
 
         :returns: The response from `self.atomic_view`, or, if the number of
@@ -97,9 +121,10 @@ class RetryView:
         """
         for attempt in xrange(1, self.retries + 1):
             try:
-                return self.atomic_view(request, *args, **kwargs)
+                return self.atomic_view(*args, **kwargs)
             except Exception as e:
                 if is_serialization_failure(e):
+                    request = self.extract_request(*args)
                     log_retry(request, attempt)
                     reset_request(request)
                     continue
@@ -107,7 +132,7 @@ class RetryView:
                     raise
         else:
             # Last chance, unadorned by retry logic.
-            return self.atomic_view(request, *args, **kwargs)
+            return self.atomic_view(*args, **kwargs)
 
 
 def retry_url(regex, view, kwargs=None, name=None, prefix=''):
