@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.forms import CharField
 from maasserver.enum import (
     BOOT_RESOURCE_TYPE,
     NODE_STATUS,
@@ -38,6 +39,9 @@ from maasserver.models import (
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.tests.models import GenericTestModel
+from maastesting.djangotestcase import TestModelMixin
+from testtools.matchers import Equals
 
 
 class TestHelpers(MAASServerTestCase):
@@ -149,12 +153,14 @@ class TestHelpers(MAASServerTestCase):
             AdminNodeWithMACAddressesForm, get_node_create_form(admin))
 
 
-class TestModelForm(MAASServerTestCase):
+class TestMAASModelForm(TestModelMixin, MAASServerTestCase):
+
+    app = 'maasserver.tests'
 
     def test_model_class_from_UI_has_hidden_field(self):
         class TestClass(MAASModelForm):
             class Meta:
-                model = Node
+                model = GenericTestModel
 
         form = TestClass(ui_submission=True)
         self.assertIn('ui_submission', form.fields)
@@ -165,7 +171,46 @@ class TestModelForm(MAASServerTestCase):
     def test_model_class_from_API_doesnt_have_hidden_field(self):
         class TestClass(MAASModelForm):
             class Meta:
-                model = Node
+                model = GenericTestModel
 
         form = TestClass()
         self.assertNotIn('ui_submission', form.fields)
+
+    def test_hidden_field_is_available_to_all_field_cleaning_methods(self):
+
+        class EarlyFieldMixin:
+            """Mixin to sneak a field into our form early.
+
+            Proves that the `ui_submission` field is present for all field
+            validators, regardless of the order in which the fields were added
+            to the form.
+            """
+            def __init__(self, *args, **kwargs):
+                super(EarlyFieldMixin, self).__init__(*args, **kwargs)
+                self.fields['early_field'] = CharField(required=False)
+
+        class TestForm(EarlyFieldMixin, MAASModelForm):
+
+            extra_field = CharField(required=False)
+
+            def clean_early_field(self, *args, **kwargs):
+                """Cleaner for `GenericTestModel.field`."""
+                self.while_early_field = ('ui_submission' in self.cleaned_data)
+
+            def clean_field(self, *args, **kwargs):
+                """Cleaner for `GenericTestModel.field`."""
+                self.while_field = ('ui_submission' in self.cleaned_data)
+
+            def clean_extra_field(self, *args, **kwargs):
+                """Cleaner for `TestForm.extra_field`."""
+                self.while_extra_field = ('ui_submission' in self.cleaned_data)
+
+            class Meta:
+                model = GenericTestModel
+                fields = ('field', )
+
+        form = TestForm(ui_submission=True, data={})
+        self.assertTrue(form.is_valid(), form._errors)
+        self.expectThat(form.while_early_field, Equals(True))
+        self.expectThat(form.while_field, Equals(True))
+        self.expectThat(form.while_extra_field, Equals(True))

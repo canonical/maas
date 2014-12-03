@@ -250,9 +250,20 @@ class MAASModelForm(APIEditMixin, forms.ModelForm):
     def __init__(self, data=None, files=None, ui_submission=False, **kwargs):
         super(MAASModelForm, self).__init__(data=data, files=files, **kwargs)
         if ui_submission:
-            self.fields.insert(
-                0, 'ui_submission',
-                forms.CharField(widget=forms.HiddenInput(), required=False))
+            # Add the ui_submission field.  Insert it before the other fields,
+            # so that the field validators will have access to it regardless of
+            # whether their fields were defined before or after this one.
+            ui_submission_field = (
+                'ui_submission',
+                forms.CharField(widget=forms.HiddenInput(), required=False),
+                )
+            # Django 1.6 and earlier use their own SortedDict class; 1.7 uses
+            # the standard library's OrderedDict.  The differences are
+            # deprecated in 1.6, but to be on the safe side we'll use whichever
+            # class is actually being used.
+            dict_type = self.fields.__class__
+            self.fields = dict_type(
+                [ui_submission_field] + list(self.fields.items()))
 
 
 def list_all_usable_architectures():

@@ -1,4 +1,4 @@
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Test related classes and functions for maas and its applications."""
@@ -13,9 +13,16 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'MAASIPAddressFieldModel',
-    'JSONFieldModel',
+    'BulkManagerParentTestModel',
+    'BulkManagerTestModel',
     'FieldChangeTestModel',
+    'GenericTestModel',
+    'JSONFieldModel',
+    'LargeObjectFieldModel',
+    'MAASIPAddressFieldModel',
+    'MessagesTestModel',
+    'TimestampedModelTestModel',
+    'XMLFieldModel',
     ]
 
 from django.db.models import (
@@ -31,6 +38,11 @@ from maasserver.fields import (
     )
 from maasserver.models.managers import BulkManager
 from maasserver.models.timestampedmodel import TimestampedModel
+
+
+class GenericTestModel(Model):
+    """A multi-purpose test model with one field, named `field`."""
+    field = CharField(max_length=20, blank=True)
 
 
 class JSONFieldModel(Model):
