@@ -1,0 +1,28 @@
+#!/bin/sh
+
+#### script setup ######
+PATH="$BIN_D:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+write_poweroff_job() {
+   cat >/etc/init/maas-poweroff.conf <<EOF
+   description "Power-off when MAAS task is done"
+   start on stopped cloud-final
+   console output
+   task
+   script
+     [ ! -e /tmp/block-poweroff ] || exit 0
+     /sbin/poweroff
+   end script
+EOF
+   # reload required due to lack of inotify in overlayfs (LP: #882147)
+   initctl reload-configuration
+}
+
+main() {
+   write_poweroff_job
+
+   echo "Powering node off."
+}
+
+main
+exit
