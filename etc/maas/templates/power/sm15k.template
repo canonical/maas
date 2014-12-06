@@ -3,50 +3,124 @@
 # Control a system via ipmipower, sending the seamicro specific hex codes
 #
 
-# Parameters
-power_change={{power_change}}
-power_address={{power_address}}
-power_user={{power_user}}
-power_pass={{power_pass}}
-power_control={{power_control}}
-system_id={{system_id}}
-ipmitool={{ipmitool}}
-
-# IPMI power mode
-{{py: power_mode = 1 if power_change == 'on' else 6 }}
-power_mode={{power_mode}}
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
+}
 
 # Control power using IPMI
 issue_ipmi_command() {
-    ${ipmitool} -I lanplus \
-        -H ${power_address} -U ${power_user}\
-        -P ${power_pass} raw 0x2E 1 0x00 0x7d 0xab \
-        ${power_mode} 0 ${system_id}
+    {{py: power_mode = 1 if power_change == 'on' else 6 }}
+    {{ipmitool}} -I lanplus \
+        -H {{power_address}} -U {{power_user}}\
+        -P {{power_pass}} raw 0x2E 1 0x00 0x7d 0xab \
+        {{power_mode}} 0 {{system_id}}
 }
 
 # Control power using REST v0.9
 issue_rest_v09_command() {
 python - << END
+import sys
 from provisioningserver.drivers.hardware.seamicro import power_control_seamicro15k_v09
-power_control_seamicro15k_v09("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
+try:
+    power_control_seamicro15k_v09(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(system_id) | safe}},
+        {{escape_py_literal(power_change) | safe}},
+    )
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
 END
 }
 
 # Control power using REST v2
 issue_rest_v2_command() {
 python - << END
+import sys
 from provisioningserver.drivers.hardware.seamicro import power_control_seamicro15k_v2
-power_control_seamicro15k_v2("${power_address}", "${power_user}", "${power_pass}", "${system_id}", "${power_change}")
+try:
+    power_control_seamicro15k_v2(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(system_id) | safe}},
+        {{escape_py_literal(power_change) | safe}},
+    )
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
 END
 }
 
-if [ "${power_control}" = "ipmi" ]
-then
-    issue_ipmi_command
-elif [ "${power_control}" = "restapi" ]
-then
-    issue_rest_v09_command
-elif [ "${power_control}" = "restapi2" ]
-then
-    issue_rest_v2_command
-fi
+# Query power state using REST v2
+query_state_rest_v2() {
+python - << END
+import sys
+from provisioningserver.drivers.hardware.seamicro import power_query_seamicro15k_v2
+try:
+    print(power_query_seamicro15k_v2(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(system_id) | safe}},
+    ))
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+# Perform power control
+power_control() {
+    if [ "{{power_control}}" = "ipmi" ]
+    then
+        issue_ipmi_command
+    elif [ "{{power_control}}" = "restapi" ]
+    then
+        issue_rest_v09_command
+    elif [ "{{power_control}}" = "restapi2" ]
+    then
+        issue_rest_v2_command
+    fi
+}
+
+# Query the state.
+# Only supported by REST v2.
+query_state() {
+    if [ "{{power_control}}" = "ipmi" ]
+    then
+        echo "unknown"
+    elif [ "{{power_control}}" = "restapi" ]
+    then
+        echo "unknown"
+    elif [ "{{power_control}}" = "restapi2" ]
+    then
+        query_state_rest_v2
+    fi
+}
+
+main() {
+    case $1 in
+    'on'|'off')
+        power_control
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 2 "Unknown power command: '$1'"
+    esac
+}
+
+main "{{power_change}}"
