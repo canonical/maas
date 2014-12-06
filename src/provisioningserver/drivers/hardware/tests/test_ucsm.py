@@ -50,6 +50,7 @@ from provisioningserver.drivers.hardware.ucsm import (
     make_request_data,
     parse_response,
     power_control_ucsm,
+    power_state_ucsm,
     probe_and_enlist_ucsm,
     probe_servers,
     RO_KEYS,
@@ -60,6 +61,7 @@ from provisioningserver.drivers.hardware.ucsm import (
     UCSM_XML_API_Error,
     )
 import provisioningserver.utils as utils
+from testtools.matchers import Equals
 
 
 def make_api(url='http://url', user='u', password='p',
@@ -461,7 +463,7 @@ class TestInvalidGetPowerCommand(MAASTestCase):
 
     def test_get_power_command_raises_assertion_error_on_bad_power_mode(self):
         bad_power_mode = factory.make_name('unlikely')
-        error = self.assertRaises(AssertionError, get_power_command,
+        error = self.assertRaises(UCSM_XML_API_Error, get_power_command,
                                   bad_power_mode, None)
         self.assertIn(bad_power_mode, error.args[0])
 
@@ -488,6 +490,76 @@ class TestPowerControlUCSM(MAASTestCase):
         self.assertThat(get_servers_mock, MockCalledOnceWith(api, uuid))
         self.assertThat(set_server_power_control_mock,
                         MockCalledOnceWith(api, power_control, state))
+
+
+class TestUCSMPowerState(MAASTestCase):
+    """Tests for `power_state_ucsm`."""
+
+    def test_power_state_get_off(self):
+        url = factory.make_name('url')
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        uuid = factory.make_UUID()
+        api = Mock()
+        self.patch(ucsm, 'UCSM_XML_API').return_value = api
+        get_servers_mock = self.patch(ucsm, 'get_servers')
+        server = make_server()
+        current_state = 'down'
+        power_control = Element('lsPower', {'state': current_state})
+        get_servers_mock.return_value = [server]
+        get_server_power_control_mock = self.patch(
+            ucsm, 'get_server_power_control')
+        get_server_power_control_mock.return_value = power_control
+
+        power_state = power_state_ucsm(url, username, password, uuid)
+        self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
+        self.expectThat(
+            get_server_power_control_mock,
+            MockCalledOnceWith(api, server))
+        self.expectThat(power_state, Equals('off'))
+
+    def test_power_state_get_on(self):
+        url = factory.make_name('url')
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        uuid = factory.make_UUID()
+        api = Mock()
+        self.patch(ucsm, 'UCSM_XML_API').return_value = api
+        get_servers_mock = self.patch(ucsm, 'get_servers')
+        server = make_server()
+        current_state = 'up'
+        power_control = Element('lsPower', {'state': current_state})
+        get_servers_mock.return_value = [server]
+        get_server_power_control_mock = self.patch(
+            ucsm, 'get_server_power_control')
+        get_server_power_control_mock.return_value = power_control
+
+        power_state = power_state_ucsm(url, username, password, uuid)
+        self.expectThat(get_servers_mock, MockCalledOnceWith(api, uuid))
+        self.expectThat(
+            get_server_power_control_mock,
+            MockCalledOnceWith(api, server))
+        self.expectThat(power_state, Equals('on'))
+
+    def test_power_state_error_on_unknown_state(self):
+        url = factory.make_name('url')
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        uuid = factory.make_UUID()
+        api = Mock()
+        self.patch(ucsm, 'UCSM_XML_API').return_value = api
+        get_servers_mock = self.patch(ucsm, 'get_servers')
+        server = make_server()
+        current_state = factory.make_name('error')
+        power_control = Element('lsPower', {'state': current_state})
+        get_servers_mock.return_value = [server]
+        get_server_power_control_mock = self.patch(
+            ucsm, 'get_server_power_control')
+        get_server_power_control_mock.return_value = power_control
+
+        self.assertRaises(
+            UCSM_XML_API_Error, power_state_ucsm, url,
+            username, password, uuid)
 
 
 class TestProbeAndEnlistUCSM(MAASTestCase):

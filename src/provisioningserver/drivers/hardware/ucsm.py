@@ -83,8 +83,14 @@ str = None
 __metaclass__ = type
 __all__ = [
     'power_control_ucsm',
+    'power_state_ucsm',
     'probe_and_enlist_ucsm',
 ]
+
+
+class UCSMState:
+    DOWN = "down"
+    UP = "up"
 
 
 class UCSM_XML_API_Error(Exception):
@@ -375,8 +381,8 @@ def get_power_command(maas_power_mode, current_state):
     elif maas_power_mode == 'off':
         return 'admin-down'
     else:
-        message = 'Unexpected maas power mode: %s' % (maas_power_mode)
-        raise AssertionError(message)
+        raise UCSM_XML_API_Error(
+            'Unexpected maas power mode: %s' % (maas_power_mode), None)
 
 
 def power_control_ucsm(url, username, password, uuid, maas_power_mode):
@@ -391,6 +397,23 @@ def power_control_ucsm(url, username, password, uuid, maas_power_mode):
         command = get_power_command(maas_power_mode,
                                     power_control.get('state'))
         set_server_power_control(api, power_control, command)
+
+
+def power_state_ucsm(url, username, password, uuid):
+    """Return the power state for the ucsm machine."""
+    with logged_in(url, username, password) as api:
+        # UUIDs are unique per server, so we get either one or zero
+        # servers for a given UUID.
+        [server] = get_servers(api, uuid)
+        power_control = get_server_power_control(api, server)
+        power_state = power_control.get('state')
+
+        if power_state == UCSMState.DOWN:
+            return 'off'
+        elif power_state == UCSMState.UP:
+            return 'on'
+        raise UCSM_XML_API_Error(
+            'Unknown power state: %s' % power_state, None)
 
 
 def probe_and_enlist_ucsm(url, username, password):
