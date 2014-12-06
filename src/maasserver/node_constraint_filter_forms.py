@@ -188,7 +188,7 @@ class AcquireNodeForm(RenamableFieldsForm):
 
     mem = forms.FloatField(
         label="Memory", required=False,
-        error_messages={'invalid': "Invalid memory: number of MB required."})
+        error_messages={'invalid': "Invalid memory: number of MiB required."})
 
     tags = UnconstrainedMultipleChoiceField(label="Tags", required=False)
 
