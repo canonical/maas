@@ -321,9 +321,21 @@ def power_control_seamicro15k_v2(ip, username, password, server_id,
                                  power_change):
     server_id = '%s/0' % server_id
     api = get_seamicro15k_api('v2.0', ip, username, password)
-    if api:
-        server = api.servers.get(server_id)
-        if power_change == "on":
-            server.power_on(using_pxe=True)
-        elif power_change == "off":
-            server.power_off(force=True)
+    if api is None:
+        raise SeaMicroError('Unable to contact BMC controller.')
+    server = api.servers.get(server_id)
+    if power_change == "on":
+        server.power_on(using_pxe=True)
+    elif power_change == "off":
+        server.power_off(force=True)
+
+
+def power_query_seamicro15k_v2(ip, username, password, server_id):
+    server_id = '%s/0' % server_id
+    api = get_seamicro15k_api('v2.0', ip, username, password)
+    if api is None:
+        raise SeaMicroError('Unable to contact BMC controller.')
+    server = api.servers.get(server_id)
+    if server.active:
+        return "on"
+    return "off"

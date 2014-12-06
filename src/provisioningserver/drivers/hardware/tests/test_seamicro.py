@@ -34,6 +34,7 @@ from provisioningserver.drivers.hardware.seamicro import (
     find_seamicro15k_servers,
     power_control_seamicro15k_v09,
     power_control_seamicro15k_v2,
+    power_query_seamicro15k_v2,
     POWER_STATUS,
     probe_seamicro15k_and_enlist,
     SeaMicroAPIV09,
@@ -461,3 +462,71 @@ class TestSeaMicro(MAASTestCase):
 
         power_control_seamicro15k_v2(ip, username, password, '0', 'on')
         mock_power_on.assert_called()
+
+    def test_power_control_seamicro15k_v2_raises_error_when_api_None(self):
+        ip = factory.make_ipv4_address()
+        username = factory.make_string()
+        password = factory.make_string()
+
+        mock_get_api = self.patch(
+            seamicro,
+            'get_seamicro15k_api')
+        mock_get_api.return_value = None
+
+        self.assertRaises(
+            SeaMicroError,
+            power_control_seamicro15k_v2, ip, username, password, '0', 'on')
+
+    def test_power_query_seamicro15k_v2_power_on(self):
+        ip = factory.make_ipv4_address()
+        username = factory.make_string()
+        password = factory.make_string()
+
+        fake_server = FakeServer('0/0')
+        self.patch(fake_server, 'active', True)
+        fake_client = FakeSeaMicroClient()
+        fake_client.servers = FakeSeaMicroServerManager()
+        fake_client.servers.servers.append(fake_server)
+
+        mock_get_api = self.patch(
+            seamicro,
+            'get_seamicro15k_api')
+        mock_get_api.return_value = fake_client
+
+        self.assertEqual(
+            "on",
+            power_query_seamicro15k_v2(ip, username, password, '0'))
+
+    def test_power_query_seamicro15k_v2_power_off(self):
+        ip = factory.make_ipv4_address()
+        username = factory.make_string()
+        password = factory.make_string()
+
+        fake_server = FakeServer('0/0')
+        self.patch(fake_server, 'active', False)
+        fake_client = FakeSeaMicroClient()
+        fake_client.servers = FakeSeaMicroServerManager()
+        fake_client.servers.servers.append(fake_server)
+
+        mock_get_api = self.patch(
+            seamicro,
+            'get_seamicro15k_api')
+        mock_get_api.return_value = fake_client
+
+        self.assertEqual(
+            "off",
+            power_query_seamicro15k_v2(ip, username, password, '0'))
+
+    def test_power_query_seamicro15k_v2_raises_error_when_api_None(self):
+        ip = factory.make_ipv4_address()
+        username = factory.make_string()
+        password = factory.make_string()
+
+        mock_get_api = self.patch(
+            seamicro,
+            'get_seamicro15k_api')
+        mock_get_api.return_value = None
+
+        self.assertRaises(
+            SeaMicroError,
+            power_query_seamicro15k_v2, ip, username, password, '0')

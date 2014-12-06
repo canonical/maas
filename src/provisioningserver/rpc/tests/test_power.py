@@ -323,6 +323,37 @@ class TestChangePowerState(MAASTestCase):
         self.assertThat(markNodeBroken, MockNotCalled())
 
     @inlineCallbacks
+    def test_change_power_state_doesnt_retry_if_query_returns_unknown(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        power_change = random.choice(['on', 'off'])
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        power.power_action_registry[system_id] = power_change
+        # Patch the power action utility so that it says the node is
+        # in the required power state.
+        power_action, execute = patch_power_action(
+            self, return_value="unknown")
+        markNodeBroken = yield self.patch_rpc_methods()
+
+        yield power.change_power_state(
+            system_id, hostname, power_type, power_change, context)
+        self.assertThat(
+            execute,
+            MockCallsMatch(
+                # One call to change the power state.
+                call(power_change=power_change, **context),
+                # One call to query the power state.
+                call(power_change='query', **context),
+            ),
+        )
+        # The node hasn't been marked broken.
+        self.assertThat(markNodeBroken, MockNotCalled())
+
+    @inlineCallbacks
     def test_change_power_state_marks_the_node_broken_if_failure(self):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
@@ -529,6 +560,29 @@ class TestPowerQuery(MAASTestCase):
         system_id = factory.make_name('system_id')
         hostname = factory.make_name('hostname')
         power_state = random.choice(['on', 'off'])
+        power_type = random.choice(power.QUERY_POWER_TYPES)
+        context = {
+            factory.make_name('context-key'): factory.make_name('context-val')
+        }
+        self.patch(power, 'pause')
+        power_state_update = self.patch_autospec(power, 'power_state_update')
+
+        # Simulate success.
+        power_action, execute = patch_power_action(
+            self, return_value=power_state)
+        _, _, io = self.patch_rpc_methods()
+
+        d = power.get_power_state(
+            system_id, hostname, power_type, context)
+        io.flush()
+        self.assertEqual(power_state, extract_result(d))
+        self.assertThat(
+            power_state_update, MockCalledOnceWith(system_id, power_state))
+
+    def test_get_power_state_changes_power_state_if_unknown(self):
+        system_id = factory.make_name('system_id')
+        hostname = factory.make_name('hostname')
+        power_state = "unknown"
         power_type = random.choice(power.QUERY_POWER_TYPES)
         context = {
             factory.make_name('context-key'): factory.make_name('context-val')

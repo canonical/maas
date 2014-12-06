@@ -61,7 +61,7 @@ from twisted.python import log
 # state for these power types.
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
-QUERY_POWER_TYPES = ['amt', 'ipmi', 'mscm', 'ucsm', 'virsh']
+QUERY_POWER_TYPES = ['amt', 'ipmi', 'mscm', 'sm15k', 'ucsm', 'virsh']
 
 
 # Timeout for change_power_state(). We set it to 2 minutes by default,
@@ -232,7 +232,7 @@ def change_power_state(system_id, hostname, power_type, power_change, context,
         new_power_state = yield deferToThread(
             perform_power_change, system_id, hostname, power_type,
             'query', context)
-        if new_power_state == power_change:
+        if new_power_state == "unknown" or new_power_state == power_change:
             yield power_change_success(system_id, hostname, power_change)
             return
 
@@ -301,7 +301,7 @@ def get_power_state(system_id, hostname, power_type, context, clock=reactor):
         try:
             power_state = yield deferToThread(
                 perform_power_query, system_id, hostname, power_type, context)
-            if power_state not in ("on", "off"):
+            if power_state not in ("on", "off", "unknown"):
                 # This is considered an error.
                 raise PowerActionFail(power_state)
         except PowerActionFail as e:
