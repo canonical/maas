@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 
 import logging
-import os
 from os.path import abspath
 
 from maas import (
@@ -102,12 +101,8 @@ PRESEED_TEMPLATE_LOCATIONS = (
     abspath("contrib/preseeds_v2"),
     )
 
-# The root directory of the MAAS project for this dev instance.
-DEV_ROOT_DIRECTORY = os.path.join(
-    os.path.dirname(__file__), os.pardir, os.pardir)
-
 # Inject custom code for setting up the test database.
-patch_db_creation(DEV_ROOT_DIRECTORY)
+patch_db_creation(abspath('db'), abspath('schema/baseline.sql'))
 
 # Override the default provisioning config filename.
 provisioningserver.config.Config.DEFAULT_FILENAME = abspath(

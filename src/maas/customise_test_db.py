@@ -22,7 +22,7 @@ import django.db.backends.postgresql_psycopg2.creation as backend_creation
 from provisioningserver.utils.shell import call_and_check
 
 
-def patch_db_creation(dev_root):
+def patch_db_creation(db_path, dump_path):
     """Patch Django's creation of PostgreSQL test databases.
 
     This injects just one customisation: right after creating the database,
@@ -33,8 +33,9 @@ def patch_db_creation(dev_root):
     South will notice which migrations have been applied, and just runs the
     ones that are still missing from the baseline schema.
 
-    :param dev_root: The development root directory, i.e. the branch where
-        MAAS is being run.
+    :param db_path: An absolute filesystem path to the database, to which we
+        connect via a UNIX socket.
+    :param dump_path: An absolute filesystem path to the database dump.
     """
     original_create = backend_creation.DatabaseCreation._create_test_db
 
@@ -49,8 +50,7 @@ def patch_db_creation(dev_root):
         in the applicable settings module.
         """
         result = original_create(self, *args, **kwargs)
-        baseline_dump = os.path.join(dev_root, 'schema', 'baseline.sql')
-        if os.path.exists(baseline_dump):
+        if os.path.exists(dump_path):
             # Load the baseline schema.
             #
             # The --host option may look strange: we connect to the database
@@ -59,9 +59,9 @@ def patch_db_creation(dev_root):
             # host name to connect to.
             call_and_check([
                 'psql',
-                '--host=%s' % os.path.join(dev_root, 'db'),
+                '--host=%s' % db_path,
                 '--dbname=%s' % self._get_test_db_name(),
-                '--file=%s' % baseline_dump,
+                '--file=%s' % dump_path,
                 ])
         return result
 

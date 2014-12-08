@@ -27,7 +27,6 @@ from maasserver.api.utils import (
     get_optional_param,
     )
 from maasserver.clusterrpc.boot_images import get_boot_images_for
-from maasserver.enum import NODE_STATUS
 from maasserver.models import (
     BootResource,
     Config,
@@ -171,7 +170,7 @@ def pxeconfig(request):
         node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
         node.save()
 
-    if node is None or node.status == NODE_STATUS.COMMISSIONING:
+    if node is None or node.get_boot_purpose() == "commissioning":
         osystem = Config.objects.get_config('commissioning_osystem')
         series = Config.objects.get_config('commissioning_distro_series')
     else:

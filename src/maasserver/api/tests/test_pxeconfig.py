@@ -552,3 +552,22 @@ class TestPXEConfigAPI(MAASServerTestCase):
         params['mac'] = node.get_primary_mac()
         params_out = self.get_pxeconfig(params)
         self.assertEqual(ubuntu_image['release'], params_out["release"])
+
+    def test_pxeconfig_returns_commissioning_os_when_erasing_disks(self):
+        commissioning_osystem = factory.make_name("os")
+        Config.objects.set_config(
+            "commissioning_osystem", commissioning_osystem)
+        commissioning_series = factory.make_name("series")
+        Config.objects.set_config(
+            "commissioning_distro_series", commissioning_series)
+        nodegroup = factory.make_NodeGroup()
+        node = factory.make_Node(
+            nodegroup=nodegroup, status=NODE_STATUS.DISK_ERASING,
+            osystem=factory.make_name("centos"), mac=True,
+            distro_series=factory.make_name("release"))
+        params = self.get_default_params()
+        params['cluster_uuid'] = nodegroup.uuid
+        params['mac'] = node.get_primary_mac()
+        params_out = self.get_pxeconfig(params)
+        self.assertEqual(commissioning_osystem, params_out['osystem'])
+        self.assertEqual(commissioning_series, params_out['release'])
