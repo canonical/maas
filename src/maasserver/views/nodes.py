@@ -44,7 +44,10 @@ from django.shortcuts import (
     get_object_or_404,
     render_to_response,
     )
-from django.template import RequestContext
+from django.template import (
+    loader,
+    RequestContext,
+    )
 from django.utils.safestring import mark_safe
 from django.views.generic import (
     CreateView,
@@ -214,6 +217,24 @@ def get_vendor_for_mac(mac):
         return 'Unknown Vendor'
 
 
+def configure_mac(node):
+    """Configure the node to have a primary_mac, primary_mac_vendor, and
+    extra_macs attribute.
+    """
+    macs = node.macaddress_set.all()
+    macs = sorted(macs, key=lambda mac: mac.created)
+    macs = ['%s' % mac.mac_address for mac in macs]
+    if len(macs) == 0:
+        node.primary_mac = None
+        node.primary_mac_vendor = None
+        node.extra_macs = []
+    else:
+        node.primary_mac = macs[0]
+        node.primary_mac_vendor = get_vendor_for_mac(node.primary_mac)
+        node.extra_macs = macs[1:]
+    return node
+
+
 def configure_macs(nodes):
     """Configures the each node in the query to have an "macs" attribute,
     that contains a list of macs, sorted by created.
@@ -221,31 +242,26 @@ def configure_macs(nodes):
     The list is structed to contain the MAC and its vendor.
     """
     for node in nodes:
-        macs = node.macaddress_set.all()
-        macs = sorted(macs, key=lambda mac: mac.created)
-        macs = ['%s' % mac.mac_address for mac in macs]
-        if len(macs) == 0:
-            node.primary_mac = None
-            node.primary_mac_vendor = None
-            node.extra_macs = []
-        else:
-            node.primary_mac = macs[0]
-            node.primary_mac_vendor = get_vendor_for_mac(node.primary_mac)
-            node.extra_macs = macs[1:]
+        configure_mac(node)
     return nodes
 
 
-def node_to_dict(node):
-    """Convert `Node` to a dictionary."""
+def node_to_dict(node, event_log_count=0):
+    """Convert `Node` to a dictionary.
+
+    :param event_log_count: Number of entries from the event log to add to
+        the dictionary.
+    """
     if node.owner is None:
         owner = ""
     else:
         owner = '%s' % node.owner
-    return dict(
+    node_dict = dict(
         id=node.id,
         system_id=node.system_id,
         url=reverse('node-view', args=[node.system_id]),
         hostname=node.hostname,
+        architecture=node.architecture,
         fqdn=node.fqdn,
         status=node.display_status(),
         owner=owner,
@@ -258,6 +274,36 @@ def node_to_dict(node):
         mac=node.primary_mac,
         vendor=node.primary_mac_vendor,
         macs=node.extra_macs,
+        )
+    if event_log_count != 0:
+        # Add event information to the generated node dictionary. We exclude
+        # debug after we calculate the count, so we show the correct total
+        # number of events.
+        events = Event.objects.filter(node=node)
+        total_num_events = events.count()
+        events = events.exclude(type__level=logging.DEBUG).order_by('-id')
+        events_count = events.count()
+        if event_log_count > 0:
+            # Limit the number of events.
+            events = events.all()[:event_log_count]
+            events_count = len(events)
+        node_dict['events'] = dict(
+            total=total_num_events,
+            count=events_count,
+            events=[event_to_dict(event) for event in events],
+            more_url=reverse('node-event-list-view', args=[node.system_id]),
+            )
+    return node_dict
+
+
+def event_to_dict(event):
+    """Convert `Event` to a dictionary."""
+    return dict(
+        id=event.id,
+        level=event.type.level_str,
+        created=event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+        type=event.type.description,
+        description=event.description
         )
 
 
@@ -680,6 +726,12 @@ class NodeView(NodeViewMixin, UpdateView):
     # The number of events shown on the node view page.
     number_of_events_shown = 5
 
+    def get(self, request, *args, **kwargs):
+        """Handle a GET request."""
+        if request.is_ajax():
+            return self.handle_ajax_request(request, *args, **kwargs)
+        return super(NodeView, self).get(request, *args, **kwargs)
+
     def warn_unconfigured_ip_addresses(self, node):
         """Should the UI warn about unconfigured IPv6 addresses on the node?
 
@@ -789,6 +841,27 @@ class NodeView(NodeViewMixin, UpdateView):
 
     def get_success_url(self):
         return reverse('node-view', args=[self.get_object().system_id])
+
+    def render_node_actions(self, request):
+        """Render the HTML for all the available node actions."""
+        template = loader.get_template('maasserver/node_actions.html')
+        self.object = self.get_object()
+        context = {
+            'node': self.object,
+            'can_edit': self.request.user.has_perm(
+                NODE_PERMISSION.EDIT, self.object),
+            'form': self.get_form(self.get_form_class()),
+            }
+        return template.render(RequestContext(request, context))
+
+    def handle_ajax_request(self, request, *args, **kwargs):
+        """JSON response to update the node view."""
+        node = self.get_object()
+        node = configure_mac(node)
+        node = node_to_dict(
+            node, event_log_count=self.number_of_events_shown)
+        node['action_view'] = self.render_node_actions(request)
+        return HttpResponse(json.dumps(node), mimetype='application/json')
 
 
 class NodeEventListView(NodeViewMixin, PaginatedListView):
