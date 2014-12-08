@@ -506,7 +506,9 @@ class TestNodeGroup(MAASServerTestCase):
 
         self.expectThat(
             protocol.AddVirsh,
-            MockCalledOnceWith(ANY, poweraddr=poweraddr, password=password))
+            MockCalledOnceWith(
+                ANY, poweraddr=poweraddr,
+                password=password, prefix_filter=None))
 
     def test_add_virsh_calls_client_with_resource_endpoint(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
@@ -520,7 +522,8 @@ class TestNodeGroup(MAASServerTestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddVirsh, poweraddr=poweraddr, password=password))
+                AddVirsh, poweraddr=poweraddr,
+                password=password, prefix_filter=None))
 
     def test_add_virsh_raises_if_no_connection_to_cluster(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')

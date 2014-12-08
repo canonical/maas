@@ -53,10 +53,10 @@ SAMPLE_DUMPXML = dedent("""
 class TestVirshSSH(MAASTestCase):
     """Tests for `VirshSSH`."""
 
-    def configure_virshssh_pexpect(self, inputs=None):
+    def configure_virshssh_pexpect(self, inputs=None, dom_prefix=None):
         """Configures the VirshSSH class to use 'cat' process
         for testing instead of the actual virsh."""
-        conn = virsh.VirshSSH(timeout=0.1)
+        conn = virsh.VirshSSH(timeout=0.1, dom_prefix=dom_prefix)
         self.addCleanup(conn.close)
         self.patch(conn, '_execute')
         conn._spawn('cat')
@@ -65,9 +65,9 @@ class TestVirshSSH(MAASTestCase):
                 conn.sendline(line)
         return conn
 
-    def configure_virshssh(self, output):
+    def configure_virshssh(self, output, dom_prefix=None):
         self.patch(virsh.VirshSSH, 'run').return_value = output
-        return virsh.VirshSSH()
+        return virsh.VirshSSH(dom_prefix=dom_prefix)
 
     def test_login_prompt(self):
         virsh_outputs = [
@@ -154,6 +154,13 @@ class TestVirshSSH(MAASTestCase):
     def test_list(self):
         names = [factory.make_name('machine') for _ in range(3)]
         conn = self.configure_virshssh('\n'.join(names))
+        expected = conn.list()
+        self.assertItemsEqual(names, expected)
+
+    def test_list_dom_prefix(self):
+        prefix = 'dom_prefix'
+        names = [prefix + factory.make_name('machine') for _ in range(3)]
+        conn = self.configure_virshssh('\n'.join(names), dom_prefix=prefix)
         expected = conn.list()
         self.assertItemsEqual(names, expected)
 

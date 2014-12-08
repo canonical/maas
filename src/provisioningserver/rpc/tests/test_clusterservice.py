@@ -1889,13 +1889,15 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
             clusterservice, 'probe_virsh_and_enlist')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
+        prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddVirsh, {
             "poweraddr": poweraddr,
             "password": password,
+            "prefix_filter": prefix_filter,
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, password))
+                poweraddr, password, prefix_filter))
 
     def test__password_is_optional(self):
         probe_virsh_and_enlist = self.patch_autospec(
@@ -1907,7 +1909,7 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, None))
+                poweraddr, None, None))
 
     def test__can_be_called_without_password_key(self):
         probe_virsh_and_enlist = self.patch_autospec(
@@ -1918,7 +1920,7 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, None))
+                poweraddr, None, None))
 
 
 class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
