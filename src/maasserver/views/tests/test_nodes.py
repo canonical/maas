@@ -52,6 +52,7 @@ from maasserver.enum import (
 from maasserver.forms import NodeActionForm
 from maasserver.models import (
     Config,
+    Event,
     MACAddress,
     Node,
     node as node_module,
@@ -85,7 +86,9 @@ from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import (
+    configure_mac,
     configure_macs,
+    event_to_dict,
     message_from_form_stats,
     node_to_dict,
     NodeEventListView,
@@ -116,7 +119,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_node_to_dict_keys(self):
         node = factory.make_Node()
-        node = configure_macs([node])[0]
+        node = configure_mac(node)
         self.assertThat(
             node_to_dict(node),
             ContainsAll([
@@ -126,7 +129,7 @@ class TestHelpers(MAASServerTestCase):
 
     def test_node_to_dict_values(self):
         node = factory.make_Node(mac=True)
-        node = configure_macs([node])[0]
+        node = configure_mac(node)
         dict_node = node_to_dict(node)
         self.expectThat(dict_node['id'], Equals(node.id))
         self.expectThat(dict_node['system_id'], Equals(node.system_id))
@@ -148,6 +151,37 @@ class TestHelpers(MAASServerTestCase):
         self.expectThat(dict_node['mac'], Equals(node.primary_mac))
         self.expectThat(dict_node['vendor'], Equals(node.primary_mac_vendor))
         self.expectThat(dict_node['macs'], Equals(node.extra_macs))
+
+    def test_node_to_dict_include_events(self):
+        node = factory.make_Node()
+        node = configure_mac(node)
+        etype = factory.make_EventType(level=logging.INFO)
+        events = [factory.make_Event(node, etype) for _ in range(4)]
+        dict_node = node_to_dict(node, event_log_count=2)
+        self.expectThat(dict_node['events']['total'], Equals(len(events)))
+        self.expectThat(dict_node['events']['count'], Equals(2))
+        self.expectThat(len(dict_node['events']['events']), Equals(2))
+        self.expectThat(
+            dict_node['events']['more_url'],
+            Equals(reverse('node-event-list-view', args=[node.system_id])))
+
+    def test_event_to_dict_keys(self):
+        event = factory.make_Event()
+        self.assertThat(
+            event_to_dict(event),
+            ContainsAll([
+                'id', 'level', 'created', 'type', 'description']))
+
+    def test_event_to_dict_values(self):
+        event = factory.make_Event()
+        dict_event = event_to_dict(event)
+        self.expectThat(dict_event['id'], Equals(event.id))
+        self.expectThat(dict_event['level'], Equals(event.type.level_str))
+        self.expectThat(
+            dict_event['created'],
+            Equals(event.created.strftime('%a, %d %b. %Y %H:%M:%S')))
+        self.expectThat(dict_event['type'], Equals(event.type.description))
+        self.expectThat(dict_event['description'], Equals(event.description))
 
 
 class TestGenerateJSPowerTypes(MAASServerTestCase):
@@ -210,6 +244,12 @@ class NodeViewsTest(MAASServerTestCase):
         url = reverse('node-list')
         if ids is not None and len(ids) > 0:
             url += '?id=' + '&id='.join(ids)
+        return self.client.get(
+            url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+    def get_node_view_ajax(self, node):
+        """Get result of AJAX request for node view."""
+        url = reverse('node-view', args=[node.system_id])
         return self.client.get(
             url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
@@ -601,14 +641,14 @@ class NodeViewsTest(MAASServerTestCase):
             addresses_section.cssselect('#unconfigured-ip-warning'))
 
     def test_view_node_displays_node_info_no_owner(self):
-        # If the node has no owner, the Owner 'slot' does not exist.
+        # If the node has no owner, the Owner 'slot' is hidden.
         self.client_log_in()
         node = factory.make_Node()
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.get(node_link)
         doc = fromstring(response.content)
-        content_text = doc.cssselect('#content')[0].text_content()
-        self.assertNotIn('Owner', content_text)
+        [owner_div] = doc.cssselect('#owner')
+        self.assertIn('hidden', owner_div.attrib['class'])
 
     def test_view_node_displays_link_to_view_preseed(self):
         self.client_log_in()
@@ -782,6 +822,85 @@ class NodeViewsTest(MAASServerTestCase):
                 self.assertIn(help_link, links)
             else:
                 self.assertNotIn(help_link, links)
+
+    def test_view_node_ajax_returns_json(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        response = self.get_node_view_ajax(node)
+        self.assertEqual('application/json', response['Content-Type'])
+
+    def test_view_node_ajax_returns_node_info(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        response = self.get_node_view_ajax(node)
+        json_obj = json.loads(response.content)
+        del json_obj['action_view']
+        self.assertEquals(
+            node_to_dict(
+                configure_mac(node),
+                event_log_count=NodeView.number_of_events_shown),
+            json_obj)
+
+    def test_view_node_ajax_returns_action_view(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        response = self.get_node_view_ajax(node)
+        json_obj = json.loads(response.content)
+        self.assertThat(
+            json_obj['action_view'],
+            Contains('<h4>Node details</h4'))
+
+    def test_view_node_ajax_returns_latest_node_events(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        # Create old events.
+        [
+            factory.make_Event(
+                node=node, type=factory.make_EventType(
+                    level=logging.INFO))
+            for _ in range(4)
+        ]
+        # Create NodeView.number_of_events_shown events.
+        events = [
+            factory.make_Event(
+                node=node, type=factory.make_EventType(
+                    level=logging.INFO))
+            for _ in range(NodeView.number_of_events_shown)
+        ]
+        response = self.get_node_view_ajax(node)
+        json_obj = json.loads(response.content)
+        self.assertItemsEqual(
+            [
+                (event.type.description, event.description)
+                for event in events
+            ],
+            [
+                (event['type'], event['description'])
+                for event in json_obj['events']['events']
+            ]
+        )
+
+    def test_view_node_ajax_doesnt_return_events_with_debug_level(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        # Create an event with debug level
+        factory.make_Event(
+            node=node, type=factory.make_EventType(
+                level=logging.DEBUG))
+        response = self.get_node_view_ajax(node)
+        json_obj = json.loads(response.content)
+        self.expectThat(json_obj['events']['total'], Equals(1))
+        self.expectThat(json_obj['events']['count'], Equals(0))
+
+    def test_view_node_ajax_doesnt_return_events_from_other_nodes(self):
+        self.client_log_in()
+        node = factory.make_Node()
+        # Create an event related to another node.
+        factory.make_Event()
+        response = self.get_node_view_ajax(node)
+        json_obj = json.loads(response.content)
+        self.expectThat(json_obj['events']['total'], Equals(0))
+        self.expectThat(json_obj['events']['count'], Equals(0))
 
     def test_admin_can_delete_nodes(self):
         self.client_log_in(as_admin=True)
@@ -1250,113 +1369,6 @@ class NodeViewsTest(MAASServerTestCase):
             data=data.encode("utf-8"))
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertNotIn("Third Party Drivers", response.content)
-
-    def test_node_view_show_latest_node_events(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        # Create old events.
-        [
-            factory.make_Event(
-                node=node, type=factory.make_EventType(
-                    level=logging.INFO))
-            for _ in range(4)
-        ]
-        # Create NodeView.number_of_events_shown events.
-        events = [
-            factory.make_Event(
-                node=node, type=factory.make_EventType(
-                    level=logging.INFO))
-            for _ in range(NodeView.number_of_events_shown)
-        ]
-        response = self.client.get(reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content.decode('utf8'))
-        document = fromstring(response.content)
-        events_displayed = document.xpath(
-            "//div[@id='node_event_list']//td[@class='event_description']")
-        self.assertItemsEqual(
-            [
-                event.type.description + ' \u2014 ' + event.description
-                for event in events
-            ],
-            [
-                normalize_text(display.text_content())
-                for display in events_displayed
-            ]
-        )
-
-    def test_node_view_doesnt_show_events_with_debug_level(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        # Create an event with debug level
-        event = factory.make_Event(
-            node=node, type=factory.make_EventType(
-                level=logging.DEBUG))
-        response = self.client.get(
-            reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content)
-        document = fromstring(response.content)
-        events_displayed = document.xpath("//div[@id='node_event_list']")
-        self.assertNotIn(
-            event.type.description,
-            events_displayed[0].text_content().strip(),
-        )
-
-    def test_node_view_doesnt_show_events_from_other_nodes(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        # Create an event related to another node.
-        event = factory.make_Event()
-        response = self.client.get(
-            reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content)
-        document = fromstring(response.content)
-        events_displayed = document.xpath("//div[@id='node_event_list']")
-        self.assertNotIn(
-            event.type.description,
-            events_displayed[0].text_content().strip(),
-        )
-
-    def test_node_view_links_to_node_event_log(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        factory.make_Event(node=node)
-        response = self.client.get(
-            reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content.decode('utf8'))
-        document = fromstring(response.content)
-        [events_section] = document.xpath("//li[@id='node-events']")
-        self.assertIn(
-            "Full node event log (1 event).",
-            ' '.join(events_section.text_content().split()))
-
-    def test_node_view_pluralises_link_to_node_event_log(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        num_events = randint(2, 3)
-        for _ in range(num_events):
-            factory.make_Event(node=node)
-        response = self.client.get(
-            reverse('node-view', args=[node.system_id]))
-        self.assertIn("Latest node events", response.content.decode('utf8'))
-        document = fromstring(response.content)
-        [events_section] = document.xpath("//li[@id='node-events']")
-        self.assertIn(
-            "Full node event log (%d events)." % num_events,
-            ' '.join(events_section.text_content().split()))
-
-    def test_node_view_contains_link_to_node_event_log(self):
-        self.client_log_in()
-        node = factory.make_Node()
-        # Create an event related to another node.
-        [
-            factory.make_Event(node=node)
-            for _ in range(4)
-        ]
-        response = self.client.get(
-            reverse('node-view', args=[node.system_id]))
-        node_event_list = reverse(
-            'node-event-list-view', args=[node.system_id])
-        self.assertIn(node_event_list, get_content_links(response))
 
 
 class TestNodesViewSearch(MAASServerTestCase):
@@ -2125,6 +2137,113 @@ class NodeListingJSReloader(SeleniumTestCase):
                 'mac',
                 'vendor',
                 'macs',
+                ]))
+
+
+class TestJSNodeView(SeleniumTestCase):
+
+    # JS Script that will load a new NodeView, placing the
+    # object on the global window.
+    VIEW_SCRIPT = dedent("""\
+        YUI().use(
+            'maas.node', 'maas.node_views', 'maas.shortpoll',
+            function (Y) {
+              Y.on('domready', function() {
+                // Place the view on the window, giving the ability for
+                // selenium to access it.
+                window.node_view = new Y.maas.node_views.NodeView({
+                  srcNode: 'body',
+                  eventList: '#node_event_list',
+                  actionView: '#sidebar'
+                });
+                var poller = new Y.maas.shortpoll.ShortPollManager({
+                  uri: "%s"
+                });
+                window.node_view.addLoader(poller.get("io"));
+                poller.poll();
+            });
+        });
+        """)
+
+    def get_js_node(self, node):
+        """Return the loaded node from JS NodeView."""
+        self.get_page('node-view', args=[node.system_id])
+
+        # We execute a script to create a new view. This needs to
+        # be done to get access to the view. As the view code does not place
+        # the object on a global variable, which is a good thing.
+        self.selenium.execute_script(
+            self.VIEW_SCRIPT % reverse('node-view', args=[node.system_id]))
+
+        # Extract the load node from javascript, to check that it loads the
+        # correct information. Due to the nature of JS and the
+        # poller requesting the node, we cannot assume that the result
+        # will be their immediately. We will try for a maximum of
+        # 5 seconds before giving up.
+        for _ in range(10):
+            js_node = self.selenium.execute_script(
+                "return window.node_view.node;")
+            if js_node is not None:
+                break
+            time.sleep(0.5)
+        if js_node is None:
+            self.fail("Unable to retrieve the loaded node from selenium.")
+        return js_node
+
+    def make_node_with_events(self):
+        node = factory.make_Node()
+        [factory.make_Event(node=node) for _ in range(3)]
+        return node
+
+    def test_node_view_loads_node_with_correct_attributes(self):
+        self.log_in()
+        with transaction.atomic():
+            node = self.make_node_with_events()
+        js_node = self.get_js_node(node)
+        self.expectThat(js_node, ContainsAll([
+            'id',
+            'system_id',
+            'url',
+            'hostname',
+            'architecture',
+            'fqdn',
+            'status',
+            'owner',
+            'cpu_count',
+            'memory',
+            'storage',
+            'power_state',
+            'zone',
+            'zone_url',
+            'mac',
+            'vendor',
+            'macs',
+            'events',
+            ]))
+
+    def test_node_view_loads_node_with_events(self):
+        self.log_in()
+        with transaction.atomic():
+            node = self.make_node_with_events()
+            all_node_events = Event.objects.filter(node=node)
+            total_events = all_node_events.count()
+            viewable_events_count = (
+                all_node_events.exclude(type__level=logging.DEBUG).count())
+        js_node = self.get_js_node(node)
+        self.expectThat(
+            js_node['events']['total'], Equals(total_events))
+        self.expectThat(
+            js_node['events']['count'], Equals(viewable_events_count))
+        self.expectThat(
+            js_node['events']['more_url'],
+            Equals(reverse('node-event-list-view', args=[node.system_id])))
+        for event in js_node['events']['events']:
+            self.expectThat(event, ContainsAll([
+                'id',
+                'level',
+                'created',
+                'type',
+                'description',
                 ]))
 
 

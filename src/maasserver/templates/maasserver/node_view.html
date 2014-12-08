@@ -80,40 +80,28 @@
           }
         });
       });
+      YUI().use(
+        'maas.node', 'maas.node_views', 'maas.shortpoll',
+        function (Y) {
+          Y.on('domready', function() {
+            var view = new Y.maas.node_views.NodeView({
+              srcNode: 'body',
+              eventList: '#node_event_list',
+              actionView: '#sidebar'
+            });
+            var poller = new Y.maas.shortpoll.ShortPollManager({
+              uri: "{% url 'node-view' node.system_id %}"
+            });
+            view.addLoader(poller.get("io"));
+            poller.poll();
+        });
+      });
     // -->
   </script>
 {% endblock %}
 
 {% block sidebar %}
-  <h4>Node details</h4>
-    {% if can_edit %}
-      <a href="{% url 'node-edit' node.system_id %}" class="button secondary">
-        Edit node
-      </a>
-    {% endif %}
-    <a href="{% url 'node-preseed-view' node.system_id %}" class="button secondary">
-      View preseed
-    </a>
-  {% if form.action_buttons %}
-    <h4>Actions</h4>
-    <form id="node_actions" method="post" action=".">{% csrf_token %}
-      {% for action in form.action_buttons %}
-        <button
-          class="secondary
-                 {% if action.inhibition %}disabled{% endif %}
-                 {% if not forloop.first %}space-top{% endif %}"
-          type="submit"
-          name="{{ form.input_name }}"
-          value="{{ action.name }}"
-          {% if action.inhibition %}}
-            title="{{ action.inhibition }}"
-            disabled="disabled"
-          {% endif %} >
-          {{ action.display }}
-        </button>
-      {% endfor %}
-    </form>
-  {% endif %}
+  {% include "maasserver/node_actions.html" %}
 {% endblock %}
 
 {% block content %}
@@ -126,7 +114,7 @@
   <ul class="data-list">
     <li class="block size3 first">
       <h4><acronym title="Fully Qualified Domain Name">FQDN</acronym></h4>
-        <span>{{ node.fqdn }}</span>
+        <span data-field="fqdn">{{ node.fqdn }}</span>
     </li>
     <li id="network-interfaces" class="block size5">
       <h4>Network interfaces</h4>
@@ -149,26 +137,26 @@
     </li>
     <li class="block size3">
       <h4>Status</h4>
-      <span>
+      <span data-field="status">
           {{ node.display_status }}
       </span>
     </li>
     <li class="block first size3">
       <h4>Architecture</h4>
-      <span>
+      <span data-field="architecture">
           {{ node.architecture }}
       </span>
     </li>
     <li class="block size3">
       <h4>CPU Count</h4>
-      <span>
+      <span data-field="cpu_count">
           {{ node.cpu_count }}
       </span>
     </li>
     <li class="block size3">
       <h4>Memory</h4>
       <span>
-          {{ node.memory }} MiB
+          <span data-field="memory">{{ node.memory }}</span> MiB
       </span>
     </li>
     <li class="block size3 first">
@@ -235,20 +223,20 @@
       <span>{{ status_text }}</span>
     </li>
     {% endif %}
-    {% if node.owner %}
-    <li class="block size3">
+    <li id="owner" data-field="owner" data-field-if="hidden"
+        class="block size3 {% if not node.owner %}hidden{% endif %}">
       <h4>Owner</h4>
-      <span>{{ node.owner }}</span>
+      <span data-field="owner">{{ node.owner }}</span>
     </li>
-    {% endif %}
-    {% if node.zone %}
     <li id="zone" class="block size3">
       <h4>Physical zone</h4>
       <span>
-        <a href="{% url 'zone-view' node.zone.name %}">{{ node.zone }}</a>
+        <a data-field="zone" data-field-attr="href"
+           href="{% url 'zone-view' node.zone.name %}">
+           <span data-field="zone">{{ node.zone }}</span>
+        </a>
       </span>
     </li>
-    {% endif %}
     {% if node.routers %}
       <li id="routers" class="block first size3">
         <h4>Switch MAC addresses</h4>
@@ -282,13 +270,10 @@
     {% endif %}
     <li class="block first separate" id="node-events">
       <h2>Latest node events</h2>
-      {% include "maasserver/node_event_list_snippet.html" %}
-      {% if event_count != 0 %}
-        <a href="{% url 'node-event-list-view' object.system_id %}">
-          Full node event log
-          ({{ event_count }} event{{ event_count|pluralize }}).
-        </a>
-      {% endif %}
+      <div id="node_event_list">
+        <div class="spinner spin"></div>
+      </div>
+      <div class="clear"></div>
     </li>
   </ul>
   </div>

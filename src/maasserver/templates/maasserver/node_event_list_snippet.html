@@ -12,8 +12,8 @@
       {% for event_item in event_list %}
       <tr class="{{ event_item.type.level_str|lower }}" id="{{ event_item.id }}">
         <td width="10%">{{ event_item.type.level_str }}</td>
-        <td width="30%" title="{{ event_item.created|date:'r' }}">
-          {{ event_item.created|timesince }} ago
+        <td width="30%" title="{{ event_item.created|date:'D, d N Y H:i:s' }}">
+          {{ event_item.created|date:'D, d N Y H:i:s' }}
         </td>
         <td class="event_description">
         {{ event_item.type.description }}

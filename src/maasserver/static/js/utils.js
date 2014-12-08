@@ -273,5 +273,78 @@ Y.extend(TitleEditWidget, Y.Widget, {
 
 module.TitleEditWidget = TitleEditWidget;
 
+/**
+ * Update all of the elements with data-field attributes with the
+ * attributes on the given node.
+ *
+ * The data-field attribute sets which attribute on the node object should be
+ * bound to that element. By default when the node is updated, that element's
+ * text will be set to that value. Three modifiers exist that allow the
+ * modification of this behaviour. data-field-attr changes which attribute the
+ * value from the object should be set on that attribute. data-field-class
+ * allows the ability to set a class using the value from the node object.
+ * data-field-class uses a prefix to identify the previous class on the element
+ * before the value of the node object changed (e.g. "power-"). data-field-if
+ * allows the ability to set a class on the element, if the field in the node
+ * is truthy, otherwise that class will be removed. The class name is the value
+ * inside of data-field-if (e.g. data-field-if="className").
+ *
+ * @method updateElements
+ */
+var updateElements = function(elements, node) {
+    elements.each(function(element) {
+        // If data-field-attr is set then the value is set on that
+        // attribute of the element. If data-field-if is set then
+        // it will check that the value is a valid value, if so it will
+        // add the class, else it will be removed. If neither exist on the
+        // element then it is set to the text of that element.
+        var nodeAttr = element.getData('field');
+        var fieldAttr = element.getData('field-attr');
+        var fieldIf = element.getData('field-if');
+        if (!Y.Lang.isValue(fieldAttr) && !Y.Lang.isValue(fieldIf)) {
+            element.set('text', node[nodeAttr]);
+        } else {
+            if (Y.Lang.isValue(fieldAttr)) {
+                element.set(fieldAttr, node[nodeAttr]);
+            }
+            if (Y.Lang.isValue(fieldIf)) {
+                var value = node[nodeAttr];
+                if (Y.Lang.isValue(value)) {
+                    if (Y.Lang.isString(value) || Y.Lang.isArray(value)) {
+                        // Value is a string or array, check that it
+                        // has content.
+                        if (value.length === 0) {
+                            element.addClass(fieldIf);
+                        } else {
+                            element.removeClass(fieldIf);
+                        }
+                    } else {
+                        element.removeClass(fieldIf);
+                    }
+                } else {
+                    element.addClass(fieldIf);
+                }
+            }
+        }
+
+        // Handle the data-field-class attribute. If a class
+        // starts with the value held in the attribute, it is removed
+        // from the element. The attribute value is then concat with the
+        // value of the node attribute and set as a class on the element.
+        var fieldClass = element.getData('field-class');
+        if (Y.Lang.isValue(fieldClass)) {
+            var classes = element.get('className').split(' ');
+            Y.Array.each(classes, function(cls) {
+                if (cls.indexOf(fieldClass) === 0) {
+                    element.removeClass(cls);
+                }
+            });
+            element.addClass(fieldClass + node[nodeAttr]);
+        }
+    });
+};
+
+module.updateElements = updateElements;
+
 }, '0.1', {'requires': ['base', 'widget', 'io', 'anim']}
 );
