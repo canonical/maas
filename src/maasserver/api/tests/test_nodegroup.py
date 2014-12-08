@@ -16,6 +16,7 @@ __all__ = []
 
 import httplib
 import json
+import random
 from textwrap import dedent
 from urlparse import urlparse
 
@@ -56,6 +57,8 @@ from metadataserver.models import (
     )
 from mock import Mock
 from provisioningserver.rpc.cluster import (
+    AddSeaMicro15k,
+    AddVirsh,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
@@ -326,6 +329,73 @@ class TestNodeGroupAPI(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code,
             explain_unexpected_response(httplib.BAD_REQUEST, response))
+
+    def test_probe_and_enlist_hardware_adds_seamicro(self):
+        nodegroup = factory.make_NodeGroup()
+        model = 'seamicro15k'
+        mac = factory.make_mac_address()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = random.choice(
+            ['ipmi', 'restapi', 'restapi2'])
+        self.become_admin()
+
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_hardware',
+                'model': model,
+                'mac': mac,
+                'username': username,
+                'password': password,
+                'power_control': power_control,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddSeaMicro15k, mac=mac, username=username,
+                password=password, power_control=power_control))
+
+    def test_probe_and_enlist_hardware_adds_virsh(self):
+        nodegroup = factory.make_NodeGroup()
+        model = 'virsh'
+        poweraddr = factory.make_ipv4_address()
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('filter')
+        self.become_admin()
+
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_hardware',
+                'model': model,
+                'power_address': poweraddr,
+                'power_pass': password,
+                'prefix_filter': prefix_filter,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddVirsh, poweraddr=poweraddr,
+                password=password, prefix_filter=prefix_filter))
 
     def test_probe_and_enlist_ucsm_adds_ucsm(self):
         nodegroup = factory.make_NodeGroup()

@@ -61,10 +61,14 @@ class VirshSSH(pexpect.spawn):
     I_PROMPT_SSHKEY = PROMPTS.index(PROMPT_SSHKEY)
     I_PROMPT_PASSWORD = PROMPTS.index(PROMPT_PASSWORD)
 
-    def __init__(self, timeout=30, maxread=2000):
+    def __init__(self, timeout=30, maxread=2000, dom_prefix=None):
         super(VirshSSH, self).__init__(
             None, timeout=timeout, maxread=maxread)
         self.name = '<virssh>'
+        if dom_prefix is None:
+            self.dom_prefix = ''
+        else:
+            self.dom_prefix = dom_prefix
 
     def _execute(self, poweraddr):
         """Spawns the pexpect command."""
@@ -118,7 +122,8 @@ class VirshSSH(pexpect.spawn):
     def list(self):
         """Lists all virtual machines by name."""
         machines = self.run(['list', '--all', '--name'])
-        return machines.strip().splitlines()
+        machines = machines.strip().splitlines()
+        return [m for m in machines if m.startswith(self.dom_prefix)]
 
     def get_state(self, machine):
         """Gets the virtual machine state."""
@@ -165,13 +170,13 @@ class VirshSSH(pexpect.spawn):
         return True
 
 
-def probe_virsh_and_enlist(poweraddr, password=None):
+def probe_virsh_and_enlist(poweraddr, password=None, prefix_filter=None):
     """Extracts all of the virtual machines from virsh and enlists them
     into MAAS.
 
     :param poweraddr: virsh connection string
     """
-    conn = VirshSSH()
+    conn = VirshSSH(dom_prefix=prefix_filter)
     if not conn.login(poweraddr, password):
         raise VirshError('Failed to login to virsh console.')
 

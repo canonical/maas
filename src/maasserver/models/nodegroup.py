@@ -337,11 +337,12 @@ class NodeGroup(TimestampedModel):
                 AddSeaMicro15k, mac=mac, username=username,
                 password=password, power_control=power_control)
 
-    def add_virsh(self, poweraddr, password=None):
+    def add_virsh(self, poweraddr, password=None, prefix_filter=None):
         """ Add all of the virtual machines inside a virsh controller.
 
         :param poweraddr: virsh connection string
         :param password: ssh password
+        :param prefix_filter: import based on prefix
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
@@ -355,7 +356,8 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                AddVirsh, poweraddr=poweraddr, password=password)
+                AddVirsh, poweraddr=poweraddr,
+                password=password, prefix_filter=prefix_filter)
 
     def enlist_nodes_from_ucsm(self, url, username, password):
         """ Add the servers from a Cicso UCS Manager.

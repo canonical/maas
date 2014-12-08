@@ -419,6 +419,7 @@ class AddVirsh(amp.Command):
     arguments = [
         (b"poweraddr", amp.Unicode()),
         (b"password", amp.Unicode(optional=True)),
+        (b"prefix_filter", amp.Unicode(optional=True)),
     ]
     response = []
     errors = []

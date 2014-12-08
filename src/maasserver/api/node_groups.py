@@ -372,6 +372,8 @@ class NodeGroupHandler(OperationsHandler):
         :param power_pass: The password to use, when qemu+ssh is given as a
             connection string and ssh key authentication is not being used.
         :type power_pass: unicode
+        :param prefix_filter: Only import nodes based on supplied prefix.
+        :type prefix_filter: unicode
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
@@ -390,8 +392,11 @@ class NodeGroupHandler(OperationsHandler):
             poweraddr = get_mandatory_param(request.data, 'power_address')
             password = get_optional_param(
                 request.data, 'power_pass', default=None)
+            prefix_filter = get_optional_param(
+                request.data, 'prefix_filter', default=None)
 
-            nodegroup.add_virsh(poweraddr, password=password)
+            nodegroup.add_virsh(
+                poweraddr, password=password, prefix_filter=prefix_filter)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 

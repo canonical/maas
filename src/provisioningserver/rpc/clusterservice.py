@@ -344,12 +344,12 @@ class Cluster(RPCProtocol):
         return d.addCallback(lambda _: {})
 
     @cluster.AddVirsh.responder
-    def add_virsh(self, poweraddr, password):
+    def add_virsh(self, poweraddr, password, prefix_filter):
         """add_virsh()
 
         Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
         """
-        probe_virsh_and_enlist(poweraddr, password)
+        probe_virsh_and_enlist(poweraddr, password, prefix_filter)
         return {}
 
     @cluster.AddSeaMicro15k.responder
