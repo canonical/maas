@@ -23,6 +23,7 @@ import re
 from django.db.models import (
     ForeignKey,
     ManyToManyField,
+    SET_NULL,
     )
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
@@ -137,7 +138,7 @@ class MACAddress(CleanSave, TimestampedModel):
     # is connected, normally after the first DHCPLease appears.
     cluster_interface = ForeignKey(
         'NodeGroupInterface', editable=False, blank=True, null=True,
-        default=None)
+        default=None, on_delete=SET_NULL)
 
     # future columns: tags, nic_name, metadata, bonding info
 

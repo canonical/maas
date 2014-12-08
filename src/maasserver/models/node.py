@@ -48,6 +48,7 @@ from django.db.models import (
     ManyToManyField,
     Q,
     SET_DEFAULT,
+    SET_NULL,
     TextField,
     )
 from django.shortcuts import get_object_or_404
@@ -511,7 +512,7 @@ class Node(CleanSave, TimestampedModel):
     # IP reservation for when starting a node.
     pxe_mac = ForeignKey(
         MACAddress, default=None, blank=True, null=True, editable=False,
-        related_name='+')
+        related_name='+', on_delete=SET_NULL)
 
     objects = NodeManager()
 

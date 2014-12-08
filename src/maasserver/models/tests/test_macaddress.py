@@ -45,7 +45,9 @@ from netaddr import (
 from testtools.matchers import (
     Equals,
     HasLength,
+    Is,
     MatchesStructure,
+    Not,
     )
 
 
@@ -116,6 +118,14 @@ class MACAddressTest(MAASServerTestCase):
         mac = MACAddress(
             mac_address=bytes_mac, node=factory.make_Node())
         self.assertEqual(bytes_mac, mac.__str__())
+
+    def test_cluster_interface_deletion_does_not_delete_MAC(self):
+        cluster_interface = factory.make_NodeGroupInterface(
+            factory.make_NodeGroup())
+        mac_address = factory.make_MACAddress(
+            cluster_interface=cluster_interface)
+        cluster_interface.delete()
+        self.expectThat(reload_object(mac_address), Not(Is(None)))
 
 
 class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
