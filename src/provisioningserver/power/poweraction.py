@@ -114,13 +114,17 @@ class PowerAction:
         """
         # This might need retrying but it could be better to leave that
         # to the individual scripts.
-        try:
-            output = subprocess.check_output(
-                commands, shell=True, stderr=subprocess.STDOUT, close_fds=True)
-        except subprocess.CalledProcessError as e:
-            raise PowerActionFail(self, e)
-        # This output is only examined in tests, execute just ignores it
-        return output
+        shell = ("/bin/sh",)
+        process = subprocess.Popen(
+            shell, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT, close_fds=True)
+        output, _ = process.communicate(commands)
+        if process.wait() == 0:
+            return output.strip()
+        else:
+            raise PowerActionFail(
+                self, subprocess.CalledProcessError(
+                    process.returncode, shell, output))
 
     def execute(self, **kwargs):
         """Execute the template.
