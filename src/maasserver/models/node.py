@@ -1425,7 +1425,7 @@ class Node(CleanSave, TimestampedModel):
         if self.pxe_mac is not None:
             return self.pxe_mac
 
-        return self.macaddress_set.first()
+        return self.macaddress_set.order_by('id').first()
 
     def is_pxe_mac_on_managed_interface(self):
         pxe_mac = self.get_pxe_mac()

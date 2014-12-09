@@ -88,7 +88,7 @@
         <td data-field="storage">{{ node.display_storage }}</td>
         <td>
           <span data-field="vendor" data-field-attr="title" title="{{node.primary_mac_vendor}}">
-            <span data-field="mac">{{node.primary_mac}}</span>
+            <span data-field="mac">{{node.get_pxe_mac}}</span>
           </span>
           {% if node.extra_macs %}
           <span title="

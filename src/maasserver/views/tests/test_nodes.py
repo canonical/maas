@@ -555,6 +555,18 @@ class NodeViewsTest(MAASServerTestCase):
             [node_to_dict(node) for node in nodes],
             json_obj)
 
+    def test_node_list_displays_pxe_mac_if_available(self):
+        node = factory.make_Node()
+        [factory.make_MACAddress(node=node) for _ in range(3)]
+        node.pxe_mac = node.macaddress_set.last()
+        node.save()
+
+        self.client_log_in()
+        response = self.client.get(reverse('node-list'))
+        document = fromstring(response.content)
+        [mac_element] = document.xpath('//span[@data-field="mac"]')
+        self.expectThat(mac_element.text, Equals(node.pxe_mac.mac_address))
+
     def test_view_node_displays_node_info(self):
         # The node page features the basic information about the node.
         self.client_log_in()
