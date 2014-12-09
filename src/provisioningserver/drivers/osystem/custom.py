@@ -16,6 +16,9 @@ __all__ = [
     "CustomOS",
     ]
 
+import os
+
+from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -49,3 +52,12 @@ class CustomOS(OperatingSystem):
         # Return the same name, since the cluster does not know about the
         # title of the image. The region will fix the title for the UI.
         return release
+
+    def get_xinstall_parameters(self, arch, subarch, release, label):
+        """Returns the xinstall image name and type for given image."""
+        path = os.path.join(
+            BOOT_RESOURCES_STORAGE, 'custom', arch, subarch, release, label)
+        if os.path.exists(os.path.join(path, 'root-dd')):
+            return "root-dd", "dd-tgz"
+        else:
+            return "root-tgz", "tgz"
