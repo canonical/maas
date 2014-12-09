@@ -19,16 +19,31 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 get_mac_addresses() {
+	local macs
+	local pxe_mac
+	local mac_addresses
 	macs=`ip addr | egrep 'link/ether' | cut -d' ' -f6`
-	for i in $macs;
+	# Obtain the BOOTIF MAC address from the kernel command line.
+	# Note that BOOTIF stores the MAC in the format of
+	# '01-AA-BB-CC-DD-EE-FF" and we remove the '01-'.
+	pxe_mac=`cat /proc/cmdline | egrep 'BOOTIF=' | sed -e 's/.*[[:space:]]BOOTIF=\([-0-9A-Fa-f]\+\).*/\1/g' -e 's,^01-,,g' -e 's,-,:,g'`
+	# Initialize the mac_address variable with "$pxe_mac",
+	# otherwise "$pxe_mac" will be empty.
+	mac_addresses="$pxe_mac"
+
+	for mac in $macs;
 	do
-		if [ -z "$mac_address" ]; then
-			mac_address="$i";
-		else
-			mac_address="$mac_address,$i"
+		# We only add more mac's if "$mac" is different
+		# from "$pxe_mac"
+		if [ "$mac" != "$pxe_mac" ]; then
+			if [ -z "$mac_addresses" ]; then
+				mac_addresses="$mac"
+			else
+				mac_addresses="$mac_addresses,$mac"
+			fi
 		fi
 	done
-	echo "$mac_address"
+	echo "$mac_addresses"
 }
 
 get_mac_address_by_interface() {
