@@ -107,7 +107,6 @@ from maasserver.utils import (
     strip_domain,
     )
 from metadataserver.enum import RESULT_TYPE
-from metadataserver.models import NodeResult
 from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.logger import get_maas_logger
@@ -763,10 +762,10 @@ class Node(CleanSave, TimestampedModel):
         return '%d' % (self.memory / 1024)
 
     def display_storage(self):
-        """Return storage in GB."""
-        if self.storage < 1024:
-            return '%.1f' % (self.storage / 1024.0)
-        return '%d' % (self.storage / 1024)
+        """Return storage in gigabytes."""
+        if self.storage < 1000:
+            return '%.1f' % (self.storage / 1000.0)
+        return '%d' % (self.storage / 1000)
 
     def add_mac_address(self, mac_address):
         """Add a new MAC address to this `Node`.
@@ -837,6 +836,8 @@ class Node(CleanSave, TimestampedModel):
         from metadataserver.user_data.commissioning import generate_user_data
 
         commissioning_user_data = generate_user_data(node=self)
+        # Avoid circular imports
+        from metadataserver.models import NodeResult
         NodeResult.objects.clear_results(self)
         # The commissioning profile is handled in start_nodes.
         maaslog.info(
@@ -1237,6 +1238,8 @@ class Node(CleanSave, TimestampedModel):
         self.license_key = ''
         self.save()
 
+        # Avoid circular imports
+        from metadataserver.models import NodeResult
         # Clear installation results
         NodeResult.objects.filter(
             node=self, result_type=RESULT_TYPE.INSTALLATION).delete()
@@ -1336,6 +1339,8 @@ class Node(CleanSave, TimestampedModel):
         self.distro_series = ''
         self.save()
 
+        # Avoid circular imports
+        from metadataserver.models import NodeResult
         # Clear installation results
         NodeResult.objects.filter(
             node=self, result_type=RESULT_TYPE.INSTALLATION).delete()

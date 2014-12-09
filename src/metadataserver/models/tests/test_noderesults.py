@@ -601,7 +601,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         """).encode("utf-8")
         update_hardware_details(node, xmlbytes, 0)
         node = reload_object(node)
-        self.assertEqual(121149, node.storage)
+        self.assertEqual(127033, node.storage)
 
     def test_hardware_updates_storage_1279728(self):
         # Hardware data from bug 1279728.
@@ -618,7 +618,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         """).encode("utf-8")
         update_hardware_details(node, xmlbytes, 0)
         node = reload_object(node)
-        self.assertEqual(764435, node.storage)
+        self.assertEqual(801568, node.storage)
 
     def test_hardware_updates_storage_1387380_bad(self):
         # Hardware data from bug 1387380 (the "bad" node).
@@ -631,7 +631,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         """).encode("utf-8")
         update_hardware_details(node, xmlbytes, 0)
         node = reload_object(node)
-        self.assertEqual(114473, node.storage)
+        self.assertEqual(120034, node.storage)
 
     def test_hardware_updates_storage_1387380_good(self):
         # Hardware data from bug 1387380 (the "good" node).
@@ -648,7 +648,7 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         """).encode("utf-8")
         update_hardware_details(node, xmlbytes, 0)
         node = reload_object(node)
-        self.assertEqual(114473, node.storage)
+        self.assertEqual(120034, node.storage)
 
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
