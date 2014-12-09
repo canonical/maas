@@ -42,6 +42,7 @@ from tftp.backend import FilesystemReader
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
+    succeed,
     )
 from twisted.python.context import get
 from twisted.python.filepath import FilePath
@@ -89,20 +90,25 @@ def load_hivex(*args, **kwargs):
 
 
 @asynchronous
-@inlineCallbacks
 def request_node_info_by_mac_address(mac_address):
     """Request node info for the given mac address.
 
     :param mac_address: The MAC Address of the node of the event.
     :type mac_address: unicode
     """
+    if mac_address is None:
+        maaslog.debug("Cannot determine node; MAC address is unknown.")
+        return succeed(None)
+
     client = getRegionClient()
-    try:
-        yield client(
-            RequestNodeInfoByMACAddress, mac_address=mac_address)
-    except NoSuchNode:
-        maaslog.debug(
-            "Node doesn't exist for MAC address: %s" % mac_address)
+    d = client(RequestNodeInfoByMACAddress, mac_address=mac_address)
+
+    def eb_request_node_info(failure):
+        failure.trap(NoSuchNode)
+        maaslog.debug("Node doesn't exist for MAC address: %s", mac_address)
+        return None
+
+    return d.addErrback(eb_request_node_info)
 
 
 class Bcd:

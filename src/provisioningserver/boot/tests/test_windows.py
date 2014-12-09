@@ -15,9 +15,11 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import logging
 import os
 import shutil
 
+from fixtures import FakeLogger
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import (
@@ -25,6 +27,7 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
     )
 import mock
+from mock import sentinel
 from provisioningserver.boot import (
     BootMethodError,
     BytesReader,
@@ -35,7 +38,15 @@ from provisioningserver.boot.windows import (
     WindowsPXEBootMethod,
     )
 from provisioningserver.config import Config
+from provisioningserver.rpc.exceptions import NoSuchNode
+from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
+from provisioningserver.rpc.testing import (
+    always_fail_with,
+    always_succeed_with,
+    )
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
+from testtools.deferredruntest import extract_result
+from testtools.matchers import Is
 from tftp.backend import FilesystemReader
 from twisted.internet.defer import inlineCallbacks
 
@@ -143,6 +154,38 @@ class TestBcd(MAASTestCase):
             bcd.hive.node_set_value,
             MockCalledOnceWith(fake_child, compare))
         self.assertThat(bcd.hive.commit, MockCalledOnceWith(None))
+
+
+class TestRequestNodeInfoByMACAddress(MAASTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def test__returns_None_when_MAC_is_None(self):
+        logger = self.useFixture(FakeLogger("maas", logging.DEBUG))
+        d = windows_module.request_node_info_by_mac_address(None)
+        self.assertThat(extract_result(d), Is(None))
+        self.assertDocTestMatches(
+            "Cannot determine node; MAC address is unknown.",
+            logger.output)
+
+    def test__returns_None_when_node_not_found(self):
+        logger = self.useFixture(FakeLogger("maas", logging.DEBUG))
+        client = self.patch(windows_module, "getRegionClient").return_value
+        client.side_effect = always_fail_with(NoSuchNode())
+        mac = factory.make_mac_address()
+        d = windows_module.request_node_info_by_mac_address(mac)
+        self.assertThat(extract_result(d), Is(None))
+        self.assertDocTestMatches(
+            "Node doesn't exist for MAC address: %s" % mac,
+            logger.output)
+
+    def test__returns_output_from_RequestNodeInfoByMACAddress(self):
+        client = self.patch(windows_module, "getRegionClient").return_value
+        client.side_effect = always_succeed_with(sentinel.node_info)
+        d = windows_module.request_node_info_by_mac_address(sentinel.mac)
+        self.assertThat(extract_result(d), Is(sentinel.node_info))
+        self.assertThat(client, MockCalledOnceWith(
+            RequestNodeInfoByMACAddress, mac_address=sentinel.mac))
 
 
 class TestWindowsPXEBootMethod(MAASTestCase):
