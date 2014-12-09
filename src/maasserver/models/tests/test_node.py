@@ -271,12 +271,12 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(memory=2048)
         self.assertEqual('2', node.display_memory())
 
-    def test_display_storage_returns_decimal_less_than_1024(self):
-        node = factory.make_Node(storage=512)
+    def test_display_storage_returns_decimal_less_than_1000(self):
+        node = factory.make_Node(storage=500)
         self.assertEqual('0.5', node.display_storage())
 
-    def test_display_storage_returns_value_divided_by_1024(self):
-        node = factory.make_Node(storage=2048)
+    def test_display_storage_returns_value_divided_by_1000(self):
+        node = factory.make_Node(storage=2000)
         self.assertEqual('2', node.display_storage())
 
     def test_add_node_with_token(self):

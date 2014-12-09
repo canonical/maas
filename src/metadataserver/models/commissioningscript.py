@@ -146,7 +146,7 @@ _xpath_storage_bytes = """\
         //node[@class='disk'] |
         //node[not(ancestor::node[@class='disk']) and @class='volume']
     )
-    /size[@units='bytes'] div 1024 div 1024
+    /size[@units='bytes'] div 1000 div 1000
 """
 
 
