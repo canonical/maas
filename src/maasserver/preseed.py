@@ -338,8 +338,17 @@ def get_preseed_type_for(node):
     using the default installer but there is no boot image that supports
     that method then it will boot using the fast-path installer.
     """
-    if node.status in COMMISSIONING_LIKE_STATUSES:
+    is_commissioning_preseed = (
+        node.status in COMMISSIONING_LIKE_STATUSES or
+        node.get_boot_purpose() == 'poweroff'
+        )
+    if is_commissioning_preseed:
         return PRESEED_TYPE.COMMISSIONING
+    else:
+        return get_deploying_preseed_type_for(node)
+
+
+def get_deploying_preseed_type_for(node):
     if node.boot_type == NODE_BOOT.FASTPATH:
         purpose_order = ['xinstall', 'install']
     elif node.boot_type == NODE_BOOT.DEBIAN:

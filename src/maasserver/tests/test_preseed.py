@@ -666,7 +666,8 @@ class TestRenderPreseedWindows(
         self.return_windows_specific_preseed_data()
         node = factory.make_Node(
             nodegroup=self.rpc_nodegroup, osystem='windows',
-            architecture='amd64/generic', distro_series=self.release)
+            architecture='amd64/generic', distro_series=self.release,
+            status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'install')
         preseed = render_preseed(
             node, '', osystem='windows', release=self.release)
@@ -1207,28 +1208,41 @@ class TestCurtinUtilities(
             PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default(self):
-        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node(
+            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'install')
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin(self):
-        node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
+        node = factory.make_Node(
+            boot_type=NODE_BOOT.FASTPATH, status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_default_when_curtin_not_supported(self):
-        node = factory.make_Node(boot_type=NODE_BOOT.FASTPATH)
+        node = factory.make_Node(
+            boot_type=NODE_BOOT.FASTPATH, status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'install')
         self.assertEqual(
             PRESEED_TYPE.DEFAULT, get_preseed_type_for(node))
 
     def test_get_preseed_type_for_curtin_when_default_not_supported(self):
-        node = factory.make_Node(boot_type=NODE_BOOT.DEBIAN)
+        node = factory.make_Node(
+            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         self.assertEqual(
             PRESEED_TYPE.CURTIN, get_preseed_type_for(node))
+
+    def test_get_preseed_type_for_poweroff(self):
+        # A 'ready' node isn't supposed to be powered on and thus
+        # will get a 'commissioning' preseed in order to be powered
+        # down.
+        node = factory.make_Node(
+            boot_type=NODE_BOOT.DEBIAN, status=NODE_STATUS.READY)
+        self.assertEqual(
+            PRESEED_TYPE.COMMISSIONING, get_preseed_type_for(node))
 
 
 class TestRenderPreseedArchives(
@@ -1239,10 +1253,12 @@ class TestRenderPreseedArchives(
         nodes = [
             factory.make_Node(
                 nodegroup=self.rpc_nodegroup,
+                status=NODE_STATUS.DEPLOYING,
                 architecture=make_usable_architecture(
                     self, arch_name="i386", subarch_name="generic")),
             factory.make_Node(
                 nodegroup=self.rpc_nodegroup,
+                status=NODE_STATUS.DEPLOYING,
                 architecture=make_usable_architecture(
                     self, arch_name="amd64", subarch_name="generic")),
             ]
@@ -1314,14 +1330,16 @@ class TestPreseedMethods(
 
     def test_get_preseed_returns_default_preseed(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.DEBIAN)
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.DEBIAN,
+            status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'install')
         preseed = get_preseed(node)
         self.assertIn('preseed/late_command', preseed)
 
     def test_get_preseed_returns_curtin_preseed(self):
         node = factory.make_Node(
-            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH)
+            nodegroup=self.rpc_nodegroup, boot_type=NODE_BOOT.FASTPATH,
+            status=NODE_STATUS.DEPLOYING)
         self.configure_get_boot_images_for_node(node, 'xinstall')
         preseed = get_preseed(node)
         curtin_url = reverse('curtin-metadata')

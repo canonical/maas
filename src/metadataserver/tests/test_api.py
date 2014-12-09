@@ -62,6 +62,7 @@ from metadataserver.api import (
     make_list_response,
     make_text_response,
     MetaDataHandler,
+    poweroff as api_poweroff,
     UnknownMetadataVersion,
     )
 from metadataserver.models import (
@@ -383,7 +384,7 @@ class TestMetadataUserData(DjangoTestCase):
     """Tests for the metadata user-data API endpoint."""
 
     def test_user_data_view_returns_binary_data(self):
-        node = factory.make_Node()
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         NodeUserData.objects.set_user_data(node, sample_binary_data)
         client = make_node_client(node)
         response = client.get(reverse('metadata-user-data', args=['latest']))
@@ -393,8 +394,22 @@ class TestMetadataUserData(DjangoTestCase):
             (httplib.OK, sample_binary_data),
             (response.status_code, response.content))
 
+    def test_poweroff_user_data_returned_if_unexpected_status(self):
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        NodeUserData.objects.set_user_data(node, sample_binary_data)
+        client = make_node_client(node)
+        user_data = factory.make_name('user data').encode("ascii")
+        self.patch(api_poweroff, 'generate_user_data').return_value = user_data
+        response = client.get(reverse('metadata-user-data', args=['latest']))
+        self.assertEqual('application/octet-stream', response['Content-Type'])
+        self.assertIsInstance(response.content, bytes)
+        self.assertEqual(
+            (httplib.OK, user_data),
+            (response.status_code, response.content))
+
     def test_user_data_for_node_without_user_data_returns_not_found(self):
-        client = make_node_client()
+        client = make_node_client(
+            factory.make_Node(status=NODE_STATUS.COMMISSIONING))
         response = client.get(reverse('metadata-user-data', args=['latest']))
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -938,7 +953,8 @@ class TestByMACMetadataAPI(DjangoTestCase):
             (response.status_code, response.content))
 
     def test_api_retrieves_node_userdata_by_mac(self):
-        mac = factory.make_MACAddress()
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        mac = factory.make_MACAddress(node=node)
         user_data = factory.make_string().encode('ascii')
         NodeUserData.objects.set_user_data(mac.node, user_data)
         url = reverse(

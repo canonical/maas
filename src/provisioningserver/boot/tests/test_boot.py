@@ -25,18 +25,13 @@ from maastesting.testcase import (
     MAASTwistedRunTest,
     )
 import mock
-from provisioningserver import (
-    boot,
-    config,
-    )
+from provisioningserver import boot
 from provisioningserver.boot import (
     BootMethod,
     BytesReader,
-    compose_poweroff_command,
     gen_template_filenames,
     get_remote_mac,
     )
-from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 import tempita
 from twisted.internet.defer import inlineCallbacks
 from twisted.python import context
@@ -155,32 +150,3 @@ class TestBootMethod(MAASTestCase):
         self.assertRaises(
             IOError, method.get_template,
             *factory.make_names("purpose", "arch", "subarch"))
-
-    def test_compose_poweroff_command_for_syslinux_6(self):
-        storage_dir = self.make_dir()
-        syslinux_path = os.path.join(storage_dir, "current", "syslinux")
-        os.makedirs(syslinux_path)
-        factory.make_file(syslinux_path, "poweroff.c32", contents=None)
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
-        self.assertEqual(
-            "COM32 /syslinux/poweroff.c32",
-            compose_poweroff_command())
-
-    def test_compose_poweroff_command_for_syslinux_4(self):
-        storage_dir = self.make_dir()
-        syslinux_path = os.path.join(storage_dir, "current", "syslinux")
-        os.makedirs(syslinux_path)
-        factory.make_file(syslinux_path, "poweroff.com", contents=None)
-        self.patch(config, 'BOOT_RESOURCES_STORAGE', storage_dir)
-        self.assertEqual(
-            "KERNEL /syslinux/poweroff.com",
-            compose_poweroff_command())
-
-    def test_compose_template_namespace_includes_poweroff(self):
-        fake_poweroff = factory.make_name('poweroff')
-        self.patch(
-            boot, 'compose_poweroff_command').return_value = fake_poweroff
-        method = FakeBootMethod()
-        kernel_params = make_kernel_parameters(purpose="poweroff")
-        namespace = method.compose_template_namespace(kernel_params)
-        self.assertEqual(fake_poweroff, namespace['poweroff'])

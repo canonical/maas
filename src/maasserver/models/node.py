@@ -1396,8 +1396,8 @@ class Node(CleanSave, TimestampedModel):
             # otherwise boot locally.
             if self.netboot:
                 # Avoid circular imports.
-                from maasserver.preseed import get_preseed_type_for
-                preseed_type = get_preseed_type_for(self)
+                from maasserver.preseed import get_deploying_preseed_type_for
+                preseed_type = get_deploying_preseed_type_for(self)
                 if preseed_type == PRESEED_TYPE.CURTIN:
                     return "xinstall"
                 else:

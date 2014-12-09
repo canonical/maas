@@ -78,6 +78,7 @@ from metadataserver.models import (
 from metadataserver.models.commissioningscript import (
     get_builtin_commissioning_scripts,
     )
+from metadataserver.user_data import poweroff
 from piston.utils import rc
 from provisioningserver.events import (
     EVENT_DETAILS,
@@ -426,9 +427,14 @@ class UserDataHandler(MetadataViewHandler):
             # off to a user.
             if node.status == NODE_STATUS.DEPLOYING:
                 node.end_deployment()
+            # If this node is supposed to be powered off, serve the
+            # 'poweroff' userdata.
+            if node.get_boot_purpose() == 'poweroff':
+                user_data = poweroff.generate_user_data(node=node)
+            else:
+                user_data = NodeUserData.objects.get_user_data(node)
             return HttpResponse(
-                NodeUserData.objects.get_user_data(node),
-                mimetype='application/octet-stream')
+                user_data, mimetype='application/octet-stream')
         except NodeUserData.DoesNotExist:
             logger.info(
                 "No user data registered for node named %s" % node.hostname)

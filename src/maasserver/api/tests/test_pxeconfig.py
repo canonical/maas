@@ -419,21 +419,28 @@ class TestPXEConfigAPI(MAASServerTestCase):
         pxe_config = self.get_pxeconfig(params)
         self.assertEqual(None, pxe_config['extra_opts'])
 
-    def test_pxeconfig_returns_poweroff_for_insane_state(self):
-        mac = factory.make_MACAddress()
+    def test_pxeconfig_returns_commissioning_for_insane_state(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
-        self.assertEqual('poweroff', pxe_config['purpose'])
+        # The 'purpose' of the PXE config is 'commissioning' here
+        # even if the 'purpose' returned by node.get_boot_purpose
+        # is 'poweroff' because MAAS needs to bring the machine
+        # up in a commissioning environment in order to power
+        # the machine down.
+        self.assertEqual('commissioning', pxe_config['purpose'])
 
-    def test_pxeconfig_returns_poweroff_for_ready_node(self):
-        mac = factory.make_MACAddress()
+    def test_pxeconfig_returns_commissioning_for_ready_node(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(node=node)
         mac.node.status = NODE_STATUS.READY
         mac.node.save()
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         pxe_config = self.get_pxeconfig(params)
-        self.assertEqual('poweroff', pxe_config['purpose'])
+        self.assertEqual('commissioning', pxe_config['purpose'])
 
     def test_pxeconfig_returns_image_subarch_not_node_subarch(self):
         # In the scenario such as deploying trusty on an hwe-s subarch
