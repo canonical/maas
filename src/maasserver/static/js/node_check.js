@@ -52,9 +52,6 @@ Y.extend(PowerCheckWidget, Y.Widget, {
             .setAttribute('name', 'action')
             .setAttribute('value', 'check-powerstate')
             .set('text', 'Check power state');
-        // Add action button.
-        this.form = this.get('srcNode');
-        this.form.insert(this.button, 'after');
         // Store initial conditions.
         this.initial_background = this.button.getStyle('background');
         this.initial_color = this.button.getStyle('color');
@@ -71,10 +68,6 @@ Y.extend(PowerCheckWidget, Y.Widget, {
             .setStyle('right', '70px')
             .setStyle('margin', '0')
             .set('src', MAAS_config.uris.statics + 'img/spinner_grey.gif');
-        this.button
-            .insert(this.status_check, "after");
-        this.button
-            .insert(this.error_msg, "after");
     },
 
     bindUI: function() {
@@ -167,6 +160,22 @@ Y.extend(PowerCheckWidget, Y.Widget, {
         this.button
             .setStyle('color', this.initial_color);
         this.spinnerNode.remove();
+    },
+
+    render: function() {
+        this.button.remove();
+        this.status_check.remove();
+        this.error_msg.remove();
+        var srcNode = this.get('srcNode');
+        var formActions = srcNode.one('form#node_actions');
+        if (Y.Lang.isValue(formActions)) {
+            formActions.insert(this.button, 'after');
+            this.button
+                .insert(this.status_check, "after");
+            this.button
+                .insert(this.error_msg, "after");
+        }
+        this.bindUI();
     }
 
 });

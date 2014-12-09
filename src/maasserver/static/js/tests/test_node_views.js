@@ -814,7 +814,7 @@ suite.add(new Y.maas.testing.TestCase({
                     }
                 ]
             },
-            action_view: '<div id="action_content"></div>'
+            action_view: '<form id="node_actions"></form>'
         };
     },
 
@@ -878,11 +878,14 @@ suite.add(new Y.maas.testing.TestCase({
             view.srcNode.one('#owner').hasClass('hidden'),
             "The owner div was not hidden.");
         Y.Assert.areEqual(
-            1, view.srcNode.one('#action_view').all('div').size(),
+            1, view.srcNode.one('#action_view').all('form').size(),
             "The content of action_view was not placed.");
         Y.Assert.areEqual(
             1, view.srcNode.one('#events_list').all('table').size(),
             "The table was not created in events_list.");
+        Y.Assert.isObject(
+            view.powerChecker,
+            "Failed to load PowerCheckWidget.");
     },
 
     testRender_updates_field_data: function() {
@@ -998,6 +1001,14 @@ suite.add(new Y.maas.testing.TestCase({
             'Full node event log (' + view.node.events.total + ' events).',
             view.srcNode.one('#events_list').one('a').get('text'),
             "The event list more link has incorrect text.");
+    },
+
+    testRender_renders_PowerCheckWidget: function() {
+        var view = this.makeNodeView();
+        view.render();
+        Y.Assert.isObject(
+            view.actionView.one('button[value="check-powerstate"]'),
+            "Failed to render the PowerCheckWidget.");
     }
 
 }));
