@@ -34,6 +34,7 @@ from maasserver.models import (
     MACAddress,
     NodeGroup,
     )
+from maasserver.models.macaddress import update_mac_cluster_interfaces
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
     compose_preseed_url,
@@ -163,12 +164,15 @@ def pxeconfig(request):
         is preferred.
     """
     request_mac = request.GET.get('mac', None)
+    request_ip = request.GET.get('remote', None)
     node = get_node_from_mac_string(request_mac)
 
     if node is not None:
-        # Update the record of which MAC address this node uses to PXE boot.
+        # Update the record of which MAC address and cluster interface
+        # this node uses to PXE boot.
         node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
         node.save()
+        update_mac_cluster_interfaces(request_ip, request_mac, node.nodegroup)
 
     if node is None or node.get_boot_purpose() == "commissioning":
         osystem = Config.objects.get_config('commissioning_osystem')

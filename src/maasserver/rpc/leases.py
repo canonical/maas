@@ -17,7 +17,6 @@ __all__ = [
 ]
 
 from maasserver.models.dhcplease import DHCPLease
-from maasserver.models.macaddress import update_mac_cluster_interfaces
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.utils.async import transactional
 from provisioningserver.pserv_services.lease_upload_service import (
@@ -50,5 +49,4 @@ def update_leases(uuid, mappings):
     else:
         leases = convert_mappings_to_leases(mappings)
         DHCPLease.objects.update_leases(nodegroup, leases)
-        update_mac_cluster_interfaces(leases, nodegroup)
         return {}

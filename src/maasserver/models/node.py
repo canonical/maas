@@ -105,7 +105,10 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
-from maasserver.utils.orm import commit_within_atomic_block
+from maasserver.utils.orm import (
+    commit_within_atomic_block,
+    get_one,
+    )
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import IPAddress
@@ -783,10 +786,11 @@ class Node(CleanSave, TimestampedModel):
 
         # See if there's a lease for this MAC and set its
         # cluster_interface if so.
-        nodegroup_leases = {
-            lease.ip: lease.mac
-            for lease in DHCPLease.objects.filter(nodegroup=self.nodegroup)}
-        update_mac_cluster_interfaces(nodegroup_leases, self.nodegroup)
+        leases = DHCPLease.objects.filter(
+            nodegroup=self.nodegroup, mac=mac.mac_address)
+        lease = get_one(leases)
+        if lease is not None:
+            update_mac_cluster_interfaces(lease.ip, lease.mac, self.nodegroup)
 
         return mac
 

@@ -420,31 +420,6 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         self.expectThat(mac, Equals(mapping["mac"]))
 
     @wait_for_reactor
-    @inlineCallbacks
-    def test__updates_mac_to_cluster_links(self):
-        uuid = factory.make_name("uuid")
-        nodegroup = yield deferToThread(self.make_node_group, uuid)
-        cluster_interface = yield deferToThread(
-            self.make_node_group_interface, nodegroup)
-        mac_address = yield deferToThread(self.make_mac_address)
-
-        mapping = {
-            "ip": cluster_interface.ip_range_low,
-            "mac": mac_address.mac_address.get_raw(),
-        }
-
-        response = yield call_responder(Region(), UpdateLeases, {
-            b"uuid": uuid, b"mappings": [mapping]})
-        self.assertThat(response, Equals({}))
-
-        @transactional
-        def get_cluster_interface():
-            return reload_object(mac_address).cluster_interface
-
-        observed = yield deferToThread(get_cluster_interface)
-        self.assertThat(observed, Equals(cluster_interface))
-
-    @wait_for_reactor
     def test__raises_NoSuchCluster_if_cluster_not_found(self):
         uuid = factory.make_name("uuid")
         d = call_responder(
