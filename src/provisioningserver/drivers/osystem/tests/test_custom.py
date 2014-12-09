@@ -15,9 +15,11 @@ __metaclass__ = type
 __all__ = []
 
 from itertools import product
+import os
 
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from provisioningserver.drivers.osystem import custom
 from provisioningserver.drivers.osystem.custom import (
     BOOT_IMAGE_PURPOSE,
     CustomOS,
@@ -25,6 +27,19 @@ from provisioningserver.drivers.osystem.custom import (
 
 
 class TestCustomOS(MAASTestCase):
+
+    def make_resource_path(self, filename):
+        tmpdir = self.make_dir()
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        release = factory.make_name('release')
+        label = factory.make_name('label')
+        dirpath = os.path.join(
+            tmpdir, 'custom', arch, subarch, release, label)
+        os.makedirs(dirpath)
+        factory.make_file(dirpath, filename)
+        self.patch(custom, 'BOOT_RESOURCES_STORAGE', tmpdir)
+        return arch, subarch, release, label
 
     def test_get_boot_image_purposes(self):
         osystem = CustomOS()
@@ -58,3 +73,17 @@ class TestCustomOS(MAASTestCase):
         osystem = CustomOS()
         release = factory.make_name('release')
         self.assertEqual(release, osystem.get_release_title(release))
+
+    def test_get_xinstall_parameters_returns_root_tgz_tgz(self):
+        osystem = CustomOS()
+        arch, subarch, release, label = self.make_resource_path('root-tgz')
+        self.assertItemsEqual(
+            ('root-tgz', 'tgz'),
+            osystem.get_xinstall_parameters(arch, subarch, release, label))
+
+    def test_get_xinstall_parameters_returns_root_dd_dd_tgz(self):
+        osystem = CustomOS()
+        arch, subarch, release, label = self.make_resource_path('root-dd')
+        self.assertItemsEqual(
+            ('root-dd', 'dd-tgz'),
+            osystem.get_xinstall_parameters(arch, subarch, release, label))
