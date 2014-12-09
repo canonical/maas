@@ -20,7 +20,7 @@ suite.add(new Y.maas.testing.TestCase({
     },
 
     createWidget: function(system_id) {
-        var selector = '#form';
+        var selector = '#placeholder';
         var widget = new module.PowerCheckWidget(
             {srcNode: selector, system_id: system_id});
         this.addCleanup(function() { widget.destroy(); });

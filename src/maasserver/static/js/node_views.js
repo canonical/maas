@@ -537,6 +537,10 @@ module.NodeView = Y.Base.create('nodeView', Y.View, [], {
         this.srcNode = Y.one(config.srcNode);
         this.eventList = Y.one(config.eventList);
         this.actionView = Y.one(config.actionView);
+        this.powerChecker = new Y.maas.node_check.PowerCheckWidget({
+            srcNode: config.actionView,
+            system_id: config.system_id
+        });
     },
 
     /**
@@ -581,6 +585,7 @@ module.NodeView = Y.Base.create('nodeView', Y.View, [], {
         Y.maas.utils.updateElements(elements, this.node);
         this.renderEventList();
         this.renderActionView();
+        this.powerChecker.render();
     },
 
    /**
@@ -671,5 +676,5 @@ module.NodeView = Y.Base.create('nodeView', Y.View, [], {
 
 }, '0.1', {'requires': [
     'view', 'io', 'maas.enums', 'maas.node', 'maas.node_add',
-    'maas.nodes_chart', 'maas.morph', 'maas.utils', 'anim']}
+    'maas.nodes_chart', 'maas.node_check', 'maas.morph', 'maas.utils', 'anim']}
 );

@@ -68,18 +68,6 @@
           }
         });
       });
-      YUI().use('maas.node_check', function (Y) {
-        Y.on('domready', function() {
-          var action_form_selector = 'form#node_actions';
-          if (Y.one(action_form_selector)) {
-            var nodecheck = new Y.maas.node_check.PowerCheckWidget({
-              srcNode: action_form_selector,
-              system_id: '{{node.system_id}}'
-            });
-            nodecheck.render();
-          }
-        });
-      });
       YUI().use(
         'maas.node', 'maas.node_views', 'maas.shortpoll',
         function (Y) {
@@ -87,7 +75,8 @@
             var view = new Y.maas.node_views.NodeView({
               srcNode: 'body',
               eventList: '#node_event_list',
-              actionView: '#sidebar'
+              actionView: '#sidebar',
+              system_id: '{{node.system_id}}'
             });
             var poller = new Y.maas.shortpoll.ShortPollManager({
               uri: "{% url 'node-view' node.system_id %}"
