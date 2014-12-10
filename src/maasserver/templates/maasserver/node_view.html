@@ -109,17 +109,11 @@
       <h4>Network interfaces</h4>
       <span>
         <ul class="data-list">
-          {% for mac in node.macaddress_set.all %}
-          <li>
-            {{ mac }}
-            {% if mac.get_networks %}
-            (on
-            {# Per network interface, comma-separated list of networks. #}
-            {% for network in mac.get_networks %}
-            <a href="{% url 'network-view' network.name %}">
-                {{ network.name }}</a>{% if not forloop.last %},
-                {% endif %}{% endfor %}){% endif %}
-          </li>
+          {% with mac=node.get_pxe_mac %}
+            {% include "maasserver/node_view_mac_display.html" %}
+          {% endwith %}
+          {% for mac in node.get_extra_macs %}
+            {% include "maasserver/node_view_mac_display.html" %}
           {% endfor %}
         </ul>
       </span>

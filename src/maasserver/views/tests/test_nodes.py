@@ -86,8 +86,6 @@ from maasserver.third_party_drivers import get_third_party_driver
 from maasserver.utils.orm import get_one
 from maasserver.views import nodes as nodes_views
 from maasserver.views.nodes import (
-    configure_mac,
-    configure_macs,
     event_to_dict,
     message_from_form_stats,
     node_to_dict,
@@ -118,8 +116,7 @@ def normalize_text(text):
 class TestHelpers(MAASServerTestCase):
 
     def test_node_to_dict_keys(self):
-        node = factory.make_Node()
-        node = configure_mac(node)
+        node = factory.make_Node(mac=True)
         self.assertThat(
             node_to_dict(node),
             ContainsAll([
@@ -129,7 +126,6 @@ class TestHelpers(MAASServerTestCase):
 
     def test_node_to_dict_values(self):
         node = factory.make_Node(mac=True)
-        node = configure_mac(node)
         dict_node = node_to_dict(node)
         self.expectThat(dict_node['id'], Equals(node.id))
         self.expectThat(dict_node['system_id'], Equals(node.system_id))
@@ -148,13 +144,16 @@ class TestHelpers(MAASServerTestCase):
         self.expectThat(
             dict_node['zone_url'],
             Equals(reverse('zone-view', args=[node.zone.name])))
-        self.expectThat(dict_node['mac'], Equals(node.primary_mac))
-        self.expectThat(dict_node['vendor'], Equals(node.primary_mac_vendor))
-        self.expectThat(dict_node['macs'], Equals(node.extra_macs))
+        self.expectThat(
+            dict_node['mac'],
+            Equals(node.get_pxe_mac().mac_address.get_raw()))
+        self.expectThat(dict_node['vendor'], Equals(node.get_pxe_mac_vendor()))
+        self.assertItemsEqual(
+            dict_node['macs'],
+            [mac.mac_address.get_raw() for mac in node.get_extra_macs()])
 
     def test_node_to_dict_include_events(self):
         node = factory.make_Node()
-        node = configure_mac(node)
         etype = factory.make_EventType(level=logging.INFO)
         events = [factory.make_Event(node, etype) for _ in range(4)]
         dict_node = node_to_dict(node, event_log_count=2)
@@ -547,7 +546,6 @@ class NodeViewsTest(MAASServerTestCase):
     def test_node_list_ajax_returns_node_info(self):
         self.client_log_in()
         nodes = [factory.make_Node() for _ in range(3)]
-        nodes = configure_macs(nodes)
         ids = [node.system_id for node in nodes]
         response = self.get_node_list_ajax(ids=ids)
         json_obj = json.loads(response.content)
@@ -727,11 +725,18 @@ class NodeViewsTest(MAASServerTestCase):
         [listing] = get_one(interfaces_section.cssselect('span'))
         self.assertEqual(mac.mac_address, listing.text_content().strip())
 
-    def test_view_node_lists_macs_as_list_items(self):
+    def test_view_node_lists_macs_as_sorted_list_items(self):
+        # The PXE mac is listed first on the node view page.
         self.client_log_in()
         node = factory.make_Node()
-        factory.make_MACAddress('11:11:11:11:11:11', node=node)
-        factory.make_MACAddress('22:22:22:22:22:22', node=node)
+
+        macs = [
+            factory.make_MACAddress(node=node)
+            for _ in range(4)
+        ]
+        pxe_mac_index = 2
+        node.pxe_mac = macs[pxe_mac_index]
+        node.save()
 
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -740,8 +745,12 @@ class NodeViewsTest(MAASServerTestCase):
             '#network-interfaces')
         [interfaces_list] = interfaces_section.cssselect('ul')
         interfaces = interfaces_list.cssselect('li')
+        sorted_macs = (
+            [macs[pxe_mac_index]] +
+            macs[:pxe_mac_index] + macs[pxe_mac_index + 1:]
+        )
         self.assertEqual(
-            ['11:11:11:11:11:11', '22:22:22:22:22:22'],
+            [mac.mac_address.get_raw() for mac in sorted_macs],
             [interface.text_content().strip() for interface in interfaces])
 
     def test_view_node_links_network_interfaces_to_networks(self):
@@ -837,7 +846,7 @@ class NodeViewsTest(MAASServerTestCase):
         del json_obj['action_view']
         self.assertEquals(
             node_to_dict(
-                configure_mac(node),
+                node,
                 event_log_count=NodeView.number_of_events_shown),
             json_obj)
 

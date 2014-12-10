@@ -1,0 +1,10 @@
+<li>
+  {{ mac }}
+  {% if mac.get_networks %}
+  (on
+  {# Per network interface, comma-separated list of networks. #}
+  {% for network in mac.get_networks %}
+  <a href="{% url 'network-view' network.name %}">
+      {{ network.name }}</a>{% if not forloop.last %},
+      {% endif %}{% endfor %}){% endif %}
+</li>
