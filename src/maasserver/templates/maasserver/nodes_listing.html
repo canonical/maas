@@ -87,15 +87,15 @@
         <td data-field="memory">{{ node.display_memory }}</td>
         <td data-field="storage">{{ node.display_storage }}</td>
         <td>
-          <span data-field="vendor" data-field-attr="title" title="{{node.primary_mac_vendor}}">
+          <span data-field="vendor" data-field-attr="title" title="{{node.get_pxe_mac_vendor}}">
             <span data-field="mac">{{node.get_pxe_mac}}</span>
           </span>
-          {% if node.extra_macs %}
+          {% if node.get_extra_macs %}
           <span title="
-            {% for mac in node.extra_macs %}
+            {% for mac in node.get_extra_macs %}
               {{mac}}
             {% endfor %}
-          ">(+{{ node.extra_macs|length }})</span>
+          ">(+{{ node.get_extra_macs|length }})</span>
           {% endif %}
         </td>
         <td class="zone-column">

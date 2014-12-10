@@ -101,11 +101,7 @@ from maasserver.views import (
     )
 from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
-from netaddr import (
-    EUI,
-    IPAddress,
-    NotRegisteredError,
-    )
+from netaddr import IPAddress
 from provisioningserver.tags import merge_details_cleanly
 
 # Fields on the Node model that will be searched.
@@ -208,44 +204,6 @@ def generate_js_power_types(nodegroup=None):
     return mark_safe("[\n%s\n]" % ',\n'.join(names))
 
 
-def get_vendor_for_mac(mac):
-    """Return vendor for MAC."""
-    data = EUI(mac)
-    try:
-        return data.oui.registration().org
-    except NotRegisteredError:
-        return 'Unknown Vendor'
-
-
-def configure_mac(node):
-    """Configure the node to have a primary_mac, primary_mac_vendor, and
-    extra_macs attribute.
-    """
-    macs = node.macaddress_set.all()
-    macs = sorted(macs, key=lambda mac: mac.created)
-    macs = ['%s' % mac.mac_address for mac in macs]
-    if len(macs) == 0:
-        node.primary_mac = None
-        node.primary_mac_vendor = None
-        node.extra_macs = []
-    else:
-        node.primary_mac = macs[0]
-        node.primary_mac_vendor = get_vendor_for_mac(node.primary_mac)
-        node.extra_macs = macs[1:]
-    return node
-
-
-def configure_macs(nodes):
-    """Configures the each node in the query to have an "macs" attribute,
-    that contains a list of macs, sorted by created.
-
-    The list is structed to contain the MAC and its vendor.
-    """
-    for node in nodes:
-        configure_mac(node)
-    return nodes
-
-
 def node_to_dict(node, event_log_count=0):
     """Convert `Node` to a dictionary.
 
@@ -256,6 +214,7 @@ def node_to_dict(node, event_log_count=0):
         owner = ""
     else:
         owner = '%s' % node.owner
+    pxe_mac = node.get_pxe_mac()
     node_dict = dict(
         id=node.id,
         system_id=node.system_id,
@@ -271,9 +230,9 @@ def node_to_dict(node, event_log_count=0):
         power_state=node.power_state,
         zone=node.zone.name,
         zone_url=reverse('zone-view', args=[node.zone.name]),
-        mac=node.primary_mac,
-        vendor=node.primary_mac_vendor,
-        macs=node.extra_macs,
+        mac=None if pxe_mac is None else pxe_mac.mac_address.get_raw(),
+        vendor=node.get_pxe_mac_vendor(),
+        macs=[mac.mac_address.get_raw() for mac in node.get_extra_macs()],
         )
     if event_log_count != 0:
         # Add event information to the generated node dictionary. We exclude
@@ -532,7 +491,7 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
         if self.query:
             nodes = self._search_nodes(nodes)
         nodes = prefetch_nodes_listing(nodes)
-        return configure_macs(nodes)
+        return nodes
 
     def _prepare_sort_links(self):
         """Returns 2 dicts, with sort fields as keys and
@@ -600,7 +559,6 @@ class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
             nodes = Node.objects.get_nodes(
                 request.user, NODE_PERMISSION.VIEW, ids=match_ids)
             nodes = prefetch_nodes_listing(nodes)
-            nodes = configure_macs(nodes)
         nodes = [node_to_dict(node) for node in nodes]
         return HttpResponse(json.dumps(nodes), mimetype='application/json')
 
@@ -857,7 +815,6 @@ class NodeView(NodeViewMixin, UpdateView):
     def handle_ajax_request(self, request, *args, **kwargs):
         """JSON response to update the node view."""
         node = self.get_object()
-        node = configure_mac(node)
         node = node_to_dict(
             node, event_log_count=self.number_of_events_shown)
         node['action_view'] = self.render_node_actions(request)

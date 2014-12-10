@@ -1796,6 +1796,37 @@ class NodeTest(MAASServerTestCase):
         node.pxe_mac.delete()
         self.assertThat(reload_object(node), Not(Is(None)))
 
+    def test_get_pxe_mac_vendor_returns_vendor(self):
+        node = factory.make_Node()
+        mac = factory.make_MACAddress(address='ec:a8:6b:fd:ae:3f', node=node)
+        node.pxe_mac = mac
+        node.save()
+        self.assertEqual(
+            "ELITEGROUP COMPUTER SYSTEMS CO., LTD.",
+            node.get_pxe_mac_vendor())
+
+    def test_get_extra_macs_returns_all_but_pxe_mac(self):
+        node = factory.make_Node()
+        macs = [factory.make_MACAddress(node=node) for _ in xrange(3)]
+        # Do not set the pxe mac to the first mac to make sure the pxe mac
+        # (and not the first created) is excluded from the list returned by
+        # `get_extra_macs`.
+        pxe_mac_index = 1
+        node.pxe_mac = macs[pxe_mac_index]
+        node.save()
+        del macs[pxe_mac_index]
+        self.assertItemsEqual(
+            macs,
+            node.get_extra_macs())
+
+    def test_get_extra_macs_returns_all_but_first_mac_if_no_pxe_mac(self):
+        node = factory.make_Node()
+        macs = [factory.make_MACAddress(node=node) for _ in xrange(3)]
+        node.save()
+        self.assertItemsEqual(
+            macs[1:],
+            node.get_extra_macs())
+
 
 class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
 

@@ -105,6 +105,7 @@ from maasserver.utils import (
     get_db_state,
     strip_domain,
     )
+from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
     commit_within_atomic_block,
     get_one,
@@ -1431,6 +1432,22 @@ class Node(CleanSave, TimestampedModel):
             return self.pxe_mac
 
         return self.macaddress_set.order_by('id').first()
+
+    def get_pxe_mac_vendor(self):
+        """Return the vendor of the MAC address the node pxebooted from."""
+        pxe_mac = self.get_pxe_mac()
+        if pxe_mac is None:
+            return None
+        else:
+            return get_vendor_for_mac(pxe_mac.mac_address.get_raw())
+
+    def get_extra_macs(self):
+        """Get the MACs other that the one the node PXE booted from."""
+        pxe_mac = self.get_pxe_mac()
+        extra_macs = self.macaddress_set.all()
+        if pxe_mac is not None:
+            extra_macs = extra_macs.exclude(mac_address=pxe_mac.mac_address)
+        return extra_macs
 
     def is_pxe_mac_on_managed_interface(self):
         pxe_mac = self.get_pxe_mac()
