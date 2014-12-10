@@ -56,7 +56,8 @@ class CustomOS(OperatingSystem):
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for given image."""
         path = os.path.join(
-            BOOT_RESOURCES_STORAGE, 'custom', arch, subarch, release, label)
+            BOOT_RESOURCES_STORAGE, 'current', 'custom',
+            arch, subarch, release, label)
         if os.path.exists(os.path.join(path, 'root-dd')):
             return "root-dd", "dd-tgz"
         else:
