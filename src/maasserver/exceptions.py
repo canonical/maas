@@ -140,6 +140,12 @@ class StaticIPAddressTypeClash(MAASAPIException):
     api_error = httplib.CONFLICT
 
 
+class StaticIPAlreadyExistsForMACAddress(MAASAPIException):
+    """Raised when trying to allocate a static IP for a non-node MAC
+    where a node with that MAC already exists."""
+    api_error = httplib.CONFLICT
+
+
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
 

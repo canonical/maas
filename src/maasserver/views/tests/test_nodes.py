@@ -714,7 +714,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_shows_macs(self):
         self.client_log_in()
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))
@@ -756,7 +756,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_links_network_interfaces_to_networks(self):
         self.client_log_in()
         network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[network])
+        mac = factory.make_MACAddress_with_Node(networks=[network])
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))
@@ -778,7 +778,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_sorts_networks_by_name(self):
         self.client_log_in()
         networks = factory.make_Networks(3, sortable_name=True)
-        mac = factory.make_MACAddress(networks=networks)
+        mac = factory.make_MACAddress_with_Node(networks=networks)
 
         response = self.client.get(
             reverse('node-view', args=[mac.node.system_id]))

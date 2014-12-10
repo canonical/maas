@@ -55,7 +55,7 @@ class TestDHCPLease(MAASServerTestCase):
 
     def test_dhcplease_gets_removed_when_corresponding_node_is_deleted(self):
         lease = factory.make_DHCPLease()
-        mac = factory.make_MACAddress(address=lease.mac)
+        mac = factory.make_MACAddress_with_Node(address=lease.mac)
         mac.node.delete()
         self.assertItemsEqual(
             [], DHCPLease.objects.filter(mac=mac.mac_address))

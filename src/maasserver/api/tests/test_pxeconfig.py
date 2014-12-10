@@ -280,7 +280,7 @@ class TestPXEConfigAPI(MAASServerTestCase):
         self.assertNotIn(domain, pxe_config.values())
 
     def test_pxeconfig_uses_nodegroup_domain_for_node(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         params = self.get_default_params()
         params['mac'] = mac
         self.assertEqual(

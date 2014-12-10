@@ -542,20 +542,20 @@ class TestExtractMACString(MAASServerTestCase):
 
     def test__returns_string(self):
         self.assertIsInstance(
-            extract_mac_string(factory.make_MACAddress()),
+            extract_mac_string(factory.make_MACAddress_with_Node()),
             unicode)
 
     def test__returns_MAC_address(self):
         mac = factory.make_mac_address()
         self.assertEqual(
             normalise_mac(mac),
-            extract_mac_string(factory.make_MACAddress(address=mac)))
+            extract_mac_string(factory.make_MACAddress_with_Node(address=mac)))
 
     def test__works_even_if_mac_address_is_already_string(self):
         # The ORM normally presents MACAddress.mac_address as a MAC object.
         # But a string will work too.
         mac_string = factory.make_mac_address()
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         mac.mac_address = mac_string
         self.assertIsInstance(mac.mac_address, unicode)
         self.assertEqual(normalise_mac(mac_string), extract_mac_string(mac))
@@ -564,7 +564,7 @@ class TestExtractMACString(MAASServerTestCase):
 class TestAddIPToMapping(MAASServerTestCase):
 
     def test__adds_to_empty_entry(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         ip = factory.make_ipv4_address()
         mapping = {}
         add_ip_to_mapping(mapping, mac, ip)
@@ -572,7 +572,7 @@ class TestAddIPToMapping(MAASServerTestCase):
 
     def test__adds_to_nonempty_entry(self):
         mapping = {}
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         ip1 = factory.make_ipv4_address()
         add_ip_to_mapping(mapping, mac, ip1)
         ip2 = factory.make_ipv4_address()
@@ -580,7 +580,7 @@ class TestAddIPToMapping(MAASServerTestCase):
         self.assertItemsEqual([ip1, ip2], mapping[mac.mac_address])
 
     def test__will_not_add_duplicate(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         ip = factory.make_ipv4_address()
         mapping = {mac.mac_address: [ip]}
         original_mapping = mapping.copy()
@@ -588,13 +588,13 @@ class TestAddIPToMapping(MAASServerTestCase):
         self.assertEqual(original_mapping, mapping)
 
     def test__does_not_add_None(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         mapping = {}
         add_ip_to_mapping(mapping, mac, None)
         self.assertEqual({}, mapping)
 
     def test__does_not_add_empty_string(self):
-        mac = factory.make_MACAddress()
+        mac = factory.make_MACAddress_with_Node()
         mapping = {}
         add_ip_to_mapping(mapping, mac, '')
         self.assertEqual({}, mapping)
@@ -663,7 +663,7 @@ class TestMapGateways(MAASServerTestCase):
             cluster, network=network, router_ip=gateway,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         node = factory.make_Node(nodegroup=cluster)
-        mac = factory.make_MACAddress(
+        mac = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=cluster_interface)
 
         self.assertEqual(
@@ -683,7 +683,7 @@ class TestMapGateways(MAASServerTestCase):
             interface=net_interface,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         node = factory.make_Node(nodegroup=cluster)
-        mac = factory.make_MACAddress(
+        mac = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=ipv4_interface)
 
         self.assertEqual(
@@ -698,14 +698,14 @@ class TestMapGateways(MAASServerTestCase):
         cluster_interface1 = factory.make_NodeGroupInterface(
             cluster, network=network1, router_ip=gateway1,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        mac1 = factory.make_MACAddress(
+        mac1 = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=cluster_interface1)
         network2 = factory.make_ipv4_network(slash=24)
         gateway2 = factory.pick_ip_in_network(network2)
         cluster_interface2 = factory.make_NodeGroupInterface(
             cluster, network=network2, router_ip=gateway2,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
-        mac2 = factory.make_MACAddress(
+        mac2 = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=cluster_interface2)
 
         self.assertEqual(
@@ -731,7 +731,7 @@ class TestMapGateways(MAASServerTestCase):
             interface=net_interface,
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         node = factory.make_Node(nodegroup=cluster)
-        mac = factory.make_MACAddress(
+        mac = factory.make_MACAddress_with_Node(
             node=node, cluster_interface=ipv4_interface)
 
         mapping = map_gateways(node)

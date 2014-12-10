@@ -130,7 +130,7 @@ class TestNetwork(APITestCase):
     def test_DELETE_works_with_MACs_attached(self):
         self.become_admin()
         network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[network])
+        mac = factory.make_MACAddress_with_Node(networks=[network])
         response = self.client.delete(self.get_url(network.name))
         self.assertEqual(httplib.NO_CONTENT, response.status_code)
         self.assertIsNone(reload_object(network))
@@ -140,7 +140,9 @@ class TestNetwork(APITestCase):
     def test_POST_connect_macs_connects_macs_to_network(self):
         self.become_admin()
         network = factory.make_Network()
-        macs = [factory.make_MACAddress(networks=[network]) for _ in range(2)]
+        macs = [
+            factory.make_MACAddress_with_Node(networks=[network])
+            for _ in range(2)]
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -166,7 +168,7 @@ class TestNetwork(APITestCase):
         self.become_admin()
         network = factory.make_Network()
         other_network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[other_network])
+        mac = factory.make_MACAddress_with_Node(networks=[other_network])
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -179,8 +181,8 @@ class TestNetwork(APITestCase):
     def test_POST_connect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
         network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[])
-        other_mac = factory.make_MACAddress(networks=[network])
+        mac = factory.make_MACAddress_with_Node(networks=[])
+        other_mac = factory.make_MACAddress_with_Node(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -193,7 +195,7 @@ class TestNetwork(APITestCase):
     def test_POST_connect_macs_ignores_MACs_already_on_network(self):
         self.become_admin()
         network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[network])
+        mac = factory.make_MACAddress_with_Node(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -231,7 +233,7 @@ class TestNetwork(APITestCase):
     def test_POST_disconnect_macs_removes_MACs_from_network(self):
         self.become_admin()
         network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[network])
+        mac = factory.make_MACAddress_with_Node(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
@@ -246,7 +248,7 @@ class TestNetwork(APITestCase):
             self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
-                'macs': [factory.make_MACAddress().mac_address],
+                'macs': [factory.make_MACAddress_with_Node().mac_address],
             })
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -266,20 +268,21 @@ class TestNetwork(APITestCase):
             self.get_url(factory.make_Network().name),
             {
                 'op': 'disconnect_macs',
-                'macs': [factory.make_MACAddress().mac_address],
+                'macs': [factory.make_MACAddress_with_Node().mac_address],
             })
         self.assertEqual(httplib.OK, response.status_code)
 
     def test_POST_disconnect_macs_leaves_other_MACs_unchanged(self):
         self.become_admin()
         network = factory.make_Network()
-        other_mac = factory.make_MACAddress(networks=[network])
+        other_mac = factory.make_MACAddress_with_Node(networks=[network])
         response = self.client.post(
             self.get_url(network.name),
             {
                 'op': 'disconnect_macs',
                 'macs': [
-                    factory.make_MACAddress(networks=[network]).mac_address
+                    factory.make_MACAddress_with_Node(
+                        networks=[network]).mac_address
                     ],
             })
         self.assertEqual(httplib.OK, response.status_code)
@@ -289,7 +292,8 @@ class TestNetwork(APITestCase):
         self.become_admin()
         network = factory.make_Network()
         other_network = factory.make_Network()
-        mac = factory.make_MACAddress(networks=[network, other_network])
+        mac = factory.make_MACAddress_with_Node(
+            networks=[network, other_network])
         response = self.client.post(
             self.get_url(network.name),
             {

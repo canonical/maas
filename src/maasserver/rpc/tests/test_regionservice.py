@@ -391,7 +391,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
 
     @transactional
     def make_mac_address(self):
-        return factory.make_MACAddress()
+        return factory.make_MACAddress_with_Node()
 
     @transactional
     def get_leases_for(self, nodegroup):
@@ -963,7 +963,7 @@ class TestRegionProtocol_SendEventMACAddress(TransactionTestCase):
 
     @transactional
     def make_mac_address(self):
-        return factory.make_MACAddress()
+        return factory.make_MACAddress_with_Node()
 
     @wait_for_reactor
     @inlineCallbacks
