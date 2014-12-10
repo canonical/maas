@@ -33,6 +33,24 @@ ARCH_FIX = {
 class VirshVMState:
     OFF = "shut off"
     ON = "running"
+    NO_STATE = "no state"
+    IDLE = "idle"
+    PAUSED = "paused"
+    IN_SHUTDOWN = "in shutdown"
+    CRASHED = "crashed"
+    PM_SUSPENDED = "pmsuspended"
+
+
+VM_STATE_TO_POWER_STATE = {
+    VirshVMState.OFF: "off",
+    VirshVMState.ON: "on",
+    VirshVMState.NO_STATE: "off",
+    VirshVMState.IDLE: "off",
+    VirshVMState.PAUSED: "off",
+    VirshVMState.IN_SHUTDOWN: "on",
+    VirshVMState.CRASHED: "off",
+    VirshVMState.PM_SUSPENDED: "off",
+    }
 
 
 class VirshError(Exception):
@@ -243,8 +261,7 @@ def power_state_virsh(poweraddr, machine, password=None):
     if state is None:
         raise VirshError('Failed to get domain: %s' % machine)
 
-    if state == VirshVMState.OFF:
-        return 'off'
-    elif state == VirshVMState.ON:
-        return 'on'
-    raise VirshError('Unknown state: %s' % state)
+    try:
+        return VM_STATE_TO_POWER_STATE[state]
+    except KeyError:
+        raise VirshError('Unknown state: %s' % state)
