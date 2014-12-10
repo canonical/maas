@@ -35,7 +35,7 @@ class TestCustomOS(MAASTestCase):
         release = factory.make_name('release')
         label = factory.make_name('label')
         dirpath = os.path.join(
-            tmpdir, 'custom', arch, subarch, release, label)
+            tmpdir, 'current', 'custom', arch, subarch, release, label)
         os.makedirs(dirpath)
         factory.make_file(dirpath, filename)
         self.patch(custom, 'BOOT_RESOURCES_STORAGE', tmpdir)
