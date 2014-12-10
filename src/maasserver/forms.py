@@ -1988,7 +1988,7 @@ class BulkNodeActionForm(forms.Form):
         action_choices = (
             # Put an empty action as the first displayed option to avoid
             # fat-fingered bulk actions.
-            [('', '')] +
+            [('', 'Select Action')] +
             [(action.name, action.display_bulk) for action in ACTION_CLASSES]
             )
         add_zone_field = (

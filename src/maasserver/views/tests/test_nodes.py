@@ -1297,7 +1297,8 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertIn(
             message,
             document.xpath(
-                "string(//div[@id='body']/ul/li[@class='info'])").strip())
+                "string(//div[@id='body']/div/div/"
+                "ul/li[@class='info'])").strip())
         existing_nodes = list(Node.objects.filter(
             system_id__in=system_id_to_delete))
         node3_system_id = node3.system_id
@@ -1330,7 +1331,8 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertIn(
             nodes_views.construct_third_party_drivers_notice(False).strip(),
             document.xpath(
-                "string(//div[@id='body']/ul/li[@class='info'])").strip())
+                "string(//div[@id='body']/div/div/"
+                "ul/li[@class='info'])").strip())
 
     def test_node_list_view_shows_third_party_drivers_admin_warning(self):
         self.client_log_in(as_admin=True)
