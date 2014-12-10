@@ -737,11 +737,18 @@ class NodeViewsTest(MAASServerTestCase):
         [listing] = get_one(interfaces_section.cssselect('span'))
         self.assertEqual(mac.mac_address, listing.text_content().strip())
 
-    def test_view_node_lists_macs_as_list_items(self):
+    def test_view_node_lists_macs_as_sorted_list_items(self):
+        # The PXE mac is listed first on the node view page.
         self.client_log_in()
         node = factory.make_Node()
-        factory.make_MACAddress('11:11:11:11:11:11', node=node)
-        factory.make_MACAddress('22:22:22:22:22:22', node=node)
+
+        macs = [
+            factory.make_MACAddress(node=node)
+            for _ in range(4)
+        ]
+        pxe_mac_index = 2
+        node.pxe_mac = macs[pxe_mac_index]
+        node.save()
 
         response = self.client.get(reverse('node-view', args=[node.system_id]))
         self.assertEqual(httplib.OK, response.status_code)
@@ -750,8 +757,12 @@ class NodeViewsTest(MAASServerTestCase):
             '#network-interfaces')
         [interfaces_list] = interfaces_section.cssselect('ul')
         interfaces = interfaces_list.cssselect('li')
+        sorted_macs = (
+            [macs[pxe_mac_index]] +
+            macs[:pxe_mac_index] + macs[pxe_mac_index + 1:]
+        )
         self.assertEqual(
-            ['11:11:11:11:11:11', '22:22:22:22:22:22'],
+            [mac.mac_address.get_raw() for mac in sorted_macs],
             [interface.text_content().strip() for interface in interfaces])
 
     def test_view_node_links_network_interfaces_to_networks(self):
