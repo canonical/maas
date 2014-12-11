@@ -2,6 +2,63 @@
 Changelog
 =========
 
+1.7.1
+=====
+
+Minor feature improvements
+--------------------------
+
+New CentOS Release support.
+  Further to the work done in the 1.7.0 MAAS Release, MAAS now supports
+  uploading various versions of CentOS. Previously MAAS would only
+  officially support 6.5.
+
+Power Monitoring for Seamicro 15000, Cisco UCS and HP Moonshot Chassis
+  Further the work done in the 1.7.0 MAAS release, it now supports power
+  query and monitoring for the Seamicro 15000 Chassis, the Cisco UCS
+  Chassis Manager and the HP Moonshot Chassis Manager.
+
+Node Listing Page and Node Event Log live refresh
+  The Node Listing page and the Node Event Log now have live refresh
+  every 10 seconds. This allows MAAS to display the latest node status
+  and events without forcing a browser update.
+
+Bug fix update
+--------------
+
+For full details see https://launchpad.net/maas/+milestone/1.7.1
+
+#1394382    Fix to maas not knowing about VM paused state
+#1393953    Fix failure to deploy Custom Images
+#1401241    Fix CustomOS image by returning the correct filename and path
+#1398159    Don't query for node info when we don't have a MAC address when accessing the TFTP server from local machine.
+#1400849    Ensure PXE MAC address is the first reported to MAAS on enlistment
+#1376716    Do not use poweroff.c32/poweroff.com as some systems don't support it. Instead use the ephemeral environment
+            to issue a poweroff command
+#1399331    Pipe script commands to /bind/sh instead of using shell=True to prevent showing error output of px ax
+#1396308    Do not delete node's connected to a cluster interface, if the latter gets removed.
+#1397193    Ensure disk erasing always runs the commissioning ephemeral image
+#1393423    Add capability to use an option prefix_filer parameter to probe_and_enlist_hardware when the model is virsh
+#1384424    Add capability to query power status for sm15k
+#1384426    Add capability to query power status for UCSM
+#1399016    Ensure WSGI has a home defined for the user.
+#1400909    Fix call to get_name_and_vlan_from_cluster_interface in create_Network_from_NodeGroupInterface. It was using
+            the interface's name in lieu of the cluster's name.
+#1401349    Fix node_view to use display_memory and adjust units to GiB.
+#1391897    Fix bad data in Network.name causing the UI to crash
+#1391139    Fix failure to parse VLAN tags in network interfaces that combine a VLAN and an alias in just the wrong way
+#1389733    Implemented updating of the node informationin the node listing table
+#1389351    Change the way network preseeds are installed in Curtin to write the whole directory tree in one go.
+#1360280    Validate BootSourceSelection to avoid adding bogus entries.
+#1391421    Show names of the resources that have blank titles.
+#1378835    Make the Config.name unique: this is meant to prevent races when creating config objects.
+#1382075    Only save node power parameters via the metadataserver.api if the current node power type is not "mscm".
+#1360280    Make os, release and boot_source unique for BootSourceSelection to stop duplicate entries.
+#1391411    Only release leases when the metadata server's signal() is called if the node is commissioning, to not lose
+            its IP address.
+#1390144    Use the transition monitor to put a timeout on RELEASING.
+
+
 1.7.0
 =====
 
