@@ -1421,14 +1421,12 @@ def validate_new_static_ip_ranges(instance, static_ip_range_low,
 
 def create_Network_from_NodeGroupInterface(interface):
     """Given a `NodeGroupInterface`, create its Network counterpart."""
-    # This method cannot use non-orm model properties because it needs
-    # to be used in a data migration, where they won't work.
     if not interface.subnet_mask:
         # Can be None or empty string, do nothing if so.
         return
 
     name, vlan_tag = get_name_and_vlan_from_cluster_interface(
-        interface.name, interface.interface)
+        interface.nodegroup.name, interface.interface)
     ipnetwork = make_network(interface.ip, interface.subnet_mask)
     network = Network(
         name=name,

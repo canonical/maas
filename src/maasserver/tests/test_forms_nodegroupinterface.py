@@ -372,7 +372,7 @@ class TestNodeGroupInterfaceFormNetworkCreation(MAASServerTestCase):
         form.save()
         [network] = Network.objects.all()
         expected, _ = get_name_and_vlan_from_cluster_interface(
-            interface.name, interface.interface)
+            interface.nodegroup.name, interface.interface)
         self.assertEqual(expected, network.name)
 
     def test_sets_vlan_tag(self):
