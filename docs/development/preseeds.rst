@@ -63,13 +63,15 @@ User-provided preseeds
 ----------------------
 
 In addition to the standard preseed files, the base preseeds can be
-overridden by end users on a per-architecture, OS release and node name basis.
-The templates are looked up in the following order::
+overridden by end users on a per-OS, architecture, subarchitecture,
+OS release and node name basis. The templates are looked up in the
+following order::
 
-    {prefix}_{node_architecture}_{node_subarchitecture}_{release}_{node_name}
-    {prefix}_{node_architecture}_{node_subarchitecture}_{release}
-    {prefix}_{node_architecture}_{node_subarchitecture}
-    {prefix}_{node_architecture}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}_{node_name}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}_{release}
+    {prefix}_{osystem}_{node_arch}_{node_subarch}
+    {prefix}_{osystem}_{node_arch}
+    {prefix}_{osystem}
     {prefix}
     'generic'
 
