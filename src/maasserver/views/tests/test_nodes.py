@@ -567,7 +567,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertIn(node.hostname, content_text)
         self.assertIn(node.display_status(), content_text)
         self.assertIn(node.architecture, content_text)
-        self.assertIn('%d MB' % (node.memory,), content_text)
+        self.assertIn('%s GiB' % (node.display_memory(),), content_text)
         self.assertIn('%d' % (node.cpu_count,), content_text)
         self.assertIn(self.logged_in_user.username, content_text)
 
