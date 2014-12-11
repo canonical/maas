@@ -1,10 +1,94 @@
+from base64 import b64decode
+from collections import Sequence
+import math
+
 from django.db import models
-from maasserver.models.nodeprobeddetails import get_probed_details
-from metadataserver.models.commissioningscript import update_hardware_details
+from lxml import etree
 from south.db import db
 # -*- coding: utf-8 -*-
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
+
+
+class RESULT_TYPE:
+
+    COMMISSIONING = 0
+    INSTALLATION = 1
+
+
+# Name of the file where the commissioning scripts store lshw output.
+LSHW_OUTPUT_NAME = '00-maas-01-lshw.out'
+
+# Name of the file where the commissioning scripts store LLDP output.
+LLDP_OUTPUT_NAME = '99-maas-02-capture-lldp.out'
+
+
+script_output_nsmap = {
+    LLDP_OUTPUT_NAME: "lldp",
+    LSHW_OUTPUT_NAME: "lshw",
+}
+
+
+def get_probed_details(orm, system_ids):
+    """Return details of the nodes identified by `system_ids`.
+
+    Originally from `metadataserver.models.commissioningscript`,
+    copied here so the original can change.
+
+    :return: A ``{system_id: {...details...}, ...}`` map, where the
+        inner dictionaries have the same form as those returned by
+        `get_single_probed_details`.
+    """
+    assert not isinstance(system_ids, (bytes, unicode))
+
+    if not isinstance(system_ids, Sequence):
+        system_ids = list(system_ids)
+
+    assert not any(isinstance(system_id, bytes) for system_id in system_ids)
+
+    query = orm['metadataserver.noderesult'].objects.filter(
+        node__system_id__in=system_ids, name__in=script_output_nsmap,
+        script_result=0, result_type=RESULT_TYPE.COMMISSIONING)
+    results = query.values_list('node__system_id', 'name', 'data')
+
+    detail_template = dict.fromkeys(script_output_nsmap.values())
+    details = {
+        system_id: detail_template.copy()
+        for system_id in system_ids
+    }
+    for system_id, script_output_name, b64data in results:
+        namespace = script_output_nsmap[script_output_name]
+        details[system_id][namespace] = b64decode(b64data)
+
+    return details
+
+
+_xpath_storage_bytes = """\
+    (
+        //node[@class='disk'] |
+        //node[not(ancestor::node[@class='disk']) and @class='volume']
+    )
+    /size[@units='bytes'] div 1000 div 1000
+"""
+
+
+def update_storage_details(node, xmlbytes):
+    """Set node storage from lshw output.
+
+    This has been copied into this migration so that it can be modified
+    in its original location without breaking this migration.
+    """
+    try:
+        doc = etree.XML(xmlbytes)
+    except etree.XMLSyntaxError as e:
+        raise ValidationError(
+            {'hardware_details': ['Invalid XML: %s' % (e,)]})
+    evaluator = etree.XPathEvaluator(doc)
+    storage = evaluator(_xpath_storage_bytes)
+    if not storage or math.isnan(storage):
+        storage = 0
+    node.storage = storage
+    node.save(update_fields=['storage'])
 
 
 class Migration(DataMigration):
@@ -12,13 +96,13 @@ class Migration(DataMigration):
     def forwards(self, orm):
         "Recompute storage size with the new commissioning results code."
         for node in orm['maasserver.node'].objects.all():
-            node_details = get_probed_details([node.system_id])
+            node_details = get_probed_details(orm, [node.system_id])
             if node.system_id not in node_details:
                 continue
             lshw_xml = node_details[node.system_id].get('lshw')
             if lshw_xml is None:
                 continue
-            update_hardware_details(node, lshw_xml, 0)
+            update_storage_details(node, lshw_xml)
 
     def backwards(self, orm):
         """Leave the correctly computed storage size in place, though it
@@ -187,7 +271,7 @@ class Migration(DataMigration):
             'content': ('metadataserver.fields.BinaryField', [], {'blank': 'True'}),
             'filename': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
             u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
-            'key': ('django.db.models.fields.CharField', [], {'default': "u'2de8133c-7fbc-11e4-a08b-00163e57819b'", 'unique': 'True', 'max_length': '36'}),
+            'key': ('django.db.models.fields.CharField', [], {'default': "u'e65b6f06-815e-11e4-ad3c-00163e7363eb'", 'unique': 'True', 'max_length': '36'}),
             'owner': ('django.db.models.fields.related.ForeignKey', [], {'default': 'None', 'to': u"orm['auth.User']", 'null': 'True', 'blank': 'True'})
         },
         u'maasserver.largefile': {
@@ -265,7 +349,7 @@ class Migration(DataMigration):
             'routers': ('djorm_pgarray.fields.ArrayField', [], {'default': 'None', 'dbtype': "u'macaddr'", 'null': 'True', 'blank': 'True'}),
             'status': ('django.db.models.fields.IntegerField', [], {'default': '0', 'max_length': '10'}),
             'storage': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
-            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-2de6b5d2-7fbc-11e4-a08b-00163e57819b'", 'unique': 'True', 'max_length': '41'}),
+            'system_id': ('django.db.models.fields.CharField', [], {'default': "u'node-e659e9a6-815e-11e4-ad3c-00163e7363eb'", 'unique': 'True', 'max_length': '41'}),
             'tags': ('django.db.models.fields.related.ManyToManyField', [], {'to': u"orm['maasserver.Tag']", 'symmetrical': 'False'}),
             'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'null': 'True'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {}),
@@ -353,6 +437,36 @@ class Migration(DataMigration):
             'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '256'}),
             'updated': ('django.db.models.fields.DateTimeField', [], {})
         },
+        u'metadataserver.commissioningscript': {
+            'Meta': {'object_name': 'CommissioningScript'},
+            'content': ('metadataserver.fields.BinaryField', [], {}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '255'})
+        },
+        u'metadataserver.nodekey': {
+            'Meta': {'object_name': 'NodeKey'},
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'key': ('django.db.models.fields.CharField', [], {'unique': 'True', 'max_length': '18'}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']", 'unique': 'True'}),
+            'token': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['piston.Token']", 'unique': 'True'})
+        },
+        u'metadataserver.noderesult': {
+            'Meta': {'unique_together': "((u'node', u'name'),)", 'object_name': 'NodeResult'},
+            'created': ('django.db.models.fields.DateTimeField', [], {}),
+            'data': ('metadataserver.fields.BinaryField', [], {'default': "''", 'max_length': '1048576', 'blank': 'True'}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'name': ('django.db.models.fields.CharField', [], {'max_length': '255'}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']"}),
+            'result_type': ('django.db.models.fields.IntegerField', [], {'default': '0'}),
+            'script_result': ('django.db.models.fields.IntegerField', [], {}),
+            'updated': ('django.db.models.fields.DateTimeField', [], {})
+        },
+        u'metadataserver.nodeuserdata': {
+            'Meta': {'object_name': 'NodeUserData'},
+            'data': ('metadataserver.fields.BinaryField', [], {}),
+            u'id': ('django.db.models.fields.AutoField', [], {'primary_key': 'True'}),
+            'node': ('django.db.models.fields.related.ForeignKey', [], {'to': u"orm['maasserver.Node']", 'unique': 'True'})
+        },
         u'piston.consumer': {
             'Meta': {'object_name': 'Consumer'},
             'description': ('django.db.models.fields.TextField', [], {}),
@@ -372,12 +486,12 @@ class Migration(DataMigration):
             'is_approved': ('django.db.models.fields.BooleanField', [], {'default': 'False'}),
             'key': ('django.db.models.fields.CharField', [], {'max_length': '18'}),
             'secret': ('django.db.models.fields.CharField', [], {'max_length': '32'}),
-            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1418140692L'}),
+            'timestamp': ('django.db.models.fields.IntegerField', [], {'default': '1418320531L'}),
             'token_type': ('django.db.models.fields.IntegerField', [], {}),
             'user': ('django.db.models.fields.related.ForeignKey', [], {'blank': 'True', 'related_name': "'tokens'", 'null': 'True', 'to': u"orm['auth.User']"}),
             'verifier': ('django.db.models.fields.CharField', [], {'max_length': '10'})
         }
     }
 
-    complete_apps = ['maasserver']
+    complete_apps = ['maasserver', 'metadataserver']
     symmetrical = True
