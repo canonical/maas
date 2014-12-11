@@ -21,7 +21,7 @@ Power Monitoring for Seamicro 15000, Cisco UCS and HP Moonshot Chassis
 Node Listing Page and Node Event Log live refresh
   The Node Listing page and the Node Event Log now have live refresh
   every 10 seconds. This allows MAAS to display the latest node status
-  and events without forcing a browser update.
+  and events without forcing a browser refresh.
 
 Bug fix update
 --------------
