@@ -5,13 +5,31 @@ from django.db import (
     transaction,
     )
 from django.db.utils import IntegrityError
-from maasserver.utils.interfaces import (
-    get_name_and_vlan_from_cluster_interface,
-    )
 from netaddr import IPNetwork
 from south.db import db
 from south.utils import datetime_utils as datetime
 from south.v2 import DataMigration
+
+# "Frozen" method from maasserver.utils.interfaces.
+def get_name_and_vlan_from_cluster_interface(cluster_name, interface):
+    """Return a name suitable for a `Network` managed by a cluster interface.
+
+    :param interface: Network interface name, e.g. `eth0:1`.
+    :param cluster_name: Name of the cluster.
+    :return: a tuple of the new name and the interface's VLAN tag.  The VLAN
+        tag may be None.
+    """
+    name = interface
+    vlan_tag = None
+    if '.' in name:
+        _, vlan_tag = name.split('.', 1)
+        if ':' in vlan_tag:
+            # Nasty: there's an alias after the VLAN tag.
+            vlan_tag, _ = vlan_tag.split(':', 1)
+        name = name.replace('.', '-')
+    name = name.replace(':', '-')
+    network_name = "-".join((cluster_name, name))
+    return network_name, vlan_tag
 
 
 class Migration(DataMigration):

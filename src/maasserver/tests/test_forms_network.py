@@ -14,8 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maasserver import forms as forms_module
 from maasserver.dns import config as dns_config_module
-from maasserver.forms import NetworkForm
+from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
+from maasserver.forms import (
+    create_Network_from_NodeGroupInterface,
+    NetworkForm,
+    )
 from maasserver.models import (
     MACAddress,
     Network,
@@ -25,6 +30,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPNetwork
+from testtools.matchers import Contains
 
 
 class TestNetworkForm(MAASServerTestCase):
@@ -196,3 +202,67 @@ class TestNetworkForm(MAASServerTestCase):
             dns_config_module, "write_full_dns_config")
         network.delete()
         self.assertThat(write_full_dns_config, MockCalledOnceWith())
+
+
+class TestCreateNetworkFromNodeGroupInterface(MAASServerTestCase):
+
+    def test_skips_creation_if_netmask_undefined(self):
+        nodegroup = factory.make_NodeGroup()
+        interface = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
+        interface.subnet_mask = None
+        network = create_Network_from_NodeGroupInterface(interface)
+        self.assertIsNone(network)
+        self.assertItemsEqual([], Network.objects.all())
+
+    def test_creates_network_without_vlan(self):
+        nodegroup = factory.make_NodeGroup()
+        interface = factory.make_NodeGroupInterface(nodegroup)
+        network = create_Network_from_NodeGroupInterface(interface)
+        definition = {
+            'name': "%s-%s" % (
+                interface.nodegroup.name, interface.interface),
+            'description': (
+                "Auto created when creating interface %s on cluster %s" % (
+                    interface.name, interface.nodegroup.name)),
+            'ip': "%s" % interface.network.ip,
+            'netmask': "%s" % interface.network.netmask,
+            'vlan_tag': None,
+        }
+        network_obj = Network.objects.get(id=network.id)
+        self.assertAttributes(network_obj, definition)
+
+    def test_creates_network_with_vlan(self):
+        nodegroup = factory.make_NodeGroup()
+        intf = 'eth0'
+        vlan = 1
+        interface = factory.make_NodeGroupInterface(
+            nodegroup, interface="%s.%d" % (intf, vlan))
+        network = create_Network_from_NodeGroupInterface(interface)
+        net_name = "%s-%s" % (interface.nodegroup.name, interface.interface)
+        net_name = net_name.replace('.', '-')
+        definition = {
+            'name': net_name,
+            'description': (
+                "Auto created when creating interface %s on cluster %s" % (
+                    interface.name, interface.nodegroup.name)),
+            'ip': "%s" % interface.network.ip,
+            'netmask': "%s" % interface.network.netmask,
+            'vlan_tag': vlan,
+        }
+        network_obj = Network.objects.get(id=network.id)
+        self.assertAttributes(network_obj, definition)
+
+    def test_skips_creation_if_network_already_exists(self):
+        nodegroup = factory.make_NodeGroup()
+        interface = factory.make_NodeGroupInterface(nodegroup)
+        create_Network_from_NodeGroupInterface(interface)
+        maaslog = self.patch(forms_module, 'maaslog')
+
+        self.assertIsNone(create_Network_from_NodeGroupInterface(interface))
+        self.assertEqual(
+            1, maaslog.warning.call_count,
+            "maaslog.warning hasn't been called")
+        self.assertThat(
+            maaslog.warning.call_args[0][0],
+            Contains("Failed to create Network"))
