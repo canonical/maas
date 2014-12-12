@@ -40,6 +40,7 @@ from maasserver.models import (
     Config,
     Event,
     MACAddress,
+    Node,
     )
 from maasserver.preseed import (
     compose_enlistment_preseed_url,
@@ -503,15 +504,35 @@ class TestPXEConfigAPI(MAASServerTestCase):
                 description,
                 Event.objects.get(node=node).description)
 
-    def test_pxeconfig_updates_pxe_mac_for_existing_node(self):
+    def test_pxeconfig_sets_pxe_mac_when_empty(self):
+        node = factory.make_Node(mac=True)
+        mac = node.macaddress_set.first()
+        params = self.get_default_params()
+        params['mac'] = mac.mac_address
+        self.client.get(reverse('pxeconfig'), params)
+        node = reload_object(node)
+        self.assertEqual(mac, node.pxe_mac)
+
+    def test_pxeconfig_updates_pxe_mac_when_changed(self):
         node = factory.make_Node()
         node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
         mac = factory.make_MACAddress(node=node)
         params = self.get_default_params()
         params['mac'] = mac.mac_address
         self.client.get(reverse('pxeconfig'), params)
         node = reload_object(node)
         self.assertEqual(mac, node.pxe_mac)
+
+    def test_pxeconfig_doesnt_update_pxe_mac_when_same(self):
+        node = factory.make_Node()
+        node.pxe_mac = factory.make_MACAddress(node=node)
+        node.save()
+        params = self.get_default_params()
+        params['mac'] = node.pxe_mac.mac_address
+        mock_save = self.patch(Node, 'save')
+        self.client.get(reverse('pxeconfig'), params)
+        self.assertThat(mock_save, MockNotCalled())
 
     def test_pxeconfig_returns_commissioning_os_series_for_other_oses(self):
         osystem = Config.objects.get_config('default_osystem')

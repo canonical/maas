@@ -166,9 +166,12 @@ def pxeconfig(request):
     node = get_node_from_mac_string(request_mac)
 
     if node is not None:
-        # Update the record of which MAC address this node uses to PXE boot.
-        node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
-        node.save()
+        # Only update the PXE booting interface for the node if it has
+        # changed.
+        if (node.pxe_mac is None or
+                node.pxe_mac.mac_address != request_mac):
+            node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
+            node.save()
 
     if node is None or node.get_boot_purpose() == "commissioning":
         osystem = Config.objects.get_config('commissioning_osystem')
