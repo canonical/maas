@@ -168,10 +168,15 @@ def pxeconfig(request):
     node = get_node_from_mac_string(request_mac)
 
     if node is not None:
-        # Update the record of which MAC address and cluster interface
-        # this node uses to PXE boot.
-        node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
-        node.save()
+        # Only update the PXE booting interface for the node if it has
+        # changed.
+        if (node.pxe_mac is None or
+                node.pxe_mac.mac_address != request_mac):
+            node.pxe_mac = MACAddress.objects.get(mac_address=request_mac)
+            node.save()
+
+        # Update the record of the cluster interface this node uses
+        # to PXE boot.
         update_mac_cluster_interfaces(request_ip, request_mac, node.nodegroup)
 
     if node is None or node.get_boot_purpose() == "commissioning":
