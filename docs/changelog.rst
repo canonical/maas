@@ -23,6 +23,13 @@ Node Listing Page and Node Event Log live refresh
   every 10 seconds. This allows MAAS to display the latest node status
   and events without forcing a browser refresh.
 
+IP Address Reservation
+  The static IP address reservation API now has an optional "mac"
+  parameter. Specifying a MAC address here will link the new static IP
+  to that MAC address. A DHCP host map will be created for the MAC
+  address. No other IPs may be reserved for that MAC address until the
+  current one is released.
+
 Bug fix update
 --------------
 
