@@ -20,6 +20,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_STATUS
 from maasserver.rpc.nodes import (
     create_node,
+    list_cluster_nodes_power_parameters,
     mark_node_failed,
     request_node_info_by_mac_address,
     )
@@ -41,6 +42,10 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
+from testtools.matchers import (
+    Contains,
+    Not,
+    )
 
 
 class TestCreateNode(MAASServerTestCase):
@@ -191,3 +196,25 @@ class TestRequestNodeInfoByMACAddress(MAASServerTestCase):
         node, boot_purpose = request_node_info_by_mac_address(
             mac_address.mac_address.get_raw())
         self.assertEqual(node, mac_address.node)
+
+
+class TestListClusterNodesPowerParameters(MAASServerTestCase):
+    """Tests for the `list_cluster_nodes_power_parameters()` function."""
+
+    # Note that there are other, one-level-removed tests for this
+    # function in the TestRegionProtocol_ListNodePowerParameters
+    # testcase in maasserver.rpc.tests.test_regionservice.
+    # Those tests have been left there for now because they also check
+    # that the return values are being formatted correctly for RPC.
+
+    def test_does_not_return_power_info_for_broken_nodes(self):
+        cluster = factory.make_NodeGroup()
+        broken_node = factory.make_Node(
+            nodegroup=cluster, status=NODE_STATUS.BROKEN)
+
+        power_parameters = list_cluster_nodes_power_parameters(cluster.uuid)
+        returned_system_ids = [
+            power_params['system_id'] for power_params in power_parameters]
+
+        self.assertThat(
+            returned_system_ids, Not(Contains(broken_node.system_id)))
