@@ -22,6 +22,7 @@ __all__ = [
 from django.core.exceptions import ValidationError
 from maasserver import exceptions
 from maasserver.api.utils import get_overridden_query_dict
+from maasserver.enum import NODE_STATUS
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models import (
     MACAddress,
@@ -71,7 +72,7 @@ def list_cluster_nodes_power_parameters(uuid):
     else:
         power_info_by_node = (
             (node, node.get_effective_power_info())
-            for node in nodegroup.node_set.all()
+            for node in nodegroup.node_set.exclude(status=NODE_STATUS.BROKEN)
         )
         return [
             {
