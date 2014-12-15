@@ -23,10 +23,14 @@ import urllib2
 import urlparse
 
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils import create_node
+from provisioningserver.utils import (
+    commission_node,
+    create_node,
+    )
 from provisioningserver.utils.url import compose_URL
 from seamicroclient import exceptions as seamicro_exceptions
 from seamicroclient.v2 import client as seamicro_client
+from twisted.internet.defer import inlineCallbacks
 
 
 maaslog = get_maas_logger("drivers.seamicro")
@@ -270,7 +274,9 @@ def find_seamicro15k_servers(ip, username, password, power_control):
     raise SeaMicroError('Failure to retrieve servers.')
 
 
-def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
+@inlineCallbacks
+def probe_seamicro15k_and_enlist(user, ip, username, password,
+                                 power_control=None, accept_all=False):
     power_control = power_control or 'ipmi'
 
     maaslog.info(
@@ -289,7 +295,10 @@ def probe_seamicro15k_and_enlist(ip, username, password, power_control=None):
         maaslog.info(
             "Found seamicro15k node with macs %s; adding to MAAS with "
             "params : %s", macs, params)
-        create_node(macs, 'amd64', 'sm15k', params)
+        system_id = yield create_node(macs, 'amd64', 'sm15k', params)
+
+        if accept_all:
+            commission_node(system_id, user)
 
 
 def power_control_seamicro15k_v09(ip, username, password, server_id,

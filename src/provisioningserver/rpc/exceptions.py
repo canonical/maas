@@ -18,13 +18,17 @@ __all__ = [
     "CannotCreateHostMap",
     "CannotRegisterCluster",
     "CannotRemoveHostMap",
+    "CommissionNodeFailed",
     "MultipleFailures",
     "NoConnectionsAvailable",
+    "NodeAlreadyExists",
     "NodeStateViolation",
+    "NoIPFoundForMACAddress",
     "NoSuchCluster",
     "NoSuchEventType",
     "NoSuchNode",
     "NoSuchOperatingSystem",
+    "PowerActionAlreadyInProgress",
     "RegistrationFailed",
 ]
 
@@ -82,6 +86,10 @@ class NoSuchCluster(Exception):
 
 class NoSuchOperatingSystem(Exception):
     """The specified OS was not found."""
+
+
+class CommissionNodeFailed(Exception):
+    """Failure to commission node."""
 
 
 class CannotConfigureDHCP(Exception):

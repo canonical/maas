@@ -331,14 +331,16 @@ class TestNodeGroupAPI(APITestCase):
             explain_unexpected_response(httplib.BAD_REQUEST, response))
 
     def test_probe_and_enlist_hardware_adds_seamicro(self):
+        self.become_admin()
+        user = self.logged_in_user
         nodegroup = factory.make_NodeGroup()
         model = 'seamicro15k'
         mac = factory.make_mac_address()
-        username = factory.make_name('user')
+        username = factory.make_name('username')
         password = factory.make_name('password')
         power_control = random.choice(
             ['ipmi', 'restapi', 'restapi2'])
-        self.become_admin()
+        accept_all = 'True'
 
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
@@ -353,6 +355,7 @@ class TestNodeGroupAPI(APITestCase):
                 'username': username,
                 'password': password,
                 'power_control': power_control,
+                'accept_all': accept_all,
             })
 
         self.assertEqual(
@@ -362,16 +365,19 @@ class TestNodeGroupAPI(APITestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddSeaMicro15k, mac=mac, username=username,
-                password=password, power_control=power_control))
+                AddSeaMicro15k, user=user.username, mac=mac,
+                username=username, password=password,
+                power_control=power_control, accept_all=True))
 
     def test_probe_and_enlist_hardware_adds_virsh(self):
+        self.become_admin()
+        user = self.logged_in_user
         nodegroup = factory.make_NodeGroup()
         model = 'virsh'
         poweraddr = factory.make_ipv4_address()
         password = factory.make_name('password')
         prefix_filter = factory.make_name('filter')
-        self.become_admin()
+        accept_all = 'True'
 
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
@@ -385,6 +391,7 @@ class TestNodeGroupAPI(APITestCase):
                 'power_address': poweraddr,
                 'power_pass': password,
                 'prefix_filter': prefix_filter,
+                'accept_all': accept_all,
             })
 
         self.assertEqual(
@@ -394,15 +401,18 @@ class TestNodeGroupAPI(APITestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddVirsh, poweraddr=poweraddr,
-                password=password, prefix_filter=prefix_filter))
+                AddVirsh, user=user.username, poweraddr=poweraddr,
+                password=password, prefix_filter=prefix_filter,
+                accept_all=True))
 
     def test_probe_and_enlist_ucsm_adds_ucsm(self):
+        self.become_admin()
+        user = self.logged_in_user
         nodegroup = factory.make_NodeGroup()
         url = 'http://url'
         username = factory.make_name('user')
         password = factory.make_name('password')
-        self.become_admin()
+        accept_all = 'True'
 
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
@@ -415,6 +425,7 @@ class TestNodeGroupAPI(APITestCase):
                 'url': url,
                 'username': username,
                 'password': password,
+                'accept_all': accept_all,
             })
 
         self.assertEqual(
@@ -424,19 +435,20 @@ class TestNodeGroupAPI(APITestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                EnlistNodesFromUCSM, url=url, username=username,
-                password=password))
+                EnlistNodesFromUCSM, user=user.username, url=url,
+                username=username, password=password, accept_all=True))
 
     def test_probe_and_enlist_mscm_adds_mscm(self):
+        self.become_admin()
+        user = self.logged_in_user
         nodegroup = factory.make_NodeGroup()
         host = 'http://host'
         username = factory.make_name('user')
         password = factory.make_name('password')
-        self.become_admin()
+        accept_all = 'True'
 
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
-        nodegroup = factory.make_NodeGroup()
 
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
@@ -445,6 +457,7 @@ class TestNodeGroupAPI(APITestCase):
                 'host': host,
                 'username': username,
                 'password': password,
+                'accept_all': accept_all,
             })
 
         self.assertEqual(
@@ -454,8 +467,8 @@ class TestNodeGroupAPI(APITestCase):
         self.expectThat(
             client,
             MockCalledOnceWith(
-                EnlistNodesFromMSCM, host=host, username=username,
-                password=password))
+                EnlistNodesFromMSCM, user=user.username, host=host,
+                username=username, password=password, accept_all=True))
 
 
 class TestNodeGroupAPIAuth(MAASServerTestCase):

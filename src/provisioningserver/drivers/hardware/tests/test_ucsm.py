@@ -60,7 +60,6 @@ from provisioningserver.drivers.hardware.ucsm import (
     UCSM_XML_API,
     UCSM_XML_API_Error,
     )
-import provisioningserver.utils as utils
 from testtools.matchers import Equals
 
 
@@ -566,9 +565,11 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
     """Tests for ``probe_and_enlist_ucsm``."""
 
     def test_probe_and_enlist(self):
-        url = 'url'
-        username = 'username'
-        password = 'password'
+        user = factory.make_name('user')
+        url = factory.make_name('url')
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        system_id = factory.make_name('system_id')
         api = Mock()
         self.patch(ucsm, 'UCSM_XML_API').return_value = api
         server_element = {'uuid': 'uuid'}
@@ -576,19 +577,27 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
         probe_servers_mock = self.patch(ucsm, 'probe_servers')
         probe_servers_mock.return_value = [server]
         set_lan_boot_default_mock = self.patch(ucsm, 'set_lan_boot_default')
-        create_node_mock = self.patch(utils, 'create_node')
-        probe_and_enlist_ucsm(url, username, password)
-        self.assertThat(set_lan_boot_default_mock,
-                        MockCalledOnceWith(api, server_element))
-        self.assertThat(probe_servers_mock, MockCalledOnceWith(api))
+        create_node_mock = self.patch(ucsm, 'create_node')
+        create_node_mock.return_value = system_id
+        commission_node_mock = self.patch(ucsm, 'commission_node')
+
+        probe_and_enlist_ucsm(user, url, username, password, accept_all=True)
+        self.expectThat(
+            set_lan_boot_default_mock,
+            MockCalledOnceWith(api, server_element))
+        self.expectThat(probe_servers_mock, MockCalledOnceWith(api))
         params = {
             'power_address': url,
             'power_user': username,
             'power_pass': password,
             'uuid': server[0]['uuid']
         }
-        self.assertThat(create_node_mock,
-                        MockCalledOnceWith(server[1], 'amd64', 'ucsm', params))
+        self.expectThat(
+            create_node_mock,
+            MockCalledOnceWith(server[1], 'amd64', 'ucsm', params))
+        self.expectThat(
+            commission_node_mock,
+            MockCalledOnceWith(system_id, user))
 
 
 class TestGetServiceProfile(MAASTestCase):

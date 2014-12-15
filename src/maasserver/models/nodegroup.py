@@ -312,15 +312,18 @@ class NodeGroup(TimestampedModel):
             ImportBootImages, sources=sources,
             http_proxy=http_proxy, https_proxy=http_proxy)
 
-    def add_seamicro15k(self, mac, username, password, power_control=None):
+    def add_seamicro15k(self, user, mac, username, password,
+                        power_control=None, accept_all=False):
         """ Add all of the specified cards the Seamicro SM15000 chassis at the
         specified MAC.
 
+        :param user: user for the nodes.
         :param mac: MAC address of the card.
-        :param username: username for power controller
-        :param password: password for power controller
+        :param username: username for power controller.
+        :param password: password for power controller.
         :param power_control: optional specify the power control method,
             either ipmi (default), restapi, or restapi2.
+        :param accept_all: commission enlisted nodes.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
@@ -334,15 +337,19 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                AddSeaMicro15k, mac=mac, username=username,
-                password=password, power_control=power_control)
+                AddSeaMicro15k, user=user, mac=mac, username=username,
+                password=password, power_control=power_control,
+                accept_all=accept_all)
 
-    def add_virsh(self, poweraddr, password=None, prefix_filter=None):
+    def add_virsh(self, user, poweraddr, password=None,
+                  prefix_filter=None, accept_all=False):
         """ Add all of the virtual machines inside a virsh controller.
 
-        :param poweraddr: virsh connection string
-        :param password: ssh password
-        :param prefix_filter: import based on prefix
+        :param user: user for the nodes.
+        :param poweraddr: virsh connection string.
+        :param password: ssh password.
+        :param prefix_filter: import based on prefix.
+        :param accept_all: commission enlisted nodes.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
@@ -356,15 +363,18 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                AddVirsh, poweraddr=poweraddr,
-                password=password, prefix_filter=prefix_filter)
+                AddVirsh, user=user, poweraddr=poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=accept_all)
 
-    def enlist_nodes_from_ucsm(self, url, username, password):
+    def enlist_nodes_from_ucsm(self, user, url, username,
+                               password, accept_all=False):
         """ Add the servers from a Cicso UCS Manager.
 
+        :param user: user for the nodes.
         :param URL: URL of the Cisco UCS Manager HTTP-XML API.
         :param username: username for UCS Manager.
         :param password: password for UCS Manager.
+        :param accept_all: commission enlisted nodes.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
@@ -378,15 +388,18 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                EnlistNodesFromUCSM, url=url, username=username,
-                password=password)
+                EnlistNodesFromUCSM, user=user, url=url,
+                username=username, password=password, accept_all=accept_all)
 
-    def enlist_nodes_from_mscm(self, host, username, password):
+    def enlist_nodes_from_mscm(self, user, host, username,
+                               password, accept_all=False):
         """ Add the servers from a Moonshot HP iLO Chassis Manager.
 
+        :param user: user for the nodes.
         :param host: IP address for the MSCM.
         :param username: username for MSCM.
         :param password: password for MSCM.
+        :param accept_all: commission enlisted nodes.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
             are available.
@@ -400,5 +413,5 @@ class NodeGroup(TimestampedModel):
             raise
         else:
             return client(
-                EnlistNodesFromMSCM, host=host, username=username,
-                password=password)
+                EnlistNodesFromMSCM, user=user, host=host,
+                username=username, password=password, accept_all=accept_all)

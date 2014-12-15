@@ -35,12 +35,16 @@ from mock import (
     )
 import provisioningserver
 from provisioningserver.rpc import region
-from provisioningserver.rpc.exceptions import NodeAlreadyExists
+from provisioningserver.rpc.exceptions import (
+    CommissionNodeFailed,
+    NodeAlreadyExists,
+    )
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.testing.testcase import PservTestCase
 import provisioningserver.utils
 from provisioningserver.utils import (
     classify,
+    commission_node,
     create_node,
     escape_py_literal,
     filter_dict,
@@ -433,8 +437,7 @@ class TestCreateNode(PservTestCase):
         get_cluster_uuid = self.patch(
             provisioningserver.utils, 'get_cluster_uuid')
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
-        yield create_node(
-            macs, arch, power_type, power_parameters)
+        yield create_node(macs, arch, power_type, power_parameters)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
                 protocol, cluster_uuid=get_cluster_uuid.return_value,
@@ -538,6 +541,46 @@ class TestCreateNode(PservTestCase):
             maaslog.error, MockCalledOnceWith(
                 "A node with one of the mac addressess in %s already "
                 "exists.", macs))
+
+
+class TestCommissionNode(PservTestCase):
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    def prepare_region_rpc(self):
+        fixture = self.useFixture(MockLiveClusterToRegionRPCFixture())
+        protocol, connecting = fixture.makeEventLoop(region.CommissionNode)
+        return protocol, connecting
+
+    @defer.inlineCallbacks
+    def test_calls_commission_node_rpc(self):
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        protocol.CommissionNode.return_value = defer.succeed({})
+        system_id = factory.make_name('system_id')
+        user = factory.make_name('user')
+
+        yield commission_node(system_id, user)
+        self.assertThat(
+            protocol.CommissionNode, MockCalledOnceWith(
+                protocol, system_id=system_id, user=user))
+
+    @defer.inlineCallbacks
+    def test_logs_error_when_not_able_to_commission(self):
+        protocol, connecting = self.prepare_region_rpc()
+        self.addCleanup((yield connecting))
+        maaslog = self.patch(provisioningserver.utils, 'maaslog')
+        system_id = factory.make_name('system_id')
+        user = factory.make_name('user')
+        error = CommissionNodeFailed('error')
+
+        protocol.CommissionNode.return_value = defer.fail(error)
+
+        yield commission_node(system_id, user)
+        self.assertThat(
+            maaslog.error, MockCalledOnceWith(
+                "Could not commission with system_id %s because %s.",
+                system_id, error.args[0]))
 
 
 class TestGetClusterConfig(MAASTestCase):

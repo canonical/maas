@@ -19,6 +19,7 @@ import random
 from django.core.exceptions import ValidationError
 from maasserver.enum import NODE_STATUS
 from maasserver.rpc.nodes import (
+    commission_node,
     create_node,
     list_cluster_nodes_power_parameters,
     mark_node_failed,
@@ -34,8 +35,12 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from provisioningserver.drivers import PowerTypeRegistry
-from provisioningserver.rpc.cluster import DescribePowerTypes
+from provisioningserver.rpc.cluster import (
+    DescribePowerTypes,
+    StartMonitors,
+    )
 from provisioningserver.rpc.exceptions import (
+    CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
     NoSuchNode,
@@ -44,6 +49,7 @@ from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
 from testtools.matchers import (
     Contains,
+    Equals,
     Not,
     )
 
@@ -61,7 +67,7 @@ class TestCreateNode(MAASServerTestCase):
             {'power_types': self.power_types})
         return protocol
 
-    def test_creates_node(self):
+    def test__creates_node(self):
         cluster = factory.make_NodeGroup()
         cluster.accept()
         self.prepare_cluster_rpc(cluster)
@@ -89,11 +95,12 @@ class TestCreateNode(MAASServerTestCase):
                 node.power_type,
                 node.power_parameters
             ))
-        self.assertItemsEqual(
+        self.expectThat(
             mac_addresses,
-            [mac.mac_address for mac in node.macaddress_set.all()])
+            Equals(
+                [mac.mac_address for mac in node.macaddress_set.all()]))
 
-    def test_raises_validation_errors_for_invalid_data(self):
+    def test__raises_validation_errors_for_invalid_data(self):
         cluster = factory.make_NodeGroup()
         cluster.accept()
         self.prepare_cluster_rpc(cluster)
@@ -162,6 +169,43 @@ class TestCreateNode(MAASServerTestCase):
             mac_addresses)
 
         self.assertEqual(architecture, node.architecture)
+
+
+class TestCommissionNode(MAASServerTestCase):
+
+    def prepare_cluster_rpc(self, cluster):
+        self.useFixture(RegionEventLoopFixture('rpc'))
+        self.useFixture(RunningEventLoopFixture())
+
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(cluster, StartMonitors)
+        protocol.StartMonitors.side_effect = always_succeed_with({})
+        return protocol
+
+    def test__commissions_node(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        user = factory.make_User()
+        node = factory.make_Node(nodegroup=cluster, owner=user)
+
+        commission_node(node.system_id, user)
+
+        self.assertEqual(
+            NODE_STATUS.COMMISSIONING, reload_object(node).status)
+
+    def test__raises_error_if_node_cannot_commission(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        user = factory.make_User()
+        node = factory.make_Node(
+            nodegroup=cluster, owner=user, status=NODE_STATUS.RELEASING)
+
+        self.assertRaises(
+            CommissionNodeFailed, commission_node, node.system_id, user)
 
 
 class TestMarkNodeFailed(MAASServerTestCase):

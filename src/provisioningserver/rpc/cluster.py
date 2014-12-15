@@ -417,9 +417,11 @@ class AddVirsh(amp.Command):
     """
 
     arguments = [
+        (b"user", amp.Unicode()),
         (b"poweraddr", amp.Unicode()),
         (b"password", amp.Unicode(optional=True)),
         (b"prefix_filter", amp.Unicode(optional=True)),
+        (b"accept_all", amp.Boolean(optional=True)),
     ]
     response = []
     errors = []
@@ -431,10 +433,12 @@ class AddSeaMicro15k(amp.Command):
     :since: 1.7
     """
     arguments = [
+        (b"user", amp.Unicode()),
         (b"mac", amp.Unicode()),
         (b"username", amp.Unicode()),
         (b"password", amp.Unicode()),
         (b"power_control", amp.Unicode(optional=True)),
+        (b"accept_all", amp.Boolean(optional=True)),
     ]
     response = []
     errors = {
@@ -448,9 +452,11 @@ class EnlistNodesFromMSCM(amp.Command):
     :since: 1.7
     """
     arguments = [
+        (b"user", amp.Unicode()),
         (b"host", amp.Unicode()),
         (b"username", amp.Unicode()),
         (b"password", amp.Unicode()),
+        (b"accept_all", amp.Boolean(optional=True)),
     ]
     response = []
     errors = {}
@@ -462,9 +468,11 @@ class EnlistNodesFromUCSM(amp.Command):
     :since: 1.7
     """
     arguments = [
+        (b"user", amp.Unicode()),
         (b"url", amp.Unicode()),
         (b"username", amp.Unicode()),
         (b"password", amp.Unicode()),
+        (b"accept_all", amp.Boolean(optional=True)),
     ]
     response = []
     errors = {}

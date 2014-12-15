@@ -28,7 +28,11 @@ from paramiko import (
     AutoAddPolicy,
     SSHClient,
     )
-import provisioningserver.utils as utils
+from provisioningserver.utils import (
+    commission_node,
+    create_node,
+    )
+from twisted.internet.defer import inlineCallbacks
 
 
 cartridge_mapping = {
@@ -189,7 +193,8 @@ def power_state_mscm(host, username, password, node_id):
     raise MSCMError('Unknown power state: %s' % power_state)
 
 
-def probe_and_enlist_mscm(host, username, password):
+@inlineCallbacks
+def probe_and_enlist_mscm(user, host, username, password, accept_all=False):
     """ Extracts all of nodes from mscm, sets all of them to boot via M.2 by,
     default, sets them to bootonce via PXE, and then enlists them into MAAS.
     """
@@ -214,4 +219,7 @@ def probe_and_enlist_mscm(host, username, password):
         }
         arch = mscm.get_node_arch(node_id)
         macs = mscm.get_node_macaddr(node_id)
-        utils.create_node(macs, arch, 'mscm', params)
+        system_id = yield create_node(macs, arch, 'mscm', params)
+
+        if accept_all:
+            commission_node(system_id, user)

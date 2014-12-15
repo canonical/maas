@@ -18,6 +18,7 @@ __metaclass__ = type
 __all__ = [
     "Authenticate",
     "CreateNode",
+    "CommissionNode",
     "GetArchiveMirrors",
     "GetBootSources",
     "GetBootSourcesV2",
@@ -53,6 +54,7 @@ from provisioningserver.rpc.common import (
     )
 from provisioningserver.rpc.exceptions import (
     CannotRegisterCluster,
+    CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
     NoSuchCluster,
@@ -390,6 +392,22 @@ class CreateNode(amp.Command):
     ]
     errors = {
         NodeAlreadyExists: b"NodeAlreadyExists",
+    }
+
+
+class CommissionNode(amp.Command):
+    """Commission node.
+
+    :since: 1.7
+    """
+
+    arguments = [
+        (b'system_id', amp.Unicode()),
+        (b'user', amp.Unicode()),
+    ]
+    response = []
+    errors = {
+        CommissionNodeFailed: b"CommissionNodeFailed",
     }
 
 

@@ -1887,40 +1887,53 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
     def test__calls_probe_virsh_and_enlist(self):
         probe_virsh_and_enlist = self.patch_autospec(
             clusterservice, 'probe_virsh_and_enlist')
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddVirsh, {
+            "user": user,
             "poweraddr": poweraddr,
             "password": password,
             "prefix_filter": prefix_filter,
+            "accept_all": True,
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, password, prefix_filter))
+                user, poweraddr, password, prefix_filter, True))
 
     def test__password_is_optional(self):
         probe_virsh_and_enlist = self.patch_autospec(
             clusterservice, 'probe_virsh_and_enlist')
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
+        prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddVirsh, {
+            "user": user,
             "poweraddr": poweraddr,
             "password": None,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, None, None))
+                user, poweraddr, None, prefix_filter, True))
 
     def test__can_be_called_without_password_key(self):
         probe_virsh_and_enlist = self.patch_autospec(
             clusterservice, 'probe_virsh_and_enlist')
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
+        prefix_filter = factory.make_name('prefix_filter')
         call_responder(Cluster(), cluster.AddVirsh, {
+            "user": user,
             "poweraddr": poweraddr,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
             })
         self.assertThat(
             probe_virsh_and_enlist, MockCalledOnceWith(
-                poweraddr, None, None))
+                user, poweraddr, None, prefix_filter, True))
 
 
 class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
@@ -1939,15 +1952,18 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
         call_responder(Cluster(), cluster.AddSeaMicro15k, {
+            "user": user,
             "mac": mac,
             "username": username,
             "password": password,
-            "power_control": power_control
+            "power_control": power_control,
+            "accept_all": True,
             })
 
         self.assertThat(
@@ -1960,6 +1976,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = None
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
@@ -1967,10 +1984,12 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
 
         with ExpectedException(exceptions.NoIPFoundForMACAddress):
             yield call_responder(Cluster(), cluster.AddSeaMicro15k, {
+                "user": user,
                 "mac": mac,
                 "username": username,
                 "password": password,
-                "power_control": power_control
+                "power_control": power_control,
+                "accept_all": True,
                 })
 
         self.assertThat(
@@ -1985,21 +2004,24 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
         call_responder(Cluster(), cluster.AddSeaMicro15k, {
+            "user": user,
             "mac": mac,
             "username": username,
             "password": password,
-            "power_control": power_control
+            "power_control": power_control,
+            "accept_all": True,
             })
 
         self.assertThat(
             probe_seamicro15k_and_enlist, MockCalledOnceWith(
-                find_ip_via_arp.return_value, username, password,
-                power_control=power_control))
+                user, find_ip_via_arp.return_value, username,
+                password, power_control=power_control, accept_all=True))
 
 
 class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
@@ -2014,19 +2036,22 @@ class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
         probe_and_enlist_mscm = self.patch_autospec(
             clusterservice, 'probe_and_enlist_mscm')
 
+        user = factory.make_name('user')
         host = factory.make_name('host')
         username = factory.make_name('user')
         password = factory.make_name('password')
 
         call_responder(Cluster(), cluster.EnlistNodesFromMSCM, {
-            'host': host,
-            'username': username,
-            'password': password,
+            "user": user,
+            "host": host,
+            "username": username,
+            "password": password,
+            "accept_all": True,
         })
 
         self.assertThat(
             probe_and_enlist_mscm, MockCalledOnceWith(
-                host, username, password))
+                user, host, username, password, True))
 
 
 class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
@@ -2041,16 +2066,19 @@ class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
         probe_and_enlist_ucsm = self.patch_autospec(
             clusterservice, 'probe_and_enlist_ucsm')
 
+        user = factory.make_name('user')
         url = factory.make_url()
         username = factory.make_name('user')
         password = factory.make_name('password')
 
         call_responder(Cluster(), cluster.EnlistNodesFromUCSM, {
-            'url': url,
-            'username': username,
-            'password': password,
+            "user": user,
+            "url": url,
+            "username": username,
+            "password": password,
+            "accept_all": True,
         })
 
         self.assertThat(
             probe_and_enlist_ucsm, MockCalledOnceWith(
-                url, username, password))
+                user, url, username, password, True))

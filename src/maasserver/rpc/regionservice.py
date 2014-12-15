@@ -46,6 +46,7 @@ from maasserver.rpc.nodegroupinterface import (
     update_foreign_dhcp_ip,
     )
 from maasserver.rpc.nodes import (
+    commission_node,
     create_node,
     request_node_info_by_mac_address,
     )
@@ -330,9 +331,21 @@ class Region(RPCProtocol):
         :py:class:`~provisioningserver.rpc.region.CreateNode`.
         """
         d = deferToThread(
-            create_node, cluster_uuid, architecture, power_type,
-            power_parameters, mac_addresses)
+            create_node, cluster_uuid, architecture,
+            power_type, power_parameters, mac_addresses)
         d.addCallback(lambda node: {'system_id': node.system_id})
+        return d
+
+    @region.CommissionNode.responder
+    def commission_node(self, system_id, user):
+        """commission_node()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.region.CommissionNode`.
+        """
+        d = deferToThread(
+            commission_node, system_id, user)
+        d.addCallback(lambda args: {})
         return d
 
     @region.RequestNodeInfoByMACAddress.responder

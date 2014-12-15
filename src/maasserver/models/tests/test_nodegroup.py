@@ -500,42 +500,45 @@ class TestNodeGroup(MAASServerTestCase):
         protocol.AddVirsh.return_value = defer.succeed(
             {'system_id': factory.make_name('system-id')})
 
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
-        nodegroup.add_virsh(poweraddr, password).wait(10)
+        nodegroup.add_virsh(user, poweraddr, password, None, True).wait(10)
 
         self.expectThat(
             protocol.AddVirsh,
             MockCalledOnceWith(
-                ANY, poweraddr=poweraddr,
-                password=password, prefix_filter=None))
+                ANY, user=user, poweraddr=poweraddr,
+                password=password, prefix_filter=None, accept_all=True))
 
     def test_add_virsh_calls_client_with_resource_endpoint(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
-        nodegroup.add_virsh(poweraddr, password)
+        nodegroup.add_virsh(user, poweraddr, password, None, True)
 
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddVirsh, poweraddr=poweraddr,
-                password=password, prefix_filter=None))
+                AddVirsh, user=user, poweraddr=poweraddr,
+                password=password, prefix_filter=None, accept_all=True))
 
     def test_add_virsh_raises_if_no_connection_to_cluster(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         getClientFor.side_effect = NoConnectionsAvailable()
-
         nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
 
         self.assertRaises(
-            NoConnectionsAvailable, nodegroup.add_virsh, poweraddr,
-            password)
+            NoConnectionsAvailable, nodegroup.add_virsh, user,
+            poweraddr, password, True)
 
     def test_add_seamicro15k_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
@@ -546,42 +549,47 @@ class TestNodeGroup(MAASServerTestCase):
         protocol = fixture.makeCluster(nodegroup, AddSeaMicro15k)
         protocol.AddSeaMicro15k.return_value = defer.succeed({})
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
         nodegroup.add_seamicro15k(
-            mac, username, password, power_control).wait(10)
+            user, mac, username, password, power_control, True).wait(10)
 
         self.expectThat(
             protocol.AddSeaMicro15k,
             MockCalledOnceWith(
-                ANY, mac=mac, username=username, password=password,
-                power_control=power_control))
+                ANY, user=user, mac=mac, username=username,
+                password=password, power_control=power_control,
+                accept_all=True))
 
     def test_add_seamicro15k_calls_client_with_resource_endpoint(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
         power_control = factory.make_name('power_control')
         nodegroup.add_seamicro15k(
-            mac, username, password, power_control)
+            user, mac, username, password, power_control, True)
 
         self.expectThat(
             client,
             MockCalledOnceWith(
-                AddSeaMicro15k, mac=mac, username=username,
-                password=password, power_control=power_control))
+                AddSeaMicro15k, user=user, mac=mac, username=username,
+                password=password, power_control=power_control,
+                accept_all=True))
 
     def test_add_seamicro15k_raises_if_no_connection_to_cluster(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         getClientFor.side_effect = NoConnectionsAvailable()
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         mac = factory.make_mac_address()
         username = factory.make_name('user')
         password = factory.make_name('password')
@@ -589,7 +597,7 @@ class TestNodeGroup(MAASServerTestCase):
 
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_seamicro15k,
-            mac, username, password, power_control)
+            user, mac, username, password, power_control, True)
 
     def test_enlist_nodes_from_mscm_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
@@ -600,46 +608,50 @@ class TestNodeGroup(MAASServerTestCase):
         protocol = fixture.makeCluster(nodegroup, EnlistNodesFromMSCM)
         protocol.EnlistNodesFromMSCM.return_value = defer.succeed({})
 
+        user = factory.make_name('user')
         host = factory.make_name('host')
         username = factory.make_name('user')
         password = factory.make_name('password')
         nodegroup.enlist_nodes_from_mscm(
-            host, username, password).wait(10)
+            user, host, username, password, True).wait(10)
 
         self.expectThat(
             protocol.EnlistNodesFromMSCM,
             MockCalledOnceWith(
-                ANY, host=host, username=username, password=password))
+                ANY, user=user, host=host,
+                username=username, password=password, accept_all=True))
 
     def test_enlist_nodes_from_mscm_calls_client_with_resource_endpoint(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         host = factory.make_name('host')
         username = factory.make_name('user')
         password = factory.make_name('password')
         nodegroup.enlist_nodes_from_mscm(
-            host, username, password).wait(10)
+            user, host, username, password, True).wait(10)
 
         self.expectThat(
             client,
             MockCalledOnceWith(
-                EnlistNodesFromMSCM, host=host, username=username,
-                password=password))
+                EnlistNodesFromMSCM, user=user, host=host,
+                username=username, password=password, accept_all=True))
 
     def test_enlist_nodes_from_mscm_raises_if_no_connection_to_cluster(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         getClientFor.side_effect = NoConnectionsAvailable()
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         host = factory.make_name('host')
         username = factory.make_name('user')
         password = factory.make_name('password')
 
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_mscm,
-            host, username, password)
+            user, host, username, password, True)
 
     def test_enlist_nodes_from_ucsm_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
@@ -650,46 +662,50 @@ class TestNodeGroup(MAASServerTestCase):
         protocol = fixture.makeCluster(nodegroup, EnlistNodesFromUCSM)
         protocol.EnlistNodesFromUCSM.return_value = defer.succeed({})
 
+        user = factory.make_name('user')
         url = factory.make_url()
         username = factory.make_name('user')
         password = factory.make_name('password')
         nodegroup.enlist_nodes_from_ucsm(
-            url, username, password).wait(10)
+            user, url, username, password, True).wait(10)
 
         self.expectThat(
             protocol.EnlistNodesFromUCSM,
             MockCalledOnceWith(
-                ANY, url=url, username=username, password=password))
+                ANY, user=user, url=url,
+                username=username, password=password, accept_all=True))
 
     def test_enlist_nodes_from_ucsm_calls_client_with_resource_endpoint(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         client = getClientFor.return_value
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         url = factory.make_url()
         username = factory.make_name('user')
         password = factory.make_name('password')
         nodegroup.enlist_nodes_from_ucsm(
-            url, username, password).wait(10)
+            user, url, username, password, True).wait(10)
 
         self.expectThat(
             client,
             MockCalledOnceWith(
-                EnlistNodesFromUCSM, url=url, username=username,
-                password=password))
+                EnlistNodesFromUCSM, user=user, url=url,
+                username=username, password=password, accept_all=True))
 
     def test_enlist_nodes_from_ucsm_raises_if_no_connection_to_cluster(self):
         getClientFor = self.patch(nodegroup_module, 'getClientFor')
         getClientFor.side_effect = NoConnectionsAvailable()
         nodegroup = factory.make_NodeGroup()
 
+        user = factory.make_name('user')
         url = factory.make_url()
         username = factory.make_name('user')
         password = factory.make_name('password')
 
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_ucsm,
-            url, username, password)
+            user, url, username, password, True)
 
     def test_api_credentials(self):
         nodegroup = factory.make_NodeGroup()

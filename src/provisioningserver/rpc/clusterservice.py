@@ -344,16 +344,18 @@ class Cluster(RPCProtocol):
         return d.addCallback(lambda _: {})
 
     @cluster.AddVirsh.responder
-    def add_virsh(self, poweraddr, password, prefix_filter):
+    def add_virsh(self, user, poweraddr, password, prefix_filter, accept_all):
         """add_virsh()
 
         Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
         """
-        probe_virsh_and_enlist(poweraddr, password, prefix_filter)
+        probe_virsh_and_enlist(
+            user, poweraddr, password, prefix_filter, accept_all)
         return {}
 
     @cluster.AddSeaMicro15k.responder
-    def add_seamicro15k(self, mac, username, password, power_control=None):
+    def add_seamicro15k(self, user, mac, username,
+                        password, power_control, accept_all):
         """add_virsh()
 
         Implementation of
@@ -362,8 +364,8 @@ class Cluster(RPCProtocol):
         ip = find_ip_via_arp(mac)
         if ip is not None:
             probe_seamicro15k_and_enlist(
-                ip, username, password,
-                power_control=power_control)
+                user, ip, username, password,
+                power_control=power_control, accept_all=accept_all)
         else:
             message = "Couldn't find IP address for MAC %s" % mac
             maaslog.warning(message)
@@ -371,23 +373,25 @@ class Cluster(RPCProtocol):
         return {}
 
     @cluster.EnlistNodesFromMSCM.responder
-    def enlist_nodes_from_mscm(self, host, username, password):
+    def enlist_nodes_from_mscm(self, user, host, username,
+                               password, accept_all):
         """enlist_nodes_from_mscm()
 
         Implemention of
         :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromMSCM`.
         """
-        probe_and_enlist_mscm(host, username, password)
+        probe_and_enlist_mscm(user, host, username, password, accept_all)
         return {}
 
     @cluster.EnlistNodesFromUCSM.responder
-    def enlist_nodes_from_ucsm(self, url, username, password):
+    def enlist_nodes_from_ucsm(self, user, url, username,
+                               password, accept_all):
         """enlist_nodes_from_ucsm()
 
         Implemention of
         :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromUCSM`.
         """
-        probe_and_enlist_ucsm(url, username, password)
+        probe_and_enlist_ucsm(user, url, username, password, accept_all)
         return {}
 
 

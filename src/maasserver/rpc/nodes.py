@@ -15,10 +15,11 @@ __metaclass__ = type
 __all__ = [
     "mark_node_failed",
     "update_node_power_state",
+    "commission_node",
     "create_node",
 ]
 
-
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from maasserver import exceptions
 from maasserver.api.utils import get_overridden_query_dict
@@ -31,6 +32,7 @@ from maasserver.models import (
     )
 from maasserver.utils.async import transactional
 from provisioningserver.rpc.exceptions import (
+    CommissionNodeFailed,
     NodeAlreadyExists,
     NodeStateViolation,
     NoSuchCluster,
@@ -149,6 +151,26 @@ def create_node(cluster_uuid, architecture, power_type,
         return node
     else:
         raise ValidationError(form.errors)
+
+
+@synchronous
+@transactional
+def commission_node(system_id, user):
+    """Request a `Node` with given MAC Address and return it.
+
+    :param system_id: system_id of node to commission.
+    :param user: user of the node to commission.
+    """
+    try:
+        node = Node.objects.get(system_id=system_id)
+    except Node.DoesNotExist:
+        raise NoSuchNode.from_system_id(system_id)
+    try:
+        node.start_commissioning(
+            User.objects.get(username=user))
+    except Exception as e:
+        # Cluster takes care of logging
+        raise CommissionNodeFailed(e)
 
 
 @synchronous

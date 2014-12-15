@@ -75,7 +75,11 @@ from lxml.etree import (
     tostring,
     XML,
     )
-import provisioningserver.utils as utils
+from provisioningserver.utils import (
+    commission_node,
+    create_node,
+    )
+from twisted.internet.defer import inlineCallbacks
 
 
 str = None
@@ -416,7 +420,8 @@ def power_state_ucsm(url, username, password, uuid):
             'Unknown power state: %s' % power_state, None)
 
 
-def probe_and_enlist_ucsm(url, username, password):
+@inlineCallbacks
+def probe_and_enlist_ucsm(user, url, username, password, accept_all=False):
     """Probe a UCS Manager and enlist all its servers.
 
     Here's what happens here: 1. Get a list of servers from the UCS
@@ -458,4 +463,7 @@ def probe_and_enlist_ucsm(url, username, password):
             'power_pass': password,
             'uuid': server.get('uuid'),
         }
-        utils.create_node(macs, 'amd64', 'ucsm', params)
+        system_id = yield create_node(macs, 'amd64', 'ucsm', params)
+
+        if accept_all:
+            commission_node(system_id, user)

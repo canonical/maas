@@ -16,7 +16,11 @@ __all__ = [
 
 from lxml import etree
 import pexpect
-import provisioningserver.utils as utils
+from provisioningserver.utils import (
+    commission_node,
+    create_node,
+    )
+from twisted.internet.defer import inlineCallbacks
 
 
 XPATH_ARCH = "/domain/os/type/@arch"
@@ -188,11 +192,17 @@ class VirshSSH(pexpect.spawn):
         return True
 
 
-def probe_virsh_and_enlist(poweraddr, password=None, prefix_filter=None):
+@inlineCallbacks
+def probe_virsh_and_enlist(user, poweraddr, password=None,
+                           prefix_filter=None, accept_all=False):
     """Extracts all of the virtual machines from virsh and enlists them
     into MAAS.
 
-    :param poweraddr: virsh connection string
+    :param user: user for the nodes.
+    :param poweraddr: virsh connection string.
+    :param password: password connection string.
+    :param prefix_filter: only enlist nodes that have the prefix.
+    :param accept_all: if True, commission enlisted nodes.
     """
     conn = VirshSSH(dom_prefix=prefix_filter)
     if not conn.login(poweraddr, password):
@@ -214,7 +224,10 @@ def probe_virsh_and_enlist(poweraddr, password=None, prefix_filter=None):
         }
         if password is not None:
             params['power_pass'] = password
-        utils.create_node(macs, arch, 'virsh', params)
+        system_id = yield create_node(macs, arch, 'virsh', params)
+
+        if accept_all:
+            commission_node(system_id, user)
 
     conn.logout()
 

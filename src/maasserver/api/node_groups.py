@@ -185,6 +185,11 @@ class NodeGroupHandler(OperationsHandler):
         """
         return get_object_or_404(NodeGroup, uuid=uuid)
 
+    def accept_all_nodes(self, accept_all):
+        """Check for accepting enlisted nodes."""
+        if isinstance(accept_all, basestring):
+            return accept_all.lower() == 'true'
+
     @classmethod
     def resource_uri(cls, nodegroup=None):
         if nodegroup is None:
@@ -370,6 +375,12 @@ class NodeGroupHandler(OperationsHandler):
             'virsh' is supported.
         :type model: unicode
 
+        The following are optional:
+
+        :param accept_all: If true, all enlisted nodes will be
+            commissioned.
+        :type accept_all: unicode
+
         The following are only required if you are probing a seamicro15k:
 
         :param mac: The MAC of the seamicro15k chassis.
@@ -404,7 +415,10 @@ class NodeGroupHandler(OperationsHandler):
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
+        user = request.user.username
         model = get_mandatory_param(request.data, 'model')
+        accept_all = self.accept_all_nodes(
+            get_optional_param(request.data, 'accept_all'))
         if model == 'seamicro15k':
             mac = get_mandatory_param(request.data, 'mac')
             username = get_mandatory_param(request.data, 'username')
@@ -414,7 +428,8 @@ class NodeGroupHandler(OperationsHandler):
                 validator=validators.OneOf(['ipmi', 'restapi', 'restapi2']))
 
             nodegroup.add_seamicro15k(
-                mac, username, password, power_control=power_control)
+                user, mac, username,
+                password, power_control=power_control, accept_all=accept_all)
         elif model == 'powerkvm' or model == 'virsh':
             poweraddr = get_mandatory_param(request.data, 'power_address')
             password = get_optional_param(
@@ -423,7 +438,8 @@ class NodeGroupHandler(OperationsHandler):
                 request.data, 'prefix_filter', default=None)
 
             nodegroup.add_virsh(
-                poweraddr, password=password, prefix_filter=prefix_filter)
+                user, poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=accept_all)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 
@@ -440,6 +456,9 @@ class NodeGroupHandler(OperationsHandler):
         :type username: unicode
         :param password: The password for the API.
         :type password: unicode
+        :param accept_all: If true, all enlisted nodes will be
+            commissioned.
+        :type accept_all: unicode
 
         Returns 404 if the nodegroup (cluster) is not found.
         Returns 403 if the user does not have access to the nodegroup.
@@ -447,11 +466,15 @@ class NodeGroupHandler(OperationsHandler):
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
+        user = request.user.username
         url = get_mandatory_param(request.data, 'url')
         username = get_mandatory_param(request.data, 'username')
         password = get_mandatory_param(request.data, 'password')
+        accept_all = self.accept_all_nodes(
+            get_optional_param(request.data, 'accept_all'))
 
-        nodegroup.enlist_nodes_from_ucsm(url, username, password)
+        nodegroup.enlist_nodes_from_ucsm(
+            user, url, username, password, accept_all)
 
         return HttpResponse(status=httplib.OK)
 
@@ -466,6 +489,9 @@ class NodeGroupHandler(OperationsHandler):
         :type username: unicode
         :param password: The password for the MSCM.
         :type password: unicode
+        :param accept_all: If true, all enlisted nodes will be
+            commissioned.
+        :type accept_all: unicode
 
         Returns 404 if the nodegroup (cluster) is not found.
         Returns 403 if the user does not have access to the nodegroup.
@@ -473,10 +499,14 @@ class NodeGroupHandler(OperationsHandler):
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
+        user = request.user.username
         host = get_mandatory_param(request.data, 'host')
         username = get_mandatory_param(request.data, 'username')
         password = get_mandatory_param(request.data, 'password')
+        accept_all = self.accept_all_nodes(
+            get_optional_param(request.data, 'accept_all'))
 
-        nodegroup.enlist_nodes_from_mscm(host, username, password)
+        nodegroup.enlist_nodes_from_mscm(
+            user, host, username, password, accept_all)
 
         return HttpResponse(status=httplib.OK)

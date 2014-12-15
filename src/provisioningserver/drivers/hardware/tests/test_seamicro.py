@@ -306,9 +306,11 @@ class TestSeaMicro(MAASTestCase):
 
     def test_probe_seamicro15k_and_enlist_v09(self):
         self.configure_api_v09_login()
+        user = factory.make_name('user')
         ip = factory.make_ipv4_address()
-        username = factory.make_string()
-        password = factory.make_string()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        system_id = factory.make_name('system_id')
         result = {
             0: {
                 'serverId': '0/0',
@@ -335,9 +337,12 @@ class TestSeaMicro(MAASTestCase):
             SeaMicroAPIV09, 'get',
             Mock(return_value=result))
         mock_create_node = self.patch(seamicro, 'create_node')
+        mock_create_node.return_value = system_id
+        mock_commission_node = self.patch(seamicro, 'commission_node')
 
         probe_seamicro15k_and_enlist(
-            ip, username, password, power_control='restapi')
+            user, ip, username, password,
+            power_control='restapi', accept_all=True)
         self.assertEqual(3, mock_create_node.call_count)
 
         last = result[2]
@@ -348,11 +353,13 @@ class TestSeaMicro(MAASTestCase):
             'power_pass': password,
             'power_user': username
             }
-        self.assertThat(
+        self.expectThat(
             mock_create_node,
             MockCalledWith(
-                last['serverMacAddr'], 'amd64',
-                'sm15k', power_params))
+                last['serverMacAddr'], 'amd64', 'sm15k', power_params))
+        self.expectThat(
+            mock_commission_node,
+            MockCalledWith(system_id, user))
 
     def test_power_control_seamicro15k_v09(self):
         self.configure_api_v09_login()
@@ -398,9 +405,11 @@ class TestSeaMicro(MAASTestCase):
             ip, username, password, '25', 'on')
 
     def test_probe_seamicro15k_and_enlist_v2(self):
+        user = factory.make_name('user')
         ip = factory.make_ipv4_address()
-        username = factory.make_string()
-        password = factory.make_string()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        system_id = factory.make_name('system_id')
 
         fake_server_0 = FakeServer('0/0')
         fake_server_0.add_fake_nic('0')
@@ -417,12 +426,15 @@ class TestSeaMicro(MAASTestCase):
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
         mock_create_node = self.patch(seamicro, 'create_node')
+        mock_create_node.return_value = system_id
+        mock_commission_node = self.patch(seamicro, 'commission_node')
 
         probe_seamicro15k_and_enlist(
-            ip, username, password, power_control='restapi2')
+            user, ip, username, password,
+            power_control='restapi2', accept_all=True)
         self.assertEqual(2, mock_create_node.call_count)
 
-        self.assertThat(
+        self.expectThat(
             mock_create_node,
             MockCallsMatch(
                 call(
@@ -443,6 +455,9 @@ class TestSeaMicro(MAASTestCase):
                         'power_pass': password,
                         'power_user': username
                     })))
+        self.expectThat(
+            mock_commission_node,
+            MockCalledWith(system_id, user))
 
     def test_power_control_seamicro15k_v2(self):
         ip = factory.make_ipv4_address()

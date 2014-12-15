@@ -21,12 +21,14 @@ from textwrap import dedent
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
+    MockCalledWith,
     MockCallsMatch,
     )
 from maastesting.testcase import MAASTestCase
 from mock import call
 from provisioningserver.drivers.hardware import virsh
-import provisioningserver.utils as utils
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
 
 
 SAMPLE_IFLIST = dedent("""
@@ -204,6 +206,8 @@ class TestVirsh(MAASTestCase):
     def test_probe_and_enlist(self):
         # Patch VirshSSH list so that some machines are returned
         # with some fake architectures.
+        user = factory.make_name('user')
+        system_id = factory.make_name('system_id')
         machines = [factory.make_name('machine') for _ in range(3)]
         self.patch(virsh.VirshSSH, 'list').return_value = machines
         fake_arch = factory.make_name('arch')
@@ -243,7 +247,9 @@ class TestVirsh(MAASTestCase):
         # Patch the poweroff and create as we really don't want these
         # actions to occur, but want to also check that they are called.
         mock_poweroff = self.patch(virsh.VirshSSH, 'poweroff')
-        mock_create = self.patch(utils, 'create_node')
+        mock_create_node = self.patch(virsh, 'create_node')
+        mock_create_node.return_value = system_id
+        mock_commission_node = self.patch(virsh, 'commission_node')
 
         # Patch login and logout so that we don't really contact
         # a server at the fake poweraddr
@@ -252,33 +258,44 @@ class TestVirsh(MAASTestCase):
         mock_logout = self.patch(virsh.VirshSSH, 'logout')
 
         # Perform the probe and enlist
-        virsh.probe_virsh_and_enlist(poweraddr, password=fake_password)
+        virsh.probe_virsh_and_enlist(
+            user, poweraddr, password=fake_password, accept_all=True)
 
         # Check that login was called with the provided poweraddr and
         # password.
-        self.assertThat(
+        self.expectThat(
             mock_login, MockCalledOnceWith(poweraddr, fake_password))
 
         # The first machine should have poweroff called on it, as it
         # was initial in the on state.
-        self.assertThat(
+        self.expectThat(
             mock_poweroff, MockCalledOnceWith(machines[0]))
 
         # Check that the create command had the correct parameters for
         # each machine.
-        self.assertThat(
-            mock_create, MockCallsMatch(
-                call(fake_macs[0], fake_arch, 'virsh', called_params[0]),
-                call(fake_macs[1], fake_arch, 'virsh', called_params[1]),
-                call(fake_macs[2], fake_arch, 'virsh', called_params[2])))
+        self.expectThat(
+            mock_create_node, MockCallsMatch(
+                call(
+                    fake_macs[0], fake_arch, 'virsh', called_params[0]),
+                call(
+                    fake_macs[1], fake_arch, 'virsh', called_params[1]),
+                call(
+                    fake_macs[2], fake_arch,
+                    'virsh', called_params[2])))
         mock_logout.assert_called()
+        self.expectThat(
+            mock_commission_node,
+            MockCalledWith(system_id, user))
 
+    @inlineCallbacks
     def test_probe_and_enlist_login_failure(self):
+        user = factory.make_name('user')
+        poweraddr = factory.make_name('poweraddr')
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = False
-        self.assertRaises(
-            virsh.VirshError, virsh.probe_virsh_and_enlist,
-            factory.make_name('poweraddr'), password=factory.make_string())
+        with ExpectedException(virsh.VirshError):
+            yield virsh.probe_virsh_and_enlist(
+                user, poweraddr, password=factory.make_string())
 
 
 class TestVirshPowerControl(MAASTestCase):

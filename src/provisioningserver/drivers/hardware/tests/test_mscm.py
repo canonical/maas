@@ -26,6 +26,7 @@ from maastesting.matchers import (
     )
 from maastesting.testcase import MAASTestCase
 from mock import Mock
+from provisioningserver.drivers.hardware import mscm
 from provisioningserver.drivers.hardware.mscm import (
     cartridge_mapping,
     MSCM_CLI_API,
@@ -35,8 +36,9 @@ from provisioningserver.drivers.hardware.mscm import (
     power_state_mscm,
     probe_and_enlist_mscm,
     )
-import provisioningserver.utils as utils
 from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet.defer import inlineCallbacks
 
 
 def make_mscm_api():
@@ -164,9 +166,11 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
     """Tests for `probe_and_enlist_mscm`."""
 
     def test_probe_and_enlist(self):
+        user = factory.make_name('user')
         host = factory.make_hostname('mscm')
         username = factory.make_name('user')
         password = factory.make_name('password')
+        system_id = factory.make_name('system_id')
         node_id = make_node_id()
         macs = make_show_node_macaddr(4)
         arch = 'arm64/xgene-uboot'
@@ -177,7 +181,9 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         node_arch_mock.return_value = arch
         node_macs_mock = self.patch(MSCM_CLI_API, 'get_node_macaddr')
         node_macs_mock.return_value = macs
-        create_node_mock = self.patch(utils, 'create_node')
+        create_node_mock = self.patch(mscm, 'create_node')
+        create_node_mock.return_value = system_id
+        commission_node_mock = self.patch(mscm, 'commission_node')
         params = {
             'power_address': host,
             'power_user': username,
@@ -185,22 +191,28 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
             'node_id': node_id,
         }
 
-        probe_and_enlist_mscm(host, username, password)
+        probe_and_enlist_mscm(user, host, username, password, accept_all=True)
         self.expectThat(discover_nodes_mock, MockAnyCall())
         self.expectThat(boot_m2_mock, MockCalledWith(node_id))
         self.expectThat(node_arch_mock, MockCalledOnceWith(node_id))
         self.expectThat(node_macs_mock, MockCalledOnceWith(node_id))
-        self.expectThat(create_node_mock,
-                        MockCalledOnceWith(macs, arch, 'mscm', params))
+        self.expectThat(
+            create_node_mock,
+            MockCalledOnceWith(macs, arch, 'mscm', params))
+        self.expectThat(
+            commission_node_mock,
+            MockCalledOnceWith(system_id, user))
 
+    @inlineCallbacks
     def test_probe_and_enlist_discover_nodes_failure(self):
+        user = factory.make_name('user')
         host = factory.make_hostname('mscm')
         username = factory.make_name('user')
         password = factory.make_name('password')
         discover_nodes_mock = self.patch(MSCM_CLI_API, 'discover_nodes')
         discover_nodes_mock.side_effect = MSCMError('error')
-        self.assertRaises(
-            MSCMError, probe_and_enlist_mscm, host, username, password)
+        with ExpectedException(MSCMError):
+            yield probe_and_enlist_mscm(user, host, username, password)
 
 
 class TestMSCMPowerControl(MAASTestCase):

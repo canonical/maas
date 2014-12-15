@@ -100,6 +100,7 @@ from provisioningserver.rpc.exceptions import (
 from provisioningserver.rpc.interfaces import IConnection
 from provisioningserver.rpc.region import (
     Authenticate,
+    CommissionNode,
     CreateNode,
     GetArchiveMirrors,
     GetBootSources,
@@ -2043,6 +2044,34 @@ class TestRegionProtocol_CreateNode(TransactionTestCase):
         self.assertEqual(
             create_node_function.return_value.system_id,
             response['system_id'])
+
+
+class TestRegionProtocol_CommissionNode(TransactionTestCase):
+
+    def test_commission_node_is_registered(self):
+        protocol = Region()
+        responder = protocol.locateResponder(
+            CommissionNode.commandName)
+        self.assertIsNotNone(responder)
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_calls_commission_node_function(self):
+        commission_node_function = self.patch(regionservice, 'commission_node')
+
+        params = {
+            'system_id': factory.make_name('system_id'),
+            'user': factory.make_name('user'),
+        }
+
+        response = yield call_responder(
+            Region(), CommissionNode, params)
+        self.assertIsNotNone(response)
+
+        self.assertThat(
+            commission_node_function,
+            MockCalledOnceWith(
+                params['system_id'], params['user']))
 
 
 class TestRegionProtocol_TimerExpired(MAASTestCase):

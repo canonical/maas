@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     "create_node",
+    "commission_node",
     "filter_dict",
     "flatten",
     "get_cluster_config",
@@ -42,6 +43,7 @@ from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import (
+    CommissionNodeFailed,
     NoConnectionsAvailable,
     NodeAlreadyExists,
     )
@@ -92,6 +94,7 @@ def create_node(macs, arch, power_type, power_parameters):
     """
     # Avoid circular dependencies.
     from provisioningserver.rpc.region import CreateNode
+
     for elapsed, remaining, wait in retries(15, 5, reactor):
         try:
             client = getRegionClient()
@@ -130,6 +133,47 @@ def create_node(macs, arch, power_type, power_parameters):
         returnValue(None)
     else:
         returnValue(response['system_id'])
+
+
+@inlineCallbacks
+def commission_node(system_id, user):
+    """Commission a Node on the region.
+
+    :param system_id: system_id of node to commission.
+    :param user: user for the node.
+    """
+    # Avoid circular dependencies.
+    from provisioningserver.rpc.region import CommissionNode
+
+    for elapsed, remaining, wait in retries(15, 5, reactor):
+        try:
+            client = getRegionClient()
+            break
+        except NoConnectionsAvailable:
+            yield pause(wait, reactor)
+    else:
+        maaslog.error(
+            "Can't commission node, no RPC connection to region.")
+        return
+
+    try:
+        yield client(
+            CommissionNode,
+            system_id=system_id,
+            user=user)
+    except CommissionNodeFailed as e:
+        # The node cannot be commissioned, give up.
+        maaslog.error(
+            "Could not commission with system_id %s because %s.",
+            system_id, e.args[0])
+    except UnhandledCommand:
+        # The region hasn't been upgraded to support this method
+        # yet, so give up.
+        maaslog.error(
+            "Unable to commission node on region: Region does not "
+            "support the CommissionNode RPC method.")
+    finally:
+        returnValue(None)
 
 
 def locate_config(*path):
