@@ -70,7 +70,8 @@ class NodeAnonAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(NodeAnonAPITest, self).setUp()
-        self.patch(node_module, 'wait_for_power_command')
+        self.patch(node_module, 'power_on_node')
+        self.patch(node_module, 'power_off_node')
 
     def test_anon_nodes_GET(self):
         # Anonymous requests to the API without a specified operation
@@ -118,7 +119,8 @@ class TestNodeAPI(APITestCase):
 
     def setUp(self):
         super(TestNodeAPI, self).setUp()
-        self.patch(node_module, 'wait_for_power_command')
+        self.patch(node_module, 'power_on_node')
+        self.patch(node_module, 'power_off_node')
 
     def test_handler_path(self):
         self.assertEqual(
@@ -327,7 +329,6 @@ class TestNodeAPI(APITestCase):
             (response.status_code, json.loads(response.content)))
 
     def test_POST_start_sets_license_key(self):
-        self.patch(node_module, 'wait_for_power_command')
         node = factory.make_Node(
             owner=self.logged_in_user, mac=True,
             power_type='ether_wake',
@@ -411,6 +412,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.SERVICE_UNAVAILABLE, response.status_code)
 
     def test_POST_release_releases_owned_node(self):
+        self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
         owned_statuses = [
             NODE_STATUS.RESERVED,
@@ -432,6 +434,7 @@ class TestNodeAPI(APITestCase):
             [node.status for node in reload_objects(Node, owned_nodes)])
 
     def test_POST_release_releases_failed_node(self):
+        self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
         owned_node = factory.make_Node(
             owner=self.logged_in_user,
@@ -501,6 +504,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, reload_object(node).status)
 
     def test_POST_release_allows_admin_to_release_anyones_node(self):
+        self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
@@ -512,6 +516,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_release_combines_with_acquire(self):
+        self.patch(node_module, 'power_off_node')
         self.patch(node_module.Node, 'start_transition_monitor')
         node = factory.make_Node(
             status=NODE_STATUS.READY, power_type='ipmi',

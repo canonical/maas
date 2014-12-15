@@ -24,6 +24,7 @@ import crochet
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from maasserver import preseed as preseed_module
+from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.dns import config as dns_config
@@ -114,7 +115,6 @@ from testtools.matchers import (
     Not,
     )
 from twisted.internet import defer
-from twisted.internet.defer import Deferred
 from twisted.protocols import amp
 from twisted.python.failure import Failure
 
@@ -856,6 +856,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node_module, 'power_off_node')
         self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
@@ -887,6 +888,7 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name,
             power_type=power_type)
+        self.patch(node_module, 'power_off_node')
         self.patch(node, 'start_transition_monitor')
         node.power_state = POWER_STATE.ON
         node.release()
@@ -2374,29 +2376,22 @@ class TestNode_Start(MAASServerTestCase):
         start_transition_monitor = self.patch_autospec(
             node, 'start_transition_monitor')
 
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
+        power_on_node = self.patch(node_module, "power_on_node")
+        power_on_node.return_value = {
             node.system_id: defer.succeed(True),
             }
 
         node.start(user)
 
-        self.assertThat(power_on_nodes, MockCalledOnceWith(ANY))
-
-        nodes_start_info_observed = power_on_nodes.call_args[0][0]
-        nodes_start_info_expected = [
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-        ]
-
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
 
-        self.assertItemsEqual(
-            nodes_start_info_expected,
-            nodes_start_info_observed)
+        self.expectThat(power_on_node, MockCalledOnceWith(
+            node.system_id, node.hostname, node.nodegroup.uuid,
+            power_info))
 
         # A transition monitor was started.
-        self.assertThat(
+        self.expectThat(
             start_transition_monitor, MockCalledOnceWith(
                 node.get_deployment_time()))
 
@@ -2407,11 +2402,9 @@ class TestNode_Start(MAASServerTestCase):
             (Though jtv is praiseworthy, and that's worth noting).
             """
 
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
-            factory.make_name("system_id"): defer.fail(
-                PraiseBeToJTVException("Defiance is futile")),
-        }
+        mock_getClientFor = self.patch(power_module, 'getClientFor')
+        mock_getClientFor.return_value = defer.fail(
+            PraiseBeToJTVException("Defiance is futile"))
 
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
@@ -2432,8 +2425,8 @@ class TestNode_Start(MAASServerTestCase):
             power_type='ether_wake', status=NODE_STATUS.DEPLOYED,
             owner=user)
         factory.make_MACAddress(node=node)
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
+        power_on_node = self.patch(node_module, "power_on_node")
+        power_on_node.return_value = {
             node.system_id: defer.succeed({}),
         }
         node.start(user)
@@ -2451,39 +2444,42 @@ class TestNode_Start(MAASServerTestCase):
             power_parameters=node.get_effective_power_parameters(),
             )
         self.patch(node, 'get_effective_power_info').return_value = power_info
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
+        power_on_node = self.patch(node_module, "power_on_node")
         node.start(user)
-        self.assertThat(power_on_nodes, MockNotCalled())
+        self.assertThat(power_on_node, MockNotCalled())
 
     def test__does_not_start_nodes_the_user_cannot_edit(self):
-        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        power_on_node = self.patch_autospec(node_module, "power_on_node")
         owner = factory.make_User()
         node = self.make_acquired_node_with_mac(owner)
 
         user = factory.make_User()
         node.start(user)
-        self.assertThat(power_on_nodes, MockNotCalled())
+        self.assertThat(power_on_node, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
         wait_for_power_command = self.patch_autospec(
             node_module, 'wait_for_power_command')
-        power_on_nodes = self.patch_autospec(node_module, "power_on_nodes")
+        power_on_node = self.patch_autospec(node_module, "power_on_node")
         owner = factory.make_User()
         node = self.make_acquired_node_with_mac(owner)
 
         admin = factory.make_admin()
         node.start(admin)
 
-        self.expectThat(power_on_nodes, MockCalledOnceWith(ANY))
+        self.expectThat(
+            power_on_node, MockCalledOnceWith(
+                node.system_id, node.hostname, node.nodegroup.uuid,
+                node.get_effective_power_info()))
         self.expectThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
     def test__releases_static_ips_when_power_action_fails(self):
         exception_type = factory.make_exception_type()
-        power_on_nodes = self.patch(node_module, "power_on_nodes")
-        power_on_nodes.return_value = {
-            factory.make_name("system_id"): defer.fail(
-                exception_type("He's fallen in the water!"))
-        }
+
+        mock_getClientFor = self.patch(power_module, 'getClientFor')
+        mock_getClientFor.return_value = defer.fail(
+            exception_type("He's fallen in the water!"))
+
         deallocate_ips = self.patch(
             node_module.StaticIPAddress.objects, 'deallocate_by_node')
 
@@ -2522,57 +2518,53 @@ class TestNode_Stop(MAASServerTestCase):
     def test__stops_nodes(self):
         wait_for_power_command = self.patch_autospec(
             node_module, 'wait_for_power_command')
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
-        power_off_nodes.side_effect = lambda nodes: {
-            system_id: Deferred() for system_id, _, _, _ in nodes}
+        power_off_node = self.patch_autospec(node_module, "power_off_node")
 
         user = factory.make_User()
         node = self.make_node_with_mac(user)
-        power_info = node.get_effective_power_info()
+        expected_power_info = node.get_effective_power_info()
 
         stop_mode = factory.make_name('stop-mode')
+        expected_power_info.power_parameters['power_off_mode'] = stop_mode
         node.stop(user, stop_mode)
-
-        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
-        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
-
-        nodes_stop_info_observed = power_off_nodes.call_args[0][0]
-        nodes_stop_info_expected = [
-            (node.system_id, node.hostname, node.nodegroup.uuid, power_info)
-            ]
-
-        # The stop mode is added into the power info that's passed.
-        for _, _, _, power_info in nodes_stop_info_expected:
-            power_info.power_parameters['power_off_mode'] = stop_mode
 
         # If the following fails the diff is big, but it's useful.
         self.maxDiff = None
 
-        self.assertItemsEqual(
-            nodes_stop_info_expected,
-            nodes_stop_info_observed)
+        self.expectThat(
+            power_off_node, MockCalledOnceWith(
+                node.system_id, node.hostname, node.nodegroup.uuid,
+                expected_power_info))
+        self.expectThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
     def test__does_not_stop_nodes_the_user_cannot_edit(self):
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_node = self.patch_autospec(node_module, "power_off_node")
         owner = factory.make_User()
         node = self.make_node_with_mac(owner)
 
         user = factory.make_User()
         node.stop(user)
-        self.assertThat(power_off_nodes, MockNotCalled())
+        self.assertThat(power_off_node, MockNotCalled())
 
     def test__allows_admin_to_stop_any_node(self):
         wait_for_power_command = self.patch_autospec(
             node_module, 'wait_for_power_command')
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_node = self.patch_autospec(node_module, "power_off_node")
         owner = factory.make_User()
         node = self.make_node_with_mac(owner)
+        expected_power_info = node.get_effective_power_info()
+
+        stop_mode = factory.make_name('stop-mode')
+        expected_power_info.power_parameters['power_off_mode'] = stop_mode
 
         admin = factory.make_admin()
-        node.stop(admin)
+        node.stop(admin, stop_mode)
 
-        self.assertThat(power_off_nodes, MockCalledOnceWith(ANY))
-        self.assertThat(wait_for_power_command, MockCalledOnceWith(ANY))
+        self.expectThat(
+            power_off_node, MockCalledOnceWith(
+                node.system_id, node.hostname, node.nodegroup.uuid,
+                expected_power_info))
+        self.expectThat(wait_for_power_command, MockCalledOnceWith(ANY))
 
     def test__does_not_attempt_power_off_if_no_power_type(self):
         # If the node has a power_type set to UNKNOWN_POWER_TYPE, stop()
@@ -2582,9 +2574,9 @@ class TestNode_Stop(MAASServerTestCase):
         node.power_type = ""
         node.save()
 
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_node = self.patch_autospec(node_module, "power_off_node")
         node.stop(user)
-        self.assertThat(power_off_nodes, MockNotCalled())
+        self.assertThat(power_off_node, MockNotCalled())
 
     def test__does_not_attempt_power_off_if_cannot_be_stopped(self):
         # If the node has a power_type that doesn't allow MAAS to power
@@ -2593,18 +2585,16 @@ class TestNode_Stop(MAASServerTestCase):
         node = self.make_node_with_mac(user, power_type="ether_wake")
         node.save()
 
-        power_off_nodes = self.patch_autospec(node_module, "power_off_nodes")
+        power_off_node = self.patch_autospec(node_module, "power_off_node")
         node.stop(user)
-        self.assertThat(power_off_nodes, MockNotCalled())
+        self.assertThat(power_off_node, MockNotCalled())
 
     def test__propagates_failures_when_power_action_fails(self):
         fake_exception_type = factory.make_exception_type()
 
-        power_off_nodes = self.patch(node_module, "power_off_nodes")
-        power_off_nodes.return_value = {
-            factory.make_name("system_id"): defer.fail(
-                fake_exception_type("Soon be the weekend!"))
-        }
+        mock_getClientFor = self.patch(power_module, 'getClientFor')
+        mock_getClientFor.return_value = defer.fail(
+            fake_exception_type("Soon be the weekend!"))
 
         user = factory.make_User()
         node = self.make_node_with_mac(user)
@@ -2615,12 +2605,12 @@ class TestNode_Stop(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_node_with_mac(user, power_type="")
 
-        self.patch_autospec(node_module, "power_off_nodes")
+        self.patch_autospec(node_module, "power_off_node")
         self.assertIs(False, node.stop(user))
 
     def test__returns_true_if_power_action_sent(self):
         user = factory.make_User()
         node = self.make_node_with_mac(user, power_type="virsh")
 
-        self.patch_autospec(node_module, "wait_for_power_command")
+        self.patch_autospec(node_module, "power_off_node")
         self.assertIs(True, node.stop(user))

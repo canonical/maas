@@ -13,8 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "power_off_nodes",
-    "power_on_nodes",
+    "power_off_node",
+    "power_on_node",
 ]
 
 from functools import partial
@@ -32,43 +32,44 @@ maaslog = get_maas_logger("power")
 
 
 @asynchronous(timeout=15)
-def power_nodes(command, nodes):
+def power_node(command, system_id, hostname, cluster_uuid, power_info):
     """Power-on/off the given nodes.
 
     Nodes can be in any cluster; the power calls will be directed to their
     owning cluster.
 
     :param command: The `amp.Command` to call.
-    :param nodes: A sequence of ``(system-id, hostname, cluster-uuid,
-        power-info)`` tuples.
-    :return: A mapping of each node's system ID to a
-        :py:class:`twisted.internet.defer.Deferred` that will fire when
-        the `command` call completes.
+    :param system-id: The Node's system_id
+    :param hostname: The Node's hostname
+    :param cluster-uuid: The UUID of the cluster to which the Node is
+        attached.
+    :param power-info: A dict containing the power information for the
+        node.
+    :return: A :py:class:`twisted.internet.defer.Deferred` that will
+        fire when the `command` call completes.
 
     """
     def call_power_command(client, **kwargs):
         return client(command, **kwargs)
 
-    deferreds = {}
-    for node in nodes:
-        system_id, hostname, cluster_uuid, power_info = node
-        maaslog.debug("%s: Asking cluster to power on node.", hostname)
-        deferreds[system_id] = getClientFor(cluster_uuid).addCallback(
-            call_power_command, system_id=system_id, hostname=hostname,
-            power_type=power_info.power_type,
-            context=power_info.power_parameters)
+    maaslog.debug("%s: Asking cluster to power on node.", hostname)
+    d = getClientFor(cluster_uuid).addCallback(
+        call_power_command, system_id=system_id, hostname=hostname,
+        power_type=power_info.power_type,
+        context=power_info.power_parameters)
 
-    # We don't strictly care about the results _here_; their outcomes get
-    # reported elsewhere. However, PowerOn can return UnknownPowerType and
-    # NotImplementedError which are worth knowing about and returning to the
-    # caller of this API method, so it's probably worth changing PowerOn (or
-    # adding another call) to return after initial validation but then
-    # continue with the powering-on process. For now we simply return the
-    # deferreds to the caller so they can choose to chain onto them, or to
-    # "cap them off", so that results are consumed (Twisted will complain if
-    # an error is not consumed).
-    return deferreds
+    # We don't strictly care about the result _here_; the outcome of the
+    # deferred gets reported elsewhere. However, PowerOn can return
+    # UnknownPowerType and NotImplementedError which are worth knowing
+    # about and returning to the caller of this API method, so it's
+    # probably worth changing PowerOn (or adding another call) to return
+    # after initial validation but then continue with the powering-on
+    # process. For now we simply return the deferred to the caller so
+    # they can choose to chain onto it, or to "cap it off", so that
+    # result gets consumed (Twisted will complain if an error is not
+    # consumed).
+    return d
 
 
-power_off_nodes = partial(power_nodes, PowerOff)
-power_on_nodes = partial(power_nodes, PowerOn)
+power_off_node = partial(power_node, PowerOff)
+power_on_node = partial(power_node, PowerOn)

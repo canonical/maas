@@ -51,7 +51,8 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 
     def setUp(self):
         super(EnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
         self.patch_autospec(Node, 'start_transition_monitor')
 
     def test_POST_new_creates_node(self):
@@ -354,7 +355,8 @@ class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
 
     def setUp(self):
         super(NodeHostnameEnlistmentTest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
         self.patch_autospec(Node, 'start_transition_monitor')
 
     scenarios = [
@@ -464,7 +466,8 @@ class NonAdminEnlistmentAPITest(MultipleUsersScenarios,
 
     def setUp(self):
         super(NonAdminEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
 
     def test_POST_non_admin_creates_node_in_declared_state(self):
         # Upon non-admin enlistment, a node goes into the New
@@ -491,7 +494,8 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(AnonymousEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
 
     def test_POST_accept_not_allowed(self):
         # An anonymous user is not allowed to accept an anonymously
@@ -546,7 +550,8 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(SimpleUserLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
 
     def test_POST_accept_not_allowed(self):
         # An non-admin user is not allowed to accept an anonymously
@@ -642,7 +647,8 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
 
     def setUp(self):
         super(AdminLoggedInEnlistmentAPITest, self).setUp()
-        self.patch_autospec(node_module, 'wait_for_power_command')
+        self.patch_autospec(node_module, 'power_on_node')
+        self.patch_autospec(node_module, 'power_off_node')
         self.patch_autospec(Node, 'start_transition_monitor')
 
     def test_POST_new_sets_power_type_if_admin(self):

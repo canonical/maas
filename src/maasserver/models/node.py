@@ -58,8 +58,8 @@ from maasserver.clusterrpc.dhcp import (
     update_host_maps,
     )
 from maasserver.clusterrpc.power import (
-    power_off_nodes,
-    power_on_nodes,
+    power_off_node,
+    power_on_node,
     )
 from maasserver.enum import (
     NODE_BOOT,
@@ -128,6 +128,9 @@ from twisted.protocols import amp
 maaslog = get_maas_logger("node")
 
 
+# XXX 2014-12-12 gmb:
+#     Note that this is now essentially a no-op in the places it is
+#     used, and it should be removed.
 @asynchronous(timeout=30)
 def wait_for_power_command(d):
     """Wait for a  power command deferred to return or fail.
@@ -1524,20 +1527,17 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return
 
-        # We need to convert the node into something that we can
-        # pass into the reactor.
-        start_info = (
-            self.system_id, self.hostname, self.nodegroup.uuid, power_info,)
-
         # Commit before starting the node.
         commit_within_atomic_block()
 
         try:
             # Send the power on command to the node and wait for it to
-            # return. There will be only one deferred since we're only
-            # sending the one power action to power_on_nodes()(), so
-            # extract that and pass it to wait_for_power_command().
-            d = power_on_nodes([start_info]).values().pop()
+            # return. Pass the deferred to
+            # wait_for_power_command() so as to ensure that errors get
+            # caught and reported.
+            d = power_on_node(
+                self.system_id, self.hostname, self.nodegroup.uuid,
+                power_info)
             wait_for_power_command(d)
         except:
             # If we encounter any failure here, we deallocate the static
@@ -1577,13 +1577,13 @@ class Node(CleanSave, TimestampedModel):
 
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode
-        stop_info = (
-            self.system_id, self.hostname, self.nodegroup.uuid, power_info)
 
         # Request that the node be powered off and wait for the command
-        # to return or fail. There will be only one deferred since we're
-        # only sending the one power action to power_off_nodes(), so
-        # extract that and pass it to wait_for_power_command().
-        d = power_off_nodes([stop_info]).values().pop()
+        # to return or fail. Pass the deferred to
+        # wait_for_power_command() so as to ensure that errors get
+        # caught and reported.
+        d = power_off_node(
+            self.system_id, self.hostname, self.nodegroup.uuid,
+            power_info)
         wait_for_power_command(d)
         return True
