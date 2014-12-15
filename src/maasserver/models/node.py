@@ -1427,7 +1427,7 @@ class Node(CleanSave, TimestampedModel):
         if self.pxe_mac is not None:
             return self.pxe_mac
 
-        return self.macaddress_set.first()
+        return self.macaddress_set.order_by('id').first()
 
     def get_pxe_mac_vendor(self):
         """Return the vendor of the MAC address the node pxebooted from."""
