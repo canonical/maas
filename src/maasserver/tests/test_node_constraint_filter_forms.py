@@ -244,7 +244,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def test_invalid_memory(self):
         form = AcquireNodeForm(data={'mem': 'invalid'})
         self.assertEquals(
-            (False, {'mem': ["Invalid memory: number of MB required."]}),
+            (False, {'mem': ["Invalid memory: number of MiB required."]}),
             (form.is_valid(), form.errors))
 
     def test_networks_filters_by_name(self):
@@ -639,7 +639,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEquals(
             (False, {
                 'tags': ["No such tag(s): 'unknown'."],
-                'mem': ["Invalid memory: number of MB required."],
+                'mem': ["Invalid memory: number of MiB required."],
             }),
             (form.is_valid(), form.errors))
 

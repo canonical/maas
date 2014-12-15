@@ -757,7 +757,7 @@ class Node(CleanSave, TimestampedModel):
         return NODE_STATUS_CHOICES_DICT[self.status]
 
     def display_memory(self):
-        """Return memory in GB."""
+        """Return memory in GiB."""
         if self.memory < 1024:
             return '%.1f' % (self.memory / 1024.0)
         return '%d' % (self.memory / 1024)
