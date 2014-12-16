@@ -83,13 +83,20 @@ class SSHKeyHandler(OperationsHandler):
     create = update = None
 
     def read(self, request, keyid):
-        """GET an SSH key."""
+        """GET an SSH key.
+
+        Returns 404 if the key does not exist.
+        """
         key = get_object_or_404(SSHKey, id=keyid)
         return key
 
     @operation(idempotent=False)
     def delete(self, request, keyid):
-        """DELETE an SSH key."""
+        """DELETE an SSH key.
+
+        Returns 404 if the key does not exist.
+        Returns 401 if the key does not belong to the calling user.
+        """
         key = get_object_or_404(SSHKey, id=keyid)
         if key.user != request.user:
             return HttpResponse(

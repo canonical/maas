@@ -94,6 +94,10 @@ class NodeGroupInterfacesHandler(OperationsHandler):
         :param static_ip_range_high: Highest static IP address to assign to
             clients.
         :type static_ip_range_high: unicode (IP Address)
+
+        Returns 404 if the node group (cluster) is not found.
+        Returns 403 if the user does not have permission to access the
+        interface.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         if not request.user.is_superuser:
@@ -139,7 +143,10 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         return nodegroupinterface
 
     def read(self, request, uuid, name):
-        """List of NodeGroupInterfaces of a NodeGroup."""
+        """List of NodeGroupInterfaces of a NodeGroup.
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        """
         # Read-only access is allowed to any user.
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
         return get_object_or_404(
@@ -171,6 +178,10 @@ class NodeGroupInterfaceHandler(OperationsHandler):
         :param static_ip_range_high: Highest static IP address to assign to
             clients.
         :type static_ip_range_high: unicode (IP Address)
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have permission to access the
+        interface.
         """
         nodegroupinterface = self.get_interface(request, uuid, name)
         form = NodeGroupInterfaceForm(
@@ -181,7 +192,12 @@ class NodeGroupInterfaceHandler(OperationsHandler):
             raise ValidationError(form.errors)
 
     def delete(self, request, uuid, name):
-        """Delete a specific NodeGroupInterface."""
+        """Delete a specific NodeGroupInterface.
+
+        Returns 404 if the nodegroup (cluster) is not found.
+        Returns 403 if the user does not have permission to access the
+        interface.
+        """
         nodegroupinterface = self.get_interface(request, uuid, name)
         nodegroupinterface.delete()
         return rc.DELETED

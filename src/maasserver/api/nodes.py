@@ -197,7 +197,10 @@ class NodeHandler(OperationsHandler):
         return node.owner.username
 
     def read(self, request, system_id):
-        """Read a specific Node."""
+        """Read a specific Node.
+
+        Returns 404 if the node is not found.
+        """
         return Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
@@ -231,6 +234,9 @@ class NodeHandler(OperationsHandler):
         :type power_parameters_skip_check: unicode
         :param zone: Name of a valid physical zone in which to place this node
         :type zone: unicode
+
+        Returns 404 if the node is node found.
+        Returns 403 if the user does not have permission to update the node.
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
@@ -243,7 +249,12 @@ class NodeHandler(OperationsHandler):
             raise ValidationError(form.errors)
 
     def delete(self, request, system_id):
-        """Delete a specific Node."""
+        """Delete a specific Node.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to delete the node.
+        Returns 204 if the node is successfully deleted.
+        """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
@@ -274,6 +285,9 @@ class NodeHandler(OperationsHandler):
             gracefully before powering off, while a hard power off
             occurs immediately without any warning to the OS.
         :type stop_mode: unicode
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to stop the node.
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
         node = Node.objects.get_node_or_404(
@@ -300,6 +314,12 @@ class NodeHandler(OperationsHandler):
         deal with the encapsulation of binary data, but couldn't make it work
         with the framework in reasonable time so went for a dumb, manual
         encoding instead.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to stop the node.
+        Returns 503 if the start-up attempted to allocate an IP address,
+        and there were no IP addresses available on the relevant cluster
+        interface.
         """
         user_data = request.POST.get('user_data', None)
         series = request.POST.get('distro_series', None)
@@ -335,7 +355,12 @@ class NodeHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def release(self, request, system_id):
-        """Release a node.  Opposite of `NodesHandler.acquire`."""
+        """Release a node.  Opposite of `NodesHandler.acquire`.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to release the node.
+        Returns 409 if the node is in a state where it may not be released.
+        """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.READY:
@@ -360,6 +385,8 @@ class NodeHandler(OperationsHandler):
         already in the 'ready' state this is considered a re-commissioning
         process which is useful if commissioning tests were changed after
         it previously commissioned.
+
+        Returns 404 if the node is not found.
         """
         node = get_object_or_404(Node, system_id=system_id)
         form_class = get_action_form(user=request.user)
@@ -383,6 +410,8 @@ class NodeHandler(OperationsHandler):
         Note that this is returned as BSON and not JSON. This is for
         efficiency, but mainly because JSON can't do binary content
         without applying additional encoding like base-64.
+
+        Returns 404 if the node is not found.
         """
         node = get_object_or_404(Node, system_id=system_id)
         probe_details = get_single_probed_details(node.system_id)
@@ -415,6 +444,12 @@ class NodeHandler(OperationsHandler):
         an admin to give a node a stable IP, since normally an automatic
         IP is allocated to a node only during the time a user has
         acquired and started a node.
+
+        Returns 404 if the node is not found.
+        Returns 409 if the node is in an allocated state.
+        Returns 400 if the mac_address is not found on the node.
+        Returns 503 if there are not enough IPs left on the cluster interface
+        to which the mac_address is linked.
         """
         node = get_object_or_404(Node, system_id=system_id)
         if node.status == NODE_STATUS.ALLOCATED:
@@ -449,6 +484,10 @@ class NodeHandler(OperationsHandler):
         :param error_description: An optional description of the reason the
             node is being marked broken.
         :type error_description: unicode
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to mark the node
+        broken.
         """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
@@ -459,7 +498,12 @@ class NodeHandler(OperationsHandler):
 
     @operation(idempotent=False)
     def mark_fixed(self, request, system_id):
-        """Mark a broken node as fixed and set its status as 'ready'."""
+        """Mark a broken node as fixed and set its status as 'ready'.
+
+        Returns 404 if the node is not found.
+        Returns 403 if the user does not have permission to mark the node
+        broken.
+        """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed()
@@ -473,11 +517,14 @@ class NodeHandler(OperationsHandler):
     def power_parameters(self, request, system_id):
         """Obtain power parameters.
 
-        This method is reserved for admin users.
+        This method is reserved for admin users and returns a 403 if the
+        user is not one.
 
         This returns the power parameters, if any, configured for a
         node. For some types of power control this will include private
         information such as passwords and secret keys.
+
+        Returns 404 if the node is not found.
         """
         node = get_object_or_404(Node, system_id=system_id)
         return node.power_parameters
@@ -492,12 +539,13 @@ class NodeHandler(OperationsHandler):
         Use this method sparingly as it ties up an appserver thread
         while waiting.
 
-        If there is a problem, SERVICE_UNAVAILABLE is returned with text
-        explaining why.
-
         :param system_id: The node to query.
         :return: a dict whose key is "state" with a value of one of
             'on' or 'off'.
+
+        Returns 404 if the node is not found.
+        Returns 503 (with explanatory text) if the power state could not
+        be queried.
         """
         node = get_object_or_404(Node, system_id=system_id)
         ng = node.nodegroup
@@ -540,6 +588,10 @@ class NodeHandler(OperationsHandler):
         """Abort a node's current operation.
 
         This currently only supports aborting of the 'Disk Erasing' operation.
+
+        Returns 404 if the node could not be found.
+        Returns 403 if the user does not have permission to abort the
+        current operation.
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user,
@@ -648,6 +700,8 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         :type mac_address: unicode
         :return: 'true' or 'false'.
         :rtype: unicode
+
+        Returns 400 if any mandatory parameters are missing.
         """
         mac_address = get_mandatory_param(request.GET, 'mac_address')
         mac_addresses = MACAddress.objects.filter(mac_address=mac_address)
@@ -656,7 +710,10 @@ class AnonNodesHandler(AnonymousOperationsHandler):
 
     @operation(idempotent=False)
     def accept(self, request):
-        """Accept a node's enlistment: not allowed to anonymous users."""
+        """Accept a node's enlistment: not allowed to anonymous users.
+
+        Always returns 401.
+        """
         raise Unauthorized("You must be logged in to accept nodes.")
 
     @classmethod
@@ -726,6 +783,9 @@ class NodesHandler(OperationsHandler):
         :return: The system_ids of any nodes that have their status changed
             by this call.  Thus, nodes that were already accepted are
             excluded from the result.
+
+        Returns 400 if any of the nodes do not exist.
+        Returns 403 if the user is not an admin.
         """
         system_ids = set(request.POST.getlist('nodes'))
         # Check the existence of these nodes first.
@@ -813,6 +873,12 @@ class NodesHandler(OperationsHandler):
         :return: The system_ids of any nodes that have their status
             changed by this call. Thus, nodes that were already released
             are excluded from the result.
+
+        Returns 400 if any of the nodes cannot be found.
+        Returns 403 if the user does not have permission to release any of
+        the nodes.
+        Returns a 409 if any of the nodes could not be released due to their
+        current state.
         """
         system_ids = set(request.POST.getlist('nodes'))
          # Check the existence of these nodes first.
@@ -964,6 +1030,9 @@ class NodesHandler(OperationsHandler):
         :param agent_name: An optional agent name to attach to the
             acquired node.
         :type agent_name: unicode
+
+        Returns 409 if a suitable node matching the constraints could not be
+        found.
         """
         form = AcquireNodeForm(data=request.data)
         maaslog.info(
@@ -1006,6 +1075,8 @@ class NodesHandler(OperationsHandler):
             will be taken out of their physical zones.
         :param nodes: system_ids of the nodes whose zones are to be set.
            (An empty list is acceptable).
+
+        Raises 403 if the user is not an admin.
         """
         data = {
             'action': 'set_zone',
@@ -1027,6 +1098,8 @@ class NodesHandler(OperationsHandler):
         :type id: iterable
 
         :return: A dictionary of power parameters, keyed by node system_id.
+
+        Raises 403 if the user is not an admin.
         """
         match_ids = get_optional_list(request.GET, 'id')
 
@@ -1043,6 +1116,9 @@ class NodesHandler(OperationsHandler):
 
         :param nodes: Mandatory list of system IDs for nodes whose status
             you wish to check.
+
+        Returns 400 if mandatory parameters are missing.
+        Returns 403 if the user has no permission to view any of the nodes.
         """
         system_ids = set(request.GET.getlist('nodes'))
         # Check the existence of these nodes first.

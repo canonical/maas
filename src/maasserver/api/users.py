@@ -59,6 +59,8 @@ class UsersHandler(OperationsHandler):
         :type password: unicode
         :param is_superuser: Whether the new user is to be an administrator.
         :type is_superuser: bool ('0' for False, '1' for True)
+
+        Returns 400 if any mandatory parameters are missing.
         """
         username = get_mandatory_param(request.data, 'username')
         email = get_mandatory_param(request.data, 'email')

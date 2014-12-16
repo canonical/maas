@@ -41,14 +41,20 @@ class NodeMacsHandler(OperationsHandler):
     update = delete = None
 
     def read(self, request, system_id):
-        """Read all MAC addresses related to a Node."""
+        """Read all MAC addresses related to a Node.
+
+        Returns 404 if the node is not found.
+        """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
         return MACAddress.objects.filter(node=node).order_by('id')
 
     def create(self, request, system_id):
-        """Create a MAC address for a specified Node."""
+        """Create a MAC address for a specified Node.
+
+        Returns 404 if the node is not found.
+        """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         mac = node.add_mac_address(request.data.get('mac_address', None))
@@ -71,7 +77,10 @@ class NodeMacHandler(OperationsHandler):
     model = MACAddress
 
     def read(self, request, system_id, mac_address):
-        """Read a MAC address related to a Node."""
+        """Read a MAC address related to a Node.
+
+        Returns 404 if the node or the MAC address is not found.
+        """
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.VIEW)
 
@@ -80,7 +89,11 @@ class NodeMacHandler(OperationsHandler):
             MACAddress, node=node, mac_address=mac_address)
 
     def delete(self, request, system_id, mac_address):
-        """Delete a specific MAC address for the specified Node."""
+        """Delete a specific MAC address for the specified Node.
+
+        Returns 404 if the node or the MAC address is not found.
+        Returns 204 after the MAC address is successfully deleted.
+        """
         validate_mac(mac_address)
         node = Node.objects.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
