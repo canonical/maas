@@ -31,9 +31,28 @@ from provisioningserver.utils.twisted import synchronous
 from twisted.internet.threads import deferToThread
 
 
+CACHED_BOOT_IMAGES = None
+
+
 def list_boot_images():
-    """List the boot images that exist on the cluster."""
-    return tftppath.list_boot_images(
+    """List the boot images that exist on the cluster.
+
+    This return value of this function is cached. This helps reduce the amount
+    of IO, as this function is called often. To update the cache call
+    `reload_boot_images`.
+    """
+    global CACHED_BOOT_IMAGES
+    if CACHED_BOOT_IMAGES is None:
+        CACHED_BOOT_IMAGES = tftppath.list_boot_images(
+            os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
+    return CACHED_BOOT_IMAGES
+
+
+def reload_boot_images():
+    """Update the cached boot images so `list_boot_images` returns the
+    most up-to-date boot images list."""
+    global CACHED_BOOT_IMAGES
+    CACHED_BOOT_IMAGES = tftppath.list_boot_images(
         os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
 
 
@@ -66,6 +85,10 @@ def _run_import(sources, http_proxy=None, https_proxy=None):
     variables['no_proxy'] = ','.join(no_proxy_hosts)
     with environment_variables(variables):
         boot_resources.import_images(sources)
+
+    # Update the boot images cache so `list_boot_images` returns the
+    # correct information.
+    reload_boot_images()
 
 
 def import_boot_images(sources, http_proxy=None, https_proxy=None):

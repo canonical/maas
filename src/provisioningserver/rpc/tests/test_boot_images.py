@@ -23,7 +23,10 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from maastesting.testcase import MAASTwistedRunTest
-from mock import sentinel
+from mock import (
+    ANY,
+    sentinel,
+    )
 from provisioningserver import concurrency
 from provisioningserver.boot import tftppath
 from provisioningserver.config import BOOT_RESOURCES_STORAGE
@@ -35,6 +38,7 @@ from provisioningserver.rpc.boot_images import (
     import_boot_images,
     is_import_boot_images_running,
     list_boot_images,
+    reload_boot_images,
     )
 from provisioningserver.testing.config import BootSourcesFixture
 from provisioningserver.testing.testcase import PservTestCase
@@ -61,12 +65,43 @@ def make_sources():
 class TestListBootImages(PservTestCase):
 
     def test__calls_list_boot_images_with_boot_resource_storage(self):
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
         list_boot_images()
         self.assertThat(
             mock_list_boot_images,
             MockCalledOnceWith(
                 os.path.join(BOOT_RESOURCES_STORAGE, "current")))
+
+    def test__calls_list_boot_images_when_cache_is_None(self):
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
+        mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
+        list_boot_images()
+        self.assertThat(
+            mock_list_boot_images,
+            MockCalledOnceWith(ANY))
+
+    def test__doesnt_call_list_boot_images_when_cache_is_not_None(self):
+        fake_boot_images = [factory.make_name('image') for _ in range(3)]
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', fake_boot_images)
+        mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
+        self.expectThat(list_boot_images(), Equals(fake_boot_images))
+        self.expectThat(
+            mock_list_boot_images,
+            MockNotCalled())
+
+
+class TestReloadBootImages(PservTestCase):
+
+    def test__sets_CACHED_BOOT_IMAGES(self):
+        self.patch(
+            boot_images, 'CACHED_BOOT_IMAGES', factory.make_name('old_cache'))
+        fake_boot_images = [factory.make_name('image') for _ in range(3)]
+        mock_list_boot_images = self.patch(tftppath, 'list_boot_images')
+        mock_list_boot_images.return_value = fake_boot_images
+        reload_boot_images()
+        self.assertEquals(
+            boot_images.CACHED_BOOT_IMAGES, fake_boot_images)
 
 
 class TestGetHostsFromSources(PservTestCase):
@@ -140,6 +175,13 @@ class TestRunImport(PservTestCase):
         sources, _ = make_sources()
         _run_import(sources=sources)
         self.assertThat(fake, MockCalledOnceWith(sources))
+
+    def test__run_import_calls_reload_boot_images(self):
+        fake_reload = self.patch(boot_images, 'reload_boot_images')
+        self.patch(boot_resources, 'import_images')
+        sources, _ = make_sources()
+        _run_import(sources=sources)
+        self.assertThat(fake_reload, MockCalledOnceWith())
 
 
 class TestImportBootImages(PservTestCase):
