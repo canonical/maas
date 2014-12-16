@@ -144,6 +144,7 @@ class TestGetBootImages(MAASServerTestCase):
         resource_dir = self.make_dir()
         self.tftproot = os.path.join(resource_dir, 'current')
         os.mkdir(self.tftproot)
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def test_returns_boot_images(self):
@@ -172,6 +173,7 @@ class TestGetAvailableBootImages(MAASServerTestCase):
         resource_dir = self.make_dir()
         self.tftproot = os.path.join(resource_dir, 'current')
         os.mkdir(self.tftproot)
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def test_returns_boot_images_for_one_cluster(self):
@@ -261,6 +263,7 @@ class TestGetBootImagesFor(MAASServerTestCase):
         resource_dir = self.make_dir()
         self.tftproot = os.path.join(resource_dir, 'current')
         os.mkdir(self.tftproot)
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', resource_dir)
 
     def make_boot_images(self):

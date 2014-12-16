@@ -227,6 +227,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
 
     @inlineCallbacks
     def test_list_boot_images_can_be_called(self):
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
         list_boot_images = self.patch(tftppath, "list_boot_images")
         list_boot_images.return_value = []
 
@@ -256,6 +257,7 @@ class TestClusterProtocol_ListBootImages(MAASTestCase):
             os.makedirs(os.path.join(current_dir, *options))
             make_osystem(self, options[0], purposes)
         self.patch(boot_images, 'BOOT_RESOURCES_STORAGE', tftpdir)
+        self.patch(boot_images, 'CACHED_BOOT_IMAGES', None)
 
         expected_images = [
             {
