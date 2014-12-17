@@ -16,6 +16,7 @@ __all__ = [
     "ClusterClientService",
 ]
 
+from functools import partial
 import json
 import logging
 from os import urandom
@@ -106,6 +107,14 @@ from zope.interface import implementer
 
 
 maaslog = get_maas_logger("rpc.cluster")
+
+
+def catch_probe_and_enlist_error(name, failure):
+    """Logs any errors when trying to probe and enlist a chassis."""
+    maaslog.error(
+        "Failed to probe and enlist %s nodes: %s",
+        name, failure.getErrorMessage())
+    return None
 
 
 class Cluster(RPCProtocol):
@@ -349,8 +358,10 @@ class Cluster(RPCProtocol):
 
         Implementation of :py:class:`~provisioningserver.rpc.cluster.AddVirsh`.
         """
-        probe_virsh_and_enlist(
+        d = deferToThread(
+            probe_virsh_and_enlist,
             user, poweraddr, password, prefix_filter, accept_all)
+        d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
         return {}
 
     @cluster.AddSeaMicro15k.responder
@@ -363,9 +374,12 @@ class Cluster(RPCProtocol):
         """
         ip = find_ip_via_arp(mac)
         if ip is not None:
-            probe_seamicro15k_and_enlist(
+            d = deferToThread(
+                probe_seamicro15k_and_enlist,
                 user, ip, username, password,
                 power_control=power_control, accept_all=accept_all)
+            d.addErrback(
+                partial(catch_probe_and_enlist_error, "SeaMicro 15000"))
         else:
             message = "Couldn't find IP address for MAC %s" % mac
             maaslog.warning(message)
@@ -380,7 +394,10 @@ class Cluster(RPCProtocol):
         Implemention of
         :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromMSCM`.
         """
-        probe_and_enlist_mscm(user, host, username, password, accept_all)
+        d = deferToThread(
+            probe_and_enlist_mscm,
+            user, host, username, password, accept_all)
+        d.addErrback(partial(catch_probe_and_enlist_error, "Moonshot"))
         return {}
 
     @cluster.EnlistNodesFromUCSM.responder
@@ -391,7 +408,10 @@ class Cluster(RPCProtocol):
         Implemention of
         :py:class:`~provisioningserver.rpc.cluster.EnlistNodesFromUCSM`.
         """
-        probe_and_enlist_ucsm(user, url, username, password, accept_all)
+        d = deferToThread(
+            probe_and_enlist_ucsm,
+            user, url, username, password, accept_all)
+        d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
         return {}
 
 
