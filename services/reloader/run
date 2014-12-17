@@ -47,12 +47,22 @@ def is_interesting_python_change(filename):
         not filename.endswith("_flymake.py"))
 
 
+def is_interesting_scss_change(filename):
+    return (
+        filename is not None and
+        filename.endswith(".scss") and
+        not filename.startswith("."))
+
+
 def is_supervised(dirname):
     return call(("svok", dirname)) == 0
 
 
 def handle_webapp_change(event):
     service_dir = "services/webapp"
+    if is_interesting_scss_change(event.name):
+        print("<-- {0.pathname} changed; rebuiling css.".format(event))
+        check_call(("make", "styles"))
     if is_interesting_python_change(event.name):
         if is_supervised(service_dir):
             print("<-- {0.pathname} changed; reloading webapp.".format(event))
@@ -83,6 +93,19 @@ class TestReloader(unittest.TestCase):
             }
         observed = {
             filename: is_interesting_python_change(filename)
+            for filename in expected
+            }
+        self.assertEqual(expected, observed)
+
+    def test_is_interesting_scss_change(self):
+        expected = {
+            None: False,
+            "script": False,
+            "module.scss": True,
+            ".hidden.scss": False,
+            }
+        observed = {
+            filename: is_interesting_scss_change(filename)
             for filename in expected
             }
         self.assertEqual(expected, observed)

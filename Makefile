@@ -22,6 +22,10 @@ py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
 
+# MAAS SASS Stylesheets
+scss_inputs := $(wildcard src/maasserver/static/scss/*/*.scss)
+scss_output := src/maasserver/static/css/maas-styles.css
+
 # Prefix commands with this when they need access to the database.
 # Remember to add a dependency on bin/database from the targets in
 # which those commands appear.
@@ -44,7 +48,8 @@ build: \
     bin/test.config \
     bin/maas-probe-dhcp \
     bin/py bin/ipy \
-    $(js_enums)
+    $(js_enums) \
+    styles
 
 all: build doc
 
@@ -71,11 +76,12 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/maas-region-admin: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) styles
 	$(buildout) install maas
 	@touch --no-create $@
 
-bin/test.maas: bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
+bin/test.maas: \
+	bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) styles
 	$(buildout) install maas-test
 	@touch --no-create $@
 
@@ -183,6 +189,11 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
 
+styles: $(scss_inputs)
+	pyscss src/maasserver/static/scss/maas-styles.scss \
+		-o $(scss_output) \
+		--load-path=src/maasserver/static/scss
+
 clean:
 	$(MAKE) -C acceptance $@
 	find . -type f -name '*.py[co]' -print0 | xargs -r0 $(RM)
@@ -190,6 +201,7 @@ clean:
 	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 	$(RM) $(js_enums)
+	$(RM) $(scss_output)
 	$(RM) *.log
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build
@@ -241,6 +253,7 @@ define phony_targets
   package
   sampledata
   source_package
+  styles
   syncdb
   test
 endef
