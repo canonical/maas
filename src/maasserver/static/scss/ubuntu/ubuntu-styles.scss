@@ -1,0 +1,16 @@
+@charset "UTF-8";
+
+/* import required files */
+@import "core-constants";
+@import "core-mixins";
+
+@import "core-grid";
+@import "core-grid-tablet";
+@import "core-grid-desktop";
+
+@import "core";
+@import "core-templates";
+
+@import "core-pattern";
+@import "core-pattern-tablet";
+@import "core-pattern-desktop";
