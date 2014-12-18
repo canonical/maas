@@ -35,35 +35,73 @@ Bug fix update
 
 For full details see https://launchpad.net/maas/+milestone/1.7.1
 
-#1394382    Fix to maas not knowing about VM paused state
-#1393953    Fix failure to deploy Custom Images
-#1401241    Fix CustomOS image by returning the correct filename and path
-#1398159    Don't query for node info when we don't have a MAC address when accessing the TFTP server from local machine.
-#1400849    Ensure PXE MAC address is the first reported to MAAS on enlistment
-#1376716    Do not use poweroff.c32/poweroff.com as some systems don't support it. Instead use the ephemeral environment
-            to issue a poweroff command
-#1399331    Pipe script commands to /bind/sh instead of using shell=True to prevent showing error output of px ax
-#1396308    Do not delete node's connected to a cluster interface, if the latter gets removed.
-#1397193    Ensure disk erasing always runs the commissioning ephemeral image
-#1393423    Add capability to use an option prefix_filer parameter to probe_and_enlist_hardware when the model is virsh
-#1384424    Add capability to query power status for sm15k
-#1384426    Add capability to query power status for UCSM
-#1399016    Ensure WSGI has a home defined for the user.
-#1400909    Fix call to get_name_and_vlan_from_cluster_interface in create_Network_from_NodeGroupInterface. It was using
-            the interface's name in lieu of the cluster's name.
-#1401349    Fix node_view to use display_memory and adjust units to GiB.
-#1391897    Fix bad data in Network.name causing the UI to crash
-#1391139    Fix failure to parse VLAN tags in network interfaces that combine a VLAN and an alias in just the wrong way
-#1389733    Implemented updating of the node informationin the node listing table
-#1389351    Change the way network preseeds are installed in Curtin to write the whole directory tree in one go.
-#1360280    Validate BootSourceSelection to avoid adding bogus entries.
-#1391421    Show names of the resources that have blank titles.
-#1378835    Make the Config.name unique: this is meant to prevent races when creating config objects.
-#1382075    Only save node power parameters via the metadataserver.api if the current node power type is not "mscm".
-#1360280    Make os, release and boot_source unique for BootSourceSelection to stop duplicate entries.
-#1391411    Only release leases when the metadata server's signal() is called if the node is commissioning, to not lose
-            its IP address.
-#1390144    Use the transition monitor to put a timeout on RELEASING.
+#1330765    If start_nodes() fails, it doesn't clean up after itself.
+#1373261    pserv.yaml rewrite breaks when previous generator URL uses IPv6 address
+#1386432    After update to the latest curtin that changes the log to install.log MAAS show's two installation logs
+#1386488    If rndc fails, you get an Internal Server Error page
+#1386502    No "failed" transition from "new"
+#1386914    twisted Unhandled Error when region can't reach upstream boot resource
+#1391139    Tagged VLAN on aliased NIC breaks migration 0099
+#1391161    Failure: twisted.internet.error.ConnectionDone: Connection was closed cleanly.
+#1391411    metadata API signal() is releasing host maps at the end of installation
+#1391897    Network names with dots cause internal server error when on node pages
+#1394382    maas does not know about VM "paused" state
+#1396308    Removing managed interface causes maas to delete nodes
+#1397356    Disk Wiping fails if installation is not Ubuntu
+#1398405    MAAS UI reports storage size in Gibibytes (base 2) but is labeled GB - Gigabytes (base 10).
+#1399331    MAAS leaking sensitive information in ps ax output
+#1400849    Check Power State disappears after upgrade to 1.7 bzr 3312
+#1401241    custom dd-tgz format images looked for in wrong path, so they don't work
+#1401983    Exception: deadlock detected
+#1403609    can not enlist chassis with maas admin node-group probe-and-enlist-mscm
+#1283106    MAAS allows the same subnet to be defined on two managed interfaces of the same cluster
+#1303925    commissioning fails silently if a node can't reach the region controller
+#1357073    power state changes are not reflected quickly enough in the UI
+#1360280    boot-source-selections api allows adding bogus and duplicated values
+#1368400    Can't power off nodes that are in Ready state but on
+#1370897    The node power monitoring service does not check nodes in parallel
+#1376024    gpg --batch [...]` error caused by race in BootSourceCacheService
+#1376716    AMT NUC stuck at boot prompt instead of powering down (no ACPI support in syslinux poweroff)
+#1378835    Config does not have a unique index on name
+#1379370    Consider removing transaction in claim_static_ip_addresses().
+#1379556    Panicky log warning that is irrelevant
+#1381444    Misleading error message in log "Unknown power_type 'sm15k'"
+#1382166    Message disclosing image import necessary visible while not logged in
+#1382237    UnicodeEncodeError when unable to create host maps
+#1383231    Error message when trying to reserve the same static IP twice is unhelpful
+#1383237    Error message trying to reserve an IP address when no static range is defined is misleading
+#1384424    Seamicro Machines do not have Power Status Tracking
+#1384428    HP Moonshot Chassis Manager lacks power status monitoring
+#1384924    need to provide a better upgrade message for images on the cluster but not on the region
+#1386517    DHCP leases are not released at the end of commissioning and possibly enlistment
+#1387239    MAAS does not provide an API for reserving a static IP for a given MAC address
+#1387414    Race when registering new event type
+#1388033    Trying to reserve a static IP when no more IPs are available results in 503 Service Unavailable with no error text
+#1389602    Inconsistent behavior in the checks to delete a node
+#1389733    node listing does not update the status and power of nodes
+#1390144    Node 'releasing' should have a timeout
+#1391193    API error documentation
+#1391421    Names of custom boot-resources not visible in the web UI
+#1391891    Spurious test failure: TestDNSForwardZoneConfig_GetGenerateDirectives.test_returns_single_entry_for_tiny_network
+#1393423    PowerKVM / VIrsh import should allow you to specify a prefix to filter VM's to import
+#1393953    dd-format images fail to deploy
+#1400909    Networks are being autocreated like eth0-eth0 instead of maas-eth0
+#1401349    Memory size changes to incorrect size when page is refreshed
+#1402237    Node event log queries are slow (over 1 second)
+#1402243    Nodes in 'Broken' state are being power queried constantly
+#1402736    clicking on zone link from node page - requested URL was not found on this server
+#1403043    Wrong top-level tab is selected when viewing a node
+#1381609    Misleading log message when a node has a MAC address not attached to a cluster interface
+#1386909    Misleading Error: Unable to identify boot image for (ubuntu/amd64/generic/trusty/local): cluster 'maas' does not have matching boot image.
+#1388373    Fresh image import of 3 archs displaying multiple rows for armhf and amd64
+#1398159    TFTP into MAAS server to get pxelinux.0 causes unhandled error
+#1383651    Node.start() and Node.stop() raise MulltipleFailures unnecessarily
+#1383668    null" when releasing an IP address is confusing
+#1389416    Power querying for UCSM not working
+#1399676    UX bug: mac address on the nodes page should be the MAC address it pxe booted from
+#1399736    MAAS should display memory sizes in properly labeld base 2 units - MiB, GiB, etc.
+#1401643    Documentation has wrong pattern for user provided preseeds
+#1401707    Slow web performance (5+ minute response time) on MAAS with many nodes
 
 
 1.7.0
