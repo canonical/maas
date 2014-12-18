@@ -81,7 +81,10 @@ from maasserver.models import (
     Tag,
     )
 from maasserver.models.config import Config
-from maasserver.models.event import Event
+from maasserver.models.event import (
+    Event,
+    EventType,
+    )
 from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.node_constraint_filter_forms import (
@@ -238,17 +241,25 @@ def node_to_dict(node, event_log_count=0):
         # Add event information to the generated node dictionary. We exclude
         # debug after we calculate the count, so we show the correct total
         # number of events.
-        events = Event.objects.filter(node=node)
-        total_num_events = events.count()
-        events = events.exclude(type__level=logging.DEBUG).order_by('-id')
-        events_count = events.count()
+        node_events = Event.objects.filter(node=node)
+        total_num_events = node_events.count()
+
+        # We fetch the IDs of the EventTypes that are non-DEBUG here
+        # because in MAAS 1.7 the EventType.level field is missing an
+        # index. That makes querying for Events whose EventType has a
+        # non-DEBUG level (using an INNER JOIN) slow at scale. Doing it
+        # this way speeds things up considerably.
+        non_debug_event_type_ids = EventType.objects.exclude(
+            level=logging.DEBUG).values_list('id', flat=True)
+        non_debug_events = node_events.filter(
+            type__id__in=non_debug_event_type_ids).order_by('-id')
         if event_log_count > 0:
             # Limit the number of events.
-            events = events.all()[:event_log_count]
-            events_count = len(events)
+            events = non_debug_events.all()[:event_log_count]
+            displayed_events_count = len(events)
         node_dict['events'] = dict(
             total=total_num_events,
-            count=events_count,
+            count=displayed_events_count,
             events=[event_to_dict(event) for event in events],
             more_url=reverse('node-event-list-view', args=[node.system_id]),
             )

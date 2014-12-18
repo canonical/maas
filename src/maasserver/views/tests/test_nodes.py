@@ -164,6 +164,16 @@ class TestHelpers(MAASServerTestCase):
             dict_node['events']['more_url'],
             Equals(reverse('node-event-list-view', args=[node.system_id])))
 
+    def test_node_to_dict_excludes_debug_events(self):
+        node = factory.make_Node()
+        debug_type = factory.make_EventType(level=logging.DEBUG)
+        debug_event = factory.make_Event(node, debug_type)
+
+        node_dict = node_to_dict(node, event_log_count=2)
+        self.assertThat(
+            [event_dict['id'] for event_dict in node_dict['events']['events']],
+            Not(Contains(debug_event.id)))
+
     def test_event_to_dict_keys(self):
         event = factory.make_Event()
         self.assertThat(
