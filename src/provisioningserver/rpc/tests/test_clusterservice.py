@@ -32,6 +32,7 @@ from fixtures import EnvironmentVariable
 from maastesting.factory import factory
 from maastesting.matchers import (
     IsUnfiredDeferred,
+    MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
     MockCallsMatch,
@@ -1886,9 +1887,9 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
             cluster.AddVirsh.commandName)
         self.assertIsNotNone(responder)
 
-    def test__calls_probe_virsh_and_enlist(self):
-        probe_virsh_and_enlist = self.patch_autospec(
-            clusterservice, 'probe_virsh_and_enlist')
+    def test__calls_deferToThread_with_probe_virsh_and_enlist(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
         poweraddr = factory.make_name('poweraddr')
         password = factory.make_name('password')
         prefix_filter = factory.make_name('prefix_filter')
@@ -1898,31 +1899,54 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
             "prefix_filter": prefix_filter,
             })
         self.assertThat(
-            probe_virsh_and_enlist, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_virsh_and_enlist,
                 poweraddr, password, prefix_filter))
 
     def test__password_is_optional(self):
-        probe_virsh_and_enlist = self.patch_autospec(
-            clusterservice, 'probe_virsh_and_enlist')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
         poweraddr = factory.make_name('poweraddr')
         call_responder(Cluster(), cluster.AddVirsh, {
             "poweraddr": poweraddr,
             "password": None,
             })
         self.assertThat(
-            probe_virsh_and_enlist, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_virsh_and_enlist,
                 poweraddr, None, None))
 
     def test__can_be_called_without_password_key(self):
-        probe_virsh_and_enlist = self.patch_autospec(
-            clusterservice, 'probe_virsh_and_enlist')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
         poweraddr = factory.make_name('poweraddr')
         call_responder(Cluster(), cluster.AddVirsh, {
             "poweraddr": poweraddr,
             })
         self.assertThat(
-            probe_virsh_and_enlist, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_virsh_and_enlist,
                 poweraddr, None, None))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        poweraddr = factory.make_name('poweraddr')
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('prefix_filter')
+        call_responder(Cluster(), cluster.AddVirsh, {
+            "poweraddr": poweraddr,
+            "password": password,
+            "prefix_filter": prefix_filter,
+            })
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "virsh", fake_error))
 
 
 class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
@@ -1936,7 +1960,7 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
     def test__calls_find_ip_via_arp(self):
         # Prevent any actual probing from happing.
         self.patch_autospec(
-            clusterservice, 'probe_seamicro15k_and_enlist')
+            clusterservice, 'deferToThread')
         find_ip_via_arp = self.patch_autospec(
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
@@ -1980,9 +2004,9 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             MockCalledOnceWith(
                 "Couldn't find IP address for MAC %s" % mac))
 
-    def test__calls_probe_seamicro15k_and_enlist(self):
-        probe_seamicro15k_and_enlist = self.patch_autospec(
-            clusterservice, 'probe_seamicro15k_and_enlist')
+    def test__calls_deferToThread_with_probe_seamicro15k_and_enlist(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
         find_ip_via_arp = self.patch_autospec(
             clusterservice, 'find_ip_via_arp')
         find_ip_via_arp.return_value = factory.make_ipv4_address()
@@ -1999,9 +2023,36 @@ class TestClusterProtocol_AddSeaMicro15k(MAASTestCase):
             })
 
         self.assertThat(
-            probe_seamicro15k_and_enlist, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_seamicro15k_and_enlist,
                 find_ip_via_arp.return_value, username, password,
                 power_control=power_control))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        find_ip_via_arp = self.patch_autospec(
+            clusterservice, 'find_ip_via_arp')
+        find_ip_via_arp.return_value = factory.make_ipv4_address()
+
+        mac = factory.make_mac_address()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        power_control = factory.make_name('power_control')
+        call_responder(Cluster(), cluster.AddSeaMicro15k, {
+            "mac": mac,
+            "username": username,
+            "password": password,
+            "power_control": power_control,
+            })
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "SeaMicro 15000", fake_error))
 
 
 class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
@@ -2012,9 +2063,9 @@ class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
             cluster.EnlistNodesFromMSCM.commandName)
         self.assertIsNotNone(responder)
 
-    def test__calls_probe_and_enlist_mscm(self):
-        probe_and_enlist_mscm = self.patch_autospec(
-            clusterservice, 'probe_and_enlist_mscm')
+    def test__deferToThread_with_probe_and_enlist_mscm(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
 
         host = factory.make_name('host')
         username = factory.make_name('user')
@@ -2027,8 +2078,30 @@ class TestClusterProtocol_EnlistNodesFromMSCM(MAASTestCase):
         })
 
         self.assertThat(
-            probe_and_enlist_mscm, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_and_enlist_mscm,
                 host, username, password))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        host = factory.make_name('host')
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromMSCM, {
+            "host": host,
+            "username": username,
+            "password": password,
+        })
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "Moonshot", fake_error))
 
 
 class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
@@ -2039,9 +2112,9 @@ class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
             cluster.EnlistNodesFromUCSM.commandName)
         self.assertIsNotNone(responder)
 
-    def test__calls_probe_and_enlist_ucsm(self):
-        probe_and_enlist_ucsm = self.patch_autospec(
-            clusterservice, 'probe_and_enlist_ucsm')
+    def test__calls_deferToThread_with_probe_and_enlist_ucsm(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
 
         url = factory.make_url()
         username = factory.make_name('user')
@@ -2054,5 +2127,27 @@ class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
         })
 
         self.assertThat(
-            probe_and_enlist_ucsm, MockCalledOnceWith(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_and_enlist_ucsm,
                 url, username, password))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        url = factory.make_url()
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromUCSM, {
+            "url": url,
+            "username": username,
+            "password": password,
+        })
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "UCS", fake_error))
