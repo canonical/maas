@@ -81,7 +81,7 @@ class EventType(CleanSave, TimestampedModel):
 
     description = CharField(max_length=255, blank=False, editable=False)
 
-    level = IntegerField(blank=False, editable=False)
+    level = IntegerField(blank=False, editable=False, db_index=True)
 
     objects = EventTypeManager()
 

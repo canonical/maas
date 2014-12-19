@@ -238,17 +238,17 @@ def node_to_dict(node, event_log_count=0):
         # Add event information to the generated node dictionary. We exclude
         # debug after we calculate the count, so we show the correct total
         # number of events.
-        events = Event.objects.filter(node=node)
-        total_num_events = events.count()
-        events = events.exclude(type__level=logging.DEBUG).order_by('-id')
-        events_count = events.count()
+        node_events = Event.objects.filter(node=node)
+        total_num_events = node_events.count()
+        non_debug_events = node_events.exclude(
+            type__level=logging.DEBUG).order_by('-id')
         if event_log_count > 0:
             # Limit the number of events.
-            events = events.all()[:event_log_count]
-            events_count = len(events)
+            events = non_debug_events.all()[:event_log_count]
+            displayed_events_count = len(events)
         node_dict['events'] = dict(
             total=total_num_events,
-            count=events_count,
+            count=displayed_events_count,
             events=[event_to_dict(event) for event in events],
             more_url=reverse('node-event-list-view', args=[node.system_id]),
             )
