@@ -55,10 +55,7 @@ from maasserver.models.node import (
     PowerInfo,
     validate_hostname,
     )
-from maasserver.models.staticipaddress import (
-    StaticIPAddress,
-    StaticIPAddressManager,
-    )
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.user import create_auth_token
 from maasserver.node_status import (
     get_failed_status,
@@ -920,20 +917,6 @@ class NodeTest(MAASServerTestCase):
         self.expectThat(node.distro_series, Equals(''))
         self.expectThat(node.license_key, Equals(''))
 
-    def test_release_deletes_static_ip_host_maps(self):
-        remove_host_maps = self.patch_autospec(
-            node_module, "remove_host_maps")
-        user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            owner=user, status=NODE_STATUS.ALLOCATED)
-        self.patch(node, 'start_transition_monitor')
-        sips = node.get_primary_mac().claim_static_ips()
-        node.release()
-        expected = {sip.ip.format() for sip in sips}
-        self.assertThat(
-            remove_host_maps, MockCalledOnceWith(
-                {node.nodegroup: expected}))
-
     def test_release_clears_installation_results(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()
@@ -1172,17 +1155,57 @@ class NodeTest(MAASServerTestCase):
         self.assertThat(
             node_stop, MockCalledOnceWith(user))
 
-    def test_release_deallocates_static_ips(self):
-        deallocate = self.patch(StaticIPAddressManager, 'deallocate_by_node')
-        deallocate.return_value = set()
-        node = factory.make_Node(
-            status=NODE_STATUS.ALLOCATED, owner=factory.make_User(),
-            power_type='ether_wake')
+    def test_release_deallocates_static_ip_when_node_is_off(self):
+        user = factory.make_User()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED,
+            power_state=POWER_STATE.OFF)
+        deallocate_static_ip_addresses = self.patch_autospec(
+            node, "deallocate_static_ip_addresses")
+        self.patch(node, 'start_transition_monitor')
         node.release()
-        self.assertThat(deallocate, MockCalledOnceWith(node))
+        self.assertThat(
+            deallocate_static_ip_addresses, MockCalledOnceWith())
 
-    def test_release_updates_dns(self):
-        self.patch(node_module, 'wait_for_power_command')
+    def test_release_deallocates_static_ip_when_node_cannot_be_queried(self):
+        user = factory.make_User()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED,
+            power_state=POWER_STATE.ON, power_type='ether_wake')
+        deallocate_static_ip_addresses = self.patch_autospec(
+            node, "deallocate_static_ip_addresses")
+        self.patch(node, 'start_transition_monitor')
+        node.release()
+        self.assertThat(
+            deallocate_static_ip_addresses, MockCalledOnceWith())
+
+    def test_release_doesnt_deallocate_static_ip_when_node_releasing(self):
+        user = factory.make_User()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED,
+            power_state=POWER_STATE.ON, power_type='virsh')
+        deallocate_static_ip_addresses = self.patch_autospec(
+            node, "deallocate_static_ip_addresses")
+        self.patch_autospec(node, 'stop')
+        self.patch(node, 'start_transition_monitor')
+        node.release()
+        self.assertThat(
+            deallocate_static_ip_addresses, MockNotCalled())
+
+    def test_deallocate_static_ip_deletes_static_ip_host_maps(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
+        user = factory.make_User()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED)
+        sips = node.get_primary_mac().claim_static_ips()
+        node.release()
+        expected = {sip.ip.format() for sip in sips}
+        self.assertThat(
+            remove_host_maps, MockCalledOnceWith(
+                {node.nodegroup: expected}))
+
+    def test_deallocate_static_ip_updates_dns(self):
         change_dns_zones = self.patch(dns_config, 'change_dns_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
@@ -1700,6 +1723,24 @@ class NodeTest(MAASServerTestCase):
             power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
         node.update_power_state(POWER_STATE.ON)
         self.expectThat(node.status, Equals(NODE_STATUS.ALLOCATED))
+
+    def test_update_power_state_deallocates_static_ips_if_releasing(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.ON, status=NODE_STATUS.RELEASING,
+            owner=None)
+        deallocate_static_ip_addresses = self.patch_autospec(
+            node, 'deallocate_static_ip_addresses')
+        self.patch(node, 'stop_transition_monitor')
+        node.update_power_state(POWER_STATE.OFF)
+        self.assertThat(deallocate_static_ip_addresses, MockCalledOnceWith())
+
+    def test_update_power_state_doesnt_deallocates_static_ips_if_not_off(self):
+        node = factory.make_Node(
+            power_state=POWER_STATE.OFF, status=NODE_STATUS.ALLOCATED)
+        deallocate_static_ip_addresses = self.patch_autospec(
+            node, 'deallocate_static_ip_addresses')
+        node.update_power_state(POWER_STATE.ON)
+        self.assertThat(deallocate_static_ip_addresses, MockNotCalled())
 
     def test_end_deployment_changes_state(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)

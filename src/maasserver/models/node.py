@@ -1228,6 +1228,7 @@ class Node(CleanSave, TimestampedModel):
                 unicode(ex))
             raise
 
+        deallocate_ip_address = True
         if self.power_state == POWER_STATE.OFF:
             # Node is already off.
             self.status = NODE_STATUS.READY
@@ -1235,7 +1236,9 @@ class Node(CleanSave, TimestampedModel):
         elif self.get_effective_power_info().can_be_queried:
             # Controlled power type (one for which we can query the power
             # state): update_power_state() will take care of making the node
-            # READY and unowned when the power is finally off.
+            # READY, remove the owned, and deallocate the assigned static ip
+            # address when the power is finally off.
+            deallocate_ip_address = False
             self.status = NODE_STATUS.RELEASING
             self.start_transition_monitor(self.get_releasing_time())
         else:
@@ -1259,10 +1262,8 @@ class Node(CleanSave, TimestampedModel):
 
         # Do these after updating the node to avoid creating deadlocks with
         # other node editing operations.
-        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
-        self.delete_host_maps(deallocated_ips)
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones([self.nodegroup])
+        if deallocate_ip_address:
+            self.deallocate_static_ip_addresses()
 
     def release_or_erase(self):
         """Either release the node or erase the node then release it, depending
@@ -1365,6 +1366,7 @@ class Node(CleanSave, TimestampedModel):
             self.status = NODE_STATUS.READY
             self.owner = None
             self.stop_transition_monitor()
+            self.deallocate_static_ip_addresses()
         self.save()
 
     def claim_static_ip_addresses(self):
@@ -1387,6 +1389,17 @@ class Node(CleanSave, TimestampedModel):
         # Return a list instead of yielding mappings as they're ready
         # because it's all-or-nothing (hence the atomic context).
         return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
+
+    def deallocate_static_ip_addresses(self):
+        """Release the `StaticIPAddress` that is assigned to this node and
+        remove the host mapping on the cluster.
+
+        This should only be done when the node is in an unused state.
+        """
+        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
+        self.delete_host_maps(deallocated_ips)
+        from maasserver.dns.config import change_dns_zones
+        change_dns_zones([self.nodegroup])
 
     def get_boot_purpose(self):
         """
