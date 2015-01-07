@@ -45,7 +45,10 @@ from django.forms import (
     ModelChoiceField,
     )
 from django.utils.encoding import force_text
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    validate_in_transaction,
+    )
 import psycopg2.extensions
 from south.modelsinspector import add_introspection_rules
 
@@ -449,6 +452,7 @@ class LargeObjectFile:
         """Opens the internal large object instance."""
         if connection is None:
             connection = connections[using]
+        validate_in_transaction(connection)
         self._lobject = connection.connection.lobject(
             self.oid, mode, 0, new_file)
         self.oid = self._lobject.oid

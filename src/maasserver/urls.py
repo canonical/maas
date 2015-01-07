@@ -18,6 +18,7 @@ __all__ = []
 from django.conf.urls import (
     include,
     patterns,
+    url,
     )
 from django.contrib.auth.decorators import user_passes_test
 from maasserver.bootresources import (
@@ -26,7 +27,6 @@ from maasserver.bootresources import (
     )
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.models import Node
-from maasserver.utils.views import retry_url as url
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,

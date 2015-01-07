@@ -450,7 +450,7 @@ class NodeGroupHandler(OperationsHandler):
     def probe_and_enlist_ucsm(self, request, uuid):
         """Add the nodes from a Cisco UCS Manager.
 
-        :param : The URL of the UCS Manager API.
+        :param url: The URL of the UCS Manager API.
         :type url: unicode
         :param username: The username for the API.
         :type username: unicode

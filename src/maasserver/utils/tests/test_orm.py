@@ -21,6 +21,7 @@ from django.db import (
     connection,
     transaction,
     )
+from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.fields import MAC
 from maasserver.testing.testcase import SerializationFailureTestCase
@@ -36,7 +37,9 @@ from maasserver.utils.orm import (
     outside_atomic_block,
     request_transaction_retry,
     retry_on_serialization_failure,
+    validate_in_transaction,
     )
+from maastesting.djangotestcase import TransactionTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -328,3 +331,23 @@ class TestCommitWithinAtomicBlock(MAASTestCase):
             context_manager.__enter__, MockCalledOnceWith())
         self.expectThat(
             context_manager.__exit__, MockCalledOnceWith(None, None, None))
+
+
+class TestValidateInTransaction(TransactionTestCase):
+    """Tests for `validate_in_transaction`."""
+
+    def test__does_nothing_within_atomic_block(self):
+        with transaction.atomic():
+            validate_in_transaction(connection)
+
+    def test__does_nothing_when_legacy_transaction_is_active(self):
+        transaction.enter_transaction_management()
+        try:
+            validate_in_transaction(connection)
+        finally:
+            transaction.leave_transaction_management()
+
+    def test__explodes_when_no_transaction_is_active(self):
+        self.assertRaises(
+            TransactionManagementError,
+            validate_in_transaction, connection)

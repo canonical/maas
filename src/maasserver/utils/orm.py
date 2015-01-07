@@ -24,6 +24,7 @@ __all__ = [
     'outside_atomic_block',
     'request_transaction_retry',
     'retry_on_serialization_failure',
+    'validate_in_transaction',
     ]
 
 from contextlib import contextmanager
@@ -32,6 +33,7 @@ from itertools import islice
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import transaction
+from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 
@@ -228,3 +230,29 @@ def outside_atomic_block(using="default"):
         while depth > 0:
             atomic_context.__enter__()
             depth = depth - 1
+
+
+def validate_in_transaction(connection):
+    """Ensure that `connection` is within a transaction.
+
+    This only enquires as to Django's perspective on the situation. It does
+    not actually check that the database agrees with Django.
+
+    :raise TransactionManagementError: If no transaction is in progress.
+    """
+    in_transaction = (
+        # Django's new transaction management stuff is active.
+        connection.in_atomic_block or (
+            # Django's "legacy" transaction management system is active.
+            len(connection.transaction_state) > 0 and
+            # Django is managing the transaction state.
+            connection.transaction_state[-1]
+        )
+    )
+    if not in_transaction:
+        raise TransactionManagementError(
+            "PostgreSQL's large object support demands that all interactions "
+            "are done in a transaction. Further, lobject() has been known to "
+            "segfault when used outside of a transaction. This assertion has "
+            "prevented the use of lobject() outside of a transaction. Please "
+            "investigate.")

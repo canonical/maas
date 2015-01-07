@@ -21,6 +21,7 @@ __all__ = [
 
 from contextlib import closing
 import SocketServer
+import sys
 import threading
 from unittest import SkipTest
 import wsgiref
@@ -32,11 +33,13 @@ from django.db import (
     connection,
     transaction,
     )
+from django.db.utils import OperationalError
 from django.test.client import encode_multipart
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
+from maasserver.utils.orm import is_serialization_failure
 from maastesting.djangotestcase import (
     DjangoTestCase,
     TransactionTestCase,
@@ -313,3 +316,13 @@ class SerializationFailureTestCase(TransactionTestCase):
             with transaction.atomic():
                 set_serializable()
                 trigger_serialization_failure()
+
+    def capture_serialization_failure(self):
+        """Trigger a serialization failure, return its ``exc_info`` tuple."""
+        try:
+            self.cause_serialization_failure()
+        except OperationalError as e:
+            if is_serialization_failure(e):
+                return sys.exc_info()
+            else:
+                raise
