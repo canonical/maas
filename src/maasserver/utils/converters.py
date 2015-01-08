@@ -55,3 +55,19 @@ class XMLToYAML:
         self.addText(root)
         self.recurseElement(root)
         return self.new_text
+
+
+def human_readable_bytes(num_bytes, include_suffix=True):
+    """Return the human readable text for bytes. (SI units)
+
+    :param num_bytes: Bytes to be converted.
+    :param include_suffix: Whether to include the computed suffix in the
+        output.
+    """
+    for unit in ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
+        if abs(num_bytes) < 1000.0 or unit == 'YB':
+            if include_suffix:
+                return "%3.1f %s" % (num_bytes, unit)
+            else:
+                return "%3.1f" % num_bytes
+        num_bytes /= 1000.0

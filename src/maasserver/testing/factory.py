@@ -59,6 +59,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    PhysicalBlockDevice,
     SSHKey,
     SSLKey,
     StaticIPAddress,
@@ -1034,6 +1035,27 @@ class Factory(maastesting.factory.Factory):
             self.make_boot_resource_file_with_content(
                 resource_set, filename=filetype, filetype=filetype)
         return resource
+
+    def make_PhysicalBlockDevice(
+            self, node=None, name=None, path=None, size=None, block_size=None,
+            model=None, serial=None):
+        if node is None:
+            node = self.make_Node()
+        if name is None:
+            name = self.make_name('name')
+        if path is None:
+            path = '/dev/%s' % name
+        if size is None:
+            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        if block_size is None:
+            block_size = random.choice([512, 1024, 4096])
+        if model is None:
+            model = self.make_name('model')
+        if serial is None:
+            serial = self.make_name('serial')
+        return PhysicalBlockDevice.objects.create(
+            node=node, name=name, path=path, size=size, block_size=block_size,
+            model=model, serial=serial)
 
 
 # Create factory singleton.

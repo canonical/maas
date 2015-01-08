@@ -13,6 +13,7 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'BlockDevice',
     'BootResource',
     'BootResourceFile',
     'BootResourceSet',
@@ -33,6 +34,7 @@ __all__ = [
     'Node',
     'NodeGroup',
     'NodeGroupInterface',
+    'PhysicalBlockDevice',
     'SSHKey',
     'SSLKey',
     'Tag',
@@ -50,6 +52,7 @@ from django.core.urlresolvers import (
 from django.db.models.signals import post_save
 from maasserver import logger
 from maasserver.enum import NODE_PERMISSION
+from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.bootresource import BootResource
 from maasserver.models.bootresourcefile import BootResourceFile
 from maasserver.models.bootresourceset import BootResourceSet
@@ -72,6 +75,7 @@ from maasserver.models.network import Network
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.sshkey import SSHKey
 from maasserver.models.sslkey import SSLKey
 from maasserver.models.staticipaddress import StaticIPAddress
