@@ -3,8 +3,8 @@
 {% block nav-active-event-list %}active{% endblock %}
 {% block title %}Events{% endblock %}
 {% block page-title %}
-  {{ paginator.count }} event{{ paginator.count|pluralize }}
-  for node {{ node.hostname }}
+    {{ paginator.count }} event{{ paginator.count|pluralize }}
+    for node {{ node.hostname }}
 {% endblock %}
 
 {% block html_includes %}{% include "maasserver/snippets.html" %}

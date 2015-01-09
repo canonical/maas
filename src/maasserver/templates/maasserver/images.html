@@ -8,398 +8,340 @@
 {% endblock %}
 
 {% block head %}
-  <style type="text/css">
-    form li {
-      margin-bottom: 2px;
-    }
-    .section {
-      margin-bottom: 30px;
-    }
-    .section h2 {
-      padding-bottom: 5px;
-      border-bottom: 1px solid #e5e2e0;
-    }
-    .section .content {
-      margin-left: 10px;
-    }
-    .section .end-row {
-      min-height: 26px;
-    }
-    .small-icon {
-      width: 12px;
-    }
-    .images-info {
-      font-weight: bold;
-      text-align: center;
-      padding: 10px;
-    }
-    .images-warning {
-      font-weight: bold;
-      text-align: center;
-      padding: 10px;
-      border: 1px solid #dd4814;
-      border-radius: 5px;
-      -webkit-border-radius: 5px;
-      background-color: rgba(221, 72, 20, 0.3);
-    }
-    #loader {
-      width: 10px;
-      margin: 16px auto 0 auto;
-    }
-    #importing {
-      margin: -20px auto -19px auto;
-      width: 230px;
-      font-weight: bold;
-      text-align: center;
-      padding: 10px;
-      border-right: 1px solid rgba(221, 72, 20, 0.5);
-      border-bottom: 1px solid rgba(221, 72, 20, 0.5);
-      border-left: 1px solid rgba(221, 72, 20, 0.5);
-      border-bottom-right-radius: 5px;
-      -webkit-border-bottom-right-radius: 5px;
-      border-bottom-left-radius: 5px;
-      -webkit-border-bottom-right-radius: 5px;
-      background-color: rgba(221, 72, 20, 0.2);
-    }
-    .importing-dot {
-      opacity: 0;
-      -webkit-animation: dot 1.3s infinite;
-      animation: dot 1.3s infinite;
-    }
-    @-webkit-keyframes dot {
-        0% {
-            opacity: 0;
-        }
-        50% {
-            opacity: 0;
-        }
-        100% {
-            opacity: 1;
-        }
-    }
-    @keyframes dot {
-        0% {
-            opacity: 0;
-        }
-        50% {
-            opacity: 0;
-        }
-        100% {
-            opacity: 1;
-        }
-    }
-  </style>
-  <script type="text/javascript">
+    <style type="text/css">
+      form li {
+        margin-bottom: 2px;
+      }
+      .section {
+        margin-bottom: 30px;
+      }
+      .section h2 {
+        padding-bottom: 5px;
+        border-bottom: 1px solid #e5e2e0;
+      }
+      .section .content {
+        margin-left: 10px;
+      }
+      .section .end-row {
+        min-height: 26px;
+      }
+      .small-icon {
+        width: 12px;
+      }
+      .images-info {
+        font-weight: bold;
+        text-align: center;
+        padding: 10px;
+      }
+      .images-warning {
+        font-weight: bold;
+        text-align: center;
+        padding: 10px;
+        border: 1px solid #dd4814;
+        border-radius: 5px;
+        -webkit-border-radius: 5px;
+        background-color: rgba(221, 72, 20, 0.3);
+      }
+      #loader {
+        width: 10px;
+        margin: 16px auto 0 auto;
+      }
+      #importing {
+        margin: -20px auto -19px auto;
+        width: 230px;
+        font-weight: bold;
+        text-align: center;
+        padding: 10px;
+        border-right: 1px solid rgba(221, 72, 20, 0.5);
+        border-bottom: 1px solid rgba(221, 72, 20, 0.5);
+        border-left: 1px solid rgba(221, 72, 20, 0.5);
+        border-bottom-right-radius: 5px;
+        -webkit-border-bottom-right-radius: 5px;
+        border-bottom-left-radius: 5px;
+        -webkit-border-bottom-right-radius: 5px;
+        background-color: rgba(221, 72, 20, 0.2);
+      }
+      .importing-dot {
+        opacity: 0;
+        -webkit-animation: dot 1.3s infinite;
+        animation: dot 1.3s infinite;
+      }
+      @-webkit-keyframes dot {
+          0% {
+              opacity: 0;
+          }
+          50% {
+              opacity: 0;
+          }
+          100% {
+              opacity: 1;
+          }
+      }
+      @keyframes dot {
+          0% {
+              opacity: 0;
+          }
+          50% {
+              opacity: 0;
+          }
+          100% {
+              opacity: 1;
+          }
+      }
+    </style>
+    <script type="text/javascript">
     <!--
     YUI().use('maas.image_views', 'maas.shortpoll', function (Y) {
-      Y.on('load', function() {
-        var view = new Y.maas.image_views.ImagesView({
-            srcNode: '#content',
-            loader: '#loader',
-            content: '#images-content',
-            importer: '#importing',
-            ubuntuOptions: '#ubuntu-options',
-            ubuntuTable: '#ubuntu-resources',
-            ubuntuMissingImages: '#missing-ubuntu-images',
-            ubuntuButton: '#ubuntu-apply'});
+        Y.on('load', function() {
+            var view = new Y.maas.image_views.ImagesView({
+                srcNode: '#content',
+                loader: '#loader',
+                content: '#images-content',
+                importer: '#importing',
+                ubuntuOptions: '#ubuntu-options',
+                ubuntuTable: '#ubuntu-resources',
+                ubuntuMissingImages: '#missing-ubuntu-images',
+                ubuntuButton: '#ubuntu-apply'});
 
-        var poller = new Y.maas.shortpoll.ShortPollManager({
-            uri: MAAS_config.uris.images_handler
+            var poller = new Y.maas.shortpoll.ShortPollManager({
+                uri: MAAS_config.uris.images_handler
+            });
+            view.addLoader(poller.get("io"));
+            poller.poll();
         });
-        view.addLoader(poller.get("io"));
-        poller.poll();
-      });
     });
     // -->
-  </script>
+    </script>
 {% endblock %}
 
 {% block content %}
-    <div id="loader">
-      <div class="spinner spin"></div>
-    </div>
-    <div id="images-content" class="hidden">
-      <div id="importing" class="hidden">
+<div id="loader">
+    <div class="spinner spin"></div>
+</div>
+<div id="images-content" class="hidden">
+    <div id="importing" class="hidden">
         <div class="spinner spin"></div>
         <span class="importing-text"></span>
         <span class="importing-dot">.</span>
         <span class="importing-dot" style="-webkit-animation-delay: 0.2s; animation-delay: 0.2s;">.</span>
         <span class="importing-dot" style="-webkit-animation-delay: 0.3s; animation-delay: 0.3s;">.</span>​
-      </div>
-      <div id="ubuntu-images" class="section">
+    </div>
+    <div id="ubuntu-images" class="section">
         <h2>Ubuntu</h2>
         <div class="content">
-          <form id="ubuntu_images"
-            method="POST"
-            action="{% url 'images' %}">
-            {% csrf_token %}
-            <input type="hidden" name="ubuntu_images" value="1" />
-            {% if user.is_superuser %}
-            <div id="ubuntu-options" class="row hidden">
-              {% if connection_error %}
-              <div id="connection-error" class="images-warning">
-                Connection Error: Unable to retrieve image information from
-                boot sources.
-              </div>
-              {% else %}
-              {% if ubuntu_streams_count == 0 %}
-              <div id="no-ubuntu-sources" class="images-warning">
-                Error: No boot sources provide Ubuntu images.
-              </div>
-              {% elif ubuntu_streams_count == 1 %}
-              <div class="col2">
-                <div class="space-bottom-small">Release:</div>
-                <ul id="ubuntu-releases" class="data-list">
-                  {% for release in ubuntu_releases %}
-                  <li><input type="checkbox" name="release"
-                    value="{{release.name}}"
-                    {% if release.checked %}checked="checked"{% endif %}>
-                    {{release.title}}</li>
-                  {% endfor %}
-                </ul>
-              </div>
-              <div class="col10 last">
-                <div class="space-bottom-small">Architecture:</div>
-                <ul id="ubuntu-arches" class="data-list">
-                  {% for arch in ubuntu_arches %}
-                  <li><input type="checkbox" name="arch"
-                    value="{{arch.name}}"
-                    {% if arch.checked %}checked="checked"{% endif %}>
-                    {{arch.title}}</li>
-                  {% endfor %}
-                </ul>
-              </div>
-              {% else %}
-              <div id="too-many-ubuntu-sources" class="images-warning">
-                More than one boot source is providing Ubuntu images. Image
-                selection cannot be performed using the WebUI.
-              </div>
-              {% endif %}
-              {% endif %}
-            </div>
-            <div class="clear"></div>
-            {% endif %}
-            <div class="row space-top">
-              <table id="ubuntu-resources" class="space-top list hidden">
-                <thead>
-                  <tr>
-                    <th class="spinner-col"></th>
-                    <th>Release</th>
-                    <th>Architecture</th>
-                    <th>Size</th>
-                    <th>Nodes deployed</th>
-                    <th>Last update</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {# maas.image_view.ImageView will render this part #}
-                </tbody>
-              </table>
-              <div id="missing-ubuntu-images" class="images-warning hidden">
-                No Ubuntu images have been imported. Ubuntu images are required
-                to allow nodes to enlist, commission, and install.</div>
-            </div>
-            <div class="clear"></div>
-            <div class="row space-top end-row">
-              {% if user.is_superuser %}
-              <div class="col12 last align-right">
-                {% if ubuntu_streams_count == 1 %}
-                <input id="ubuntu-apply" type="submit" class="button hidden" value="Import images">
-                {% elif ubuntu_streams_count > 1 %}
-                <input id="ubuntu-apply" type="submit" class="button hidden" data-lock-value="true" value="Import images">
+            <form id="ubuntu_images" method="POST" action="{% url 'images' %}">
+                {% csrf_token %}
+                <input type="hidden" name="ubuntu_images" value="1" />
+                
+                {% if user.is_superuser %}
+                <div id="ubuntu-options" class="row hidden">
+                    {% if connection_error %}
+                    <div id="connection-error" class="images-warning">Connection Error: Unable to retrieve image information from boot sources.</div>
+                    {% else %}
+                    {% if ubuntu_streams_count == 0 %}
+                    <div id="no-ubuntu-sources" class="images-warning">Error: No boot sources provide Ubuntu images.</div>
+                    {% elif ubuntu_streams_count == 1 %}
+                    <div class="col2">
+                        <div class="space-bottom-small">Release:</div>
+                        <ul id="ubuntu-releases" class="data-list">
+                            {% for release in ubuntu_releases %}
+                            <li>
+                                <input type="checkbox" name="release" value="{{release.name}}" {% if release.checked %}checked="checked"{% endif %}>
+                                {{release.title}}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col10 last">
+                        <div class="space-bottom-small">Architecture:</div>
+                        <ul id="ubuntu-arches" class="data-list">
+                            {% for arch in ubuntu_arches %}
+                            <li>
+                                <input type="checkbox" name="arch" value="{{arch.name}}" {% if arch.checked %}checked="checked"{% endif %}>
+                                {{arch.title}}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div id="too-many-ubuntu-sources" class="images-warning">More than one boot source is providing Ubuntu images. Image selection cannot be performed using the WebUI.</div>
+                    {% endif %}
+                    {% endif %}
+                </div>
                 {% endif %}
-              </div>
-              {% endif %}
-            </div>
-            <div class="clear"></div>
-          </form>
-        </div>
-      </div>
-      {% if other_resources %}
-      <div id="other-sync-images" class="section">
-        <h2>Other Images</h2>
-        <div class="content">
-          <form id="other_images"
-            method="POST"
-            action="{% url 'images' %}">
-            {% csrf_token %}
-            <input type="hidden" name="other_images" value="1" />
-            <div class="row space-top">
-              <table id="other-resources" class="space-top list">
-                <thead>
-                  <tr>
-                    <th class="spinner-col"></th>
-                    <th>Name</th>
-                    <th>Architecture</th>
-                    <th>Size</th>
-                    <th>Nodes deployed</th>
-                    <th>Last update</th>
-                  </tr>
-                </thead>
-                <tbody>
-                {% for resource in other_resources %}
-                  <tr
-                    class="{% cycle 'even' 'odd' %}"
-                    data-id="{% if resource.id %}{{ resource.id }}{% endif %}">
-                    <td>
-                      {% if region_import_running and resource.exists %}
-                      {% if not resource.complete %}
-                      <div
-                        title="{{ resource.status }}"
-                        class="
-                          spinner
-                          {% if resource.downloading %}spin{% endif %}">
-                      </div>
-                      {% endif %}
-                      {% elif not region_import_running and user.is_superuser %}
-                      <input
-                        type="checkbox"
-                        name="image"
-                        value="{{ resource.os }}/{{ resource.arch }}/{{ resource.subarch }}/{{ resource.release }}"
-                        {% if resource.exists %}
-                        checked="checked"
+                <div class="row space-top">
+                    <table id="ubuntu-resources" class="space-top list hidden">
+                        <thead>
+                            <tr>
+                                <th class="spinner-col"></th>
+                                <th>Release</th>
+                                <th>Architecture</th>
+                                <th>Size</th>
+                                <th>Nodes deployed</th>
+                                <th>Last update</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {# maas.image_view.ImageView will render this part #}
+                        </tbody>
+                    </table>
+                    <div id="missing-ubuntu-images" class="images-warning hidden">No Ubuntu images have been imported. Ubuntu images are required to allow nodes to enlist, commission, and install.</div>
+                </div>
+                <div class="row space-top end-row">
+                    {% if user.is_superuser %}
+                    <div class="col12 last align-right">
+                        {% if ubuntu_streams_count == 1 %}
+                        <input id="ubuntu-apply" type="submit" class="button hidden" value="Import images">
+                        {% elif ubuntu_streams_count > 1 %}
+                        <input id="ubuntu-apply" type="submit" class="button hidden" data-lock-value="true" value="Import images">
                         {% endif %}
-                        >
-                      {% endif %}
-                    </td>
-                    <td>{{ resource.title }}</td>
-                    <td>{{ resource.arch }}</td>
-                    <td>{{ resource.size }}</td>
-                    <td>{{ resource.number_of_nodes }}</td>
-                    <td>{{ resource.last_update }}</td>
-                  </tr>
-                {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <div class="clear"></div>
-            <div class="row space-top end-row">
-              {% if user.is_superuser and not region_import_running %}
-              <div class="col12 last align-right">
-                <input type="submit" class="button" value="Apply changes">
-              </div>
-              {% endif %}
-            </div>
-            <div class="clear"></div>
-          </form>
-        </div>
-      </div>
-      {% endif %}
-      {% if generated_resources %}
-      <div id="generated-images" class="section">
-        <h2>Generated Images</h2>
-        <div class="content">
-          <div class="row space-top">
-            <table id="generated-resources" class="space-top list">
-              <thead>
-                <tr>
-                  <th class="spinner-col"></th>
-                  <th>Name</th>
-                  <th>Architecture</th>
-                  <th>Size</th>
-                  <th>Nodes deployed</th>
-                  <th>Last update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for resource in generated_resources %}
-                <tr
-                  class="{% cycle 'even' 'odd' %}"
-                  data-id="{{ resource.id }}">
-                  <td>
-                    {% if not resource.complete %}
-                    <div
-                      title="{{ resource.status }}"
-                      class="
-                        spinner
-                        {% if resource.downloading %}spin{% endif %}">
                     </div>
                     {% endif %}
-                  </td>
-                  <td>{{ resource.title }}
-                    {% if user.is_superuser %}
-                    <a
-                      title="Delete image"
-                      href="{% url 'image-delete' resource.id %}">
-                      <img
-                        class="small-icon"
-                        src="{{ STATIC_URL }}img/delete.png"
-                        alt="delete" />
-                    </a>
-                    {% endif %}
-                  </td>
-                  <td>{{ resource.arch }}</td>
-                  <td>{{ resource.size }}</td>
-                  <td>{{ resource.number_of_nodes }}</td>
-                  <td>{{ resource.last_update }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          <div class="clear"></div>
-          <div class="row space-top end-row"></div>
-          <div class="clear"></div>
+                </div>
+            </form>
         </div>
-      </div>
-      {% endif %}
+    </div>
+    {% if other_resources %}
+    <div id="other-sync-images" class="section">
+        <h2>Other Images</h2>
+        <div class="content">
+            <form id="other_images" method="POST" action="{% url 'images' %}">
+                {% csrf_token %}
+                <input type="hidden" name="other_images" value="1" />
+                <div class="row space-top">
+                    <table id="other-resources" class="space-top list">
+                        <thead>
+                            <tr>
+                                <th class="spinner-col"></th>
+                                <th>Name</th>
+                                <th>Architecture</th>
+                                <th>Size</th>
+                                <th>Nodes deployed</th>
+                                <th>Last update</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for resource in other_resources %}
+                            <tr class="{% cycle 'even' 'odd' %}" data-id="{% if resource.id %}{{ resource.id }}{% endif %}">
+                                <td>
+                                    {% if region_import_running and resource.exists %}
+                                    {% if not resource.complete %}
+                                    <div title="{{ resource.status }}" class="spinner {% if resource.downloading %}spin{% endif %}"></div>
+                                    {% endif %}
+                                    {% elif not region_import_running and user.is_superuser %}
+                                    <input type="checkbox" name="image" value="{{ resource.os }}/{{ resource.arch }}/{{ resource.subarch }}/{{ resource.release }}" {% if resource.exists %} checked="checked" {% endif %}>
+                                    {% endif %}
+                                </td>
+                                <td>{{ resource.title }}</td>
+                                <td>{{ resource.arch }}</td>
+                                <td>{{ resource.size }}</td>
+                                <td>{{ resource.number_of_nodes }}</td>
+                                <td>{{ resource.last_update }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row space-top end-row">
+                    {% if user.is_superuser and not region_import_running %}
+                    <div class="col12 last align-right">
+                        <input type="submit" class="button" value="Apply changes">
+                    </div>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    {% if generated_resources %}
+    <div id="generated-images" class="section">
+        <h2>Generated Images</h2>
+        <div class="content">
+            <div class="row space-top">
+                <table id="generated-resources" class="space-top list">
+                    <thead>
+                        <tr>
+                            <th class="spinner-col"></th>
+                            <th>Name</th>
+                            <th>Architecture</th>
+                            <th>Size</th>
+                            <th>Nodes deployed</th>
+                            <th>Last update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resource in generated_resources %}
+                        <tr class="{% cycle 'even' 'odd' %}" data-id="{{ resource.id }}">
+                            <td>
+                                {% if not resource.complete %}
+                                <div title="{{ resource.status }}" class="spinner {% if resource.downloading %}spin{% endif %}"></div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ resource.title }}
+                                {% if user.is_superuser %}
+                                <a title="Delete image" href="{% url 'image-delete' resource.id %}">
+                                    <img class="small-icon" src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>{{ resource.arch }}</td>
+                            <td>{{ resource.size }}</td>
+                            <td>{{ resource.number_of_nodes }}</td>
+                            <td>{{ resource.last_update }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
       <div id="custom-images" class="section">
         <h2>Custom Images</h2>
         <div class="content">
-          <div class="row space-top">
-            {% if uploaded_resources|length %}
-            <table id="uploaded-resources" class="space-top list">
-              <thead>
-                <tr>
-                  <th></th>
-                  <th>Name</th>
-                  <th>Architecture</th>
-                  <th>Size</th>
-                  <th>Nodes deployed</th>
-                  <th>Last update</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for resource in uploaded_resources %}
-                <tr class="{% cycle 'even' 'odd' %}">
-                  <td>
-                    {% if not resource.complete %}
-                    <div
-                      title="{{ resource.status }}"
-                      class="
-                        spinner
-                        {% if resource.downloading %}spin{% endif %}">
-                    </div>
-                    {% endif %}
-                  </td>
-                  <td>{{ resource.title }}
-                    {% if user.is_superuser %}
-                    <a
-                      title="Delete image"
-                      href="{% url 'image-delete' resource.id %}">
-                      <img
-                        class="small-icon"
-                        src="{{ STATIC_URL }}img/delete.png"
-                        alt="delete" />
-                    </a>
-                    {% endif %}
-                  </td>
-                  <td>{{ resource.arch }}</td>
-                  <td>{{ resource.size }}</td>
-                  <td>{{ resource.number_of_nodes }}</td>
-                  <td>{{ resource.last_update }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            {% else %}
-            <div id="no-custom-images" class="images-info">
-              No custom images have been uploaded.
+            <div class="row space-top">
+                {% if uploaded_resources|length %}
+                <table id="uploaded-resources" class="space-top list">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Name</th>
+                            <th>Architecture</th>
+                            <th>Size</th>
+                            <th>Nodes deployed</th>
+                            <th>Last update</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for resource in uploaded_resources %}
+                        <tr class="{% cycle 'even' 'odd' %}">
+                            <td>
+                                {% if not resource.complete %}
+                                <div title="{{ resource.status }}" class="spinner {% if resource.downloading %}spin{% endif %}"></div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ resource.title }}
+                                {% if user.is_superuser %}
+                                <a title="Delete image" href="{% url 'image-delete' resource.id %}">
+                                    <img class="small-icon" src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>{{ resource.arch }}</td>
+                            <td>{{ resource.size }}</td>
+                            <td>{{ resource.number_of_nodes }}</td>
+                            <td>{{ resource.last_update }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div id="no-custom-images" class="images-info">No custom images have been uploaded.</div>
+                {% endif %}
             </div>
-            {% endif %}
-          </div>
-          <div class="clear"></div>
         </div>
-      </div>
     </div>
+</div>
 {% endblock %}

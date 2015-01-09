@@ -4,77 +4,71 @@
 {% block title %}Dashboard{% endblock %}
 {% block site-switcher %}{% endblock %}
 
-{% block html_includes %}{% include "maasserver/snippets.html" %}
-{% endblock %}
+{% block html_includes %}{% include "maasserver/snippets.html" %}{% endblock %}
 
 {% block head %}
-  <script type="text/javascript"
-    src="{% url "combo-raphael" %}?raphael-min.js">
-  </script>
-  <script type="text/javascript">
-  <!--
-  YUI().use(
-    'maas.enums', 'maas.node_add', 'maas.node','maas.node_views',
-    'maas.utils', 'maas.shortpoll',
-    function (Y) {
-    Y.on('load', function() {
-      // Create Dashboard view.
-      var power_types = {{ power_types }};
-      var view = new Y.maas.node_views.NodesDashboard({
-          srcNode: '#dashboard',
-          summaryNode: '#summary',
-          numberNode: '#nodes-number',
-          descriptionNode: '#nodes-description',
-          reservedNode: '#reserved-nodes',
-          retiredNode: '#retired-nodes'});
+    <script type="text/javascript" src="{% url "combo-raphael" %}?raphael-min.js"></script>
+    <script type="text/javascript">
+    <!--
+        YUI().use('maas.enums', 'maas.node_add', 'maas.node','maas.node_views','maas.utils', 'maas.shortpoll', function (Y) {Y.on('load', function() {
+            // Create Dashboard view.
+            var power_types = {{ power_types }};
+            var view = new Y.maas.node_views.NodesDashboard({
+                srcNode: '#dashboard',
+                summaryNode: '#summary',
+                numberNode: '#nodes-number',
+                descriptionNode: '#nodes-description',
+                reservedNode: '#reserved-nodes',
+                retiredNode: '#retired-nodes'});
 
-      var poller = new Y.maas.shortpoll.ShortPollManager({
-          uri: MAAS_config.uris.nodes_handler + "?op=list"
-      });
-      view.addLoader(poller.get("io"));
-      poller.poll();
-
-      Y.one('#addnode').on('click', function(e) {
-        e.preventDefault();
-        Y.maas.node_add.showAddNodeWidget({
-            powerTypes: power_types,
-            targetNode: '#dashboard'
+            var poller = new Y.maas.shortpoll.ShortPollManager({
+                uri: MAAS_config.uris.nodes_handler + "?op=list"
             });
-      });
 
-      // Setup TitleEditWidget.
-      var title_widget = new Y.maas.utils.TitleEditWidget(
-          {srcNode: '.page-title-form'});
-      title_widget.render();
-    });
-  });
-  // -->
-  </script>
+            view.addLoader(poller.get("io"));
+            poller.poll();
+
+            Y.one('#addnode').on('click', function(e) {
+                e.preventDefault();
+                Y.maas.node_add.showAddNodeWidget({
+                    powerTypes: power_types,
+                    targetNode: '#dashboard'
+                });
+            });
+
+            // Setup TitleEditWidget.
+            var title_widget = new Y.maas.utils.TitleEditWidget(
+                {srcNode: '.page-title-form'});
+                title_widget.render();
+            });
+        });
+        // -->
+    </script>
 {% endblock %}
 
 {% block page-title-block %}
-  {% if user.is_superuser %}
-    <form action="" method="" class="page-title-form">
-      <input type="text" value="{{ global_options.site_name }} MAAS"
-             title="Edit the name of this MAAS" />
-    </form>
-  {% else %}
-    <h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>
-  {% endif %}
+{% if user.is_superuser %}
+<form action="" method="" class="page-title-form">
+    <input type="text" value="{{ global_options.site_name }} MAAS" title="Edit the name of this MAAS" />
+</form>
+{% else %}
+<h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-  <div id="dashboard" class="pad-top">
-    <div id="chart" class="block size6"></div>
-    <div class="block block size8">
-      <div id="summary">
-        <h2 id="nodes-number" class="super-size pad-top-large"></h2>
-        <p id="nodes-description" class="large"></p>
-      </div>
-      <p id="reserved-nodes" class="medium space-bottom-small"></p>
-      <p id="retired-nodes" class="secondary medium space-top-none"></p>
-      <a href="#" id="addnode" class="button right space-top">+ Add node</a>
+<div id="dashboard">
+    <div class="row no-border">
+       <section id="chart" class="four-col"></section>
+       <section id="summary" class="eight-col last-col">
+            <h2 id="nodes-number"></h2>
+            <p id="nodes-description"></p>
+        </section>
     </div>
-    <div class="clear"></div>
-  </div>
+    <div class="row no-border">
+        <p id="reserved-nodes"></p>
+        <p id="retired-nodes"></p>
+        <a href="#" id="addnode" class="link-cta-ubuntu">+ Add node</a>
+    </div>
+</div>
 {% endblock %}

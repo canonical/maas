@@ -1,26 +1,26 @@
-{% extends "maasserver/base.html" %}
+{% extends "maasserver/base.html" %} 
 
-{% block nav-active-node-list %}active{% endblock %}
-{% block title %}Node: {{ node.fqdn }}{% endblock %}
-{% block page-title %}Node: {{ node.fqdn }}{% endblock %}
-{% block layout-modifiers %}sidebar{% endblock %}
+{% block nav-active-node-list %}active{% endblock %} 
+{% block title %}Node: {{ node.fqdn }}{% endblock %} 
+{% block page-title %}Node: {{ node.fqdn }}{% endblock %} 
+{% block layout-modifiers %}sidebar{% endblock %} 
 
-{% block head %}
-  {# Add expander icon to LLDP expander's button URL. #}
-  {# Done as CSS classes, not by DOM manipulation, because: #}
-  {# 1. The icon must be part of the clickable link. #}
-  {# 2. Browsers pre-load CSS backgrounds, avoiding a glitch on first use. #}
-  {# 3. It's easy. #}
-  <style type="text/css">
-    #lldp-trigger.expander-shown {
-      background: url({{ STATIC_URL }}img/treeExpanded.png) left no-repeat;
-      padding-left: 15px;
-    }
-    #lldp-trigger.expander-hidden {
-      background: url({{ STATIC_URL }}img/treeCollapsed.png) left no-repeat;
-      padding-left: 15px;
-    }
-  </style>
+{% block head %} 
+{# Add expander icon to LLDP expander's button URL. #} 
+{# Done as CSS classes, not by DOM manipulation, because: #} 
+{# 1. The icon must be part of the clickable link. #} 
+{# 2. Browsers pre-load CSS backgrounds, avoiding a glitch on first use. #} 
+{# 3. It's easy. #}
+<style type="text/css">
+#lldp-trigger.expander-shown {
+    background: url({{ STATIC_URL }}img/treeExpanded.png) left no-repeat;
+    padding-left: 15px;
+}
+#lldp-trigger.expander-hidden {
+    background: url({{ STATIC_URL }}img/treeCollapsed.png) left no-repeat;
+    padding-left: 15px;
+}
+</style>
   <script type="text/javascript">
     <!--
       var show_text = "Show discovered details",
@@ -87,206 +87,190 @@
       });
     // -->
   </script>
-{% endblock %}
+{% endblock %} 
 
-{% block sidebar %}
-  {% include "maasserver/node_actions.html" %}
-{% endblock %}
+{% block sidebar %} 
+    {% include "maasserver/node_actions.html" %} 
+{% endblock %} 
 
 {% block content %}
-  <style type="text/css">
-    #content-discovery-data {
-      width: 945px;
-    }
-  </style>
-  <div id="content-with-sidebar">
-  <ul class="data-list">
-    <li class="block size3 first">
-      <h4><acronym title="Fully Qualified Domain Name">FQDN</acronym></h4>
-        <span data-field="fqdn">{{ node.fqdn }}</span>
-    </li>
-    <li id="network-interfaces" class="block size5">
-      <h4>Network interfaces</h4>
-      <span>
-        <ul class="data-list">
-          {% with mac=node.get_pxe_mac %}
-            {% include "maasserver/node_view_mac_display.html" %}
-          {% endwith %}
-          {% for mac in node.get_extra_macs %}
-            {% include "maasserver/node_view_mac_display.html" %}
-          {% endfor %}
-        </ul>
-      </span>
-    </li>
-    <li class="block size3">
-      <h4>Status</h4>
-      <span data-field="status">
-          {{ node.display_status }}
-      </span>
-    </li>
-    <li class="block first size3">
-      <h4>Architecture</h4>
-      <span data-field="architecture">
-          {{ node.architecture }}
-      </span>
-    </li>
-    <li class="block size3">
-      <h4>CPU Count</h4>
-      <span data-field="cpu_count">
-          {{ node.cpu_count }}
-      </span>
-    </li>
-    <li class="block size3">
-      <h4>Memory</h4>
-      <span>
-          <span data-field="memory">{{ node.display_memory }}</span> GiB
-      </span>
-    </li>
-    <li class="block size3 first">
-      <h4>Tags</h4>
-      <span id="node_tags">
-          {% for tag in node.tags.all %}
-            <a href="{% url 'tag-view' tag.name %}">{{ tag }}</a>{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-          {% if not node.tags.all %}
-            None
-          {% endif %}
-      </span>
-    </li>
-    {% with ip_addresses=node.ip_addresses %}
-    {% if ip_addresses|length %}
-    <li class="block size3" id="ip-addresses">
-      <h4>IP addresses
-          {% if unconfigured_ips_warning %}
-          <img
-            src="{{ STATIC_URL }}img/warning.png"
-            title="This node's IPv6 addresses are not automatically configured."
-            id="unconfigured-ips-warning" />
-          {% endif %}
-      </h4>
-      <span>
-          {% for ip in ip_addresses %}
-          {{ ip }}{% if not forloop.last %}, {% endif %}
-          {% endfor %}
-      </span>
-    </li>
-    {% endif %}
-    {% endwith %}
-    {% if kernel_opts.value %}
-    <li class="block size10 first">
-      <h4>Kernel Parameters
-        {% if kernel_opts.is_global %}
-        - from: <a class="kernelopts-global-link" href="{% url 'settings' %}">Global Kernel Parameters</a>
-        {% elif kernel_opts.is_tag %}
-        - from tag: <span><a class="kernelopts-tag-link" href="{% url 'tag-view' kernel_opts.tag.name %}">{{ kernel_opts.tag.name }}</a></span>
-        {% endif %}
-      </h4>
-      <span id="node_kernel_opts">
-        {{ kernel_opts.value }}
-      </span>
-    </li>
-    {% endif %}
-    {% if third_party_drivers_enabled and drivers %}
-    <li class="block size10 first">
-      <h4>Third Party Drivers</h4>
-      <span id="third_party_drivers">
-        {{ drivers.module }} ({{ drivers.comment }})
-      </span>
-    </li>
-    {% endif %}
-    {% if error_text %}
-    <li class="block first">
-      <h4>Error output</h4>
-      <span>{{ error_text }}</span>
-    </li>
-    {% endif %}
-    {% if status_text %}
-    <li class="block first">
-      <h4>Console output</h4>
-      <span>{{ status_text }}</span>
-    </li>
-    {% endif %}
-    <li id="owner" data-field="owner" data-field-if="hidden"
-        class="block size3 {% if not node.owner %}hidden{% endif %}">
-      <h4>Owner</h4>
-      <span data-field="owner">{{ node.owner }}</span>
-    </li>
-    <li id="zone" class="block size3">
-      <h4>Physical zone</h4>
-      <span>
-        <a data-field="zone_url" data-field-attr="href"
-           href="{% url 'zone-view' node.zone.name %}">
-           <span data-field="zone">{{ node.zone }}</span>
-        </a>
-      </span>
-    </li>
-    {% if node.routers %}
-      <li id="routers" class="block first size3">
-        <h4>Switch MAC addresses</h4>
-        <span>{{ node.routers|join:", " }}</span>
-      </li>
-    {% endif %}
-    {% if can_edit %}
-      {% if nodeinstallresults != None %}
-        <li class="block first size5 separate" id="nodeinstallresults">
-          <h4>Installation output</h4>
-  	  {% for install_result in nodeinstallresults %}
-          <span>
-            <a href="{% url 'nodeinstallresult-view' install_result.id %}">
-  	      {{ install_result.name }}
-            </a>
-          </span>
-  	  {% endfor %}
+<style type="text/css">
+#content-discovery-data {
+    width: 945px;
+}
+</style>
+<div id="content-with-sidebar">
+    <ul class="data-list">
+        <li class="block size3 first">
+            <h4><abbr title="Fully Qualified Domain Name">FQDN</abbr></h4>
+            <span data-field="fqdn">{{ node.fqdn }}</span>
         </li>
-      {% endif %}
-      {% if nodecommissionresults > 0 %}
+        <li id="network-interfaces" class="block size5">
+            <h4>Network interfaces</h4>
+            <span>
+                <ul class="data-list">
+                    {% with mac=node.get_pxe_mac %}
+                        {% include "maasserver/node_view_mac_display.html" %}
+                    {% endwith %}
+                    {% for mac in node.get_extra_macs %}
+                        {% include "maasserver/node_view_mac_display.html" %}
+                    {% endfor %}
+                </ul>
+            </span>
+        </li>
+        <li class="block size3">
+            <h4>Status</h4>
+            <span data-field="status">{{ node.display_status }}</span>
+        </li>
+        <li class="block first size3">
+            <h4>Architecture</h4>
+            <span data-field="architecture">{{ node.architecture }}</span>
+        </li>
+        <li class="block size3">
+            <h4>CPU Count</h4>
+            <span data-field="cpu_count">{{ node.cpu_count }}</span>
+        </li>
+        <li class="block size3">
+            <h4>Memory</h4>
+            <span>
+                <span data-field="memory">{{ node.display_memory }}</span> GiB
+            </span>
+        </li>
+        <li class="block size3 first">
+            <h4>Tags</h4>
+            <span id="node_tags">
+                {% for tag in node.tags.all %}
+                <a href="{% url 'tag-view' tag.name %}">{{ tag }}</a>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+                {% if not node.tags.all %}
+                None
+                {% endif %}
+            </span>
+        </li>
+        {% with ip_addresses=node.ip_addresses %} 
+        {% if ip_addresses|length %}
+        <li class="block size3" id="ip-addresses">
+            <h4>IP addresses
+            {% if unconfigured_ips_warning %}
+            <img src="{{ STATIC_URL }}img/warning.png" title="This node's IPv6 addresses are not automatically configured." id="unconfigured-ips-warning" />
+            {% endif %}
+            </h4>
+            <span>
+            {% for ip in ip_addresses %}
+                {{ ip }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+            </span>
+        </li>
+        {% endif %} 
+        {% endwith %} 
+        {% if kernel_opts.value %}
+        <li class="block size10 first">
+            <h4>Kernel Parameters
+                {% if kernel_opts.is_global %}
+                - from: <a class="kernelopts-global-link" href="{% url 'settings' %}">Global Kernel Parameters</a>
+                {% elif kernel_opts.is_tag %}
+                - from tag: <span><a class="kernelopts-tag-link" href="{% url 'tag-view' kernel_opts.tag.name %}">{{ kernel_opts.tag.name }}</a></span>
+                {% endif %}
+            </h4>
+            <span id="node_kernel_opts">{{ kernel_opts.value }}</span>
+        </li>
+        {% endif %} 
+        {% if third_party_drivers_enabled and drivers %}
+        <li class="block size10 first">
+            <h4>Third Party Drivers</h4>
+            <span id="third_party_drivers">{{ drivers.module }} ({{ drivers.comment }})</span>
+        </li>
+        {% endif %} 
+        {% if error_text %}
+        <li class="block first">
+            <h4>Error output</h4>
+            <span>{{ error_text }}</span>
+        </li>
+        {% endif %} 
+        {% if status_text %}
+        <li class="block first">
+            <h4>Console output</h4>
+            <span>{{ status_text }}</span>
+        </li>
+        {% endif %}
+        <li id="owner" data-field="owner" data-field-if="hidden" class="block size3 {% if not node.owner %}hidden{% endif %}">
+            <h4>Owner</h4>
+            <span data-field="owner">{{ node.owner }}</span>
+        </li>
+        <li id="zone" class="block size3">
+            <h4>Physical zone</h4>
+            <span>
+                <a data-field="zone_url" data-field-attr="href" href="{% url 'zone-view' node.zone.name %}">
+                    <span data-field="zone">{{ node.zone }}</span>
+                </a>
+            </span>
+        </li>
+        {% if node.routers %}
+        <li id="routers" class="block first size3">
+            <h4>Switch MAC addresses</h4>
+            <span>{{ node.routers|join:", " }}</span>
+        </li>
+        {% endif %} 
+        {% if can_edit %} 
+        {% if nodeinstallresults != None %}
+        <li class="block first size5 separate" id="nodeinstallresults">
+            <h4>Installation output</h4> 
+            {% for install_result in nodeinstallresults %}
+            <span>
+                <a href="{% url 'nodeinstallresult-view' install_result.id %}">{{ install_result.name }}</a>
+            </span>
+            {% endfor %}
+        </li>
+        {% endif %} 
+        {% if nodecommissionresults > 0 %}
         <li class="block first size5 separate" id="nodecommissionresults">
-          <h4>Commissioning output</h4>
-          <span>
+            <h4>Commissioning output</h4>
+            <span>
             <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
               {{ nodecommissionresults }}
               output file{{ nodecommissionresults|pluralize }}
             </a>
           </span>
         </li>
-      {% endif %}
-    {% endif %}
-    <li class="block first separate" id="node-events">
-      <h2>Latest node events</h2>
-      <div id="node_event_list">
-        <div class="spinner spin"></div>
-      </div>
-      <div class="clear"></div>
-    </li>
-  </ul>
-  </div>
-  <div class="clear"></div>
-    {% if probed_details_xml %}
-    <div id="content-discovery-data">
-    <ul class="data-list">
-      <li class="block first separate">
-        <h2 class="first size6">Discovery data</h2>
-        {# Button link for the Reveal widget that shows/hides LLDP output. #}
-        <a class="last size6 align-right space-top" href="#" id="details-trigger"></a>
-        {# Content div for the probed details output. #}
-      </li>
-      <li class="block first pad-top-small">
-        <div class="row first" id="details-output">
-          <ul class="list col1 no-background normal">
-            <li><a href="#yaml">YAML</a></li>
-            <li><a href="#xml">XML</a></li>
-          </ul>
-          <div class="last col10 no-background normal">
-            <div id="yaml">
-              <pre>{{ probed_details_yaml }}</pre>
+        {% endif %}
+        {% endif %}
+        <li class="block first separate" id="node-events">
+            <h2>Latest node events</h2>
+            <div id="node_event_list">
+                <div class="spinner spin"></div>
             </div>
-            <div id="xml">
-              <pre>{{ probed_details_xml }}</pre>
-            </div>
-          </div>
-        </div>
-      </li>
+            <div class="clear"></div>
+        </li>
     </ul>
-    </div>
-    {% endif %}
+</div>
+<div class="clear"></div>
+{% if probed_details_xml %}
+<div id="content-discovery-data">
+    <ul class="data-list">
+        <li class="block first separate">
+            <h2 class="first size6">Discovery data</h2> {# Button link for the Reveal widget that shows/hides LLDP output. #}
+            <a class="last size6 align-right space-top" href="#" id="details-trigger"></a>
+            {# Content div for the probed details output. #}
+        </li>
+        <li class="block first pad-top-small">
+            <div class="row first" id="details-output">
+                <ul class="list col1 no-background normal">
+                    <li><a href="#yaml">YAML</a>
+                    </li>
+                    <li><a href="#xml">XML</a>
+                    </li>
+                </ul>
+                <div class="last col10 no-background normal">
+                    <div id="yaml">
+                        <pre>{{ probed_details_yaml }}</pre>
+                    </div>
+                    <div id="xml">
+                        <pre>{{ probed_details_xml }}</pre>
+                    </div>
+                </div>
+            </div>
+        </li>
+    </ul>
+</div>
+{% endif %} 
 {% endblock %}

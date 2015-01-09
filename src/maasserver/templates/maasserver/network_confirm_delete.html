@@ -6,17 +6,13 @@
 
 {% block content %}
     <div class="block auto-width">
-        <h2>
-          Are you sure you want to delete network
-	  "{{ network_to_delete.name }}"?
-        </h2>
+        <h2>Are you sure you want to delete network "{{ network_to_delete.name }}"?</h2>
         <p>This action is permanent and can not be undone.</p>
-        <p>
-          <form action="." method="post">{% csrf_token %}
+        <form action="." method="post">
+            {% csrf_token %}
             <input type="hidden" name="post" value="yes" />
             <input type="submit" value="Delete network" class="right" />
             <a href="{% url 'network-view' network_to_delete.name %}">Cancel</a>
-          </form>
-        </p>
+        </form>
     </div>
 {% endblock %}

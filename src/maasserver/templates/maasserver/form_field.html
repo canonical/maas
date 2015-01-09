@@ -1,19 +1,21 @@
 {% load field_type %}
 <li class="{{ field.html_name }}{% if css_class %} {{ css_class }}{% endif %}{% if field.errors %} error{% endif %}">
-  {% if not field.is_hidden %}
+    {% if not field.is_hidden %}
     <label for="id_{{ field.html_name }}">
-      {% ifequal field|field_type "CheckboxInput" %}
-        {{ field }}
-      {% endifequal %}
-      {{ field.label }}
-      {% if field.field.required %}
+        {% ifequal field|field_type "CheckboxInput" %}
+            {{ field }}
+        {% endifequal %}
+        {{ field.label }}
+        {% if field.field.required %}
         <span class="required">(required)</span>
-      {% endif %}
+        {% endif %}
     </label>
-  {% endif %}
-  {% ifnotequal field|field_type "CheckboxInput" %}
+    {% endif %}
+    {% ifnotequal field|field_type "CheckboxInput" %}
     {{ field }}
-  {% endifnotequal %}
-  <span class="help">{% if field.help_text %}{{ field.help_text }}{% endif %}</span>
-  {% if field.errors %}<span class="errors">{{ field.errors }}</span>{% endif %}
+    {% endifnotequal %}
+    <span class="help">{% if field.help_text %}{{ field.help_text }}{% endif %}</span>
+    {% if field.errors %}
+    <span class="errors">{{ field.errors }}</span>
+    {% endif %}
 </li>

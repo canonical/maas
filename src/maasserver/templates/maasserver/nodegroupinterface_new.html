@@ -7,17 +7,14 @@
 {% block content %}
 <div class="block size10 first">
     <form action="." method="post" class="block">
-      {% csrf_token %}
-      <ul>
-      {% for field in form %}
-        {% include "maasserver/form_field.html" %}
-      {% endfor %}
-      </ul>
-      <input type="submit" value="Save interface" class="button right" />
-      <a class="link-button"
-         href="{% url 'cluster-edit' nodegroup.uuid %}">Cancel</a>
+        {% csrf_token %}
+        <ul>
+        {% for field in form %}
+            {% include "maasserver/form_field.html" %}
+        {% endfor %}
+        </ul>
+        <input type="submit" value="Save interface" class="button right" />
+        <a class="link-button" href="{% url 'cluster-edit' nodegroup.uuid %}">Cancel</a>
     </form>
-  </div>
-  <div class="clear"></div>
 </div>
 {% endblock %}

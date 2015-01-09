@@ -8,70 +8,52 @@
 {% endblock %}
 
 {% block content %}
-    <div id="zones">
-      <h2>Physical zones</h2>
-      <table class="list">
+<div id="zones">
+    <h2>Physical zones</h2>
+    <table class="list">
         <thead>
-          <tr>
-            <th>Name</th>
-            <th>Description</th>
-            <th>Nodes</th>
-            {% if user.is_superuser %}
-            <th></th>
-            {% endif %}
-          </tr>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Nodes</th>
+                {% if user.is_superuser %}
+                <th></th>
+                {% endif %}
+            </tr>
         </thead>
         <tbody>
-          {% for zone_item in zone_list %}
-          <tr class="zone {% cycle 'even' 'odd' %}" id="{{ zone_item.name }}">
-            <td>
-              <a class="zone"
-                 href="{% url 'zone-view' zone_item.name %}">
-                {{ zone_item.name }}
-              </a>
-            </td>
-            <td>{{ zone_item.description|truncatechars:40 }}</td>
-            <td>
-              <a title="View nodes in zone {{ zone_item.name }}" 
-                 href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">
-                {{ zone_item.node_set.count }}
-              </a>
-            </td>
-            {% if user.is_superuser %}
-            <td>
-            {% if not zone_item.is_default %}
-              <a href="{% url 'zone-edit' zone_item.name %}"
-                 title="Edit zone {{ zone_item.name }}"
-                 class="icon">
-                <img src="{{ STATIC_URL }}img/edit.png"
-                     alt="edit"
-                     class="space-right-small" />
-              </a>
-              <a title="Delete zone {{ zone_item.name }}"
-                 class="delete-zone icon"
-                 href="{% url 'zone-del' zone_item.name %}">
-                <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-              </a>
-              <form method="POST"
-                    action="{% url 'zone-del' zone_item.name %}">
-                {% csrf_token %}
-                <input type="hidden" name="name"
-                       value="{{ zone_item.name }}" />
-              </form>
-            {% endif %}
-            </td>
-            {% endif %}
-          </tr>
-          {% endfor %}
+            {% for zone_item in zone_list %}
+            <tr class="zone {% cycle 'even' 'odd' %}" id="{{ zone_item.name }}">
+                <td>
+                    <a class="zone" href="{% url 'zone-view' zone_item.name %}">{{ zone_item.name }}</a>
+                </td>
+                <td>{{ zone_item.description|truncatechars:40 }}</td>
+                <td>
+                    <a title="View nodes in zone {{ zone_item.name }}" href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">{{ zone_item.node_set.count }}</a>
+                </td>
+                {% if user.is_superuser %}
+                <td>
+                    {% if not zone_item.is_default %}
+                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon">
+                        <img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
+                    </a>
+                    <a title="Delete zone {{ zone_item.name }}" class="delete-zone icon" href="{% url 'zone-del' zone_item.name %}">
+                        <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+                    </a>
+                    <form method="POST" action="{% url 'zone-del' zone_item.name %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="name" value="{{ zone_item.name }}" />
+                    </form>
+                    {% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
         </tbody>
-      </table>
-      {% include "maasserver/pagination.html" %}
-      {% if user.is_superuser %}
-      <a class="button right space-top-small" href="{% url 'zone-add' %}">
-        Add zone
-      </a>
-      {% endif %}
-      <div class="clear"></div>
-    </div>
-
+    </table>
+    {% include "maasserver/pagination.html" %} 
+    {% if user.is_superuser %}
+    <a class="button right space-top-small" href="{% url 'zone-add' %}">Add zone</a> 
+    {% endif %}
+</div>
 {% endblock %}

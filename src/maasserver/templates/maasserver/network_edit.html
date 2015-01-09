@@ -8,15 +8,15 @@
 {% block content %}
 <div class="block size10 first">
     <form action="." method="post" class="block">
-      {% csrf_token %}
-      <ul>
-      {% for field in form %}
-        {% include "maasserver/form_field.html" %}
-      {% endfor %}
-      </ul>
-      <input type="submit" value="Save network"
-             class="button right" />
-      <a class="link-button" href="{% url 'network-list' %}">Cancel</a>
+        {% csrf_token %}
+        <ul>
+            {% for field in form %}
+                {% include "maasserver/form_field.html" %}
+            {% endfor %}
+        </ul>
+        <input type="submit" value="Save network" class="button right" />
+        <a class="link-button" href="{% url 'network-list' %}">Cancel</a>
+    </form>
 </div>
 <script type="text/javascript">
     addEvent(window, "load", function(e) { SelectFilter.init("id_mac_addresses", "network interfaces", 0, "{{ STATIC_URL }}admin/"); });

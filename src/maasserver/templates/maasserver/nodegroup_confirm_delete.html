@@ -5,21 +5,13 @@
 {% block page-title %}Delete Cluster Controller{% endblock %}
 
 {% block content %}
-    <div class="block auto-width">
-        <h2>
-          Are you sure you want to delete the cluster controller
-          "{{ cluster_to_delete.cluster_name }}"?  This action
-          will also delete all the nodes inside this cluster controller.
-        </h2>
-        <p>This action is permanent and can not be undone.</p>
-        <p>
-          <form action="." method="post">{% csrf_token %}
-            <input type="hidden" name="post" value="yes" />
-            <input type="submit" value="Delete cluster controller"
-                   class="right" />
-            <a href="{% url 'cluster-list' %}">Cancel</a>
-          </form>
-        </p>
-    </div>
+<div class="block auto-width">
+    <h2>Are you sure you want to delete the cluster controller "{{ cluster_to_delete.cluster_name }}"?  This action will also delete all the nodes inside this cluster controller.</h2>
+    <p>This action is permanent and can not be undone.</p>
+    <form action="." method="post">{% csrf_token %}
+        <input type="hidden" name="post" value="yes" />
+        <input type="submit" value="Delete cluster controller" class="right" />
+        <a href="{% url 'cluster-list' %}">Cancel</a>
+    </form>
+</div>
 {% endblock %}
-

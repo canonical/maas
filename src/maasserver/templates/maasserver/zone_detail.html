@@ -10,53 +10,40 @@ Physical zone: {{ zone.name }}
 {% endblock %}
 
 {% block sidebar %}
-  <h4>Actions</h4>
-  {% if user.is_superuser %}
-      <a href="{% url 'zone-edit' zone.name %}" class="button secondary">
-        Edit zone
-      </a>
-      {% if not zone.is_default %}
-      <a href="{% url 'zone-del' zone.name %}" class="button secondary">
-        Delete zone
-      </a>
-      {% endif %}
-  {% endif %}
+<h4>Actions</h4>
+{% if user.is_superuser %}
+<a href="{% url 'zone-edit' zone.name %}" class="button secondary">Edit zone</a>
+{% if not zone.is_default %}
+<a href="{% url 'zone-del' zone.name %}" class="button secondary">Delete zone</a>
+{% endif %}
+{% endif %}
 {% endblock %}
 
 {% block content %}
-
-  <div id="content-with-sidebar">
-  <ul class="data-list">
-    <li class="block size3 first">
-      <h4>Name</h4>
-        <span>{{ zone.name }}</span>
-    </li>
-    <li class="block size3">
-      <h4>Nodes</h4>
-      <span id="#nodecount">
-        <a title="View nodes in zone {{ zone.name }}"
-           href="{{ node_list_link }}">
-          {{ zone.node_set.count }}
-        </a>        
-      </span>
-    </li>
-    {% if zone.is_default %}
-    <li class="block size3">
-      <h4>Default</h4>
-      <span id="#default">
-        This zone is the default zone.
-	Its name cannot be changed and it cannot be deleted.
-      </span>
-    </li>
-    {% endif %}
-    <li class="block size12 first">
-      {% if zone.description %}
-        <h4>Description</h4>
-        <pre>{{ zone.description }}</pre>
-      {% endif %}
-    </li>
-  </ul>
-
-  <div class="clear"></div>
-  </div>
+<div id="content-with-sidebar">
+    <ul class="data-list">
+        <li class="block size3 first">
+            <h4>Name</h4>
+            <span>{{ zone.name }}</span>
+        </li>
+        <li class="block size3">
+            <h4>Nodes</h4>
+            <span id="#nodecount">
+                <a title="View nodes in zone {{ zone.name }}" href="{{ node_list_link }}">{{ zone.node_set.count }}</a>        
+            </span>
+        </li>
+        {% if zone.is_default %}
+        <li class="block size3">
+            <h4>Default</h4>
+            <span id="#default">This zone is the default zone. Its name cannot be changed and it cannot be deleted.</span>
+        </li>
+        {% endif %}
+        <li class="block size12 first">
+            {% if zone.description %}
+            <h4>Description</h4>
+            <pre>{{ zone.description }}</pre> 
+            {% endif %}
+        </li>
+    </ul>
+</div>
 {% endblock %}

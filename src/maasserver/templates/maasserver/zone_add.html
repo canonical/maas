@@ -5,14 +5,12 @@
 {% block page-title %}Add physical zone{% endblock %}
 
 {% block content %}
-  <form action="." method="post" class="block auto-width first">
+<form action="." method="post" class="block auto-width first">
     {% csrf_token %}
     <ul>
-    {% for field in form %}
-      {% include "maasserver/form_field.html" %}
-    {% endfor %}
+        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
     </ul>
     <input type="submit" value="+ Add zone" class="right" />
     <a class="link-button" href="{% url 'settings' %}">Cancel</a>
-  </form>
+</form>
 {% endblock %}

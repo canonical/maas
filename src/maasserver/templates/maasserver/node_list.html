@@ -139,47 +139,32 @@
 {% endblock %}
 
 {% block content %}
-  <div id="nodes" style="position: relative;">
-    <form id="node_listing_search_form"
-          action="{% url 'node-list' %}?{{preserved_query}}"
-          method="get" class="search">
-      <input type="search" name="query" placeholder="Search nodes"
-             class="search-input" value="{{input_query|default_if_none:''}}" />
-      <input id="search_button" type="submit"
-             class="search-submit" />
+<div id="nodes" style="position: relative;">
+    <form id="node_listing_search_form" action="{% url 'node-list' %}?{{preserved_query}}" method="get" class="search">
+        <input type="search" name="query" placeholder="Search nodes" class="search-input" value="{{input_query|default_if_none:''}}" />
+        <input id="search_button" type="submit" class="search-submit" />
     </form>
-
-    <form id="node_listing_form"
-          action="{% url 'node-list' %}?{{preserved_query}}"
-          method="post">
-      <div class="block full-width">
-        {% csrf_token %}
-        {{ form.action }}
-        <input type="submit" value="Go" />
-        {% if form.zone %}
-          <div id="zone_widget" class="hidden">
-            Set zone to:&nbsp;
-            {{ form.zone }}
-          </div>
+    <form id="node_listing_form" action="{% url 'node-list' %}?{{preserved_query}}" method="post">
+        <div class="block full-width">
+            {% csrf_token %}
+            {{ form.action }}
+            <input type="submit" value="Go" />
+            {% if form.zone %}
+            <div id="zone_widget" class="hidden">Set zone to:&nbsp;{{ form.zone }}</div>
+            {% endif %}
+            {% for field in form %}
+                {% if field.errors %}
+                <span class="errors">{{ field.errors }}</span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        {% if input_query_error %}
+        <p style="padding-top:10px;" class="form-errors">{{input_query_error}}</p>
         {% endif %}
-        {% for field in form %}
-          {% if field.errors %}
-            <span class="errors">{{ field.errors }}</span>
-          {% endif %}
-        {% endfor %}
-      </div>
-      {% if input_query_error %}
-        <p style="padding-top:10px;" class="form-errors">
-          {{input_query_error}}
-        </p>
-      {% endif %}
-      {% include "maasserver/nodes_listing.html" with sorting="true" actions="true"%}
-      {% include "maasserver/pagination.html" %}
+        {% include "maasserver/nodes_listing.html" with sorting="true" actions="true"%}
+        {% include "maasserver/pagination.html" %}
     </form>
-
     <a id="addnode" href="#" class="button right space-top">+ Add node</a>
-    <div class="clear"></div>
     <a class="right space-top" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
-    <div class="clear"></div>
-  </div>
+</div>
 {% endblock %}

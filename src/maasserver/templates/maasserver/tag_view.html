@@ -5,10 +5,10 @@
 {% block page-title %}Tag: {{ tag.name}}{% endblock %}
 
 {% block content %}
-  <ul class="data-list">
+<ul class="data-list">
     <li class="block size3">
-      <h4>Comment</h4>
-      <span>
+        <h4>Comment</h4>
+        <span>
         {{ tag.comment }}
         {% if not tag.comment %}
             None
@@ -16,32 +16,29 @@
       </span>
     </li>
     <li class="block size3">
-      <h4>Definition</h4>
-      <span>{{ tag.definition }}</span>
+        <h4>Definition</h4>
+        <span>{{ tag.definition }}</span>
     </li>
     {% if tag.kernel_opts %}
     <li class="kernel-opts-tag block size10">
-      <h4>Kernel Parameters</h4>
-      <span>{{ tag.kernel_opts }}</span>
+        <h4>Kernel Parameters</h4>
+        <span>{{ tag.kernel_opts }}</span>
     </li>
-    {% endif %}
-    {% if error_text %}
+    {% endif %} {% if error_text %}
     <li class="block first">
-      <h4>Error output</h4>
-      <span>{{ error_text }}</span>
+        <h4>Error output</h4>
+        <span>{{ error_text }}</span>
     </li>
-    {% endif %}
-    {% if status_text %}
+    {% endif %} {% if status_text %}
     <li class="block first">
-      <h4>Console output</h4>
-      <span>{{ status_text }}</span>
+        <h4>Console output</h4>
+        <span>{{ status_text }}</span>
     </li>
     {% endif %}
-  </ul>
-  <div id="nodes" class="block first pad-top">
-    <h2 class="block first line-top pad-top">{{ paginator.count }} Node{{ paginator.count|pluralize }}</h2>
-    {% include "maasserver/nodes_listing.html" with sorting="false" actions="false" %}
+</ul>
+<div id="nodes" class="block first pad-top">
+    <h2 class="block first line-top pad-top">{{ paginator.count }} Node{{ paginator.count|pluralize }}</h2> 
+    {% include "maasserver/nodes_listing.html" with sorting="false" actions="false" %} 
     {% include "maasserver/pagination.html" %}
-  </div>
+</div>
 {% endblock %}
-

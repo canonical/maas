@@ -10,60 +10,50 @@ Physical network: {{ network.name }}
 {% endblock %}
 
 {% block sidebar %}
-  <h4>Actions</h4>
-  {% if user.is_superuser %}
-      <a href="{% url 'network-edit' network.name %}" class="button secondary">
-        Edit network
-      </a>
-      {% if not network.is_default %}
-      <a href="{% url 'network-del' network.name %}" class="button secondary">
-        Delete network
-      </a>
-      {% endif %}
-  {% endif %}
+    <h4>Actions</h4>
+    {% if user.is_superuser %}
+    <a href="{% url 'network-edit' network.name %}" class="button secondary">Edit network</a>
+    {% if not network.is_default %}
+    <a href="{% url 'network-del' network.name %}" class="button secondary">Delete network</a>
+    {% endif %}
+    {% endif %}
 {% endblock %}
 
 {% block content %}
-
-  <div id="content-with-sidebar">
-  <ul class="data-list">
-    <li class="block size3 first">
-      <h4>Name</h4>
-        <span>{{ network.name }}</span>
-    </li>
-    <li class="block size3">
-      <h4>Network</h4>
-      <span>{{ network.get_network }}</span>
-    </li>
-    <li class="block size2">
-      <h4>VLAN tag</h4>
-      <span>{{ network.vlan_tag|default_if_none:"" }}</span>
-    </li>
-    <li class="block size2">
-      <h4>Default Gateway</h4>
-      <span>{{ network.default_gateway|default_if_none:"" }}</span>
-    </li>
-    <li class="block size2">
-      <h4>DNS servers</h4>
-      <span>{{ network.dns_servers|default_if_none:"" }}</span>
-    </li>
-    <li class="block size2">
-      <h4>Attached nodes</h4>
-      <span id="nodecount">
-        <a title="View nodes attached to network {{ network.name }}"
-           href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">
-          {{ network.get_connected_nodes.count }}
-        </a>
-      </span>
-    </li>
-    <li class="network-description block size12 first">
-      <h4>Description</h4>
-<pre>
-{{ network.description }}
-</pre>
-    </li>
-   </ul>
-
-  <div class="clear"></div>
-  </div>
+    <div id="content-with-sidebar">
+        <ul class="data-list">
+            <li class="block size3 first">
+                <h4>Name</h4>
+                <span>{{ network.name }}</span>
+            </li>
+            <li class="block size3">
+                <h4>Network</h4>
+                <span>{{ network.get_network }}</span>
+            </li>
+            <li class="block size2">
+                <h4>VLAN tag</h4>
+                <span>{{ network.vlan_tag|default_if_none:"" }}</span>
+            </li>
+            <li class="block size2">
+                <h4>Default Gateway</h4>
+                <span>{{ network.default_gateway|default_if_none:"" }}</span>
+            </li>
+            <li class="block size2">
+                <h4>DNS servers</h4>
+                <span>{{ network.dns_servers|default_if_none:"" }}</span>
+            </li>
+            <li class="block size2">
+                <h4>Attached nodes</h4>
+                <span id="nodecount">
+                    <a title="View nodes attached to network {{ network.name }}" href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">{{ network.get_connected_nodes.count }}</a>
+                </span>
+            </li>
+            <li class="network-description block size12 first">
+                <h4>Description</h4>
+                <pre>
+                    {{ network.description }}
+                </pre>
+            </li>
+        </ul>
+    </div>
 {% endblock %}

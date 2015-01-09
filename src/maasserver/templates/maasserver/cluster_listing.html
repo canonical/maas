@@ -6,41 +6,31 @@
 {% block header-search %}{% endblock %}
 
 {% block content %}
-<div id="clusters" style="position: relative;">
-
-<h2 id="clusters">{{ title }}</h2>
-<table class="list" id="clusters-list">
-  {% include "maasserver/cluster_listing_head.html" %}
-  <tbody>
-    {% for cluster in cluster_list %}
-      {% cycle 'even' 'odd' as cycle silent %}
-      {% include "maasserver/cluster_listing_row.html" with cycle=cycle display_warnings=display_warnings %}
-    {% endfor %}
-  </tbody>
-</table>
-{% include "maasserver/pagination.html" %}
-<div>
-  {% if status == statuses.PENDING %}
-    <form id="reject_all_pending_nodegroups"
-          method="POST"
-          action="{% url 'cluster-list' %}">
-      {% csrf_token %}
-      <input type="hidden" name="mass_accept_submit" value="1" />
-      <input type="submit" class="button right" value="Accept all" />
-    </form>
-    <form id="accept_all_pending_nodegroups"
-          method="POST"
-          action="{% url 'cluster-list' %}">
-      {% csrf_token %}
-      <input type="hidden" name="mass_reject_submit" value="1" />
-      <input type="submit" class="button right space-right-small"
-             value="Reject all" />
-    </form>
-  {% endif %}
-
+<div id="clusters">
+    <h2 id="clusters">{{ title }}</h2>
+    <table id="clusters-list">
+        {% include "maasserver/cluster_listing_head.html" %}
+        <tbody>
+        {% for cluster in cluster_list %}
+            {% cycle 'even' 'odd' as cycle silent %}
+            {% include "maasserver/cluster_listing_row.html" with cycle=cycle display_warnings=display_warnings %}
+        {% endfor %}
+        </tbody>
+    </table>
+    {% include "maasserver/pagination.html" %}
+    <div>
+        {% if status == statuses.PENDING %}
+        <form id="reject_all_pending_nodegroups" method="POST" action="{% url 'cluster-list' %}">
+        {% csrf_token %}
+            <input type="hidden" name="mass_accept_submit" value="1" />
+            <input type="submit" class="button right" value="Accept all" />
+        </form>
+        <form id="accept_all_pending_nodegroups" method="POST" action="{% url 'cluster-list' %}">
+            {% csrf_token %}
+            <input type="hidden" name="mass_reject_submit" value="1" />
+            <input type="submit" class="link-cta-ubuntu" value="Reject all" />
+        </form>
+        {% endif %}
+    </div>
 </div>
-<div class="clear"></div>
-</div>
-
-
 {% endblock %}

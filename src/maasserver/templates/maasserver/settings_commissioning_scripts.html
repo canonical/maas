@@ -15,33 +15,27 @@
   </script>
 
 <h2>Commissioning scripts</h2>
-  <table class="list">
+<table class="list">
     <tbody>
-    {% for script in commissioning_scripts %}
-      <tr class="script {% cycle 'even' 'odd' %}" id="{{ script.name }}">
-        <td class="script-expander">
-          <a href="#" class="script-trigger">{{ script.name }}</a>
-          <div class="script-content">
-            <pre>{{ script.content }}</pre>
-          </div>
-        </td>
-        <td class="icon-controls">
-          <a title="Delete commissioning script {{ script.name }}"
-             href="{% url 'commissioning-script-delete' script.id %}">
-             <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-          </a>
-        </td>
-      </tr>
+        {% for script in commissioning_scripts %}
+        <tr class="script {% cycle 'even' 'odd' %}" id="{{ script.name }}">
+            <td class="script-expander">
+                <a href="#" class="script-trigger">{{ script.name }}</a>
+                <div class="script-content">
+                    <pre>{{ script.content }}</pre>
+                </div>
+            </td>
+            <td class="icon-controls">
+                <a title="Delete commissioning script {{ script.name }}" href="{% url 'commissioning-script-delete' script.id %}">
+                    <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+                </a>
+            </td>
+        </tr>
     </tbody>
-    {% empty %}
-    No commissioning scripts.
+    {% empty %} 
+    No commissioning scripts. 
     {% endfor %}
-  </table>
+</table>
 <div>
-  <a class="button right space-top-small"
-     href="{% url 'commissioning-script-add' %}">
-    Upload script
-  </a>
+    <a class="button right space-top-small" href="{% url 'commissioning-script-add' %}">Upload script</a>
 </div>
-<div class="clear"></div>
-

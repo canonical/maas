@@ -6,41 +6,36 @@
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block sidebar %}
-  <h4>User details</h4>
-  <a href="{% url 'accounts-edit' view_user.username %}" class="button secondary">
-    Edit user
-  </a>
-  <h4>Actions</h4>
-  <a href="{% url 'accounts-del' view_user.username %}" class="button secondary">
-    Delete user
-  </a>
+<h4>User details</h4>
+<a href="{% url 'accounts-edit' view_user.username %}" class="button secondary">Edit user</a>
+<h4>Actions</h4>
+<a href="{% url 'accounts-del' view_user.username %}" class="button secondary">Delete user</a>
 {% endblock %}
 
 {% block content %}
-  <ul class="data-list">
+<ul class="data-list">
     <li class="block size2 first">
-      <h4>Username</h4>
-      <span>{{ view_user.username }}</span>
+        <h4>Username</h4>
+        <span>{{ view_user.username }}</span>
     </li>
     <li class="block size3">
-      <h4>Full name</h4>
-      <span>{{ view_user.last_name }}</span>
+        <h4>Full name</h4>
+        <span>{{ view_user.last_name }}</span>
     </li>
     <li class="block size3">
-      <h4>Email address</h4>
-      <span>{{ view_user.email }}</span>
+        <h4>Email address</h4>
+        <span>{{ view_user.email }}</span>
     </li>
     <li class="block size2 first">
-      <h4>MAAS Keys</h4>
-      <span>
+        <h4>MAAS Keys</h4>
+        <span>
         {{ user.get_profile.get_authorisation_tokens.count }}
         key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
       </span>
     </li>
     <li class="block size3">
-      <h4>MAAS Administrator</h4>
-      <span>{{ view_user.is_superuser }}</span>
+        <h4>MAAS Administrator</h4>
+        <span>{{ view_user.is_superuser }}</span>
     </li>
-  </ul>
+</ul>
 {% endblock %}
-
