@@ -16,6 +16,7 @@ __all__ = [
     'BlockDevice',
     ]
 
+from collections import Iterable
 
 from django.db.models import (
     BigIntegerField,
@@ -23,11 +24,26 @@ from django.db.models import (
     FilePathField,
     ForeignKey,
     IntegerField,
+    Manager,
     )
+from djorm_pgarray.fields import ArrayField
 from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
+
+
+class BlockDeviceManager(Manager):
+    """Manager for `BlockDevice` class."""
+
+    def filter_by_tags(self, tags):
+        if not isinstance(tags, list):
+            if isinstance(tags, unicode) or not isinstance(tags, Iterable):
+                raise ValueError("Requires iterable object to filter.")
+            tags = list(tags)
+        return self.extra(
+            where=['"maasserver_blockdevice"."tags"::text[] @> %s'],
+            params=[tags])
 
 
 class BlockDevice(CleanSave, TimestampedModel):
@@ -36,6 +52,8 @@ class BlockDevice(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
         unique_together = ("node", "path")
+
+    objects = BlockDeviceManager()
 
     node = ForeignKey('Node', null=False, editable=False)
 
@@ -55,5 +73,18 @@ class BlockDevice(CleanSave, TimestampedModel):
         blank=False, null=False,
         help_text="Size of a block on the device in bytes.")
 
+    tags = ArrayField(
+        dbtype="text", blank=True, null=False, default=[])
+
     def display_size(self, include_suffix=True):
         return human_readable_bytes(self.size, include_suffix=include_suffix)
+
+    def add_tag(self, tag):
+        """Add tag to block device."""
+        if tag not in self.tags:
+            self.tags.append(tag)
+
+    def remove_tag(self, tag):
+        """Remove tag from block device."""
+        if tag in self.tags:
+            self.tags.remove(tag)

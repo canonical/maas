@@ -440,6 +440,28 @@ def gather_physical_block_devices(print_output=True):
         return json_output
 
 
+def get_tags_from_block_info(block_info):
+    """Return array of tags that will populate the `PhysicalBlockDevice`.
+
+    Tags block devices for:
+        rotary: Storage device with a spinning disk.
+        ssd: Storage device with flash storage.
+        removable: Storage device that can be easily removed like a USB
+            flash drive.
+        sata: Storage device that is connected over SATA.
+    """
+    tags = []
+    if block_info["ROTA"] == "1":
+        tags.append("rotary")
+    else:
+        tags.append("ssd")
+    if block_info["RM"] == "1":
+        tags.append("removable")
+    if "SATA" in block_info and block_info["SATA"] == "1":
+        tags.append("sata")
+    return tags
+
+
 def update_node_physical_block_devices(node, output, exit_status):
     """Process the results of `gather_physical_block_devices`.
 
@@ -460,12 +482,14 @@ def update_node_physical_block_devices(node, output, exit_status):
             continue
         model = block_info.get("MODEL", "")
         serial = block_info.get("SERIAL", "")
+        tags = get_tags_from_block_info(block_info)
         PhysicalBlockDevice.objects.create(
             node=node,
             name=block_info["NAME"],
             path=block_info["PATH"],
             size=long(block_info["SIZE"]),
             block_size=int(block_info["BLOCK_SIZE"]),
+            tags=tags,
             model=model,
             serial=serial,
             )

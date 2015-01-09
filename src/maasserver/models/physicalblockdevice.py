@@ -17,15 +17,15 @@ __all__ = [
     ]
 
 
-from django.db.models import (
-    CharField,
-    Manager,
-    )
+from django.db.models import CharField
 from maasserver import DefaultMeta
-from maasserver.models.blockdevice import BlockDevice
+from maasserver.models.blockdevice import (
+    BlockDevice,
+    BlockDeviceManager,
+    )
 
 
-class PhysicalBlockDeviceManager(Manager):
+class PhysicalBlockDeviceManager(BlockDeviceManager):
     """Manager for `PhysicalBlockDevice` class."""
 
     def number_of_physical_devices_for(self, node):

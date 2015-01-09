@@ -80,9 +80,11 @@ from mock import (
     )
 from testtools.content import text_content
 from testtools.matchers import (
+    Contains,
     ContainsAll,
     DocTestMatches,
     MatchesStructure,
+    Not,
     )
 
 
@@ -932,7 +934,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def make_block_device(
             self, name=None, path=None, size=None, block_size=None,
-            model=None, serial=None):
+            model=None, serial=None, rotary=True, removable=False, sata=False):
         if name is None:
             name = factory.make_name('name')
         if path is None:
@@ -953,8 +955,9 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             "MODEL": model,
             "SERIAL": serial,
             "RO": "0",
-            "RM": "0",
-            "ROTA": "1",
+            "RM": "1" if removable else "0",
+            "ROTA": "1" if rotary else "0",
+            "SATA": "1" if sata else "0",
             }
 
     def test__does_nothing_when_exit_status_is_not_zero(self):
@@ -1022,3 +1025,63 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertEquals(
             0, PhysicalBlockDevice.objects.filter(node=other_node).count(),
             "Created physical block device for the incorrect node.")
+
+    def test__creates_physical_block_device_with_rotary_tag(self):
+        device = self.make_block_device(rotary=True)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Contains('rotary'))
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Not(Contains('ssd')))
+
+    def test__creates_physical_block_device_with_ssd_tag(self):
+        device = self.make_block_device(rotary=False)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            ContainsAll(['ssd']))
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Not(Contains('rotary')))
+
+    def test__creates_physical_block_device_without_removable_tag(self):
+        device = self.make_block_device(removable=False)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Not(Contains('removable')))
+
+    def test__creates_physical_block_device_with_removable_tag(self):
+        device = self.make_block_device(removable=True)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Contains('removable'))
+
+    def test__creates_physical_block_device_without_sata_tag(self):
+        device = self.make_block_device(sata=False)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Not(Contains('sata')))
+
+    def test__creates_physical_block_device_with_sata_tag(self):
+        device = self.make_block_device(sata=True)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Contains('sata'))
