@@ -22,8 +22,11 @@ py_enums := $(wildcard src/*/enum.py)
 # JavaScript enum module (not modules).
 js_enums := src/maasserver/static/js/enums.js
 
-# MAAS SASS Stylesheets
-scss_inputs := $(wildcard src/maasserver/static/scss/*/*.scss)
+# MAAS SASS stylesheets. The first input file (maas-styles.css) imports
+# the others, so is treated specially in the target definitions.
+scss_inputs := \
+    src/maasserver/static/scss/maas-styles.scss \
+    $(wildcard src/maasserver/static/scss/*/*.scss)
 scss_output := src/maasserver/static/css/maas-styles.css
 
 # Prefix commands with this when they need access to the database.
@@ -41,15 +44,20 @@ export MAAS_ROOT := $(CURDIR)/run
 build: \
     bin/buildout \
     bin/database \
-    bin/maas-region-admin bin/test.maas \
-    bin/maas bin/test.maascli \
-    bin/test.maastesting \
-    bin/twistd.pserv bin/test.pserv \
-    bin/test.config \
+    bin/maas \
     bin/maas-probe-dhcp \
+    bin/maas-provision \
+    bin/maas-region-admin \
+    bin/twistd.cluster \
+    bin/twistd.region \
+    bin/test.cli \
+    bin/test.cluster \
+    bin/test.config \
+    bin/test.region \
+    bin/test.testing \
     bin/py bin/ipy \
     $(js_enums) \
-    styles
+    $(scss_output)
 
 all: build doc
 
@@ -75,43 +83,39 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install database
 	@touch --no-create $@
 
-bin/maas-region-admin: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) styles
-	$(buildout) install maas
+bin/maas-region-admin bin/twistd.region: \
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) $(scss_output)
+	$(buildout) install region
 	@touch --no-create $@
 
-bin/test.maas: \
-	bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) styles
-	$(buildout) install maas-test
+bin/test.region: \
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) $(scss_output)
+	$(buildout) install region-test
 	@touch --no-create $@
 
 bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install maascli
+	$(buildout) install cli
 	@touch --no-create $@
 
-bin/test.maascli: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install maascli-test
+bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install cli-test
 	@touch --no-create $@
 
-bin/test.maastesting: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install maastesting-test
+bin/test.testing: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install testing-test
 	@touch --no-create $@
 
-bin/maas-provision bin/twistd.pserv: \
+bin/maas-probe-dhcp bin/maas-provision bin/twistd.cluster: \
     bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install pserv
+	$(buildout) install cluster
 	@touch --no-create $@
 
-bin/test.pserv: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install pserv-test
+bin/test.cluster: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install cluster-test
 	@touch --no-create $@
 
 bin/test.config: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install config-test
-	@touch --no-create $@
-
-bin/maas-probe-dhcp: bin/buildout buildout.cfg versions.cfg setup.py
-	$(buildout) install maas-probe-dhcp
 	@touch --no-create $@
 
 bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
@@ -189,10 +193,10 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
 
-styles: $(scss_inputs)
-	pyscss src/maasserver/static/scss/maas-styles.scss \
-		-o $(scss_output) \
-		--load-path=src/maasserver/static/scss
+styles: $(scss_output)
+
+$(scss_output): $(scss_inputs)
+	pyscss $< -o $@ --load-path=src/maasserver/static/scss
 
 clean:
 	$(MAKE) -C acceptance $@
@@ -349,7 +353,7 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/pserv/@deps: bin/twistd.pserv
+services/pserv/@deps: bin/twistd.cluster
 
 services/reloader/@deps:
 

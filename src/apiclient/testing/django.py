@@ -61,7 +61,7 @@ def parse_headers_and_body_with_mimer(headers, body):
     #   type handlers with utils.translate_mime. So we must import it, even
     #   though we don't use it.  However, piston loads Django's QuerySet code
     #   which fails if you don't have a settings.py available. Which we don't
-    #   during 'test.pserv'. So we import this late.
+    #   during 'test.cluster'. So we import this late.
     from piston import emitters
     emitters  # Imported for side-effects.
     from piston.utils import translate_mime

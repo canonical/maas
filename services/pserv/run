@@ -15,7 +15,7 @@ cd "$(dirname "$0")/../.."
 [ -z "${logdir:-}" ] || exec &>> "${logdir}/current"
 
 # Exec the Provisioning Server.
-script="$(readlink -f bin/twistd.pserv)"
+script="$(readlink -f bin/twistd.cluster)"
 config="$(readlink -f etc/maas/pserv.yaml)"
 
 # Obtain the development setting for CLUSTER_UUID.
