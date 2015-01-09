@@ -17,11 +17,13 @@ __all__ = []
 import doctest
 from inspect import getsource
 from io import BytesIO
+import json
 from math import (
     ceil,
     floor,
     )
 import os.path
+import random
 from random import randint
 import subprocess
 from subprocess import (
@@ -35,6 +37,7 @@ import time
 
 from fixtures import FakeLogger
 from maasserver.fields import MAC
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -56,6 +59,7 @@ from metadataserver.models import (
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
     extract_router_mac_addresses,
+    gather_physical_block_devices,
     inject_lldp_result,
     inject_lshw_result,
     inject_result,
@@ -65,6 +69,7 @@ from metadataserver.models.commissioningscript import (
     set_node_routers,
     set_virtual_tag,
     update_hardware_details,
+    update_node_physical_block_devices,
     )
 from metadataserver.models.noderesult import NodeResult
 from mock import (
@@ -676,3 +681,344 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         logger = self.useFixture(FakeLogger(name='commissioningscript'))
         update_hardware_details(factory.make_Node(), b"garbage", exit_status=1)
         self.assertEqual("", logger.output)
+
+
+class TestGatherPhysicalBlockDevices(MAASServerTestCase):
+
+    def make_lsblk_output(
+            self, name=None, read_only=False, removable=False,
+            model=None, rotary=True):
+        if name is None:
+            name = factory.make_name('name')
+        if model is None:
+            model = factory.make_name('model')
+        read_only = "1" if read_only else "0"
+        removable = "1" if removable else "0"
+        rotary = "1" if rotary else "0"
+        return 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
+            name, read_only, removable, model, rotary)
+
+    def make_udevadm_output(self, name, serial=None, sata=True, cdrom=False):
+        if serial is None:
+            serial = factory.make_name('serial')
+        sata = "1" if sata else "0"
+        output = dedent("""\
+            P: /devices/pci0000:00/ata3/host2/target2:0:0/2:0:0:0/block/{name}
+            N: {name}
+            E: DEVNAME=/dev/{name}
+            E: DEVTYPE=disk
+            E: ID_ATA_SATA={sata}
+            E: ID_SERIAL_SHORT={serial}
+            """).format(name=name, serial=serial, sata=sata)
+        if cdrom:
+            output += "E: ID_CDROM=1"
+        return output
+
+    def call_gather_physical_block_devices(self):
+        return json.loads(gather_physical_block_devices(print_output=False))
+
+    def test__calls_lsblk(self):
+        check_output = self.patch(subprocess, "check_output")
+        check_output.return_value = ""
+        self.call_gather_physical_block_devices()
+        self.assertThat(check_output, MockCalledOnceWith(
+            ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")))
+
+    def test__returns_empty_list_when_no_disks(self):
+        check_output = self.patch(subprocess, "check_output")
+        check_output.return_value = ""
+        self.assertEquals([], self.call_gather_physical_block_devices())
+
+    def test__calls_lsblk_then_udevadm(self):
+        name = factory.make_name('name')
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(
+                name=name),
+            self.make_udevadm_output(
+                name, cdrom=True),
+            ]
+        self.call_gather_physical_block_devices()
+        self.assertThat(check_output, MockCallsMatch(
+            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
+            call(("udevadm", "info", "-q", "all", "-n", name))))
+
+    def test__returns_empty_list_when_cdrom_only(self):
+        name = factory.make_name('name')
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(
+                name=name),
+            self.make_udevadm_output(
+                name, cdrom=True),
+            ]
+        self.assertEquals([], self.call_gather_physical_block_devices())
+
+    def test__calls_lsblk_udevadm_then_blockdev(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model),
+            self.make_udevadm_output(name, serial=serial),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.call_gather_physical_block_devices()
+        self.assertThat(check_output, MockCallsMatch(
+            call(("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA")),
+            call(("udevadm", "info", "-q", "all", "-n", name)),
+            call(("blockdev", "--getsize64", "/dev/%s" % name)),
+            call(("blockdev", "--getbsz", "/dev/%s" % name))))
+
+    def test__returns_block_device(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model),
+            self.make_udevadm_output(name, serial=serial),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": "/dev/%s" % name,
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices())
+
+    def test__returns_block_device_readonly(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model, read_only=True),
+            self.make_udevadm_output(name, serial=serial),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": "/dev/%s" % name,
+            "RO": "1",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices())
+
+    def test__returns_block_device_ssd(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model, rotary=False),
+            self.make_udevadm_output(name, serial=serial),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": "/dev/%s" % name,
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "0",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices())
+
+    def test__returns_block_device_not_sata(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model),
+            self.make_udevadm_output(name, serial=serial, sata=False),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": "/dev/%s" % name,
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "0",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices())
+
+    def test__returns_block_device_removable(self):
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model, removable=True),
+            self.make_udevadm_output(name, serial=serial),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": "/dev/%s" % name,
+            "RO": "0",
+            "RM": "1",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices())
+
+    def test__returns_multiple_block_devices_in_order(self):
+        names = [factory.make_name('name') for _ in range(3)]
+        lsblk = [
+            self.make_lsblk_output(name=name)
+            for name in names
+            ]
+        call_outputs = []
+        call_outputs.append("\n".join(lsblk))
+        for name in names:
+            call_outputs.append(self.make_udevadm_output(name))
+        for name in names:
+            call_outputs.append(
+                "%s" % random.randint(1000 * 1000, 1000 * 1000 * 1000))
+            call_outputs.append(
+                "%s" % random.choice([512, 1024, 4096]))
+        check_output = self.patch(subprocess, "check_output")
+        check_output.side_effect = call_outputs
+        device_names = [
+            block_info['NAME']
+            for block_info in self.call_gather_physical_block_devices()
+            ]
+        self.assertEquals(names, device_names)
+
+
+class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
+
+    def make_block_device(
+            self, name=None, path=None, size=None, block_size=None,
+            model=None, serial=None):
+        if name is None:
+            name = factory.make_name('name')
+        if path is None:
+            path = '/dev/%s' % name
+        if size is None:
+            size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        if block_size is None:
+            block_size = random.choice([512, 1024, 4096])
+        if model is None:
+            model = factory.make_name('model')
+        if serial is None:
+            serial = factory.make_name('serial')
+        return {
+            "NAME": name,
+            "PATH": path,
+            "SIZE": '%s' % size,
+            "BLOCK_SIZE": '%s' % block_size,
+            "MODEL": model,
+            "SERIAL": serial,
+            "RO": "0",
+            "RM": "0",
+            "ROTA": "1",
+            }
+
+    def test__does_nothing_when_exit_status_is_not_zero(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        update_node_physical_block_devices(node, b"garbage", exit_status=1)
+        self.assertIsNotNone(reload_object(block_device))
+
+    def test__clears_previous_physical_block_devices(self):
+        node = factory.make_Node()
+        block_device = factory.make_PhysicalBlockDevice(node=node)
+        update_node_physical_block_devices(node, b"[]", 0)
+        self.assertIsNone(reload_object(block_device))
+
+    def test__creates_physical_block_devices(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        device_names = [device['NAME'] for device in devices]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        created_names = [
+            device.name
+            for device in PhysicalBlockDevice.objects.filter(node=node)
+            ]
+        self.assertItemsEqual(device_names, created_names)
+
+    def test__creates_physical_block_devices_in_order(self):
+        devices = [self.make_block_device() for _ in range(3)]
+        device_names = [device['NAME'] for device in devices]
+        node = factory.make_Node()
+        json_output = json.dumps(devices).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        created_names = [
+            device.name
+            for device in (
+                PhysicalBlockDevice.objects.filter(node=node).order_by('id'))
+            ]
+        self.assertEquals(device_names, created_names)
+
+    def test__creates_physical_block_device(self):
+        name = factory.make_name('name')
+        path = '/dev/%s' % name
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        device = self.make_block_device(
+            name=name, path=path, size=size, block_size=block_size,
+            model=model, serial=serial)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertThat(
+            PhysicalBlockDevice.objects.filter(node=node).first(),
+            MatchesStructure.byEquality(
+                name=name, path=path, size=size, block_size=block_size,
+                model=model, serial=serial))
+
+    def test__creates_physical_block_device_only_for_node(self):
+        device = self.make_block_device()
+        node = factory.make_Node()
+        other_node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.assertEquals(
+            0, PhysicalBlockDevice.objects.filter(node=other_node).count(),
+            "Created physical block device for the incorrect node.")

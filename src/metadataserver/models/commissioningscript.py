@@ -43,6 +43,7 @@ from django.db.models import (
     )
 from lxml import etree
 from maasserver.fields import MAC
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.tag import Tag
 from metadataserver import DefaultMeta
 from metadataserver.enum import RESULT_TYPE
@@ -354,6 +355,122 @@ LIST_MODALIASES_SCRIPT = \
     'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
 
 
+def gather_physical_block_devices(print_output=True):
+    """Gathers information about a nodes physical block devices.
+
+    The following commands are ran in order to gather the required information.
+
+    lsblk       Gathers the initial block devices not including slaves or
+                holders. Gets the name, read-only, removable, model, and
+                if rotary.
+
+    udevadm     Grabs the device path, serial number, and if connected over
+                SATA.
+
+    blockdev    Grabs the block size and size of the disk in bytes.
+
+    :param print_output: False will return the output instead of
+        printing. (Used only for testing.)
+    """
+    import shlex
+    from subprocess import check_output
+
+    # Grab the block devices from lsblk.
+    blockdevs = []
+    block_list = check_output(
+        ("lsblk", "-d", "-P", "-o", "NAME,RO,RM,MODEL,ROTA"))
+    for blockdev in block_list.splitlines():
+        tokens = shlex.split(blockdev)
+        current_block = {}
+        for token in tokens:
+            k, v = token.split("=", 1)
+            current_block[k] = v.strip()
+        blockdevs.append(current_block)
+
+    # Grab the device path, serial number, and sata connection.
+    UDEV_MAPPINGS = {
+        "DEVNAME": "PATH",
+        "ID_SERIAL_SHORT": "SERIAL",
+        "ID_ATA_SATA": "SATA",
+        }
+    del_blocks = []
+    for block_info in blockdevs:
+        # Some RAID devices return the name of the device seperated with "!",
+        # but udevadm expects it to be a "/".
+        block_name = block_info["NAME"].replace("!", "/")
+        udev_info = check_output(
+            ("udevadm", "info", "-q", "all", "-n", block_name))
+        for info_line in udev_info.splitlines():
+            info_line = info_line.strip()
+            if info_line == "":
+                continue
+            _, info = info_line.split(" ", 1)
+            if "=" not in info:
+                continue
+            k, v = info.split("=", 1)
+            if k in UDEV_MAPPINGS:
+                block_info[UDEV_MAPPINGS[k]] = v.strip()
+            if k == "ID_CDROM" and v == "1":
+                # Remove any type of CDROM from the blockdevs, as we
+                # cannot use this device for installation.
+                del_blocks.append(block_name)
+
+    # Remove any devices that need to be removed.
+    blockdevs = [
+        block_info
+        for block_info in blockdevs
+        if block_info["NAME"] not in del_blocks
+        ]
+
+    # Grab the size of the device and block size.
+    for block_info in blockdevs:
+        block_path = block_info["PATH"]
+        device_size = check_output(
+            ("blockdev", "--getsize64", block_path))
+        device_block_size = check_output(
+            ("blockdev", "--getbsz", block_path))
+        block_info["SIZE"] = device_size.strip()
+        block_info["BLOCK_SIZE"] = device_block_size.strip()
+
+    # Output block device information in json
+    json_output = json.dumps(blockdevs, indent=True)
+    if print_output:
+        print(json_output)
+    else:
+        return json_output
+
+
+def update_node_physical_block_devices(node, output, exit_status):
+    """Process the results of `gather_physical_block_devices`.
+
+    This updates the physical block devices that are attached to a node.
+
+    If `exit_status` is non-zero, this function returns without doing
+    anything.
+    """
+    assert isinstance(output, bytes)
+    if exit_status != 0:
+        return
+    blockdevs = json.loads(output)
+    PhysicalBlockDevice.objects.filter(node=node).delete()
+    for block_info in blockdevs:
+        # Skip the read-only devices. We keep them in the output for
+        # the user to view but they do not get an entry in the database.
+        if block_info["RO"] == "1":
+            continue
+        model = block_info.get("MODEL", "")
+        serial = block_info.get("SERIAL", "")
+        PhysicalBlockDevice.objects.create(
+            node=node,
+            name=block_info["NAME"],
+            path=block_info["PATH"],
+            size=long(block_info["SIZE"]),
+            block_size=int(block_info["BLOCK_SIZE"]),
+            model=model,
+            serial=serial,
+            )
+
+
 def null_hook(node, output, exit_status):
     """Intentionally do nothing.
 
@@ -400,6 +517,10 @@ BUILTIN_COMMISSIONING_SCRIPTS = {
     '00-maas-05-dhcp-unconfigured-ifaces': {
         'content': make_function_call_script(dhcp_explore),
         'hook': null_hook,
+    },
+    '00-maas-06-block-devices.out': {
+        'content': make_function_call_script(gather_physical_block_devices),
+        'hook': update_node_physical_block_devices,
     },
     '99-maas-01-wait-for-lldpd.out': {
         'content': make_function_call_script(
