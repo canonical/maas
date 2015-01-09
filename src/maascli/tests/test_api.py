@@ -19,6 +19,7 @@ from functools import partial
 import httplib
 import io
 import json
+import random
 import sys
 from textwrap import dedent
 
@@ -300,11 +301,12 @@ class TestAction(MAASTestCase):
         self.assertEqual(response['content'], buf.getvalue())
 
     def test_print_response_prints_textual_response_with_success_msg(self):
-        # When the response has a status code of 200, and the response
+        # When the response has a status code of 2XX, and the response
         # body is textual print_response() will print a success message
         # to the TTY.
+        status_code = random.randrange(200, 300)
         response = httplib2.Response({
-            'status': httplib.OK,
+            'status': status_code,
             'content': "Lorem ipsum dolor sit amet.",
             'content-type': 'text/unicode',
             })

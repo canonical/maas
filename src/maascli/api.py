@@ -281,7 +281,7 @@ class Action(Command):
         If the response is textual, a trailing \n is appended.
         """
         if file.isatty():
-            if is_response_textual(response) and response.status == 200:
+            if is_response_textual(response) and response.status // 100 == 2:
                 file.write("Success.\n")
                 file.write("Machine-readable output follows:\n")
 
