@@ -609,17 +609,17 @@ class NodeForm(MAASModelForm):
             )
 
 
-CLUSTER_NOT_AVAILABLE = mark_safe("""
-The cluster controller for this node is not responding; power type
-validation is not available.
-""")
+CLUSTER_NOT_AVAILABLE = mark_safe(
+    "The cluster controller for this node is not responding; power type "
+    "validation is not available."
+)
 
 
-NO_ARCHITECTURES_AVAILABLE = mark_safe("""
-No architectures are available to use for this node; boot images may not
-have been imported on the selected cluster controller, or it may be
-unavailable.
-""")
+NO_ARCHITECTURES_AVAILABLE = mark_safe(
+    "No architectures are available to use for this node; boot images may not "
+    "have been imported on the selected cluster controller, or it may be "
+    "unavailable."
+)
 
 
 class AdminNodeForm(NodeForm):
