@@ -13,7 +13,6 @@ libpq-dev
 postgresql
 python-amqplib
 python-bzrlib
-python-celery
 python-convoy
 python-crochet
 python-curtin

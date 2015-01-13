@@ -18,7 +18,6 @@ __all__ = [
 
 from functools import partial
 import json
-import logging
 from os import urandom
 import random
 import re
@@ -42,7 +41,6 @@ from provisioningserver.drivers.hardware.seamicro import (
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
 from provisioningserver.logger.log import get_maas_logger
-from provisioningserver.logger.utils import log_call
 from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
     cluster,
@@ -254,7 +252,6 @@ class Cluster(RPCProtocol):
                 nameservers=nameservers, netmasks=netmasks),
             }
 
-    @log_call(level=logging.DEBUG)
     @cluster.PowerOn.responder
     def power_on(self, system_id, hostname, power_type, context):
         """Turn a node on."""
@@ -264,7 +261,6 @@ class Cluster(RPCProtocol):
         d.addCallback(lambda _: {})
         return d
 
-    @log_call(level=logging.DEBUG)
     @cluster.PowerOff.responder
     def power_off(self, system_id, hostname, power_type, context):
         """Turn a node off."""

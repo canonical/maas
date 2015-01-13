@@ -166,10 +166,10 @@ class TestDHCPLeaseManager(MAASServerTestCase):
             map_leases(nodegroup))
 
     def test_update_leases_does_not_update_dns_zone_if_nothing_added(self):
-        self.patch(dns, 'change_dns_zones')
+        self.patch(dns, 'dns_update_zones')
         nodegroup = factory.make_NodeGroup()
         DHCPLease.objects.update_leases(nodegroup, {})
-        self.assertFalse(dns.change_dns_zones.called)
+        self.assertFalse(dns.dns_update_zones.called)
 
     def test_get_hostname_ip_mapping_returns_mapping(self):
         nodegroup = factory.make_NodeGroup()

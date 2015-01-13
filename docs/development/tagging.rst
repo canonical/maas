@@ -16,6 +16,11 @@ evaluated against hardware information as obtained from running
 New or updated tag definition
 -----------------------------
 
+**Note** that this is somewhat outdated. See `bug 1372544`_ (*Tag changes will
+never be evaluated on unconnected clusters*) for more information.
+
+.. _bug 1372544: https://bugs.launchpad.net/maas/+bug/1372544
+
 When a new tag is created or an existing tag is modified, its
 expression must be evaluated for every node known to the region. It's
 a moderately computationally intensive process, so the work is spread

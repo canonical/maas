@@ -26,15 +26,11 @@ As leases are discovered, it calls the RPC function ``UpdateLeases`` which
 stores the active leases in the DHCPLease table.
 
 
-Updating the DNS zone file
-==========================
+Updating one or more DNS zone files
+===================================
 
-If a new lease is found then the dns.change_dns_zones() function gets called
-which invokes two tasks::
+If a new lease is found then the dns.dns_update_zones() function gets called
+which takes two steps::
 
- #. ``write_dns_zone_config()``
- #. ``rndc_command()``
-
-The first is responsible for writing out a new zone file with the appropriate
-sequence number and timestamp, and then the second is chained on to that
-and sends an rndc message to the DNS server to reload the zone.
+ #. Write out updated zone files.
+ #. Ask BIND to reload the zone.

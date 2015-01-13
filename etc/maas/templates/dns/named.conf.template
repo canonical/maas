@@ -11,7 +11,9 @@ zone "{{zone.zone_name}}" {
 # Access control for recursive queries.  See named.conf.options.inside.maas
 # for the directives used on this ACL.
 acl "trusted" {
-    {{trusted_networks}}
+{{for trusted_network in trusted_networks}}
+    {{trusted_network}};
+{{endfor}}
     localnets;
     localhost;
 };

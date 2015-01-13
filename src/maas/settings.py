@@ -309,9 +309,6 @@ SERIALIZATION_MODULES = {
     'maasjson': 'maasserver.json',
 }
 
-# Set up celery to use the production settings.
-os.environ['CELERY_CONFIG_MODULE'] = 'maas.celeryconfig'
-
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
 

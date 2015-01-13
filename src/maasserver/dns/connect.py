@@ -36,13 +36,13 @@ from maasserver.signals import connect_to_field_change
 def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroup."""
     from maasserver.dns.config import (
-        write_full_dns_config,
-        add_zone,
+        dns_update_all_zones,
+        dns_add_zones,
         )
     if created:
-        add_zone(instance)
+        dns_add_zones(instance)
     else:
-        write_full_dns_config()
+        dns_update_all_zones()
 
 
 # XXX rvb 2012-09-12: This is only needed because we use that
@@ -52,24 +52,24 @@ def dns_post_save_NodeGroup(sender, instance, created, **kwargs):
 def dns_post_save_NodeGroupInterface(sender, instance, created, **kwargs):
     """Create or update DNS zones related to the saved nodegroupinterface."""
     from maasserver.dns.config import (
-        write_full_dns_config,
-        add_zone,
+        dns_update_all_zones,
+        dns_add_zones,
         )
     if created:
-        add_zone(instance.nodegroup)
+        dns_add_zones(instance.nodegroup)
     else:
-        write_full_dns_config()
+        dns_update_all_zones()
 
 
 def dns_post_edit_management_NodeGroupInterface(instance, old_values, deleted):
     """Delete DNS zones related to the interface."""
-    from maasserver.dns.config import write_full_dns_config
+    from maasserver.dns.config import dns_update_all_zones
     [old_field] = old_values
     if old_field == NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS:
         # Force the dns config to be written as this might have been
         # triggered by the last DNS-enabled interface being deleted
         # or switched off (i.e. management set to DHCP or UNMANAGED).
-        write_full_dns_config(force=True)
+        dns_update_all_zones(force=True)
 
 
 connect_to_field_change(
@@ -81,8 +81,8 @@ connect_to_field_change(
 def dns_post_delete_Node(sender, instance, **kwargs):
     """When a Node is deleted, update the Node's zone file."""
     try:
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones(instance.nodegroup)
+        from maasserver.dns.config import dns_update_zones
+        dns_update_zones(instance.nodegroup)
     except NodeGroup.DoesNotExist:
         # If this Node is being deleted because the whole NodeGroup
         # has been deleted, no need to update the zone file because
@@ -92,29 +92,29 @@ def dns_post_delete_Node(sender, instance, **kwargs):
 
 def dns_post_edit_hostname_Node(instance, old_values, **kwargs):
     """When a Node has been flagged, update the related zone."""
-    from maasserver.dns.config import change_dns_zones
-    change_dns_zones(instance.nodegroup)
+    from maasserver.dns.config import dns_update_zones
+    dns_update_zones(instance.nodegroup)
 
 
 connect_to_field_change(dns_post_edit_hostname_Node, Node, ['hostname'])
 
 
 def dns_setting_changed(sender, instance, created, **kwargs):
-    from maasserver.dns.config import write_full_dns_config
-    write_full_dns_config()
+    from maasserver.dns.config import dns_update_all_zones
+    dns_update_all_zones()
 
 
 @receiver(post_save, sender=Network)
 def dns_post_save_Network(sender, instance, **kwargs):
     """When a network is added/changed, put it in the DNS trusted networks."""
-    from maasserver.dns.config import write_full_dns_config
-    write_full_dns_config()
+    from maasserver.dns.config import dns_update_all_zones
+    dns_update_all_zones()
 
 
 @receiver(post_delete, sender=Network)
 def dns_post_delete_Network(sender, instance, **kwargs):
-    from maasserver.dns.config import write_full_dns_config
-    write_full_dns_config()
+    from maasserver.dns.config import dns_update_all_zones
+    dns_update_all_zones()
 
 
 Config.objects.config_changed_connect("upstream_dns", dns_setting_changed)

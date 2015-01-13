@@ -24,7 +24,7 @@ __all__ = [
     ]
 
 from django.core.management.base import BaseCommand
-from maasserver.dns.config import write_full_dns_config
+from maasserver.dns.config import dns_update_all_zones
 
 
 class Command(BaseCommand):
@@ -33,4 +33,4 @@ class Command(BaseCommand):
         "this region has cluster controllers configured to manage DNS.")
 
     def handle(self, *args, **options):
-        write_full_dns_config()
+        dns_update_all_zones()

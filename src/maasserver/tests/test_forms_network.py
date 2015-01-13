@@ -181,8 +181,8 @@ class TestNetworkForm(MAASServerTestCase):
             form.errors)
 
     def test_writes_dns_when_network_edited(self):
-        write_full_dns_config = self.patch(
-            dns_config_module, "write_full_dns_config")
+        dns_update_all_zones = self.patch(
+            dns_config_module, "dns_update_all_zones")
         network = factory.make_ipv4_network()
         name = factory.make_name('network')
         definition = {
@@ -194,14 +194,14 @@ class TestNetworkForm(MAASServerTestCase):
         }
         form = NetworkForm(data=definition)
         form.save()
-        self.assertThat(write_full_dns_config, MockCalledOnceWith())
+        self.assertThat(dns_update_all_zones, MockCalledOnceWith())
 
     def test_writes_dns_when_network_deleted(self):
         network = factory.make_Network()
-        write_full_dns_config = self.patch(
-            dns_config_module, "write_full_dns_config")
+        dns_update_all_zones = self.patch(
+            dns_config_module, "dns_update_all_zones")
         network.delete()
-        self.assertThat(write_full_dns_config, MockCalledOnceWith())
+        self.assertThat(dns_update_all_zones, MockCalledOnceWith())
 
 
 class TestCreateNetworkFromNodeGroupInterface(MAASServerTestCase):

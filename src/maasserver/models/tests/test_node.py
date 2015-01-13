@@ -1228,7 +1228,7 @@ class NodeTest(MAASServerTestCase):
                 {node.nodegroup: expected}))
 
     def test_deallocate_static_ip_updates_dns(self):
-        change_dns_zones = self.patch(dns_config, 'change_dns_zones')
+        dns_update_zones = self.patch(dns_config, 'dns_update_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ACCEPTED)
@@ -1236,7 +1236,7 @@ class NodeTest(MAASServerTestCase):
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             owner=factory.make_User(), power_type='ether_wake')
         node.release()
-        self.assertThat(change_dns_zones, MockCalledOnceWith([node.nodegroup]))
+        self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
     def test_release_logs_and_raises_errors_in_stopping(self):
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED)
@@ -2424,12 +2424,12 @@ class TestNode_Start(MAASServerTestCase):
         user = factory.make_User()
         node = self.make_acquired_node_with_mac(user)
 
-        change_dns_zones = self.patch(dns_config, "change_dns_zones")
+        dns_update_zones = self.patch(dns_config, "dns_update_zones")
 
         node.start(user)
 
         self.assertThat(
-            change_dns_zones, MockCalledOnceWith(node.nodegroup))
+            dns_update_zones, MockCalledOnceWith(node.nodegroup))
 
     def test__starts_nodes(self):
         user = factory.make_User()

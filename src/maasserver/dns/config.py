@@ -13,14 +13,10 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    'add_zone',
-    'change_dns_zones',
-    'get_trusted_networks',
-    'is_dns_enabled',
-    'next_zone_serial',
-    'write_full_dns_config',
+    'dns_add_zones',
+    'dns_update_all_zones',
+    'dns_update_zones',
     ]
-
 
 from django.conf import settings
 from maasserver import locks
@@ -35,7 +31,15 @@ from maasserver.sequence import (
     Sequence,
     )
 from maasserver.utils import synchronised
-from provisioningserver import tasks
+from provisioningserver.dns.actions import (
+    bind_reconfigure,
+    bind_reload,
+    bind_reload_with_retries,
+    bind_reload_zone,
+    bind_write_configuration,
+    bind_write_options,
+    bind_write_zones,
+    )
 from provisioningserver.logger import get_maas_logger
 
 
@@ -67,88 +71,111 @@ def is_dns_enabled():
 
 
 @synchronised(locks.dns)
-def change_dns_zones(nodegroups):
-    """Update the zone configuration for the given list of Nodegroups.
+def dns_add_zones(clusters):
+    """Add zone files for the given cluster(s), and serve them.
 
-    :param nodegroups: The list of nodegroups (or the nodegroup) for which the
-        zone should be updated.
-    :type nodegroups: list (or :class:`NodeGroup`)
+    Serving these new zone files means updating BIND's configuration to
+    include them, then asking it to load the new configuration.
+
+    :param clusters: The clusters(s) for which zones should be served.
+    :type clusters: :py:class:`NodeGroup`, or an iterable thereof.
     """
     if not (is_dns_enabled() and is_dns_in_use()):
         return
-    serial = next_zone_serial()
-    for zone in ZoneGenerator(nodegroups, serial):
-        maaslog.info("Generating new DNS zone file for %s", zone.zone_name)
-        zone_reload_subtask = tasks.rndc_command.subtask(
-            args=[['reload', zone.zone_name]])
-        tasks.write_dns_zone_config.delay(
-            zones=[zone], callback=zone_reload_subtask)
 
-
-@synchronised(locks.dns)
-def add_zone(nodegroup):
-    """Add to the DNS server a new zone for the given `nodegroup`.
-
-    To do this we have to write a new configuration file for the zone
-    and update the master config to include this new configuration.
-    These are done in turn by chaining Celery subtasks.
-
-    :param nodegroup: The nodegroup for which the zone should be added.
-    :type nodegroup: :class:`NodeGroup`
-    """
-    if not (is_dns_enabled() and is_dns_in_use()):
-        return
     zones_to_write = ZoneGenerator(
-        nodegroup, serial_generator=next_zone_serial
-        ).as_list()
+        clusters, serial_generator=next_zone_serial).as_list()
     if len(zones_to_write) == 0:
         return None
     serial = next_zone_serial()
     # Compute non-None zones.
     zones = ZoneGenerator(NodeGroup.objects.all(), serial).as_list()
-    reconfig_subtask = tasks.rndc_command.subtask(args=[['reconfig']])
-    write_dns_config_subtask = tasks.write_dns_config.subtask(
-        kwargs={
-            'zones': zones, 'callback': reconfig_subtask,
-            'trusted_networks': get_trusted_networks()})
-    tasks.write_dns_zone_config.delay(
-        zones=zones_to_write, callback=write_dns_config_subtask)
+    bind_write_zones(zones_to_write)
+    bind_write_configuration(zones, trusted_networks=get_trusted_networks())
+    bind_reconfigure()
 
 
 @synchronised(locks.dns)
-def write_full_dns_config(reload_retry=False, force=False):
-    """Write the DNS configuration.
+def dns_update_zones(clusters):
+    """Update the zone files for the given cluster(s).
 
-    :param reload_retry: Should the reload rndc command be retried in case
-        of failure?  Defaults to `False`.
+    Once the new zone files have been written, BIND is asked to reload them.
+    It's assumed that BIND already serves the zones that are being written.
+
+    :param clusters: Those cluster(s) for which the zone should be updated.
+    :type clusters: A :py:class:`NodeGroup`, or an iterable thereof.
+    """
+    if not (is_dns_enabled() and is_dns_in_use()):
+        return
+
+    serial = next_zone_serial()
+    for zone in ZoneGenerator(clusters, serial):
+        maaslog.info("Generating new DNS zone file for %s", zone.zone_name)
+        bind_write_zones([zone])
+        bind_reload_zone(zone.zone_name)
+
+
+@synchronised(locks.dns)
+def dns_update_all_zones(reload_retry=False, force=False):
+    """Update all zone files for the given cluster(s), and serve them.
+
+    Serving these zone files means updating BIND's configuration to include
+    them, then asking it to load the new configuration.
+
+    :param reload_retry: Should the DNS server reload be retried in case
+        of failure? Defaults to `False`.
     :type reload_retry: bool
-    :param force: Write the configuration even if no interface is
-        configured to manage DNS.
+    :param force: Update the configuration even if no interface is configured
+        to manage DNS. This makes sense when deconfiguring an interface.
     :type force: bool
     """
-    write_conf = (
-        is_dns_enabled() and (force or is_dns_in_use()))
+    write_conf = is_dns_enabled() and (force or is_dns_in_use())
     if not write_conf:
         return
+
+    clusters = NodeGroup.objects.all()
     zones = ZoneGenerator(
-        NodeGroup.objects.all(), serial_generator=next_zone_serial
-        ).as_list()
+        clusters, serial_generator=next_zone_serial).as_list()
+    bind_write_zones(zones)
+
+    # We should not be calling bind_write_options() here; call-sites should be
+    # making a separate call. It's a historical legacy, where many sites now
+    # expect this side-effect from calling dns_update_all_zones(), and some
+    # that call it for this side-effect alone. At present all it does is set
+    # the upstream DNS servers, nothing to do with serving zones at all!
+    bind_write_options(upstream_dns=get_upstream_dns())
+
+    # Nor should we be rewriting ACLs that are related only to allowing
+    # recursive queries to the upstream DNS servers. Again, this is legacy,
+    # where the "trusted" ACL ended up in the same configuration file as the
+    # zone stanzas, and so both need to be rewritten at the same time.
+    bind_write_configuration(zones, trusted_networks=get_trusted_networks())
+
+    # Reloading with retries may be a legacy from Celery days, or it may be
+    # necessary to recover from races during start-up. We're not sure if it is
+    # actually needed but it seems safer to maintain this behaviour until we
+    # have a better understanding.
+    if reload_retry:
+        bind_reload_with_retries()
+    else:
+        bind_reload()
+
+
+def get_upstream_dns():
+    """Return the IP addresses of configured upstream DNS servers.
+
+    :return: A list of IP addresses.
+    """
     upstream_dns = Config.objects.get_config("upstream_dns")
-    tasks.write_full_dns_config.delay(
-        zones=zones,
-        callback=tasks.rndc_command.subtask(
-            args=[['reload'], reload_retry]),
-        upstream_dns=upstream_dns,
-        trusted_networks=get_trusted_networks())
+    return [] if upstream_dns is None else upstream_dns.split()
 
 
 def get_trusted_networks():
     """Return the CIDR representation of all the Networks we know about.
 
-    This must be a whitespace separated list, where each item ends in a
-    semicolon, or blank if there's no networks.
+    :return: A list of CIDR-format network specifications.
     """
-    networks = " ".join(
-        "%s;" % net.get_network().cidr
-        for net in Network.objects.all())
-    return networks
+    return [
+        unicode(net.get_network().cidr)
+        for net in Network.objects.all()
+    ]

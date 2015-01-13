@@ -1427,8 +1427,8 @@ class Node(CleanSave, TimestampedModel):
         """
         deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
         self.delete_host_maps(deallocated_ips)
-        from maasserver.dns.config import change_dns_zones
-        change_dns_zones([self.nodegroup])
+        from maasserver.dns.config import dns_update_zones
+        dns_update_zones([self.nodegroup])
 
     def get_boot_purpose(self):
         """
@@ -1518,7 +1518,7 @@ class Node(CleanSave, TimestampedModel):
         """
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
-        from maasserver.dns.config import change_dns_zones
+        from maasserver.dns.config import dns_update_zones
 
         if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
             # You can't stop a node you don't own unless you're an
@@ -1560,7 +1560,7 @@ class Node(CleanSave, TimestampedModel):
             transition_timeout = None
 
         # Update the DNS zone with the new static IP info as necessary.
-        change_dns_zones(self.nodegroup)
+        dns_update_zones(self.nodegroup)
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_started:

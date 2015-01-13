@@ -77,7 +77,7 @@ class TestInnerStartUp(MAASServerTestCase):
 
     def test__calls_write_full_dns_config(self):
         recorder = FakeMethod()
-        self.patch(start_up, 'write_full_dns_config', recorder)
+        self.patch(start_up, 'dns_update_all_zones', recorder)
         start_up.inner_start_up()
         self.assertEqual(
             (1, [()]),
