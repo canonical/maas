@@ -62,7 +62,6 @@ class IPAddressesHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         return ('ipaddresses_handler', [])
 
-    @transaction.atomic
     def claim_ip(self, user, interface, requested_address, mac=None):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
         `interface`.

@@ -18,6 +18,7 @@ import httplib
 import json
 
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from maasserver.api import ip_addresses as ip_addresses_module
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -27,17 +28,49 @@ from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
 from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
+from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
+from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import MockCalledOnceWith
 from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from testtools.matchers import (
+    Contains,
     Equals,
     HasLength,
     Is,
     Not,
     )
 from twisted.python.failure import Failure
+
+
+class TestNetworksAPITransaction(TransactionTestCase):
+
+    def test_transactional_reserve_creates_ipaddress(self):
+        # Reserving an address through the API method 'reserve' works
+        # with transaction management enabled (see bug 1409852 for details).
+        with transaction.atomic():
+            self.logged_in_user = factory.make_User(
+                username='test', password='test')
+            self.logged_in_user.is_superuser = True
+            self.logged_in_user.save()
+            self.client = OAuthAuthenticatedClient(self.logged_in_user)
+
+            interface = factory.make_NodeGroupInterface(
+                factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED))
+            net = interface.network
+        params = {
+            'op': 'reserve',
+            'network': unicode(net),
+        }
+        response = self.client.post(reverse('ipaddresses_handler'), params)
+
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.assertThat(net, Contains(IPAddress(staticipaddress.ip)))
+        self.assertEqual(
+            IPADDRESS_TYPE.USER_RESERVED, staticipaddress.alloc_type)
+        self.assertEqual(self.logged_in_user, staticipaddress.user)
 
 
 class TestNetworksAPI(APITestCase):
