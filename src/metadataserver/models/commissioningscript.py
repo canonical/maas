@@ -139,17 +139,6 @@ _xpath_memory_bytes = """\
     div 1024 div 1024
 """
 
-# Select <node class="disk"><size units="bytes">1234</size></node>, or,
-# failing that, <node class="volume"><size units="bytes">1234</size></node>
-# that's not nested within a <node class="disk"></node>.
-_xpath_storage_bytes = """\
-    (
-        //node[@class='disk'] |
-        //node[not(ancestor::node[@class='disk']) and @class='volume']
-    )
-    /size[@units='bytes'] div 1000 div 1000
-"""
-
 
 def update_hardware_details(node, output, exit_status):
     """Process the results of `LSHW_SCRIPT`.
@@ -175,12 +164,8 @@ def update_hardware_details(node, output, exit_status):
         memory = evaluator(_xpath_memory_bytes)
         if not memory or math.isnan(memory):
             memory = 0
-        storage = evaluator(_xpath_storage_bytes)
-        if not storage or math.isnan(storage):
-            storage = 0
         node.cpu_count = cpu_count or 0
         node.memory = memory
-        node.storage = storage
         node.save()
 
 

@@ -217,6 +217,22 @@ class TestNodeAPI(APITestCase):
         parsed_result = json.loads(response.content)
         self.assertEqual(None, parsed_result["owner"])
 
+    def test_GET_returns_physical_block_devices(self):
+        node = factory.make_Node()
+        devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+            ]
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        parsed_devices = [
+            device['name']
+            for device in parsed_result['physicalblockdevice_set']
+            ]
+        self.assertItemsEqual(
+            [device.name for device in devices], parsed_devices)
+
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()
         node_stop = self.patch(node, 'stop')
@@ -683,7 +699,7 @@ class TestNodeAPI(APITestCase):
             {'mac_address': new_power_address},
             reload_object(node).power_parameters)
 
-    def test_PUT_updates_cpu_memory_storage(self):
+    def test_PUT_updates_cpu_memory(self):
         self.become_admin()
         node = factory.make_Node(
             owner=self.logged_in_user,
@@ -691,12 +707,11 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         response = self.client_put(
             self.get_node_uri(node),
-            {'cpu_count': 1, 'memory': 1024, 'storage': 2048})
+            {'cpu_count': 1, 'memory': 1024})
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual(1, node.cpu_count)
         self.assertEqual(1024, node.memory)
-        self.assertEqual(2048, node.storage)
 
     def test_PUT_updates_power_parameters_accepts_only_mac_for_wol(self):
         self.become_admin()

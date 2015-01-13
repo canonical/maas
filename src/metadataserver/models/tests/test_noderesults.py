@@ -590,69 +590,6 @@ class TestUpdateHardwareDetails(MAASServerTestCase):
         expected = (4294967296 + 3221225472 + 536879812) / mega
         self.assertEqual(expected, node.memory)
 
-    def test_hardware_updates_storage(self):
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-            <node id="volume:0" claimed="true" class="volume" handle="">
-                <description>Extended partition</description>
-                <physid>1</physid>
-                <businfo>scsi@0:0.0.0,1</businfo>
-                <logicalname>/dev/sda1</logicalname>
-                <dev>8:1</dev>
-                <size units="bytes">127033934848</size>
-            </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(127033, node.storage)
-
-    def test_hardware_updates_storage_1279728(self):
-        # Hardware data from bug 1279728.
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-            <node id="volume" claimed="true" class="volume" handle="">
-                <description>EXT4 volume</description>
-                <vendor>Linux</vendor>
-                <physid>1</physid>
-                <businfo>scsi@0:0.0.0,1</businfo>
-                <logicalname>/dev/sda1</logicalname>
-                <size units="bytes">801568677888</size>
-            </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(801568, node.storage)
-
-    def test_hardware_updates_storage_1387380_bad(self):
-        # Hardware data from bug 1387380 (the "bad" node).
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-            <node id="disk" claimed="true"
-                    class="disk" handle="SCSI:00:00:00:00">
-                <size units="bytes">120034123776</size>
-            </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(120034, node.storage)
-
-    def test_hardware_updates_storage_1387380_good(self):
-        # Hardware data from bug 1387380 (the "good" node).
-        node = factory.make_Node()
-        xmlbytes = dedent("""\
-            <node id="disk" claimed="true"
-                    class="disk" handle="SCSI:00:00:00:00">
-                <size units="bytes">120034123776</size>
-                <node id="volume" claimed="true" class="volume" handle="">
-                    <size units="bytes">120033075200</size>
-                    <capacity>120033075200</capacity>
-                </node>
-            </node>
-        """).encode("utf-8")
-        update_hardware_details(node, xmlbytes, 0)
-        node = reload_object(node)
-        self.assertEqual(120034, node.storage)
-
     def test_hardware_updates_ignores_empty_tags(self):
         # Tags with empty definitions are ignored when
         # update_hardware_details gets called.

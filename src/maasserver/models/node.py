@@ -90,6 +90,7 @@ from maasserver.models.macaddress import (
     MACAddress,
     update_mac_cluster_interfaces,
     )
+from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.timestampedmodel import TimestampedModel
@@ -461,7 +462,6 @@ class Node(CleanSave, TimestampedModel):
     # as a basic optimisation over querying the lshw output.
     cpu_count = IntegerField(default=0)
     memory = IntegerField(default=0)
-    storage = IntegerField(default=0)
 
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."
@@ -772,6 +772,26 @@ class Node(CleanSave, TimestampedModel):
         if self.memory < 1024:
             return '%.1f' % (self.memory / 1024.0)
         return '%d' % (self.memory / 1024)
+
+    @property
+    def physicalblockdevice_set(self):
+        """Return `QuerySet` for all `PhysicalBlockDevice` assigned to node.
+
+        This is need as Django doesn't add this attribute to the `Node` model,
+        it only adds blockdevice_set.
+        """
+        return PhysicalBlockDevice.objects.filter(node=self)
+
+    @property
+    def storage(self):
+        """Return storage in megabytes.
+
+        Compatility with API 1.0 this field needs to exist on the Node.
+        """
+        size = (
+            PhysicalBlockDevice.objects.total_size_of_physical_devices_for(
+                self))
+        return size / 1000 / 1000
 
     def display_storage(self):
         """Return storage in gigabytes."""

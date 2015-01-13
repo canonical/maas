@@ -106,6 +106,15 @@ DISPLAYED_NODE_FIELDS = (
     'routers',
     'zone',
     'disable_ipv4',
+    ('physicalblockdevice_set', (
+        'name',
+        'path',
+        'size',
+        'block_size',
+        'model',
+        'serial',
+        'tags',
+        )),
     )
 
 

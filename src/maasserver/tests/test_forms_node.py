@@ -489,7 +489,6 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'power_parameters',
                 'cpu_count',
                 'memory',
-                'storage',
                 'zone',
             ],
             list(form.fields))

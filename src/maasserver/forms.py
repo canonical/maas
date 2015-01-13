@@ -677,8 +677,6 @@ class AdminNodeForm(NodeForm):
         required=False, initial=0, label="CPU Count")
     memory = forms.IntegerField(
         required=False, initial=0, label="Memory (MiB)")
-    storage = forms.IntegerField(
-        required=False, initial=0, label="Disk space (MB)")
 
     class Meta:
         model = Node
@@ -690,7 +688,6 @@ class AdminNodeForm(NodeForm):
             'power_parameters',
             'cpu_count',
             'memory',
-            'storage',
         )
 
     def __init__(self, data=None, instance=None, request=None, **kwargs):

@@ -275,12 +275,27 @@ class NodeTest(MAASServerTestCase):
         node = factory.make_Node(memory=2048)
         self.assertEqual('2', node.display_memory())
 
+    def test_physicalblockdevice_set_returns_physicalblockdevices(self):
+        node = factory.make_Node()
+        device = factory.make_PhysicalBlockDevice(node=node)
+        factory.make_BlockDevice(node=node)
+        factory.make_PhysicalBlockDevice()
+        self.assertItemsEqual([device], node.physicalblockdevice_set.all())
+
+    def test_storage_returns_size_of_physicalblockdevices_in_mb(self):
+        node = factory.make_Node()
+        for _ in range(3):
+            factory.make_PhysicalBlockDevice(node=node, size=50 * (1000 ** 2))
+        self.assertEqual(50 * 3, node.storage)
+
     def test_display_storage_returns_decimal_less_than_1000(self):
-        node = factory.make_Node(storage=500)
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node, size=500 * (1000 ** 2))
         self.assertEqual('0.5', node.display_storage())
 
     def test_display_storage_returns_value_divided_by_1000(self):
-        node = factory.make_Node(storage=2000)
+        node = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node, size=2000 * (1000 ** 2))
         self.assertEqual('2', node.display_storage())
 
     def test_add_node_with_token(self):

@@ -1,7 +1,7 @@
 - fields: {
     created: 2012-01-24, hostname: sun, architecture: 'i386/generic',
     owner: null, status: 0, nodegroup: null, tags: [30],
-    cpu_count: 16, memory: 16384, storage: 1024,
+    cpu_count: 16, memory: 16384,
     system_id: node-2666dd64-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:38.735954'}
   model: maasserver.node
@@ -9,7 +9,7 @@
 - fields: {
     created: 2012-01-24, hostname: moon, architecture: 'i386/generic',
     owner: null, status: 2, nodegroup: null, tags: [],
-    cpu_count: 1, memory: 512, storage: 1024,
+    cpu_count: 1, memory: 512,
     system_id: node-29d7ad70-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:44.507777'}
   model: maasserver.node
@@ -17,7 +17,7 @@
 - fields: {
     created: 2012-01-24, hostname: mars, architecture: 'i386/generic',
     owner: 106, status: 3, nodegroup: null, tags: [31],
-    cpu_count: 2, memory: 2096, storage: 8096,
+    cpu_count: 2, memory: 2096,
     system_id: node-2d424b28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:50.239704'}
   model: maasserver.node
@@ -25,7 +25,7 @@
 - fields: {
     created: 2012-01-24, hostname: jupiter, architecture: 'i386/generic',
     owner: null, status: 0, nodegroup: null, tags: [30, 31],
-    cpu_count: 4, memory: 8192, storage: 8096,
+    cpu_count: 4, memory: 8192,
     system_id: node-2fb4fec8-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:52:54.346832'}
   model: maasserver.node
@@ -33,7 +33,7 @@
 - fields: {
     created: 2012-01-24, hostname: saturn, architecture: 'i386/generic',
     owner: 101, status: 3, nodegroup: null, tags: [30, 31, 32],
-    cpu_count: 4, memory: 4096, storage: 8096,
+    cpu_count: 4, memory: 4096,
     system_id: node-33b55e28-4671-11e1-93b8-00225f89f211,
     updated: !!timestamp '2012-01-24 10:53:01.060176'}
   model: maasserver.node
