@@ -15,6 +15,7 @@ __all__ = [
     ]
 
 
+from collections import defaultdict
 import itertools
 from itertools import chain
 import re
@@ -31,6 +32,7 @@ from maasserver.forms import (
 import maasserver.forms as maasserver_forms
 from maasserver.models import (
     Network,
+    PhysicalBlockDevice,
     Tag,
     Zone,
     )
@@ -40,6 +42,36 @@ from maasserver.utils.orm import (
     macs_contain,
     macs_do_not_contain,
     )
+
+# Matches the storage contraint from Juju. Format is size followed by an
+# optional comma seperated list of tags in parentheses.
+# Example:
+#     200(ssd,removable),400(ssd),300
+#      - 200gb disk with ssd and removable tag
+#      - 400gb disk with ssd tag
+#      - 300gb disk
+STORAGE_REGEX = re.compile(
+    r"(?P<size>\b[^(,]+\b)(?:\((?P<tags>[^)]+)\))?",
+    re.VERBOSE)
+
+
+def storage_validator(value):
+    """Validate the storage contraint.
+
+    Check value against STORAGE_REGEX to make sure the result is valid.
+    """
+    if value is None or value == "":
+        return
+    groups = STORAGE_REGEX.findall(value)
+    if not groups:
+        raise ValidationError("Malformed storage constraint.")
+    for size, tags in groups:
+        try:
+            float(size)
+        except ValueError:
+            raise ValidationError(
+                "Malformed storage contraint, size must be numeric. "
+                "Recieved '%s' instead." % size)
 
 
 def generate_architecture_wildcards(arches):
@@ -91,6 +123,7 @@ JUJU_ACQUIRE_FORM_FIELDS_MAPPING = {
     'tags': 'maas-tags',
     'arch': 'architecture',
     'cpu_count': 'cpu',
+    'storage': 'storage',
 }
 
 
@@ -173,6 +206,63 @@ def describe_multi_constraint_value(value):
         return ','.join(map(describe_single_constraint_value, sequence))
 
 
+def get_storage_constraints_from_string(storage):
+    """Return sorted list of storage constraints from the given string."""
+    groups = STORAGE_REGEX.findall(storage)
+    if not groups:
+        return None
+
+    # Sort contraints so the disk with the largest number of tags come
+    # first. This is so the most specific disk is selected before the others.
+    constraints = [
+        (
+            int(float(size) * (1000 ** 3)),
+            tags.split(',') if tags != '' else None,
+        )
+        for (size, tags) in groups
+        ]
+    count_tags = lambda (size, tags): 0 if tags is None else len(tags)
+    constraints.sort(key=count_tags, reverse=True)
+    return constraints
+
+
+def nodes_by_storage(storage):
+    """Return list of `Node.id` that match the given storage constraints."""
+    constraints = get_storage_constraints_from_string(storage)
+    if constraints is None:
+        return None
+    matches = defaultdict(list)
+    for size, tags in constraints:
+        # Query for the `PhysicalBlockDevice`s that have the closest size
+        # and the given tags.
+        if tags is None:
+            matched_devices = PhysicalBlockDevice.objects.filter(
+                size__gte=size).order_by('size')
+        else:
+            matched_devices = PhysicalBlockDevice.objects.filter_by_tags(
+                tags).filter(size__gte=size).order_by('size')
+
+        # Loop through all the returned devices. Insert only the first device
+        # from each node into `matches`.
+        matched_in_loop = []
+        for device in matched_devices.values('id', 'node_id'):
+            device_id = device['id']
+            device_node_id = device['node_id']
+            if device_node_id in matched_in_loop:
+                continue
+            if device_id in matches[device_node_id]:
+                continue
+            matches[device_node_id].append(device_id)
+            matched_in_loop.append(device_node_id)
+
+    # Return only the `Node.id` that have the correct number of disks.
+    return [
+        node_id
+        for node_id, disks in matches.items()
+        if len(disks) == len(constraints)
+        ]
+
+
 class AcquireNodeForm(RenamableFieldsForm):
     """A form handling the constraints used to acquire a node."""
 
@@ -227,6 +317,9 @@ class AcquireNodeForm(RenamableFieldsForm):
             'invalid_list': "Invalid parameter: must list physical zones.",
             })
 
+    storage = forms.CharField(
+        validators=[storage_validator], label="Storage", required=False)
+
     ignore_unknown_constraints = True
 
     @classmethod
@@ -275,7 +368,7 @@ class AcquireNodeForm(RenamableFieldsForm):
                 error_msg = 'No such tag(s): %s.' % ', '.join(
                     "'%s'" % tag for tag in unknown_tags)
                 raise ValidationError(
-                    {self.get_field_name('arch'): [error_msg]})
+                    {self.get_field_name('tags'): [error_msg]})
             return tag_names
         return None
 
@@ -466,5 +559,13 @@ class AcquireNodeForm(RenamableFieldsForm):
                 "routers", not_connected_to)
             filtered_nodes = filtered_nodes.extra(
                 where=[where], params=params)
+
+        # Filter by storage.
+        storage = self.cleaned_data.get(
+            self.get_field_name('storage'))
+        if storage:
+            node_ids = nodes_by_storage(storage)
+            if node_ids is not None:
+                filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
         return filtered_nodes.distinct()

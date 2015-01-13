@@ -31,6 +31,7 @@ from maasserver import DefaultMeta
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.utils.orm import psql_array
 
 
 class BlockDeviceManager(Manager):
@@ -41,9 +42,11 @@ class BlockDeviceManager(Manager):
             if isinstance(tags, unicode) or not isinstance(tags, Iterable):
                 raise ValueError("Requires iterable object to filter.")
             tags = list(tags)
+        tags_where, tags_params = psql_array(tags, sql_type="text")
+        where_contains = (
+            '"maasserver_blockdevice"."tags"::text[] @> %s' % tags_where)
         return self.extra(
-            where=['"maasserver_blockdevice"."tags"::text[] @> %s'],
-            params=[tags])
+            where=[where_contains], params=tags_params)
 
 
 class BlockDevice(CleanSave, TimestampedModel):

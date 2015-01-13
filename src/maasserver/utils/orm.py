@@ -22,6 +22,7 @@ __all__ = [
     'macs_do_not_contain',
     'make_serialization_failure',
     'outside_atomic_block',
+    'psql_array',
     'request_transaction_retry',
     'retry_on_serialization_failure',
     'validate_in_transaction',
@@ -80,6 +81,17 @@ def get_first(items):
         return None
     else:
         return first_item[0]
+
+
+def psql_array(items, sql_type=None):
+    """Return PostgreSQL array string and parameters."""
+    sql = (
+        "ARRAY[" +
+        ",".join(["%s"] * len(items)) +
+        "]")
+    if sql_type is not None:
+        sql += "::%s[]" % sql_type
+    return sql, items
 
 
 def macs_contain(key, macs):

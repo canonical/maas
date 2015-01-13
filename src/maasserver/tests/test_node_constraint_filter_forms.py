@@ -25,7 +25,9 @@ from maasserver.node_constraint_filter_forms import (
     detect_nonexistent_zone_names,
     generate_architecture_wildcards,
     get_architecture_wildcards,
+    get_storage_constraints_from_string,
     JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
+    nodes_by_storage,
     parse_legacy_tags,
     RenamableFieldsForm,
     )
@@ -126,6 +128,35 @@ class TestUtils(MAASServerTestCase):
     def test_detect_nonexistent_zone_names_asserts_parameter_type(self):
         self.assertRaises(
             AssertionError, detect_nonexistent_zone_names, "text")
+
+    def test_get_storage_constraints_from_string_returns_None_for_empty(self):
+        self.assertEquals(None, get_storage_constraints_from_string(""))
+
+    def test_get_storage_constraints_from_string_None_for_empty_tags(self):
+        self.assertEquals(
+            [None, None, None],
+            [tags for _, tags in get_storage_constraints_from_string("0,0,0")])
+
+    def test_get_storage_constraints_from_string_returns_size_in_bytes(self):
+        self.assertEquals(
+            [int(1.5 * (1000 ** 3)), 3 * (1000 ** 3), int(6.75 * (1000 ** 3))],
+            [
+                size
+                for size, _ in get_storage_constraints_from_string(
+                    "1.5,3,6.75")
+            ])
+
+    def test_get_storage_constraints_from_string_sorts_more_tags_first(self):
+        self.assertEquals(
+            [['ssd', 'sata', 'removable'], ['ssd', 'sata'], ['ssd']],
+            [
+                tags
+                for _, tags in get_storage_constraints_from_string(
+                    "0(ssd,sata),0(ssd),0(ssd,sata,removable)")
+            ])
+
+    def test_nodes_by_storage_returns_None_when_storage_string_is_empty(self):
+        self.assertEquals(None, nodes_by_storage(""))
 
 
 class TestRenamableForm(RenamableFieldsForm):
@@ -617,6 +648,144 @@ class TestAcquireNodeForm(MAASServerTestCase):
                 ["No such tag(s): 'big', 'unknown'."]}),
             (form.is_valid(), form.errors))
 
+    def test_storage_invalid_constraint(self):
+        form = AcquireNodeForm(data={'storage': '10(ssd,20'})
+        self.assertEquals(
+            (False, {
+                'storage':
+                ["Malformed storage contraint, size must be numeric. "
+                 "Recieved 'ssd' instead."]}),
+            (form.is_valid(), form.errors))
+
+    def test_storage_invalid_size_constraint(self):
+        form = AcquireNodeForm(data={'storage': 'abc'})
+        self.assertEquals(
+            (False, {
+                'storage':
+                ["Malformed storage contraint, size must be numeric. "
+                 "Recieved 'abc' instead."]}),
+            (form.is_valid(), form.errors))
+
+    def test_storage_single_contraint_only_matches_physical_devices(self):
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1)
+        node2 = factory.make_Node()
+        factory.make_BlockDevice(node=node2)
+        self.assertConstrainedNodes([node1], {'storage': '0'})
+
+    def test_storage_single_contraint_matches_all_sizes_larger(self):
+        node1 = factory.make_Node()
+        # 1gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=1 * (1000 ** 3))
+        node2 = factory.make_Node()
+        # 4gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=4 * (1000 ** 3))
+        node3 = factory.make_Node()
+        # 8gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node3, size=8 * (1000 ** 3))
+        # all nodes with physical devices larger than 2gb
+        self.assertConstrainedNodes([node2, node3], {'storage': '2'})
+
+    def test_storage_single_contraint_matches_on_tags(self):
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1, tags=['ssd'])
+        node2 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node2, tags=['rotary'])
+        self.assertConstrainedNodes([node1], {'storage': '0(ssd)'})
+
+    def test_storage_single_contraint_matches_decimal_size(self):
+        node1 = factory.make_Node()
+        # 1gb, 2gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=1 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=2 * (1000 ** 3))
+        node2 = factory.make_Node()
+        # 1gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=1 * (1000 ** 3))
+        self.assertConstrainedNodes([node1], {'storage': '1.5'})
+
+    def test_storage_multi_contraint_only_matches_physical_devices(self):
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1)
+        factory.make_PhysicalBlockDevice(node=node1)
+        node2 = factory.make_Node()
+        factory.make_BlockDevice(node=node2)
+        factory.make_BlockDevice(node=node2)
+        self.assertConstrainedNodes([node1], {'storage': '0,0'})
+
+    def test_storage_multi_contraint_matches_all_sizes_larger(self):
+        node1 = factory.make_Node()
+        # 1gb, 2gb, 3gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=1 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=2 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=3 * (1000 ** 3))
+        node2 = factory.make_Node()
+        # 5gb, 6gb, 7gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=5 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=6 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=7 * (1000 ** 3))
+        node3 = factory.make_Node()
+        # 8gb, 9gb, 10gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node3, size=8 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node3, size=9 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node3, size=10 * (1000 ** 3))
+        # all nodes with physical devices larger than 2gb
+        self.assertConstrainedNodes([node2, node3], {'storage': '4,4,4'})
+
+    def test_storage_multi_contraint_matches_on_tags(self):
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1, tags=['ssd'])
+        factory.make_PhysicalBlockDevice(node=node1, tags=['ssd', 'removable'])
+        node2 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node2, tags=['ssd'])
+        factory.make_PhysicalBlockDevice(node=node2, tags=['ssd', 'sata'])
+        self.assertConstrainedNodes(
+            [node1], {'storage': '0(ssd),0(ssd,removable)'})
+
+    def test_storage_multi_contraint_matches_on_size_and_tags(self):
+        node1 = factory.make_Node()
+        # 1gb, 2gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=1 * (1000 ** 3),
+            tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=2 * (1000 ** 3),
+            tags=['ssd'])
+        node2 = factory.make_Node()
+        # 4gb, 5gb block device
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=4 * (1000 ** 3),
+            tags=['ssd'])
+        factory.make_PhysicalBlockDevice(
+            node=node2, size=5 * (1000 ** 3),
+            tags=['ssd'])
+        self.assertConstrainedNodes(
+            [node2], {'storage': '3(ssd),3(ssd)'})
+
+    def test_storage_multi_contraint_matches_large_disk_count(self):
+        node1 = factory.make_Node()
+        for _ in range(10):
+            factory.make_PhysicalBlockDevice(node=node1)
+        node2 = factory.make_Node()
+        for _ in range(5):
+            factory.make_PhysicalBlockDevice(node=node2)
+        self.assertConstrainedNodes(
+            [node1], {'storage': '0,0,0,0,0,0,0,0,0,0'})
+
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')
         arch = '%s/generic' % factory.make_name('arch')
@@ -712,6 +881,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
             'not_connected_to': [factory.make_mac_address()],
             'zone': factory.make_Zone(),
             'not_in_zone': [factory.make_Zone().name],
+            'storage': '0(ssd),10(ssd)',
             }
         form = AcquireNodeForm(data=constraints)
         self.assertTrue(form.is_valid(), form.errors)

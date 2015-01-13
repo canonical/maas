@@ -35,6 +35,7 @@ from maasserver.utils.orm import (
     macs_do_not_contain,
     make_serialization_failure,
     outside_atomic_block,
+    psql_array,
     request_transaction_retry,
     retry_on_serialization_failure,
     validate_in_transaction,
@@ -351,3 +352,22 @@ class TestValidateInTransaction(TransactionTestCase):
         self.assertRaises(
             TransactionManagementError,
             validate_in_transaction, connection)
+
+
+class TestPsqlArray(MAASTestCase):
+
+    def test__returns_empty_array(self):
+        self.assertEqual(("ARRAY[]", []), psql_array([]))
+
+    def test__returns_params_in_array(self):
+        self.assertEqual(
+            "ARRAY[%s,%s,%s]", psql_array(['a', 'a', 'a'])[0])
+
+    def test__returns_params_in_tuple(self):
+        params = [factory.make_name('param') for _ in range(3)]
+        self.assertEqual(
+            params, psql_array(params)[1])
+
+    def test__returns_cast_to_type(self):
+        self.assertEqual(
+            ("ARRAY[]::integer[]", []), psql_array([], sql_type="integer"))
