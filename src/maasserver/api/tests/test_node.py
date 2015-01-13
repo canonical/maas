@@ -552,6 +552,20 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
+    def test_PUT_validates_architecture_for_installable_node(self):
+        node = factory.make_Node(
+            owner=self.logged_in_user, installable=False)
+        response = self.client_put(
+            self.get_node_uri(node), {'installable': True})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertIn('application/json', response['Content-Type'])
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            {"architecture":
+                ["Architecture must be defined for installable nodes."]},
+            parsed_result, response.content)
+
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
         arch = make_usable_architecture(self)

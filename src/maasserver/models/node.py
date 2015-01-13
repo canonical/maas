@@ -442,7 +442,9 @@ class Node(CleanSave, TimestampedModel):
     distro_series = CharField(
         max_length=20, blank=True, default='')
 
-    architecture = CharField(max_length=31, blank=False)
+    architecture = CharField(max_length=31, blank=True, null=True)
+
+    installable = BooleanField(default=True, db_index=True)
 
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
@@ -750,9 +752,16 @@ class Node(CleanSave, TimestampedModel):
                 )
             raise NodeStateViolation(error_text)
 
+    def clean_architecture(self):
+        if self.architecture == '' and self.installable:
+            raise ValidationError(
+                {'architecture':
+                    "Architecture must be defined for installable nodes."})
+
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)
         self.clean_status()
+        self.clean_architecture()
 
     def display_status(self):
         """Return status text as displayed to the user."""

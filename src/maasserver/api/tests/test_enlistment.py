@@ -347,7 +347,62 @@ class EnlistmentAPITest(MultipleUsersScenarios,
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
         self.assertIn('application/json', response['Content-Type'])
-        self.assertItemsEqual(['architecture'], parsed_result)
+        self.assertItemsEqual(
+            ['architecture'], parsed_result, response.content)
+
+    def test_POST_rejects_empty_architecture_if_implicitely_installable(self):
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'autodetect_nodegroup': '1',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            {"architecture":
+                ["Architecture must be defined for installable nodes."]},
+            parsed_result, response.content)
+
+    def test_POST_rejects_empty_architecture_if_explicitely_installable(self):
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'autodetect_nodegroup': '1',
+                'hostname': 'diane',
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'installable': True,
+            })
+
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
+        self.assertIn('application/json', response['Content-Type'])
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            {"architecture":
+                ["Architecture must be defined for installable nodes."]},
+            parsed_result, response.content)
+
+    def test_POST_accepts_empty_architecture_if_non_installable(self):
+        hostname = factory.make_name('hostname')
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'autodetect_nodegroup': '1',
+                'hostname': hostname,
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'installable': False,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code, response.content)
+        [host] = Node.objects.filter(hostname=hostname)
+        self.assertEqual('', host.architecture)
 
 
 class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
@@ -526,6 +581,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
+                'installable',
                 'status',
                 'osystem',
                 'distro_series',
@@ -622,6 +678,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
+                'installable',
                 'status',
                 'substatus',
                 'osystem',
@@ -773,6 +830,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
+                'installable',
                 'status',
                 'substatus',
                 'osystem',

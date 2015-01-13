@@ -32,7 +32,6 @@ from maasserver.enum import (
 from maasserver.forms import (
     AdminNodeForm,
     BLANK_CHOICE,
-    NO_ARCHITECTURES_AVAILABLE,
     NodeForm,
     pick_default_architecture,
     )
@@ -65,6 +64,7 @@ class TestNodeForm(MAASServerTestCase):
             [
                 'hostname',
                 'architecture',
+                'installable',
                 'osystem',
                 'distro_series',
                 'license_key',
@@ -118,14 +118,6 @@ class TestNodeForm(MAASServerTestCase):
         self.assertEqual(
             [BLANK_CHOICE],
             form.fields['architecture'].choices)
-
-    def test_adds_error_when_no_arches_available(self):
-        patch_usable_architectures(self, [])
-        form = NodeForm()
-        self.assertFalse(form.is_valid())
-        self.assertEqual(
-            [NO_ARCHITECTURES_AVAILABLE],
-            form.errors['architecture'])
 
     def test_accepts_osystem(self):
         self.client_log_in()
@@ -488,6 +480,7 @@ class TestAdminNodeForm(MAASServerTestCase):
             [
                 'hostname',
                 'architecture',
+                'installable',
                 'osystem',
                 'distro_series',
                 'license_key',

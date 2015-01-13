@@ -68,6 +68,7 @@ from django.core.exceptions import ValidationError
 from django.db import connection
 from django.db.utils import IntegrityError
 from django.forms import (
+    CheckboxInput,
     Form,
     MultipleChoiceField,
     )
@@ -343,6 +344,22 @@ def contains_managed_ipv6_interface(interfaces):
         )
 
 
+class CheckboxInputTrueDefault(CheckboxInput):
+    """A CheckboxInput widget with 'True' as its default value.
+
+    The default CheckboxInput assumes its default is 'False'.  This isn't
+    a problem when the widget is used in the UI because the underlying model's
+    "default" can override this but since we're using this widget to handle
+    API's requests as well, we need to work around this limitation.
+    """
+    def value_from_datadict(self, data, files, name):
+        if name not in data:
+            return True
+        else:
+            return super(CheckboxInput, self).value_from_datadict(
+                data, files, name)
+
+
 class NodeForm(MAASModelForm):
 
     def __init__(self, request=None, *args, **kwargs):
@@ -417,7 +434,7 @@ class NodeForm(MAASModelForm):
         invalid_arch_message = compose_invalid_choice_text(
             'architecture', choices)
         self.fields['architecture'] = forms.ChoiceField(
-            choices=choices, required=True, initial=default_arch,
+            choices=choices, required=False, initial=default_arch,
             error_messages={'invalid_choice': invalid_arch_message})
 
     def set_up_osystem_and_distro_series_fields(self, instance):
@@ -478,6 +495,16 @@ class NodeForm(MAASModelForm):
 
         return new_hostname
 
+    def clean_installable(self):
+        data = self.submitted_data
+        if 'ui_submission' in data and 'installable' not in data:
+            # In the UI, where all fields are submitted except checkboxes in
+            # the "off" state, a missing boolean field means False.
+            # (In the API, as enforced by MAASModelForm, a missing boolean
+            # field means "unchanged").
+            self.cleaned_data['installable'] = False
+        return self.cleaned_data['installable']
+
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
 
@@ -508,10 +535,22 @@ class NodeForm(MAASModelForm):
 
     def is_valid(self):
         is_valid = super(NodeForm, self).is_valid()
-        if len(list_all_usable_architectures()) == 0:
-            set_form_error(
-                self, "architecture", NO_ARCHITECTURES_AVAILABLE)
-            is_valid = False
+        if not is_valid:
+            return False
+        installable = self.cleaned_data.get('installable')
+        architecture = self.cleaned_data.get('architecture', '')
+        if installable:
+            # If the node is installable, its architecture must be defined.
+            if not architecture:
+                set_form_error(
+                    self, "architecture",
+                    "Architecture must be defined for installable nodes.")
+                is_valid = False
+            else:
+                if len(list_all_usable_architectures()) == 0:
+                    set_form_error(
+                        self, "architecture", NO_ARCHITECTURES_AVAILABLE)
+                    is_valid = False
         return is_valid
 
     def clean_license_key(self):
@@ -594,6 +633,9 @@ class NodeForm(MAASModelForm):
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
 
+    installable = forms.BooleanField(
+        required=False, initial=True, widget=CheckboxInputTrueDefault())
+
     class Meta:
         model = Node
 
@@ -602,6 +644,7 @@ class NodeForm(MAASModelForm):
         fields = (
             'hostname',
             'architecture',
+            'installable',
             'osystem',
             'distro_series',
             'license_key',

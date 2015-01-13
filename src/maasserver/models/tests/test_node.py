@@ -108,6 +108,7 @@ from provisioningserver.utils.enum import map_enum
 from testtools.matchers import (
     Equals,
     Is,
+    IsInstance,
     MatchesStructure,
     Not,
     )
@@ -235,13 +236,19 @@ def make_active_lease(nodegroup=None):
 class NodeTest(MAASServerTestCase):
 
     def test_system_id(self):
-        """
-        The generated system_id looks good.
-
-        """
+        # The generated system_id looks good.
         node = factory.make_Node()
         self.assertEqual(len(node.system_id), 41)
         self.assertTrue(node.system_id.startswith('node-'))
+
+    def test_empty_architecture_rejected_for_installable_nodes(self):
+        self.assertRaises(
+            ValidationError,
+            factory.make_Node, installable=True, architecture='')
+
+    def test_empty_architecture_accepted_for_non_installable_nodes(self):
+        node = factory.make_Node(installable=False, architecture='')
+        self.assertThat(node, IsInstance(Node))
 
     def test_hostname_is_validated(self):
         bad_hostname = '-_?!@*-'

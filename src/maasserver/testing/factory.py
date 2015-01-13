@@ -213,7 +213,7 @@ class Factory(maastesting.factory.Factory):
             NODE_TRANSITIONS[None] = valid_initial_states
 
     def make_Node(self, mac=False, hostname=None, status=None,
-                  architecture="i386/generic", updated=None,
+                  architecture="i386/generic", installable=True, updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
                   power_state=None, disable_ipv4=None, **kwargs):
@@ -246,8 +246,8 @@ class Factory(maastesting.factory.Factory):
             disable_ipv4 = self.pick_bool()
         node = Node(
             hostname=hostname, status=status, architecture=architecture,
-            nodegroup=nodegroup, routers=routers, zone=zone,
-            power_type=power_type, disable_ipv4=disable_ipv4,
+            installable=installable, nodegroup=nodegroup, routers=routers,
+            zone=zone, power_type=power_type, disable_ipv4=disable_ipv4,
             power_state=power_state,
             **kwargs)
         self._save_node_unchecked(node)

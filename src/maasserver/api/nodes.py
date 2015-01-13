@@ -90,6 +90,7 @@ DISPLAYED_NODE_FIELDS = (
     'owner',
     ('macaddress_set', ('mac_address',)),
     'architecture',
+    'installable',
     'cpu_count',
     'memory',
     'storage',
@@ -682,6 +683,25 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         and re-install its operating system.  In anonymous enlistment and when
         the enlistment is done by a non-admin, the node is held in the
         "New" state for approval by a MAAS admin.
+
+        The minimum data required is:
+        architecture=<arch string> (e.g. "i386/generic")
+        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        for installable nodes or
+        installable=False
+        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        for non-installable nodes.
+
+        :param architecture: A string containing the architecture type of
+            the node.  Can be empty where creating non-installable nodes.
+        :param installable: Whether or not this node can be installable. A
+            installable node is a full fledged node MAAS controls.  A
+            non-installable node is a node for which MAAS only manages
+            DHCP and DNS records (defaults to True).
+        :param mac_addresses: One or more MAC addresses for the node.
+        :param hostname: A hostname. If not given, one will be generated.
+        :param power_type: A power management type, if applicable (e.g.
+            "virsh", "ipmi").
         """
         # XXX 2014-02-11 bug=1278685
         # There's no documentation here on what parameters can be passed!
@@ -732,12 +752,21 @@ class NodesHandler(OperationsHandler):
 
         When a node has been added to MAAS by an admin MAAS user, it is
         ready for allocation to services running on the MAAS.
+
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        for installable nodes or
+        installable=False
+        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
+        for non-installable nodes.
 
         :param architecture: A string containing the architecture type of
-            the node.
+            the node.  Can be empty where creating non-installable nodes.
+        :param installable: Whether or not this node can be installable. A
+            installable node is a full fledged node MAAS controls.  A
+            non-installable node is a node for which MAAS only manages
+            DHCP and DNS records (defaults to True).
         :param mac_addresses: One or more MAC addresses for the node.
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
