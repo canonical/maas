@@ -923,6 +923,48 @@ class NodeViewsTest(MAASServerTestCase):
         self.expectThat(json_obj['events']['total'], Equals(0))
         self.expectThat(json_obj['events']['count'], Equals(0))
 
+    def test_view_node_hides_storage_section_if_no_physical_devices(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        node_link = reverse('node-view', args=[node.system_id])
+
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        self.assertItemsEqual([], doc.cssselect('#storage'))
+
+    def test_view_node_lists_physical_devices(self):
+        self.client_log_in()
+        node = factory.make_Node(owner=self.logged_in_user)
+        devices = [
+            factory.make_PhysicalBlockDevice(node=node)
+            for _ in range(3)
+            ]
+        expected_data = [
+            [
+                device.name,
+                device.path,
+                device.display_size(),
+                device.model,
+                device.serial,
+                ', '.join(device.tags)
+            ]
+            for device in devices
+            ]
+
+        node_link = reverse('node-view', args=[node.system_id])
+        response = self.client.get(node_link)
+        self.assertEqual(httplib.OK, response.status_code)
+
+        doc = fromstring(response.content)
+        table_rows = doc.cssselect('#storage > table > tbody > tr')
+        rows_data = [
+            [col.text.strip() for col in rows.findall('td')]
+            for rows in table_rows
+            ]
+        self.assertItemsEqual(expected_data, rows_data)
+
     def test_admin_can_delete_nodes(self):
         self.client_log_in(as_admin=True)
         node = factory.make_Node()

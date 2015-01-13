@@ -55,6 +55,7 @@ class BlockDevice(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         """Needed for South to recognize this model."""
         unique_together = ("node", "path")
+        ordering = ["id"]
 
     objects = BlockDeviceManager()
 

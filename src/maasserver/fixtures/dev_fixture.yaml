@@ -255,3 +255,35 @@
     script_result: 0
   model: metadataserver.noderesult
   pk: 8
+- fields:
+    created: 2015-01-09
+    updated: 2015-01-09
+    node: 15
+    name: sda
+    path: /dev/sda
+    size: 250059350016
+    block_size: 4096
+    tags: ['ssd', 'sata']
+  model: maasserver.blockdevice
+  pk: 1
+- fields:
+    blockdevice_ptr: 1
+    model: Samsung_SSD_850_EVO_250GB
+    serial: S21NNSAFC38075L
+  model: maasserver.physicalblockdevice
+- fields:
+    created: 2015-01-09
+    updated: 2015-01-09
+    node: 15
+    name: sdb
+    path: /dev/sdb
+    size: 500059350016
+    block_size: 4096
+    tags: ['ssd', 'sata']
+  model: maasserver.blockdevice
+  pk: 2
+- fields:
+    blockdevice_ptr: 2
+    model: Samsung_SSD_850_EVO_500GB
+    serial: S21NNSAFC38076L
+  model: maasserver.physicalblockdevice

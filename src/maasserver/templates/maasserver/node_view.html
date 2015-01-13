@@ -234,6 +234,37 @@
         </li>
         {% endif %}
         {% endif %}
+        {% with physicalblockdevices=node.physicalblockdevice_set %}
+        {% if physicalblockdevices|length %}
+        <li class="block first separate" id="storage">
+            <h2>Storage</h2>
+            <table class="list">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Path</th>
+                        <th>Size</th>
+                        <th>Model</th>
+                        <th>Serial</th>
+                        <th>Tags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in physicalblockdevices %}
+                    <tr class="{% cycle 'even' 'odd' %}">
+                        <td>{{device.name}}</td>
+                        <td>{{device.path}}</td>
+                        <td>{{device.display_size}}</td>
+                        <td>{{device.model}}</td>
+                        <td>{{device.serial}}</td>
+                        <td>{{device.tags|join:", "}}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </li>
+        {% endif %}
+        {% endwith %}
         <li class="block first separate" id="node-events">
             <h2>Latest node events</h2>
             <div id="node_event_list">
