@@ -389,7 +389,7 @@
 
 
 	.row, #context-footer  { /** Clear entire row. */
-		@include rounded_corners(0);
+		@include rounded-corners(0);
 		margin: 0;
 		padding: 40px 40px 20px;
 	}
@@ -414,7 +414,7 @@
 
 	/* inner grid */
 	.container {
-		@include box_sizing;
+		@include box-sizing;
 		margin: $gutter_width $gutter_width 0;
 		width: 100%;
 	}

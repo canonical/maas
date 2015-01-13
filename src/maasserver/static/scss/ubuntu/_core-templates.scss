@@ -7,7 +7,7 @@
  * Ubuntu Super Patterns Stylesheet
  *
  * Contains audience related themes for site-wide application
- * 
+ *
  * @project		Ubuntu Patterns
  * @author		Web Team at Canonical Ltd
  * @copyright	2012 Canonical Ltd
@@ -16,7 +16,7 @@
 
 /**
  * Audience specific
- * 
+ *
  * @section audience
  */
 
@@ -25,39 +25,39 @@
 .voice-canonical { }
 .voice-community.voice-canonical { }
 
-/* 
- * Consumer 
+/*
+ * Consumer
  */
 
 .audience-consumer{
-  color: $cool_grey;
-  
+  color: $cool-grey;
+
   .row-box, .main-content {
-    color: $cool_grey;
-  } 
-  
+    color: $cool-grey;
+  }
+
   .inner-wrapper {
     background: #fff;
   }
-  
+
   .quote-right-top {
     padding: 60px 60px 0 40px;
     background: url("/sites/ubuntu/latest/u/img/patterns/quote-orange-br-287x287.png") no-repeat;
-    height: 287px; 
+    height: 287px;
     position: absolute;
-    right:  -($gutter_width * 2);
+    right:  -($gutter-width * 2);
     text-align: left;
-    top: -($gutter_width * 4.5);
-    width: $four_col;
-    
+    top: -($gutter-width * 4.5);
+    width: $four-col;
+
     p {
-      @include font_size (16);
+      @include font-size (16);
       margin: (1.538em / 2);
       padding-bottom: 0;
       color: #fff;
-      
+
       cite {
-        @include font_size (12);
+        @include font-size (12);
         color: #fff;
         padding: 0;
       }
@@ -66,18 +66,18 @@
   .quote-right-top p a,
   .quote-right p a { color: #fff; }
   .quote-right {
-    @include font_size (18);
+    @include font-size (18);
     color: #fff;
     padding: 50px 100px 0 50px;
     text-indent: -6px;
     background: url("/sites/ubuntu/latest/u/img/patterns/quote-orange-bl-287x287.png") no-repeat;
-    min-height: 287px; 
+    min-height: 287px;
     position: absolute;
-    right:  -$gutter_width;
+    right:  -$gutter-width;
     text-align: left;
-    top: -($gutter_width * 4.5);
-    width: $four_col -(150/$base)em;
-    
+    top: -($gutter-width * 4.5);
+    width: $four-col -(150/$base)em;
+
     cite {
       font-style: normal;
       margin-left: 6px;
@@ -85,13 +85,13 @@
   }
   .quote-right-alt {
     background: url(/sites/ubuntu/latest/u/img/patterns/quote-white-br-360x360.png) 0 -100px no-repeat;
-    color: $ubuntu_orange;
+    color: $ubuntu-orange;
     padding: 50px 50px 0 50px;
   }
   .quote-right-right { background: url("/sites/ubuntu/latest/u/img/patterns/quote-orange-br-287x287.png") no-repeat; }
 }
 
-/* 
+/*
  * Enterprise
  */
 
@@ -99,30 +99,30 @@
 
   h1 { margin: 0 0 18px 0; }
   td{ background: #fff; }
-  
+
   th, td {
     padding: 6px 10px;
     background: #fff;
   }
   th[scope="col"] {
     background: #E2D4DC;
-    color: $canonical_aubergine;
+    color: $canonical-aubergine;
   }
   tbody th[rowspan] { background: #F7F2F6; }
   tfoot th[rowspan] { background: #dfdcd9; }
   tfoot td, tfoot th {
     font-weight: normal;
-    background: #dfdcd9;   
+    background: #dfdcd9;
   }
   .inner-wrapper {
-    background: $dark_aubergine;
+    background: $dark-aubergine;
 	  color: #fff;
 	}
 	.row-box {
     background: #fff;
-    color: $cool_grey;
+    color: $cool-grey;
   }
-  /*.row-quote { 
+  /*.row-quote {
     background: none repeat scroll 0 0 #E2D4DC;
     color: #772953;
     margin-left: -1.125em;
@@ -143,7 +143,7 @@
     text-indent: -12px;
   }
   .row-quote blockquote cite {
-    @include font_size (12);
+    @include font-size (12);
     color: #656565;
     font-style: normal;
     margin-left: 12px;
@@ -152,32 +152,32 @@
 }
 
 .row-enterprise {
-  background: $canonical_aubergine;
+  background: $canonical-aubergine;
   color:#fff;
-  @include rounded_corners(0);
-  
+  @include rounded-corners(0);
+
   .box, div {
-    background: $canonical_aubergine;
+    background: $canonical-aubergine;
     color:#fff;
   }
   a {
-    color:#fff; 
+    color:#fff;
   }
 }
 /*
 .audience-consumer.audience-enterprise{
-  
+
   .inner-wrapper {
-    background: $mid_aubergine;
+    background: $mid-aubergine;
     color: #fff;
   }
-  
+
   .row-box,
   .main-content {
     background: #fff;
-    color: $cool_grey;
+    color: $cool-grey;
   }
-  
+
 }
 */
 

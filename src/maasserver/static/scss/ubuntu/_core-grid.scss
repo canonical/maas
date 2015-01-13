@@ -52,7 +52,7 @@ body {
 }
 
 .one-col, .two-col, .three-col, .four-col, .five-col, .six-col, .seven-col, .eight-col, .nine-col, .ten-col, .eleven-col, .twelve-col, .col {
-	@include box_sizing;
+	@include box-sizing;
 	clear: none;
 	display: inline-block;
 	float: none;

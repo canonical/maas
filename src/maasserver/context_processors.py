@@ -34,6 +34,7 @@ def yui(context):
 def static_resources(context):
     return {
         'CSS_LIST': [
+            'css/maas-styles.css',
             'css/base.css',
             'css/typography.css',
             'css/forms.css',

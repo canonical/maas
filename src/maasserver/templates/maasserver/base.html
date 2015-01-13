@@ -1,17 +1,25 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<!DOCTYPE html>
+<html class="no-js" lang="en">
 <head>
-    <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-    <meta http-equiv="Content-Language" content="en-us" />
+    <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
 
-    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico"/>
+    <meta charset="UTF-8" />
+    <meta name="description" content="{% block meta_description %}{% endblock %}" />
+    <meta name="keywords" content="{% block meta_keywords %}{% endblock %}" />
+    <meta name="author" content="Canonical" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!--[if IE]>
+        <meta http-equiv="X-UA-Compatible" content="IE=8">
+    <![endif]-->
+
+    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico" type="image/x-icon" />
 
     {% block pre_head %}
     {% endblock %}
 
+    <!-- stylesheets -->
     <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
-
-    <title>{% block title %}{% endblock %} | {% include "maasserver/site_title.html" %}</title>
 
     {% block js-conf %}
         {% include "maasserver/js-conf.html" %}
@@ -21,113 +29,115 @@
     {% endblock %}
 
     {% if user.is_authenticated %}
-    <script type="text/javascript">
-    <!--
-    YUI().use('maas.user_panel', function (Y) {
-        Y.on('load', function() {
-            var panel = Y.maas.user_panel.createUserPanelWidget()
-            Y.one('#user-options-link').on('click', Y.maas.user_panel.showUserPanelWidget);
+        <script type="text/javascript">
+        <!--
+        YUI().use('maas.user_panel', function(Y) {
+            Y.on('load', function() {
+                var panel = Y.maas.user_panel.createUserPanelWidget()
+                Y.one('#user-options-link').on('click', Y.maas.user_panel.showUserPanelWidget);
+            });
         });
-    });
-    // -->
-    </script>
+        // -->
+        </script>
     {% endif %}
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
-    {% block html_includes %}
-    {% endblock %}
-    <div id="header">
-        <div class="center-page-wrapper">
-            <div class="center-page-content">
-                {% if user.is_authenticated %}
-                <ul id="right-nav" class="nav">
-                    <li id="user-link">
-                        <a href="#" id="user-options-link">{{ user.username }}<img src="{{ STATIC_URL }}img/down_arrow_light.png" alt="Options arrow" /></a>
-                        <ul id="user-options" class="nav hidden">
-                            <li>
-                                <a href="{% url 'prefs' %}">Account</a>
-                            </li>
-                            <li>
-                                <a href="{% url 'logout' %}">Logout</a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
-                {% endif %}
-                <ul id="main-nav" class="nav">
-                    <li class="icon {% block nav-active-index %}{% endblock %}">
-                        <a href="{% url 'index' %}">
-                            <img src="{{ STATIC_URL }}img/logo.png" alt="MAAS home" />
-                        </a>
-                    </li>
-                    {% if user.is_authenticated %}
-                    <li class="{% block nav-active-node-list %}{% endblock %}">
-                        <a href="{% url 'node-list' %}">Nodes</a>
-                    </li>
-                    {% if user.is_superuser %}
-                    <li class="{% block nav-active-cluster-list %}{% endblock %}">
-                        <a href="{% url 'cluster-list' %}">Clusters</a>
-                    </li>
-                    {% endif %}
-                    <li class="{% block nav-active-images %}{% endblock %}">
-                        <a href="{% url 'images' %}">Images</a>
-                    </li>
-                    <li class="{% block nav-active-zone-list %}{% endblock %}">
-                        <a href="{% url 'zone-list' %}">Zones</a>
-                    </li>
-                    <li class="{% block nav-active-network-list %}{% endblock %}">
-                        <a href="{% url 'network-list' %}">Networks</a>
-                    </li>
-                    {% if user.is_superuser %}
-                    <li class="{% block nav-active-settings %}{% endblock %}">
-                        <a href="{% url 'settings' %}">Settings</a>
-                    </li>
-                    {% endif %}
-                    {% endif %}
-                </ul>
-                <div class="clear"></div>
+    {% block html_includes %}{% endblock %}
+    <header class="banner global" role="banner">
+        <nav role="navigation" class="nav-primary nav-right">
+            <div class="logo">
+                <a class="logo-ubuntu" href="{% url 'index' %}">
+                    <img width="110" height"10" src="{{ STATIC_URL }}img/logo.svg" alt="MAAS" />
+                </a>
             </div>
-        </div>
-    </div>
-    <div id="body">
-        <div class="center-page-wrapper">
-            <div class="center-page-content">
+            <ul id="main-nav" class="nav">
                 {% if user.is_authenticated %}
-                <ul id="flash-messages">
-                    {% for persistent_error in persistent_errors %}
-                    <li class="warning">{{ persistent_error }}</li>
-                    {% endfor %}
-                    {% if messages %}
-                        {% for message in messages %}
-                        <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-                        {% endfor %}
-                    {% endif %}
-                </ul>
+                <li class="{% block nav-active-node-list %}{% endblock %}">
+                    <a href="{% url 'node-list' %}">Nodes</a>
+                </li>
+                {% if user.is_superuser %}
+                <li class="{% block nav-active-cluster-list %}{% endblock %}">
+                    <a href="{% url 'cluster-list' %}">Clusters</a>
+                </li>
                 {% endif %}
-                {% block page-title-block %}
-                <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+                <li class="{% block nav-active-images %}{% endblock %}">
+                    <a href="{% url 'images' %}">Images</a>
+                </li>
+                <li class="{% block nav-active-zone-list %}{% endblock %}">
+                    <a href="{% url 'zone-list' %}">Zones</a>
+                </li>
+                <li class="{% block nav-active-network-list %}{% endblock %}">
+                    <a href="{% url 'network-list' %}">Networks</a>
+                </li>
+                {% if user.is_superuser %}
+                <li class="{% block nav-active-settings %}{% endblock %}">
+                    <a href="{% url 'settings' %}">Settings</a>
+                </li>
+                {% endif %}
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <ul id="right-nav" class="nav user-nav">
+                <li id="user-link">
+                    <a href="#" id="user-options-link">
+                        <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
+                        <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
+                        {{ user.username }}
+                    </a>
+                    <ul id="user-options" class="nav hidden">
+                        <li>
+                            <a href="{% url 'prefs' %}">Account</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'logout' %}">Logout</a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+            {% endif %}
+        </nav>
+    </header>
+    <main id="body" class="wrapper">
+        {% if user.is_authenticated %}
+        <ul id="flash-messages">
+            {% for persistent_error in persistent_errors %}
+            <li class="warning">{{ persistent_error }}</li>
+            {% endfor %}
+            {% if messages %}
+                {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+                {% endfor %}
+            {% endif %}
+        </ul>
+        {% endif %}
+        {% block page-title-block %}
+        <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+        {% endblock %}
+        <div id="content">
+            <div id="sidebar">
+                {% block sidebar %}
                 {% endblock %}
-                <div id="content">
-                    <div id="sidebar">
-                        {% block sidebar %}{% endblock %}
-                    </div>
-                    {% block content %}{% endblock %}
-                    <div class="clear"></div>
+            </div>
+            {% block content %}
+            {% endblock %}
+            <div class="clear"></div>
+        </div>
+    </main>
+    <div class="footer-wrapper">
+        <footer class="global clearfix">
+            <div class="legal clearfix">
+                <div class="legal-inner">
+                    <p class="twelve-col">
+                        {% block footer-copyright %}
+                        &copy; 2014 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd. <a class="space-left-small" href="https://maas.ubuntu.com/documentation/" target="_blank">View Documentation</a>
+                        {% endblock %}
+                    </p>
+                    <span class="accessibility-aid">
+                        <a href="#">Got to the top of the page</a>
+                    </span>
                 </div>
             </div>
-        </div>
-    </div>
-    <div id="footer">
-        <div class="center-page-wrapper">
-            <div class="center-page-content">
-                <img src="{{ STATIC_URL }}img/ubuntu_logo_footer.png" alt="Ubuntu" />
-                {% block footer-copyright %}
-                <p>&copy; 2014 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.
-                <a class="space-left-small" href="https://maas.ubuntu.com/documentation/" target="_blank">View Documentation</a></p>
-                {% endblock %}
-                <div class="clear"></div>
-            </div>
-        </div>
+        </footer>
     </div>
 </body>
 </html>

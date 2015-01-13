@@ -4,24 +4,24 @@
  * @section mixins
  */
 
-@mixin font_size ($size: 16) {
-  font-size: ($size / $base)em;
-  margin-bottom: (12 / $size)em;
+@mixin font-size ($size: 16) {
+  font-size: ($size / $base)+em;
+  margin-bottom: (12 / $size)+em;
 }
 
-@mixin box_sizing ($type: border-box) {
+@mixin box-sizing ($type: border-box) {
 	-webkit-box-sizing: $type;
 	-moz-box-sizing:    $type;
 	box-sizing:         $type;
 }
 
-@mixin rounded_corners($radius: 4px 4px 4px 4px) {
+@mixin rounded-corners($radius: 4px 4px 4px 4px) {
   -webkit-border-radius: $radius;
   -moz-border-radius: $radius;
   border-radius: $radius;
 }
 
-@mixin box_shadow($shadow: 0 2px 2px 0 #c2c2c2) {
+@mixin box-shadow($shadow...) {
   -moz-box-shadow: $shadow;
   -webkit-box-shadow: $shadow;
   box-shadow: $shadow;
@@ -36,9 +36,9 @@
 }
 
 @mixin footer($background) {
-  padding: $gutter_width $two_col $gutter_width $four_col;
+  padding: $gutter-width $two-col $gutter-width $four-col;
   margin-bottom: 0;
-  background: url($background) no-repeat scroll $one_col center #F7F7F7;
+  background: url($background) no-repeat scroll $one-col center #F7F7F7;
 }
 
 @mixin clearfix() {
@@ -64,9 +64,20 @@
   column-gap: ($gap / $base)em;
 }
 
-@mixin background_size($size: 100% 100%) {
+// background-size
+@mixin background-size($size: 100% 100%) {
   -moz-background-size: $size;
   -webkit-background-size: $size;
   -o-background-size: $size;
   background-size: $size;
 }
+
+// transitions
+@mixin transition($properties: all, $duration: .5s, $method: ease-out) {
+    -webkit-transition: $properties $duration $method;
+    -moz-transition: $properties $duration $method;
+    -ms-transition: $properties $duration $method;
+    -o-transition: $properties $duration $method;
+    transition: $properties $duration $method;
+}
+// usage: @include transition(all, 0.3s, ease-in-out);

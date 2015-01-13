@@ -1,15 +1,15 @@
-{% extends "maasserver/base.html" %} 
+{% extends "maasserver/base.html" %}
 
-{% block nav-active-node-list %}active{% endblock %} 
-{% block title %}Node: {{ node.fqdn }}{% endblock %} 
-{% block page-title %}Node: {{ node.fqdn }}{% endblock %} 
-{% block layout-modifiers %}sidebar{% endblock %} 
+{% block nav-active-node-list %}active{% endblock %}
+{% block title %}Node: {{ node.fqdn }}{% endblock %}
+{% block page-title %}Node: {{ node.fqdn }}{% endblock %}
+{% block layout-modifiers %}sidebar{% endblock %}
 
-{% block head %} 
-{# Add expander icon to LLDP expander's button URL. #} 
-{# Done as CSS classes, not by DOM manipulation, because: #} 
-{# 1. The icon must be part of the clickable link. #} 
-{# 2. Browsers pre-load CSS backgrounds, avoiding a glitch on first use. #} 
+{% block head %}
+{# Add expander icon to LLDP expander's button URL. #}
+{# Done as CSS classes, not by DOM manipulation, because: #}
+{# 1. The icon must be part of the clickable link. #}
+{# 2. Browsers pre-load CSS backgrounds, avoiding a glitch on first use. #}
 {# 3. It's easy. #}
 <style type="text/css">
 #lldp-trigger.expander-shown {
@@ -31,7 +31,7 @@
         Y.on('domready', function() {
           var details_selector = '#details-output';
           if (Y.one(details_selector)) {
-            {# Set up a Reveal widget for the probed details output. #}
+            // Set up a Reveal widget for the probed details output. #}
             var trigger = Y.one('#details-trigger');
             var expander = new Y.maas.reveal.Reveal({
               targetNode: Y.one(details_selector),
@@ -39,7 +39,7 @@
               showText: show_text,
               hideText: hide_text
             });
-            {# Update the widget expander icon. #}
+            // Update the widget expander icon. #}
             expander.on('revealing', function() {
               trigger.replaceClass(hidden_class, shown_class);
               expander.get('targetNode').setStyle('overflow', '');
@@ -54,7 +54,7 @@
             expander.on('revealed', function() {
               expander.get('targetNode').setStyle('overflow', 'inherit');
             });
-            {# The widget renders in its hidden state. #}
+            // The widget renders in its hidden state. #}
             expander.render();
           }
         });
@@ -87,11 +87,11 @@
       });
     // -->
   </script>
-{% endblock %} 
+{% endblock %}
 
-{% block sidebar %} 
-    {% include "maasserver/node_actions.html" %} 
-{% endblock %} 
+{% block sidebar %}
+    {% include "maasserver/node_actions.html" %}
+{% endblock %}
 
 {% block content %}
 <style type="text/css">
@@ -147,7 +147,7 @@
                 {% endif %}
             </span>
         </li>
-        {% with ip_addresses=node.ip_addresses %} 
+        {% with ip_addresses=node.ip_addresses %}
         {% if ip_addresses|length %}
         <li class="block size3" id="ip-addresses">
             <h4>IP addresses
@@ -161,8 +161,8 @@
             {% endfor %}
             </span>
         </li>
-        {% endif %} 
-        {% endwith %} 
+        {% endif %}
+        {% endwith %}
         {% if kernel_opts.value %}
         <li class="block size10 first">
             <h4>Kernel Parameters
@@ -174,19 +174,19 @@
             </h4>
             <span id="node_kernel_opts">{{ kernel_opts.value }}</span>
         </li>
-        {% endif %} 
+        {% endif %}
         {% if third_party_drivers_enabled and drivers %}
         <li class="block size10 first">
             <h4>Third Party Drivers</h4>
             <span id="third_party_drivers">{{ drivers.module }} ({{ drivers.comment }})</span>
         </li>
-        {% endif %} 
+        {% endif %}
         {% if error_text %}
         <li class="block first">
             <h4>Error output</h4>
             <span>{{ error_text }}</span>
         </li>
-        {% endif %} 
+        {% endif %}
         {% if status_text %}
         <li class="block first">
             <h4>Console output</h4>
@@ -210,18 +210,18 @@
             <h4>Switch MAC addresses</h4>
             <span>{{ node.routers|join:", " }}</span>
         </li>
-        {% endif %} 
-        {% if can_edit %} 
+        {% endif %}
+        {% if can_edit %}
         {% if nodeinstallresults != None %}
         <li class="block first size5 separate" id="nodeinstallresults">
-            <h4>Installation output</h4> 
+            <h4>Installation output</h4>
             {% for install_result in nodeinstallresults %}
             <span>
                 <a href="{% url 'nodeinstallresult-view' install_result.id %}">{{ install_result.name }}</a>
             </span>
             {% endfor %}
         </li>
-        {% endif %} 
+        {% endif %}
         {% if nodecommissionresults > 0 %}
         <li class="block first size5 separate" id="nodecommissionresults">
             <h4>Commissioning output</h4>
@@ -248,9 +248,10 @@
 <div id="content-discovery-data">
     <ul class="data-list">
         <li class="block first separate">
-            <h2 class="first size6">Discovery data</h2> {# Button link for the Reveal widget that shows/hides LLDP output. #}
+            <h2 class="first size6">Discovery data</h2>
+            <!-- Button link for the Reveal widget that shows/hides LLDP output. -->
             <a class="last size6 align-right space-top" href="#" id="details-trigger"></a>
-            {# Content div for the probed details output. #}
+            <!-- Content div for the probed details output. -->
         </li>
         <li class="block first pad-top-small">
             <div class="row first" id="details-output">
@@ -272,5 +273,5 @@
         </li>
     </ul>
 </div>
-{% endif %} 
+{% endif %}
 {% endblock %}
