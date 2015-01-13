@@ -30,6 +30,7 @@ from provisioningserver.dhcp import control
 from provisioningserver.dhcp.config import get_config
 from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.path import get_path
 from provisioningserver.rpc.exceptions import (
     CannotConfigureDHCP,
     CannotCreateHostMap,
@@ -162,8 +163,8 @@ class DHCPv4Server(DHCPServer):
 
     descriptive_name = "DHCPv4"
     template_basename = 'dhcpd.conf.template'
-    interfaces_filename = DHCPv4_INTERFACES_FILE
-    config_filename = DHCPv4_CONFIG_FILE
+    interfaces_filename = get_path(DHCPv4_INTERFACES_FILE)
+    config_filename = get_path(DHCPv4_CONFIG_FILE)
 
     def stop(self):
         """Stop the DHCPv4 server."""
@@ -182,8 +183,8 @@ class DHCPv6Server(DHCPServer):
 
     descriptive_name = "DHCPv6"
     template_basename = 'dhcpd6.conf.template'
-    interfaces_filename = DHCPv6_INTERFACES_FILE
-    config_filename = DHCPv6_CONFIG_FILE
+    interfaces_filename = get_path(DHCPv6_INTERFACES_FILE)
+    config_filename = get_path(DHCPv6_CONFIG_FILE)
 
     def stop(self):
         """Stop the DHCPv6 server."""

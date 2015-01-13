@@ -56,6 +56,8 @@ from provisioningserver.utils import (
     Safe,
     ShellTemplate,
     write_custom_config_section,
+    in_develop_mode,
+    sudo,
     )
 from testtools.matchers import (
     DirExists,
@@ -650,3 +652,26 @@ class TestFlatten(MAASTestCase):
 
     def test__takes_star_args(self):
         self.assertItemsEqual("abcdef", flatten("a", "b", "c", "d", "e", "f"))
+
+
+class TestInDebugMode(MAASTestCase):
+
+    def test_in_develop_mode_returns_False(self):
+        self.assertFalse(in_develop_mode())
+
+    def test_in_develop_mode_returns_True(self):
+        self.patch(provisioningserver.utils.os, 'getenv').return_value = "TRUE"
+        self.assertTrue(in_develop_mode())
+
+
+class TestSudo(MAASTestCase):
+
+    def test_returns_same_command_when_in_develop_mode(self):
+        cmd = [factory.make_name('cmd') for _ in range(3)]
+        self.patch(
+            provisioningserver.utils, 'in_develop_mode').return_value = True
+        self.assertEquals(cmd, sudo(cmd))
+
+    def test_returns_command_with_sudo_prepended_not_in_develop_mode(self):
+        cmd = [factory.make_name('cmd') for _ in range(3)]
+        self.assertEquals(['sudo', '-n'] + cmd, sudo(cmd))

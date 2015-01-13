@@ -24,6 +24,8 @@ __all__ = [
     "ShellTemplate",
     "warn_deprecated",
     "write_custom_config_section",
+    "in_develop_mode",
+    "sudo",
     ]
 
 from collections import Iterable
@@ -459,3 +461,22 @@ def flatten(*things):
             return iter((things,))
 
     return _flatten(things)
+
+
+def is_true(value):
+    if value is None:
+        return False
+    return value.lower() in ("yes", "true", "t", "1")
+
+
+def in_develop_mode():
+    """Return True if `MAAS_CLUSTER_DEVELOP` environment variable is true."""
+    return is_true(os.getenv('MAAS_CLUSTER_DEVELOP', None))
+
+
+def sudo(command_args):
+    """Wrap the command arguments in a sudo command, if not in debug mode."""
+    if in_develop_mode():
+        return command_args
+    else:
+        return ['sudo', '-n'] + command_args

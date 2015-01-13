@@ -34,6 +34,7 @@ from mock import (
 from provisioningserver.dhcp import control
 from provisioningserver.dhcp.omshell import Omshell
 from provisioningserver.dhcp.testing.config import make_subnet_config
+from provisioningserver.path import get_path
 from provisioningserver.rpc import (
     dhcp,
     exceptions,
@@ -252,14 +253,14 @@ class TestStopAndDisableDHCP(MAASTestCase):
         ("DHCPv4", {
             "server": dhcp.DHCPv4Server,
             "stop_dhcp": (control, "stop_dhcpv4"),  # For patching.
-            "expected_interfaces_file": dhcp.DHCPv4_INTERFACES_FILE,
-            "expected_config_file": dhcp.DHCPv4_CONFIG_FILE,
+            "expected_interfaces_file": get_path(dhcp.DHCPv4_INTERFACES_FILE),
+            "expected_config_file": get_path(dhcp.DHCPv4_CONFIG_FILE),
         }),
         ("DHCPv6", {
             "server": dhcp.DHCPv6Server,
             "stop_dhcp": (control, "stop_dhcpv6"),  # For patching.
-            "expected_interfaces_file": dhcp.DHCPv6_INTERFACES_FILE,
-            "expected_config_file": dhcp.DHCPv6_CONFIG_FILE,
+            "expected_interfaces_file": get_path(dhcp.DHCPv6_INTERFACES_FILE),
+            "expected_config_file": get_path(dhcp.DHCPv6_CONFIG_FILE),
         }),
     )
 

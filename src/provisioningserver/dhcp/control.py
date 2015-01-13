@@ -19,10 +19,12 @@ __all__ = [
     'stop_dhcpv6',
     ]
 
+from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import (
     call_and_check,
     ExternalProcessError,
     )
+from twisted.python import log
 
 
 def call_service_script(ip_version, subcommand):
@@ -37,9 +39,12 @@ def call_service_script(ip_version, subcommand):
         6: 'maas-dhcpd6',
         }
     name = service_names[ip_version]
-    call_and_check(
-        ['sudo', '-n', 'service', name, subcommand],
-        env={'LC_ALL': 'C'})
+    if in_develop_mode():
+        log.msg("Service control of %s is skipped in DEVELOP mode." % name)
+    else:
+        call_and_check(
+            ['sudo', '-n', 'service', name, subcommand],
+            env={'LC_ALL': 'C'})
 
 
 def restart_dhcpv4():

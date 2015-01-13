@@ -16,8 +16,9 @@ __all__ = [
     'get_path',
     ]
 
-from os import getenv
-import os.path
+import os
+
+from provisioningserver.utils.fs import ensure_dir
 
 
 def get_path(*path_elements):
@@ -37,9 +38,12 @@ def get_path(*path_elements):
     that holds your path, export a getter function that returns your path.
     Add caching if it becomes a performance problem.
     """
-    maas_root = getenv('MAAS_ROOT', '/')
+    maas_root = os.getenv('MAAS_ROOT', '/')
     # Strip off a leading slash, if any.  If left in, it would override any
     # preceding path elements.  The MAAS_ROOT would be ignored.
     # The dot is there to make the call work even with zero path elements.
     path = os.path.join('.', *path_elements).lstrip('/')
-    return os.path.abspath(os.path.join(maas_root, path))
+    path = os.path.join(maas_root, path)
+    # Make sure that the path to the file actually exists.
+    ensure_dir(os.path.dirname(path))
+    return os.path.abspath(path)

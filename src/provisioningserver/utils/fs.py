@@ -28,6 +28,7 @@ import codecs
 from contextlib import contextmanager
 import errno
 import os
+from os import environ
 from os.path import isdir
 from shutil import rmtree
 from subprocess import (
@@ -39,7 +40,18 @@ import tempfile
 from time import time
 
 from lockfile import FileLock
+from provisioningserver.utils import sudo
 from provisioningserver.utils.shell import ExternalProcessError
+
+
+def get_maas_provision_command():
+    """Return path to the maas-provision command.
+
+    In production mode this will just return 'maas-provision', but in
+    development mode it will return the path for the current development
+    environment.
+    """
+    return environ.get("MAAS_PROVISION_CMD", "maas-provision")
 
 
 def _write_temp_file(content, filename):
@@ -194,12 +206,14 @@ def sudo_write_file(filename, contents, encoding='utf-8', mode=0644):
     it needs to prompt for a password.
     """
     raw_contents = contents.encode(encoding)
+    maas_provision_cmd = get_maas_provision_command()
     command = [
-        'sudo', '-n', 'maas-provision', 'atomic-write',
+        maas_provision_cmd,
+        'atomic-write',
         '--filename', filename,
         '--mode', oct(mode),
         ]
-    proc = Popen(command, stdin=PIPE)
+    proc = Popen(sudo(command), stdin=PIPE)
     stdout, stderr = proc.communicate(raw_contents)
     if proc.returncode != 0:
         raise ExternalProcessError(proc.returncode, command, stderr)

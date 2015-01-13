@@ -15,7 +15,10 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import ANY
 from provisioningserver.dhcp import control
@@ -45,6 +48,14 @@ class TestCallServiceScript(MAASTestCase):
 
     def test__fails_on_weird_IP_version(self):
         self.assertRaises(KeyError, call_service_script, 5, 'restart')
+
+    def test__skips_call_and_check_when_in_develop_mode(self):
+        self.patch(control, 'in_develop_mode').return_value = True
+        call_and_check = patch_call_and_check(self)
+        call_service_script(4, 'stop')
+        self.assertThat(
+            call_and_check,
+            MockNotCalled())
 
     def test__controls_maas_dhcp_server_for_IP_version_4(self):
         call_and_check = patch_call_and_check(self)

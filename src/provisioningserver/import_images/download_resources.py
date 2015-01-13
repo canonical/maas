@@ -25,6 +25,7 @@ from provisioningserver.import_images.helpers import (
     get_signing_policy,
     maaslog,
     )
+from provisioningserver.utils import in_develop_mode
 from provisioningserver.utils.shell import call_and_check
 from simplestreams.contentsource import FdContentSource
 from simplestreams.mirrors import (
@@ -37,6 +38,7 @@ from simplestreams.util import (
     path_from_mirror_url,
     products_exdata,
     )
+from twisted.python import log
 
 
 DEFAULT_KEYRING_PATH = "/usr/share/keyrings"
@@ -76,12 +78,20 @@ def call_uec2roottar(root_image_path, root_tgz_path):
     :param root_image_path: Input file.
     :param root_tgz_path: Output file.
     """
-    call_and_check([
-        'sudo', '/usr/bin/uec2roottar',
-        '--user=maas',
-        root_image_path,
-        root_tgz_path,
-        ])
+    if in_develop_mode():
+        # In debug mode this is skipped as it requires the uec2roottar
+        # script to have sudo abilities. The root-tgz is created as an
+        # empty file so the correct links can be made.
+        log.msg(
+            "Conversion of root-image to root-tgz is skipped in DEVELOP mode.")
+        open(root_tgz_path, "wb").close()
+    else:
+        call_and_check([
+            'sudo', '/usr/bin/uec2roottar',
+            '--user=maas',
+            root_image_path,
+            root_tgz_path,
+            ])
 
 
 def insert_root_image(store, tag, checksums, size, content_source):
