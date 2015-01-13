@@ -1,0 +1,14 @@
+pre {
+    background: transparent;
+    border: 1px solid $warm_grey;
+    margin: 0 0 1.5em 0;
+}
+pre:not(:first-child) {
+    margin-top: 1.5em;
+}
+
+code.language-bash {
+    .comment {
+        color: $warm_grey;
+    }
+}

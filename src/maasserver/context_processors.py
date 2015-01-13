@@ -34,7 +34,6 @@ def yui(context):
 def static_resources(context):
     return {
         'CSS_LIST': [
-            'css/maas-styles.css',
             'css/base.css',
             'css/typography.css',
             'css/forms.css',
@@ -55,6 +54,7 @@ def static_resources(context):
             'css/components/spinner.css',
             'css/ubuntu-webfonts.css',
             'css/multiselect_widget.css',
+            'css/maas-styles.css',
         ],
         'JS_LIST': [
             'js/image.js',

@@ -1,0 +1,60 @@
+body {
+    background-repeat: repeat;
+}
+
+.row {
+    border: 0;
+    background-color: rgba(255,255,255,0.6);
+}
+
+@media only screen and (min-width : 769px) {
+    .append-one {
+        margin-right: 10.6%;
+    }
+
+    .row {
+        padding: 50px $page-padding 30px;
+    }
+}
+
+.inner-wrapper {
+    @include clearfix();
+    @include rounded_corners(0);
+    @include box_shadow(none);
+    background-color: transparent;
+    background-image: none;
+    margin: 0 auto;
+    padding-bottom: 0;
+    float: none;
+}
+
+.wrapper {
+    position: static;
+    background: transparent;
+    width: 100%;
+    overflow: hidden;
+}
+
+img.touch-border {
+    margin-bottom: -50px;
+}
+
+.inner-wrapper, footer.global .legal {
+    max-width: $page-maxwidth;
+    width: auto;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.touch-top {
+    margin-top: -50px;
+}
+
+@media only screen and (max-width : $page-maxwidth) {
+    .inner-wrapper,
+    footer.global .legal {
+        padding-left: 8px;
+        padding-right: 8px;
+        width: auto;
+    }
+}

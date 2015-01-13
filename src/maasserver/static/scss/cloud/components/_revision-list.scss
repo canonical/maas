@@ -1,0 +1,17 @@
+
+.revisions__list {
+    list-style: none;
+    margin-left: 0;
+
+    .revisions__list-item {
+        margin-bottom: 1em;
+    }
+
+    .revisions__list_meta {
+        color: #888;
+        margin-bottom: .2em;
+    }
+    .revisions__list_meta_date {
+        float: right;
+    }
+}

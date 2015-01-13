@@ -1,0 +1,116 @@
+
+/* @section strips
+-------------------------------------------------------------- */
+.strip-dark,
+.strip-light {
+    clear: both;
+}
+
+.strip-dark {
+    background-color: $dark_aubergine;
+    background-image: none;
+    background-repeat: repeat;
+    color: #fff;
+}
+
+.strip-dark.solid {
+    background-image: none;
+    background-color: $dark_aubergine;
+}
+
+.strip-dark ul,
+.strip-dark ol {
+    margin: 0;
+    padding: 0;
+}
+
+.strip-dark .icon,
+.strip-dark ol span {
+    @include background_size(40px 40px);
+    background-image: url(../img/icons/list-icon-background.png);
+    background-repeat: no-repeat;
+    display: block;
+    margin: 0 20px 20px 0;
+    padding: 24px;
+    float: left;
+    width: 16px;
+    height: 16px;
+    padding: 12px;
+}
+
+.strip-light .icon,
+.strip-dark .icon {
+    position: absolute;
+}
+
+.strip-light {
+    background-color: rgba(255,255,255,0.6);
+}
+
+.strip-dark ol,
+.strip-dark ul {
+    padding: 20px 0;
+}
+
+.strip-light .icon {
+    display: block;
+    background-image: url(../img/icons/list-icon-background.png);
+    padding: 24px;
+    margin: 0 auto 48px;
+}
+
+.strip-dark .connected-list li, .strip-light .connected-list li {
+    margin-bottom: 10px;
+    min-height: 52px;
+}
+
+.strip-dark .connected-list li p, .strip-light .connected-list li p,
+.strip-dark .connected-list li h3, .strip-light .connected-list li h3 {
+    padding-left: 50px;
+}
+
+.strip-dark ol.connected-list li p
+.strip-dark ol.connected-list li h3, {
+    padding-left: 50px;
+}
+
+.strip-dark ol.connected-list li span {
+    float: left;
+    font-size: 22px;
+    font-weight: normal;
+    height: 26px;
+    margin-left: 0;
+    margin-right: 20px;
+    padding-top: 2px;
+    position: absolute;
+    text-align: center;
+    width: 16px;
+}
+
+.strip-white {
+    background: #fff;
+}
+
+.strip-trans {
+    background: transparent;
+}
+
+.strip-green {
+    background-image: linear-gradient(to right, #6fad23 0%, #7cc227 100%);
+    overflow: hidden;
+
+    &,
+    a {
+        color: #fff;
+    }
+}
+
+.strip-blue {
+    background-image: linear-gradient(to right, rgba(16,118,162,1) 0%, rgba(53,159,205,1) 100%);
+    overflow: hidden;
+
+    &,
+    a {
+        color: #fff;
+    }
+}

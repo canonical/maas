@@ -1,0 +1,23 @@
+.anchor {
+    display: inline-block;
+    margin-left: 3px;
+    opacity: .0;
+    position: relative;
+    top: 1px;
+    width: 1em;
+    height: 1em;
+    background: url('../img/icons/anchor_16.svg') 0 80% no-repeat;
+    background-size: 16px;
+    -moz-transition: opacity .1s;
+    -webkit-transition: opacity .1s;
+    transition: opacity .1s;
+}
+
+h1:hover .anchor,
+h2:hover .anchor,
+h3:hover .anchor,
+h4:hover .anchor,
+dt:hover .anchor,
+li:hover .anchor {
+    opacity: 1;
+}

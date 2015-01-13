@@ -1,0 +1,273 @@
+
+/* @section header
+-------------------------------------------------------------- */
+header.banner {
+    background: $header-bg;
+    -moz-box-shadow:
+         inset 0  2px 2px -2px darken($header-bg, 7%);
+    -webkit-box-shadow:
+         inset 0  2px 2px -2px darken($header-bg, 7%);
+    box-shadow:
+         inset 0  2px 2px -2px darken($header-bg, 7%);
+    margin-bottom: 0;
+
+    .nav-primary {
+        @include box_shadow(none);
+        @include clearfix;
+    }
+
+    nav.nav-primary {
+        border-bottom: 1px solid $nav_border_dark;
+        overflow: visible;
+
+        .user-nav {
+            float: right;
+            margin-right: 20px;
+        }
+        .user-dropdown {
+            &:hover ul:after {
+                display: none;
+            }
+            .menu-link {
+                img {
+                    margin-right: 10px;
+
+                    &.hover {
+                        display: none;
+                    }
+                    &.normal {
+                        display: inline-block;
+                    }
+                }
+            }
+            .open .menu-link,
+            .menu-link:hover {
+                img.hover {
+                    display: inline-block;
+                }
+                img.normal {
+                    display: none;
+                }
+            }
+            ul {
+                @include rounded_corners(0 0 4px 4px);
+                margin-top: -2px;
+                background-color: #fff;
+                border-width: 0;
+
+                a:hover {
+                    background-color: transparent;
+                }
+            }
+        }
+        /*
+         * These styles need a higher level of specificity that can be provided
+         * in the dropdown CSS.
+         */
+        #user-dropdown .dropdown ul {
+            width: auto;
+        }
+    }
+
+    .nav-primary.nav-right .logo-ubuntu {
+        @include background_size(73px 30px);
+        background-image: url(../../../static/img/logos/logo.svg);
+        background-position: 20px;
+        background-repeat: no-repeat;
+        min-width: 120px;
+        padding-top: 6px;
+        margin-left: 0;
+    }
+}
+
+body.no-svg {
+    header.banner .nav-primary.nav-right .logo-ubuntu {
+        background-image: url(../img/logos/logo.png);
+    }
+}
+
+// Hide the default browser search clear button.
+input[type=text]::-ms-reveal,
+input[type=text]::-ms-clear {
+    display: none;
+    width : 0;
+    height: 0;
+}
+
+input[type="search"]::-webkit-search-decoration,
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-results-button,
+input[type="search"]::-webkit-search-results-decoration {
+    display: none;
+}
+
+.contextual-bar {
+    overflow: hidden;
+    background-color: $nav_bg;
+    border-bottom: 1px solid $light_mid_grey;
+}
+
+form.search-form {
+    overflow: hidden;
+    float: right;
+    width: 100%;
+    position: relative;
+
+    input {
+        @include rounded_corners(0);
+        @include box_sizing();
+        border: 0;
+        border-left: 0;
+        margin: 0;
+        width: 100%;
+        height: 50px;
+        float: left;
+        font-size: 1em;
+        padding-top: 0;
+        padding-bottom: 0;
+        padding-right: 30px;
+        background-color: transparent;
+        -webkit-appearance: none;
+    }
+
+    input:focus {
+        border-color: $ubuntu_orange;
+    }
+
+    button[type=submit],
+    button[type=submit]:hover {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        display: block;
+        height: 30px;
+        width: 30px;
+        padding: 0;
+        line-height: 0;
+        -webkit-appearance: none;
+        background: transparent;
+    }
+
+    button img {
+        height: 16px;
+    }
+}
+
+.contextual-nav {
+    border: 0;
+    display: block;
+    margin: 0;
+    padding-left: 10px;
+    background-color: transparent;
+    overflow: hidden;
+    float: left;
+
+    li,
+    li:last-child {
+        font-size: 0.875em;
+        float: left;
+        list-style-type: none;
+        margin: 0;
+        margin-left: 5px;
+    }
+    li a:link,
+    li a:visited,
+    .contextual-nav__label {
+        display: block;
+        color: $cool_grey;
+        font-weight: 300;
+        text-align: center;
+        // bottom padding is adjusted to account for bottom border.
+        padding: 16px 10px 10px 10px;
+        border-bottom: 3px solid transparent;
+    }
+    .contextual-nav__label {
+        color: $mid_grey;
+    }
+    li a:hover {
+        border-bottom-color: $ubuntu_orange;
+        text-decoration: none;
+        color: $ubuntu_orange;
+    }
+    li a.active {
+        border-bottom: 3px solid $ubuntu_orange;
+    }
+}
+
+.opera-mini header.banner .logo-ubuntu,
+.no-svg header.banner .logo-ubuntu {
+    background-image: url(../img/logos/logo.png);
+}
+
+@media only screen and (min-width : 769px) {
+    header.banner .nav-primary ul li,
+    header.banner .nav-primary ul li:last-child {
+        border-bottom: 0;
+        width: auto;
+    }
+
+    header.banner nav.nav-primary li a:link,
+    header.banner nav.nav-primary li a:visited {
+        border-left: 1px solid $nav_border_dark;
+        font-weight: 400;
+    }
+
+    header.banner nav.nav-primary ul li a.active {
+        // Adjust the padding to account for the active border.
+        padding-bottom: 10px;
+        background-color: #0e0c0b;
+        border-bottom: 3px solid $ubuntu_orange;
+        border-left: 1px solid $nav_border_dark;
+    }
+
+    header.banner nav.nav-primary ul li {
+        border-left: 1px solid $nav_border_dark;
+
+        a:hover {
+            background-color: $ubuntu_orange;
+        }
+    }
+
+    header.banner nav.nav-primary ul {
+        background-color: transparent;
+        border-right: 1px solid $nav_border_dark;
+        display: block;
+    }
+
+    header.banner nav.nav-primary ul li:last-child {
+        border-left: 1px solid $nav_border_dark;
+        border-right: 0;
+    }
+    header.banner .nav-primary ul li a:active,
+    header.banner .nav-primary ul li a:hover,
+    header.banner .nav-primary ul li a:visited,
+    header.banner nav.nav-primary ul li a:link {
+        border-left: 0;
+    }
+    header.banner .nav-primary ul li a.external:hover {
+        background-image: url("../img/icons/external-link-grey.png");
+    }
+
+    form.search-form {
+        width: 325px;
+
+        input {
+            border-left: 1px solid $light_mid_grey;
+            margin: 0 20px;
+            width: 250px;
+            font-size: 0.875em;
+        }
+    }
+}
+
+@media only screen and (min-width : 1030px) {
+
+    header.banner {
+        height: 48px;
+        overflow: hidden;
+
+        .nav-primary {
+            width: 100%;
+        }
+    }
+}

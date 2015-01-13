@@ -1,0 +1,21 @@
+
+.ratings {
+
+    ul {
+        margin-left: 2px;
+        margin-bottom: 0;
+
+        li {
+            margin-bottom: 0;
+
+            img {
+                vertical-align: text-top;
+            }
+
+            &:first-of-type {
+                margin-left: 0;
+            }
+        }
+
+    }
+}

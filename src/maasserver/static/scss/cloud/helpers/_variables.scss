@@ -1,0 +1,83 @@
+@charset "UTF-8";
+
+/**
+ * Ubuntu Patterns Stylesheet
+ *
+ * The CSS file required by Ubuntu patterns page
+ *
+ * @project     Ubuntu Patterns
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2012 Canonical Ltd
+ *
+ * @see         http://design.ubuntu.com
+ */
+
+$one_col:             6.38297%;
+$two_col:             14.89361%;
+$three_col:           23.40425%;
+$four_col:            31.91489%;
+$five_col:            40.42553%;
+$six_col:             48.93617%;
+$seven_col:           57.4468%;
+$eight_col:           65.95744%;
+$nine_col:            74.46808%;
+$ten_col:             82.97872%;
+$eleven-col:          91.48936%;
+
+/**
+ * standard colors
+ *
+ * @colordef standard colors
+ */
+
+$header-bg:                 #000000; /* header background colour */
+$nav_bg:                    #ffffff; /* navigation's bakcground colour */
+$nav_link_color:            #333333; /* navigation's link colour */
+$nav_border_dark:           #262626; /* navigation's dividing border colour */
+$nav_border_light:          #f2f2f4; /* navigation's lighter dividing border colour */
+$nav_hover_bg:              #d0d0d0; /* navigation's hover background colour */
+$nav_active_bg:             #dddddd; /* navigation's active background colour */
+
+$ubuntu_orange:             #dd4814; /* used for text links also on any site except canonical */
+$light_orange:              #fdf6f2; /* used as background on pre text */
+$canonical_aubergine:       #772953;
+$light_aubergine:           #77216f; /* consumer */
+$mid_aubergine:             #5e2750; /* consumer & enterprise */
+$dark_aubergine:            #2c001e; /* enterprise */
+$warm_grey:                 #888888;
+$mid_grey:                  #cdcdcd;
+$light_mid_grey:            #d4d4d4;
+$cool_grey:                 #333333;
+$light_grey:                #f7f7f7;
+$white:                     #ffffff;
+$black:                     #000000;
+$light-gradient:            #221e1c;
+$coolish_grey:              #b2b2b2;
+
+
+/* notifications */
+$error:                     #df382c; /* red */
+$warning:                   #eca918; /* yellow */
+$success:                   #38b44a; /* green */
+$information:               #19b6ee; /* cyan */
+
+/* colour coded status - from negative to positive (Icon: canonical circle) */
+$status_red:                #df382c; /* red, for status that require immediate attention */
+$status_grey:               #aea79f; /* grey, for disabled status or ones that don’t require attention */
+$status_yellow:             #efb73e; /* yellow, for status that require attention */
+$status_blue:               #19b6ee; /* blue, for status that don’t require action */
+$status_green:              #38b44a; /* green, for positive status */
+
+/* misc colours */
+$background_color:          #eeeeee;
+$box_solid_grey:            #efefef;
+$link_color:                $ubuntu_orange; /* This is the global link color, mainly used for links in content */
+
+/* grid variables */
+$base:                      16;
+$hd_base:                   18;
+$gutter_width:              20px;
+$grid_gutter:               20px;
+$gutter:                    2.12766%;
+$page-maxwidth:             1030px;
+$page-padding:              40px;

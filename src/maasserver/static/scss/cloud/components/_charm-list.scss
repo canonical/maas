@@ -1,0 +1,97 @@
+
+
+.charms__list {
+    list-style: none;
+    margin-bottom: 1em;
+    margin-left: 0;
+    border-bottom: 1px dotted $light_mid_grey;
+
+    .charms__list--config {
+        display: none;
+    }
+
+    .charms__list--toggle {
+        display: block;
+
+        &.is-open + .charms__list--config {
+            display: block;
+        }
+    }
+
+    .charms__list--config-name {
+        border-top: 0;
+    }
+}
+
+.charms__list--item {
+    font-size: 1em;
+    border-top: 1px dotted $light_mid_grey;
+    padding: 10px 0 0 10px;
+    margin-bottom: 10px;
+
+    &:last-of-type {
+        margin-bottom: 10px;
+    }
+}
+
+.charms__list--icon {
+    margin-right: .4em;
+    width: 25px;
+    height: 25px;
+}
+
+.charms__list--toggle {
+    background: url("../img/shared/icon-arrow-down.svg") no-repeat center center;
+    width: 16px;
+    height: 100%;
+    float: right;
+    text-indent: -99999px;
+    margin-right: 20px;
+
+    &.is-open {
+        background-image: url("../img/shared/icon-arrow-up.svg");
+        background-size: 14px;
+    }
+}
+
+.charms__list--config {
+    padding-left: 35px;
+    padding-bottom: 20px;
+}
+
+.charms__list--config-name {
+    font-size: 1em;
+    margin-top: 15px;
+    padding-top: 15px;
+    font-weight: 400;
+    border-top: 1px dotted $light_mid_grey;
+
+    &:first-of-type {
+        border-top: 0;
+    }
+}
+
+.charms__list--config-type {
+    font-weight: 400;
+}
+
+.charms__list--config-description,
+.charms__list--config-setting {
+    margin-left: 30px;
+    margin-top: 8px;
+}
+
+.charms__list--config-setting {
+    font-size: 0.875em;
+    color: $warm_grey;
+    font-family: "Ubuntu Mono","Consolas","Monaco","Lucida Console","Courier New",Courier,monospace;
+}
+
+body.no-svg {
+    .charms__list .charms__list--toggle {
+        background-image: url("../img/shared/icon-arrow-down.png");
+    }
+    .charms__list .charms__list--toggle.is-open {
+        background-image: url("../img/shared/icon-arrow-up.png");
+    }
+}

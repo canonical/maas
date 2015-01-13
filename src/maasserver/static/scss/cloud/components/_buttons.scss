@@ -1,0 +1,53 @@
+
+a.indent {
+    @include box_shadow(inset 0 1px 2px 0 #333    );
+    background: rgba(0, 0, 0, 0.1);
+    padding: 10px 30px;
+    text-weight: normal;
+
+    &:hover {
+        background: rgba(0, 0, 0, 0.2);
+    }
+}
+
+a.link-cta-positive {
+    @include rounded_corners(3px);
+    @include box_sizing();
+    background-color: $ubuntu_orange;
+    color: #fff;
+    display: inline-block;
+    font-size: 1.14286em;
+    font-weight: 300;
+    text-decoration: none;
+    margin: 0;
+    padding: 8px 14px;
+    text-align: center;
+    -moz-transition: background .2s;
+    -webkit-transition: background .2s;
+    transition: background .2s;
+    width: 100%;
+
+    &:hover {
+        background-color: darken( $ubuntu_orange, 10% )
+    }
+
+    .external {
+        padding-right: 1em;
+        background-image: url("../img/icons/external-link-white.svg");
+        background-repeat: no-repeat;
+        background-size: 11px;
+        background-position: right top;
+
+         @media only screen and (min-width : 769px) {
+            padding-right: .7em;
+         }
+    }
+}
+
+a.link-cta-negative {
+    @extend a.link-cta-positive;
+    background-color: $coolish_grey;
+    &:hover {
+        background-color: $warm_grey;
+    }
+}

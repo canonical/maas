@@ -1,0 +1,24 @@
+
+/* @section heros
+-------------------------------------------------------------- */
+
+#main-content .row-hero {
+    padding-top: 20px;
+    margin-top: 0;
+    .intro {
+        font-size: 16px;
+    }
+}
+
+
+@media only screen and (min-width : 769px) {
+
+    #main-content .row-hero {
+        padding-top: 60px;
+
+        .intro {
+            font-size: 1.4375em;
+            margin-bottom: 40px;
+        }
+    }
+}

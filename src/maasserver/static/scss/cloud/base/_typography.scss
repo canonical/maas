@@ -1,0 +1,36 @@
+/* @section general
+-------------------------------------------------------------- */
+
+body,
+a:link,
+a:visited {
+	-webkit-font-smoothing: antialiased;
+}
+
+code,
+pre,
+p {
+    line-height: 1.5;
+}
+
+body {
+    font-size: $base + px;
+}
+
+@media only screen and (min-width : 768px) {
+    code,
+    pre,
+    p {
+        line-height: 1.6;
+    }
+
+    body {
+        font-size: $base + px;
+    }
+}
+
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    body {
+        font-size: $hd_base + px;
+    }
+}

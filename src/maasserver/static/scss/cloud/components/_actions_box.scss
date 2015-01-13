@@ -1,0 +1,29 @@
+.actions {
+
+	.actions__social-item--twitter,
+	.actions__social-item--google-plus {
+		text-indent: -99999px;
+		background-image: url("../img/icons/icon-social.svg");
+		background-repeat: no-repeat;
+		height: 44px;
+		width: 44px;
+		overflow: hidden;
+		display: block;
+	}
+
+	.actions__social-item--twitter {
+		background-position: 0 0;
+
+		&:hover {
+			background-position: 0 -45px;
+		}
+	}
+
+	.actions__social-item--google-plus {
+		background-position: -45px 0;
+
+		&:hover {
+			background-position: -45px -45px;
+		}
+	}
+}

@@ -1,0 +1,108 @@
+
+.files {
+
+    .files__list {
+        list-style: none;
+        margin-bottom: 1em;
+        border-left: 1px solid  #cbcbcb;
+        margin-left: 1em;
+
+        @media only screen and (min-width : 768px) {
+            margin-left: 0;
+        }
+
+        li {
+            position: relative;
+
+            a:link,
+            a:visited {
+                color: #333;
+                text-decoration: none;
+            }
+
+            &:before {
+                content: '';
+                width: 12px;
+                height: 1px;
+                background: $light_mid_grey;
+                display: inline-block;
+                position: relative;
+                top: -4px;
+                margin-right: 5px;
+            }
+
+            &:last-child {
+
+                &:after {
+                    content: '';
+                    width: 4px;
+                    height: 1em;
+                    position: absolute;
+                    display: block;
+                    left: -2px;
+                    top: .85em;
+                    background: #fff;
+                }
+            }
+        }
+
+        ul:last-child > li a:after {
+            content: '';
+            width: 4px;
+            height: 3em;
+            position: absolute;
+            display: block;
+            left: -1.8em;
+            top: -1.45em;
+            background: white;
+            cursor: default;
+        }
+
+        .files__list {
+            margin-left: 1.3em;
+        }
+
+        .files__list--item,
+        .files__list--item-folder {
+            font-size: 0.875em;
+            margin-bottom: 0.75em;
+        }
+
+        .files__list--item-folder {
+            background-position: center right;
+            background-size: 12px;
+            cursor: pointer;
+
+            &:after {
+                font-size: 14px;
+                display: block;
+                content: "-";
+                position: absolute;
+                left: -7px;
+                top: 4px;
+                padding: 0 4px;
+                line-height: 0.9em;
+                background: $white;
+                border: 1px solid $warm_grey;
+
+            }
+        }
+
+        .files__list--item-folder.is-closed {
+
+            & + ul {
+                display: none;
+            }
+
+            &:after {
+                content: "+";
+                padding: 0 2px;
+            }
+        }
+    }
+
+    .files__actions--launchpad {
+        background: url("../img/icons/icon-launchpad.svg") no-repeat;
+        padding-left: 1.4em;
+    }
+}

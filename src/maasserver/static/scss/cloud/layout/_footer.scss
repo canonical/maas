@@ -1,0 +1,286 @@
+
+/* @section footer
+-------------------------------------------------------------- */
+
+.footer-cta {
+    background: #fff;
+    padding-bottom: 20px;
+}
+
+.footer-wrapper.strip-light {
+    background-color: #fff;
+}
+
+.solutions-cta {
+    height: 60px;
+    background-color: $ubuntu_orange;
+    line-height: 60px;
+    text-align: center;
+
+    a {
+        color: #fff;
+        font-size: 1.25em;
+    }
+}
+
+footer.global {
+    background-color: white;
+    box-shadow: none;
+    padding-top: 0;
+
+    .row {
+        padding: 10px 0 0;
+    }
+
+    .two-col {
+        width: 46%;
+        float: left;
+        display: inline-block;
+        min-height: 200px;
+    }
+
+    h2 {
+        padding-bottom: 0;
+        color: $warm_grey;
+        font-size: 16px;
+    }
+
+    nav .canonlist ul li,
+    nav .additional-info ul li {
+        min-height: 0;
+        width: 48%;
+        float: left;
+    }
+
+    ul.bullets li:after {
+        line-height: 1;
+        color: $warm_grey;
+        content: "•";
+        vertical-align: middle;
+        margin: 0 5px;
+    }
+
+    ul.inline li:last-child {
+        width: auto;
+    }
+
+    a.external {
+        background-image: url('../img/icons/external-link-dark.png');
+    }
+
+    .top-link {
+        margin-bottom: 10px;
+    }
+
+    a {
+        color: $cool_grey;
+    }
+
+    a:hover {
+        color: $ubuntu_orange;
+    }
+
+    .legal {
+        background-image: none;
+    }
+
+    .legal.has-cookie {
+        padding-bottom: 70px;
+    }
+
+    .inner-wrapper {
+        overflow: visible;
+    }
+
+    a.link-cta-positive {
+        width: auto;
+        margin-top: 10px;
+        padding-left: 20px;
+        padding-right: 20px;
+        color: #fff;
+        font-size: 14px;
+    }
+
+    .section__title {
+        background: none;
+        cursor: default;
+    }
+}
+
+.legal-inner {
+    clear: both;
+    overflow: hidden;
+    float: left;
+    width: 100%;
+    padding: 20px 10px 0;
+    margin: -3px -10px 0;
+}
+
+.social,
+.social--right {
+    margin-left: 0;
+
+    .social__item {
+        display: inline;
+        float: left;
+        padding-right: 1em;
+    }
+
+    .social__google,
+    .social__facebook,
+    .social__twitter {
+        background-image: url("../img/icons/icon-social.png");
+        display: block;
+        width: 45px;
+        height: 44px;
+
+        &.social__twitter:hover {
+            background-position: 0 -45px;
+        }
+
+        &.social__facebook {
+            background-position: 90px 0;
+
+            &:hover {
+                background-position: 90px -45px;
+            }
+        }
+
+        &.social__google {
+            background-position: 135px 0;
+
+            &:hover {
+                background-position: 135px -45px;
+            }
+        }
+    }
+}
+
+@media only screen and (min-width : 768px) {
+    .social--right {
+        float: right;
+    }
+}
+
+#additional-info {
+    border-bottom: 0;
+
+    h2:before {
+        background-image: url("../img/icons/external-link-grey.svg"), none;
+        background-repeat: no-repeat;
+        background-size: 14px 14px;
+        content: "";
+        display: inline-block;
+        height: 15px;
+        margin-right: 3px;
+        position: relative;
+        top: 3px;
+        width: 15px;
+    }
+
+    div li {
+        border-left: 1px solid #d4d7d4;
+        box-sizing: border-box;
+        display: block;
+        float: left;
+        margin: 0;
+        padding: 0;
+        width: 50%;
+
+        a {
+            border-bottom: 1px solid #d4d7d4;
+            box-sizing: border-box;
+            color: #333333;
+            display: block;
+            float: left;
+            margin: 0;
+            overflow: hidden;
+            padding: 8px 10px;
+            text-align: left;
+            white-space: normal;
+            width: 100%;
+        }
+    }
+
+    .section__title {
+        border-bottom: 1px solid #d4d7d4;
+        background-position: 100% .1em;
+    }
+}
+
+html.opera-mini footer #nav-global h2:before,
+html.opera-mini footer #additional-info h2:before,
+html.no-svg footer #nav-global h2:before,
+html.no-svg footer #additional-info h2:before {
+    background-image: url('../img/icons/external-link-grey.png');
+}
+
+
+
+@media only screen and (min-width : 769px) {
+    .footer-wrapper.strip-light {
+        white-space:nowrap;
+    }
+
+    footer.global {
+        padding-top: 40px;
+        padding-bottom: 40px;
+
+        .two-col {
+            width: 14.89361%;
+            display: inline-block;
+            min-height: 0;
+        }
+        .section {
+            min-height: 160px;
+            margin-right: 40px;
+            padding-bottom: 0;
+            border-right: 1px dotted #aaa;
+            border-bottom: 0;
+
+            &:last-child {
+                margin-right: 0;
+                border-right: 0;
+            }
+        }
+
+        li {
+            display: inline;
+            float: left;
+        }
+
+        ul.no-bullets li {
+            a {
+                font-size: 16px;
+
+                &:hover {
+                    color: $ubuntu_orange;
+                }
+            }
+
+            border-right: 1px dotted #aaa;
+            padding-right: 15px;
+            padding-left: 15px;
+
+            &:last-child {
+                border-right: none;
+            }
+
+            &:first-child {
+                padding-left: 0px;
+            }
+        }
+    }
+
+    #additional-info {
+        .section__title {
+            border-bottom: 0;
+        }
+        div li,
+        div a:link {
+            width: 100%;
+            border: 0;
+        }
+    }
+
+}

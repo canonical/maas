@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.4, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1"
+	 id="svg3483" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:svg="http://www.w3.org/2000/svg" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" inkscape:version="0.48.3.1 r9886" sodipodi:docname="provider-maas.svg"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="78px" height="30px"
+	 viewBox="0 96 78 30" enable-background="new 0 96 78 30" xml:space="preserve">
+<sodipodi:namedview  fit-margin-left="0" fit-margin-top="0" showgrid="false" inkscape:cy="33.506499" inkscape:cx="68.738648" inkscape:zoom="2.0861625" borderopacity="1.0" bordercolor="#666666" pagecolor="#ffffff" id="base" inkscape:window-maximized="1" inkscape:window-y="24" inkscape:window-x="0" inkscape:window-height="1029" inkscape:window-width="1920" fit-margin-bottom="0" inkscape:current-layer="layer1" inkscape:pageshadow="2" inkscape:pageopacity="0.0" fit-margin-right="0" inkscape:document-units="px">
+	</sodipodi:namedview>
+<g id="layer1" transform="translate(569.71429,-511.79077)" inkscape:label="Layer 1" inkscape:groupmode="layer">
+	
+		<path id="path4713" sodipodi:ry="24" sodipodi:rx="24" sodipodi:cy="940.36218" sodipodi:cx="176" sodipodi:type="arc" fill="#DD4814" d="
+		M-539.631,622.832c0,8.309-6.734,15.042-15.042,15.042s-15.042-6.733-15.042-15.042c0-8.307,6.734-15.041,15.042-15.041
+		S-539.631,614.525-539.631,622.832z"/>
+	<path id="path4728" inkscape:connector-curvature="0" fill="#FFFFFF" d="M-562.195,615.934c-0.692-0.009-1.261,0.544-1.271,1.236
+		c-0.01,0.692,0.543,1.262,1.236,1.271c0.012,0.001,0.023,0.001,0.036,0h15.042c0.692,0.01,1.262-0.543,1.271-1.235
+		s-0.544-1.262-1.236-1.272c-0.013,0-0.024,0-0.036,0H-562.195z"/>
+	<path id="path4730" inkscape:connector-curvature="0" fill="#FFFFFF" d="M-562.195,619.695c-0.692-0.009-1.261,0.544-1.271,1.236
+		c-0.01,0.692,0.543,1.262,1.236,1.271c0.012,0.001,0.023,0.001,0.036,0h15.042c0.692,0.011,1.262-0.542,1.271-1.234
+		s-0.544-1.262-1.236-1.272c-0.013,0-0.024,0-0.036,0H-562.195z"/>
+	<path id="path4732" inkscape:connector-curvature="0" fill="#FFFFFF" d="M-562.195,623.456c-0.692-0.01-1.261,0.544-1.271,1.236
+		c-0.01,0.692,0.543,1.261,1.236,1.271c0.012,0.001,0.023,0.001,0.036,0h15.042c0.692,0.01,1.262-0.543,1.271-1.235
+		s-0.544-1.262-1.236-1.271c-0.013,0-0.024,0-0.036,0H-562.195z"/>
+	<path id="path4734" inkscape:connector-curvature="0" fill="#FFFFFF" d="M-562.195,627.216c-0.692-0.009-1.261,0.544-1.271,1.236
+		c-0.01,0.692,0.543,1.262,1.236,1.271c0.012,0.002,0.023,0.002,0.036,0h15.042c0.692,0.011,1.262-0.542,1.271-1.234
+		s-0.544-1.262-1.236-1.272c-0.013,0-0.024,0-0.036,0H-562.195z"/>
+</g>
+<text transform="matrix(1 0 0 1 32.9692 116.25)" fill="#FFFFFF" font-family="'Ubuntu'" font-size="16.2">MAAS</text>
+</svg>

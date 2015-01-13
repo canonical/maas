@@ -1,0 +1,48 @@
+
+@media only screen and (min-width : 769px) {
+    .tip,
+    .command2clipboard__clip {
+        position: relative;
+        display: inline-block;
+    }
+    .tip .tip-content,
+    .command2clipboard__clip .tip-content {
+        position: absolute;
+        z-index: 98;
+        left: -1000px;
+        right: -1000px;
+        top: -30px;
+        font-weight: 300;
+        margin: auto;
+        display: block;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .tip:hover .tip-content:after,
+    .command2clipboard__clip.zeroclipboard-is-hover .tip-content:after {
+        display: table;
+        z-index: 98;
+        margin: auto;
+        color: #fff;
+        border-radius: 3px;
+        background: #000;
+        box-shadow: none;
+        font-size: 12px;
+        content: attr(data-tooltip);
+        padding: 4px 6px;
+        white-space:nowrap;
+        text-align:center;
+    }
+    .tip:hover .tip-content:before,
+    .command2clipboard__clip.zeroclipboard-is-hover .tip-content:before {
+        position: absolute;
+        top: 100%;
+        left: 50%;
+        margin-left: -5px;
+        content: '';
+        border: solid transparent;
+        border-width: 5px;
+        border-top-color: #000;
+    }
+}
+

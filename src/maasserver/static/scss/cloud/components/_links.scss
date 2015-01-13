@@ -1,0 +1,37 @@
+header.banner {
+    a.external, a.external:hover {
+        background-image: url('../img/icons/external-link-grey.png');
+    }
+}
+a.external, a.external:hover,
+header.banner nav.nav-primary ul li a.external:link,
+header.banner nav.nav-primary ul li a.external:visited,
+header.banner nav.nav-primary ul li a.external:hover {
+    background-repeat: no-repeat;
+}
+a.external, a.external:hover
+header.banner nav.nav-primary ul li a.external:link,
+header.banner nav.nav-primary ul li a.external:visited,
+header.banner nav.nav-primary ul li a.external:hover {
+    background-position: right 14px top 14px;
+    padding-right: 35px;
+    background-size: auto;
+}
+
+@media only screen and (max-width : 769px) {
+    header.banner nav.nav-primary ul li a.external:link,
+    header.banner nav.nav-primary ul li a.external:visited,
+    header.banner nav.nav-primary ul li a.external:hover {
+        background: none;
+    }
+    header.banner nav.nav-primary ul li a.external:after {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        margin-left: 0.25em;
+        // For mobile we need to display a dark external link as the background
+        // has been changed to white.
+        background-image: url('../img/icons/external-link-dark.png');
+        vertical-align: text-top;
+    }
+}
