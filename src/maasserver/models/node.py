@@ -756,7 +756,7 @@ class Node(CleanSave, TimestampedModel):
         if self.architecture == '' and self.installable:
             raise ValidationError(
                 {'architecture':
-                    "Architecture must be defined for installable nodes."})
+                    ["Architecture must be defined for installable nodes."]})
 
     def clean(self, *args, **kwargs):
         super(Node, self).clean(*args, **kwargs)

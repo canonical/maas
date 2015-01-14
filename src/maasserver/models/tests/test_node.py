@@ -1546,6 +1546,15 @@ class NodeTest(MAASServerTestCase):
             "Invalid transition: Retired -> Allocated.",
             node.save)
 
+    def test_full_clean_checks_architecture_for_installable_nodes(self):
+        node = factory.make_Node(installable=False, architecture='')
+        node.installable = True
+        exception = self.assertRaises(ValidationError, node.full_clean)
+        self.assertEqual(
+            exception.error_dict,
+            {'architecture':
+                ['Architecture must be defined for installable nodes.']})
+
     def test_netboot_defaults_to_True(self):
         node = Node()
         self.assertTrue(node.netboot)
