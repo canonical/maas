@@ -88,7 +88,7 @@ You can also add a new source::
 
 Inside that newly created source ('2') you can add selections::
 
-    $ maas $PROFILE boot-source-selections create os="ubuntu" release="trusty" arches="amd64" subarches="*" labels='*'
+    $ maas $PROFILE boot-source-selections create 2 os="ubuntu" release="trusty" arches="amd64" subarches="*" labels='*'
     {
         "labels": ["*"],
         "arches": ["amd64"],
