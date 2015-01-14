@@ -14,19 +14,27 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import socket
+
 from crochet import wait_for_reactor
 from django.db import connections
 from maasserver import (
     bootresources,
     eventloop,
     nonces_cleanup,
+    webapp,
     )
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.utils.async import transactional
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
-from testtools.matchers import IsInstance
+from testtools.matchers import (
+    Equals,
+    IsInstance,
+    MatchesStructure,
+    )
+from twisted.internet import reactor
 from twisted.python.threadable import isInIOThread
 
 
@@ -36,6 +44,21 @@ class TestRegionEventLoop(MAASTestCase):
         self.patch(eventloop, "gethostname").return_value = "foo"
         self.patch(eventloop, "getpid").return_value = 12345
         self.assertEqual("foo:pid=12345", eventloop.loop.name)
+
+    def test_populate(self):
+        an_eventloop = eventloop.RegionEventLoop()
+        # At first there are no services.
+        self.assertEqual(
+            set(), {service.name for service in an_eventloop.services})
+        # populate() creates a service with each factory.
+        an_eventloop.populate().wait()
+        self.assertEqual(
+            {name for name, _ in an_eventloop.factories},
+            {svc.name for svc in an_eventloop.services})
+        # The services are not started.
+        self.assertEqual(
+            {name: False for name, _ in an_eventloop.factories},
+            {svc.name: svc.running for svc in an_eventloop.services})
 
     def test_start_and_stop(self):
         # Replace the factories in RegionEventLoop with non-functional
@@ -144,6 +167,20 @@ class TestFactories(MAASTestCase):
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_ImportResourcesService,
+            {factory for _, factory in eventloop.loop.factories})
+
+    def test_make_WebApplicationService(self):
+        service = eventloop.make_WebApplicationService()
+        self.assertThat(service, IsInstance(webapp.WebApplicationService))
+        # The endpoint is set to port 5243 on localhost.
+        self.assertThat(service.endpoint, MatchesStructure.byEquality(
+            reactor=reactor, addressFamily=socket.AF_INET))
+        self.assertThat(
+            service.endpoint.socket.getsockname(),
+            Equals(("127.0.0.1", 5243)))
+        # It is registered as a factory in RegionEventLoop.
+        self.assertIn(
+            eventloop.make_WebApplicationService,
             {factory for _, factory in eventloop.loop.factories})
 
 

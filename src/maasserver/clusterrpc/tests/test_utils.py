@@ -76,7 +76,7 @@ class TestGetErrorMessageForException(MAASServerTestCase):
             [cls for cls in RPC_EXCEPTIONS if cls is not MultipleFailures])
         error_message = (
             "Unexpected exception: %s. See "
-            "/var/log/maas/maas-django.log "
+            "/var/log/maas/regiond.log "
             "on the region server for more information." %
             exception_class.__name__)
         self.assertEqual(
@@ -88,7 +88,7 @@ class TestGetErrorMessageForException(MAASServerTestCase):
             *(Failure(cls()) for cls in RPC_EXCEPTIONS
                 if cls is not MultipleFailures))
         error_message = (
-            "Multiple failures encountered. See /var/log/maas/maas-django.log"
+            "Multiple failures encountered. See /var/log/maas/regiond.log"
             " on the region server for more information.")
         self.assertEqual(
             error_message, utils.get_error_message_for_exception(failures))

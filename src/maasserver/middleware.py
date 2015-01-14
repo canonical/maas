@@ -82,19 +82,6 @@ from maasserver.exceptions import (
     )
 
 
-def get_relative_path(path):
-    """If the url prefix settings.FORCE_SCRIPT_NAME is not None: strip the
-    prefix from the given path.
-    """
-    prefix = settings.FORCE_SCRIPT_NAME
-    if prefix is None:
-        return path
-    elif path.startswith(prefix):
-        return path[len(prefix):]
-    else:
-        assert False, "Prefix '%s' not in path '%s'" % (prefix, path)
-
-
 class AccessMiddleware:
     """Protect access to views.
 
@@ -131,12 +118,12 @@ class AccessMiddleware:
 
     def process_request(self, request):
         # Public urls.
-        if self.public_urls.match(get_relative_path(request.path)):
+        if self.public_urls.match(request.path_info):
             return None
         else:
             if request.user.is_anonymous():
                 return HttpResponseRedirect("%s?next=%s" % (
-                    settings.LOGIN_URL, urlquote_plus(request.path)))
+                    reverse('login'), urlquote_plus(request.path)))
             else:
                 return None
 
@@ -246,7 +233,7 @@ class ExceptionMiddleware:
 
     def process_exception(self, request, exception):
         """Django middleware callback."""
-        if not self.path_matcher.match(get_relative_path(request.path)):
+        if not self.path_matcher.match(request.path_info):
             # Not a path we're handling exceptions for.
             return None
 
@@ -375,7 +362,7 @@ class RPCErrorsMiddleware:
 
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
-        if path_matcher.match(get_relative_path(request.path)):
+        if path_matcher.match(request.path_info):
             # Not a path we're handling exceptions for.
             # APIRPCErrorsMiddleware handles all the API request RPC
             # errors.
@@ -412,7 +399,7 @@ class APIRPCErrorsMiddleware(RPCErrorsMiddleware):
 
     def process_exception(self, request, exception):
         path_matcher = re.compile(settings.API_URL_REGEXP)
-        if not path_matcher.match(get_relative_path(request.path)):
+        if not path_matcher.match(request.path_info):
             # Not a path we're handling exceptions for.
             # RPCErrorsMiddleware handles non-API requests.
             return None

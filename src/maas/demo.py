@@ -42,45 +42,6 @@ DHCP_CONNECT = True
 
 MAAS_CLI = abspath("bin/maas-region-admin")
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
-        },
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-    },
-    'loggers': {
-        'maas': {
-            'handlers': ['console'],
-            'propagate': True,
-        },
-        'django.request': {
-            'handlers': ['console'],
-            'propagate': True,
-        },
-        'django.db.backends': {
-            'handlers': ['console'],
-            'propagate': True,
-        },
-        'twisted': {
-            'handlers': ['console'],
-            'propagate': True,
-        },
-        'sstreams': {
-            'handlers': ['console'],
-            'propagate': True,
-        }
-    },
-}
-
 # Use the in-branch development version of maas_cluster.conf.
 LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")
 

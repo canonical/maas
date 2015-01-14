@@ -35,7 +35,7 @@ INSTALLED_APPS = None
 import_settings(settings)
 
 # In development, django can be accessed directly on port 5240.
-DEFAULT_MAAS_URL = compose_URL("http://:5240/", guess_server_host())
+DEFAULT_MAAS_URL = compose_URL("http://:5240/MAAS/", guess_server_host())
 
 # Use our custom test runner, which makes sure that a local database
 # cluster is running in the branch.

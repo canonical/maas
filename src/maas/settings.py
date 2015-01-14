@@ -14,31 +14,32 @@ str = None
 __metaclass__ = type
 
 import os
-from urlparse import urljoin
+from sys import stdout
 
-# Use new style url tag:
-# https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 import django.template
 from maas import (
     fix_up_databases,
     import_local_settings,
-    log_sstreams,
     )
 from maas.monkey import patch_get_script_prefix
 from metadataserver.address import guess_server_host
+from provisioningserver.logger import (
+    DEFAULT_LOG_FORMAT,
+    DEFAULT_LOG_FORMAT_DATE,
+    DEFAULT_LOG_LEVEL,
+    )
 from provisioningserver.utils.url import compose_URL
 
-
+# Use new style url tag:
+# https://docs.djangoproject.com/en/dev/releases/1.3/#changes-to-url-and-ssi
 django.template.add_to_builtins('django.templatetags.future')
 
+# Production mode.
 DEBUG = False
 
-# Used to set a prefix in front of every URL.
-FORCE_SCRIPT_NAME = None
-
 # Allow the user to override settings in maas_local_settings. Later settings
-# depend on the values of DEBUG and FORCE_SCRIPT_NAME, so we must import local
-# settings now in case those settings have been overridden.
+# depend on the values of DEBUG, so we must import local settings now in case
+# those settings have been overridden.
 import_local_settings()
 
 ADMINS = (
@@ -47,9 +48,10 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-LOGOUT_URL = '/'
-LOGIN_REDIRECT_URL = '/'
-LOGIN_URL = '/accounts/login/'
+# The following specify named URL patterns.
+LOGOUT_URL = 'logout'
+LOGIN_REDIRECT_URL = 'index'
+LOGIN_URL = 'login'
 
 # Should the DNS features be enabled?  Having this config option is a
 # debugging/testing feature to be able to quickly disconnect the DNS
@@ -69,21 +71,16 @@ MAAS_CLI = 'sudo maas-region-admin'
 # probably should, override this.
 DEFAULT_MAAS_URL = compose_URL("http:///", guess_server_host())
 
-if FORCE_SCRIPT_NAME is not None:
-    LOGOUT_URL = FORCE_SCRIPT_NAME + LOGOUT_URL
-    LOGIN_REDIRECT_URL = FORCE_SCRIPT_NAME + LOGIN_REDIRECT_URL
-    LOGIN_URL = FORCE_SCRIPT_NAME + LOGIN_URL
-    DEFAULT_MAAS_URL = urljoin(DEFAULT_MAAS_URL, FORCE_SCRIPT_NAME)
-    # ADMIN_MEDIA_PREFIX will be deprecated in Django 1.4.
-    # Admin's media will be served using staticfiles instead.
-    ADMIN_MEDIA_PREFIX = FORCE_SCRIPT_NAME
-
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'
 
 # We handle exceptions ourselves (in
 # maasserver.middleware.APIErrorsMiddleware)
 PISTON_DISPLAY_ERRORS = False
+
+# We have some backward-compatibility Piston handlers that necessarily use the
+# same model, so we silence the warnings that Piston gives.
+PISTON_IGNORE_DUPE_MODELS = True
 
 # Location of the local cluster config file (installed by
 # the package maas-cluster-controller).  Use to distinguish the local cluster
@@ -171,16 +168,10 @@ STATIC_ROOT = ''
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL_PATTERN = '/static/'
-STATIC_URL = STATIC_URL_PATTERN
-if FORCE_SCRIPT_NAME is not None:
-    STATIC_URL = FORCE_SCRIPT_NAME + STATIC_URL
-
-# URL prefix for admin static files -- CSS, JavaScript and images.
-# Make sure to use a trailing slash.
-# Examples: "http://foo.com/static/admin/", "/static/admin/".
-ADMIN_MEDIA_PREFIX = '/static/admin/'
-if FORCE_SCRIPT_NAME is not None:
-    ADMIN_MEDIA_PREFIX = FORCE_SCRIPT_NAME + ADMIN_MEDIA_PREFIX
+# Serving of static files doesn't seem to grok how to compose a URL when a
+# application is being served from a non-empty prefix (i.e. when request.path
+# is not empty), so we have to hack this.
+STATIC_URL = "/MAAS" + STATIC_URL_PATTERN
 
 # Additional locations of static files
 STATICFILES_DIRS = (
@@ -276,6 +267,49 @@ if DEBUG:
 # more details on how to customize the logging configuration.
 LOGGING = {
     'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {
+            'format': DEFAULT_LOG_FORMAT,
+            'datefmt': DEFAULT_LOG_FORMAT_DATE,
+        },
+    },
+    'handlers': {
+        'stdout': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+            'stream': stdout,
+        },
+    },
+    'root': {
+        'handlers': ['stdout'],
+    },
+    'loggers': {
+        'maas': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'maasserver': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'metadataserver': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'django.request': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'django.db.backends': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'sstreams': {
+            'level': DEFAULT_LOG_LEVEL,
+        },
+        'urllib3': {
+            'level': 'WARN',
+        },
+        'nose': {
+            'level': 'WARN',
+        },
+    },
 }
 
 # The duration, in minutes, after which we consider a commissioning node
@@ -314,6 +348,3 @@ patch_get_script_prefix()
 
 # Fix crooked settings.
 fix_up_databases(DATABASES)
-
-# Enable the logging of simplestreams
-log_sstreams(LOGGING)

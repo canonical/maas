@@ -266,8 +266,8 @@ endef
 # Development services.
 #
 
-service_names_region := database dns reloader web webapp
-service_names_cluster := pserv reloader
+service_names_region := database dns regiond regiond2 reloader web
+service_names_cluster := clusterd reloader
 service_names_all := $(service_names_region) $(service_names_cluster)
 
 # The following template is intended to be used with `call`, and it
@@ -302,11 +302,11 @@ run:
 
 phony_services_targets += run-region run-cluster run
 
-# This one's for the rapper, yo.
-run+webapp:
-	@services/run $(service_names_region) +webapp
+# This one's for the rapper, yo. Don't run the load-balancing regiond2.
+run+regiond:
+	@services/run $(filter-out regiond2,$(service_names_region)) +regiond
 
-phony_services_targets += run+webapp
+phony_services_targets += run+regiond
 
 # Convenient variables and functions for service control.
 
@@ -353,13 +353,15 @@ services/dns/@deps: bin/py
 
 services/database/@deps: bin/database
 
-services/pserv/@deps: bin/twistd.cluster
+services/clusterd/@deps: bin/twistd.cluster
 
 services/reloader/@deps:
 
 services/web/@deps:
 
-services/webapp/@deps: bin/maas-region-admin
+services/regiond/@deps: bin/maas-region-admin
+
+services/regiond2/@deps: bin/maas-region-admin
 
 #
 # Package building

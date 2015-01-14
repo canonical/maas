@@ -111,14 +111,13 @@ def get_error_message_for_exception(exception):
 
     if isinstance(exception, MultipleFailures):
         return (
-            "Multiple failures encountered. See /var/log/maas/maas-django.log "
+            "Multiple failures encountered. See /var/log/maas/regiond.log "
             "on the region server for more information.")
 
     error_message = unicode(exception)
     if len(error_message) == 0:
         error_message = (
-            "Unexpected exception: %s. See "
-            "/var/log/maas/maas-django.log "
+            "Unexpected exception: %s. See /var/log/maas/regiond.log "
             "on the region server for more information." %
             exception.__class__.__name__)
     return error_message

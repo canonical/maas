@@ -16,7 +16,7 @@ __all__ = [
     "fix_up_databases",
     "import_local_settings",
     "import_settings",
-    "log_sstreams",
+    "import_local_settings",
     ]
 
 import sys
@@ -91,25 +91,6 @@ def fix_up_databases(databases):
                         "ATOMIC_REQUESTS is set to %r; overriding to False."
                         % (atomic_requests,), RuntimeWarning, 2)
             database["ATOMIC_REQUESTS"] = False
-
-
-def log_sstreams(LOGGING):
-    """Turn on simplestreams logging.
-
-    Copies the exact logging configuration for maasserver into sstreams,
-    unless a sstreams config already exists.
-    """
-    if 'loggers' not in LOGGING:
-        # No loggers in LOGGING, can't do anthing.
-        return
-    if 'sstreams' in LOGGING['loggers']:
-        # Already have a simplestreams config for logging.
-        return
-    if 'maasserver' not in LOGGING['loggers']:
-        # No maasserver logger present to copy, no way of know what it
-        # should be set to.
-        return
-    LOGGING['loggers']['sstreams'] = LOGGING['loggers']['maasserver']
 
 
 try:

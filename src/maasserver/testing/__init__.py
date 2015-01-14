@@ -27,7 +27,11 @@ from itertools import chain
 import os
 from urlparse import urlparse
 
+import crochet
 from lxml.html import fromstring
+
+# Many tests need a running reactor.
+crochet.setup()
 
 
 def extract_redirect(http_response):

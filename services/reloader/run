@@ -58,26 +58,30 @@ def is_supervised(dirname):
     return call(("svok", dirname)) == 0
 
 
-def handle_webapp_change(event):
-    service_dir = "services/webapp"
-    if is_interesting_scss_change(event.name):
-        print("<-- {0.pathname} changed; rebuiling css.".format(event))
-        check_call(("make", "styles"))
-    if is_interesting_python_change(event.name):
+def handle_python_change(event, *services):
+    for service in services:
+        service_dir = "services/%s" % service
         if is_supervised(service_dir):
-            print("<-- {0.pathname} changed; reloading webapp.".format(event))
+            print("<-- {0.pathname} changed; reloading {1}.".format(
+                event, service))
             check_call(("svc", "-du", service_dir))
 
 
-def handle_pserv_change(event):
-    services = "pserv",
+def handle_scss_change(event):
+    print("<-- {0.pathname} changed; rebuiling CSS.".format(event))
+    check_call(("make", "-s", "styles"))
+
+
+def handle_maas_change(event):
     if is_interesting_python_change(event.name):
-        for service in services:
-            service_dir = "services/%s" % service
-            if is_supervised(service_dir):
-                print("<-- {0.pathname} changed; reloading {1}.".format(
-                    event, service))
-                check_call(("svc", "-du", service_dir))
+        handle_python_change(event, "regiond", "regiond2")
+    if is_interesting_scss_change(event.name):
+        handle_scss_change(event)
+
+
+def handle_pserv_change(event):
+    if is_interesting_python_change(event.name):
+        handle_python_change(event, "clusterd", "regiond", "regiond2")
 
 
 class TestReloader(unittest.TestCase):
@@ -131,7 +135,7 @@ if __name__ == "__main__":
             "/test/" in path or "/testing/" in path or "/." in path))
     wm.add_watch(
         ["src/maas*", "src/meta*"], TRIGGER_EVENTS,
-        proc_fun=handle_webapp_change, rec=True, auto_add=True, do_glob=True)
+        proc_fun=handle_maas_change, rec=True, auto_add=True, do_glob=True)
     wm.add_watch(
         ["src/prov*"], TRIGGER_EVENTS, proc_fun=handle_pserv_change,
         rec=True, auto_add=True, do_glob=True)

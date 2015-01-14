@@ -50,43 +50,19 @@ __all__ = [
     "stop",
 ]
 
-from functools import wraps
 from logging import getLogger
 from os import getpid
+import socket
 from socket import gethostname
 
-import crochet
 from django.db import connections
-from django.utils import autoreload
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.service import MultiService
-from twisted.internet.error import ReactorNotRunning
+from twisted.internet import reactor
+from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
 
 logger = getLogger(__name__)
-
-
-def stop_event_loop_when_reloader_is_invoked():
-    """Stop the event loop if Django starts reloading itself.
-
-    This typically only happens when using Django's development server.
-    """
-    # The original restart_with_reloader.
-    restart_with_reloader = autoreload.restart_with_reloader
-
-    @wraps(restart_with_reloader)
-    def stop_event_loop_then_restart_with_reloader():
-        logger.info("Stopping event loop in process %d", getpid())
-        try:
-            crochet.reactor.stop()
-        except ReactorNotRunning:
-            pass
-        return restart_with_reloader()
-
-    autoreload.restart_with_reloader = (
-        stop_event_loop_then_restart_with_reloader)
-
-stop_event_loop_when_reloader_is_invoked()
 
 
 class DisabledDatabaseConnection:
@@ -138,7 +114,7 @@ def disable_all_database_connections():
         connections[alias] = DisabledDatabaseConnection()
         connection.close()
 
-crochet.reactor.addSystemEventTrigger(
+reactor.addSystemEventTrigger(
     "before", "startup", disable_all_database_connections)
 
 
@@ -162,6 +138,25 @@ def make_NonceCleanupService():
 def make_ImportResourcesService():
     from maasserver import bootresources
     return bootresources.ImportResourcesService()
+
+
+def make_WebApplicationService():
+    from maasserver.webapp import WebApplicationService
+    site_port = 5243  # config["port"]
+    # Make a socket with SO_REUSEPORT set so that we can run multiple web
+    # applications. This is easier to do from outside of Twisted as there's
+    # not yet official support for setting socket options.
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    s.bind(('localhost', site_port))
+    # Use a backlog of 50, which seems to be fairly common.
+    s.listen(50)
+    # Adopt this socket into Twisted's reactor.
+    site_endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
+    site_endpoint.socket = s  # Prevent garbage collection.
+    site_service = WebApplicationService(site_endpoint)
+    return site_service
 
 
 class RegionEventLoop:
@@ -189,6 +184,7 @@ class RegionEventLoop:
         ("rpc-advertise", make_RegionAdvertisingService),
         ("nonce-cleanup", make_NonceCleanupService),
         ("import-resources", make_ImportResourcesService),
+        ("web", make_WebApplicationService),
     )
 
     def __init__(self):
@@ -196,18 +192,9 @@ class RegionEventLoop:
         self.services = MultiService()
         self.handle = None
 
-    def init(self):
-        """Spin up a Twisted event loop in this process."""
-        if not crochet.reactor.running:
-            logger.info("Starting event loop in process %d", getpid())
-            crochet.setup()
-
     @asynchronous
-    def start(self):
-        """start()
-
-        Start all services in the region's event-loop.
-        """
+    def populate(self):
+        """Prepare all services."""
         for name, factory in self.factories:
             try:
                 self.services.getServiceNamed(name)
@@ -215,7 +202,15 @@ class RegionEventLoop:
                 service = factory()
                 service.setName(name)
                 service.setServiceParent(self.services)
-        self.handle = crochet.reactor.addSystemEventTrigger(
+
+    @asynchronous
+    def start(self):
+        """start()
+
+        Start all services in the region's event-loop.
+        """
+        self.populate()
+        self.handle = reactor.addSystemEventTrigger(
             'before', 'shutdown', self.services.stopService)
         return self.services.startService()
 
@@ -227,7 +222,7 @@ class RegionEventLoop:
         """
         if self.handle is not None:
             handle, self.handle = self.handle, None
-            crochet.reactor.removeSystemEventTrigger(handle)
+            reactor.removeSystemEventTrigger(handle)
         return self.services.stopService()
 
     @asynchronous
@@ -269,5 +264,3 @@ reset = loop.reset
 services = loop.services
 start = loop.start
 stop = loop.stop
-
-loop.init()

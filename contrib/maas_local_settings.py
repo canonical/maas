@@ -1,77 +1,13 @@
-# Debug/Production mode.
-DEBUG = False
-
 # Default URL specifying protocol, host, and (if necessary) port where
 # systems in this MAAS can find the MAAS server.  Configuration can, and
 # probably should, override this.
 DEFAULT_MAAS_URL = "http://maas.internal.example.com/"
 
 # Absolute path to the directory static files should be collected to.
-STATIC_ROOT = '/var/lib/maas/static/'
-
-# Prefix to use for MAAS's urls.
-# If FORCE_SCRIPT_NAME is None (the default), all the urls will start with
-# '/'.
-FORCE_SCRIPT_NAME = '/MAAS'
+STATIC_ROOT = '/usr/share/maas/web/static/'
 
 # Where to store the user uploaded files.
 MEDIA_ROOT = '/var/lib/maas/media/'
-
-# Use the (libjs-yui) package's files to serve YUI3.
-YUI_LOCATION = '/usr/share/javascript/yui3/'
-
-# Use the package's files to serve RaphaelJS.
-RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
-
-# See http://docs.djangoproject.com/en/dev/topics/logging for
-# more details on how to customize the logging configuration.
-LOGGING_LEVEL = 'INFO'
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'simple': {
-            'format': '%(levelname)s %(asctime)s %(name)s %(message)s'
-        },
-    },
-    'handlers': {
-        'log': {
-            'class': 'logging.handlers.RotatingFileHandler',
-            # DO NOT point this file at /var/log/maas/maas.log; MAAS now
-            # uses syslog to log to that file, and pointing the Django
-            # log output to it will clobber the syslog output.
-            'filename': '/var/log/maas/maas-django.log',
-            'formatter': 'simple',
-        },
-    },
-    'loggers': {
-        'maasserver': {
-            'level': LOGGING_LEVEL,
-            'handlers': ['log'],
-            'propagate': True,
-        },
-        'metadataserver': {
-            'level': LOGGING_LEVEL,
-            'handlers': ['log'],
-            'propagate': True,
-        },
-        'django.request': {
-            'level': LOGGING_LEVEL,
-            'handlers': ['log'],
-            'propagate': True,
-        },
-        'django.db.backends': {
-            'level': LOGGING_LEVEL,
-            'handlers': ['log'],
-            'propagate': True,
-        },
-        'twisted': {
-            'level': LOGGING_LEVEL,
-            'handlers': ['log'],
-            'propagate': True,
-        },
-    },
-}
 
 # Database access configuration.
 DATABASES = {

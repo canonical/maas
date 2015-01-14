@@ -17,7 +17,6 @@ __all__ = []
 from functools import partial
 from time import time
 
-import crochet
 from django.db import connection
 from django.db.utils import OperationalError
 from maasserver.exceptions import IteratorReusedError
@@ -46,9 +45,6 @@ from testtools.matchers import (
 from twisted.internet import reactor
 from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
-
-# These tests need a running reactor.
-crochet.setup()
 
 
 class TestGather(MAASTestCase):

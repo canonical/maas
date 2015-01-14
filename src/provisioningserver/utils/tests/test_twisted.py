@@ -85,12 +85,22 @@ class TestAsynchronousDecorator(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
-    def test_in_reactor_thread(self):
+    def test__calls_in_current_thread_when_current_thread_is_reactor(self):
+        result = asynchronous(return_args)(1, 2, three=3)
+        self.assertEqual(((1, 2), {"three": 3}), result)
+
+    def test__calls_in_current_thread_when_io_thread_is_not_set(self):
+        # Patch ioThread such that isInIOThread() returns False. It will
+        # return False for every thread too, so asynchronous() explicitly
+        # checks ioThread. It can be unset as twistd starts an application, so
+        # we assume we're in the reactor thread anyway.
+        self.patch(threadable, "ioThread", None)
+        self.assertFalse(threadable.isInIOThread())
         result = asynchronous(return_args)(1, 2, three=3)
         self.assertEqual(((1, 2), {"three": 3}), result)
 
     @inlineCallbacks
-    def test_in_other_thread(self):
+    def test__calls_into_reactor_when_current_thread_is_not_reactor(self):
         def do_stuff_in_thread():
             result = asynchronous(return_args)(3, 4, five=5)
             self.assertThat(result, IsInstance(EventualResult))

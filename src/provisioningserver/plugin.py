@@ -20,23 +20,6 @@ __all__ = [
 import signal
 import sys
 
-import provisioningserver
-from provisioningserver.cluster_config import get_cluster_uuid
-from provisioningserver.config import Config
-from provisioningserver.pserv_services.dhcp_probe_service import (
-    DHCPProbeService,
-    )
-from provisioningserver.pserv_services.image_download_service import (
-    ImageDownloadService,
-    )
-from provisioningserver.pserv_services.lease_upload_service import (
-    LeaseUploadService,
-    )
-from provisioningserver.pserv_services.node_power_monitor_service import (
-    NodePowerMonitorService,
-    )
-from provisioningserver.pserv_services.tftp import TFTPService
-from provisioningserver.rpc.clusterservice import ClusterClientService
 from twisted.application.internet import TCPServer
 from twisted.application.service import (
     IServiceMaker,
@@ -176,6 +159,7 @@ class ProvisioningServiceMaker:
 
     def _makeTFTPService(self, tftp_config):
         """Create the dynamic TFTP service."""
+        from provisioningserver.pserv_services.tftp import TFTPService
         tftp_service = TFTPService(
             resource_root=tftp_config['resource_root'],
             port=tftp_config['port'], generator=tftp_config['generator'])
@@ -183,28 +167,41 @@ class ProvisioningServiceMaker:
         return tftp_service
 
     def _makeImageDownloadService(self, rpc_service):
+        from provisioningserver.cluster_config import get_cluster_uuid
+        from provisioningserver.pserv_services.image_download_service \
+            import ImageDownloadService
         image_download_service = ImageDownloadService(
             rpc_service, reactor, get_cluster_uuid())
         image_download_service.setName("image_download")
         return image_download_service
 
     def _makeLeaseUploadService(self, rpc_service):
+        from provisioningserver.cluster_config import get_cluster_uuid
+        from provisioningserver.pserv_services.lease_upload_service \
+            import LeaseUploadService
         lease_upload_service = LeaseUploadService(
             rpc_service, reactor, get_cluster_uuid())
         lease_upload_service.setName("lease_upload")
         return lease_upload_service
 
     def _makeNodePowerMonitorService(self):
+        from provisioningserver.cluster_config import get_cluster_uuid
+        from provisioningserver.pserv_services.node_power_monitor_service \
+            import NodePowerMonitorService
         node_monitor = NodePowerMonitorService(get_cluster_uuid(), reactor)
         node_monitor.setName("node_monitor")
         return node_monitor
 
     def _makeRPCService(self, rpc_config):
+        from provisioningserver.rpc.clusterservice import ClusterClientService
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
         return rpc_service
 
     def _makeDHCPProbeService(self, rpc_service):
+        from provisioningserver.cluster_config import get_cluster_uuid
+        from provisioningserver.pserv_services.dhcp_probe_service \
+            import DHCPProbeService
         dhcp_probe_service = DHCPProbeService(
             rpc_service, reactor, get_cluster_uuid())
         dhcp_probe_service.setName("dhcp_probe")
@@ -212,7 +209,9 @@ class ProvisioningServiceMaker:
 
     def makeService(self, options):
         """Construct a service."""
-        services = provisioningserver.services
+        from provisioningserver import services
+        from provisioningserver.config import Config
+
         config = Config.load(options["config-file"])
 
         log_service = self._makeLogService(config)

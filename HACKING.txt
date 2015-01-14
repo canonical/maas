@@ -354,7 +354,7 @@ everything.
 
 Individual services can be manipulated too::
 
-  $ make services/pserv/@start
+  $ make services/clusterd/@start
 
 The ``@<action>`` pattern works for any of the services.
 
@@ -368,7 +368,7 @@ stopped.
 
 However, when used with individual services::
 
-  $ make services/webapp/@run
+  $ make services/regiond/@run
 
 it does something even cooler. First it shuts down the service, then
 it restarts it in the foreground so you can see the logs in the

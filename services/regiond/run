@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2012 Canonical Ltd.  This software is licensed under the
+# Copyright 2012-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 # Exit immediately if a command exits with a non-zero status.
@@ -21,10 +21,10 @@ then
 fi
 
 # DNS settings, for driving BIND.
-export MAAS_DNS_CONFIG_DIR="$(cd run/named && pwd)"
+export MAAS_DNS_CONFIG_DIR="$(readlink -f run/named)"
 export MAAS_DNS_RNDC_PORT=5247
 export MAAS_DNS_DEFAULT_CONTROLS=0
 
 # Exec the MAAS API and Web UI Server.
-script="$(readlink -f bin/maas-region-admin)"
-exec "${script}" runserver 5243 --settings=maas.demo "$@"
+script="$(readlink -f bin/twistd.region)"
+exec "${script}" --nodaemon --pidfile="" maas-regiond

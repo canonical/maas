@@ -1,7 +1,7 @@
 # Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the psmaas TAP."""
+"""Tests for the ``maasclusterd`` TAP."""
 
 from __future__ import (
     absolute_import,
@@ -14,16 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from functools import partial
 import os
 
+from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
     )
 import provisioningserver
-from provisioningserver import plugin as plugin_module
 from provisioningserver.plugin import (
     Options,
     ProvisioningRealm,
@@ -49,15 +48,12 @@ from testtools.matchers import (
     Equals,
     IsInstance,
     MatchesAll,
-    MatchesException,
     MatchesStructure,
-    Raises,
     )
 from twisted.application.service import MultiService
 from twisted.cred.credentials import UsernamePassword
 from twisted.cred.error import UnauthorizedLogin
 from twisted.internet.defer import inlineCallbacks
-from twisted.python.usage import UsageError
 from twisted.web.resource import IResource
 import yaml
 
@@ -69,12 +65,6 @@ class TestOptions(MAASTestCase):
         options = Options()
         expected = {"config-file": "pserv.yaml"}
         self.assertEqual(expected, options.defaults)
-
-    def check_exception(self, options, message, *arguments):
-        # Check that a UsageError is raised when parsing options.
-        self.assertThat(
-            partial(options.parseOptions, arguments),
-            Raises(MatchesException(UsageError, message)))
 
     def test_parse_minimal_options(self):
         options = Options()
@@ -92,9 +82,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         super(TestProvisioningServiceMaker, self).setUp()
         self.patch(provisioningserver, "services", MultiService())
         self.tempdir = self.make_dir()
-        cluster_uuid = factory.make_UUID()
-        self.patch(plugin_module, 'get_cluster_uuid').return_value = (
-            cluster_uuid)
+        self.useFixture(
+            EnvironmentVariableFixture(
+                "CLUSTER_UUID", factory.make_UUID()))
 
     def write_config(self, config):
         config_filename = os.path.join(self.tempdir, "config.yaml")

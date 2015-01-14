@@ -103,7 +103,7 @@ def asynchronous(func=undefined, timeout=undefined):
 
     @wraps(func)
     def wrapper(*args, **kwargs):
-        if isInIOThread():
+        if threadable.ioThread is None or isInIOThread():
             return func(*args, **kwargs)
         elif timeout is undefined:
             return func_in_reactor(*args, **kwargs)

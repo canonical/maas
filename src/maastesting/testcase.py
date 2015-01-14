@@ -215,6 +215,10 @@ class MAASTwistedRunTest(deferredruntest.AsynchronousDeferredRunTest):
 
     It catches a common problem when writing tests for Twisted: forgetting to
     decorate a test with `inlineCallbacks` that needs it.
+
+    Tests in `maas`, `maasserver`, and `metadataserver` run with a Twisted
+    reactor managed by `crochet`, so don't use this; it will result in a
+    deadlock.
     """
 
     def _check_for_generator(self, result):
