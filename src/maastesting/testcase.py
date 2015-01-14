@@ -149,6 +149,26 @@ class MAASTestCase(
         self.assertThat(observed, testtools.matchers.DocTestMatches(
             expected, self.doctest_flags if flags is None else flags))
 
+    def assertIdentical(self, expected, observed, msg=None):
+        """Check if `expected` is `observed`.
+
+        This is an obect-identity-equality test, not an object equality
+        (i.e. __eq__) test.
+        """
+        if expected is not observed:
+            raise self.failureException(
+                msg or '%r is not %r' % (expected, observed))
+
+    def assertNotIdentical(self, expected, observed, msg=None):
+        """Check if `expected` is not `observed`.
+
+        This is an obect-identity-equality test, not an object equality
+        (i.e. __eq__) test.
+        """
+        if expected is observed:
+            raise self.failureException(
+                msg or '%r is %r' % (expected, observed))
+
     def run(self, result=None):
         with active_test(result, self):
             super(MAASTestCase, self).run(result)
