@@ -47,9 +47,6 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
-# Location where python-oops should store errors.
-OOPS_REPOSITORY = 'logs/oops'
-
 LOGOUT_URL = '/'
 LOGIN_REDIRECT_URL = '/'
 LOGIN_URL = '/accounts/login/'

@@ -367,8 +367,6 @@ class TestConfig(MAASTestCase):
 
     default_development_config = deepcopy(default_production_config)
     default_development_config.update(logfile="/dev/null")
-    default_development_config["oops"].update(
-        directory="logs/oops", reporter="maas-pserv")
     default_development_config["tftp"].update(
         port=5244, generator="http://localhost:5243/api/1.0/pxeconfig/")
 

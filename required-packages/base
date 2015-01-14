@@ -12,6 +12,7 @@ libjs-yui3-min
 libpq-dev
 postgresql
 python-amqplib
+python-bson
 python-bzrlib
 python-convoy
 python-crochet
@@ -31,11 +32,6 @@ python-lockfile
 python-netaddr
 python-netifaces
 python-oauth
-python-oops
-python-oops-amqp
-python-oops-datedir-repo
-python-oops-twisted
-python-oops-wsgi
 python-openssl
 python-paramiko
 python-pexpect

@@ -87,7 +87,12 @@ BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
 
 
 class ConfigOops(Schema):
-    """Configuration validator for OOPS options."""
+    """Configuration validator for OOPS options.
+
+    Deprecated: MAAS no longer records OOPS reports. This remains here to
+    avoid validation failures when using old versions of the cluster's
+    configuration file.
+    """
 
     if_key_missing = None
 

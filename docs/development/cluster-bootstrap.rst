@@ -29,7 +29,7 @@ alike:
 
 #. ``ClusterClientService`` starts.
 
-#. Services other than log and oops are **not** started.
+#. Services other than ``log`` are **not** started.
 
 #. Wait for a connection to the region to become available.
 

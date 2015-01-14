@@ -14,20 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = [
     "LogService",
-    "OOPSService",
     "ProvisioningServiceMaker",
 ]
 
 import signal
 import sys
 
-import oops
-from oops_datedir_repo import DateDirRepo
-from oops_twisted import (
-    Config as oops_config,
-    defer_publisher,
-    OOPSObserver,
-    )
 import provisioningserver
 from provisioningserver.cluster_config import get_cluster_uuid
 from provisioningserver.config import Config
@@ -61,11 +53,7 @@ from twisted.internet.defer import (
     )
 from twisted.plugin import IPlugin
 from twisted.python import usage
-from twisted.python.log import (
-    addObserver,
-    FileLogObserver,
-    removeObserver,
-    )
+from twisted.python.log import FileLogObserver
 from twisted.python.logfile import LogFile
 from twisted.web.resource import (
     IResource,
@@ -153,38 +141,6 @@ class LogService(Service):
             self.logfile = None
 
 
-class OOPSService(Service):
-
-    name = "oops"
-
-    def __init__(self, log_service, oops_dir, oops_reporter):
-        self.config = None
-        self.log_service = log_service
-        self.oops_dir = oops_dir
-        self.oops_reporter = oops_reporter
-
-    def startService(self):
-        Service.startService(self)
-        self.config = oops_config()
-        # Add the oops publisher that writes files in the configured place if
-        # the command line option was set.
-        if self.oops_dir:
-            repo = DateDirRepo(self.oops_dir)
-            self.config.publishers.append(
-                defer_publisher(oops.publish_new_only(repo.publish)))
-        if self.oops_reporter:
-            self.config.template['reporter'] = self.oops_reporter
-        self.observer = OOPSObserver(
-            self.config, self.log_service.observer.emit)
-        addObserver(self.observer.emit)
-
-    def stopService(self):
-        Service.stopService(self)
-        removeObserver(self.observer.emit)
-        self.observer = None
-        self.config = None
-
-
 class Options(usage.Options):
     """Command line options for the provisioning server."""
 
@@ -206,12 +162,6 @@ class ProvisioningServiceMaker:
     def _makeLogService(self, config):
         """Create the log service."""
         return LogService(config["logfile"])
-
-    def _makeOopsService(self, log_service, oops_config):
-        """Create the oops service."""
-        oops_dir = oops_config["directory"]
-        oops_reporter = oops_config["reporter"]
-        return OOPSService(log_service, oops_dir, oops_reporter)
 
     def _makeSiteService(self, papi_xmlrpc, config):
         """Create the site service."""
@@ -267,9 +217,6 @@ class ProvisioningServiceMaker:
 
         log_service = self._makeLogService(config)
         log_service.setServiceParent(services)
-
-        oops_service = self._makeOopsService(log_service, config["oops"])
-        oops_service.setServiceParent(services)
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)
