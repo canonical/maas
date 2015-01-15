@@ -25,8 +25,9 @@ get_mac_addresses() {
 	macs=`ip addr | egrep 'link/ether' | cut -d' ' -f6`
 	# Obtain the BOOTIF MAC address from the kernel command line.
 	# Note that BOOTIF stores the MAC in the format of
-	# '01-AA-BB-CC-DD-EE-FF" and we remove the '01-'.
-	pxe_mac=`cat /proc/cmdline | egrep 'BOOTIF=' | sed -e 's/.*[[:space:]]BOOTIF=\([-0-9A-Fa-f]\+\).*/\1/g' -e 's,^01-,,g' -e 's,-,:,g'`
+	# '01-AA-BB-CC-DD-EE-FF", or "01-AA:BB:CC:DD:EE:FF",
+        # and we remove the '01-'.
+	pxe_mac=`cat /proc/cmdline | egrep 'BOOTIF=' | sed -e 's/.*[[:space:]]BOOTIF=\([-:0-9A-Fa-f]\+\).*/\1/g' -e 's,^01-,,g' -e 's,-,:,g'`
 	# Initialize the mac_address variable with "$pxe_mac",
 	# otherwise "$pxe_mac" will be empty.
 	mac_addresses="$pxe_mac"
