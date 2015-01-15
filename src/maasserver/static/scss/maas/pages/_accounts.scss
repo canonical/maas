@@ -1,0 +1,29 @@
+@charset 'UTF-8';
+
+/**
+ * MAAS account styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+.accounts {
+
+    .login,
+    .logout {
+
+        input[type="submit"] {
+            font-size: 18px;
+        }
+    }
+
+    .logout {
+
+        .divide {
+            padding: 0 20px 0 30px;
+            display: inline-block;
+        }
+    }
+}

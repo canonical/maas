@@ -57,18 +57,14 @@
 {% endblock %}
 
 {% block content %}
-<div id="dashboard">
-    <div class="row no-border">
-       <section id="chart" class="four-col"></section>
-       <section id="summary" class="eight-col last-col">
-            <h2 id="nodes-number"></h2>
-            <p id="nodes-description"></p>
-        </section>
-    </div>
-    <div class="row no-border">
-        <p id="reserved-nodes"></p>
-        <p id="retired-nodes"></p>
-        <a href="#" id="addnode" class="link-cta-ubuntu">+ Add node</a>
-    </div>
+<div id="dashboard" class="twelve-col">
+   <section id="chart" class="four-col"></section>
+   <section id="summary" class="eight-col last-col">
+        <h2 id="nodes-number"></h2>
+        <p id="nodes-description"></p>
+    </section>
+    <p id="reserved-nodes"></p>
+    <p id="retired-nodes"></p>
+    <a href="#" id="addnode" class="link-cta-ubuntu">+ Add node</a>
 </div>
 {% endblock %}

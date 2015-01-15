@@ -1,0 +1,47 @@
+@charset "UTF-8";
+
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS header styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+header.banner {
+
+	.nav-primary.nav-right {
+
+		.logo-ubuntu {
+			@include background-size(100px);
+			background-position: 5px 5px;
+		}
+	}
+
+	#user-options-link {
+
+		.normal,
+		.hover {
+			margin-right: 7px;
+		}
+
+		.hover {
+			display: none;
+		}
+
+		&:hover {
+
+			.normal {
+				display: none;
+			}
+
+			.hover {
+				display: inline-block;
+			}
+		}
+	}
+}

@@ -47,7 +47,7 @@
         <nav role="navigation" class="nav-primary nav-right">
             <div class="logo">
                 <a class="logo-ubuntu" href="{% url 'index' %}">
-                    <img width="110" height"10" src="{{ STATIC_URL }}img/logo.svg" alt="MAAS" />
+                    <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
                 </a>
             </div>
             <ul id="main-nav" class="nav">
@@ -110,31 +110,30 @@
             {% endif %}
         </ul>
         {% endif %}
-        {% block page-title-block %}
-        <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
-        {% endblock %}
-        <div id="content">
-            <div id="sidebar">
-                {% block sidebar %}
+        <div id="main-content" class="row">
+            <div class="inner-wrapper" id="content">
+                {% block page-title-block %}
+                <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
+                {% endblock %}
+                <aside id="sidebar">
+                    {% block sidebar %}
+                    {% endblock %}
+                </aside>
+                {% block content %}
                 {% endblock %}
             </div>
-            {% block content %}
-            {% endblock %}
-            <div class="clear"></div>
         </div>
     </main>
     <div class="footer-wrapper">
-        <footer class="global clearfix">
+        <footer class="global inner-wrapper clearfix">
             <div class="legal clearfix">
                 <div class="legal-inner">
+                    {% block footer-copyright %}
                     <p class="twelve-col">
-                        {% block footer-copyright %}
-                        &copy; 2014 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd. <a class="space-left-small" href="https://maas.ubuntu.com/documentation/" target="_blank">View Documentation</a>
-                        {% endblock %}
+                        <span class="version">MAAS</span> <a href="http://maas.ubuntu.com/docs1.7/changelog.html#id1">View release notes</a>|<a href="https://maas.ubuntu.com/documentation/">View documentation</a>
                     </p>
-                    <span class="accessibility-aid">
-                        <a href="#">Got to the top of the page</a>
-                    </span>
+                    <p class="twelve-col copy">&copy; 2015 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</p>
+                    {% endblock %}
                 </div>
             </div>
         </footer>

@@ -1,0 +1,65 @@
+@charset "UTF-8";
+
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS base styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+/**
+ * Dependencies
+ *
+ * Importing mixin file from Ubuntu guidelines: core-mixins.scss
+ */
+
+/**
+ * General
+ * Forms
+ */
+
+/**
+ * General
+ *
+ * General element styles
+ *
+ * @section general
+ */
+
+html {
+    background: url(/static/img/backgrounds/image-background-paper.png);
+    height: 100%;
+}
+
+body {
+    background-color: rgba(255, 255, 255, .6);
+    min-height: 100%;
+}
+
+/**
+ * Forms
+ *
+ * Global form element styles
+ *
+ * @section forms
+ */
+
+form {
+
+    input[type="password"],
+    input[type="search"] {
+        -webkit-appearance: none;
+        @include rounded-corners(2px);
+        background: #fff;
+        border: 1px solid #999;
+        display: block;
+        font-family: Ubuntu,Arial,"libra sans",sans-serif;
+        font-size: 1em;
+        font-weight: 300;
+        padding: 0.6956522em 0.869565em;
+    }
+}

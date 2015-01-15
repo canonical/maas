@@ -5,12 +5,16 @@
 {% block page-title %}Logout{% endblock %}
 
 {% block content %}
-    <div class="block auto-width">
-        <h2>Are you sure you want to log out?</h2>
-        <form action="." method="post">{% csrf_token %}
-            <input type="hidden" name="post" value="yes" />
-            <input type="submit" value="Log out" class="right" />
-            <a href="{% url 'index' %}">Cancel</a>
-        </form>
-    </div>
+<div class="accounts seven-col">
+	<h2>Are you sure you want to log out?</h2>
+	<form action="." method="post" class="logout seven-col">
+		{% csrf_token %}
+		<div class="four-col">
+		    <input type="hidden" name="post" value="yes" />
+		    <input type="submit" value="Log out" />
+		    <span class="divide">|</span>
+		    <a href="{% url 'index' %}">Cancel</a>
+		</div>
+	</form>
+</div>
 {% endblock %}

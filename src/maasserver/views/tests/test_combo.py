@@ -156,7 +156,7 @@ class TestComboLoaderView(MAASServerTestCase):
         self.assertNotIn(CONVOY_MISSING_FILE, response.content)
 
     def test_maas_load_css(self):
-        requested_files = ['css/base.css', 'css/forms.css']
+        requested_files = ['css/base.css']
         url = '%s?%s' % (reverse('combo-maas'), '&'.join(requested_files))
         response = self.client.get(url)
         # No sign of a missing css file.

@@ -1,52 +1,53 @@
 {% extends "maasserver/base.html" %}
-
 {% block title %}Login{% endblock %}
-{% block layout-modifiers %}modal-content login {% if no_users %}no-users{% endif %}{% endblock %}
-
+{% block layout-modifiers %}
+    modal-content login
+    {% if no_users %}
+        no-users
+    {% endif %}
+{% endblock %}
 {% block head %}
-  {% if not no_users %}
-    <script type="text/javascript">
-    <!--
-    YUI().use('node', function (Y) {
-      Y.on('load', function() {
-        Y.one('input[type=text]').focus();
-      });
-    });
-    // -->
-    </script>
-  {% endif %}
+    {% if not no_users %}
+        <script type="text/javascript">
+        <!--
+        YUI().use('node', function(Y) {
+            Y.on('load', function() {
+                Y.one('input[type=text]').focus();
+            });
+        });
+        // -->
+        </script>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
-  {% if no_users %}
-      <img src="{{ STATIC_URL }}img/pictogram_no_users.png" alt="No users pictogram" class="left space-right-large" />
-      <h2>No admin user has been created yet</h2>
-      <p>
-        Use the "createadmin" administration command to create one:
-      </p>
-      <pre>{{ create_command }} createadmin</pre>
-      <a href="{% url 'login' %}" class="button right space-top-small">login</a>
-  {% else %}
-  <h2>Login to {% include "maasserver/site_title.html" %}</h2>
-  {% if form.errors %}
-    <p class="form-errors">Your username and password didn't match. Please try again.</p>
-  {% endif %}
-
-  {% comment %}
-  We turn off autocompletion of the login form in production
-  environments. Autocompletion, in combination with cross-site scripting
-  attacks, can potentially allow remote attackers to steal credentials.
-  {% endcomment %}
-  <form method="post" {% if not debug %}autocomplete="off"{% endif %} action="{% url 'login' %}">{% csrf_token %}
-    <input type="hidden" name="next" value="{{ next }}" />
-    <ul>
-        {% for field in form %}
-            {% include "maasserver/form_field.html" %}
-        {% endfor %}
-      <li class="form-submit"><input type="submit" value="Login" /></li>
-    </ul>
-  </form>
-  {% endif %}
+    {% if no_users %}
+        <div class="four-col">
+            <img src="{{ STATIC_URL }}img/pictogram_no_users.png" alt="No users pictogram" class="left space-right-large" />
+        </div>
+        <div class="eight-col last-col">
+            <h2>No admin user has been created yet</h2>
+            <p>Use the "createadmin" administration command to create one:</p>
+            <pre>{{ create_command }} createadmin</pre>
+            <a href="{% url 'login' %}" class="button right space-top-small">login</a>
+        </div>
+    {% else %}
+        <h2 class="twelve-col">Login to {% include "maasserver/site_title.html" %}</h2>
+        <div class="accounts eight-col">
+            {% if form.errors %}
+            <p class="form-errors">Your username and password didn't match. Please try again.</p>
+            {% endif %}
+            {% comment %} We turn off autocompletion of the login form in production environments. Autocompletion, in combination with cross-site scripting attacks, can potentially allow remote attackers to steal credentials. {% endcomment %}
+            <form method="post" {% if not debug %}autocomplete="off" {% endif %} action="{% url 'login' %}" class="login">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ next }}" />
+                <ul>
+                    {% for field in form %}
+                        {% include "maasserver/form_field.html" %}
+                    {% endfor %}
+                </ul>
+                <input type="submit" value="Login" />
+            </form>
+            {% endif %}
+        </div>
 {% endblock %}
-
-{% block footer-copyright %}{% endblock %}

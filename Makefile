@@ -26,7 +26,7 @@ js_enums := src/maasserver/static/js/enums.js
 # the others, so is treated specially in the target definitions.
 scss_inputs := \
     src/maasserver/static/scss/maas-styles.scss \
-    $(wildcard src/maasserver/static/scss/*/*.scss)
+    $(wildcard src/maasserver/static/scss/**/*.scss)
 scss_output := src/maasserver/static/css/maas-styles.css
 
 # Prefix commands with this when they need access to the database.
