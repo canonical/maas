@@ -102,6 +102,9 @@ For full details see https://launchpad.net/maas/+milestone/1.7.1
 #1399736    MAAS should display memory sizes in properly labeld base 2 units - MiB, GiB, etc.
 #1401643    Documentation has wrong pattern for user provided preseeds
 #1401707    Slow web performance (5+ minute response time) on MAAS with many nodes
+#1403609    Fix MSCM chassis enlistment.
+#1409952    Correctly parse MAC Address for Power8 VM enlistment.
+#1409852    Do not fail when trying to perform an IP Address Reservation.
 
 
 1.7.0
