@@ -220,7 +220,16 @@ MIDDLEWARE_CLASSES = (
     # should be placed after it.
     'maasserver.middleware.ErrorsMiddleware',
     'maasserver.middleware.APIErrorsMiddleware',
-    'maasserver.middleware.ExternalComponentsMiddleware',
+
+    # XXX: allenap 2015-01-16 bug=1411666: ExternalComponentsMiddleware can
+    # break the request's transaction. This might be due to a serialization
+    # failure, which can only be handled by unwinding the whole request and
+    # trying again; suppressing the exception prevents that. There are other
+    # ways to break the transaction too, but suppressing here means that the
+    # break only becomes apparent in later middlewares, which crash. Hence
+    # ExternalComponentsMiddleware has been disabled temporarily.
+    # 'maasserver.middleware.ExternalComponentsMiddleware',
+
     'maasserver.middleware.RPCErrorsMiddleware',
     'maasserver.middleware.APIRPCErrorsMiddleware',
     'metadataserver.middleware.MetadataErrorsMiddleware',

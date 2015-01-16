@@ -60,6 +60,7 @@ from maasserver.models import nodegroup as nodegroup_module
 from maasserver.testing import extract_redirect
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import make_serialization_failure
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -116,6 +117,13 @@ class ExceptionMiddlewareTest(MAASServerTestCase):
         middleware = self.make_middleware(self.make_base_path())
         request = factory.make_fake_request(self.make_base_path())
         exception = MAASAPINotFound("Huh?")
+        self.assertIsNone(middleware.process_exception(request, exception))
+
+    def test_ignores_serialization_failures(self):
+        base_path = self.make_base_path()
+        middleware = self.make_middleware(base_path)
+        request = factory.make_fake_request(base_path)
+        exception = make_serialization_failure()
         self.assertIsNone(middleware.process_exception(request, exception))
 
     def test_unknown_exception_generates_internal_server_error(self):

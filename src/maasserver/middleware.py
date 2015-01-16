@@ -46,6 +46,9 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
     )
+from django.utils.http import urlquote_plus
+from maasserver import logger
+from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     discard_persistent_error,
@@ -55,8 +58,13 @@ from maasserver.enum import (
     COMPONENT,
     NODEGROUP_STATUS,
     )
+from maasserver.exceptions import (
+    ExternalComponentException,
+    MAASAPIException,
+    )
 from maasserver.models.bootresource import BootResource
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.utils.orm import is_serialization_failure
 from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -73,13 +81,6 @@ except ImportError:
     # a degraded version if build_request_repr is not
     # available (i.e. if Django version < 1.5).
     build_request_repr = repr
-from django.utils.http import urlquote_plus
-from maasserver import logger
-from maasserver.bootresources import SIMPLESTREAMS_URL_REGEXP
-from maasserver.exceptions import (
-    ExternalComponentException,
-    MAASAPIException,
-    )
 
 
 class AccessMiddleware:
@@ -235,6 +236,10 @@ class ExceptionMiddleware:
         """Django middleware callback."""
         if not self.path_matcher.match(request.path_info):
             # Not a path we're handling exceptions for.
+            return None
+
+        if is_serialization_failure(exception):
+            # We never handle serialization failures.
             return None
 
         encoding = b'utf-8'

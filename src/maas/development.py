@@ -93,9 +93,21 @@ DEBUG_TOOLBAR_PANELS = (
     'debug_toolbar.panels.timer.TimerPanel',
     'debug_toolbar.panels.settings.SettingsPanel',
     'debug_toolbar.panels.headers.HeadersPanel',
-    'debug_toolbar.panels.request.RequestPanel',
+
+    # XXX: allenap 2015-01-16 bug=1411668: RequestPanel uses the database in
+    # process_response() without considering if the database is in a fit state
+    # to be used, i.e. the transaction is broken. Hence it has been disabled
+    # temporarily.
+    # 'debug_toolbar.panels.request.RequestPanel',
+
     'debug_toolbar.panels.sql.SQLPanel',
-    'maasserver.rpc.testing.debug_panel.RPCPanel',
+
+    # XXX: allenap 2015-01-16 bug=1411668: RPCPanel uses the database in
+    # process_response() without considering if the database is in a fit state
+    # to be used, i.e. the transaction is broken. Hence it has been disabled
+    # temporarily.
+    # 'maasserver.rpc.testing.debug_panel.RPCPanel',
+
     'debug_toolbar.panels.staticfiles.StaticFilesPanel',
     'debug_toolbar.panels.templates.TemplatesPanel',
     'debug_toolbar.panels.cache.CachePanel',

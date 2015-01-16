@@ -56,6 +56,11 @@ class WebApplicationHandler(WSGIHandler):
         self.__retry = WeakSet()
 
     def handle_uncaught_exception(self, request, resolver, exc_info):
+        """Override `BaseHandler.handle_uncaught_exception`.
+
+        If a serialization failure is detected, a retry is requested. It's up
+        to ``get_response`` to actually do the retry.
+        """
         upcall = super(WebApplicationHandler, self).handle_uncaught_exception
         response = upcall(request, resolver, exc_info)
         # Add it to the retry set if this response was caused by a
@@ -68,10 +73,13 @@ class WebApplicationHandler(WSGIHandler):
         return response
 
     def get_response(self, request):
-        # Wrap Django's default get_response(). Middleware and templates will
-        # thus also run within the same transaction, but streaming responses
-        # will *not* run within the same transaction, or any transaction at
-        # all by default.
+        """Override `BaseHandler.get_response`.
+
+        Wrap Django's default get_response(). Middleware and templates will
+        thus also run within the same transaction, but streaming responses
+        will *not* run within the same transaction, or any transaction at all
+        by default.
+        """
         get_response = super(WebApplicationHandler, self).get_response
         get_response = transaction.atomic(get_response)
 
