@@ -33,6 +33,7 @@ from maasserver.api.doc import (
     generate_api_docs,
     generate_power_types_doc,
     )
+from maasserver.api.doc_handler import render_api_docs
 from maasserver.api.support import (
     operation,
     OperationsHandler,
@@ -184,6 +185,21 @@ class TestHandlers(MAASServerTestCase):
             [], handlers_missing_section_name,
             "%d handlers are missing an api_doc_section_name field." % len(
                 handlers_missing_section_name))
+
+    def test_contains_documentation_from_handlers(self):
+        # The documentation contains some of the text used in the docstrings
+        # of the API's methods.
+        # This test is meant to catch bugs like bug 1411363.
+        doc = render_api_docs()
+        doc_snippets = [
+            # Doc for a method.
+            "Manage custom commissioning scripts.",
+            # Doc for a method parameter.
+            "GET a FileStorage object as a json object.",
+            # Doc for a method parameter (:param: doc).
+            "Optional prefix used to filter out the returned files.",
+        ]
+        self.assertThat(doc, ContainsAll(doc_snippets))
 
 
 class ExampleHandler(OperationsHandler):
