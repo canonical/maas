@@ -136,6 +136,25 @@ def macs_do_not_contain(key, macs):
     return where_clause, macs
 
 
+def find_pgcode(exception):
+    """Find the PostgreSQL error code from an exception.
+
+    We may be dealing with a raw exception or with a wrapper provided by
+    Django, put there by ``DatabaseErrorWrapper``. As a belt-n-braces measure
+    this searches for ``pgcode`` in the given exception, then, if not found,
+    in the exception's cause (``__cause__``), recursively.
+    """
+    try:
+        return exception.pgcode
+    except AttributeError:
+        try:
+            exception = exception.__cause__
+        except AttributeError:
+            return None
+        else:
+            return find_pgcode(exception)
+
+
 def is_serialization_failure(exception):
     """Does `exception` represent a serialization failure?
 
@@ -146,12 +165,7 @@ def is_serialization_failure(exception):
     :see: http://www.postgresql.org/docs/9.3/static/transaction-iso.html
     """
     if isinstance(exception, OperationalError):
-        try:
-            pgcode = exception.__cause__.pgcode
-        except AttributeError:
-            return False  # Presumably no __cause__.
-        else:
-            return pgcode == SERIALIZATION_FAILURE
+        return find_pgcode(exception) == SERIALIZATION_FAILURE
     else:
         return False
 
