@@ -37,6 +37,7 @@ python-paramiko
 python-pexpect
 python-psycopg2
 python-pyinotify
+python-pyparsing
 python-seamicroclient
 python-simplejson
 python-simplestreams
