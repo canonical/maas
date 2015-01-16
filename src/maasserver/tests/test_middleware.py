@@ -744,3 +744,21 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         mock_list.return_value = []
         self.expectThat([], Equals(middleware._get_cluster_images()))
         self.expectThat([], Equals(middleware._cluster_images))
+
+    def test__does_not_suppress_exceptions_from_connectivity_checks(self):
+        middleware = ExternalComponentsMiddleware()
+        error_type = factory.make_exception_type()
+        check_cluster_connectivity = self.patch(
+            middleware, "_check_cluster_connectivity")
+        check_cluster_connectivity.side_effect = error_type
+        self.assertRaises(error_type, middleware.process_request, None)
+        self.assertThat(check_cluster_connectivity, MockCalledOnceWith())
+
+    def test__does_not_suppress_exceptions_from_boot_image_checks(self):
+        middleware = ExternalComponentsMiddleware()
+        error_type = factory.make_exception_type()
+        check_boot_image_import_process = self.patch(
+            middleware, "_check_boot_image_import_process")
+        check_boot_image_import_process.side_effect = error_type
+        self.assertRaises(error_type, middleware.process_request, None)
+        self.assertThat(check_boot_image_import_process, MockCalledOnceWith())

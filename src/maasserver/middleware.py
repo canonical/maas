@@ -199,11 +199,8 @@ class ExternalComponentsMiddleware:
         # error raised during these checks should be caught to avoid
         # disturbing the handling of the request.  Proper error reporting
         # should be handled in the check method itself.
-        try:
-            self._check_cluster_connectivity()
-            self._check_boot_image_import_process()
-        except Exception:
-            pass
+        self._check_cluster_connectivity()
+        self._check_boot_image_import_process()
         return None
 
 
