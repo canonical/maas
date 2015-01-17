@@ -64,9 +64,11 @@ from provisioningserver.dns.testing import (
     patch_dns_rndc_port,
     )
 from provisioningserver.dns.zoneconfig import DNSZoneConfigBase
-from provisioningserver.testing.bindfixture import BINDServer
+from provisioningserver.testing.bindfixture import (
+    allocate_ports,
+    BINDServer,
+    )
 from provisioningserver.testing.tests.test_bindfixture import dig_call
-from rabbitfixture.server import allocate_ports
 from testtools.matchers import (
     Contains,
     FileContains,

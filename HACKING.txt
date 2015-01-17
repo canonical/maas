@@ -38,9 +38,9 @@ Then go into the directory where you want the code to reside and run::
 
     $ bzr branch lp:maas maas && cd maas
 
-MAAS depends on Postgres 9.1, RabbitMQ, Apache 2, daemontools,
-pyinotify, and many other packages. To install everything that's needed
-for running and developing MAAS, run::
+MAAS depends on Postgres 9.1, Apache 2, daemontools, pyinotify, and many
+other packages. To install everything that's needed for running and
+developing MAAS, run::
 
     $ make install-dependencies
 

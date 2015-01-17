@@ -19,6 +19,8 @@ __all__ = [
 import argparse
 import os
 from shutil import copy
+import signal
+import socket
 import subprocess
 from textwrap import dedent
 import time
@@ -29,10 +31,6 @@ from provisioningserver.dns.config import generate_rndc
 from provisioningserver.utils.fs import (
     atomic_write,
     ensure_dir,
-    )
-from rabbitfixture.server import (
-    allocate_ports,
-    preexec_fn,
     )
 import tempita
 from testtools.content import Content
@@ -45,6 +43,37 @@ GENERATED_HEADER = """
 # so it's safe to edit this file if you need to but be aware that
 # these changes won't be persisted.
 """
+
+
+def preexec_fn():
+    # Revert Python's handling of SIGPIPE. See
+    # http://bugs.python.org/issue1652 for more info.
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+
+
+def get_port(socket):
+    """Return the port to which a socket is bound."""
+    addr, port = socket.getsockname()
+    return port
+
+
+def allocate_ports(*addrs):
+    """Allocate `len(addrs)` unused ports.
+
+    A port is allocated for each element in `addrs`.
+
+    There is a small race condition here (between the time we allocate the
+    port, and the time it actually gets used), but for the purposes for which
+    this function gets used it isn't a problem in practice.
+    """
+    sockets = [socket.socket() for addr in addrs]
+    try:
+        for addr, sock in zip(addrs, sockets):
+            sock.bind((addr, 0))
+        return [get_port(sock) for sock in sockets]
+    finally:
+        for sock in sockets:
+            sock.close()
 
 
 def should_write(path, overwrite_config=False):

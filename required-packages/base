@@ -11,7 +11,6 @@ libjs-raphael
 libjs-yui3-min
 libpq-dev
 postgresql
-python-amqplib
 python-bson
 python-bzrlib
 python-convoy
@@ -43,7 +42,6 @@ python-simplejson
 python-simplestreams
 python-tempita
 python-twisted
-python-txamqp
 python-txtftp
 python-tz
 python-yaml

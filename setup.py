@@ -119,7 +119,6 @@ setup(
         'setuptools',
         'Django == 1.3.1',
         'psycopg2',
-        'amqplib',
         'convoy',
         'django-piston',
         'FormEncode',
@@ -127,7 +126,6 @@ setup(
         'PyYAML',
         'South',
         'Twisted',
-        'txAMQP',
         ],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -154,7 +152,6 @@ setup(
             'nose',
             'nose-subunit',
             'python-subunit',
-            'rabbitfixture',
             'testresources',
             'testscenarios',
             'testtools',
