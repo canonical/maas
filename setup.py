@@ -150,7 +150,6 @@ setup(
             'fixtures',
             'mock',
             'nose',
-            'nose-subunit',
             'python-subunit',
             'testresources',
             'testscenarios',
