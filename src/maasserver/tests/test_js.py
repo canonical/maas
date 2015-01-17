@@ -27,7 +27,6 @@ from os.path import (
     relpath,
     )
 import sys
-from urlparse import urljoin
 
 from maastesting import (
     root,
@@ -38,15 +37,9 @@ from maastesting.fixtures import (
     ProxiesDisabledFixture,
     SSTFixture,
     )
-from maastesting.httpd import HTTPServerFixture
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import extract_word_list
 from nose.tools import nottest
-from saucelabsfixture import (
-    SauceConnectFixture,
-    SSTOnDemandFixture,
-    )
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from sst.actions import (
     assert_text,
     get_element,
@@ -67,38 +60,6 @@ def get_browser_names_from_env():
     """
     names = os.environ.get('MAAS_TEST_BROWSERS', 'Firefox')
     return extract_word_list(names)
-
-
-# See <https://saucelabs.com/docs/ondemand/browsers/env/python/se2/linux> for
-# more information on browser/platform choices.
-remote_browsers = {
-    "ie7": dict(
-        DesiredCapabilities.INTERNETEXPLORER,
-        version="7", platform="XP"),
-    "ie8": dict(
-        DesiredCapabilities.INTERNETEXPLORER,
-        version="8", platform="XP"),
-    "ie9": dict(
-        DesiredCapabilities.INTERNETEXPLORER,
-        version="9", platform="VISTA"),
-    "chrome": dict(
-        DesiredCapabilities.CHROME,
-        platform="VISTA"),
-    }
-
-
-def get_remote_browser_names_from_env():
-    """Parse the environment variable ``MAAS_REMOTE_TEST_BROWSERS`` to get a
-    list of the browsers to use for the JavaScript tests.
-
-    Returns [] if the environment variable is not present.
-    """
-    names = os.environ.get('MAAS_REMOTE_TEST_BROWSERS', '')
-    names = [name.lower() for name in extract_word_list(names)]
-    unrecognised = set(names).difference(remote_browsers)
-    if len(unrecognised) > 0:
-        raise ValueError("Unrecognised browsers: %r" % unrecognised)
-    return names
 
 
 class YUIUnitTestsBase:
@@ -182,30 +143,3 @@ class YUIUnitTestsLocal(YUIUnitTestsBase, MAASTestCase):
                 browser_test = self.clone("local:%s" % browser_name)
                 with SSTFixture(browser_name):
                     browser_test(result)
-
-
-class YUIUnitTestsRemote(YUIUnitTestsBase, MAASTestCase):
-
-    def multiply(self, result):
-        # Now run this test remotely for each requested Sauce OnDemand
-        # browser requested.
-        browser_names = get_remote_browser_names_from_env()
-        if len(browser_names) == 0:
-            return
-
-        # A web server is needed so the OnDemand service can obtain local
-        # tests. Be careful when choosing web server ports; only a scattering
-        # are proxied. See <https://saucelabs.com/docs/ondemand/connect>.
-        with HTTPServerFixture(port=5555) as httpd:
-            scenarios = tuple(
-                (relpath(path, root), {"test_url": urljoin(httpd.url, path)})
-                for path in self.test_paths)
-            with SauceConnectFixture() as sauce_connect:
-                for browser_name in browser_names:
-                    capabilities = remote_browsers[browser_name]
-                    sst_ondemand = SSTOnDemandFixture(
-                        capabilities, sauce_connect.control_url)
-                    with sst_ondemand:
-                        browser_test = self.clone("remote:%s" % browser_name)
-                        browser_test.scenarios = scenarios
-                        browser_test(result)
