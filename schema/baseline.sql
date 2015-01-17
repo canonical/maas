@@ -326,31 +326,27 @@ ALTER SEQUENCE django_site_id_seq OWNED BY django_site.id;
 
 
 --
--- Name: maasserver_bootimage; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_blockdevice; Type: TABLE; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE TABLE maasserver_bootimage (
+CREATE TABLE maasserver_blockdevice (
     id integer NOT NULL,
-    architecture character varying(255) NOT NULL,
-    subarchitecture character varying(255) NOT NULL,
-    release character varying(255) NOT NULL,
-    purpose character varying(255) NOT NULL,
-    nodegroup_id integer NOT NULL,
-    label character varying(255) NOT NULL,
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
-    osystem character varying(255) NOT NULL,
-    supported_subarches character varying(255) NOT NULL,
-    xinstall_path character varying(255),
-    xinstall_type character varying(30)
+    node_id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    path character varying(100) NOT NULL,
+    size bigint NOT NULL,
+    block_size integer NOT NULL,
+    tags text[]
 );
 
 
 --
--- Name: maasserver_bootimage_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- Name: maasserver_blockdevice_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
-CREATE SEQUENCE maasserver_bootimage_id_seq
+CREATE SEQUENCE maasserver_blockdevice_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -359,10 +355,10 @@ CREATE SEQUENCE maasserver_bootimage_id_seq
 
 
 --
--- Name: maasserver_bootimage_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: maasserver_blockdevice_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
 
-ALTER SEQUENCE maasserver_bootimage_id_seq OWNED BY maasserver_bootimage.id;
+ALTER SEQUENCE maasserver_blockdevice_id_seq OWNED BY maasserver_blockdevice.id;
 
 
 --
@@ -498,6 +494,42 @@ CREATE SEQUENCE maasserver_bootsource_id_seq
 --
 
 ALTER SEQUENCE maasserver_bootsource_id_seq OWNED BY maasserver_bootsource.id;
+
+
+--
+-- Name: maasserver_bootsourcecache; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE maasserver_bootsourcecache (
+    id integer NOT NULL,
+    created timestamp with time zone NOT NULL,
+    updated timestamp with time zone NOT NULL,
+    boot_source_id integer NOT NULL,
+    os character varying(20) NOT NULL,
+    arch character varying(20) NOT NULL,
+    subarch character varying(20) NOT NULL,
+    release character varying(20) NOT NULL,
+    label character varying(20) NOT NULL
+);
+
+
+--
+-- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE maasserver_bootsourcecache_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE maasserver_bootsourcecache_id_seq OWNED BY maasserver_bootsourcecache.id;
 
 
 --
@@ -867,7 +899,7 @@ CREATE TABLE maasserver_macaddress (
     created timestamp with time zone NOT NULL,
     updated timestamp with time zone NOT NULL,
     mac_address macaddr NOT NULL,
-    node_id integer NOT NULL,
+    node_id integer,
     cluster_interface_id integer
 );
 
@@ -1002,7 +1034,7 @@ CREATE TABLE maasserver_node (
     hostname character varying(255) DEFAULT ''::character varying NOT NULL,
     status integer DEFAULT 0 NOT NULL,
     owner_id integer,
-    architecture character varying(31) NOT NULL,
+    architecture character varying(31),
     power_type character varying(10) DEFAULT ''::character varying NOT NULL,
     token_id integer,
     error character varying(255) NOT NULL,
@@ -1012,7 +1044,6 @@ CREATE TABLE maasserver_node (
     distro_series character varying(20) NOT NULL,
     cpu_count integer NOT NULL,
     memory integer NOT NULL,
-    storage integer NOT NULL,
     routers macaddr[],
     agent_name character varying(255),
     zone_id integer NOT NULL,
@@ -1021,7 +1052,9 @@ CREATE TABLE maasserver_node (
     boot_type character varying(20) NOT NULL,
     error_description text NOT NULL,
     power_state character varying(10) NOT NULL,
-    disable_ipv4 boolean NOT NULL
+    disable_ipv4 boolean NOT NULL,
+    pxe_mac_id integer,
+    installable boolean NOT NULL
 );
 
 
@@ -1154,6 +1187,17 @@ CREATE SEQUENCE maasserver_nodegroupinterface_id_seq
 --
 
 ALTER SEQUENCE maasserver_nodegroupinterface_id_seq OWNED BY maasserver_nodegroupinterface.id;
+
+
+--
+-- Name: maasserver_physicalblockdevice; Type: TABLE; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE TABLE maasserver_physicalblockdevice (
+    blockdevice_ptr_id integer NOT NULL,
+    model character varying(255) NOT NULL,
+    serial character varying(255) NOT NULL
+);
 
 
 --
@@ -1688,7 +1732,7 @@ ALTER TABLE ONLY django_site ALTER COLUMN id SET DEFAULT nextval('django_site_id
 -- Name: id; Type: DEFAULT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY maasserver_bootimage ALTER COLUMN id SET DEFAULT nextval('maasserver_bootimage_id_seq'::regclass);
+ALTER TABLE ONLY maasserver_blockdevice ALTER COLUMN id SET DEFAULT nextval('maasserver_blockdevice_id_seq'::regclass);
 
 
 --
@@ -1717,6 +1761,13 @@ ALTER TABLE ONLY maasserver_bootresourceset ALTER COLUMN id SET DEFAULT nextval(
 --
 
 ALTER TABLE ONLY maasserver_bootsource ALTER COLUMN id SET DEFAULT nextval('maasserver_bootsource_id_seq'::regclass);
+
+
+--
+-- Name: id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_bootsourcecache ALTER COLUMN id SET DEFAULT nextval('maasserver_bootsourcecache_id_seq'::regclass);
 
 
 --
@@ -2018,27 +2069,27 @@ COPY auth_permission (id, name, content_type_id, codename) FROM stdin;
 31	Can add log entry	11	add_logentry
 32	Can change log entry	11	change_logentry
 33	Can delete log entry	11	delete_logentry
-34	Can add node group	12	add_nodegroup
-35	Can change node group	12	change_nodegroup
-36	Can delete node group	12	delete_nodegroup
-37	Can add boot image	13	add_bootimage
-38	Can change boot image	13	change_bootimage
-39	Can delete boot image	13	delete_bootimage
-40	Can add boot resource	14	add_bootresource
-41	Can change boot resource	14	change_bootresource
-42	Can delete boot resource	14	delete_bootresource
-43	Can add boot resource set	15	add_bootresourceset
-44	Can change boot resource set	15	change_bootresourceset
-45	Can delete boot resource set	15	delete_bootresourceset
-46	Can add large file	16	add_largefile
-47	Can change large file	16	change_largefile
-48	Can delete large file	16	delete_largefile
-49	Can add boot resource file	17	add_bootresourcefile
-50	Can change boot resource file	17	change_bootresourcefile
-51	Can delete boot resource file	17	delete_bootresourcefile
-52	Can add boot source	18	add_bootsource
-53	Can change boot source	18	change_bootsource
-54	Can delete boot source	18	delete_bootsource
+34	Can add block device	12	add_blockdevice
+35	Can change block device	12	change_blockdevice
+36	Can delete block device	12	delete_blockdevice
+37	Can add boot resource	13	add_bootresource
+38	Can change boot resource	13	change_bootresource
+39	Can delete boot resource	13	delete_bootresource
+40	Can add boot resource set	14	add_bootresourceset
+41	Can change boot resource set	14	change_bootresourceset
+42	Can delete boot resource set	14	delete_bootresourceset
+43	Can add large file	15	add_largefile
+44	Can change large file	15	change_largefile
+45	Can delete large file	15	delete_largefile
+46	Can add boot resource file	16	add_bootresourcefile
+47	Can change boot resource file	16	change_bootresourcefile
+48	Can delete boot resource file	16	delete_bootresourcefile
+49	Can add boot source	17	add_bootsource
+50	Can change boot source	17	change_bootsource
+51	Can delete boot source	17	delete_bootsource
+52	Can add boot source cache	18	add_bootsourcecache
+53	Can change boot source cache	18	change_bootsourcecache
+54	Can delete boot source cache	18	delete_bootsourcecache
 55	Can add boot source selection	19	add_bootsourceselection
 56	Can change boot source selection	19	change_bootsourceselection
 57	Can delete boot source selection	19	delete_bootsourceselection
@@ -2054,66 +2105,72 @@ COPY auth_permission (id, name, content_type_id, codename) FROM stdin;
 67	Can add network	23	add_network
 68	Can change network	23	change_network
 69	Can delete network	23	delete_network
-70	Can add node group interface	24	add_nodegroupinterface
-71	Can change node group interface	24	change_nodegroupinterface
-72	Can delete node group interface	24	delete_nodegroupinterface
-73	Can add MAC address	25	add_macaddress
-74	Can change MAC address	25	change_macaddress
-75	Can delete MAC address	25	delete_macaddress
-76	Can add dhcp lease	26	add_dhcplease
-77	Can change dhcp lease	26	change_dhcplease
-78	Can delete dhcp lease	26	delete_dhcplease
-79	Can add download progress	27	add_downloadprogress
-80	Can change download progress	27	change_downloadprogress
-81	Can delete download progress	27	delete_downloadprogress
-82	Can add Event type	28	add_eventtype
-83	Can change Event type	28	change_eventtype
-84	Can delete Event type	28	delete_eventtype
-85	Can add license key	29	add_licensekey
-86	Can change license key	29	change_licensekey
-87	Can delete license key	29	delete_licensekey
-88	Can add Static IP Address	30	add_staticipaddress
-89	Can change Static IP Address	30	change_staticipaddress
-90	Can delete Static IP Address	30	delete_staticipaddress
-91	Can add tag	31	add_tag
-92	Can change tag	31	change_tag
-93	Can delete tag	31	delete_tag
-94	Can add Physical zone	32	add_zone
-95	Can change Physical zone	32	change_zone
-96	Can delete Physical zone	32	delete_zone
-97	Can add node	33	add_node
-98	Can change node	33	change_node
-99	Can delete node	33	delete_node
-100	Can add Event record	34	add_event
-101	Can change Event record	34	change_event
-102	Can delete Event record	34	delete_event
-103	Can add file storage	35	add_filestorage
-104	Can change file storage	35	change_filestorage
-105	Can delete file storage	35	delete_filestorage
-106	Can add mac static ip address link	36	add_macstaticipaddresslink
-107	Can change mac static ip address link	36	change_macstaticipaddresslink
-108	Can delete mac static ip address link	36	delete_macstaticipaddresslink
-109	Can add SSH key	37	add_sshkey
-110	Can change SSH key	37	change_sshkey
-111	Can delete SSH key	37	delete_sshkey
-112	Can add SSL key	38	add_sslkey
-113	Can change SSL key	38	change_sslkey
-114	Can delete SSL key	38	delete_sslkey
-115	Can add user profile	39	add_userprofile
-116	Can change user profile	39	change_userprofile
-117	Can delete user profile	39	delete_userprofile
-118	Can add node result	40	add_noderesult
-119	Can change node result	40	change_noderesult
-120	Can delete node result	40	delete_noderesult
-121	Can add commissioning script	41	add_commissioningscript
-122	Can change commissioning script	41	change_commissioningscript
-123	Can delete commissioning script	41	delete_commissioningscript
-124	Can add node key	42	add_nodekey
-125	Can change node key	42	change_nodekey
-126	Can delete node key	42	delete_nodekey
-127	Can add node user data	43	add_nodeuserdata
-128	Can change node user data	43	change_nodeuserdata
-129	Can delete node user data	43	delete_nodeuserdata
+70	Can add node group	24	add_nodegroup
+71	Can change node group	24	change_nodegroup
+72	Can delete node group	24	delete_nodegroup
+73	Can add node group interface	25	add_nodegroupinterface
+74	Can change node group interface	25	change_nodegroupinterface
+75	Can delete node group interface	25	delete_nodegroupinterface
+76	Can add MAC address	26	add_macaddress
+77	Can change MAC address	26	change_macaddress
+78	Can delete MAC address	26	delete_macaddress
+79	Can add dhcp lease	27	add_dhcplease
+80	Can change dhcp lease	27	change_dhcplease
+81	Can delete dhcp lease	27	delete_dhcplease
+82	Can add download progress	28	add_downloadprogress
+83	Can change download progress	28	change_downloadprogress
+84	Can delete download progress	28	delete_downloadprogress
+85	Can add Event type	29	add_eventtype
+86	Can change Event type	29	change_eventtype
+87	Can delete Event type	29	delete_eventtype
+88	Can add license key	30	add_licensekey
+89	Can change license key	30	change_licensekey
+90	Can delete license key	30	delete_licensekey
+91	Can add physical block device	31	add_physicalblockdevice
+92	Can change physical block device	31	change_physicalblockdevice
+93	Can delete physical block device	31	delete_physicalblockdevice
+94	Can add Static IP Address	32	add_staticipaddress
+95	Can change Static IP Address	32	change_staticipaddress
+96	Can delete Static IP Address	32	delete_staticipaddress
+97	Can add tag	33	add_tag
+98	Can change tag	33	change_tag
+99	Can delete tag	33	delete_tag
+100	Can add Physical zone	34	add_zone
+101	Can change Physical zone	34	change_zone
+102	Can delete Physical zone	34	delete_zone
+103	Can add node	35	add_node
+104	Can change node	35	change_node
+105	Can delete node	35	delete_node
+106	Can add Event record	36	add_event
+107	Can change Event record	36	change_event
+108	Can delete Event record	36	delete_event
+109	Can add file storage	37	add_filestorage
+110	Can change file storage	37	change_filestorage
+111	Can delete file storage	37	delete_filestorage
+112	Can add mac static ip address link	38	add_macstaticipaddresslink
+113	Can change mac static ip address link	38	change_macstaticipaddresslink
+114	Can delete mac static ip address link	38	delete_macstaticipaddresslink
+115	Can add SSH key	39	add_sshkey
+116	Can change SSH key	39	change_sshkey
+117	Can delete SSH key	39	delete_sshkey
+118	Can add SSL key	40	add_sslkey
+119	Can change SSL key	40	change_sslkey
+120	Can delete SSL key	40	delete_sslkey
+121	Can add user profile	41	add_userprofile
+122	Can change user profile	41	change_userprofile
+123	Can delete user profile	41	delete_userprofile
+124	Can add node result	42	add_noderesult
+125	Can change node result	42	change_noderesult
+126	Can delete node result	42	delete_noderesult
+127	Can add commissioning script	43	add_commissioningscript
+128	Can change commissioning script	43	change_commissioningscript
+129	Can delete commissioning script	43	delete_commissioningscript
+130	Can add node key	44	add_nodekey
+131	Can change node key	44	change_nodekey
+132	Can delete node key	44	delete_nodekey
+133	Can add node user data	45	add_nodeuserdata
+134	Can change node user data	45	change_nodeuserdata
+135	Can delete node user data	45	delete_nodeuserdata
 \.
 
 
@@ -2121,7 +2178,7 @@ COPY auth_permission (id, name, content_type_id, codename) FROM stdin;
 -- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('auth_permission_id_seq', 129, true);
+SELECT pg_catalog.setval('auth_permission_id_seq', 135, true);
 
 
 --
@@ -2129,7 +2186,7 @@ SELECT pg_catalog.setval('auth_permission_id_seq', 129, true);
 --
 
 COPY auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
-1	!	2012-02-16 00:00:00+07	f	maas-init-node	Node initializer	Special user		f	f	2012-02-16 00:00:00+07
+1	!	2012-02-16 00:00:00+00	f	maas-init-node	Node initializer	Special user		f	f	2012-02-16 00:00:00+00
 \.
 
 
@@ -2201,38 +2258,40 @@ COPY django_content_type (id, name, app_label, model) FROM stdin;
 9	token	piston	token
 10	migration history	south	migrationhistory
 11	log entry	admin	logentry
-12	node group	maasserver	nodegroup
-13	boot image	maasserver	bootimage
-14	boot resource	maasserver	bootresource
-15	boot resource set	maasserver	bootresourceset
-16	large file	maasserver	largefile
-17	boot resource file	maasserver	bootresourcefile
-18	boot source	maasserver	bootsource
+12	block device	maasserver	blockdevice
+13	boot resource	maasserver	bootresource
+14	boot resource set	maasserver	bootresourceset
+15	large file	maasserver	largefile
+16	boot resource file	maasserver	bootresourcefile
+17	boot source	maasserver	bootsource
+18	boot source cache	maasserver	bootsourcecache
 19	boot source selection	maasserver	bootsourceselection
 20	Candidate name	maasserver	candidatename
 21	component error	maasserver	componenterror
 22	config	maasserver	config
 23	network	maasserver	network
-24	node group interface	maasserver	nodegroupinterface
-25	MAC address	maasserver	macaddress
-26	dhcp lease	maasserver	dhcplease
-27	download progress	maasserver	downloadprogress
-28	Event type	maasserver	eventtype
-29	license key	maasserver	licensekey
-30	Static IP Address	maasserver	staticipaddress
-31	tag	maasserver	tag
-32	Physical zone	maasserver	zone
-33	node	maasserver	node
-34	Event record	maasserver	event
-35	file storage	maasserver	filestorage
-36	mac static ip address link	maasserver	macstaticipaddresslink
-37	SSH key	maasserver	sshkey
-38	SSL key	maasserver	sslkey
-39	user profile	maasserver	userprofile
-40	node result	metadataserver	noderesult
-41	commissioning script	metadataserver	commissioningscript
-42	node key	metadataserver	nodekey
-43	node user data	metadataserver	nodeuserdata
+24	node group	maasserver	nodegroup
+25	node group interface	maasserver	nodegroupinterface
+26	MAC address	maasserver	macaddress
+27	dhcp lease	maasserver	dhcplease
+28	download progress	maasserver	downloadprogress
+29	Event type	maasserver	eventtype
+30	license key	maasserver	licensekey
+31	physical block device	maasserver	physicalblockdevice
+32	Static IP Address	maasserver	staticipaddress
+33	tag	maasserver	tag
+34	Physical zone	maasserver	zone
+35	node	maasserver	node
+36	Event record	maasserver	event
+37	file storage	maasserver	filestorage
+38	mac static ip address link	maasserver	macstaticipaddresslink
+39	SSH key	maasserver	sshkey
+40	SSL key	maasserver	sslkey
+41	user profile	maasserver	userprofile
+42	node result	metadataserver	noderesult
+43	commissioning script	metadataserver	commissioningscript
+44	node key	metadataserver	nodekey
+45	node user data	metadataserver	nodeuserdata
 \.
 
 
@@ -2240,7 +2299,7 @@ COPY django_content_type (id, name, app_label, model) FROM stdin;
 -- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('django_content_type_id_seq', 43, true);
+SELECT pg_catalog.setval('django_content_type_id_seq', 45, true);
 
 
 --
@@ -2268,18 +2327,18 @@ SELECT pg_catalog.setval('django_site_id_seq', 1, true);
 
 
 --
--- Data for Name: maasserver_bootimage; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: maasserver_blockdevice; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY maasserver_bootimage (id, architecture, subarchitecture, release, purpose, nodegroup_id, label, created, updated, osystem, supported_subarches, xinstall_path, xinstall_type) FROM stdin;
+COPY maasserver_blockdevice (id, created, updated, node_id, name, path, size, block_size, tags) FROM stdin;
 \.
 
 
 --
--- Name: maasserver_bootimage_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: maasserver_blockdevice_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('maasserver_bootimage_id_seq', 1, false);
+SELECT pg_catalog.setval('maasserver_blockdevice_id_seq', 1, false);
 
 
 --
@@ -2340,6 +2399,21 @@ COPY maasserver_bootsource (id, created, updated, url, keyring_filename, keyring
 --
 
 SELECT pg_catalog.setval('maasserver_bootsource_id_seq', 1, false);
+
+
+--
+-- Data for Name: maasserver_bootsourcecache; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY maasserver_bootsourcecache (id, created, updated, boot_source_id, os, arch, subarch, release, label) FROM stdin;
+\.
+
+
+--
+-- Name: maasserver_bootsourcecache_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('maasserver_bootsourcecache_id_seq', 1, false);
 
 
 --
@@ -3134,7 +3208,7 @@ COPY maasserver_candidatename (id, name, "position") FROM stdin;
 770	official	1
 771	oily	1
 772	old	1
-773	onerlooked	1
+773	overlooked	1
 774	only	1
 775	open	1
 776	optimal	1
@@ -4855,7 +4929,7 @@ SELECT pg_catalog.setval('maasserver_network_id_seq', 1, false);
 -- Data for Name: maasserver_node; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY maasserver_node (id, created, updated, system_id, hostname, status, owner_id, architecture, power_type, token_id, error, power_parameters, netboot, nodegroup_id, distro_series, cpu_count, memory, storage, routers, agent_name, zone_id, osystem, license_key, boot_type, error_description, power_state, disable_ipv4) FROM stdin;
+COPY maasserver_node (id, created, updated, system_id, hostname, status, owner_id, architecture, power_type, token_id, error, power_parameters, netboot, nodegroup_id, distro_series, cpu_count, memory, routers, agent_name, zone_id, osystem, license_key, boot_type, error_description, power_state, disable_ipv4, pxe_mac_id, installable) FROM stdin;
 \.
 
 
@@ -4909,6 +4983,14 @@ COPY maasserver_nodegroupinterface (id, created, updated, ip, nodegroup_id, mana
 --
 
 SELECT pg_catalog.setval('maasserver_nodegroupinterface_id_seq', 1, false);
+
+
+--
+-- Data for Name: maasserver_physicalblockdevice; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY maasserver_physicalblockdevice (blockdevice_ptr_id, model, serial) FROM stdin;
+\.
 
 
 --
@@ -4991,7 +5073,7 @@ SELECT pg_catalog.setval('maasserver_userprofile_id_seq', 1, false);
 --
 
 COPY maasserver_zone (id, created, updated, name, description) FROM stdin;
-1	2014-09-20 10:29:26.763108+07	2014-09-20 10:29:26.763108+07	default	
+1	2015-01-17 14:31:18.873192+00	2015-01-17 14:31:18.873192+00	default	
 \.
 
 
@@ -5119,135 +5201,150 @@ SELECT pg_catalog.setval('piston_token_id_seq', 1, false);
 --
 
 COPY south_migrationhistory (id, app_name, migration, applied) FROM stdin;
-1	maasserver	0001_initial	2014-09-20 10:29:23.130274+07
-2	maasserver	0002_add_token_to_node	2014-09-20 10:29:23.160646+07
-3	maasserver	0002_macaddress_unique	2014-09-20 10:29:23.185013+07
-4	maasserver	0003_rename_sshkeys	2014-09-20 10:29:23.221389+07
-5	maasserver	0004_add_node_error	2014-09-20 10:29:23.26098+07
-6	maasserver	0005_sshkey_user_and_key_unique_together	2014-09-20 10:29:23.289279+07
-7	maasserver	0006_increase_filestorage_filename_length	2014-09-20 10:29:23.33736+07
-8	maasserver	0007_common_info_created_add_time	2014-09-20 10:29:23.461065+07
-9	maasserver	0008_node_power_address	2014-09-20 10:29:23.50277+07
-10	maasserver	0009_add_nodegroup	2014-09-20 10:29:23.550893+07
-11	maasserver	0010_add_node_netboot	2014-09-20 10:29:23.602333+07
-12	maasserver	0011_add_dns_zone_serial_sequence	2014-09-20 10:29:23.635864+07
-13	maasserver	0012_DHCPLease	2014-09-20 10:29:23.755494+07
-14	maasserver	0013_connect_node_node_group	2014-09-20 10:29:23.785152+07
-15	maasserver	0014_nodegroup_dhcp_settings_are_optional	2014-09-20 10:29:23.936095+07
-16	maasserver	0016_node_nodegroup_not_null	2014-09-20 10:29:23.995878+07
-17	maasserver	0017_add_dhcp_key_to_nodegroup	2014-09-20 10:29:24.042966+07
-18	maasserver	0018_activate_worker_user	2014-09-20 10:29:24.079543+07
-19	maasserver	0019_add_nodegroup_dhcp_interface	2014-09-20 10:29:24.125882+07
-20	maasserver	0020_nodegroup_dhcp_interfaces_is_plural	2014-09-20 10:29:24.182813+07
-21	maasserver	0021_add_uuid_to_nodegroup	2014-09-20 10:29:24.284377+07
-22	maasserver	0022_add_status_to_nodegroup	2014-09-20 10:29:24.33506+07
-23	maasserver	0023_add_bootimage_model	2014-09-20 10:29:24.384846+07
-24	maasserver	0024_add_nodegroupinterface	2014-09-20 10:29:24.435841+07
-25	maasserver	0025_remove_unused_fields_in_nodegroup	2014-09-20 10:29:24.479068+07
-26	maasserver	0026_add_node_distro_series	2014-09-20 10:29:24.532844+07
-27	maasserver	0027_add_tag_table	2014-09-20 10:29:24.593118+07
-28	maasserver	0028_add_node_hardware_details	2014-09-20 10:29:24.667194+07
-29	maasserver	0029_zone_sharing	2014-09-20 10:29:24.728102+07
-30	maasserver	0030_ip_address_to_generic_ip_address	2014-09-20 10:29:24.907532+07
-31	maasserver	0031_node_architecture_field_size	2014-09-20 10:29:24.973679+07
-32	maasserver	0032_node_subarch	2014-09-20 10:29:25.013294+07
-33	maasserver	0033_component_error	2014-09-20 10:29:25.059155+07
-34	maasserver	0034_timestamp_component_error	2014-09-20 10:29:25.109307+07
-35	maasserver	0035_add_nodegroup_cluster_name	2014-09-20 10:29:25.165463+07
-36	maasserver	0036_populate_nodegroup_cluster_name	2014-09-20 10:29:25.203398+07
-37	maasserver	0037_nodegroup_cluster_name_unique	2014-09-20 10:29:25.239575+07
-38	maasserver	0038_nodegroupinterface_ip_range_fix	2014-09-20 10:29:25.312569+07
-39	maasserver	0039_add_filestorage_content	2014-09-20 10:29:25.388782+07
-40	maasserver	0039_add_nodegroup_to_bootimage	2014-09-20 10:29:25.450729+07
-41	maasserver	0040_make_filestorage_data_not_null	2014-09-20 10:29:25.517665+07
-42	maasserver	0041_remove_filestorage_data	2014-09-20 10:29:25.557073+07
-43	maasserver	0042_fix_039_conflict	2014-09-20 10:29:25.596338+07
-44	maasserver	0043_unique_hostname_preparation	2014-09-20 10:29:25.635719+07
-45	maasserver	0044_node_hostname_unique	2014-09-20 10:29:25.680977+07
-46	maasserver	0045_add_tag_kernel_opts	2014-09-20 10:29:25.723688+07
-47	maasserver	0046_add_nodegroup_maas_url	2014-09-20 10:29:25.78333+07
-48	maasserver	0047_add_owner_to_filestorage	2014-09-20 10:29:25.846651+07
-49	maasserver	0048_add_key_to_filestorage	2014-09-20 10:29:25.899691+07
-50	maasserver	0049_filestorage_key_unique	2014-09-20 10:29:25.941005+07
-51	maasserver	0050_shared_to_per_tenant_storage	2014-09-20 10:29:26.065196+07
-52	maasserver	0051_bigger_distro_series_name	2014-09-20 10:29:26.130647+07
-53	maasserver	0052_add_node_storage	2014-09-20 10:29:26.1899+07
-54	maasserver	0053_node_routers	2014-09-20 10:29:26.233419+07
-55	maasserver	0054_download_progress	2014-09-20 10:29:26.293842+07
-56	maasserver	0055_nullable_bytes_downloaded	2014-09-20 10:29:26.358143+07
-57	maasserver	0056_netboot_off_for_allocated_nodes	2014-09-20 10:29:26.40605+07
-58	maasserver	0057_remove_hardware_details	2014-09-20 10:29:26.449282+07
-59	maasserver	0058_add_agent_name_to_node	2014-09-20 10:29:26.504066+07
-60	maasserver	0059_dhcp_detection_model	2014-09-20 10:29:26.549823+07
-61	maasserver	0060_add_zone_object	2014-09-20 10:29:26.60214+07
-62	maasserver	0061_add_ref_from_node_to_zone	2014-09-20 10:29:26.652186+07
-63	maasserver	0062_add_vlan_model	2014-09-20 10:29:26.714392+07
-64	maasserver	0063_create_default_zone	2014-09-20 10:29:26.770326+07
-65	maasserver	0064_set_default_zone	2014-09-20 10:29:26.818167+07
-66	maasserver	0065_set_default_zone_as_model_default	2014-09-20 10:29:26.893068+07
-67	maasserver	0066_rename_vlan_add_link_node_network	2014-09-20 10:29:26.976243+07
-68	maasserver	0067_default_commissioning_trusty	2014-09-20 10:29:27.032084+07
-69	maasserver	0068_network_description_textfield	2014-09-20 10:29:27.113785+07
-70	maasserver	0069_add_mac_network_relation	2014-09-20 10:29:27.177493+07
-71	maasserver	0070_drop_network_node_relation	2014-09-20 10:29:27.24034+07
-72	maasserver	0071_drop_after_commissioning_action	2014-09-20 10:29:27.290475+07
-73	maasserver	0072_remove_ipmi_autodetect	2014-09-20 10:29:27.340342+07
-74	maasserver	0073_add_label_to_bootimage	2014-09-20 10:29:27.417045+07
-75	maasserver	0074_boot_images_timestamp	2014-09-20 10:29:27.492896+07
-76	maasserver	0075_add_boot_resource_models	2014-09-20 10:29:27.679377+07
-77	maasserver	0076_add_osystem_to_bootimage	2014-09-20 10:29:27.763171+07
-78	maasserver	0077_remove_null_for_bootsourceselection_release	2014-09-20 10:29:27.84803+07
-79	maasserver	0078_add_osystem_to_node	2014-09-20 10:29:27.950284+07
-80	maasserver	0079_supported_subarches_for_bootimage	2014-09-20 10:29:28.022363+07
-81	maasserver	0080_binary_to_editablebinary_in_bootsource	2014-09-20 10:29:28.1105+07
-82	maasserver	0081_ipaddress_table_and_static_dhcp_ranges	2014-09-20 10:29:28.201064+07
-83	maasserver	0082_cluster_interface_for_macaddress	2014-09-20 10:29:28.273558+07
-84	maasserver	0083_add_license_key_to_node	2014-09-20 10:29:28.333468+07
-85	maasserver	0084_add_ssl_key_model	2014-09-20 10:29:28.413169+07
-86	maasserver	0085_add_user_to_staticipaddress	2014-09-20 10:29:28.486917+07
-87	maasserver	0086_add_xinstall_path_and_type_to_bootimage	2014-09-20 10:29:28.573483+07
-88	maasserver	0087_add_licensekey_model	2014-09-20 10:29:28.658663+07
-89	maasserver	0088_ip_to_custom_field	2014-09-20 10:29:29.154329+07
-90	maasserver	0088_z_backport_trunk_0099	2014-09-20 10:29:29.22047+07
-91	maasserver	0089_create_nodegroupinterface_name	2014-09-20 10:29:29.305854+07
-92	maasserver	0090_initialise_nodegroupinterface_name	2014-09-20 10:29:29.400494+07
-93	maasserver	0091_add_boot_type_to_node	2014-09-20 10:29:29.478284+07
-94	maasserver	0092_populate_node_boot_type	2014-09-20 10:29:29.54884+07
-95	maasserver	0093_add_eventtype_and_event	2014-09-20 10:29:29.771563+07
-96	maasserver	0094_add_error_description	2014-09-20 10:29:29.861408+07
-97	maasserver	0095_add_event_description	2014-09-20 10:29:29.948125+07
-98	maasserver	0096_add_power_state_to_node	2014-09-20 10:29:30.044176+07
-99	maasserver	0097_add_largefile_model	2014-09-20 10:29:30.124541+07
-100	maasserver	0098_add_bootresource_models	2014-09-20 10:29:30.254332+07
-101	maasserver	0099_convert_cluster_interfaces_to_networks	2014-09-20 10:29:30.345417+07
-102	maasserver	0100_remove_cluster_from_bootsrouce	2014-09-20 10:29:30.436432+07
-103	maasserver	0100_remove_duplicate_bootsource_urls	2014-09-20 10:29:30.523374+07
-104	maasserver	0101_make_bootsource_url_unique	2014-09-20 10:29:30.614932+07
-105	maasserver	0102_candidate_name	2014-09-20 10:29:30.71011+07
-106	maasserver	0103_candidate_names	2014-09-20 10:29:30.950427+07
-107	maasserver	0104_add_node_disable_ipv4	2014-09-20 10:29:31.058082+07
-108	maasserver	0105_remove_rtype_from_uniqueness_on_boot_resource	2014-09-20 10:29:31.174437+07
-109	maasserver	0106_add_os_to_boot_source_selection	2014-09-20 10:29:31.276954+07
-110	maasserver	0107_add_default_gateway_to_network	2014-09-20 10:29:31.363483+07
-111	maasserver	0108_migrate_allocated_netboot	2014-09-20 10:29:31.451009+07
-112	maasserver	0109_networks_dns_servers	2014-09-20 10:29:31.54237+07
-113	maasserver	0110_deployed_state_compat	2014-09-20 10:29:31.630146+07
-114	maasserver	0111_add_nodegroup_default_disable_ipv4	2014-09-20 10:29:31.880129+07
-115	metadataserver	0001_initial	2014-09-20 10:29:35.870517+07
-116	metadataserver	0002_add_nodecommissionresult	2014-09-20 10:29:35.91067+07
-117	metadataserver	0003_populate_hardware_details	2014-09-20 10:29:35.941309+07
-118	metadataserver	0004_add_commissioningscript	2014-09-20 10:29:35.979874+07
-119	metadataserver	0005_nodecommissionresult_add_timestamp	2014-09-20 10:29:36.032613+07
-120	metadataserver	0006_nodecommissionresult_add_status	2014-09-20 10:29:36.076508+07
-121	metadataserver	0007_nodecommissionresult_change_name_size	2014-09-20 10:29:36.14772+07
-122	metadataserver	0008_rename_lshw_commissioning_output	2014-09-20 10:29:36.182157+07
-123	metadataserver	0009_delete_status	2014-09-20 10:29:36.214101+07
-124	metadataserver	0010_add_script_result	2014-09-20 10:29:36.257145+07
-125	metadataserver	0011_commission_result_binary_data_col	2014-09-20 10:29:36.304187+07
-126	metadataserver	0012_commission_result_binary_data_recode	2014-09-20 10:29:36.339071+07
-127	metadataserver	0013_commission_result_drop_old_data_col	2014-09-20 10:29:36.37708+07
-128	metadataserver	0014_commission_result_rename_data_bin_col	2014-09-20 10:29:36.428247+07
-129	metadataserver	0015_rename_nodecommissionresult_add_result_type	2014-09-20 10:29:36.484031+07
+1	maasserver	0001_initial	2015-01-17 14:31:16.488751+00
+2	maasserver	0002_add_token_to_node	2015-01-17 14:31:16.509809+00
+3	maasserver	0002_macaddress_unique	2015-01-17 14:31:16.5242+00
+4	maasserver	0003_rename_sshkeys	2015-01-17 14:31:16.548612+00
+5	maasserver	0004_add_node_error	2015-01-17 14:31:16.571312+00
+6	maasserver	0005_sshkey_user_and_key_unique_together	2015-01-17 14:31:16.594833+00
+7	maasserver	0006_increase_filestorage_filename_length	2015-01-17 14:31:16.628466+00
+8	maasserver	0007_common_info_created_add_time	2015-01-17 14:31:16.6875+00
+9	maasserver	0008_node_power_address	2015-01-17 14:31:16.707112+00
+10	maasserver	0009_add_nodegroup	2015-01-17 14:31:16.733044+00
+11	maasserver	0010_add_node_netboot	2015-01-17 14:31:16.758145+00
+12	maasserver	0011_add_dns_zone_serial_sequence	2015-01-17 14:31:16.776314+00
+13	maasserver	0012_DHCPLease	2015-01-17 14:31:16.800976+00
+14	maasserver	0013_connect_node_node_group	2015-01-17 14:31:16.824078+00
+15	maasserver	0014_nodegroup_dhcp_settings_are_optional	2015-01-17 14:31:16.90692+00
+16	maasserver	0016_node_nodegroup_not_null	2015-01-17 14:31:16.94213+00
+17	maasserver	0017_add_dhcp_key_to_nodegroup	2015-01-17 14:31:16.965967+00
+18	maasserver	0018_activate_worker_user	2015-01-17 14:31:17.048467+00
+19	maasserver	0019_add_nodegroup_dhcp_interface	2015-01-17 14:31:17.072404+00
+20	maasserver	0020_nodegroup_dhcp_interfaces_is_plural	2015-01-17 14:31:17.103993+00
+21	maasserver	0021_add_uuid_to_nodegroup	2015-01-17 14:31:17.137342+00
+22	maasserver	0022_add_status_to_nodegroup	2015-01-17 14:31:17.167086+00
+23	maasserver	0023_add_bootimage_model	2015-01-17 14:31:17.19572+00
+24	maasserver	0024_add_nodegroupinterface	2015-01-17 14:31:17.231379+00
+25	maasserver	0025_remove_unused_fields_in_nodegroup	2015-01-17 14:31:17.267224+00
+26	maasserver	0026_add_node_distro_series	2015-01-17 14:31:17.30139+00
+27	maasserver	0027_add_tag_table	2015-01-17 14:31:17.337972+00
+28	maasserver	0028_add_node_hardware_details	2015-01-17 14:31:17.375617+00
+29	maasserver	0029_zone_sharing	2015-01-17 14:31:17.410781+00
+30	maasserver	0030_ip_address_to_generic_ip_address	2015-01-17 14:31:17.523962+00
+31	maasserver	0031_node_architecture_field_size	2015-01-17 14:31:17.570282+00
+32	maasserver	0032_node_subarch	2015-01-17 14:31:17.598558+00
+33	maasserver	0033_component_error	2015-01-17 14:31:17.632808+00
+34	maasserver	0034_timestamp_component_error	2015-01-17 14:31:17.66707+00
+35	maasserver	0035_add_nodegroup_cluster_name	2015-01-17 14:31:17.705932+00
+36	maasserver	0036_populate_nodegroup_cluster_name	2015-01-17 14:31:17.738355+00
+37	maasserver	0037_nodegroup_cluster_name_unique	2015-01-17 14:31:17.767631+00
+38	maasserver	0038_nodegroupinterface_ip_range_fix	2015-01-17 14:31:17.811031+00
+39	maasserver	0039_add_filestorage_content	2015-01-17 14:31:17.855235+00
+40	maasserver	0039_add_nodegroup_to_bootimage	2015-01-17 14:31:17.895059+00
+41	maasserver	0040_make_filestorage_data_not_null	2015-01-17 14:31:17.93911+00
+42	maasserver	0041_remove_filestorage_data	2015-01-17 14:31:17.968115+00
+43	maasserver	0042_fix_039_conflict	2015-01-17 14:31:17.9981+00
+44	maasserver	0043_unique_hostname_preparation	2015-01-17 14:31:18.032231+00
+45	maasserver	0044_node_hostname_unique	2015-01-17 14:31:18.062035+00
+46	maasserver	0045_add_tag_kernel_opts	2015-01-17 14:31:18.096181+00
+47	maasserver	0046_add_nodegroup_maas_url	2015-01-17 14:31:18.135336+00
+48	maasserver	0047_add_owner_to_filestorage	2015-01-17 14:31:18.175968+00
+49	maasserver	0048_add_key_to_filestorage	2015-01-17 14:31:18.312723+00
+50	maasserver	0049_filestorage_key_unique	2015-01-17 14:31:18.345645+00
+51	maasserver	0050_shared_to_per_tenant_storage	2015-01-17 14:31:18.384559+00
+52	maasserver	0051_bigger_distro_series_name	2015-01-17 14:31:18.429403+00
+53	maasserver	0052_add_node_storage	2015-01-17 14:31:18.464869+00
+54	maasserver	0053_node_routers	2015-01-17 14:31:18.496983+00
+55	maasserver	0054_download_progress	2015-01-17 14:31:18.536963+00
+56	maasserver	0055_nullable_bytes_downloaded	2015-01-17 14:31:18.58521+00
+57	maasserver	0056_netboot_off_for_allocated_nodes	2015-01-17 14:31:18.617961+00
+58	maasserver	0057_remove_hardware_details	2015-01-17 14:31:18.65035+00
+59	maasserver	0058_add_agent_name_to_node	2015-01-17 14:31:18.688901+00
+60	maasserver	0059_dhcp_detection_model	2015-01-17 14:31:18.721674+00
+61	maasserver	0060_add_zone_object	2015-01-17 14:31:18.76281+00
+62	maasserver	0061_add_ref_from_node_to_zone	2015-01-17 14:31:18.798709+00
+63	maasserver	0062_add_vlan_model	2015-01-17 14:31:18.839775+00
+64	maasserver	0063_create_default_zone	2015-01-17 14:31:18.876931+00
+65	maasserver	0064_set_default_zone	2015-01-17 14:31:18.913751+00
+66	maasserver	0065_set_default_zone_as_model_default	2015-01-17 14:31:18.966844+00
+67	maasserver	0066_rename_vlan_add_link_node_network	2015-01-17 14:31:19.021062+00
+68	maasserver	0067_default_commissioning_trusty	2015-01-17 14:31:19.061621+00
+69	maasserver	0068_network_description_textfield	2015-01-17 14:31:19.115419+00
+70	maasserver	0069_add_mac_network_relation	2015-01-17 14:31:19.163995+00
+71	maasserver	0070_drop_network_node_relation	2015-01-17 14:31:19.2075+00
+72	maasserver	0071_drop_after_commissioning_action	2015-01-17 14:31:19.250947+00
+73	maasserver	0072_remove_ipmi_autodetect	2015-01-17 14:31:19.290214+00
+74	maasserver	0073_add_label_to_bootimage	2015-01-17 14:31:19.34517+00
+75	maasserver	0074_boot_images_timestamp	2015-01-17 14:31:19.519688+00
+76	maasserver	0075_add_boot_resource_models	2015-01-17 14:31:19.574315+00
+77	maasserver	0076_add_osystem_to_bootimage	2015-01-17 14:31:19.628972+00
+78	maasserver	0077_remove_null_for_bootsourceselection_release	2015-01-17 14:31:19.684616+00
+79	maasserver	0078_add_osystem_to_node	2015-01-17 14:31:19.750036+00
+80	maasserver	0079_supported_subarches_for_bootimage	2015-01-17 14:31:19.798428+00
+81	maasserver	0080_binary_to_editablebinary_in_bootsource	2015-01-17 14:31:19.854853+00
+82	maasserver	0081_ipaddress_table_and_static_dhcp_ranges	2015-01-17 14:31:19.912057+00
+83	maasserver	0082_cluster_interface_for_macaddress	2015-01-17 14:31:19.964138+00
+84	maasserver	0083_add_license_key_to_node	2015-01-17 14:31:20.022832+00
+85	maasserver	0084_add_ssl_key_model	2015-01-17 14:31:20.078409+00
+86	maasserver	0085_add_user_to_staticipaddress	2015-01-17 14:31:20.132799+00
+87	maasserver	0086_add_xinstall_path_and_type_to_bootimage	2015-01-17 14:31:20.191932+00
+88	maasserver	0087_add_licensekey_model	2015-01-17 14:31:20.248862+00
+89	maasserver	0088_ip_to_custom_field	2015-01-17 14:31:20.488442+00
+90	maasserver	0088_z_backport_trunk_0099	2015-01-17 14:31:20.544141+00
+91	maasserver	0089_create_nodegroupinterface_name	2015-01-17 14:31:20.60166+00
+92	maasserver	0090_initialise_nodegroupinterface_name	2015-01-17 14:31:20.675806+00
+93	maasserver	0091_add_boot_type_to_node	2015-01-17 14:31:20.731536+00
+94	maasserver	0092_populate_node_boot_type	2015-01-17 14:31:20.943362+00
+95	maasserver	0093_add_eventtype_and_event	2015-01-17 14:31:21.00846+00
+96	maasserver	0094_add_error_description	2015-01-17 14:31:21.074141+00
+97	maasserver	0095_add_event_description	2015-01-17 14:31:21.136464+00
+98	maasserver	0096_add_power_state_to_node	2015-01-17 14:31:21.198051+00
+99	maasserver	0097_add_largefile_model	2015-01-17 14:31:21.263296+00
+100	maasserver	0098_add_bootresource_models	2015-01-17 14:31:21.343698+00
+101	maasserver	0099_convert_cluster_interfaces_to_networks	2015-01-17 14:31:21.413414+00
+102	maasserver	0100_remove_cluster_from_bootsrouce	2015-01-17 14:31:21.48173+00
+103	maasserver	0100_remove_duplicate_bootsource_urls	2015-01-17 14:31:21.549608+00
+104	maasserver	0101_make_bootsource_url_unique	2015-01-17 14:31:21.623152+00
+105	maasserver	0102_candidate_name	2015-01-17 14:31:21.695473+00
+106	maasserver	0103_candidate_names	2015-01-17 14:31:21.835848+00
+107	maasserver	0104_add_node_disable_ipv4	2015-01-17 14:31:21.918795+00
+108	maasserver	0105_remove_rtype_from_uniqueness_on_boot_resource	2015-01-17 14:31:21.999058+00
+109	maasserver	0106_add_os_to_boot_source_selection	2015-01-17 14:31:22.073762+00
+110	maasserver	0107_add_default_gateway_to_network	2015-01-17 14:31:22.150864+00
+111	maasserver	0108_migrate_allocated_netboot	2015-01-17 14:31:22.228162+00
+112	maasserver	0109_networks_dns_servers	2015-01-17 14:31:22.302283+00
+113	maasserver	0110_deployed_state_compat	2015-01-17 14:31:22.377674+00
+114	maasserver	0111_add_nodegroup_default_disable_ipv4	2015-01-17 14:31:22.650501+00
+115	maasserver	0112_remove_boot_image_model	2015-01-17 14:31:22.72798+00
+116	maasserver	0113_add_boot_source_cache_model	2015-01-17 14:31:22.801755+00
+117	maasserver	0114_add_pxe_mac_to_node	2015-01-17 14:31:22.881009+00
+118	maasserver	0115_unique_boot_source_selections	2015-01-17 14:31:22.957198+00
+119	maasserver	0116_unique_boot_source_selections	2015-01-17 14:31:23.031625+00
+120	maasserver	0117_delete_duplicate_config	2015-01-17 14:31:23.102194+00
+121	maasserver	0118_config_key_unique	2015-01-17 14:31:23.176366+00
+122	maasserver	0119_migrate_invalid_network_names	2015-01-17 14:31:23.250955+00
+123	maasserver	0120_make_macaddress_node_nullable	2015-01-17 14:31:23.33924+00
+124	maasserver	0121_recompute_storage_size	2015-01-17 14:31:23.426142+00
+125	maasserver	0122_add_eventtype_level_index	2015-01-17 14:31:23.507669+00
+126	maasserver	0123_add_physical_block_device_to_node	2015-01-17 14:31:23.597949+00
+127	maasserver	0124_add_tags_to_block_device	2015-01-17 14:31:23.679668+00
+128	maasserver	0125_add_installable_field_on_node	2015-01-17 14:31:23.783345+00
+129	maasserver	0126_replace_storage_field_on_node	2015-01-17 14:31:23.865154+00
+130	metadataserver	0001_initial	2015-01-17 14:31:27.296229+00
+131	metadataserver	0002_add_nodecommissionresult	2015-01-17 14:31:27.313958+00
+132	metadataserver	0003_populate_hardware_details	2015-01-17 14:31:27.337347+00
+133	metadataserver	0004_add_commissioningscript	2015-01-17 14:31:27.362663+00
+134	metadataserver	0005_nodecommissionresult_add_timestamp	2015-01-17 14:31:27.389152+00
+135	metadataserver	0006_nodecommissionresult_add_status	2015-01-17 14:31:27.412726+00
+136	metadataserver	0007_nodecommissionresult_change_name_size	2015-01-17 14:31:27.455202+00
+137	metadataserver	0008_rename_lshw_commissioning_output	2015-01-17 14:31:27.476404+00
+138	metadataserver	0009_delete_status	2015-01-17 14:31:27.496437+00
+139	metadataserver	0010_add_script_result	2015-01-17 14:31:27.523721+00
+140	metadataserver	0011_commission_result_binary_data_col	2015-01-17 14:31:27.549846+00
+141	metadataserver	0012_commission_result_binary_data_recode	2015-01-17 14:31:27.576226+00
+142	metadataserver	0013_commission_result_drop_old_data_col	2015-01-17 14:31:27.60078+00
+143	metadataserver	0014_commission_result_rename_data_bin_col	2015-01-17 14:31:27.630234+00
+144	metadataserver	0015_rename_nodecommissionresult_add_result_type	2015-01-17 14:31:27.667347+00
 \.
 
 
@@ -5255,7 +5352,7 @@ COPY south_migrationhistory (id, app_name, migration, applied) FROM stdin;
 -- Name: south_migrationhistory_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('south_migrationhistory_id_seq', 129, true);
+SELECT pg_catalog.setval('south_migrationhistory_id_seq', 144, true);
 
 
 --
@@ -5403,27 +5500,27 @@ ALTER TABLE ONLY django_site
 
 
 --
--- Name: maasserver_bootimage_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_blockdevice_node_id_592ca9f8196573db_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
-ALTER TABLE ONLY maasserver_bootimage
-    ADD CONSTRAINT maasserver_bootimage_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_bootimage_subarchitecture_54b3f565_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY maasserver_bootimage
-    ADD CONSTRAINT maasserver_bootimage_subarchitecture_54b3f565_uniq UNIQUE (subarchitecture, osystem, label, architecture, release, nodegroup_id, purpose);
+ALTER TABLE ONLY maasserver_blockdevice
+    ADD CONSTRAINT maasserver_blockdevice_node_id_592ca9f8196573db_uniq UNIQUE (node_id, path);
 
 
 --
--- Name: maasserver_bootresource_name_5a9b3025_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_blockdevice_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_blockdevice
+    ADD CONSTRAINT maasserver_blockdevice_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_bootresource_name_60e611bb5a9b3025_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_bootresource
-    ADD CONSTRAINT maasserver_bootresource_name_5a9b3025_uniq UNIQUE (name, architecture);
+    ADD CONSTRAINT maasserver_bootresource_name_60e611bb5a9b3025_uniq UNIQUE (name, architecture);
 
 
 --
@@ -5435,19 +5532,19 @@ ALTER TABLE ONLY maasserver_bootresource
 
 
 --
+-- Name: maasserver_bootresourcefi_resource_set_id_455527e9e6a2a677_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_bootresourcefile
+    ADD CONSTRAINT maasserver_bootresourcefi_resource_set_id_455527e9e6a2a677_uniq UNIQUE (resource_set_id, filetype);
+
+
+--
 -- Name: maasserver_bootresourcefile_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_bootresourcefile
     ADD CONSTRAINT maasserver_bootresourcefile_pkey PRIMARY KEY (id);
-
-
---
--- Name: maasserver_bootresourcefile_resource_set_id_195d5989_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
---
-
-ALTER TABLE ONLY maasserver_bootresourcefile
-    ADD CONSTRAINT maasserver_bootresourcefile_resource_set_id_195d5989_uniq UNIQUE (resource_set_id, filetype);
 
 
 --
@@ -5459,11 +5556,11 @@ ALTER TABLE ONLY maasserver_bootresourceset
 
 
 --
--- Name: maasserver_bootresourceset_resource_id_55ee97de_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_bootresourceset_resource_id_6f887d5055ee97de_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_bootresourceset
-    ADD CONSTRAINT maasserver_bootresourceset_resource_id_55ee97de_uniq UNIQUE (resource_id, version);
+    ADD CONSTRAINT maasserver_bootresourceset_resource_id_6f887d5055ee97de_uniq UNIQUE (resource_id, version);
 
 
 --
@@ -5483,6 +5580,14 @@ ALTER TABLE ONLY maasserver_bootsource
 
 
 --
+-- Name: maasserver_bootsourcecache_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_bootsourcecache
+    ADD CONSTRAINT maasserver_bootsourcecache_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: maasserver_bootsourceselection_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -5491,11 +5596,19 @@ ALTER TABLE ONLY maasserver_bootsourceselection
 
 
 --
--- Name: maasserver_candidatename_name_245ade5e_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_bootsourceselection_release_5b10fd8f5461406c_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_bootsourceselection
+    ADD CONSTRAINT maasserver_bootsourceselection_release_5b10fd8f5461406c_uniq UNIQUE (release, boot_source_id, os);
+
+
+--
+-- Name: maasserver_candidatename_name_35017987245ade5e_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_candidatename
-    ADD CONSTRAINT maasserver_candidatename_name_245ade5e_uniq UNIQUE (name, "position");
+    ADD CONSTRAINT maasserver_candidatename_name_35017987245ade5e_uniq UNIQUE (name, "position");
 
 
 --
@@ -5520,6 +5633,14 @@ ALTER TABLE ONLY maasserver_componenterror
 
 ALTER TABLE ONLY maasserver_componenterror
     ADD CONSTRAINT maasserver_componenterror_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: maasserver_config_name_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_config
+    ADD CONSTRAINT maasserver_config_name_uniq UNIQUE (name);
 
 
 --
@@ -5587,11 +5708,11 @@ ALTER TABLE ONLY maasserver_filestorage
 
 
 --
--- Name: maasserver_filestorage_owner_id_3f3cd36b_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_filestorage_owner_id_38e1c7833f3cd36b_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_filestorage
-    ADD CONSTRAINT maasserver_filestorage_owner_id_3f3cd36b_uniq UNIQUE (owner_id, filename);
+    ADD CONSTRAINT maasserver_filestorage_owner_id_38e1c7833f3cd36b_uniq UNIQUE (owner_id, filename);
 
 
 --
@@ -5619,11 +5740,11 @@ ALTER TABLE ONLY maasserver_largefile
 
 
 --
--- Name: maasserver_licensekey_osystem_429d62b4_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_licensekey_osystem_6ab259f9bd629d4c_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_licensekey
-    ADD CONSTRAINT maasserver_licensekey_osystem_429d62b4_uniq UNIQUE (osystem, distro_series);
+    ADD CONSTRAINT maasserver_licensekey_osystem_6ab259f9bd629d4c_uniq UNIQUE (osystem, distro_series);
 
 
 --
@@ -5643,11 +5764,11 @@ ALTER TABLE ONLY maasserver_macaddress
 
 
 --
--- Name: maasserver_macaddress_networks_macaddress_id_653a3d93_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_macaddress_netwo_macaddress_id_29ba4d009ac5c26d_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_macaddress_networks
-    ADD CONSTRAINT maasserver_macaddress_networks_macaddress_id_653a3d93_uniq UNIQUE (macaddress_id, network_id);
+    ADD CONSTRAINT maasserver_macaddress_netwo_macaddress_id_29ba4d009ac5c26d_uniq UNIQUE (macaddress_id, network_id);
 
 
 --
@@ -5667,11 +5788,11 @@ ALTER TABLE ONLY maasserver_macaddress
 
 
 --
--- Name: maasserver_macstaticipaddresslink_ip_address_id_78e0f382_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_macstaticipaddre_ip_address_id_7515cc1678e0f382_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_macstaticipaddresslink
-    ADD CONSTRAINT maasserver_macstaticipaddresslink_ip_address_id_78e0f382_uniq UNIQUE (ip_address_id, mac_address_id);
+    ADD CONSTRAINT maasserver_macstaticipaddre_ip_address_id_7515cc1678e0f382_uniq UNIQUE (ip_address_id, mac_address_id);
 
 
 --
@@ -5747,11 +5868,11 @@ ALTER TABLE ONLY maasserver_node
 
 
 --
--- Name: maasserver_node_tags_node_id_6047a5d7_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_node_tags_node_id_29b00c86047a5d7_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_node_tags
-    ADD CONSTRAINT maasserver_node_tags_node_id_6047a5d7_uniq UNIQUE (node_id, tag_id);
+    ADD CONSTRAINT maasserver_node_tags_node_id_29b00c86047a5d7_uniq UNIQUE (node_id, tag_id);
 
 
 --
@@ -5803,11 +5924,11 @@ ALTER TABLE ONLY maasserver_nodegroup
 
 
 --
--- Name: maasserver_nodegroupinterface_nodegroup_id_629b0803_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_nodegroupinterfac_nodegroup_id_670958f79d64f7fd_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_nodegroupinterface
-    ADD CONSTRAINT maasserver_nodegroupinterface_nodegroup_id_629b0803_uniq UNIQUE (nodegroup_id, name);
+    ADD CONSTRAINT maasserver_nodegroupinterfac_nodegroup_id_670958f79d64f7fd_uniq UNIQUE (nodegroup_id, name);
 
 
 --
@@ -5819,6 +5940,14 @@ ALTER TABLE ONLY maasserver_nodegroupinterface
 
 
 --
+-- Name: maasserver_physicalblockdevice_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY maasserver_physicalblockdevice
+    ADD CONSTRAINT maasserver_physicalblockdevice_pkey PRIMARY KEY (blockdevice_ptr_id);
+
+
+--
 -- Name: maasserver_sshkey_pkey; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -5827,11 +5956,11 @@ ALTER TABLE ONLY maasserver_sshkey
 
 
 --
--- Name: maasserver_sshkey_user_id_740aac74_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_sshkey_user_id_7fa282f08bf5538c_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_sshkey
-    ADD CONSTRAINT maasserver_sshkey_user_id_740aac74_uniq UNIQUE (user_id, key);
+    ADD CONSTRAINT maasserver_sshkey_user_id_7fa282f08bf5538c_uniq UNIQUE (user_id, key);
 
 
 --
@@ -5843,11 +5972,11 @@ ALTER TABLE ONLY maasserver_sslkey
 
 
 --
--- Name: maasserver_sslkey_user_id_20fc3148_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_sslkey_user_id_700ecb7520fc3148_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY maasserver_sslkey
-    ADD CONSTRAINT maasserver_sslkey_user_id_20fc3148_uniq UNIQUE (user_id, key);
+    ADD CONSTRAINT maasserver_sslkey_user_id_700ecb7520fc3148_uniq UNIQUE (user_id, key);
 
 
 --
@@ -5931,11 +6060,11 @@ ALTER TABLE ONLY metadataserver_commissioningscript
 
 
 --
--- Name: metadataserver_nodecommissionresult_node_id_72db6b52_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
+-- Name: metadataserver_nodecommissionresu_node_id_13348d088d2494ae_uniq; Type: CONSTRAINT; Schema: public; Owner: -; Tablespace: 
 --
 
 ALTER TABLE ONLY metadataserver_noderesult
-    ADD CONSTRAINT metadataserver_nodecommissionresult_node_id_72db6b52_uniq UNIQUE (node_id, name);
+    ADD CONSTRAINT metadataserver_nodecommissionresu_node_id_13348d088d2494ae_uniq UNIQUE (node_id, name);
 
 
 --
@@ -6125,10 +6254,10 @@ CREATE INDEX django_session_session_key_like ON django_session USING btree (sess
 
 
 --
--- Name: maasserver_bootimage_nodegroup_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+-- Name: maasserver_blockdevice_node_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
-CREATE INDEX maasserver_bootimage_nodegroup_id ON maasserver_bootimage USING btree (nodegroup_id);
+CREATE INDEX maasserver_blockdevice_node_id ON maasserver_blockdevice USING btree (node_id);
 
 
 --
@@ -6150,6 +6279,13 @@ CREATE INDEX maasserver_bootresourcefile_resource_set_id ON maasserver_bootresou
 --
 
 CREATE INDEX maasserver_bootresourceset_resource_id ON maasserver_bootresourceset USING btree (resource_id);
+
+
+--
+-- Name: maasserver_bootsourcecache_boot_source_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX maasserver_bootsourcecache_boot_source_id ON maasserver_bootsourcecache USING btree (boot_source_id);
 
 
 --
@@ -6206,6 +6342,13 @@ CREATE INDEX maasserver_event_node_id ON maasserver_event USING btree (node_id);
 --
 
 CREATE INDEX maasserver_event_type_id ON maasserver_event USING btree (type_id);
+
+
+--
+-- Name: maasserver_eventtype_level; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX maasserver_eventtype_level ON maasserver_eventtype USING btree (level);
 
 
 --
@@ -6279,6 +6422,13 @@ CREATE INDEX maasserver_network_name_like ON maasserver_network USING btree (nam
 
 
 --
+-- Name: maasserver_node_installable; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX maasserver_node_installable ON maasserver_node USING btree (installable);
+
+
+--
 -- Name: maasserver_node_nodegroup_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
 --
 
@@ -6290,6 +6440,13 @@ CREATE INDEX maasserver_node_nodegroup_id ON maasserver_node USING btree (nodegr
 --
 
 CREATE INDEX maasserver_node_owner_id ON maasserver_node USING btree (owner_id);
+
+
+--
+-- Name: maasserver_node_pxe_mac_id; Type: INDEX; Schema: public; Owner: -; Tablespace: 
+--
+
+CREATE INDEX maasserver_node_pxe_mac_id ON maasserver_node USING btree (pxe_mac_id);
 
 
 --
@@ -6433,11 +6590,11 @@ CREATE INDEX piston_token_user_id ON piston_token USING btree (user_id);
 
 
 --
--- Name: api_token_id_refs_id_18a70203; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: api_token_id_refs_id_14a9fcae758fdfd; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_nodegroup
-    ADD CONSTRAINT api_token_id_refs_id_18a70203 FOREIGN KEY (api_token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT api_token_id_refs_id_14a9fcae758fdfd FOREIGN KEY (api_token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6465,19 +6622,35 @@ ALTER TABLE ONLY auth_user_user_permissions
 
 
 --
--- Name: boot_source_id_refs_id_2a5b7edc; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: blockdevice_ptr_id_refs_id_6580da02af204dd8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_physicalblockdevice
+    ADD CONSTRAINT blockdevice_ptr_id_refs_id_6580da02af204dd8 FOREIGN KEY (blockdevice_ptr_id) REFERENCES maasserver_blockdevice(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: boot_source_id_refs_id_1ab3fbd12a5b7edc; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_bootsourceselection
-    ADD CONSTRAINT boot_source_id_refs_id_2a5b7edc FOREIGN KEY (boot_source_id) REFERENCES maasserver_bootsource(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT boot_source_id_refs_id_1ab3fbd12a5b7edc FOREIGN KEY (boot_source_id) REFERENCES maasserver_bootsource(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: cluster_interface_id_refs_id_14abd1b4; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: boot_source_id_refs_id_4a66762da0336fc0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_bootsourcecache
+    ADD CONSTRAINT boot_source_id_refs_id_4a66762da0336fc0 FOREIGN KEY (boot_source_id) REFERENCES maasserver_bootsource(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: cluster_interface_id_refs_id_11fa49a7eb542e4c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_macaddress
-    ADD CONSTRAINT cluster_interface_id_refs_id_14abd1b4 FOREIGN KEY (cluster_interface_id) REFERENCES maasserver_nodegroupinterface(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT cluster_interface_id_refs_id_11fa49a7eb542e4c FOREIGN KEY (cluster_interface_id) REFERENCES maasserver_nodegroupinterface(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6513,147 +6686,147 @@ ALTER TABLE ONLY auth_group_permissions
 
 
 --
--- Name: ip_address_id_refs_id_1a7664fb; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: ip_address_id_refs_id_1d3912271a7664fb; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_macstaticipaddresslink
-    ADD CONSTRAINT ip_address_id_refs_id_1a7664fb FOREIGN KEY (ip_address_id) REFERENCES maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT ip_address_id_refs_id_1d3912271a7664fb FOREIGN KEY (ip_address_id) REFERENCES maasserver_staticipaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: largefile_id_refs_id_6933fbd9; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: largefile_id_refs_id_6192daf196cc0427; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_bootresourcefile
-    ADD CONSTRAINT largefile_id_refs_id_6933fbd9 FOREIGN KEY (largefile_id) REFERENCES maasserver_largefile(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT largefile_id_refs_id_6192daf196cc0427 FOREIGN KEY (largefile_id) REFERENCES maasserver_largefile(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: mac_address_id_refs_id_222845f0; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: mac_address_id_refs_id_14c1e1d7222845f0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_macstaticipaddresslink
-    ADD CONSTRAINT mac_address_id_refs_id_222845f0 FOREIGN KEY (mac_address_id) REFERENCES maasserver_macaddress(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT mac_address_id_refs_id_14c1e1d7222845f0 FOREIGN KEY (mac_address_id) REFERENCES maasserver_macaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: macaddress_id_refs_id_3121240; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_macaddress_networks
-    ADD CONSTRAINT macaddress_id_refs_id_3121240 FOREIGN KEY (macaddress_id) REFERENCES maasserver_macaddress(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: network_id_refs_id_602e6e72; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: macaddress_id_refs_id_3a179b89fcededc0; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_macaddress_networks
-    ADD CONSTRAINT network_id_refs_id_602e6e72 FOREIGN KEY (network_id) REFERENCES maasserver_network(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT macaddress_id_refs_id_3a179b89fcededc0 FOREIGN KEY (macaddress_id) REFERENCES maasserver_macaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: node_id_refs_id_282ed272; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: network_id_refs_id_67eaddb99fd1918e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_macaddress_networks
+    ADD CONSTRAINT network_id_refs_id_67eaddb99fd1918e FOREIGN KEY (network_id) REFERENCES maasserver_network(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: node_id_refs_id_165636b6d7d12d8e; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_event
-    ADD CONSTRAINT node_id_refs_id_282ed272 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT node_id_refs_id_165636b6d7d12d8e FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: node_id_refs_id_2dbc5d7e; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_node_tags
-    ADD CONSTRAINT node_id_refs_id_2dbc5d7e FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: node_id_refs_id_3dedef45; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY metadataserver_nodeuserdata
-    ADD CONSTRAINT node_id_refs_id_3dedef45 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: node_id_refs_id_4f9895a0; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: node_id_refs_id_2525cfc9b0676a60; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY metadataserver_nodekey
-    ADD CONSTRAINT node_id_refs_id_4f9895a0 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT node_id_refs_id_2525cfc9b0676a60 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: node_id_refs_id_4fe28ed6; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY metadataserver_noderesult
-    ADD CONSTRAINT node_id_refs_id_4fe28ed6 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: node_id_refs_id_726d2168; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: node_id_refs_id_30b9a0ee726d2168; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_macaddress
-    ADD CONSTRAINT node_id_refs_id_726d2168 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT node_id_refs_id_30b9a0ee726d2168 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: nodegroup_id_refs_id_1a617195; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: node_id_refs_id_4d3d1504fe28ed6; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY metadataserver_noderesult
+    ADD CONSTRAINT node_id_refs_id_4d3d1504fe28ed6 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: node_id_refs_id_5d82b8cb3de939; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_blockdevice
+    ADD CONSTRAINT node_id_refs_id_5d82b8cb3de939 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: node_id_refs_id_63eb66682dbc5d7e; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_node_tags
+    ADD CONSTRAINT node_id_refs_id_63eb66682dbc5d7e FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: node_id_refs_id_791248213dedef45; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY metadataserver_nodeuserdata
+    ADD CONSTRAINT node_id_refs_id_791248213dedef45 FOREIGN KEY (node_id) REFERENCES maasserver_node(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: nodegroup_id_refs_id_1e2b021be59e8e6b; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_dhcplease
-    ADD CONSTRAINT nodegroup_id_refs_id_1a617195 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT nodegroup_id_refs_id_1e2b021be59e8e6b FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: nodegroup_id_refs_id_2cf2a547; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: nodegroup_id_refs_id_39d7b3392cf2a547; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_nodegroupinterface
-    ADD CONSTRAINT nodegroup_id_refs_id_2cf2a547 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT nodegroup_id_refs_id_39d7b3392cf2a547 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: nodegroup_id_refs_id_2e025d2b; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_bootimage
-    ADD CONSTRAINT nodegroup_id_refs_id_2e025d2b FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: nodegroup_id_refs_id_330e0ff3; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_node
-    ADD CONSTRAINT nodegroup_id_refs_id_330e0ff3 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: nodegroup_id_refs_id_6596ee6a; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: nodegroup_id_refs_id_3fc657469a691196; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_downloadprogress
-    ADD CONSTRAINT nodegroup_id_refs_id_6596ee6a FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT nodegroup_id_refs_id_3fc657469a691196 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: owner_id_refs_id_284013af; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: nodegroup_id_refs_id_6043cea7330e0ff3; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_node
-    ADD CONSTRAINT owner_id_refs_id_284013af FOREIGN KEY (owner_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT nodegroup_id_refs_id_6043cea7330e0ff3 FOREIGN KEY (nodegroup_id) REFERENCES maasserver_nodegroup(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: owner_id_refs_id_5505c903; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: owner_id_refs_id_39169da4d7bfec51; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_node
+    ADD CONSTRAINT owner_id_refs_id_39169da4d7bfec51 FOREIGN KEY (owner_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: owner_id_refs_id_63d02c955505c903; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_filestorage
-    ADD CONSTRAINT owner_id_refs_id_5505c903 FOREIGN KEY (owner_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT owner_id_refs_id_63d02c955505c903 FOREIGN KEY (owner_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6681,59 +6854,75 @@ ALTER TABLE ONLY piston_token
 
 
 --
--- Name: resource_id_refs_id_420df0c; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_bootresourceset
-    ADD CONSTRAINT resource_id_refs_id_420df0c FOREIGN KEY (resource_id) REFERENCES maasserver_bootresource(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: resource_set_id_refs_id_29521060; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_bootresourcefile
-    ADD CONSTRAINT resource_set_id_refs_id_29521060 FOREIGN KEY (resource_set_id) REFERENCES maasserver_bootresourceset(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: tag_id_refs_id_593b2ab3; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_node_tags
-    ADD CONSTRAINT tag_id_refs_id_593b2ab3 FOREIGN KEY (tag_id) REFERENCES maasserver_tag(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: token_id_refs_id_6288d4d8; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY metadataserver_nodekey
-    ADD CONSTRAINT token_id_refs_id_6288d4d8 FOREIGN KEY (token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: token_id_refs_id_6f38e06d; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: pxe_mac_id_refs_id_497c86293a30edb2; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_node
-    ADD CONSTRAINT token_id_refs_id_6f38e06d FOREIGN KEY (token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT pxe_mac_id_refs_id_497c86293a30edb2 FOREIGN KEY (pxe_mac_id) REFERENCES maasserver_macaddress(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: type_id_refs_id_76620e53; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: resource_id_refs_id_3c29ead80420df0c; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_bootresourceset
+    ADD CONSTRAINT resource_id_refs_id_3c29ead80420df0c FOREIGN KEY (resource_id) REFERENCES maasserver_bootresource(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: resource_set_id_refs_id_5740a0afd6adefa0; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_bootresourcefile
+    ADD CONSTRAINT resource_set_id_refs_id_5740a0afd6adefa0 FOREIGN KEY (resource_set_id) REFERENCES maasserver_bootresourceset(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: tag_id_refs_id_4bb34759593b2ab3; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_node_tags
+    ADD CONSTRAINT tag_id_refs_id_4bb34759593b2ab3 FOREIGN KEY (tag_id) REFERENCES maasserver_tag(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: token_id_refs_id_108a7f666288d4d8; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY metadataserver_nodekey
+    ADD CONSTRAINT token_id_refs_id_108a7f666288d4d8 FOREIGN KEY (token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: token_id_refs_id_116de3c190c71f93; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_node
+    ADD CONSTRAINT token_id_refs_id_116de3c190c71f93 FOREIGN KEY (token_id) REFERENCES piston_token(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: type_id_refs_id_61afe39576620e53; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_event
-    ADD CONSTRAINT type_id_refs_id_76620e53 FOREIGN KEY (type_id) REFERENCES maasserver_eventtype(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT type_id_refs_id_61afe39576620e53 FOREIGN KEY (type_id) REFERENCES maasserver_eventtype(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: user_id_refs_id_11f68948; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: user_id_refs_id_311aced1f5379309; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY maasserver_staticipaddress
+    ADD CONSTRAINT user_id_refs_id_311aced1f5379309 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- Name: user_id_refs_id_31a8254bee0976b8; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_sslkey
-    ADD CONSTRAINT user_id_refs_id_11f68948 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT user_id_refs_id_31a8254bee0976b8 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
@@ -6753,35 +6942,27 @@ ALTER TABLE ONLY auth_user_user_permissions
 
 
 --
--- Name: user_id_refs_id_7ad0de1c; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: user_id_refs_id_6da704a4852f21e4; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_sshkey
-    ADD CONSTRAINT user_id_refs_id_7ad0de1c FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT user_id_refs_id_6da704a4852f21e4 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: user_id_refs_id_7c6893e4; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: user_id_refs_id_74b4bdee83976c1c; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_userprofile
-    ADD CONSTRAINT user_id_refs_id_7c6893e4 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT user_id_refs_id_74b4bdee83976c1c FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
--- Name: user_id_refs_id_ac86cf7; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY maasserver_staticipaddress
-    ADD CONSTRAINT user_id_refs_id_ac86cf7 FOREIGN KEY (user_id) REFERENCES auth_user(id) DEFERRABLE INITIALLY DEFERRED;
-
-
---
--- Name: zone_id_refs_id_2f2369c9; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: zone_id_refs_id_3339169bd0dc9637; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY maasserver_node
-    ADD CONSTRAINT zone_id_refs_id_2f2369c9 FOREIGN KEY (zone_id) REFERENCES maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
+    ADD CONSTRAINT zone_id_refs_id_3339169bd0dc9637 FOREIGN KEY (zone_id) REFERENCES maasserver_zone(id) DEFERRABLE INITIALLY DEFERRED;
 
 
 --
