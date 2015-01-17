@@ -7,12 +7,10 @@ libjs-yui3-full
 make
 pep8
 pyflakes
-python-cssselect
 python-extras
 python-fixtures
 python-flake8
 python-lxml
-python-mimeparse
 python-mock
 python-nose
 python-pip
@@ -22,5 +20,6 @@ python-subunit
 python-testresources
 python-testscenarios
 python-testtools
+python-unittest2
 python-virtualenv
 xvfb

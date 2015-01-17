@@ -117,7 +117,7 @@ setup(
 
     install_requires=[
         'setuptools',
-        'Django == 1.3.1',
+        'Django',
         'psycopg2',
         'convoy',
         'django-piston',

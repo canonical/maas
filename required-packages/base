@@ -15,6 +15,7 @@ python-bson
 python-bzrlib
 python-convoy
 python-crochet
+python-cssselect
 python-curtin
 python-dev
 python-distro-info
@@ -26,6 +27,7 @@ python-docutils
 python-formencode
 python-hivex
 python-httplib2
+python-iscpy
 python-jsonschema
 python-lockfile
 python-netaddr
