@@ -14,7 +14,6 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import datetime
 import httplib
 import json
 import logging
@@ -30,8 +29,6 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.http.request import build_request_repr
 from fixtures import FakeLogger
-from maasserver import middleware as middleware_module
-from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
@@ -72,7 +69,6 @@ from provisioningserver.rpc.exceptions import (
     PowerActionAlreadyInProgress,
     )
 from provisioningserver.utils.shell import ExternalProcessError
-from provisioningserver.utils.text import normalise_whitespace
 from testtools.matchers import (
     Contains,
     Equals,
@@ -655,96 +651,6 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         middleware.process_request(request)
         self.assertIsNone(get_persistent_error(COMPONENT.CLUSTERS))
 
-    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
-        middleware = ExternalComponentsMiddleware()
-
-        self.patch(
-            middleware,
-            '_get_cluster_images').return_value = [make_rpc_boot_image()]
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware.process_request(request)
-
-        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        self.assertEqual(
-            normalise_whitespace(
-                "Your cluster currently has boot images, but your region "
-                "does not. Nodes will not be able to provision until you "
-                "import boot images into the region. Visit the "
-                "<a href=\"%s\">boot images</a> page to start the "
-                "import." % reverse('images')),
-            error)
-
-    def test__adds_warning_if_boot_image_import_not_started(self):
-        middleware = ExternalComponentsMiddleware()
-
-        self.patch(
-            middleware,
-            '_get_cluster_images').return_value = []
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware.process_request(request)
-
-        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        self.assertEqual(
-            normalise_whitespace(
-                "Boot image import process not started. Nodes will not be "
-                "able to provision without boot images. Visit the "
-                "<a href=\"%s\">boot images</a> page to start the import." % (
-                    reverse('images'))),
-            error)
-
-    def test__removes_warning_if_boot_image_process_started(self):
-        middleware = ExternalComponentsMiddleware()
-        register_persistent_error(
-            COMPONENT.IMPORT_PXE_FILES,
-            "You rotten swine, you! You have deaded me!")
-
-        # Add a BootResource so that the middleware thinks the import
-        # process has started.
-        factory.make_BootResource()
-        request = factory.make_fake_request(factory.make_string(), 'GET')
-        middleware.process_request(request)
-
-        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
-        self.assertIsNone(error)
-
-    def test_get_cluster_images_calls_caches_on_first_call(self):
-        middleware = ExternalComponentsMiddleware()
-
-        images = [make_rpc_boot_image()]
-        mock_list = self.patch(middleware_module, 'list_boot_images')
-        mock_list.return_value = images
-        self.expectThat(images, Equals(middleware._get_cluster_images()))
-        self.expectThat(images, Equals(middleware._cluster_images))
-        self.expectThat(mock_list, MockCalledOnceWith())
-
-    def test_get_cluster_images_calls_doesnt_cache_on_second_call(self):
-        middleware = ExternalComponentsMiddleware()
-
-        images = [make_rpc_boot_image()]
-        mock_list = self.patch(middleware_module, 'list_boot_images')
-        mock_list.return_value = images
-        self.expectThat(images, Equals(middleware._get_cluster_images()))
-        mock_list.return_value = []
-        self.expectThat(images, Equals(middleware._get_cluster_images()))
-        self.expectThat(images, Equals(middleware._cluster_images))
-
-    def test_get_cluster_images_calls_cache_after_5mins(self):
-        middleware = ExternalComponentsMiddleware()
-
-        images = [make_rpc_boot_image()]
-        mock_list = self.patch(middleware_module, 'list_boot_images')
-        mock_list.return_value = images
-        self.expectThat(images, Equals(middleware._get_cluster_images()))
-
-        # Set the last update time 5 minutes ago, so it will
-        # call list_boot_images again.
-        middleware._cluster_images_updated -= datetime.timedelta(
-            minutes=5).total_seconds()
-
-        mock_list.return_value = []
-        self.expectThat([], Equals(middleware._get_cluster_images()))
-        self.expectThat([], Equals(middleware._cluster_images))
-
     def test__does_not_suppress_exceptions_from_connectivity_checks(self):
         middleware = ExternalComponentsMiddleware()
         error_type = factory.make_exception_type()
@@ -753,12 +659,3 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
         check_cluster_connectivity.side_effect = error_type
         self.assertRaises(error_type, middleware.process_request, None)
         self.assertThat(check_cluster_connectivity, MockCalledOnceWith())
-
-    def test__does_not_suppress_exceptions_from_boot_image_checks(self):
-        middleware = ExternalComponentsMiddleware()
-        error_type = factory.make_exception_type()
-        check_boot_image_import_process = self.patch(
-            middleware, "_check_boot_image_import_process")
-        check_boot_image_import_process.side_effect = error_type
-        self.assertRaises(error_type, middleware.process_request, None)
-        self.assertThat(check_boot_image_import_process, MockCalledOnceWith())

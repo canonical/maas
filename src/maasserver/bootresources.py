@@ -13,8 +13,10 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "ImportResourcesProgressService",
     "ensure_boot_source_definition",
     "get_simplestream_endpoint",
+    "ImportResourcesService",
     "is_import_resources_running",
     "simplestreams_file_handler",
     "simplestreams_stream_handler",
@@ -26,6 +28,7 @@ from subprocess import CalledProcessError
 import threading
 import time
 
+from django.core.urlresolvers import reverse
 from django.db import (
     close_old_connections,
     connections,
@@ -44,7 +47,14 @@ from maasserver.bootsources import (
     get_boot_sources,
     set_simplestreams_env,
     )
-from maasserver.enum import BOOT_RESOURCE_TYPE
+from maasserver.components import (
+    discard_persistent_error,
+    register_persistent_error,
+    )
+from maasserver.enum import (
+    BOOT_RESOURCE_TYPE,
+    COMPONENT,
+    )
 from maasserver.fields import LargeObjectFile
 from maasserver.models import (
     BootResource,
@@ -66,6 +76,7 @@ from provisioningserver.import_images.helpers import (
 from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.rpc.boot_images import list_boot_images
 from provisioningserver.utils.fs import tempdir
 from provisioningserver.utils.shell import ExternalProcessError
 from provisioningserver.utils.twisted import synchronous
@@ -989,3 +1000,38 @@ class ImportResourcesService(TimerService, object):
     def __init__(self, interval=timedelta(hours=1)):
         super(ImportResourcesService, self).__init__(
             interval.total_seconds(), _import_resources_in_thread)
+
+
+class ImportResourcesProgressService(TimerService, object):
+    """Service to periodically check on the progress of boot imports."""
+
+    def __init__(self, interval=timedelta(minutes=3)):
+        super(ImportResourcesProgressService, self).__init__(
+            interval.total_seconds(), deferToThread, self.check_boot_images)
+
+    @transactional
+    def check_boot_images(self):
+        """Add a persistent error if the boot image import hasn't started."""
+        if BootResource.objects.all().exists():
+            # The region has boot resources. The clusters will soon too if
+            # they haven't already. Nothing to see here, please move along.
+            discard_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        else:
+            # If the cluster is on the same machine as the region, it's
+            # possible that the cluster has images and the region does not. We
+            # can provide a better message to the user in this case.
+            boot_images_locally = list_boot_images()
+            if len(boot_images_locally) > 0:
+                warning = (
+                    "Your cluster currently has boot images, but your region "
+                    "does not. Nodes will not be able to provision until you "
+                    "import boot images into the region. Visit the "
+                    "<a href=\"%s\">boot images</a> page to start the "
+                    "import." % reverse('images'))
+            else:
+                warning = (
+                    "Boot image import process not started. Nodes will not "
+                    "be able to provision without boot images. Visit the "
+                    "<a href=\"%s\">boot images</a> page to start the "
+                    "import." % reverse('images'))
+            register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)

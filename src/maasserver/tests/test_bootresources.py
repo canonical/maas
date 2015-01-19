@@ -37,9 +37,15 @@ from maasserver.bootresources import (
     download_boot_resources,
     get_simplestream_endpoint,
     )
+from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
+from maasserver.components import (
+    get_persistent_error,
+    register_persistent_error,
+    )
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    COMPONENT,
     )
 from maasserver.models import (
     BootResource,
@@ -68,10 +74,16 @@ from mock import (
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.product_mapping import ProductMapping
 from provisioningserver.rpc.testing import TwistedLoggerFixture
+from provisioningserver.utils.text import normalise_whitespace
 from testtools.deferredruntest import extract_result
-from testtools.matchers import ContainsAll
+from testtools.matchers import (
+    ContainsAll,
+    Equals,
+    Is,
+    )
 from twisted.application.internet import TimerService
 from twisted.internet.defer import fail
+from twisted.internet.threads import deferToThread
 
 
 def make_boot_resource_file_with_stream():
@@ -1227,3 +1239,71 @@ class TestImportResourcesService(MAASTestCase):
         self.assertEqual(
             (bootresources._import_resources_in_thread, (), {}),
             service.call)
+
+
+class TestImportResourcesProgressService(MAASServerTestCase):
+    """Tests for `ImportResourcesProgressService`."""
+
+    def test__is_a_TimerService(self):
+        service = bootresources.ImportResourcesProgressService()
+        self.assertIsInstance(service, TimerService)
+
+    def test__runs_every_three_minutes(self):
+        service = bootresources.ImportResourcesProgressService()
+        self.assertEqual(180, service.step)
+
+    def test__defers_check_to_thread(self):
+        service = bootresources.ImportResourcesProgressService()
+        func, args, kwargs = service.call
+        self.expectThat(func, Is(deferToThread))
+        self.expectThat(args, Equals((service.check_boot_images,)))
+        self.expectThat(kwargs, Equals({}))
+
+    def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+        list_boot_images = self.patch(bootresources, "list_boot_images")
+        list_boot_images.return_value = [make_rpc_boot_image()]
+
+        service = bootresources.ImportResourcesProgressService()
+        service.check_boot_images()
+
+        error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        error_expected = """
+        Your cluster currently has boot images, but your region does not.
+        Nodes will not be able to provision until you import boot images into
+        the region. Visit the <a href="%s">boot images</a> page to start the
+        import.
+        """
+        self.assertEqual(
+            normalise_whitespace(error_expected % reverse('images')),
+            error_observed)
+
+    def test__adds_warning_if_boot_image_import_not_started(self):
+        list_boot_images = self.patch(bootresources, "list_boot_images")
+        list_boot_images.return_value = []
+
+        service = bootresources.ImportResourcesProgressService()
+        service.check_boot_images()
+
+        error_observed = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        error_expected = """
+        Boot image import process not started. Nodes will not be able to
+        provision without boot images. Visit the <a href="%s">boot images</a>
+        page to start the import.
+        """
+        self.assertEqual(
+            normalise_whitespace(error_expected % reverse('images')),
+            error_observed)
+
+    def test__removes_warning_if_boot_image_process_started(self):
+        register_persistent_error(
+            COMPONENT.IMPORT_PXE_FILES,
+            "You rotten swine, you! You have deaded me!")
+
+        # A BootResource implies that the import process has started.
+        factory.make_BootResource()
+
+        service = bootresources.ImportResourcesProgressService()
+        service.check_boot_images()
+
+        error = get_persistent_error(COMPONENT.IMPORT_PXE_FILES)
+        self.assertIsNone(error)

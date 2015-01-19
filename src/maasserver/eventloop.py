@@ -140,6 +140,11 @@ def make_ImportResourcesService():
     return bootresources.ImportResourcesService()
 
 
+def make_ImportResourcesProgressService():
+    from maasserver import bootresources
+    return bootresources.ImportResourcesProgressService()
+
+
 def make_WebApplicationService():
     from maasserver.webapp import WebApplicationService
     site_port = 5243  # config["port"]
@@ -184,6 +189,7 @@ class RegionEventLoop:
         ("rpc-advertise", make_RegionAdvertisingService),
         ("nonce-cleanup", make_NonceCleanupService),
         ("import-resources", make_ImportResourcesService),
+        ("import-resources-progress", make_ImportResourcesProgressService),
         ("web", make_WebApplicationService),
     )
 

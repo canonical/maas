@@ -66,6 +66,7 @@ class TestRegionServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "import-resources",
+            "import-resources-progress",
             "nonce-cleanup",
             "rpc",
             "rpc-advertise",
