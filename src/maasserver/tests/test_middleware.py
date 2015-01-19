@@ -29,6 +29,7 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse
 from django.http.request import build_request_repr
 from fixtures import FakeLogger
+from maasserver import middleware as middleware_module
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.components import (
     get_persistent_error,
@@ -63,6 +64,7 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from maastesting.utils import sample_binary_data
+from mock import Mock
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
     NoConnectionsAvailable,
@@ -581,75 +583,84 @@ class ExternalComponentsMiddlewareTest(MAASServerTestCase):
     """Tests for the ExternalComponentsMiddleware."""
 
     def test__checks_connectivity_of_accepted_clusters(self):
-        get_client_for = self.patch(nodegroup_module, 'getClientFor')
-        middleware = ExternalComponentsMiddleware()
-        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        getAllClients = self.patch(middleware_module, 'getAllClients')
 
         request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
-        self.assertThat(
-            get_client_for, MockCalledOnceWith(cluster.uuid, timeout=0))
+        self.assertThat(getAllClients, MockCalledOnceWith())
 
     def test__ignores_non_accepted_clusters(self):
-        get_client_for = self.patch(nodegroup_module, 'getClientFor')
-        factory.make_NodeGroup(
-            status=factory.pick_enum(
-                NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.ACCEPTED]))
-        middleware = ExternalComponentsMiddleware()
+        factory.make_NodeGroup(status=factory.pick_enum(
+            NODEGROUP_STATUS, but_not=[NODEGROUP_STATUS.ACCEPTED]))
+
+        getAllClients = self.patch(nodegroup_module, 'getAllClients')
+
         request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
-        self.assertThat(get_client_for, MockNotCalled())
+        self.assertThat(getAllClients, MockNotCalled())
 
     def test__registers_error_if_all_clusters_are_disconnected(self):
-        get_client_for = self.patch(nodegroup_module, 'getClientFor')
-        get_client_for.side_effect = NoConnectionsAvailable(
-            "Why, it's a jet-propelled, guided NAAFI!")
-        middleware = ExternalComponentsMiddleware()
         factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
 
+        getAllClients = self.patch(nodegroup_module, 'getAllClients')
+        getAllClients.return_value = []
+
         request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
         error = get_persistent_error(COMPONENT.CLUSTERS)
         self.assertEqual(
-            "One or more clusters are currently disconnected. Visit the "
+            "One cluster is not yet connected to the region. Visit the "
             "<a href=\"%s\">clusters page</a> for more information." %
             reverse('cluster-list'),
             error)
 
     def test__registers_error_if_any_clusters_are_disconnected(self):
-        get_client_for = self.patch(nodegroup_module, 'getClientFor')
-        get_client_for.side_effect = [
-            NoConnectionsAvailable("Why, it's a jet-propelled, guided NAAFI!"),
-            None,
-            ]
-        middleware = ExternalComponentsMiddleware()
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        clusters = [
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+        ]
+
+        getAllClients = self.patch(middleware_module, 'getAllClients')
+        getAllClients.return_value = [Mock(ident=clusters[0].uuid)]
 
         request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
 
         error = get_persistent_error(COMPONENT.CLUSTERS)
         self.assertEqual(
-            "One or more clusters are currently disconnected. Visit the "
+            "2 clusters are not yet connected to the region. Visit the "
             "<a href=\"%s\">clusters page</a> for more information." %
             reverse('cluster-list'),
             error)
 
     def test__removes_error_once_all_clusters_are_connected(self):
-        # Patch getClientFor() to ensure that we don't actually try to
-        # connect to the cluster.
-        self.patch(nodegroup_module, 'getClientFor')
-        middleware = ExternalComponentsMiddleware()
-        factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        clusters = [
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+            factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED),
+        ]
+
+        getAllClients = self.patch(middleware_module, 'getAllClients')
+        getAllClients.return_value = [
+            Mock(ident=cluster.uuid) for cluster in clusters
+        ]
 
         register_persistent_error(
             COMPONENT.CLUSTERS, "Who flung that batter pudding?")
+
         request = factory.make_fake_request(factory.make_string(), 'GET')
+        middleware = ExternalComponentsMiddleware()
         middleware.process_request(request)
-        self.assertIsNone(get_persistent_error(COMPONENT.CLUSTERS))
+
+        error = get_persistent_error(COMPONENT.CLUSTERS)
+        self.assertIsNone(error)
 
     def test__does_not_suppress_exceptions_from_connectivity_checks(self):
         middleware = ExternalComponentsMiddleware()

@@ -61,6 +61,7 @@ from maasserver.exceptions import (
     MAASAPIException,
     )
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.rpc import getAllClients
 from maasserver.utils.orm import is_serialization_failure
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -133,18 +134,26 @@ class ExternalComponentsMiddleware:
 
         If any clusters are disconnected, add a persistent error.
         """
-        accepted_clusters = NodeGroup.objects.filter(
-            status=NODEGROUP_STATUS.ACCEPTED)
-        disconnected_clusters_found = not all(
-            cluster.is_connected() for cluster in accepted_clusters)
-        if disconnected_clusters_found:
-            register_persistent_error(
-                COMPONENT.CLUSTERS,
-                "One or more clusters are currently disconnected. Visit "
-                "the <a href=\"%s\">clusters page</a> for more "
-                "information." % reverse('cluster-list'))
-        else:
+        clusters = NodeGroup.objects.filter(status=NODEGROUP_STATUS.ACCEPTED)
+        connected_cluster_uuids = {client.ident for client in getAllClients()}
+        disconnected_clusters = {
+            cluster for cluster in clusters
+            if cluster.uuid not in connected_cluster_uuids
+        }
+        if len(disconnected_clusters) == 0:
             discard_persistent_error(COMPONENT.CLUSTERS)
+        else:
+            if len(disconnected_clusters) == 1:
+                message = (
+                    "One cluster is not yet connected to the region")
+            else:
+                message = (
+                    "%d clusters are not yet connected to the region"
+                    % len(disconnected_clusters))
+            message = (
+                "%s. Visit the <a href=\"%s\">clusters page</a> for more "
+                "information." % (message, reverse('cluster-list')))
+            register_persistent_error(COMPONENT.CLUSTERS, message)
 
     def process_request(self, request):
         # This middleware hijacks the request to perform checks.  Any
