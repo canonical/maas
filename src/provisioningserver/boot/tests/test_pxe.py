@@ -324,6 +324,34 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
         ]
 
     def test_get_reader_scenarios(self):
+        method = PXEBootMethod()
+        get_ephemeral_name = self.patch(kernel_opts, "get_ephemeral_name")
+        get_ephemeral_name.return_value = factory.make_name("ephemeral")
+        osystem = factory.make_name('osystem')
+        arch = factory.make_name('arch')
+        subarch = factory.make_name('subarch')
+        options = {
+            "backend": None,
+            "kernel_params": make_kernel_parameters(
+                testcase=self, osystem=osystem, subarch=subarch,
+                arch=arch, purpose=self.purpose),
+        }
+        output = method.get_reader(**options).read(10000)
+        config = parse_pxe_config(output)
+        # The default section is defined.
+        default_section_label = config.header["DEFAULT"]
+        self.assertThat(config, Contains(default_section_label))
+        default_section = dict(config[default_section_label])
+
+        contains_arch_path = StartsWith("%s/%s/%s" % (osystem, arch, subarch))
+        self.assertThat(default_section["KERNEL"], contains_arch_path)
+        self.assertThat(default_section["INITRD"], contains_arch_path)
+        self.assertEquals("2", default_section["IPAPPEND"])
+
+
+class TestPXEBootMethodRenderConfigScenariosEnlist(MAASTestCase):
+
+    def test_get_reader_scenarios(self):
         # The commissioning config uses an extra PXELINUX module to auto
         # select between i386 and amd64.
         method = PXEBootMethod()
@@ -334,7 +362,7 @@ class TestPXEBootMethodRenderConfigScenarios(MAASTestCase):
             "backend": None,
             "kernel_params": make_kernel_parameters(
                 testcase=self, osystem=osystem, subarch="generic",
-                purpose=self.purpose),
+                purpose='enlist'),
         }
         output = method.get_reader(**options).read(10000)
         config = parse_pxe_config(output)

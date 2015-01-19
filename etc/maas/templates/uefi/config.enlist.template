@@ -1,0 +1,8 @@
+set default="0"
+set timeout=0
+
+menuentry 'Enlist' {
+    echo   'Booting under MAAS direction...'
+    linux  {{kernel_params | kernel_path }} {{kernel_params | kernel_command}} BOOTIF=01-${net_default_mac}
+    initrd {{kernel_params | initrd_path }}
+}

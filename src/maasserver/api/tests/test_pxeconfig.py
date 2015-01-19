@@ -396,10 +396,16 @@ class TestPXEConfigAPI(MAASServerTestCase):
         # test that purpose is set to "commissioning" for
         # enlistment (when node is None).
         params = self.get_default_params()
+        params['arch'] = 'armhf'
         response = self.client.get(reverse('pxeconfig'), params)
         self.assertEqual(
             "commissioning",
             json.loads(response.content)["purpose"])
+
+    def test_pxeconfig_returns_enlist_config_if_no_architecture_provided(self):
+        params = self.get_default_params()
+        pxe_config = self.get_pxeconfig(params)
+        self.assertEqual('enlist', pxe_config['purpose'])
 
     def test_pxeconfig_returns_fs_host_as_cluster_controller(self):
         # The kernel parameter `fs_host` points to the cluster controller

@@ -135,6 +135,9 @@ def event_log_pxe_request(node, purpose):
         event_description=options[purpose])
 
 
+DEFAULT_ARCH = 'i386'
+
+
 def pxeconfig(request):
     """Get the PXE configuration given a node's details.
 
@@ -214,7 +217,7 @@ def pxeconfig(request):
                     BootResource.objects.get_default_commissioning_resource(
                         osystem, series))
                 if resource is None:
-                    arch = 'i386'
+                    arch = DEFAULT_ARCH
                 else:
                     arch, _ = resource.split_arch()
 
@@ -292,6 +295,12 @@ def pxeconfig(request):
 
     server_address = get_maas_facing_server_address(nodegroup=nodegroup)
     cluster_address = get_mandatory_param(request.GET, "local")
+
+    # If the node is enlisting and the arch is the default arch (i386),
+    # use the dedicated enlistment template which performs architecture
+    # detection.
+    if node is None and arch == DEFAULT_ARCH:
+        boot_purpose = "enlist"
 
     params = KernelParameters(
         osystem=osystem, arch=arch, subarch=subarch, release=series,

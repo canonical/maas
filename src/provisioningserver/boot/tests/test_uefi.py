@@ -33,6 +33,7 @@ from provisioningserver.rpc import region
 from provisioningserver.rpc.testing import MockLiveClusterToRegionRPCFixture
 from provisioningserver.tests.test_kernel_opts import make_kernel_parameters
 from testtools.matchers import (
+    ContainsAll,
     IsInstance,
     MatchesAll,
     MatchesRegex,
@@ -151,6 +152,42 @@ class TestUEFIBootMethodRender(MAASTestCase):
             }
         output = method.get_reader(**options).read(10000)
         self.assertIn("configfile /efi/ubuntu/grub.cfg", output)
+
+    def test_get_reader_with_enlist_purpose(self):
+        # If purpose is "enlist", the config.enlist.template should be
+        # used.
+        method = UEFIBootMethod()
+        params = make_kernel_parameters(
+            purpose="enlist", arch="amd64")
+        options = {
+            "backend": None,
+            "kernel_params": params,
+            }
+        output = method.get_reader(**options).read(10000)
+        self.assertThat(output, ContainsAll(
+            [
+                "menuentry 'Enlist'",
+                "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
+                "boot-kernel",
+            ]))
+
+    def test_get_reader_with_commissioning_purpose(self):
+        # If purpose is "commissioning", the config.commissioning.template
+        # should be used.
+        method = UEFIBootMethod()
+        params = make_kernel_parameters(
+            purpose="commissioning", arch="amd64")
+        options = {
+            "backend": None,
+            "kernel_params": params,
+            }
+        output = method.get_reader(**options).read(10000)
+        self.assertThat(output, ContainsAll(
+            [
+                "menuentry 'Commission'",
+                "%s/%s/%s" % (params.osystem, params.arch, params.subarch),
+                "boot-kernel",
+            ]))
 
 
 class TestUEFIBootMethodRegex(MAASTestCase):
