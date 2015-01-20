@@ -1,20 +1,20 @@
 {% extends "maasserver/base.html" %}
 
-{% block nav-active-settings %}active{% endblock %}
+{% block nav-active-cluster-list %}active{% endblock %}
 {% block title %}Edit Cluster Interface{% endblock %}
 {% block page-title %}Edit Cluster Interface{% endblock %}
 
 {% block content %}
-<div class="block size10 first">
-    <form action="." method="post" class="block">
+<div class="eight-col">
+    <form action="." method="post">
         {% csrf_token %}
         <ul>
             {% for field in form %}
                 {% include "maasserver/form_field.html" %}
             {% endfor %}
         </ul>
-        <input type="submit" value="Save interface" class="button right" />
-        <a class="link-button" href="{% url 'cluster-edit' interface.nodegroup.uuid %}">Cancel</a>
+        <input type="submit" value="Save interface" class="cta-ubuntu right" />
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'cluster-edit' interface.nodegroup.uuid %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

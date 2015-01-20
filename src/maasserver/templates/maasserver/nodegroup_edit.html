@@ -1,53 +1,57 @@
 {% extends "maasserver/base.html" %}
 
-{% block nav-active-settings %}active{% endblock %}
+{% block nav-active-cluster-list %}active{% endblock %}
 {% block title %}Edit Cluster Controller{% endblock %}
 {% block page-title %}Edit Cluster Controller{% endblock %}
 
 {% block content %}
-<div class="block size10 first">
-	<form action="." method="post" class="block">
-		{% csrf_token %}
-		<ul>
-			{% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-		</ul>
-		<input type="submit" value="Save cluster controller" class="button right" />
-		<a class="link-button" href="{% url 'cluster-list' %}">Cancel</a>
-		<h2>Interfaces</h2> {% with nb_interfaces=cluster.nodegroupinterface_set.count %} This cluster controller has {{ nb_interfaces }} interface{{ nb_interfaces|pluralize }}. {% endwith %}
-		<table class="list">
-			<thead>
-				<tr>
-					<th>Name</th>
-					<th>Interface</th>
-					<th>Network</th>
-					<th>Manage...</th>
-					<th>Non-MAAS DHCP Server</th>
-					<th></th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for interface in interfaces %}
-				<tr class="interface {% cycle 'even' 'odd' %}" id="{{ interface.name }}">
-					<td>{{ interface.name }}</td>
-					<td>{{ interface.interface }}</td>
-					<td>{{ interface.network|default_if_none:"Not configured" }}</td>
-					<td>{{ interface.display_management }}</td>
-					<td>{{ interface.foreign_dhcp_ip|default_if_none:"" }} {% if interface.foreign_dhcp_ip and interface.display_management != "Unmanaged" %}
-						<img src="{{ STATIC_URL }}img/warning.png" title="Clashes with MAAS DHCP!" /> {% endif %}
-					</td>
-					<td>
-						<a href="{% url 'cluster-interface-edit' uuid=cluster.uuid name=interface.name %}" class="icon" title="Edit interface {{ interface.name }}">
-							<img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
-						</a>
-						<a title="Delete interface {{ interface.name }}" href="{% url 'cluster-interface-delete' cluster.uuid interface.name %}">
-							<img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-						</a>
-					</td>
-				</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-		<a class="button right" href="{% url 'cluster-interface-create' cluster.uuid %}">Add interface</a>
+<div class="twelve-col">
+	<form action="." method="post" class="eight-col">
+		<div class="eight-col">
+			{% csrf_token %}
+			<ul>
+				{% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
+			</ul>
+			<input type="submit" value="Save cluster controller" class="button right" />
+			<a class="link-cta-ubuntu secondary-alt" href="{% url 'cluster-list' %}">Cancel</a>
+		</div>
+		<div class="eight-col">
+			<h2>Interfaces</h2> {% with nb_interfaces=cluster.nodegroupinterface_set.count %} <p>This cluster controller has {{ nb_interfaces }} interface{{ nb_interfaces|pluralize }}.</p> {% endwith %}
+			<table>
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Interface</th>
+						<th>Network</th>
+						<th>Manage...</th>
+						<th>Non-MAAS DHCP Server</th>
+						<th></th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for interface in interfaces %}
+					<tr class="interface {% cycle 'even' 'odd' %}" id="{{ interface.name }}">
+						<td>{{ interface.name }}</td>
+						<td>{{ interface.interface }}</td>
+						<td>{{ interface.network|default_if_none:"Not configured" }}</td>
+						<td>{{ interface.display_management }}</td>
+						<td>{{ interface.foreign_dhcp_ip|default_if_none:"" }} {% if interface.foreign_dhcp_ip and interface.display_management != "Unmanaged" %}
+							<img src="{{ STATIC_URL }}img/warning.png" title="Clashes with MAAS DHCP!" /> {% endif %}
+						</td>
+						<td>
+							<a href="{% url 'cluster-interface-edit' uuid=cluster.uuid name=interface.name %}" class="icon" title="Edit interface {{ interface.name }}">
+								<img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
+							</a>
+							<a title="Delete interface {{ interface.name }}" href="{% url 'cluster-interface-delete' cluster.uuid interface.name %}">
+								<img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+							</a>
+						</td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<a class="link-cta-ubuntu right" href="{% url 'cluster-interface-create' cluster.uuid %}">Add interface</a>
+		</div>
 	</form>
 </div>
 <div class="clear"></div>

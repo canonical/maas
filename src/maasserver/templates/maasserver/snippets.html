@@ -1,54 +1,56 @@
 <script type="text/x-template" id="add-macaddress">
-  <p>
+<ul>
+  <li class="help-msg">
     <label for="id_mac_addresses">Mac address</label>
     <input type="text" maxlength="30" name="mac_addresses"
            id="id_mac_addresses" />
-    <div class="field-help">e.g AA:BB:CC:DD:EE:FF</div>
-  </p>
+    <span class="help">e.g AA:BB:CC:DD:EE:FF</span>
+  </li>
 </script>
 <script type="text/x-template" id="add-node">
-  <p>
-    <label for="id_hostname">Hostname
-      <span class="form-optional">(optional)</span>
-    </label>
-    {{ node_form.hostname }}
-    <div class="field-help">
-      MAAS will generate an arbitrary name if you don't provide one.
-    </div>
-  </p>
-  <p>
-    <label for="id_osystem">OS</label>
-    {{ node_form.osystem }}
-  </p>
-  <p>
-    <label for="id_distro_series">Release</label>
-    {{ node_form.distro_series }}
-  </p>
-  <p class="license_key hidden">
-    <label for="id_license_key">License Key</label>
-    {{ node_form.license_key }}
-  </p>
-  <p>
-    <label for="id_nodegroup">Cluster</label>
-    {{ node_form.nodegroup }}
-  </p>
-  <p>
-    <label for="id_architecture">Architecture</label>
-    {{ node_form.architecture }}
-  </p>
-  {% if node_form.power_type %}
-    <p>
-      <label for="id_power_type">Power type</label>
-      {{ node_form.power_type }}
-    </p>
-    <p class="power_parameters">
-      <label for="id_power_parameters">Power parameters</label>
-      {{ node_form.power_parameters }}
-    </p>
-    <p class="zone">
-      <label for="id_zone">Physical zone</label>
-      {{ node_form.zone }}
-    </p>
+    <ul>
+      <li class="help-msg">
+      <label for="id_hostname">Hostname
+        <span class="form-optional">(optional)</span>
+      </label>
+      {{ node_form.hostname }}
+      <span class="help">
+        MAAS will generate an arbitrary name if you don't provide one.
+      </span>
+    </li>
+    <li>
+      <label for="id_osystem">OS</label>
+      {{ node_form.osystem }}
+    </li>
+    <li>
+      <label for="id_distro_series">Release</label>
+      {{ node_form.distro_series }}
+    </li>
+    <li class="license_key hidden">
+      <label for="id_license_key">License Key</label>
+      {{ node_form.license_key }}
+    </li>
+    <li>
+      <label for="id_nodegroup">Cluster</label>
+      {{ node_form.nodegroup }}
+    </li>
+    <li>
+      <label for="id_architecture">Architecture</label>
+      {{ node_form.architecture }}
+    </li>
+    {% if node_form.power_type %}
+      <li>
+        <label for="id_power_type">Power type</label>
+        {{ node_form.power_type }}
+      </li>
+      <li class="power_parameters">
+        <label for="id_power_parameters">Power parameters</label>
+        {{ node_form.power_parameters }}
+      </li>
+      <li class="zone">
+        <label for="id_zone">Physical zone</label>
+        {{ node_form.zone }}
+      </li>
   {% endif %}
 </script>
 {% for power_type, fieldset in POWER_TYPE_PARAMETERS_FIELDS %}
