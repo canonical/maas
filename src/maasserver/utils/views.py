@@ -16,9 +16,12 @@ __all__ = [
     'WebApplicationHandler',
 ]
 
+import sys
 from weakref import WeakSet
 
+from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler
+from django.core.urlresolvers import get_resolver
 from django.db import transaction
 from maasserver.utils.orm import is_serialization_failure
 from provisioningserver.logger.log import get_maas_logger
@@ -80,8 +83,30 @@ class WebApplicationHandler(WSGIHandler):
         will *not* run within the same transaction, or any transaction at all
         by default.
         """
-        get_response = super(WebApplicationHandler, self).get_response
-        get_response = transaction.atomic(get_response)
+        django_get_response = super(WebApplicationHandler, self).get_response
+
+        def get_response(request):
+            # Up-call to Django's get_response() in a transaction. This
+            # transaction may fail because of a serialization conflict, so
+            # pass errors to handle_uncaught_exception().
+            try:
+                with transaction.atomic():
+                    return django_get_response(request)
+            except SystemExit:
+                # Allow sys.exit() to actually exit, reproducing behaviour
+                # found in Django's BaseHandler.
+                raise
+            except:
+                # Catch *everything* else, also reproducing behaviour found in
+                # Django's BaseHandler. In practice, we should only really see
+                # transaction failures here from the outermost atomic block as
+                # all other exceptions are handled by django_get_response. The
+                # setting DEBUG_PROPAGATE_EXCEPTIONS upsets this, so be on
+                # your guard when tempted to use it.
+                signals.got_request_exception.send(
+                    sender=self.__class__, request=request)
+                return self.handle_uncaught_exception(
+                    request, get_resolver(None), sys.exc_info())
 
         # Loop up to (attempts - 1) times.
         for attempt in xrange(1, self.__attempts):

@@ -18,10 +18,12 @@ import httplib
 from random import randint
 from weakref import WeakSet
 
+from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler
 from django.core.urlresolvers import get_resolver
 from django.db import connection
 from django.http import HttpRequest
+from django.http.response import HttpResponseServerError
 from fixtures import FakeLogger
 from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import views
@@ -136,6 +138,38 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.expectThat(
             handler._WebApplicationHandler__retry,
             Not(Contains(response)))
+
+    def test__get_response_catches_serialization_failures(self):
+        get_response_original = self.patch(WSGIHandler, "get_response")
+        get_response_original.side_effect = (
+            lambda request: self.cause_serialization_failure())
+
+        handler = views.WebApplicationHandler(1)
+        request = HttpRequest()
+        request.path = factory.make_name("path")
+        response = handler.get_response(request)
+
+        self.assertThat(
+            get_response_original, MockCalledOnceWith(request))
+        self.assertThat(
+            response, IsInstance(HttpResponseServerError))
+
+    def test__get_response_sends_signal_on_serialization_failures(self):
+        get_response_original = self.patch(WSGIHandler, "get_response")
+        get_response_original.side_effect = (
+            lambda request: self.cause_serialization_failure())
+
+        send_request_exception = self.patch_autospec(
+            signals.got_request_exception, "send")
+
+        handler = views.WebApplicationHandler(1)
+        request = HttpRequest()
+        request.path = factory.make_name("path")
+        handler.get_response(request)
+
+        self.assertThat(
+            send_request_exception, MockCalledOnceWith(
+                sender=views.WebApplicationHandler, request=request))
 
     def test__get_response_tries_only_once(self):
         get_response_original = self.patch(WSGIHandler, "get_response")
