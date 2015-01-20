@@ -1,5 +1,8 @@
 @charset 'UTF-8';
 
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
 /**
  * MAAS account styles
  *
@@ -10,14 +13,6 @@
  */
 
 .accounts {
-
-    .login,
-    .logout {
-
-        input[type="submit"] {
-            font-size: 18px;
-        }
-    }
 
     .logout {
 

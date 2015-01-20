@@ -1,0 +1,46 @@
+@charset "UTF-8";
+
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS button styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+a.link-cta-ubuntu,
+button.cta-ubuntu,
+input[type="submit"],
+form button[type="submit"],
+form input[type="submit"] {
+    font-size: 0.75em;
+    padding: 7px 20px;
+    height: 30px;
+
+    &.secondary {
+		background: #B2B2B2;
+
+		&:hover {
+			background: #888;
+		}
+    }
+
+    &.secondary-alt {
+    	background: #EEE;
+    	color: #333;
+    	border: 1px solid #B2B2B2;
+
+    	&:hover {
+    		background: #FFF;
+    	}
+    }
+
+    &.full {
+    	display: block;
+    	width: 100%;
+    }
+}

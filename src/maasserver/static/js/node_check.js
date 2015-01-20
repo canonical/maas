@@ -46,8 +46,7 @@ Y.extend(PowerCheckWidget, Y.Widget, {
         this.system_id = cfg.system_id;
         // Create action button.
         this.button = Y.Node.create('<button />')
-            .addClass('secondary')
-            .addClass('space-top')
+            .addClass('cta-ubuntu secondary-alt full')
             .setAttribute('type', 'submit')
             .setAttribute('name', 'action')
             .setAttribute('value', 'check-powerstate')
@@ -56,18 +55,17 @@ Y.extend(PowerCheckWidget, Y.Widget, {
         this.initial_background = this.button.getStyle('background');
         this.initial_color = this.button.getStyle('color');
         // Initialize widget elements.
-        this.status_check = Y.Node.create('<div />')
-            .addClass('power-check-ok');
-        this.error_msg = Y.Node.create('<div />')
-            .addClass('power-check-error');
+        this.status_check = Y.Node.create('<p />')
+            .addClass('power-check-ok three-col');
+        this.error_msg = Y.Node.create('<p />')
+            .addClass('power-check-error three-col');
         this.button.setStyle('position', 'relative');
-        this.spinnerNode = Y.Node.create('<img />')
+        this.spinnerNode = Y.Node.create('<span />')
             .addClass('spinner')
             .setStyle('position', 'absolute')
             .setStyle('top', '4px')
-            .setStyle('right', '70px')
-            .setStyle('margin', '0')
-            .set('src', MAAS_config.uris.statics + 'img/spinner_grey.gif');
+            .setStyle('right', '7px')
+            .setStyle('margin', '0');
     },
 
     bindUI: function() {
@@ -148,8 +146,6 @@ Y.extend(PowerCheckWidget, Y.Widget, {
         this.displaySuccessMessage('');
         // Set in-progress color and background.
         this.button
-            .setStyle('color', '#BBB')
-            .setStyle('background', '#999')
             .append(this.spinnerNode);
     },
 

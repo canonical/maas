@@ -31,8 +31,8 @@ suite.add(new Y.maas.testing.TestCase({
         var widget = this.createWidget('system_id');
         widget.render();
         // The placeholders for errors and status have been created.
-        var error_msg = Y.one('#placeholder').one('div.power-check-error');
-        var status_check = Y.one('#placeholder').one('div.power-check-ok');
+        var error_msg = Y.one('#placeholder').one('p.power-check-error');
+        var status_check = Y.one('#placeholder').one('p.power-check-ok');
         Y.Assert.isNotNull(error_msg);
         Y.Assert.isNotNull(status_check);
     },

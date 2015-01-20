@@ -125,11 +125,11 @@ Y.extend(AddNodeWidget, Y.Widget, {
 
     createForm: function() {
         var addnode_button = Y.Node.create('<button />')
-            .addClass('add-node-button')
+            .addClass('add-node-button cta-ubuntu no-border')
             .addClass('right')
             .set('text', "Add node");
         var cancel_button = Y.Node.create('<a />')
-            .addClass('cancel-button')
+            .addClass('cancel-button link-cta-ubuntu secondary-alt')
             .set('href', '#')
             .set('text', "Cancel")
             .addClass('link-button');

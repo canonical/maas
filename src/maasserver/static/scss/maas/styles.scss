@@ -4,9 +4,15 @@
 
 @import "base/base";
 
+@import "components/tables";
+@import "components/forms";
+@import "components/button";
+@import "components/placeholders";
+
 @import "layout/footers";
 @import "layout/grids";
 @import "layout/headers";
 
 @import "pages/accounts";
 @import "pages/dashboard";
+@import "pages/nodes";

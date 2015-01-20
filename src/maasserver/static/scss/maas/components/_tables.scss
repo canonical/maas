@@ -1,0 +1,67 @@
+@charset 'UTF-8';
+
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS table styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+table {
+    text-align: left;
+    width: 100%;
+
+    th,
+    td {
+        border: none;
+        background: transparent;
+        font-size: 0.778em;
+        text-align: left;
+        padding: 13px 10px;
+    }
+
+    thead {
+
+        th {
+            background: transparent;
+            color: #B2B2B2;
+            border-bottom: 1px solid #B2B2B2;
+
+            a:link,
+            a:visited {
+                color: #B2B2B2;
+                font-weight: 300;
+
+                &:hover {
+                    color: #333;
+                }
+
+                &.sort-asc {
+                    background-image: url(/static/img/sort_ascending.png);
+                }
+
+                &.sort-desc {
+                    background-image: url(/static/img/sort_descending.png);
+                }
+            }
+        }
+    }
+
+    tbody {
+
+        tr {
+            &:hover td {
+                background: #FFF;
+            }
+        }
+
+        td {
+            border-bottom: 1px dotted #B2B2B2;
+        }
+    }
+}

@@ -70,17 +70,14 @@
         </table>
         <a class="button right space-top-small" href="{% url 'accounts-add' %}">Add user</a>
     </div>
-    <div class="divider"></div>
     <div id="commissioning_scripts" class="block size11 first">
         {% include "maasserver/settings_commissioning_scripts.html" %}
     </div>
     {% if show_license_keys %}
-    <div class="divider"></div>
     <div id="license_keys" class="block size11 first">
         {% include "maasserver/settings_license_keys.html" %}
     </div>
     {% endif %}
-    <div class="divider"></div>
     <div id="commissioning" class="block size7 first">
         <h2>Commissioning</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -92,7 +89,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="deploy" class="block size7 first">
         <h2>Deploy</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -104,7 +100,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="ubuntu" class="block size7 first">
         <h2>Ubuntu</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -116,7 +111,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="windows" class="block size7 first">
         <h2>Windows</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -128,7 +122,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="global_kernel_opts" class="block size7 first">
         <h2>Global Kernel Parameters</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -140,7 +133,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="maas_and_network" class="block size7 first">
         <h2>Network Configuration</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -152,7 +144,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     {% if show_boot_source %}
     <div id="boot_source" class="block size7 first">
         <h2>Boot Images</h2>
@@ -165,7 +156,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     {% endif %}
     <div id="third_party_drivers" class="block size7 first">
         <h2>Third Party Drivers Configuration</h2>
@@ -178,7 +168,6 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
     <div id="disk_erasing_on_release" class="block size7 first">
         <h2>Disk Erasing on Release</h2>
         <form action="{% url 'settings' %}" method="post">
@@ -190,6 +179,5 @@
             <input type="submit" class="button right" value="Save" />
         </form>
     </div>
-    <div class="divider"></div>
 </div>
 {% endblock %}

@@ -5,7 +5,7 @@
 {% block page-title %}Add network interface{% endblock %}
 
 {% block content %}
-<form action="." method="post" class="block auto-width">
+<form action="." method="post" class="eight-col">
     {% csrf_token %}
     <ul>
         {% for field in form %}
@@ -13,6 +13,6 @@
         {% endfor %}
     </ul>
     <input type="submit" class="right" value="Add network interface" />
-    <a class="link-button" href="{% url 'node-edit' node.system_id %}">Cancel</a>
+    <a class="link-cta-ubuntu secondary-alt" href="{% url 'node-edit' node.system_id %}">Cancel</a>
 </form>
 {% endblock %}

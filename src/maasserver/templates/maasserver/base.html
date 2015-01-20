@@ -27,19 +27,6 @@
 
     {% block head %}
     {% endblock %}
-
-    {% if user.is_authenticated %}
-        <script type="text/javascript">
-        <!--
-        YUI().use('maas.user_panel', function(Y) {
-            Y.on('load', function() {
-                var panel = Y.maas.user_panel.createUserPanelWidget()
-                Y.one('#user-options-link').on('click', Y.maas.user_panel.showUserPanelWidget);
-            });
-        });
-        // -->
-        </script>
-    {% endif %}
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
     {% block html_includes %}{% endblock %}
@@ -52,39 +39,39 @@
             </div>
             <ul id="main-nav" class="nav">
                 {% if user.is_authenticated %}
-                <li class="{% block nav-active-node-list %}{% endblock %}">
-                    <a href="{% url 'node-list' %}">Nodes</a>
+                <li>
+                    <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'node-list' %}">Nodes</a>
                 </li>
                 {% if user.is_superuser %}
-                <li class="{% block nav-active-cluster-list %}{% endblock %}">
-                    <a href="{% url 'cluster-list' %}">Clusters</a>
+                <li>
+                    <a class="{% block nav-active-cluster-list %}{% endblock %}" href="{% url 'cluster-list' %}">Clusters</a>
                 </li>
                 {% endif %}
-                <li class="{% block nav-active-images %}{% endblock %}">
-                    <a href="{% url 'images' %}">Images</a>
+                <li>
+                    <a class="{% block nav-active-images %}{% endblock %}" href="{% url 'images' %}">Images</a>
                 </li>
-                <li class="{% block nav-active-zone-list %}{% endblock %}">
-                    <a href="{% url 'zone-list' %}">Zones</a>
+                <li>
+                    <a class="{% block nav-active-zone-list %}{% endblock %}" href="{% url 'zone-list' %}">Zones</a>
                 </li>
-                <li class="{% block nav-active-network-list %}{% endblock %}">
-                    <a href="{% url 'network-list' %}">Networks</a>
+                <li>
+                    <a class="{% block nav-active-network-list %}{% endblock %}" href="{% url 'network-list' %}">Networks</a>
                 </li>
                 {% if user.is_superuser %}
-                <li class="{% block nav-active-settings %}{% endblock %}">
-                    <a href="{% url 'settings' %}">Settings</a>
+                <li>
+                    <a class="{% block nav-active-settings %}{% endblock %}" href="{% url 'settings' %}">Settings</a>
                 </li>
                 {% endif %}
                 {% endif %}
             </ul>
             {% if user.is_authenticated %}
-            <ul id="right-nav" class="nav user-nav">
+            <ul id="right-nav" class="nav">
                 <li id="user-link">
-                    <a href="#" id="user-options-link">
+                    <a href="#">
                         <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
                         <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
                         {{ user.username }}
                     </a>
-                    <ul id="user-options" class="nav hidden">
+                    <ul class="nav" id="user-options">
                         <li>
                             <a href="{% url 'prefs' %}">Account</a>
                         </li>

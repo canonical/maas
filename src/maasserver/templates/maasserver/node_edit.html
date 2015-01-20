@@ -49,14 +49,14 @@
 {% endblock %}
 
 {% block content %}
-<div id="node-edit" class="block size7">
-    <form action="." method="post" class="block auto-width">
+<div id="node-edit" class="twelve-col">
+    <form action="." method="post" class="eight-col">
         {% csrf_token %}
         <ul>
             {% for field in form %}
                 {% include "maasserver/form_field.html" %}
             {% endfor %}
-            <li>
+            <li class"eight-col">
                 <label for="id_mac_addresses">Network interfaces</label>
                 {% for macaddress in node.macaddress_set.all %}
                 <p>{{ macaddress }}&nbsp;&nbsp;<a title="Delete network interface" class="icon" href="{% url 'mac-delete' macaddress.node.system_id macaddress.mac_address %}"><img src="{{ STATIC_URL }}img/delete.png" alt="delete" /></a></p>
@@ -71,7 +71,7 @@
             </li>
         </ul>
         <input type="submit" value="Save node" class="right" />
-        <a class="link-button" href="{% url 'node-view' node.system_id %}">Cancel</a>
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'node-view' node.system_id %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

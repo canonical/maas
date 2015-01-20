@@ -14,15 +14,34 @@
 
 header.banner {
 
-	.nav-primary.nav-right {
+	overflow: visible;
 
-		.logo-ubuntu {
-			@include background-size(100px);
-			background-position: 5px 5px;
+	nav.nav-primary {
+		border-bottom: none;
+	}
+
+	.nav-primary {
+
+		&.nav-right {
+
+			.logo-ubuntu {
+				@include background-size(100px);
+				background-position: 5px 9px;
+			}
 		}
 	}
 
-	#user-options-link {
+	#right-nav {
+		float: right;
+		margin-right: 20px;
+	}
+
+	#user-link {
+		position: relative;
+
+		a {
+			padding-bottom: 12px;
+		}
 
 		.normal,
 		.hover {
@@ -33,6 +52,21 @@ header.banner {
 			display: none;
 		}
 
+		.nav {
+			@include rounded-corners(0px 0px 4px 4px);
+			background-color: #FFF;
+			border: none;
+			display: none;
+			position: absolute;
+			right: 0;
+			top: 48px;
+			box-shadow: 0px 2px 4px rgba(000,000,000,0.15);
+
+			a:hover {
+				background-color: transparent;
+			}
+		}
+
 		&:hover {
 
 			.normal {
@@ -41,6 +75,10 @@ header.banner {
 
 			.hover {
 				display: inline-block;
+			}
+
+			.nav {
+				display: block;
 			}
 		}
 	}

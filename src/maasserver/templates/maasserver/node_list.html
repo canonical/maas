@@ -9,29 +9,6 @@
 {% endblock %}
 
 {% block head %}
-  <style type="text/css">
-  #node_listing_form select {
-      height: 33px;
-      background: #fff;
-      border-radius: 4px;
-  }
-
-  #node_listing_form select:focus {
-      background: #fff;
-      outline: none;
-      outline-style:none;
-      box-shadow:none;
-  }
-
-  #node_listing_form select option[value=""] {
-      display:none;
-  }
-
-  input.search-input {
-    line-height: 23px;
-    outline: none;
-  }
-  </style>
   <script type="text/javascript">
   <!--
   YUI().use('maas.node_add', function (Y) {
@@ -139,14 +116,14 @@
 {% endblock %}
 
 {% block content %}
-<div id="nodes" class="twelve-col">
-    <form id="node_listing_search_form" action="{% url 'node-list' %}?{{preserved_query}}" method="get" class="six-col right">
+<div id="nodes" class="nodes twelve-col">
+    <form id="node_listing_search_form" action="{% url 'node-list' %}?{{preserved_query}}" method="get" class="six-col last-col search right">
         <input type="search" name="query" placeholder="Search nodes" class="search-input" value="{{input_query|default_if_none:''}}" />
         <input id="search_button" type="submit" class="search-submit" />
     </form>
     <form id="node_listing_form" action="{% url 'node-list' %}?{{preserved_query}}" method="post">
         {% csrf_token %}
-        <div class="three-col">
+        <div class="six-col form-inline">
             {{ form.action }}
             <input type="submit" value="Go" />
         </div>
@@ -155,16 +132,17 @@
         {% endif %}
         {% for field in form %}
             {% if field.errors %}
-            <span class="errors">{{ field.errors }}</span>
+            <span class="errors twelve-col">{{ field.errors }}</span>
             {% endif %}
         {% endfor %}
         {% if input_query_error %}
         <p class="form-errors">{{input_query_error}}</p>
         {% endif %}
+        <div class="clear"></div>
         {% include "maasserver/nodes_listing.html" with sorting="true" actions="true"%}
         {% include "maasserver/pagination.html" %}
     </form>
     <a id="addnode" href="#" class="link-cta-ubuntu">+ Add node</a>
-    <a class="right" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
+    <a class="right link-cta-ubuntu secondary-alt" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
 </div>
 {% endblock %}

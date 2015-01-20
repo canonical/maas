@@ -16,7 +16,7 @@ form.page-title-form {
     margin-bottom: 30px;
 
     input {
-
+        @include border-radius(5px);
         border: 1px solid transparent;
         background-color: transparent;
         font-size: 36px;
@@ -24,15 +24,14 @@ form.page-title-form {
         color: #333;
         margin: 6px 10px;
         padding: 4px;
-        width: 97%;
-        -moz-border-radius: 5px;
-        -webkit-border-radius: 5px;
-        border-radius: 4px;
+        height: auto;
+        box-shadow: none;
 
         &:hover {
-            border: 1px solid #E4E4E4;
-            background-color: #fff;
             outline: none;
+            background: #FFF;
+            border-color: #D2D2D2;
+            box-shadow: inset 0 1px 1px rgba(000,000,000,0.1);
         }
 
         &:focus {

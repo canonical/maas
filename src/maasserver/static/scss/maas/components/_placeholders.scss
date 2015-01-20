@@ -1,0 +1,47 @@
+@charset "UTF-8";
+
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS placeholder styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+%input--styles {
+    @include rounded-corners(2px);
+    @include box-sizing();
+    -webkit-appearance: none;
+    background: #FFF;
+    color: #333;
+    border: 1px solid #D2D2D2;
+    display: block;
+    font-family: Ubuntu,Arial,"libra sans",sans-serif;
+    font-size: 0.778em;
+    font-weight: 300;
+    padding: 0px 13px;
+    box-shadow: inset 0 1px 1px rgba(000,000,000,0.1);
+    height: 30px;
+
+    &:hover {
+
+    }
+
+    &:active {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+
+    &:focus {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+}
+
+.hidden {
+    display: none;
+}

@@ -6,12 +6,14 @@
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block sidebar %}
-<h4>Node details</h4>
-<a href="{% url 'node-view' node.system_id %}" class="button secondary">View node</a>
+<div class="three-col">
+	<h4>Node details</h4>
+	<a href="{% url 'node-view' node.system_id %}" class="link-cta-ubuntu secondary-alt full">View node</a>
+</div>
 {% endblock %}
 
 {% block content %}
-<div id="content-with-sidebar">
+<div id="content-with-sidebar" class="nine-col last-col">
     {% if is_commissioning %}
     <p>This node is commissioning.  This is the commissioning preseed.</p>
     {% endif %}
