@@ -119,6 +119,10 @@ class NodeAction:
         self.user = user
         self.request = request
 
+    def is_actionnable(self):
+        """Can this action be performed?"""
+        return self.node.status in self.actionable_statuses
+
     def inhibit(self):
         """Overridable: is there any reason not to offer this action?
 
@@ -182,7 +186,15 @@ class Delete(NodeAction):
             self.node.delete()
 
 
-class Commission(NodeAction):
+class InstallableNodeAction(NodeAction):
+    """Action that can only be performed on installable nodes."""
+
+    def is_actionnable(self):
+        is_actionnable = super(InstallableNodeAction, self).is_actionnable()
+        return is_actionnable and self.node.installable
+
+
+class Commission(InstallableNodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
     name = "commission"
     display = "Commission node"
@@ -202,7 +214,7 @@ class Commission(NodeAction):
             return "Node commissioning started."
 
 
-class AbortCommissioning(NodeAction):
+class AbortCommissioning(InstallableNodeAction):
     """Abort the commissioning process."""
     name = "abort commissioning"
     display = "Abort commissioning"
@@ -221,7 +233,7 @@ class AbortCommissioning(NodeAction):
             return "Node commissioning aborted."
 
 
-class AbortOperation(NodeAction):
+class AbortOperation(InstallableNodeAction):
     """Abort the current operation."""
     name = "abort operation"
     display = "Abort disk erasure"
@@ -240,7 +252,7 @@ class AbortOperation(NodeAction):
             return "Node operation aborted."
 
 
-class UseCurtin(NodeAction):
+class UseCurtin(InstallableNodeAction):
     """Set this node to use curtin for installation."""
     name = "usecurtin"
     display = "Use the fast installer"
@@ -259,7 +271,7 @@ class UseCurtin(NodeAction):
         return "Node marked as using curtin for install."
 
 
-class UseDI(NodeAction):
+class UseDI(InstallableNodeAction):
     """Set this node to use d-i for installation."""
     name = "usedi"
     display = "Use the Debian installer"
@@ -278,7 +290,7 @@ class UseDI(NodeAction):
         return "Node marked as using the Debian installer."
 
 
-class AcquireNode(NodeAction):
+class AcquireNode(InstallableNodeAction):
     """Acquire a node."""
     name = "acquire"
     display = "Acquire node"
@@ -297,7 +309,7 @@ class AcquireNode(NodeAction):
         return "This node is now allocated to you."
 
 
-class StartNode(NodeAction):
+class StartNode(InstallableNodeAction):
     """Start a node."""
     name = "start"
     display_bulk = "Start selected nodes"
@@ -355,7 +367,7 @@ FAILED_STATUSES = [
 ]
 
 
-class StopNode(NodeAction):
+class StopNode(InstallableNodeAction):
     """Stop a node."""
     name = "stop"
     display = "Stop node"
@@ -378,7 +390,7 @@ class StopNode(NodeAction):
             return "This node has been asked to shut down."
 
 
-class ReleaseNode(NodeAction):
+class ReleaseNode(InstallableNodeAction):
     """Release a node."""
     name = "release"
     display = "Release node"
@@ -400,7 +412,7 @@ class ReleaseNode(NodeAction):
             return "This node is no longer allocated to you."
 
 
-class MarkBroken(NodeAction):
+class MarkBroken(InstallableNodeAction):
     """Mark a node as 'broken'."""
     name = "mark-broken"
     display = "Mark node as broken"
@@ -418,7 +430,7 @@ class MarkBroken(NodeAction):
         return "Node marked broken."
 
 
-class MarkFixed(NodeAction):
+class MarkFixed(InstallableNodeAction):
     """Mark a broken node as fixed and set its state to 'READY'."""
     name = "mark-fixed"
     display = "Mark node as fixed"
@@ -465,10 +477,12 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
         to corresponding :class:`NodeAction` instances.  The dict is ordered
         for consistent display.
     """
-    applicable_actions = (
+    actions = (
         action_class(node, user, request)
-        for action_class in classes
-        if node.status in action_class.actionable_statuses)
+        for action_class in classes)
+    applicable_actions = (
+        action for action in actions
+        if action.is_actionnable())
     return OrderedDict(
         (action.name, action)
         for action in applicable_actions

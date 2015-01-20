@@ -37,9 +37,11 @@ from maasserver.node_action import (
     AbortCommissioning,
     AbortOperation,
     AcquireNode,
+    ACTION_CLASSES,
     Commission,
     compile_node_actions,
     Delete,
+    InstallableNodeAction,
     MarkBroken,
     MarkFixed,
     NodeAction,
@@ -643,3 +645,51 @@ class TestActionsErrorHandling(MAASServerTestCase):
             get_error_message_for_exception(
                 action.node.stop.side_effect),
             unicode(exception))
+
+
+class TestInstallableNodeAction(MAASServerTestCase):
+
+    def get_action_class(self, status):
+        """Return an action based on InstallableNodeAction.
+
+        The returned action class is actionnable for the given
+        status.
+        """
+
+        class TestAction(InstallableNodeAction):
+            actionable_statuses = (status, )
+            name = "test"
+            display = "test"
+            display_bulk = "test"
+            permission = NODE_PERMISSION.VIEW
+
+            def execute(self):
+                pass
+        return TestAction
+
+    def test_action_is_not_actionnable_if_node_isnt_installable(self):
+        status = NODE_STATUS.NEW
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=status, installable=False)
+        action = self.get_action_class(status)(node, owner)
+        self.assertFalse(action.is_actionnable())
+
+    def test_action_is_actionnable_if_node_is_installable(self):
+        status = NODE_STATUS.NEW
+        owner = factory.make_User()
+        node = factory.make_Node(
+            owner=owner, status=status, installable=True)
+        action = self.get_action_class(status)(node, owner)
+        self.assertTrue(action.is_actionnable())
+
+
+class TestActionsDerivesFromInstallableNodeAction(MAASServerTestCase):
+    scenarios = [
+        (action.name, {'action_class': action})
+        for action in ACTION_CLASSES
+        if action != Delete
+        ]
+
+    def test_action_derives_from_InstallableNodeAction(self):
+        self.assertIn(InstallableNodeAction, self.action_class.__bases__)
