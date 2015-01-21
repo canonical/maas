@@ -7,6 +7,7 @@
   </p>
 </script>
 <script type="text/x-template" id="add-node">
+<<<<<<< TREE
   <p>
     <label for="id_hostname">Hostname
       <span class="form-optional">(optional)</span>
@@ -17,11 +18,17 @@
     </div>
   </p>
   <p>
-    <label for="id_osystem">OS</label>
+    <label
+      for="id_osystem"
+      class="{% if node_form.osystem.is_hidden %}hidden{% endif %}">
+    OS</label>
     {{ node_form.osystem }}
   </p>
   <p>
-    <label for="id_distro_series">Release</label>
+    <label
+      for="id_distro_series"
+      class="{% if node_form.distro_series.is_hidden %}hidden{% endif %}">
+    Release</label>
     {{ node_form.distro_series }}
   </p>
   <p class="license_key hidden">
