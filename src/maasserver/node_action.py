@@ -119,7 +119,7 @@ class NodeAction:
         self.user = user
         self.request = request
 
-    def is_actionnable(self):
+    def is_actionable(self):
         """Can this action be performed?"""
         return self.node.status in self.actionable_statuses
 
@@ -189,9 +189,9 @@ class Delete(NodeAction):
 class InstallableNodeAction(NodeAction):
     """Action that can only be performed on installable nodes."""
 
-    def is_actionnable(self):
-        is_actionnable = super(InstallableNodeAction, self).is_actionnable()
-        return is_actionnable and self.node.installable
+    def is_actionable(self):
+        is_actionable = super(InstallableNodeAction, self).is_actionable()
+        return is_actionable and self.node.installable
 
 
 class Commission(InstallableNodeAction):
@@ -482,7 +482,7 @@ def compile_node_actions(node, user, request=None, classes=ACTION_CLASSES):
         for action_class in classes)
     applicable_actions = (
         action for action in actions
-        if action.is_actionnable())
+        if action.is_actionable())
     return OrderedDict(
         (action.name, action)
         for action in applicable_actions

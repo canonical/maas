@@ -420,7 +420,7 @@ class TestStopNodeNodeAction(MAASServerTestCase):
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
-    def test__actionnable_for_failed_states(self):
+    def test__actionable_for_failed_states(self):
         status = random.choice(FAILED_STATUSES)
         node = factory.make_Node(status=status, power_type='ipmi')
         actions = compile_node_actions(
@@ -652,7 +652,7 @@ class TestInstallableNodeAction(MAASServerTestCase):
     def get_action_class(self, status):
         """Return an action based on InstallableNodeAction.
 
-        The returned action class is actionnable for the given
+        The returned action class is actionable for the given
         status.
         """
 
@@ -667,21 +667,21 @@ class TestInstallableNodeAction(MAASServerTestCase):
                 pass
         return TestAction
 
-    def test_action_is_not_actionnable_if_node_isnt_installable(self):
+    def test_action_is_not_actionable_if_node_isnt_installable(self):
         status = NODE_STATUS.NEW
         owner = factory.make_User()
         node = factory.make_Node(
             owner=owner, status=status, installable=False)
         action = self.get_action_class(status)(node, owner)
-        self.assertFalse(action.is_actionnable())
+        self.assertFalse(action.is_actionable())
 
-    def test_action_is_actionnable_if_node_is_installable(self):
+    def test_action_is_actionable_if_node_is_installable(self):
         status = NODE_STATUS.NEW
         owner = factory.make_User()
         node = factory.make_Node(
             owner=owner, status=status, installable=True)
         action = self.get_action_class(status)(node, owner)
-        self.assertTrue(action.is_actionnable())
+        self.assertTrue(action.is_actionable())
 
 
 class TestActionsDerivesFromInstallableNodeAction(MAASServerTestCase):
