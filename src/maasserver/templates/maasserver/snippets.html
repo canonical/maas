@@ -19,11 +19,17 @@
       </span>
     </li>
     <li>
-      <label for="id_osystem">OS</label>
+      <label
+        for="id_osystem"
+        class="{% if node_form.osystem.is_hidden %}hidden{% endif %}">
+      OS</label>
       {{ node_form.osystem }}
     </li>
     <li>
-      <label for="id_distro_series">Release</label>
+      <label
+        for="id_distro_series"
+        class="{% if node_form.distro_series.is_hidden %}hidden{% endif %}">
+      Release</label>
       {{ node_form.distro_series }}
     </li>
     <li class="license_key hidden">
