@@ -105,6 +105,7 @@ For full details see https://launchpad.net/maas/+milestone/1.7.1
 #1403609    Fix MSCM chassis enlistment.
 #1409952    Correctly parse MAC Address for Power8 VM enlistment.
 #1409852    Do not fail when trying to perform an IP Address Reservation.
+#1413030    OS and Release no longer populate on Add Node page
 
 
 1.7.0
