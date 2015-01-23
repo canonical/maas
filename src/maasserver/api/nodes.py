@@ -432,12 +432,9 @@ class NodeHandler(OperationsHandler):
             # Not sure what media type to use here.
             content_type='application/bson')
 
-    @admin_method
     @operation(idempotent=False)
     def claim_sticky_ip_address(self, request, system_id):
         """Assign a "sticky" IP address to a Node's MAC.
-
-        This method is reserved for admin users.
 
         :param mac_address: Optional MAC address on the node on which to
             assign the sticky IP address.  If not passed, defaults to the
@@ -459,7 +456,8 @@ class NodeHandler(OperationsHandler):
         Returns 503 if there are not enough IPs left on the cluster interface
         to which the mac_address is linked.
         """
-        node = get_object_or_404(Node, system_id=system_id)
+        node = Node.objects.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
                 "Sticky IP cannot be assigned to a node that is allocated")

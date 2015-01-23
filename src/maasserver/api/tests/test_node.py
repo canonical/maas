@@ -1013,13 +1013,6 @@ class TestStickyIP(APITestCase):
         """Get the API URI for `node`."""
         return reverse('node_handler', args=[node.system_id])
 
-    def test_claim_sticky_ip_address_disallows_non_admin(self):
-        node = factory.make_Node()
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(
-            httplib.FORBIDDEN, response.status_code, response.content)
-
     def test_claim_sticky_ip_address_disallows_when_allocated(self):
         self.become_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
@@ -1059,6 +1052,29 @@ class TestStickyIP(APITestCase):
             httplib.CONFLICT, response.status_code,
             response.content)
 
+    def test_claim_sticky_ip_address_claims_sticky_ip_address_non_admin(self):
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=self.logged_in_user)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        [returned_ip] = parsed_node["ip_addresses"]
+        [given_ip] = StaticIPAddress.objects.all()
+        self.assertEqual(
+            (given_ip.ip, IPADDRESS_TYPE.STICKY),
+            (returned_ip, given_ip.alloc_type),
+        )
+
+    def test_claim_sticky_ip_address_checks_edit_permission(self):
+        other_user = factory.make_User()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=other_user)
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
     def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
@@ -1070,8 +1086,8 @@ class TestStickyIP(APITestCase):
         [given_ip] = StaticIPAddress.objects.all()
         self.assertEqual(
             (given_ip.ip, IPADDRESS_TYPE.STICKY),
-            (returned_ip, given_ip.alloc_type)
-            )
+            (returned_ip, given_ip.alloc_type),
+        )
 
     def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
         self.become_admin()
