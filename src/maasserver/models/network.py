@@ -330,8 +330,19 @@ class Network(CleanSave, Model):
         """Validator for `vlan_tag`."""
         # Work out whether we're using IPv6 or v4. If we're using mixed
         # v6/v4 values, bail out.
-        ip_address = IPAddress(self.ip)
-        netmask_as_ip = IPAddress(self.netmask)
+        try:
+            ip_address = IPAddress(self.ip)
+        except AddrFormatError as e:
+            # The failure will be reported by the validation performed on
+            # the 'ip' field by MAASIPAddressField.
+            return
+        try:
+            netmask_as_ip = IPAddress(self.netmask)
+        except AddrFormatError as e:
+            # The failure will be reported by the validation performed on
+            # the 'netmask' field by MAASIPAddressField.
+            return
+
         if ip_address.version == 6 and netmask_as_ip.version == 6:
             check_ip = 'fc00:1:1::'
         elif ip_address.version == 4 and netmask_as_ip.version == 4:
