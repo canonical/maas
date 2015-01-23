@@ -6,15 +6,15 @@
 {% block page-title %}Edit network{% endblock %}
 
 {% block content %}
-<div class="block size10 first">
-    <form action="." method="post" class="block">
+<div class="eight-col">
+    <form action="." method="post">
         {% csrf_token %}
         <ul>
             {% for field in form %}
                 {% include "maasserver/form_field.html" %}
             {% endfor %}
         </ul>
-        <input type="submit" value="Save network" class="button right" />
+        <input type="submit" value="Save network" class="cta-ubuntu right" />
         <a class="link-cta-ubuntu secondary-alt" href="{% url 'network-list' %}">Cancel</a>
     </form>
 </div>

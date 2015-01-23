@@ -5,30 +5,30 @@
 {% block page-title %}Edit User{% endblock %}
 
 {% block content %}
-<div class="block auto-width first">
+<div class="eight-col">
     <h2>Settings</h2>
-    <div id="profile" class="size7">
-        <form action="." method="post" class="block">
+    <div id="profile" class="eight-col">
+        <form action="." method="post">
             {% csrf_token %}
             <ul>
                 {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
             </ul>
             <input type="hidden" name="profile_submit" value="1" />
-            <input type="submit" value="Save user" class="button right" />
-            <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+            <input type="submit" value="Save user" class="cta-ubuntu right" />
+            <a class="link-cta-ubuntu secondary-alt" href="{% url 'settings' %}">Cancel</a>
         </form>
     </div>
     <div class="clear"></div>
     <h2>Change password</h2>
-    <div id="password" class="size7">
-        <form action="." method="post" class="block">
+    <div id="password" class="eight-col">
+        <form action="." method="post">
             {% csrf_token %}
             <ul>
                 {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
             </ul>
             <input type="hidden" name="password_submit" value="1" />
-            <input type="submit" value="Change password" class="button right" />
-            <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+            <input type="submit" value="Change password" class="cta-ubuntu right" />
+            <a class="link-cta-ubuntu secondary-alt" href="{% url 'settings' %}">Cancel</a>
         </form>
     </div>
 </div>

@@ -1,16 +1,18 @@
 {% extends "maasserver/base.html" %}
 
-{% block nav-active-settings %}active{% endblock %}
+{% block nav-active-zone-list %}active{% endblock %}
 {% block title %}Add physical zone{% endblock %}
 {% block page-title %}Add physical zone{% endblock %}
 
 {% block content %}
-<form action="." method="post" class="block auto-width first">
-    {% csrf_token %}
-    <ul>
-        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-    </ul>
-    <input type="submit" value="+ Add zone" class="right" />
-    <a class="link-button" href="{% url 'settings' %}">Cancel</a>
-</form>
+<div class="eight-col">
+	<form action="." method="post">
+	    {% csrf_token %}
+	    <ul>
+	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
+	    </ul>
+	    <input type="submit" value="+ Add zone" class="cta-ubuntu right" />
+	    <a class="link-cta-ubuntu secondary-alt" href="{% url 'zone-list' %}">Cancel</a>
+	</form>
+</div>
 {% endblock %}

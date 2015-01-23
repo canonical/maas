@@ -5,12 +5,14 @@
 {% block page-title %}Add license key{% endblock %}
 
 {% block content %}
-<form enctype="multipart/form-data" method="post" action="." class="block auto-width">
-    {% csrf_token %}
-    <ul>
-        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-    </ul>
-    <input type="submit" class="right" value="Add license key" />
-    <a class="link-button" href="{% url 'settings' %}#license_keys">Cancel</a>
-</form>
+<div class="eight-col">
+	<form enctype="multipart/form-data" method="post" action=".">
+	    {% csrf_token %}
+	    <ul>
+	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
+	    </ul>
+	    <input type="submit" class="cta-ubuntu right" value="Add license key" />
+	    <a class="link-cta-ubuntu secondary-alt" href="{% url 'settings' %}#license_keys">Cancel</a>
+	</form>
+</div>
 {% endblock %}

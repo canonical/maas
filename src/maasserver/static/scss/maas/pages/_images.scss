@@ -1,0 +1,82 @@
+@charset 'UTF-8';
+
+@import "../../ubuntu/core-constants";
+@import "../../ubuntu/core-mixins";
+
+/**
+ * MAAS node styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+.small-icon {
+    width: 12px;
+}
+
+.images-info {
+    text-align: center;
+    padding: 10px;
+}
+
+.images-warning {
+    text-align: center;
+    padding: 10px;
+    border: 1px solid #dd4814;
+    border-radius: 5px;
+    -webkit-border-radius: 5px;
+    background-color: rgba(221, 72, 20, 0.3);
+}
+
+#loader {
+    width: 10px;
+    margin: 16px auto 0 auto;
+}
+
+#importing {
+    margin: -20px auto -19px auto;
+    width: 230px;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    border-right: 1px solid rgba(221, 72, 20, 0.5);
+    border-bottom: 1px solid rgba(221, 72, 20, 0.5);
+    border-left: 1px solid rgba(221, 72, 20, 0.5);
+    border-bottom-right-radius: 5px;
+    -webkit-border-bottom-right-radius: 5px;
+    border-bottom-left-radius: 5px;
+    -webkit-border-bottom-right-radius: 5px;
+    background-color: rgba(221, 72, 20, 0.2);
+}
+
+.importing-dot {
+    opacity: 0;
+    -webkit-animation: dot 1.3s infinite;
+    animation: dot 1.3s infinite;
+}
+
+@-webkit-keyframes dot {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes dot {
+    0% {
+        opacity: 0;
+    }
+    50% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}

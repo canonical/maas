@@ -70,8 +70,10 @@
                 </a>
             </li>
         </ul>
-        <input type="submit" value="Save node" class="right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'node-view' node.system_id %}">Cancel</a>
+        <div class="buttons">
+            <input type="submit" value="Save node" class="right" />
+            <a class="link-cta-ubuntu secondary-alt" href="{% url 'node-view' node.system_id %}">Cancel</a>
+        </div>
     </form>
 </div>
 {% endblock %}

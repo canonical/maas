@@ -4,12 +4,14 @@
 {% block page-title %}Add SSH key{% endblock %}
 
 {% block content %}
-<form action="." method="post" class="block auto-width">
-    {% csrf_token %}
-    <ul>
-        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
-    </ul>
-    <a class="link-button" href="{% url 'prefs' %}">Cancel</a>
-    <input type="submit" class="right" value="+ Add key" />
-</form>
+<div class="eight-col">
+	<form action="." method="post">
+	    {% csrf_token %}
+	    <ul>
+	        {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
+	    </ul>
+	    <a class="link-cta-ubuntu secondary-alt" href="{% url 'prefs' %}">Cancel</a>
+	    <input type="submit" class="cta-ubuntu right" value="+ Add key" />
+	</form>
+</div>
 {% endblock %}

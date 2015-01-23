@@ -1,5 +1,5 @@
 <h2>License Keys</h2>
-<table class="list">
+<table>
     <tbody>
         {% for key in license_keys %}
         <tr class="script {% cycle 'even' 'odd' %}" id="{{ key.osystem }}-{{ key.distro_series }}">
@@ -13,12 +13,10 @@
                     <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
                 </a>
             </td>
-            {% empty %} 
-            No license keys. 
+            {% empty %}
+            No license keys.
         </tr>
         {% endfor %}
     </tbody>
 </table>
-<div>
-    <a class="button right space-top-small" href="{% url 'license-key-add' %}">Add license key</a>
-</div>
+<a class="link-cta-ubuntu right" href="{% url 'license-key-add' %}">Add license key</a>

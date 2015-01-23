@@ -1,16 +1,18 @@
 {% extends "maasserver/base.html" %}
 
-{% block nav-active-settings %}active{% endblock %}
+{% block nav-active-network-list %}active{% endblock %}
 {% block title %}Add network{% endblock %}
 {% block page-title %}Add network{% endblock %}
 
 {% block content %}
-    <form action="." method="post" class="block auto-width first">
+<div class="eight-col">
+    <form action="." method="post">
         {% csrf_token %}
         <ul>
             {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
         </ul>
-        <input type="submit" value="+ Add network" class="right" />
-        <a class="link-button" href="{% url 'settings' %}">Cancel</a>
+        <input type="submit" value="+ Add network" class="cta-ubuntu right" />
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'network-list' %}">Cancel</a>
     </form>
+</div>
 {% endblock %}

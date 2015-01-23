@@ -8,87 +8,6 @@
 {% endblock %}
 
 {% block head %}
-    <style type="text/css">
-      form li {
-        margin-bottom: 2px;
-      }
-      .section {
-        margin-bottom: 30px;
-      }
-      .section h2 {
-        padding-bottom: 5px;
-        border-bottom: 1px solid #e5e2e0;
-      }
-      .section .content {
-        margin-left: 10px;
-      }
-      .section .end-row {
-        min-height: 26px;
-      }
-      .small-icon {
-        width: 12px;
-      }
-      .images-info {
-        font-weight: bold;
-        text-align: center;
-        padding: 10px;
-      }
-      .images-warning {
-        font-weight: bold;
-        text-align: center;
-        padding: 10px;
-        border: 1px solid #dd4814;
-        border-radius: 5px;
-        -webkit-border-radius: 5px;
-        background-color: rgba(221, 72, 20, 0.3);
-      }
-      #loader {
-        width: 10px;
-        margin: 16px auto 0 auto;
-      }
-      #importing {
-        margin: -20px auto -19px auto;
-        width: 230px;
-        font-weight: bold;
-        text-align: center;
-        padding: 10px;
-        border-right: 1px solid rgba(221, 72, 20, 0.5);
-        border-bottom: 1px solid rgba(221, 72, 20, 0.5);
-        border-left: 1px solid rgba(221, 72, 20, 0.5);
-        border-bottom-right-radius: 5px;
-        -webkit-border-bottom-right-radius: 5px;
-        border-bottom-left-radius: 5px;
-        -webkit-border-bottom-right-radius: 5px;
-        background-color: rgba(221, 72, 20, 0.2);
-      }
-      .importing-dot {
-        opacity: 0;
-        -webkit-animation: dot 1.3s infinite;
-        animation: dot 1.3s infinite;
-      }
-      @-webkit-keyframes dot {
-          0% {
-              opacity: 0;
-          }
-          50% {
-              opacity: 0;
-          }
-          100% {
-              opacity: 1;
-          }
-      }
-      @keyframes dot {
-          0% {
-              opacity: 0;
-          }
-          50% {
-              opacity: 0;
-          }
-          100% {
-              opacity: 1;
-          }
-      }
-    </style>
     <script type="text/javascript">
     <!--
     YUI().use('maas.image_views', 'maas.shortpoll', function (Y) {
@@ -126,24 +45,24 @@
         <span class="importing-dot" style="-webkit-animation-delay: 0.2s; animation-delay: 0.2s;">.</span>
         <span class="importing-dot" style="-webkit-animation-delay: 0.3s; animation-delay: 0.3s;">.</span>​
     </div>
-    <div id="ubuntu-images" class="section">
+    <div id="ubuntu-images" class="twelve-col">
         <h2>Ubuntu</h2>
-        <div class="content">
+        <div>
             <form id="ubuntu_images" method="POST" action="{% url 'images' %}">
                 {% csrf_token %}
                 <input type="hidden" name="ubuntu_images" value="1" />
-                
+
                 {% if user.is_superuser %}
-                <div id="ubuntu-options" class="row hidden">
+                <div id="ubuntu-options" class="hidden">
                     {% if connection_error %}
                     <div id="connection-error" class="images-warning">Connection Error: Unable to retrieve image information from boot sources.</div>
                     {% else %}
                     {% if ubuntu_streams_count == 0 %}
                     <div id="no-ubuntu-sources" class="images-warning">Error: No boot sources provide Ubuntu images.</div>
                     {% elif ubuntu_streams_count == 1 %}
-                    <div class="col2">
-                        <div class="space-bottom-small">Release:</div>
-                        <ul id="ubuntu-releases" class="data-list">
+                    <div class="four-col">
+                        <h4>Release:</h4>
+                        <ul id="ubuntu-releases">
                             {% for release in ubuntu_releases %}
                             <li>
                                 <input type="checkbox" name="release" value="{{release.name}}" {% if release.checked %}checked="checked"{% endif %}>
@@ -152,9 +71,9 @@
                             {% endfor %}
                         </ul>
                     </div>
-                    <div class="col10 last">
-                        <div class="space-bottom-small">Architecture:</div>
-                        <ul id="ubuntu-arches" class="data-list">
+                    <div class="eight-col last-col">
+                        <h4>Architecture:</h4>
+                        <ul id="ubuntu-arches">
                             {% for arch in ubuntu_arches %}
                             <li>
                                 <input type="checkbox" name="arch" value="{{arch.name}}" {% if arch.checked %}checked="checked"{% endif %}>
@@ -169,7 +88,7 @@
                     {% endif %}
                 </div>
                 {% endif %}
-                <div class="row space-top">
+                <div class="twelve-col">
                     <table id="ubuntu-resources" class="space-top list hidden">
                         <thead>
                             <tr>
@@ -187,13 +106,13 @@
                     </table>
                     <div id="missing-ubuntu-images" class="images-warning hidden">No Ubuntu images have been imported. Ubuntu images are required to allow nodes to enlist, commission, and install.</div>
                 </div>
-                <div class="row space-top end-row">
+                <div class="twelve-col">
                     {% if user.is_superuser %}
-                    <div class="col12 last align-right">
+                    <div class="twelve-col">
                         {% if ubuntu_streams_count == 1 %}
-                        <input id="ubuntu-apply" type="submit" class="button hidden" value="Import images">
+                        <input id="ubuntu-apply" type="submit" class="cta-ubuntu right" value="Import images">
                         {% elif ubuntu_streams_count > 1 %}
-                        <input id="ubuntu-apply" type="submit" class="button hidden" data-lock-value="true" value="Import images">
+                        <input id="ubuntu-apply" type="submit" class="cta-ubuntu right" data-lock-value="true" value="Import images">
                         {% endif %}
                     </div>
                     {% endif %}
@@ -202,14 +121,14 @@
         </div>
     </div>
     {% if other_resources %}
-    <div id="other-sync-images" class="section">
+    <div id="other-sync-images" class="twelve-col">
         <h2>Other Images</h2>
-        <div class="content">
+        <div>
             <form id="other_images" method="POST" action="{% url 'images' %}">
                 {% csrf_token %}
                 <input type="hidden" name="other_images" value="1" />
-                <div class="row space-top">
-                    <table id="other-resources" class="space-top list">
+                <div>
+                    <table id="other-resources">
                         <thead>
                             <tr>
                                 <th class="spinner-col"></th>
@@ -242,10 +161,10 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="row space-top end-row">
+                <div>
                     {% if user.is_superuser and not region_import_running %}
-                    <div class="col12 last align-right">
-                        <input type="submit" class="button" value="Apply changes">
+                    <div>
+                        <input type="submit" class="cta-ubuntu right" value="Apply changes">
                     </div>
                     {% endif %}
                 </div>
@@ -254,11 +173,11 @@
     </div>
     {% endif %}
     {% if generated_resources %}
-    <div id="generated-images" class="section">
+    <div id="generated-images" class="twelve-col">
         <h2>Generated Images</h2>
-        <div class="content">
-            <div class="row space-top">
-                <table id="generated-resources" class="space-top list">
+        <div>
+            <div>
+                <table id="generated-resources">
                     <thead>
                         <tr>
                             <th class="spinner-col"></th>
@@ -297,12 +216,12 @@
         </div>
     </div>
     {% endif %}
-      <div id="custom-images" class="section">
+    <div id="custom-images" class="twelve-col">
         <h2>Custom Images</h2>
-        <div class="content">
-            <div class="row space-top">
+        <div>
+            <div>
                 {% if uploaded_resources|length %}
-                <table id="uploaded-resources" class="space-top list">
+                <table id="uploaded-resources">
                     <thead>
                         <tr>
                             <th></th>

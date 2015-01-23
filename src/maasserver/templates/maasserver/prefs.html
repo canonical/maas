@@ -17,13 +17,13 @@
 {% endblock %}
 
 {% block content %}
-<div id="prefs">
-    <div id="keys" class="block size7 first">
+<div id="prefs" class="accounts">
+    <div id="keys" class="eight-col">
         <h2>Keys</h2>
         <h3>MAAS keys</h3>
-        <div id="api">
+        <div id="api" class="api">
             <p>You'll need a separate API key for each Juju environment.</p>
-            <ul class="list">
+            <ul class="no-bullets">
                 {% for token in user.get_profile.get_authorisation_tokens %}
                 <li class="bundle">
                     <a href="#" class="delete-link icon right">
@@ -35,9 +35,9 @@
             </ul>
             <p id="token_creation_placeholder" />
         </div>
-        <div id="ssh-keys">
+        <div id="ssh-keys" class="ssh-keys eight-col">
             <h3>SSH keys</h3>
-            <ul class="list">
+            <ul class="no-bullets">
                 {% for key in user.sshkey_set.all %}
                 <li>
                     <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
@@ -47,11 +47,11 @@
                 </li>
                 {% empty %} No SSH key configured. {% endfor %}
             </ul>
-            <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="button right space-top">+ Add SSH key</a>
+            <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="link-cta-ubuntu right">+ Add SSH key</a>
         </div>
-        <div id="ssl-keys">
+        <div id="ssl-keys" class="eight-col">
             <h3>SSL keys</h3>
-            <ul class="list">
+            <ul class="no-bullets">
                 {% for key in user.sslkey_set.all %}
                 <li>
                     <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
@@ -61,26 +61,26 @@
                 </li>
                 {% empty %} No SSL key configured. {% endfor %}
             </ul>
-            <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="button right space-top">+ Add SSL key</a>
+            <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="link-cta-ubuntu right">+ Add SSL key</a>
         </div>
-        <div id="profile" class="block size7 first">
+        <div id="profile" class="eight-col">
             <h2>User details</h2>
             <form action="." method="post">{% csrf_token %}
                 <ul>
                     {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="profile_submit" value="1" />
-                <input type="submit" class="button right" value="Save" />
+                <input type="submit" class="cta-ubuntu right" value="Save" />
             </form>
         </div>
-        <div id="password" class="block size7 first">
+        <div id="password" class="eight-col">
             <h2>Password</h2>
             <form action="." method="post">{% csrf_token %}
                 <ul>
                     {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
                 </ul>
                 <input type="hidden" name="password_submit" value="1" />
-                <input type="submit" class="button right" value="Change password" />
+                <input type="submit" class="cta-ubuntu right" value="Change password" />
             </form>
         </div>
     </div>

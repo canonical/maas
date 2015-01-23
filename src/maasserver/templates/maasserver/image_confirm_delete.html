@@ -5,14 +5,14 @@
 {% block page-title %}Delete custom image{% endblock %}
 
 {% block content %}
-<div class="block auto-width">
+<div class="eight-col">
     <h2>Are you sure you want to delete image "{{ image_to_delete.title }} ({{ image_to_delete.architecture }})"?</h2>
-    <p>This action is permanent and can not be undone.</p>    
+    <p>This action is permanent and can not be undone.</p>
     <form action="." method="post">
         {% csrf_token %}
         <input type="hidden" name="post" value="yes" />
-        <input type="submit" value="Delete image" class="right" />
-        <a href="{% url 'images' %}">Cancel</a>
+        <input type="submit" value="Delete image" class="cta-ubuntu right" />
+        <a href="{% url 'images' %}" class="link-cta-ubuntu secondary-alt">Cancel</a>
     </form>
 </div>
 {% endblock %}

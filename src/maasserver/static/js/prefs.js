@@ -42,7 +42,7 @@ Y.extend(TokenWidget, Y.Widget, {
         this.create_link = Y.Node.create('<a />')
             .set('href', '#')
             .set('id','create_token')
-            .addClass('button')
+            .addClass('link-cta-ubuntu')
             .addClass('right')
             .set('text', "+ Generate MAAS key");
         this.status_node = Y.Node.create('<div />')

@@ -32,10 +32,8 @@
             </td>
         </tr>
     </tbody>
-    {% empty %} 
-    No commissioning scripts. 
+    {% empty %}
+    No commissioning scripts.
     {% endfor %}
 </table>
-<div>
-    <a class="button right space-top-small" href="{% url 'commissioning-script-add' %}">Upload script</a>
-</div>
+<a class="link-cta-ubuntu right" href="{% url 'commissioning-script-add' %}">Upload script</a>

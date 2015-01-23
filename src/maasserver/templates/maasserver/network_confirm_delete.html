@@ -5,14 +5,14 @@
 {% block page-title %}Delete network{% endblock %}
 
 {% block content %}
-    <div class="block auto-width">
-        <h2>Are you sure you want to delete network "{{ network_to_delete.name }}"?</h2>
-        <p>This action is permanent and can not be undone.</p>
-        <form action="." method="post">
-            {% csrf_token %}
-            <input type="hidden" name="post" value="yes" />
-            <input type="submit" value="Delete network" class="right" />
-            <a href="{% url 'network-view' network_to_delete.name %}">Cancel</a>
-        </form>
-    </div>
+<div class="twelve-col">
+    <h2>Are you sure you want to delete network "{{ network_to_delete.name }}"?</h2>
+    <p>This action is permanent and can not be undone.</p>
+    <form action="." method="post">
+        {% csrf_token %}
+        <input type="hidden" name="post" value="yes" />
+        <input type="submit" value="Delete network" class="cta-ubuntu right" />
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'network-view' network_to_delete.name %}">Cancel</a>
+    </form>
+</div>
 {% endblock %}

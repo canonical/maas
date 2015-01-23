@@ -5,13 +5,13 @@
 {% block page-title %}Delete user: {{ user_to_delete.user.username }}{% endblock %}
 
 {% block content %}
-<div class="block auto-width">
+<div class="eight-col">
     <h2>Are you sure you want to delete the user "{{ user_to_delete.user.username }}"?</h2>
     <p>This action is permanent and can not be undone.</p>
     <form action="." method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
-        <input type="submit" value="Delete user" class="right" />
-        <a href="{% url 'settings' %}">Cancel</a>
+        <input type="submit" value="Delete user" class="cta-ubuntu right" />
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'settings' %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

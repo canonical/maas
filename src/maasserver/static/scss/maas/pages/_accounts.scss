@@ -21,4 +21,44 @@
             display: inline-block;
         }
     }
+
+    .api {
+
+        li {
+            position: relative;
+
+                input[type='text'] {
+                    @extend %input--styles;
+                    line-height: 30px;
+                    padding-right: 30px;
+                    width: 100%;
+
+                    &::-webkit-input-placeholder {
+                       color: #333;
+                    }
+
+                    &:-moz-placeholder { /* Firefox 18- */
+                       color: #333;
+                    }
+
+                    &::-moz-placeholder {  /* Firefox 19+ */
+                       color: #333;
+                    }
+
+                    &:-ms-input-placeholder {
+                       color: #333;
+                    }
+                }
+
+            .delete-link {
+                position: absolute;
+                top: 7px;
+                right: 7px;
+            }
+        }
+
+        a {
+            font-size: 14px;
+        }
+    }
 }

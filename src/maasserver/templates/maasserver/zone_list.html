@@ -10,7 +10,7 @@
 {% block content %}
 <div id="zones">
     <h2>Physical zones</h2>
-    <table class="list">
+    <table>
         <thead>
             <tr>
                 <th>Name</th>
@@ -51,9 +51,9 @@
             {% endfor %}
         </tbody>
     </table>
-    {% include "maasserver/pagination.html" %} 
+    {% include "maasserver/pagination.html" %}
     {% if user.is_superuser %}
-    <a class="button right space-top-small" href="{% url 'zone-add' %}">Add zone</a> 
+    <a class="link-cta-ubuntu right" href="{% url 'zone-add' %}">Add zone</a>
     {% endif %}
 </div>
 {% endblock %}

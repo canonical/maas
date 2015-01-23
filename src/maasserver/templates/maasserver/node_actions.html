@@ -1,4 +1,4 @@
-<div class="node-actions three-col">
+<div class="node-actions three-col last-col">
     <h4>Node details</h4>
     {% if can_edit %}
     <a href="{% url 'node-edit' node.system_id %}" class="link-cta-ubuntu full">Edit node</a>
@@ -24,6 +24,4 @@
         {% endfor %}
     </form>
     {% endif %}
-
-
 </div>

@@ -35,7 +35,8 @@ form {
         &[type='number'],
         &[type='search'],
         &[type='password'],
-        &[type='email'] {
+        &[type='email'],
+        &[type='url'] {
             @extend %input--styles;
             line-height: 30px;
 
@@ -78,6 +79,7 @@ form {
         overflow: auto;
         height: auto;
         min-height: 175px;
+        padding-top: 10px;
 
         vertical-align: top;
     }

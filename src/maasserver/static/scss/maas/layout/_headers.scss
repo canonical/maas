@@ -14,72 +14,72 @@
 
 header.banner {
 
-	overflow: visible;
+    overflow: visible;
 
-	nav.nav-primary {
-		border-bottom: none;
-	}
+    nav.nav-primary {
+        border-bottom: none;
+    }
 
-	.nav-primary {
+    .nav-primary {
 
-		&.nav-right {
+        &.nav-right {
 
-			.logo-ubuntu {
-				@include background-size(100px);
-				background-position: 5px 9px;
-			}
-		}
-	}
+            .logo-ubuntu {
+                @include background-size(100px);
+                background-position: 5px 9px;
+            }
+        }
+    }
 
-	#right-nav {
-		float: right;
-		margin-right: 20px;
-	}
+    #right-nav {
+        float: right;
+        margin-right: 20px;
+    }
 
-	#user-link {
-		position: relative;
+    #user-link {
+        position: relative;
 
-		a {
-			padding-bottom: 12px;
-		}
+        a {
+            padding-bottom: 12px;
+        }
 
-		.normal,
-		.hover {
-			margin-right: 7px;
-		}
+        .normal,
+        .hover {
+            margin-right: 7px;
+        }
 
-		.hover {
-			display: none;
-		}
+        .hover {
+            display: none;
+        }
 
-		.nav {
-			@include rounded-corners(0px 0px 4px 4px);
-			background-color: #FFF;
-			border: none;
-			display: none;
-			position: absolute;
-			right: 0;
-			top: 48px;
-			box-shadow: 0px 2px 4px rgba(000,000,000,0.15);
+        .nav {
+            @include rounded-corners(0px 0px 4px 4px);
+            background-color: #FFF;
+            border: none;
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 48px;
+            box-shadow: 0px 2px 4px rgba(000,000,000,0.15);
 
-			a:hover {
-				background-color: transparent;
-			}
-		}
+            a:hover {
+                background-color: transparent;
+            }
+        }
 
-		&:hover {
+        &:hover {
 
-			.normal {
-				display: none;
-			}
+            .normal {
+                display: none;
+            }
 
-			.hover {
-				display: inline-block;
-			}
+            .hover {
+                display: inline-block;
+            }
 
-			.nav {
-				display: block;
-			}
-		}
-	}
+            .nav {
+                display: block;
+            }
+        }
+    }
 }

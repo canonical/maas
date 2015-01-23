@@ -102,12 +102,12 @@
                 {% block page-title-block %}
                 <h1 id="page-title">{% block page-title %}{% endblock %}</h1>
                 {% endblock %}
+                {% block content %}
+                {% endblock %}
                 <aside id="sidebar">
                     {% block sidebar %}
                     {% endblock %}
                 </aside>
-                {% block content %}
-                {% endblock %}
             </div>
         </div>
     </main>

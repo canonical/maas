@@ -89,18 +89,14 @@
   </script>
 {% endblock %}
 
-{% block sidebar %}
-    {% include "maasserver/node_actions.html" %}
-{% endblock %}
-
 {% block content %}
-<div class="nine-col last-col">
+<div class="eight-col">
     <ul>
-        <li class="three-col">
+        <li class="two-col">
             <h4><abbr title="Fully Qualified Domain Name">FQDN</abbr></h4>
             <span data-field="fqdn">{{ node.fqdn }}</span>
         </li>
-        <li id="network-interfaces" class="three-col">
+        <li id="network-interfaces" class="two-col">
             <h4>Network interfaces</h4>
             <span>
                 <ul class="data-list">
@@ -113,25 +109,25 @@
                 </ul>
             </span>
         </li>
-        <li class="three-col last-col">
+        <li class="two-col">
             <h4>Status</h4>
             <span data-field="status">{{ node.display_status }}</span>
         </li>
-        <li class="three-col">
+        <li class="two-col last-col">
             <h4>Architecture</h4>
             <span data-field="architecture">{{ node.architecture }}</span>
         </li>
-        <li class="three-col">
+        <li class="four-col clear">
             <h4>CPU Count</h4>
             <span data-field="cpu_count">{{ node.cpu_count }}</span>
         </li>
-        <li class="three-col last-col">
+        <li class="four-col last-col">
             <h4>Memory</h4>
             <span>
                 <span data-field="memory">{{ node.display_memory }}</span> GiB
             </span>
         </li>
-        <li class="six-col">
+        <li class="eight-col">
             <h4>Tags</h4>
             <span id="node_tags">
                 {% for tag in node.tags.all %}
@@ -144,7 +140,7 @@
         </li>
         {% with ip_addresses=node.ip_addresses %}
         {% if ip_addresses|length %}
-        <li class="six-col" id="ip-addresses">
+        <li class="eight-col" id="ip-addresses">
             <h4>IP addresses
             {% if unconfigured_ips_warning %}
             <img src="{{ STATIC_URL }}img/warning.png" title="This node's IPv6 addresses are not automatically configured." id="unconfigured-ips-warning" />
@@ -159,7 +155,7 @@
         {% endif %}
         {% endwith %}
         {% if kernel_opts.value %}
-        <li class="six-col">
+        <li class="eight-col">
             <h4>Kernel Parameters
                 {% if kernel_opts.is_global %}
                 - from: <a class="kernelopts-global-link" href="{% url 'settings' %}">Global Kernel Parameters</a>
@@ -171,28 +167,28 @@
         </li>
         {% endif %}
         {% if third_party_drivers_enabled and drivers %}
-        <li class="six-col">
+        <li class="eight-col">
             <h4>Third Party Drivers</h4>
             <span id="third_party_drivers">{{ drivers.module }} ({{ drivers.comment }})</span>
         </li>
         {% endif %}
         {% if error_text %}
-        <li class="nine-col">
+        <li class="eight-col">
             <h4>Error output</h4>
             <span>{{ error_text }}</span>
         </li>
         {% endif %}
         {% if status_text %}
-        <li class="nine-col">
+        <li class="eight-col">
             <h4>Console output</h4>
             <span>{{ status_text }}</span>
         </li>
         {% endif %}
-        <li id="owner" data-field="owner" data-field-if="hidden" class="five-col {% if not node.owner %}hidden{% endif %}">
+        <li id="owner" data-field="owner" data-field-if="hidden" class="eight-col {% if not node.owner %}hidden{% endif %}">
             <h4>Owner</h4>
             <span data-field="owner">{{ node.owner }}</span>
         </li>
-        <li id="zone" class="five-col">
+        <li id="zone" class="eight-col">
             <h4>Physical zone</h4>
             <span>
                 <a data-field="zone_url" data-field-attr="href" href="{% url 'zone-view' node.zone.name %}">
@@ -201,14 +197,14 @@
             </span>
         </li>
         {% if node.routers %}
-        <li id="routers" class="five-col">
+        <li id="routers" class="eight-col">
             <h4>Switch MAC addresses</h4>
             <span>{{ node.routers|join:", " }}</span>
         </li>
         {% endif %}
         {% if can_edit %}
         {% if nodeinstallresults != None %}
-        <li class="five-col" id="nodeinstallresults">
+        <li class="eight-col" id="nodeinstallresults">
             <h4>Installation output</h4>
             {% for install_result in nodeinstallresults %}
             <span>
@@ -218,7 +214,7 @@
         </li>
         {% endif %}
         {% if nodecommissionresults > 0 %}
-        <li class="five-col" id="nodecommissionresults">
+        <li class="eight-col" id="nodecommissionresults">
             <h4>Commissioning output</h4>
             <span>
             <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
@@ -265,11 +261,9 @@
             <div id="node_event_list">
                 <div class="spinner spin"></div>
             </div>
-            <div class="clear"></div>
         </li>
     </ul>
 </div>
-<div class="clear"></div>
 {% if probed_details_xml %}
 <div id="content-discovery-data" class="nine-col">
     <ul class="data-list">
@@ -300,4 +294,8 @@
     </ul>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block sidebar %}
+    {% include "maasserver/node_actions.html" %}
 {% endblock %}

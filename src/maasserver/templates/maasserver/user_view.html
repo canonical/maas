@@ -6,36 +6,46 @@
 {% block layout-modifiers %}sidebar{% endblock %}
 
 {% block sidebar %}
-<h4>User details</h4>
-<a href="{% url 'accounts-edit' view_user.username %}" class="button secondary">Edit user</a>
-<h4>Actions</h4>
-<a href="{% url 'accounts-del' view_user.username %}" class="button secondary">Delete user</a>
+<div class="three-col append-one">
+    <ul class="no-bullets">
+        <li>
+            <h4>User details</h4>
+            <a href="{% url 'accounts-edit' view_user.username %}" class="link-cta-ubuntu secondary-alt full">Edit user</a>
+        </li>
+        <li>
+            <h4>Actions</h4>
+            <a href="{% url 'accounts-del' view_user.username %}" class="link-cta-ubuntu secondary-alt full">Delete user</a>
+        </li>
+    </ul>
+</div>
 {% endblock %}
 
 {% block content %}
-<ul class="data-list">
-    <li class="block size2 first">
-        <h4>Username</h4>
-        <span>{{ view_user.username }}</span>
-    </li>
-    <li class="block size3">
-        <h4>Full name</h4>
-        <span>{{ view_user.last_name }}</span>
-    </li>
-    <li class="block size3">
-        <h4>Email address</h4>
-        <span>{{ view_user.email }}</span>
-    </li>
-    <li class="block size2 first">
-        <h4>MAAS Keys</h4>
-        <span>
-        {{ user.get_profile.get_authorisation_tokens.count }}
-        key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
-      </span>
-    </li>
-    <li class="block size3">
-        <h4>MAAS Administrator</h4>
-        <span>{{ view_user.is_superuser }}</span>
-    </li>
-</ul>
+<div class="eight-col last-col">
+    <ul>
+        <li class="two-col">
+            <h4>Username</h4>
+            <span>{{ view_user.username }}</span>
+        </li>
+        <li class="three-col">
+            <h4>Full name</h4>
+            <span>{{ view_user.last_name }}</span>
+        </li>
+        <li class="three-col last-col">
+            <h4>Email address</h4>
+            <span>{{ view_user.email }}</span>
+        </li>
+        <li class="two-col clear">
+            <h4>MAAS Keys</h4>
+            <span>
+            {{ user.get_profile.get_authorisation_tokens.count }}
+            key{{ user.get_profile.get_authorisation_tokens.count|pluralize }}
+          </span>
+        </li>
+        <li class="three-col">
+            <h4>MAAS Administrator</h4>
+            <span>{{ view_user.is_superuser }}</span>
+        </li>
+    </ul>
+</div>
 {% endblock %}

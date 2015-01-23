@@ -22,25 +22,25 @@ form input[type="submit"] {
     height: 30px;
 
     &.secondary {
-		background: #B2B2B2;
+        background: #B2B2B2;
 
-		&:hover {
-			background: #888;
-		}
+        &:hover {
+            background: #888;
+        }
     }
 
     &.secondary-alt {
-    	background: #EEE;
-    	color: #333;
-    	border: 1px solid #B2B2B2;
+        background: #EEE;
+        color: #333;
+        border: 1px solid #B2B2B2;
 
-    	&:hover {
-    		background: #FFF;
-    	}
+        &:hover {
+            background: #FFF;
+        }
     }
 
     &.full {
-    	display: block;
-    	width: 100%;
+        display: block;
+        width: 100%;
     }
 }

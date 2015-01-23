@@ -5,14 +5,14 @@
 {% block page-title %}Edit Physical zone{% endblock %}
 
 {% block content %}
-<div class="block size10 first">
+<div class="eight-col">
     <form action="." method="post" class="block">
         {% csrf_token %}
         <ul>
             {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
         </ul>
-        <input type="submit" value="Save zone" class="button right" />
-        <a class="link-button" href="{% url 'zone-list' %}">Cancel</a>
+        <input type="submit" value="Save zone" class="cta-ubuntu right" />
+        <a class="link-cta-ubuntu secondary-alt" href="{% url 'zone-list' %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

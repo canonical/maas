@@ -4,8 +4,8 @@
 {% block title %}Networks{% endblock %}
 {% block page-title %}
   {{ paginator.count }}
-    {% if input_query %} matching{% endif %} 
-    network{{ paginator.count|pluralize }} in 
+    {% if input_query %} matching{% endif %}
+    network{{ paginator.count|pluralize }} in
     {% include "maasserver/site_title.html" %}
 {% endblock %}
 
@@ -16,7 +16,7 @@
 <div id="networks">
     <h2>Networks</h2>
     {% if network_list|length %}
-    <table class="list">
+    <table>
         <thead>
             <tr>
                 <th>Name</th>
@@ -69,7 +69,7 @@
     <p>No networks defined.</p>
     {% endif %}
     {% if user.is_superuser %}
-    <a class="button right space-top-small" href="{% url 'network-add' %}">Add network</a>
+    <a class="link-cta-ubuntu right" href="{% url 'network-add' %}">Add network</a>
     {% endif %}
 </div>
 {% endblock %}
