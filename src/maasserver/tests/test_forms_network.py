@@ -51,6 +51,36 @@ class TestNetworkForm(MAASServerTestCase):
         network_obj = Network.objects.get(name=name)
         self.assertAttributes(network_obj, definition)
 
+    def test_network_creation_fails_if_empty_IP(self):
+        network = factory.make_ipv4_network()
+        name = factory.make_name('network')
+        definition = {
+            'name': name,
+            'description': factory.make_string(),
+            'ip': "",
+            'netmask': "%s" % network.netmask,
+            'vlan_tag': factory.make_vlan_tag(),
+        }
+        form = NetworkForm(data=definition)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["This field is required."], form.errors['ip'])
+
+    def test_network_creation_fails_if_empty_netmask(self):
+        network = factory.make_ipv4_network()
+        name = factory.make_name('network')
+        definition = {
+            'name': name,
+            'description': factory.make_string(),
+            'ip': "%s" % network.cidr.ip,
+            'netmask': "",
+            'vlan_tag': factory.make_vlan_tag(),
+        }
+        form = NetworkForm(data=definition)
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            ["This field is required."], form.errors['netmask'])
+
     def test_updates_network(self):
         network = factory.make_Network()
         new_description = factory.make_string()
