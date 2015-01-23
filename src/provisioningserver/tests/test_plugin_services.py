@@ -14,21 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import signal
-import sys
-
-from maastesting.testcase import (
-    MAASTestCase,
-    MAASTwistedRunTest,
-    )
-from provisioningserver.plugin import LogService
+from maastesting.testcase import MAASTwistedRunTest
 from testtools.content import content_from_file
 from twisted.application.service import MultiService
-from twisted.python.log import (
-    FileLogObserver,
-    theLogPublisher,
-    )
-from twisted.python.logfile import LogFile
+from twisted.python.log import theLogPublisher
 
 
 class TestServicesBase:
@@ -57,31 +46,3 @@ class TestServicesBase:
 
     def assertNoObserversLeftBehind(self):
         self.assertEqual(self.observers, theLogPublisher.observers)
-
-
-class TestLogService(TestServicesBase, MAASTestCase):
-    """Tests for `provisioningserver.services.LogService`."""
-
-    def test_log_to_stdout(self):
-        log_service = LogService("-")
-        log_service.setServiceParent(self.services)
-        self.assertIsInstance(log_service.observer, FileLogObserver)
-        self.assertEqual("-", log_service.filename)
-        self.assertEqual(sys.stdout, log_service.logfile)
-        # The SIGUSR1 signal handler is untouched.
-        self.assertEqual(
-            signal.getsignal(signal.SIGUSR1),
-            signal.SIG_DFL)
-
-    def test_log_to_file(self):
-        log_filename = self.make_file(name="test.log")
-        log_service = LogService(log_filename)
-        log_service.setServiceParent(self.services)
-        self.assertIsInstance(log_service.observer, FileLogObserver)
-        self.assertEqual(log_filename, log_service.filename)
-        self.assertIsInstance(log_service.logfile, LogFile)
-        self.assertEqual(log_filename, log_service.logfile.path)
-        # The SIGUSR1 signal handler is set.
-        self.assertEqual(
-            signal.getsignal(signal.SIGUSR1),
-            log_service._signal_handler)

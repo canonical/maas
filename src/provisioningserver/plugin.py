@@ -13,18 +13,11 @@ str = None
 
 __metaclass__ = type
 __all__ = [
-    "LogService",
     "ProvisioningServiceMaker",
 ]
 
-import signal
-import sys
-
 from twisted.application.internet import TCPServer
-from twisted.application.service import (
-    IServiceMaker,
-    Service,
-    )
+from twisted.application.service import IServiceMaker
 from twisted.cred.checkers import ICredentialsChecker
 from twisted.cred.credentials import IUsernamePassword
 from twisted.cred.error import UnauthorizedLogin
@@ -36,8 +29,6 @@ from twisted.internet.defer import (
     )
 from twisted.plugin import IPlugin
 from twisted.python import usage
-from twisted.python.log import FileLogObserver
-from twisted.python.logfile import LogFile
 from twisted.web.resource import (
     IResource,
     Resource,
@@ -84,46 +75,6 @@ class ProvisioningRealm:
         raise NotImplementedError()
 
 
-class LogService(Service):
-
-    name = "log"
-
-    def __init__(self, filename):
-        self.filename = filename
-        self.logfile = None
-        self.observer = None
-
-    def _signal_handler(self, sig, frame):
-        reactor.callFromThread(self.logfile.reopen)
-
-    def startService(self):
-        Service.startService(self)
-        if self.filename != '-':
-            self.logfile = LogFile.fromFullPath(
-                self.filename, rotateLength=None, defaultMode=0o644)
-            self.__previous_signal_handler = signal.signal(
-                signal.SIGUSR1, self._signal_handler)
-        else:
-            self.logfile = sys.stdout
-        self.observer = FileLogObserver(self.logfile)
-        self.observer.start()
-
-    def stopService(self):
-        Service.stopService(self)
-        if self.filename != '-':
-            signal.signal(signal.SIGUSR1, self.__previous_signal_handler)
-            del self.__previous_signal_handler
-            self.observer.stop()
-            self.observer = None
-            self.logfile.close()
-            self.logfile = None
-        else:
-            self.observer.stop()
-            self.observer = None
-            # Don't close stdout.
-            self.logfile = None
-
-
 class Options(usage.Options):
     """Command line options for the provisioning server."""
 
@@ -141,10 +92,6 @@ class ProvisioningServiceMaker:
     def __init__(self, name, description):
         self.tapname = name
         self.description = description
-
-    def _makeLogService(self, config):
-        """Create the log service."""
-        return LogService(config["logfile"])
 
     def _makeSiteService(self, papi_xmlrpc, config):
         """Create the site service."""
@@ -213,9 +160,6 @@ class ProvisioningServiceMaker:
         from provisioningserver.config import Config
 
         config = Config.load(options["config-file"])
-
-        log_service = self._makeLogService(config)
-        log_service.setServiceParent(services)
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)
