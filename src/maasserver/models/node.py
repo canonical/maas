@@ -40,6 +40,7 @@ from django.core.exceptions import (
     )
 from django.db.models import (
     BooleanField,
+    CASCADE,
     CharField,
     ForeignKey,
     IntegerField,
@@ -396,6 +397,12 @@ class Node(CleanSave, TimestampedModel):
     :ivar system_id: The unique identifier for this `Node`.
         (e.g. 'node-41eba45e-4cfa-11e1-a052-00225f89f211').
     :ivar hostname: This `Node`'s hostname.  Must conform to RFCs 952 and 1123.
+    :ivar installable: An optional flag to indicate if this node can be
+        installed or not.  Non-installable nodes are nodes for which MAAS only
+        manages DHCP and DNS.
+    :ivar parent: An optional parent `Node`.  This node will be deleted along
+        with all its resources when the parent node gets deleted or released.
+        This is only relevant for non-installable nodes.
     :ivar status: This `Node`'s status. See the vocabulary
         :class:`NODE_STATUS`.
     :ivar error_description: A human-readable description of why a node is
@@ -446,6 +453,10 @@ class Node(CleanSave, TimestampedModel):
     architecture = CharField(max_length=31, blank=True, null=True)
 
     installable = BooleanField(default=True, db_index=True)
+
+    parent = ForeignKey(
+        "Node", default=None, blank=True, null=True, editable=True,
+        related_name="children", on_delete=CASCADE)
 
     routers = djorm_pgarray.fields.ArrayField(dbtype="macaddr")
 
@@ -1293,6 +1304,9 @@ class Node(CleanSave, TimestampedModel):
         # other node editing operations.
         if deallocate_ip_address:
             self.deallocate_static_ip_addresses()
+
+        # If this node has non-installable children, remove them.
+        self.children.all().delete()
 
     def release_or_erase(self):
         """Either release the node or erase the node then release it, depending

@@ -216,7 +216,7 @@ class Factory(maastesting.factory.Factory):
                   architecture="i386/generic", installable=True, updated=None,
                   created=None, nodegroup=None, routers=None, zone=None,
                   power_type=None, networks=None, sortable_name=False,
-                  power_state=None, disable_ipv4=None, **kwargs):
+                  parent=None, power_state=None, disable_ipv4=None, **kwargs):
         """Make a :class:`Node`.
 
         :param sortable_name: If `True`, use a that will sort consistently
@@ -248,7 +248,7 @@ class Factory(maastesting.factory.Factory):
             hostname=hostname, status=status, architecture=architecture,
             installable=installable, nodegroup=nodegroup, routers=routers,
             zone=zone, power_type=power_type, disable_ipv4=disable_ipv4,
-            power_state=power_state,
+            parent=parent, power_state=power_state,
             **kwargs)
         self._save_node_unchecked(node)
         # We do not generate random networks by default because the limited

@@ -2168,6 +2168,13 @@ class NodeManagerTest(MAASServerTestCase):
         node.set_netboot(False)
         self.assertFalse(node.netboot)
 
+    def test_children_field_returns_children(self):
+        parent = factory.make_Node()
+        # Create other nodes.
+        [factory.make_Node() for _ in range(3)]
+        children = [factory.make_Node(parent=parent) for _ in range(3)]
+        self.assertItemsEqual(parent.children.all(), children)
+
     def test_release_or_erase_erases_when_enabled(self):
         owner = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
@@ -2189,6 +2196,24 @@ class NodeManagerTest(MAASServerTestCase):
         node.release_or_erase()
         self.assertThat(release_mock, MockCalledOnceWith())
         self.assertThat(erase_mock, MockNotCalled())
+
+    def test_children_get_deleted_when_parent_is_deleted(self):
+        parent = factory.make_Node()
+        # Create children.
+        [factory.make_Node(parent=parent) for _ in range(3)]
+        other_nodes = [factory.make_Node() for _ in range(3)]
+        parent.delete()
+        self.assertItemsEqual(other_nodes, Node.objects.all())
+
+    def test_children_get_deleted_when_parent_is_released(self):
+        owner = factory.make_User()
+        # Create children.
+        parent = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=owner)
+        [factory.make_Node(parent=parent) for _ in range(3)]
+        other_nodes = [factory.make_Node() for _ in range(3)]
+        parent.release()
+        self.assertItemsEqual([], parent.children.all())
+        self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
 
 
 class TestNodeTransitionMonitors(MAASServerTestCase):
