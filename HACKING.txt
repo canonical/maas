@@ -169,7 +169,7 @@ Run the development webserver and watch all the logs go by::
 
     $ make run
 
-Point your browser to http://localhost:5240/
+Point your browser to http://localhost:5240/MAAS/
 
 If you've populated your instance with the sample data, you can login as a
 simple user using the test account (username: 'test', password: 'test') or the
@@ -202,9 +202,9 @@ Substitute your own email.  The command will prompt for a choice of password.
 Next, get the superuser's API key on the `account preferences`_ page in the
 web UI, and use it to log into MAAS at the command-line::
 
-    $ bin/maas login dev http://localhost:5240
+    $ bin/maas login dev http://localhost:5240/MAAS/
 
-.. _`account preferences`: http://localhost:5240/account/prefs/
+.. _`account preferences`: http://localhost:5240/MAAS/account/prefs/
 
 Start downloading PXE boot resources::
 
