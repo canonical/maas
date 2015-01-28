@@ -40,6 +40,7 @@ from maasserver.api.utils import (
     get_optional_param,
     )
 from maasserver.clusterrpc.power_parameters import get_power_types
+from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -91,6 +92,7 @@ DISPLAYED_NODE_FIELDS = (
     ('macaddress_set', ('mac_address',)),
     'architecture',
     'installable',
+    'parent',
     'cpu_count',
     'memory',
     'storage',
@@ -190,6 +192,14 @@ class NodeHandler(OperationsHandler):
         """
         return node.status
 
+    @classmethod
+    def parent(handler, node):
+        """Return the system ID of the parent, if any."""
+        if node.parent is None:
+            return None
+        else:
+            return node.parent.system_id
+
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.
     @classmethod
@@ -248,7 +258,12 @@ class NodeHandler(OperationsHandler):
         """
         node = Node.objects.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        Form = get_node_edit_form(request.user)
+        if 'installable' in request.data:
+            installable = request.data.get('installable', 'True') != 'False'
+            Form = get_node_edit_form(request.user, installable=installable)
+        else:
+            Form = get_node_edit_form(
+                request.user, installable=node.installable)
         form = Form(data=request.data, instance=node)
 
         if form.is_valid():
@@ -476,6 +491,14 @@ class NodeHandler(OperationsHandler):
         sticky_ips = mac_address.claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY,
             requested_address=requested_address)
+        # If the node is non-installable, generate the DHCP mappings and
+        # update the DNS zone.
+        if not node.installable:
+            claims = [
+                (static_ip.ip, mac_address.mac_address.get_raw())
+                for static_ip in sticky_ips]
+            node.update_host_maps(claims)
+            dns_update_zones([node.nodegroup])
         maaslog.info(
             "%s: Sticky IP address(es) allocated: %s", node.hostname,
             ', '.join(allocation.ip for allocation in sticky_ips))
@@ -658,8 +681,15 @@ def create_node(request):
         if nodegroup is not None:
             altered_query_data['nodegroup'] = nodegroup
 
-    Form = get_node_create_form(request.user)
-    form = Form(data=altered_query_data)
+    installable = not (request.data.get('installable', 'True') == 'False')
+
+    if not installable and request.user.is_anonymous():
+        raise MAASAPIValidationError(
+            {'installable':
+                ["Anonymous users cannot register non-installable nodes"]})
+
+    Form = get_node_create_form(request.user, installable=installable)
+    form = Form(data=altered_query_data, request=request)
     if form.is_valid():
         node = form.save()
         # Hack in the power parameters here.
@@ -780,7 +810,7 @@ class NodesHandler(OperationsHandler):
             "virsh", "ipmi").
         """
         node = create_node(request)
-        if request.user.is_superuser:
+        if request.user.is_superuser and node.installable:
             node.accept_enlistment(request.user)
         return node
 

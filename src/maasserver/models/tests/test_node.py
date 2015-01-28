@@ -1620,6 +1620,14 @@ class NodeTest(MAASServerTestCase):
         observed = node.mac_addresses_on_managed_interfaces()
         self.assertItemsEqual([], observed)
 
+    def test_mac_addresses_on_m_i_uses_parent_for_noninstallable_nodes(self):
+        parent = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        node = factory.make_Node(mac=True, installable=False, parent=parent)
+        mac_with_interface = node.get_primary_mac()
+        self.assertItemsEqual(
+            [mac_with_interface], node.mac_addresses_on_managed_interfaces())
+
     def test_mark_failed_updates_status(self):
         nodes_mapping = {
             status: factory.make_Node(status=status)

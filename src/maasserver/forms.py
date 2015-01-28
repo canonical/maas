@@ -652,6 +652,43 @@ class NodeForm(MAASModelForm):
             )
 
 
+class NonInstallableNodeForm(MAASModelForm):
+    parent = forms.ModelChoiceField(
+        required=False, initial=None,
+        queryset=Node.objects.all(), to_field_name='system_id')
+
+    class Meta:
+        model = Node
+
+        fields = (
+            'nodegroup',
+            'hostname',
+            'installable',
+            'parent',
+        )
+
+    def __init__(self, request=None, *args, **kwargs):
+        super(NonInstallableNodeForm, self).__init__(*args, **kwargs)
+        self.request = request
+
+        instance = kwargs.get('instance')
+        # Are we creating a new node object?
+        self.new_node = (instance is None)
+        if self.new_node:
+            # Offer choice of nodegroup.
+            self.fields['nodegroup'] = NodeGroupFormField(
+                required=False, empty_label="Default (master)")
+
+    def save(self, commit=True):
+        node = super(NonInstallableNodeForm, self).save(commit=False)
+        if self.new_node:
+            # Set the owner: non-installable nodes are owned by their
+            # creator.
+            node.owner = self.request.user
+        node.save()
+        return node
+
+
 CLUSTER_NOT_AVAILABLE = mark_safe(
     "The cluster controller for this node is not responding; power type "
     "validation is not available."
@@ -809,7 +846,9 @@ class AdminNodeForm(NodeForm):
         return node
 
 
-def get_node_edit_form(user):
+def get_node_edit_form(user, installable=True):
+    if not installable:
+        return NonInstallableNodeForm
     if user.is_superuser:
         return AdminNodeForm
     else:
@@ -1022,7 +1061,16 @@ class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
     """
 
 
-def get_node_create_form(user):
+class NonInstallableNodeWithMACsForm(WithMACAddressesMixin,
+                                     NonInstallableNodeForm):
+    """A version of the NonInstallableNodeForm which includes the multi-MAC
+    address field.
+    """
+
+
+def get_node_create_form(user, installable=True):
+    if not installable:
+        return NonInstallableNodeWithMACsForm
     if user.is_superuser:
         return AdminNodeWithMACAddressesForm
     else:

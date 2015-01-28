@@ -732,9 +732,19 @@ class Node(CleanSave, TimestampedModel):
         # Avoid circular imports
         from maasserver.models import MACAddress
         unmanaged = NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED
-        return MACAddress.objects.filter(
+        macs = MACAddress.objects.none()
+        if not self.installable and self.parent is not None:
+            pxe_MAC_parent = self.parent.get_pxe_mac()
+            is_pxe_MAC_on_managed_interface = (
+                pxe_MAC_parent.cluster_interface is not None and
+                pxe_MAC_parent.cluster_interface.management != unmanaged
+            )
+            if is_pxe_MAC_on_managed_interface:
+                macs |= MACAddress.objects.filter(id=self.get_primary_mac().id)
+        macs |= MACAddress.objects.filter(
             node=self, cluster_interface__isnull=False).exclude(
             cluster_interface__management=unmanaged)
+        return macs
 
     def tag_names(self):
         # We don't use self.tags.values_list here because this does not
@@ -1433,6 +1443,23 @@ class Node(CleanSave, TimestampedModel):
         # because it's all-or-nothing (hence the atomic context).
         return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
+    def update_host_maps(self, claims):
+        """Update host maps for the given MAC->IP mappings."""
+        static_mappings = defaultdict(dict)
+        static_mappings[self.nodegroup].update(claims)
+        update_host_maps_failures = list(
+            update_host_maps(static_mappings))
+        if len(update_host_maps_failures) != 0:
+            # We've hit an error, so release any IPs we've claimed
+            # and then raise the error for the call site to
+            # handle.
+            StaticIPAddress.objects.deallocate_by_node(self)
+            # We know there's only one error because we only
+            # sent one mapping to update_host_maps(), so we
+            # extract the exception from the Failure and raise
+            # it.
+            raise update_host_maps_failures[0].raiseException()
+
     def deallocate_static_ip_addresses(self):
         """Release the `StaticIPAddress` that is assigned to this node and
         remove the host mapping on the cluster.
@@ -1511,7 +1538,7 @@ class Node(CleanSave, TimestampedModel):
     def is_pxe_mac_on_managed_interface(self):
         pxe_mac = self.get_pxe_mac()
         if pxe_mac is not None:
-            cluster_interface = pxe_mac.cluster_interface
+            cluster_interface = pxe_mac.get_cluster_interface()
             if cluster_interface is not None:
                 return cluster_interface.is_managed
         return False
@@ -1548,24 +1575,11 @@ class Node(CleanSave, TimestampedModel):
 
         # Claim static IP addresses for the node if it's ALLOCATED.
         if self.status == NODE_STATUS.ALLOCATED:
-            static_mappings = defaultdict(dict)
             claims = self.claim_static_ip_addresses()
             # If the PXE mac is on a managed interface then we can ask
             # the cluster to generate the DHCP host map(s).
             if self.is_pxe_mac_on_managed_interface():
-                static_mappings[self.nodegroup].update(claims)
-                update_host_maps_failures = list(
-                    update_host_maps(static_mappings))
-                if len(update_host_maps_failures) != 0:
-                    # We've hit an error, so release any IPs we've claimed
-                    # and then raise the error for the call site to
-                    # handle.
-                    StaticIPAddress.objects.deallocate_by_node(self)
-                    # We know there's only one error because we only
-                    # sent one mapping to update_host_maps(), so we
-                    # extract the exception from the Failure and raise
-                    # it.
-                    raise update_host_maps_failures[0].raiseException()
+                self.update_host_maps(claims)
 
         if self.status == NODE_STATUS.ALLOCATED:
             transition_timeout = self.get_deployment_time()

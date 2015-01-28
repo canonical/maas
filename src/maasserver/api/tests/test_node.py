@@ -23,10 +23,12 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver import forms
+from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
+    NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     )
 from maasserver.fields import (
@@ -581,6 +583,22 @@ class TestNodeAPI(APITestCase):
             {"architecture":
                 ["Architecture must be defined for installable nodes."]},
             parsed_result, response.content)
+
+    def test_PUT_updates_parent(self):
+        old_parent = factory.make_Node()
+        new_parent = factory.make_Node()
+        arch = make_usable_architecture(self)
+        node = factory.make_Node(
+            owner=self.logged_in_user, parent=old_parent, architecture=arch,
+            installable=False)
+        response = self.client_put(
+            self.get_node_uri(node), {'parent': new_parent.system_id})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_result = json.loads(response.content)
+        self.assertEqual(new_parent.system_id, parsed_result['parent'])
+        self.assertEqual(
+            new_parent.system_id,
+            Node.objects.get(system_id=node.system_id).parent.system_id)
 
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
@@ -1179,6 +1197,62 @@ class TestStickyIP(APITestCase):
             })
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+
+class TestNonInstallableStickyIP(APITestCase):
+    """Tests for /api/1.0/nodes/<node>/?op=claim_sticky_ip_address for
+    non-installable nodes.
+    """
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test_claim_ip_address_claims_ip_address(self):
+        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node(
+            installable=False, parent=parent, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        [returned_ip] = parsed_node["ip_addresses"]
+        [given_ip] = StaticIPAddress.objects.all()
+        self.assertEqual(
+            (given_ip.ip, IPADDRESS_TYPE.STICKY),
+            (returned_ip, given_ip.alloc_type)
+            )
+
+    def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
+        parent = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        node = factory.make_Node(
+            installable=False, parent=parent, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user, nodegroup=parent.nodegroup)
+        dns_update_zones = self.patch(api_nodes, 'dns_update_zones')
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        self.assertItemsEqual(
+            [node.get_primary_mac()],
+            node.mac_addresses_on_managed_interfaces())
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                node.nodegroup: {
+                    ip_address.ip: mac.mac_address
+                    for ip_address in mac.ip_addresses.all()
+                }
+                for mac in node.mac_addresses_on_managed_interfaces()
+            }))
+        # DNS has been updated.
+        self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
 
 class TestGetDetails(APITestCase):

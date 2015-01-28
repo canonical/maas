@@ -179,12 +179,13 @@ class MACAddress(CleanSave, TimestampedModel):
         # an m:n relationship.  Andres came up with a simpler scheme for the
         # short term: "for IPv6, use whatever network interface on the cluster
         # also manages the node's IPv4 address."
-        if self.cluster_interface is None:
+        cluster_interface = self.get_cluster_interface()
+        if cluster_interface is None:
             return []
         else:
             return NodeGroupInterface.objects.filter(
-                nodegroup=self.cluster_interface.nodegroup,
-                interface=self.cluster_interface.interface)
+                nodegroup=cluster_interface.nodegroup,
+                interface=cluster_interface.interface)
 
     def _map_allocated_addresses(self, cluster_interfaces):
         """Gather already allocated static IP addresses for this MAC.
@@ -221,6 +222,25 @@ class MACAddress(CleanSave, TimestampedModel):
             user=user)
         MACStaticIPAddressLink(mac_address=self, ip_address=new_sip).save()
         return new_sip
+
+    def get_cluster_interface(self):
+        """Return the cluster interface for this MAC.
+
+        For an installable node, this is the cluster interface referenced by
+        self.cluster_interface (populated during commissioning).
+        For an non-installable node, if self.cluster_interface is not
+        explicitly specified, we fall back to the cluster interface of the
+        parent's PXE MAC for the primary interface.
+        """
+        if self.cluster_interface is not None:
+            return self.cluster_interface
+        elif not self.node.installable and self.node.parent is not None:
+            # As a backstop measure: if the node is non-installable, has
+            # a parent and the primary MAC has no defined cluster interface:
+            # use the cluster interface of the parent's PXE MAC.
+            if self == self.node.get_primary_mac():
+                return self.node.parent.get_pxe_mac().cluster_interface
+        return None
 
     def claim_static_ips(self, alloc_type=IPADDRESS_TYPE.AUTO,
                          requested_address=None, user=None):
@@ -260,7 +280,7 @@ class MACAddress(CleanSave, TimestampedModel):
         # We're only interested in cluster interfaces with a static range.
         # The check for a static range is deliberately kept vague; Django uses
         # different representations for "none" values in IP addresses.
-        if self.cluster_interface is None:
+        if self.get_cluster_interface() is None:
             # No known cluster interface.  Nothing we can do.
             if self.node is not None:
                 hostname_string = "%s: " % self.node.hostname

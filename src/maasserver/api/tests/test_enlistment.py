@@ -387,22 +387,73 @@ class EnlistmentAPITest(MultipleUsersScenarios,
                 ["Architecture must be defined for installable nodes."]},
             parsed_result, response.content)
 
-    def test_POST_accepts_empty_architecture_if_non_installable(self):
+
+class NonInstallableNodeEnlistmentAPITest(MultipleUsersScenarios,
+                                          MAASServerTestCase):
+    """Enlistment tests for non-installable nodes."""
+
+    scenarios = [
+        ('user', dict(userfactory=factory.make_User)),
+        ('admin', dict(userfactory=factory.make_admin)),
+    ]
+
+    def test_POST_enlists_non_installable_node(self):
+        cluster = factory.make_NodeGroup()
         hostname = factory.make_name('hostname')
+        mac1 = 'aa:bb:cc:dd:ee:ff'
+        mac2 = 'ff:bb:cc:dd:ee:ff'
         response = self.client.post(
             reverse('nodes_handler'),
             {
                 'op': 'new',
-                'autodetect_nodegroup': '1',
+                'nodegroup': cluster.uuid,
                 'hostname': hostname,
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+                'mac_addresses': [mac1, mac2],
                 'installable': False,
             })
 
         self.assertEqual(
             httplib.OK, response.status_code, response.content)
         [host] = Node.objects.filter(hostname=hostname)
-        self.assertEqual('', host.architecture)
+        self.assertEqual(
+            [
+                hostname,
+                [mac1, mac2],
+                None,
+                self.logged_in_user,
+            ],
+            [
+                host.hostname,
+                [mac.mac_address for mac in host.macaddress_set.all()],
+                host.architecture,
+                host.owner,
+            ])
+
+
+class NonInstallableNodeAnonEnlistmentAPITest(MAASServerTestCase):
+    """Enlistment tests for non-installable nodes. Anonymous users."""
+
+    def test_POST_anon_user_cannot_enlist_noninstallable_nodes(self):
+        cluster = factory.make_NodeGroup()
+        hostname = factory.make_name('hostname')
+        mac = 'aa:bb:cc:dd:ee:ff'
+        response = self.client.post(
+            reverse('nodes_handler'),
+            {
+                'op': 'new',
+                'nodegroup': cluster.uuid,
+                'hostname': hostname,
+                'mac_addresses': [mac],
+                'installable': False,
+            })
+
+        self.assertEqual(
+            (
+                httplib.BAD_REQUEST,
+                {'installable':
+                    ['Anonymous users cannot register non-installable nodes']},
+            ),
+            (response.status_code, json.loads(response.content)))
 
 
 class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
@@ -582,6 +633,7 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'macaddress_set',
                 'architecture',
                 'installable',
+                'parent',
                 'status',
                 'osystem',
                 'distro_series',
@@ -679,6 +731,7 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'macaddress_set',
                 'architecture',
                 'installable',
+                'parent',
                 'status',
                 'substatus',
                 'osystem',
@@ -831,6 +884,7 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'macaddress_set',
                 'architecture',
                 'installable',
+                'parent',
                 'status',
                 'substatus',
                 'osystem',

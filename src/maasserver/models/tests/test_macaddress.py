@@ -127,6 +127,19 @@ class MACAddressTest(MAASServerTestCase):
         cluster_interface.delete()
         self.expectThat(reload_object(mac_address), Not(Is(None)))
 
+    def test_get_cluster_interface_returns_cluster_interface(self):
+        node = make_node_attached_to_cluster_interfaces()
+        mac = node.get_primary_mac()
+        self.assertEqual(mac.cluster_interface, mac.get_cluster_interface())
+
+    def test_get_cluster_interface_returns_parent_cluster_interface(self):
+        parent = make_node_attached_to_cluster_interfaces()
+        node = factory.make_Node(parent=parent, mac=True, installable=False)
+        mac = node.get_primary_mac()
+        self.assertEqual(
+            parent.get_primary_mac().cluster_interface,
+            mac.get_cluster_interface())
+
 
 class TestFindClusterInterfaceResponsibleFor(MAASServerTestCase):
     """Tests for `find_cluster_interface_responsible_for_ip`."""

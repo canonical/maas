@@ -491,7 +491,7 @@ class Factory(maastesting.factory.Factory):
         """
         nodegroup = kwargs.pop("nodegroup", None)
         if nodegroup is None:
-            nodegroup = self.make_NodeGroup()
+            nodegroup = self.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
         node = self.make_Node(
             mac=True, nodegroup=nodegroup, disable_ipv4=disable_ipv4, **kwargs)
         ngi = self.make_NodeGroupInterface(
