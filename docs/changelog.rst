@@ -345,7 +345,7 @@ Known Problems & Workarounds
  `1381619`_)
 
 .. _1381619:
-  https://launchpad.net/bugs/_1381619
+  https://launchpad.net/bugs/1381619
 
 **AMT power control**
  A few AMT-related issues remain, with workarounds:
