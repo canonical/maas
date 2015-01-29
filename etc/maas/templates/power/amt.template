@@ -93,7 +93,7 @@ query_state() {
 
 # Power-cycle the machine, and boot it using the requested boot mode.
 restart() {
-    issue_amt_command powercycle "$amt_boot_mode"
+    yes | issue_amt_command powercycle "$amt_boot_mode"
 }
 
 
