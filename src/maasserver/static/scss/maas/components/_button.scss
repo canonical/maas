@@ -16,6 +16,15 @@ form button[type="submit"],
 form input[type="submit"] {
     font-size: 1em;
 
+    &.disabled {
+        cursor: default;
+        opacity: 0.5;
+
+        &:hover {
+            background-color: $ubuntu-orange;
+        }
+    }
+
     &.secondary {
         background: #EEE;
         color: #333;
@@ -23,6 +32,15 @@ form input[type="submit"] {
 
         &:hover {
             background: #FFF;
+        }
+
+        &.disabled {
+        cursor: default;
+        opacity: 0.5;
+
+            &:hover {
+                background-color: #EEE;
+            }
         }
     }
 

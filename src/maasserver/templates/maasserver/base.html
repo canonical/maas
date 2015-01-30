@@ -73,7 +73,7 @@
                     </a>
                     <ul class="nav" id="user-options">
                         <li>
-                            <a href="{% url 'prefs' %}">Account</a>
+                            <a class="{% block nav-active-prefs %}{% endblock %}" href="{% url 'prefs' %}">Account</a>
                         </li>
                         <li>
                             <a href="{% url 'logout' %}">Logout</a>
