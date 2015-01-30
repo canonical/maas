@@ -288,7 +288,7 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
         self.assertIn('warning', nodegroup_row.get('class'))
         warning_elems = (
             nodegroup_row.xpath(
-                """//img[@title="Warning: this cluster is disconnected."]"""))
+                """//span[@title="Warning: this cluster is disconnected."]"""))
         self.assertThat(
             warning_elems, HasLength(1),
             "No warning about disconnected cluster.")
@@ -307,7 +307,7 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
         self.assertIn('warning', nodegroup_row.get('class'))
         warning_elems = (
             nodegroup_row.xpath(
-                "//img[@title=\"Warning: this cluster cannot sync images as "
+                "//span[@title=\"Warning: this cluster cannot sync images as "
                 "the region doesn't have any images.\"]"))
         self.assertThat(
             warning_elems, HasLength(1),
@@ -327,7 +327,7 @@ class ClusterAcceptedListingTest(MAASServerTestCase):
         self.assertIn('warning', nodegroup_row.get('class'))
         warning_elems = (
             nodegroup_row.xpath(
-                """//img[@title="Warning: this cluster is out-of-sync."]"""))
+                """//span[@title="Warning: this cluster is out-of-sync."]"""))
         self.assertThat(
             warning_elems, HasLength(1),
             "No warning about out-of-sync cluster.")

@@ -1,0 +1,115 @@
+.selector {
+    @include box-sizing();
+    @include rounded-corners(2px);
+    padding: 20px;
+    background:#FFF;
+    margin: 0 0 20px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    border: 1px solid #EEE;
+    width: 100%;
+    float: left;
+
+    h2 {
+        font-size: 1em;
+        font-weight: 300;
+
+        img {
+            @include box-sizing();
+            display: inline-block;
+            background: url('../?img/icons/help.svg') no-repeat;
+            width: 16px;
+            height: 16px;
+            padding-left: 16px;
+            margin-left: 5px;
+        }
+    }
+
+    .selector-available,
+    .selector-chosen {
+        width: 46%;
+        float: left;
+        margin: 0;
+        text-align: left;
+
+        @media screen and (max-width: 768px) {
+            width: 100%;
+        }
+
+        h2 {
+            background: none;
+            border: none;
+        }
+
+        select {
+            margin-bottom: 10px;
+        }
+    }
+
+    ul.selector-chooser {
+        width: 8%;
+        float: left;
+        margin: 20% 0 0;
+
+        @media screen and (max-width: 768px) {
+            width: 100%;
+            margin: 0 0 10px;
+            text-align: center;
+        }
+
+        li {
+            width: 100%;
+            text-align: center;
+
+            @media screen and (max-width: 768px) {
+                width: auto;
+                display: inline-block;
+                height: 16px;
+                width: 16px;
+                margin: 0 20px;
+            }
+
+            a {
+                display: block;
+                text-indent: 999em;
+                width: 16px;
+                height: 16px;
+                overflow: hidden;
+                margin: 0 auto;
+
+                &.selector-add {
+                    background-image: url('../?img/icons/chevron_right.svg');
+
+                    @media screen and (max-width: 768px) {
+                        background-image: url('../?img/icons/chevron_down.svg');
+                    }
+                }
+
+                &.selector-remove {
+                    background-image: url('../?img/icons/chevron_left.svg');
+
+                    @media screen and (max-width: 768px) {
+                        background-image: url('../?img/icons/chevron_up.svg');
+                    }
+                }
+            }
+
+        }
+    }
+
+    .selector-filter {
+
+        img {
+            display: none;
+        }
+
+        input {
+            background-image: url('../?img/search-orange.png');
+            background-repeat: no-repeat;
+            background-position: top 7px right 8px;
+        }
+    }
+
+    select#id_mac_addresses_to.filtered {
+        height: 269px !important;
+    }
+}

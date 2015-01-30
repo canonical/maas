@@ -196,7 +196,7 @@ $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 styles: $(scss_output)
 
 $(scss_output): $(scss_inputs)
-	pyscss $< -o $@ --load-path=src/maasserver/static/scss
+	pyscss $< -o $@ --no-compress --load-path=src/maasserver/static/scss
 
 clean:
 	$(MAKE) -C acceptance $@

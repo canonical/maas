@@ -1,8 +1,5 @@
 @charset 'UTF-8';
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS dashboard styles
  *
@@ -16,7 +13,7 @@ form.page-title-form {
     margin-bottom: 30px;
 
     input {
-        @include border-radius(5px);
+        @include rounded-corners(5px);
         border: 1px solid transparent;
         background-color: transparent;
         font-size: 36px;

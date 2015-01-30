@@ -5,31 +5,28 @@
 {% block page-title %}Installing result for node: {{ object.node.hostname }}{% endblock %}
 
 {% block content %}
-  <ul class="data-list">
-    <li class="block size7 first" id="name">
-      <h4>Output file</h4>
-      <span>{{ object.name }}</span>
-    </li>
-    <li class="block size8" id="node">
-      <h4>Node</h4>
-      <span>
+<div class="eight-col border solid" id="name">
+    <h4>Output file</h4>
+    <span>{{ object.name }}</span>
+</div>
+<div class="eight-col border" id="node">
+    <h4>Node</h4>
+    <span>
         <a href="{% url 'node-view' object.node.system_id %}">
-          {{ object.node.hostname }}
+        {{ object.node.hostname }}
         </a>
-      </span>
-    </li>
-    <li class="block size7 first" id="time">
-      <h4>Result registered at</h4>
-      <span>{{ object.created }}</span>
-    </li>
-    <li class="block first separate" id="output">
-      {% if object.data %}
-      <h2>Output</h2>
-<pre>
-{{ object.get_data_as_html }}
-</pre>
-      {% endif %}
-    </li>
-  </ul>
-
+    </span>
+</div>
+<div class="eight-col border" id="time">
+    <h4>Result registered at</h4>
+    <span>{{ object.created }}</span>
+</div>
+<div class="eight-col border bottom" id="output">
+    {% if object.data %}
+    <h2>Output</h2>
+    <pre>
+        {{ object.get_data_as_html }}
+    </pre>
+    {% endif %}
+</div>
 {% endblock %}

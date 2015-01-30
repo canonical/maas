@@ -12,7 +12,7 @@
         {% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <input type="submit" value="Delete image" class="cta-ubuntu right" />
-        <a href="{% url 'images' %}" class="link-cta-ubuntu secondary-alt">Cancel</a>
+        <a href="{% url 'images' %}" class="link-cta-ubuntu secondary">Cancel</a>
     </form>
 </div>
 {% endblock %}

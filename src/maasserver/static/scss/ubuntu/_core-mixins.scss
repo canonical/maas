@@ -27,6 +27,7 @@
   box-shadow: $shadow;
 }
 
+
 @mixin gradient($from, $to) {
   background-color: $to;
   background-image: -moz-linear-gradient($from, $to);

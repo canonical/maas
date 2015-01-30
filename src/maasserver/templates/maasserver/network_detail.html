@@ -12,33 +12,44 @@ Physical network: {{ network.name }}
 {% block content %}
 <div class="eight-col append-one">
     <ul>
-        <li class="two-col">
-            <h4>Name</h4>
-            <span>{{ network.name }}</span>
+        <li class="eight-col border solid">
+            <ul>
+                <li class="two-col">
+                    <h4>Name</h4>
+                    <span>{{ network.name }}</span>
+                </li>
+                <li class="two-col">
+                    <h4>Network</h4>
+                    <span>{{ network.get_network }}</span>
+                </li>
+                <li class="two-col">
+                    <h4>VLAN tag</h4>
+                    <span>{{ network.vlan_tag|default_if_none:"" }}</span>
+                </li>
+                <li class="two-col last-col">
+                    <h4>Default Gateway</h4>
+                    <span>{{ network.default_gateway|default_if_none:"" }}</span>
+                </li>
+            </ul>
         </li>
-        <li class="two-col">
-            <h4>Network</h4>
-            <span>{{ network.get_network }}</span>
+        <li class="eight-col border">
+            <ul>
+                <li class="two-col clear">
+                    <h4>DNS servers</h4>
+                    <span>{{ network.dns_servers|default_if_none:"" }}</span>
+                </li>
+                <li class="two-col">
+                    <h4>Attached nodes</h4>
+                    <span id="nodecount">
+                        <a title="View nodes attached to network {{ network.name }}" href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">{{ network.get_connected_nodes.count }}</a>
+                    </span>
+                </li>
+                <li class="four-col last-col">
+                    &nbsp;
+                </li>
+            </ul>
         </li>
-        <li class="two-col">
-            <h4>VLAN tag</h4>
-            <span>{{ network.vlan_tag|default_if_none:"" }}</span>
-        </li>
-        <li class="two-col last-col">
-            <h4>Default Gateway</h4>
-            <span>{{ network.default_gateway|default_if_none:"" }}</span>
-        </li>
-        <li class="two-col clear">
-            <h4>DNS servers</h4>
-            <span>{{ network.dns_servers|default_if_none:"" }}</span>
-        </li>
-        <li class="two-col">
-            <h4>Attached nodes</h4>
-            <span id="nodecount">
-                <a title="View nodes attached to network {{ network.name }}" href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">{{ network.get_connected_nodes.count }}</a>
-            </span>
-        </li>
-        <li class="eight-col network-description">
+        <li class="eight-col border network-description">
             <h4>Description</h4>
             <pre>
                 {{ network.description }}
@@ -50,7 +61,7 @@ Physical network: {{ network.name }}
 
 {% block sidebar %}
 <div class="three-col last-col">
-    <h4>Actions</h4>
+    <h3>Actions</h3>
     <ul class="no-bullets">
         {% if user.is_superuser %}
         <li>
@@ -58,7 +69,7 @@ Physical network: {{ network.name }}
         </li>
         {% if not network.is_default %}
         <li>
-            <a href="{% url 'network-del' network.name %}" class="link-cta-ubuntu secondary-alt full">Delete network</a>
+            <a href="{% url 'network-del' network.name %}" class="link-cta-ubuntu secondary full">Delete network</a>
         </li>
         {% endif %}
         {% endif %}

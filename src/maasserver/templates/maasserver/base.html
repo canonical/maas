@@ -30,8 +30,8 @@
 </head>
 <body class="{% block layout-modifiers %}{% endblock %}">
     {% block html_includes %}{% endblock %}
-    <header class="banner global" role="banner">
-        <nav role="navigation" class="nav-primary nav-right">
+    <header class="banner global" role="banner" id="banner">
+        <nav role="navigation" class="nav-primary nav-right" id="canonlist">
             <div class="logo">
                 <a class="logo-ubuntu" href="{% url 'index' %}">
                     <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
@@ -83,10 +83,14 @@
             </ul>
             {% endif %}
         </nav>
+        <div class="nav-toggles">
+            <a href="#canonlist" class="nav-toggle open"></a>
+            <a href="#" class="nav-toggle close"></a>
+        </div>
     </header>
     <main id="body" class="wrapper">
         {% if user.is_authenticated %}
-        <ul id="flash-messages">
+        <ul id="flash-messages" class="flash-messages">
             {% for persistent_error in persistent_errors %}
             <li class="warning">{{ persistent_error }}</li>
             {% endfor %}
@@ -97,7 +101,7 @@
             {% endif %}
         </ul>
         {% endif %}
-        <div id="main-content" class="row">
+        <div id="main-content" class="row no-border">
             <div class="inner-wrapper" id="content">
                 {% block page-title-block %}
                 <h1 id="page-title">{% block page-title %}{% endblock %}</h1>

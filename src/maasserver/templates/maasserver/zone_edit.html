@@ -12,7 +12,7 @@
             {% for field in form %} {% include "maasserver/form_field.html" %} {% endfor %}
         </ul>
         <input type="submit" value="Save zone" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'zone-list' %}">Cancel</a>
+        <a class="link-cta-ubuntu secondary" href="{% url 'zone-list' %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

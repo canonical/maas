@@ -1,16 +1,16 @@
 <div class="node-actions three-col last-col">
-    <h4>Node details</h4>
+    <h3>Node details</h3>
     {% if can_edit %}
     <a href="{% url 'node-edit' node.system_id %}" class="link-cta-ubuntu full">Edit node</a>
     {% endif %}
     <a href="{% url 'node-preseed-view' node.system_id %}" class="link-cta-ubuntu full">View preseed</a>
     {% if form.action_buttons %}
-    <h4>Actions</h4>
+    <h3>Actions</h3>
     <form id="node_actions" method="post" action=".">
         {% csrf_token %}
         {% for action in form.action_buttons %}
         <button
-            class="cta-ubuntu secondary-alt full
+            class="cta-ubuntu secondary full
                    {% if action.inhibition %}disabled{% endif %}"
             type="submit"
             name="{{ form.input_name }}"

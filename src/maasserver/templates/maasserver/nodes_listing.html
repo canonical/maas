@@ -66,7 +66,7 @@
             </td>
             {% endif %}
             <td class="powerstate">
-                <div title="{{ node.power_state }}" class="powerstate power-{{ node.power_state }}" data-field="power_state" data-field-attr="title" data-field-class="power-">
+                <div title="{{ node.power_state }}" class="powerstates power-{{ node.power_state }}" data-field="power_state" data-field-attr="title" data-field-class="power-">
                 </div>
             </td>
             <td class="node-column">
@@ -76,7 +76,7 @@
             </td>
             <td>
             {% if node.power_type == '' %}
-                <img src="{{ STATIC_URL }}img/warning.png" title="No power type defined"/>
+                <span class="icon warning" title="No power type defined">warning</span>
             {% endif %}
             </td>
             <td data-field="status">{{ node.display_status }}</td>

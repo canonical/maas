@@ -46,7 +46,7 @@ Y.extend(PowerCheckWidget, Y.Widget, {
         this.system_id = cfg.system_id;
         // Create action button.
         this.button = Y.Node.create('<button />')
-            .addClass('cta-ubuntu secondary-alt full')
+            .addClass('cta-ubuntu secondary full')
             .setAttribute('type', 'submit')
             .setAttribute('name', 'action')
             .setAttribute('value', 'check-powerstate')

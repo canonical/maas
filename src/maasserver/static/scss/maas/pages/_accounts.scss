@@ -1,8 +1,5 @@
 @charset 'UTF-8';
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS account styles
  *
@@ -55,10 +52,6 @@
                 top: 7px;
                 right: 7px;
             }
-        }
-
-        a {
-            font-size: 14px;
         }
     }
 }

@@ -32,14 +32,10 @@
                     <a title="View nodes in zone {{ zone_item.name }}" href="{% url 'node-list' %}?query=zone%3D{{ zone_item.name }}">{{ zone_item.node_set.count }}</a>
                 </td>
                 {% if user.is_superuser %}
-                <td>
+                <td class="icon-controls">
                     {% if not zone_item.is_default %}
-                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon">
-                        <img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
-                    </a>
-                    <a title="Delete zone {{ zone_item.name }}" class="delete-zone icon" href="{% url 'zone-del' zone_item.name %}">
-                        <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-                    </a>
+                    <a href="{% url 'zone-edit' zone_item.name %}" title="Edit zone {{ zone_item.name }}" class="icon edit">edit</a>
+                    <a title="Delete zone {{ zone_item.name }}" class="icon delete" href="{% url 'zone-del' zone_item.name %}">delete</a>
                     <form method="POST" action="{% url 'zone-del' zone_item.name %}">
                         {% csrf_token %}
                         <input type="hidden" name="name" value="{{ zone_item.name }}" />

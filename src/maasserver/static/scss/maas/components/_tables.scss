@@ -1,8 +1,5 @@
 @charset 'UTF-8';
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS table styles
  *
@@ -20,7 +17,6 @@ table {
     td {
         border: none;
         background: transparent;
-        font-size: 0.778em;
         text-align: left;
         padding: 13px 10px;
     }
@@ -42,11 +38,11 @@ table {
                 }
 
                 &.sort-asc {
-                    background-image: url(/static/img/sort_ascending.png);
+                    background-image: url('../?img/sort_ascending.png');
                 }
 
                 &.sort-desc {
-                    background-image: url(/static/img/sort_descending.png);
+                    background-image: url('../?img/sort_descending.png');
                 }
             }
         }
@@ -58,10 +54,19 @@ table {
             &:hover td {
                 background: #FFF;
             }
+
+            &:hover .icon-controls {
+                opacity: 1;
+            }
         }
 
         td {
             border-bottom: 1px dotted #B2B2B2;
+
+            &.icon-controls {
+                text-align: right;
+                opacity: 0;
+            }
         }
     }
 }

@@ -1,0 +1,57 @@
+@charset "UTF-8";
+
+/**
+ * MAAS flash messages
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+.flash-messages {
+    margin: 20px auto 0;
+    padding: 0;
+    overflow: hidden;
+    max-width: 1030px;
+
+    @media screen and (max-width: 1030px) {
+        margin: 20px 10px 0;
+    }
+
+    li {
+        @include box-sizing();
+        @include rounded-corners(2px);
+        list-style: none;
+        padding: 15px 20px 15px 45px;
+        margin: 0;
+        font-weight: 400;
+        font-size: 0.875em;
+        background:#FFF;
+        background-position: top 50% left 15px;
+        background-repeat: no-repeat;
+        margin: 0 0 10px;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+        border: 1px solid #EEE;
+
+        &.info {
+            background-image: url('../?img/icons/info.png');
+            background-image: url('../?img/icons/info.svg'), none;
+        }
+
+        &.success {
+            background-image: url('../?img/icons/success.png');
+            background-image: url('../?img/icons/success.svg'), none;
+        }
+
+        &.warning {
+            background-image: url('../?img/icons/warning.png');
+            background-image: url('../?img/icons/warning.svg'), none;
+        }
+
+        &.error {
+            background-image: url('../?img/icons/error.png');
+            background-image: url('../?img/icons/error.svg'), none;
+        }
+    }
+}

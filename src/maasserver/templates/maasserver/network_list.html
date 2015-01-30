@@ -45,14 +45,10 @@
                     <a title="View nodes attached to network {{ network_item.name }}" href="{% url 'node-list' %}?query=networks%3D{{ network_item.name }}">{{ network_item.get_connected_nodes.count }}</a>
                 </td>
                 {% if user.is_superuser %}
-                <td>
+                <td class="icon-controls">
                     {% if not network_item.is_default %}
-                    <a href="{% url 'network-edit' network_item.name %}" title="Edit network {{ network_item.name }}" class="icon">
-                        <img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
-                    </a>
-                    <a title="Delete network {{ network_item.name }}" class="delete-network icon" href="{% url 'network-del' network_item.name %}">
-                        <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-                    </a>
+                    <a href="{% url 'network-edit' network_item.name %}" title="Edit network {{ network_item.name }}" class="icon edit">edit</a>
+                    <a href="{% url 'network-del' network_item.name %}" title="Delete network {{ network_item.name }}" class="icon delete">delete</a>
                     <form method="POST" action="{% url 'network-del' network_item.name %}">
                         {% csrf_token %}
                         <input type="hidden" name="name" value="{{ network_item.name }}" />

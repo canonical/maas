@@ -1,6 +1,6 @@
 {% extends "maasserver/base.html" %}
 
-{% block nav-active-result-list %}active{% endblock %}
+{% block nav-active-node-list %}active{% endblock %}
 {% block title %}Node commissioning results{% endblock %}
 {% block page-title %}
 {{ paginator.count }} result{{ paginator.count|pluralize }}
@@ -11,61 +11,56 @@ in {% include "maasserver/site_title.html" %}
 {% endblock %}
 
 {% block content %}
-    <div id="results">
-      <h2 id="results_header">
+<div id="results">
+    <h2 id="results_header">
         Commissioning results
         {% if nodes_filter %}
         for {{ nodes_filter }}
         {% endif %}
-      </h2>
-      {% if paginator.count == 0 %}
-      <p id="no_results">No matching commissioning results.</p>
-      {% else %}
-      <table class="list">
+    </h2>
+    {% if paginator.count == 0 %}
+    <p id="no_results">No matching commissioning results.</p>
+    {% else %}
+    <table class="list">
         <thead>
-          <tr>
-            <th>Script result</th>
-            <th>Output file</th>
-            <th>Registered at</th>
-            <th>Node</th>
-          </tr>
+            <tr>
+                <th>Script result</th>
+                <th>Output file</th>
+                <th>Registered at</th>
+                <th>Node</th>
+            </tr>
         </thead>
         <tbody>
-          {% for result_item in results_list %}
-          <tr class="result {% cycle 'even' 'odd' %}">
-            <!-- Script result -->
-            <td>
-              <a href="{% url 'nodecommissionresult-view' result_item.id %}">
-                {% if result_item.script_result == 0 %}
-                <span>OK</span>
-                {% else %}
-                <span class="warning">
-                  <img src="{{ STATIC_URL }}img/warning.png" title="Failed" />
-                  FAILED
-                </span>
-                {% endif %}
-              </a>
-            </td>
-            <!-- Output file -->
-            <td>
-                {{ result_item.name }}
-            </td>
-            <!-- Registered at -->
-            <td>
-              {{ result_item.created }}
-            </td>
-            <!-- Node -->
-            <td>
-              <a href="{% url 'node-view' result_item.node.system_id %}">
-                {{ result_item.node.hostname }}
-              </a>
-            </td>
-          </tr>
-          {% endfor %}
+            {% for result_item in results_list %}
+            <tr class="result {% cycle 'even' 'odd' %}">
+                <!-- Script result -->
+                <td>
+                    <a href="{% url 'nodecommissionresult-view' result_item.id %}">
+                    {% if result_item.script_result == 0 %}
+                    <span>OK</span>
+                    {% else %}
+                    FAILED<span class="icon warning"></span>
+                    {% endif %}
+                    </a>
+                </td>
+                <!-- Output file -->
+                <td>
+                    {{ result_item.name }}
+                </td>
+                <!-- Registered at -->
+                <td>
+                    {{ result_item.created }}
+                </td>
+                <!-- Node -->
+                <td>
+                    <a href="{% url 'node-view' result_item.node.system_id %}">
+                    {{ result_item.node.hostname }}
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
         </tbody>
-      </table>
-      {% endif %}
-      <div class="clear"></div>
-    </div>
-
+    </table>
+    {% endif %}
+</div>
 {% endblock %}

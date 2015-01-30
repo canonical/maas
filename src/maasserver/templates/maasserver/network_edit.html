@@ -1,7 +1,7 @@
 {% extends "maasserver/base.html" %}
 
 {% block pre_head %}{% include "maasserver/multiselect_widget_include.html" %}{% endblock %}
-{% block nav-active-settings %}active{% endblock %}
+{% block nav-active-network-list %}active{% endblock %}
 {% block title %}Edit network{% endblock %}
 {% block page-title %}Edit network{% endblock %}
 
@@ -15,7 +15,7 @@
             {% endfor %}
         </ul>
         <input type="submit" value="Save network" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'network-list' %}">Cancel</a>
+        <a class="link-cta-ubuntu secondary" href="{% url 'network-list' %}">Cancel</a>
     </form>
 </div>
 <script type="text/javascript">

@@ -1,8 +1,5 @@
 @charset "UTF-8";
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS header styles
  *
@@ -29,23 +26,49 @@ header.banner {
                 background-position: 5px 9px;
             }
         }
+
+        @media screen and (max-width: 768px) {
+            ul {
+                border-right: none;
+            }
+        }
     }
 
     #right-nav {
         float: right;
         margin-right: 20px;
+
+        @media screen and (max-width: 768px) {
+            margin-right: 0;
+        }
     }
 
     #user-link {
         position: relative;
 
-        a {
+        @media screen and (max-width: 768px) {
+            border-top: 1px solid #d4d7d4;
+            width: 100%;
+        }
+
+        > a {
             padding-bottom: 12px;
+
+            @media screen and (max-width: 768px) {
+                padding-bottom: inherit;
+                width: 100%;
+                padding-bottom: 10px;
+                border-bottom: 1px solid #d4d7d4;
+            }
         }
 
         .normal,
         .hover {
             margin-right: 7px;
+
+            @media screen and (max-width: 768px) {
+                display: none;
+            }
         }
 
         .hover {
@@ -64,10 +87,41 @@ header.banner {
 
             a:hover {
                 background-color: transparent;
+
+                @media screen and (max-width: 768px) {
+                    background-color: #F8F8F8;
+                    color: #333;
+                }
+            }
+
+            @media screen and (max-width: 768px) {
+                background: none;
+                position: relative;
+                top: inherit;
+                width: 100%;
+                box-shadow: none;
+                float: left;
+                padding: 0;
+
+                li {
+                    border-bottom: 1px solid #d4d7d4;
+                    width: 100%;
+                    float: left;
+
+                    a {
+                        padding:10px 14px;
+                        width: 100%;
+                    }
+                }
             }
         }
 
         &:hover {
+            @media screen and (max-width: 768px) {
+                > a {
+                    background-color: transparent;
+                }
+            }
 
             .normal {
                 display: none;
@@ -75,6 +129,10 @@ header.banner {
 
             .hover {
                 display: inline-block;
+
+                @media screen and (max-width: 768px) {
+                    display: none;
+                }
             }
 
             .nav {
@@ -82,4 +140,40 @@ header.banner {
             }
         }
     }
+
+    .nav-toggle {
+        background-image: url('../?img/icons/navigation-menu-plain.png');
+        background-image: url('../?img/icons/navigation-menu-plain.svg'), none;
+        top: 0;
+    }
+
+    @media screen and (max-width: 768px) {
+        .nav-toggles {
+
+            .open {
+                display: block;
+            }
+
+            .close {
+                display: none;
+            }
+        }
+
+        #canonlist:target {
+            ul {
+                display: block;
+            }
+        }
+
+        #canonlist:target + .nav-toggles {
+            .open {
+                display: none;
+            }
+
+            .close {
+                display: block;
+            }
+        }
+    }
+
 }

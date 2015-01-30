@@ -59,20 +59,18 @@
             <li class"eight-col">
                 <label for="id_mac_addresses">Network interfaces</label>
                 {% for macaddress in node.macaddress_set.all %}
-                <p>{{ macaddress }}&nbsp;&nbsp;<a title="Delete network interface" class="icon" href="{% url 'mac-delete' macaddress.node.system_id macaddress.mac_address %}"><img src="{{ STATIC_URL }}img/delete.png" alt="delete" /></a></p>
+                <p>{{ macaddress }}&nbsp;&nbsp;<a title="Delete network interface" href="{% url 'mac-delete' macaddress.node.system_id macaddress.mac_address %}"><span class="icon delete"></span></a></p>
                 {% empty %}
                 No known network interfaces.
                 {% endfor %}
             </li>
             <li>
-                <a class="add-link add-mac-form" href="{% url 'mac-add' node.system_id %}">
-                    <img src="{{ STATIC_URL }}img/inline_add.png" alt="+" class="icon" /> Register additional network interface
-                </a>
+                <a class="add-link add-mac-form" href="{% url 'mac-add' node.system_id %}">Register additional network interface</a>
             </li>
         </ul>
         <div class="buttons">
             <input type="submit" value="Save node" class="right" />
-            <a class="link-cta-ubuntu secondary-alt" href="{% url 'node-view' node.system_id %}">Cancel</a>
+            <a class="link-cta-ubuntu secondary" href="{% url 'node-view' node.system_id %}">Cancel</a>
         </div>
     </form>
 </div>

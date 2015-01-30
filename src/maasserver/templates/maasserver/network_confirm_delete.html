@@ -12,7 +12,7 @@
         {% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <input type="submit" value="Delete network" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'network-view' network_to_delete.name %}">Cancel</a>
+        <a class="link-cta-ubuntu secondary" href="{% url 'network-view' network_to_delete.name %}">Cancel</a>
     </form>
 </div>
 {% endblock %}

@@ -1,8 +1,5 @@
 @charset "UTF-8";
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS form styles
  *
@@ -20,16 +17,17 @@ form {
             margin-bottom: 1em;
 
             .help {
-                font-size: .65em;
-                line-height: 1.9em;
+                color: #888;
+                font-size: 0.875em;
             }
         }
     }
 
+    label span {
+        color: #888;
+    }
+
     input {
-        &[type='submit'] {
-            font-size: 1em;
-        }
 
         &[type='text'],
         &[type='number'],
@@ -38,7 +36,7 @@ form {
         &[type='email'],
         &[type='url'] {
             @extend %input--styles;
-            line-height: 30px;
+            padding: 7px 10px;
 
             &::-webkit-input-placeholder {
                color: #333;
@@ -55,6 +53,10 @@ form {
             &:-ms-input-placeholder {
                color: #333;
             }
+        }
+
+        &[type='number'] {
+            padding-right: 15px;
         }
 
         &[type='search'] {
@@ -79,20 +81,21 @@ form {
         overflow: auto;
         height: auto;
         min-height: 175px;
-        padding-top: 10px;
+        padding: 7px 10px;
 
         vertical-align: top;
     }
 
     select {
         @extend %input--styles;
+        line-height: 34px;
         display: block;
         clear: both;
         cursor: pointer;
         margin: 0;
-        background-image: url(/static/img/select-arrow.png);
+        background-image: url('../?img/select-arrow.png');
         background-repeat: no-repeat;
-        background-position: top 12px right 10px;
+        background-position: top 16px right 10px;
 
         /* Removes firefox select styles & arrow */
         -moz-appearance: none;
@@ -110,6 +113,19 @@ form {
         &:-moz-focusring  {
             color: transparent;
             text-shadow: 0 0 0 #000;
+        }
+    }
+}
+
+.field-error,
+.errors {
+    color: #DF382C;
+
+    .errorlist {
+        margin: 0;
+
+        li {
+            margin: 0 0 14px 0;
         }
     }
 }

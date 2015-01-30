@@ -12,8 +12,8 @@
         {% if display_warnings %}
             {% if not region_has_images or state == "Disconnected" or state == "Out-of-sync" %}
             &nbsp;
-            <img
-                src="{{ STATIC_URL }}img/warning.png"
+            <span
+                class="icon warning"
                 {% if state == "Disconnected" %}
                 title="Warning: this cluster is disconnected."
                 {% elif not region_has_images %}
@@ -21,16 +21,16 @@
                 {% else %}
                 title="Warning: this cluster is {{ state.lower }}."
                 {% endif %}
-            />
+            ></span>
             {% endif %}
         {% endif %}
         </a>
     </td>
     <td id="{{ cluster.uuid }}_connection">
         {% if state == "Disconnected" %}
-        &cross;
+        <span class="icon error">&cross;</span>
         {% else %}
-        &check;
+        <span class="icon success">&check;</span>
         {% endif %}
     </td>
     <td>{{ cluster.get_managed_interfaces|length }}</td>
@@ -51,11 +51,7 @@
     </td>
     {% endwith %}
     <td class="icon-controls">
-        <a href="{% url 'cluster-edit' cluster.uuid %}" class="icon" title="Edit cluster {{ cluster.cluster_name }}">
-            <img src="{{ STATIC_URL }}img/edit.png" alt="edit" />
-        </a>
-        <a title="Delete cluster {{ cluster.cluster_name }}" href="{% url 'cluster-delete' cluster.uuid %}">
-            <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
-        </a>
+        <a href="{% url 'cluster-edit' cluster.uuid %}" class="icon edit" title="Edit cluster {{ cluster.cluster_name }}">edit</a>
+        <a href="{% url 'cluster-delete' cluster.uuid %}" class="icon delete" title="Delete cluster {{ cluster.cluster_name }}">delete</a>
     </td>
 </tr>

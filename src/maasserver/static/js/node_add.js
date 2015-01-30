@@ -129,20 +129,15 @@ Y.extend(AddNodeWidget, Y.Widget, {
             .addClass('right')
             .set('text', "Add node");
         var cancel_button = Y.Node.create('<a />')
-            .addClass('cancel-button link-cta-ubuntu secondary-alt')
+            .addClass('cancel-button link-cta-ubuntu secondary')
             .set('href', '#')
             .set('text', "Cancel")
             .addClass('link-button');
-        var macaddress_add_icon = Y.Node.create('<img />')
-            .set('src', MAAS_config.uris.statics + 'img/inline_add.png')
-            .set('alt', "+")
-            .addClass('icon');
         var macaddress_add_link = Y.Node.create('<a />')
             .addClass('add-link')
             .addClass('add-mac-form')
             .set('href', '#')
-            .set('text', "Add additional MAC address")
-            .prepend(macaddress_add_icon);
+            .set('text', "Add additional MAC address");
         var operation = Y.Node.create('<input />')
             .set('type', 'hidden')
             .set('name', 'op')

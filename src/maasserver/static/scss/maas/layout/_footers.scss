@@ -1,8 +1,5 @@
 @charset "UTF-8";
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS footer styles
  *
@@ -12,27 +9,34 @@
  *
  */
 
-footer.global {
+.footer-wrapper {
     border-top: 1px dotted #b2b2b2;
-    background-color: transparent;
-    padding-top: 0px;
-    background-image: url(/static/img/logos/logo-ubuntu-orange.png);
-    background-image: url(/static/img/logos/logo-ubuntu-orange.svg), none;
-    background-size: 107px 25px;
-    background-position: top 20px right 10px;
-    background-repeat: no-repeat;
 
-    a {
-        margin: 0 5px;
-        color: $ubuntu_orange;
-    }
+    footer.global {
+        background-color: transparent;
+        padding-top: 0px;
+        background-image: url('../?img/logos/logo-ubuntu-orange.png');
+        background-image: url('../?img/logos/logo-ubuntu-orange.svg'), none;
+        background-size: 107px 25px;
+        background-position: top 20px right 10px;
+        background-repeat: no-repeat;
 
-    .version {
-        font-weight: 500;
-        margin-right: 5px;
-    }
+        p {
+            font-size: 0.875em;
+        }
 
-    .copy {
-        margin-top: 10px;
+        a {
+            margin: 0 5px;
+            color: $ubuntu_orange;
+        }
+
+        .version {
+            font-weight: 500;
+            margin-right: 5px;
+        }
+
+        .copy {
+            margin-top: 10px;
+        }
     }
 }

@@ -12,23 +12,27 @@ Physical zone: {{ zone.name }}
 {% block content %}
 <div class="eight-col append-one">
     <ul>
-        <li class="two-col">
-            <h4>Name</h4>
-            <span>{{ zone.name }}</span>
+        <li class="eight-col border solid">
+           <ul>
+               <li class="two-col">
+                    <h4>Name</h4>
+                    <span>{{ zone.name }}</span>
+                </li>
+                <li class="two-col">
+                    <h4>Nodes</h4>
+                    <span id="#nodecount">
+                        <a title="View nodes in zone {{ zone.name }}" href="{{ node_list_link }}">{{ zone.node_set.count }}</a>
+                    </span>
+                </li>
+                {% if zone.is_default %}
+                <li class="four-col last-col">
+                    <h4>Default</h4>
+                    <span id="#default">This zone is the default zone. Its name cannot be changed and it cannot be deleted.</span>
+                </li>
+                {% endif %}
+           </ul>
         </li>
-        <li class="two-col">
-            <h4>Nodes</h4>
-            <span id="#nodecount">
-                <a title="View nodes in zone {{ zone.name }}" href="{{ node_list_link }}">{{ zone.node_set.count }}</a>
-            </span>
-        </li>
-        {% if zone.is_default %}
-        <li class="four-col last-col">
-            <h4>Default</h4>
-            <span id="#default">This zone is the default zone. Its name cannot be changed and it cannot be deleted.</span>
-        </li>
-        {% endif %}
-        <li class="eight-col">
+        <li class="eight-col border">
             {% if zone.description %}
             <h4>Description</h4>
             <pre>{{ zone.description }}</pre>
@@ -40,7 +44,7 @@ Physical zone: {{ zone.name }}
 
 {% block sidebar %}
 <div class="three-col last-col">
-    <h4>Actions</h4>
+    <h3>Actions</h3>
     <ul class="no-bullets">
     {% if user.is_superuser %}
     <li>
@@ -48,7 +52,7 @@ Physical zone: {{ zone.name }}
     </li>
     {% if not zone.is_default %}
     <li>
-        <a href="{% url 'zone-del' zone.name %}" class="link-cta-ubuntu secondary-alt full">Delete zone</a>
+        <a href="{% url 'zone-del' zone.name %}" class="link-cta-ubuntu secondary full">Delete zone</a>
     </li>
     {% endif %}
     {% endif %}

@@ -1,0 +1,24 @@
+@charset "UTF-8";
+
+/**
+ * MAAS pagination styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+.pagination {
+    margin: 10px 0;
+    text-align: center;
+
+    .inactive {
+        color: #AEA79F;
+    }
+
+    a,
+    span {
+        margin: 0 5px;
+    }
+}

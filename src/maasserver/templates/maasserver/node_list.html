@@ -123,9 +123,9 @@
     </form>
     <form id="node_listing_form" action="{% url 'node-list' %}?{{preserved_query}}" method="post">
         {% csrf_token %}
-        <div class="six-col form-inline">
+        <div class="six-col form-inline actions">
             {{ form.action }}
-            <input type="submit" value="Go" />
+            <button type="submit" class="cta-ubuntu">Go</button>
         </div>
         {% if form.zone %}
         <div id="zone_widget" class="hidden">Set zone to:&nbsp;{{ form.zone }}</div>
@@ -142,7 +142,7 @@
         {% include "maasserver/nodes_listing.html" with sorting="true" actions="true"%}
         {% include "maasserver/pagination.html" %}
     </form>
-    <a id="addnode" href="#" class="link-cta-ubuntu">+ Add node</a>
-    <a class="right link-cta-ubuntu secondary-alt" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
+    <a class="link-cta-ubuntu secondary" href="{% url "enlist-preseed-view" %}">View enlistment preseed</a>
+    <a id="addnode" href="#" class="link-cta-ubuntu right">+ Add node</a>
 </div>
 {% endblock %}

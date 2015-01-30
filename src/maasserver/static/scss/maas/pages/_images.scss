@@ -1,8 +1,5 @@
 @charset 'UTF-8';
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS node styles
  *
@@ -22,12 +19,21 @@
 }
 
 .images-warning {
-    text-align: center;
-    padding: 10px;
-    border: 1px solid #dd4814;
-    border-radius: 5px;
-    -webkit-border-radius: 5px;
-    background-color: rgba(221, 72, 20, 0.3);
+    @include box-sizing();
+    @include rounded-corners(2px);
+    list-style: none;
+    padding: 15px 20px 15px 45px;
+    margin: 0;
+    font-weight: 400;
+    font-size: 0.875em;
+    background:#FFF;
+    background-position: top 50% left 15px;
+    background-repeat: no-repeat;
+    margin: 0 0 10px;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    border: 1px solid #EEE;
+    background-image: url('../?img/icons/warning.png');
+    background-image: url('../?img/icons/warning.svg'), none;
 }
 
 #loader {

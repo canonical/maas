@@ -1,7 +1,5 @@
 @charset "UTF-8";
 
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS base styles
  *
@@ -26,13 +24,14 @@
  */
 
 html {
-    background: url(/static/img/backgrounds/image-background-paper.png);
+    background: url('../?img/backgrounds/image-background-paper.png');
     height: 100%;
 }
 
 body {
     background-color: rgba(255, 255, 255, .6);
     min-height: 100%;
+    font-size: 1.000em;
 }
 
 hr {

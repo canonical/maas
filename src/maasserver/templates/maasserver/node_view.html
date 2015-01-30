@@ -90,8 +90,8 @@
 {% endblock %}
 
 {% block content %}
-<div class="eight-col">
-    <ul>
+<div class="eight-col append-one">
+    <ul class="border solid">
         <li class="two-col">
             <h4><abbr title="Fully Qualified Domain Name">FQDN</abbr></h4>
             <span data-field="fqdn">{{ node.fqdn }}</span>
@@ -117,17 +117,17 @@
             <h4>Architecture</h4>
             <span data-field="architecture">{{ node.architecture }}</span>
         </li>
-        <li class="four-col clear">
+        <li class="two-col clear">
             <h4>CPU Count</h4>
             <span data-field="cpu_count">{{ node.cpu_count }}</span>
         </li>
-        <li class="four-col last-col">
+        <li class="two-col last-col">
             <h4>Memory</h4>
             <span>
                 <span data-field="memory">{{ node.display_memory }}</span> GiB
             </span>
         </li>
-        <li class="eight-col">
+        <li class="eight-col border">
             <h4>Tags</h4>
             <span id="node_tags">
                 {% for tag in node.tags.all %}
@@ -140,7 +140,7 @@
         </li>
         {% with ip_addresses=node.ip_addresses %}
         {% if ip_addresses|length %}
-        <li class="eight-col" id="ip-addresses">
+        <li class="eight-col border" id="ip-addresses">
             <h4>IP addresses
             {% if unconfigured_ips_warning %}
             <img src="{{ STATIC_URL }}img/warning.png" title="This node's IPv6 addresses are not automatically configured." id="unconfigured-ips-warning" />
@@ -155,7 +155,7 @@
         {% endif %}
         {% endwith %}
         {% if kernel_opts.value %}
-        <li class="eight-col">
+        <li class="eight-col border">
             <h4>Kernel Parameters
                 {% if kernel_opts.is_global %}
                 - from: <a class="kernelopts-global-link" href="{% url 'settings' %}">Global Kernel Parameters</a>
@@ -167,28 +167,28 @@
         </li>
         {% endif %}
         {% if third_party_drivers_enabled and drivers %}
-        <li class="eight-col">
+        <li class="eight-col border">
             <h4>Third Party Drivers</h4>
             <span id="third_party_drivers">{{ drivers.module }} ({{ drivers.comment }})</span>
         </li>
         {% endif %}
         {% if error_text %}
-        <li class="eight-col">
+        <li class="eight-col border">
             <h4>Error output</h4>
             <span>{{ error_text }}</span>
         </li>
         {% endif %}
         {% if status_text %}
-        <li class="eight-col">
+        <li class="eight-col border">
             <h4>Console output</h4>
             <span>{{ status_text }}</span>
         </li>
         {% endif %}
-        <li id="owner" data-field="owner" data-field-if="hidden" class="eight-col {% if not node.owner %}hidden{% endif %}">
+        <li id="owner" data-field="owner" data-field-if="hidden" class="eight-col border {% if not node.owner %}hidden{% endif %}">
             <h4>Owner</h4>
             <span data-field="owner">{{ node.owner }}</span>
         </li>
-        <li id="zone" class="eight-col">
+        <li id="zone" class="eight-col border">
             <h4>Physical zone</h4>
             <span>
                 <a data-field="zone_url" data-field-attr="href" href="{% url 'zone-view' node.zone.name %}">
@@ -197,14 +197,14 @@
             </span>
         </li>
         {% if node.routers %}
-        <li id="routers" class="eight-col">
+        <li id="routers" class="eight-col border">
             <h4>Switch MAC addresses</h4>
             <span>{{ node.routers|join:", " }}</span>
         </li>
         {% endif %}
         {% if can_edit %}
         {% if nodeinstallresults != None %}
-        <li class="eight-col" id="nodeinstallresults">
+        <li class="eight-col border" id="nodeinstallresults">
             <h4>Installation output</h4>
             {% for install_result in nodeinstallresults %}
             <span>
@@ -214,7 +214,7 @@
         </li>
         {% endif %}
         {% if nodecommissionresults > 0 %}
-        <li class="eight-col" id="nodecommissionresults">
+        <li class="eight-col border" id="nodecommissionresults">
             <h4>Commissioning output</h4>
             <span>
             <a href="{% url 'nodecommissionresult-list' %}?node={{node.system_id}}">
@@ -227,7 +227,7 @@
         {% endif %}
         {% with physicalblockdevices=node.physicalblockdevice_set %}
         {% if physicalblockdevices|length %}
-        <li class="nine-col" id="storage">
+        <li class="eight-col border" id="storage">
             <h2>Storage</h2>
             <table class="list">
                 <thead>
@@ -256,44 +256,46 @@
         </li>
         {% endif %}
         {% endwith %}
-        <li class="nine-col" id="node-events">
+        <li class="eight-col" id="node-events">
             <h2>Latest node events</h2>
             <div id="node_event_list">
                 <div class="spinner spin"></div>
             </div>
         </li>
     </ul>
-</div>
-{% if probed_details_xml %}
-<div id="content-discovery-data" class="nine-col">
-    <ul class="data-list">
-        <li class="nine-col">
-            <h2 class="four-col">Discovery data</h2>
-            <!-- Button link for the Reveal widget that shows/hides LLDP output. -->
-            <a class="four-col" href="#" id="details-trigger"></a>
-            <!-- Content div for the probed details output. -->
-        </li>
-        <li class="nine-col">
-            <div id="details-output">
-                <ul class="one-col">
-                    <li><a href="#yaml">YAML</a>
-                    </li>
-                    <li><a href="#xml">XML</a>
-                    </li>
-                </ul>
-                <div class="eight-col last-col">
-                    <div id="yaml">
-                        <pre>{{ probed_details_yaml }}</pre>
-                    </div>
-                    <div id="xml">
-                        <pre>{{ probed_details_xml }}</pre>
+    {% if probed_details_xml %}
+    <div id="content-discovery-data" class="eight-col border">
+        <ul class="data-list">
+            <li class="eight-col">
+                <h2 class="left">Discovery data</h2>
+                <!-- Button link for the Reveal widget that shows/hides LLDP output. -->
+                <a class="link-cta-ubuntu secondary right" href="#" id="details-trigger"></a>
+                <!-- Content div for the probed details output. -->
+            </li>
+            <li class="eight-col">
+                <div id="details-output">
+                    <ul class="tabs o-bullets">
+                        <li>
+                            <a href="#yaml">YAML</a>
+                        </li>
+                        <li>
+                            <a href="#xml">XML</a>
+                        </li>
+                    </ul>
+                    <div class="eight-col">
+                        <div id="yaml">
+                            <pre>{{ probed_details_yaml }}</pre>
+                        </div>
+                        <div id="xml">
+                            <pre>{{ probed_details_xml }}</pre>
+                        </div>
                     </div>
                 </div>
-            </div>
-        </li>
-    </ul>
+            </li>
+        </ul>
+    </div>
+    {% endif %}
 </div>
-{% endif %}
 {% endblock %}
 
 {% block sidebar %}

@@ -6,11 +6,11 @@
             <td>{{ key.osystem_title }}</td>
             <td>{{ key.distro_series_title }}</td>
             <td class="icon-controls">
-                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="icon">
-                    <img src="{{ STATIC_URL }}img/edit.png" alt="edit" class="space-right-small" />
+                <a href="{% url 'license-key-edit' key.osystem key.distro_series %}" title="Edit license key" class="icon edit">
+                    edit
                 </a>
-                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="icon">
-                    <img src="{{ STATIC_URL }}img/delete.png" alt="delete" />
+                <a href="{% url 'license-key-delete' key.osystem key.distro_series %}" title="Delete license key" class="icon delete">
+                    delete
                 </a>
             </td>
             {% empty %}

@@ -1,8 +1,5 @@
 @charset 'UTF-8';
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS node styles
  *
@@ -21,10 +18,10 @@
 
         input[type='submit'] {
             position: absolute;
-            top: 5px;
-            right: 8px;
+            top: 8px;
+            right: 12px;
             background-color: transparent;
-            background-image: url(/static/img/search-orange.png);
+            background-image: url('../?img/search-orange.png');
             background-repeat: no-repeat;
             text-indent: -999em;
             display: block;
@@ -37,18 +34,64 @@
             &:hover {
                 color: transparent;
                 background-color: transparent;
-                background-image: url(/static/img/search-orange.png);
+                background-image: url('../?img/search-orange.png');
                 background-repeat: no-repeat;
+            }
+        }
+
+        @media screen and (max-width: 768px) {
+            position: relative;
+        }
+    }
+
+    .actions {
+
+        @media screen and (max-width: 768px) {
+
+            select {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+
+            input {
+                position: absolute;
+                right: 0;
+                top: 0
             }
         }
     }
 }
 
-.yui3-node-add-widget {
-    width: 65.9292%;
-    margin-right: 2.21238%;
-}
+.powerstates {
+    @include rounded-corners(50%);
+    width: 10px;
+    height: 10px;
+    display: inline-block;
 
+    &.power-on {
+        background-color: #33CC00;
+    }
+
+    &.power-off {
+        background-color: #000000;
+    }
+
+    &.power-unknown {
+        background-color: #FFCC00;
+    }
+
+    &.power-error {
+        background-color: #D00000;
+    }
+
+    &.power-check-ok {
+        color: #33CC00;
+    }
+
+    &.power-check-error {
+        color: #FF0000;
+    }
+}
 
 .node-actions {
 
@@ -56,9 +99,55 @@
     .cta-ubuntu {
         margin-bottom: 10px;
         float: left;
+        font-size: 16px;
     }
 }
 
 .buttons {
     margin-top: 30px;
+}
+
+#network-interfaces li {
+    list-style-type: none;
+}
+
+#content-discovery-data {
+    padding-top: 20px;
+    margin-top: 20px;
+    border-top: 1px dotted #B2B2B2;
+
+    .slider {
+        height: 0;
+        overflow: hidden;
+    }
+}
+
+.slider {
+    padding-top: 0 !important;
+
+    .content {
+        @include rounded-corners(0 0 4px 4px);
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+        background: #FFF;
+        border: 1px solid #EEE;
+        border-top: none;
+        padding: 20px;
+
+        pre {
+            margin: 0;
+        }
+    }
+
+    .tabs {
+        @include box-sizing();
+        @include rounded-corners(4px 4px 0 0);
+        padding: 8px 20px;
+        margin: 0;
+        font-weight: 400;
+        font-size: 0.875em;
+        background:#FFF;
+        background-position: top 50% left 15px;
+        background-repeat: no-repeat;
+        border: 1px solid #EEE;
+    }
 }

@@ -41,6 +41,7 @@
 }
 
 .list--revealed {
+
     .list--item {
         display: list-item;
     }
@@ -64,7 +65,6 @@ a.btn__see--less {
     border: 1px solid $coolish_grey;
     background: #fff;
     padding: 0.384615385em 1.153846154em;
-    padding:
 
     &:hover {
         background: #eee;

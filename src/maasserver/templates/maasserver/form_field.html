@@ -11,11 +11,11 @@
         {% endif %}
     </label>
     {% endif %}
+    {% if field.errors %}
+    <span class="errors">{{ field.errors }}</span>
+    {% endif %}
     {% ifnotequal field|field_type "CheckboxInput" %}
     {{ field }}
     {% endifnotequal %}
     <span class="help">{% if field.help_text %}{{ field.help_text }}{% endif %}</span>
-    {% if field.errors %}
-    <span class="errors">{{ field.errors }}</span>
-    {% endif %}
 </li>

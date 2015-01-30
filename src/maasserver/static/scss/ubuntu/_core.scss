@@ -131,7 +131,7 @@ audio:not([controls]) {
     font-style: normal;
     font-weight: 700;
     src: url('../../../static/fonts/ubuntu-b-webfont.eot');
-    src: local('Ubuntu Bold'), 
+    src: local('Ubuntu Bold'),
          local('Ubuntu-Bold'),
          url('../../../static/fonts/ubuntu-b-webfont.eot?#iefix') format('embedded-opentype'),
          url('../../../static/fonts/ubuntu-b-webfont.woff') format('woff'),
@@ -144,8 +144,8 @@ audio:not([controls]) {
     font-style: italic;
     font-weight: 300;
     src: url('../../../static/fonts/ubuntu-li-webfont.eot');
-    src: local('Ubuntu Light Italic'), 
-         local('Ubuntu-LightItalic'), 
+    src: local('Ubuntu Light Italic'),
+         local('Ubuntu-LightItalic'),
          url('../../../static/fonts/ubuntu-li-webfont.eot?#iefix') format('embedded-opentype'),
          url('../../../static/fonts/ubuntu-li-webfont.woff') format('woff'),
          url('../../../static/fonts/ubuntu-li-webfont.ttf') format('truetype'),
@@ -156,8 +156,8 @@ audio:not([controls]) {
   font-family: 'Ubuntu';
   font-style: italic;
   font-weight: 400;
-  src: local('Ubuntu Italic'), 
-       local('Ubuntu-Italic'), 
+  src: local('Ubuntu Italic'),
+       local('Ubuntu-Italic'),
        url('https://themes.googleusercontent.com/static/fonts/ubuntu/v5/GZMdC02DTXXx8AdUvU2etw.woff') format('woff');
 }
 
@@ -166,7 +166,7 @@ audio:not([controls]) {
     font-style: italic;
     font-weight: 500;
     src: url('../../../static/fonts/ubuntu-mi-webfont.eot');
-    src: local('Ubuntu Medium Italic'), 
+    src: local('Ubuntu Medium Italic'),
          local('Ubuntu-MediumItalic'),
          url('../../../static/fonts/ubuntu-mi-webfont.eot?#iefix') format('embedded-opentype'),
          url('../../../static/fonts/ubuntu-mi-webfont.woff') format('woff'),
@@ -178,8 +178,8 @@ audio:not([controls]) {
   font-family: 'Ubuntu';
   font-style: italic;
   font-weight: 700;
-  src: local('Ubuntu Bold Italic'), 
-       local('Ubuntu-BoldItalic'), 
+  src: local('Ubuntu Bold Italic'),
+       local('Ubuntu-BoldItalic'),
        url('https://themes.googleusercontent.com/static/fonts/ubuntu/v5/pqisLQoeO9YTDCNnlQ9bfz8E0i7KZn-EPnyo3HZu7kw.woff') format('woff');
 }
 
@@ -211,7 +211,7 @@ blockquote {
   margin: 28px 20px;
 }
 
-blockquote:before, 
+blockquote:before,
 blockquote:after,
 q:before, q:after {
   content: "";
@@ -227,7 +227,7 @@ figure {
 	margin: 0;
 }
 
-abbr, 
+abbr,
 acronym { cursor: help; }
 
 /**
@@ -245,14 +245,14 @@ a:active {
 	outline: 0;
 }
 
-a:link, 
+a:link,
 a:visited {
 	color: $link-color;
 	text-decoration: none;
 }
 
-a:hover, 
-a:active, 
+a:hover,
+a:active,
 a:focus {
 	text-decoration: underline;
 }
@@ -261,23 +261,23 @@ a.link-arrow:after { content: "\0000a0›"; }
 
 nav ul li h2 a:after { content: "\0000a0›"; }
 
-nav ul li a:after, 
-.carousel ul li a:after, 
+nav ul li a:after,
+.carousel ul li a:after,
 ul li p a:after { content: ""; }
 
 /**
  * Lists
  */
 
-ol, 
+ol,
 ul {
   margin-left: 20px;
   margin-bottom: 20px;
 }
 
 ol ol,
-ul ul, 
-ol ul, 
+ul ul,
+ol ul,
 ul ol { margin-bottom: 0; }
 
 nav ul,
@@ -315,11 +315,11 @@ img.right { margin-left: $gutter-width; }
  * @section type
  */
 
-h1, 
-h2, 
-h3, 
-h4, 
-h5, 
+h1,
+h2,
+h3,
+h4,
+h5,
 h6 {
 	font-weight: 300;
 	line-height: 1.3;
@@ -360,7 +360,7 @@ h6 {
   text-transform: uppercase;
 }
 
-p, 
+p,
 li {
   font-size: 1em;
   line-height: 1.5;
@@ -369,24 +369,24 @@ li {
   padding: 0;
 }
 
-h2 span, 
+h2 span,
 h1 span { display: block; }
 
-p + h2, 
-ul + h2, 
-ol + h2, 
+p + h2,
+ul + h2,
+ol + h2,
 pre + h2 { margin-top: (18 / 32)+em; }
 
 header nav a:link { font-weight: normal; }
 
-p + h3, 
-ul + h3, 
-ol + h3, 
+p + h3,
+ul + h3,
+ol + h3,
 pre + h3 { margin-top: (18 / 23)+em; }
 
-p + h4, 
-ul + h4, 
-ol + h4, 
+p + h4,
+ul + h4,
+ol + h4,
 pre + h4 { margin-top: (19.5 / $base)+em; }
 
 
@@ -410,7 +410,7 @@ ins {
   text-decoration: none;
 }
 
-small, 
+small,
 .smaller { font-size: 13px; }
 
 sub,
@@ -475,7 +475,7 @@ textarea {
 	*vertical-align: middle;
 }
 
-select { 
+select {
 	font-size: 1em;
 	font-weight: 300;
 }
@@ -554,7 +554,7 @@ form textarea {
 	padding: 0.6956522em 0.869565em;
 }
 
-form input:focus, 
+form input:focus,
 form textarea:focus { border: 1px solid #dd4814; }
 
 form textarea[readonly='readonly'] { color: #999; }
@@ -702,7 +702,7 @@ p {
 	table {
 		display: block;
 	}
-} // end @media only screen and (max-width : 768px) 
+} // end @media only screen and (max-width : 768px)
 
 
 @media only screen and (min-width: 984px) {

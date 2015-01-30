@@ -35,20 +35,6 @@ def static_resources(context):
     return {
         'CSS_LIST': [
             'css/base.css',
-            'css/typography.css',
-            'css/modifiers.css',
-            'css/components/blocks.css',
-            'css/components/flash_messages.css',
-            'css/components/pagination.css',
-            'css/components/table_list.css',
-            'css/components/yui_panel.css',
-            'css/components/yui_overlay.css',
-            'css/components/yui_node_add.css',
-            'css/components/data_list.css',
-            'css/components/slider.css',
-            'css/components/spinner.css',
-            'css/ubuntu-webfonts.css',
-            'css/multiselect_widget.css',
             'css/maas-styles.css',
         ],
         'JS_LIST': [

@@ -10,7 +10,7 @@
     <form action="." method="post">{% csrf_token %}
         <input type="hidden" name="post" value="yes" />
         <input type="submit" value="Delete commissioning script" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
+        <a class="link-cta-ubuntu secondary" href="{% url 'settings' %}#commissioning_scripts">Cancel</a>
     </form>
 </div>
 {% endblock %}

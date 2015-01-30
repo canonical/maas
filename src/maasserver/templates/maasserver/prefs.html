@@ -20,69 +20,79 @@
 <div id="prefs" class="accounts">
     <div id="keys" class="eight-col">
         <h2>Keys</h2>
-        <h3>MAAS keys</h3>
-        <div id="api" class="api">
-            <p>You'll need a separate API key for each Juju environment.</p>
-            <ul class="no-bullets">
-                {% for token in user.get_profile.get_authorisation_tokens %}
-                <li class="bundle">
-                    <a href="#" class="delete-link icon right">
-                        <img title="Delete MAAS key" src="{{ STATIC_URL }}img/delete.png" />
-                    </a>
-                    <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />
-                </li>
-                {% endfor %}
-            </ul>
-            <p id="token_creation_placeholder" />
-        </div>
-        <div id="ssh-keys" class="ssh-keys eight-col">
+        <section class="eight-col">
+            <h3>MAAS keys</h3>
+            <div id="api" class="api eight-col">
+                <p>You'll need a separate API key for each Juju environment.</p>
+                <ul class="no-bullets">
+                    {% for token in user.get_profile.get_authorisation_tokens %}
+                    <li class="bundle">
+                        <a href="#" class="delete-link icon right">
+                            <img title="Delete MAAS key" src="{{ STATIC_URL }}img/delete.png" />
+                        </a>
+                        <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />
+                    </li>
+                    {% endfor %}
+                </ul>
+                <p id="token_creation_placeholder" />
+            </div>
+        </section>
+        <section id="ssh-keys" class="ssh-keys eight-col border">
             <h3>SSH keys</h3>
-            <ul class="no-bullets">
-                {% for key in user.sshkey_set.all %}
-                <li>
-                    <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
-                        <img title="Delete SSH key" src="{{ STATIC_URL }}img/delete.png" />
-                    </a>
-                    {{ key.display_html }}
-                </li>
-                {% empty %} No SSH key configured. {% endfor %}
-            </ul>
-            <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="link-cta-ubuntu right">+ Add SSH key</a>
-        </div>
-        <div id="ssl-keys" class="eight-col">
+            <div class="eight-col">
+                <ul class="no-bullets">
+                    {% for key in user.sshkey_set.all %}
+                    <li>
+                        <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
+                            <img title="Delete SSH key" src="{{ STATIC_URL }}img/delete.png" />
+                        </a>
+                        {{ key.display_html }}
+                    </li>
+                    {% empty %} No SSH key configured. {% endfor %}
+                </ul>
+                <a href="{% url 'prefs-add-sshkey' %}" id="add_ssh_key" class="link-cta-ubuntu right">+ Add SSH key</a>
+            </div>
+        </section>
+        <section id="ssl-keys" class="eight-col border">
             <h3>SSL keys</h3>
-            <ul class="no-bullets">
-                {% for key in user.sslkey_set.all %}
-                <li>
-                    <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
-                        <img title="Delete SSL key" src="{{ STATIC_URL }}img/delete.png" />
-                    </a>
-                    {{ key.display_html }}
-                </li>
-                {% empty %} No SSL key configured. {% endfor %}
-            </ul>
-            <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="link-cta-ubuntu right">+ Add SSL key</a>
-        </div>
-        <div id="profile" class="eight-col">
+            <div class="eight-col">
+                <ul class="no-bullets">
+                    {% for key in user.sslkey_set.all %}
+                    <li>
+                        <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
+                            <img title="Delete SSL key" src="{{ STATIC_URL }}img/delete.png" />
+                        </a>
+                        {{ key.display_html }}
+                    </li>
+                    {% empty %} No SSL key configured. {% endfor %}
+                </ul>
+                <a href="{% url 'prefs-add-sslkey' %}" id="add_ssl_key" class="link-cta-ubuntu right">+ Add SSL key</a>
+            </div>
+        </section>
+        <section id="profile" class="eight-col border">
             <h2>User details</h2>
-            <form action="." method="post">{% csrf_token %}
-                <ul>
-                    {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
-                </ul>
-                <input type="hidden" name="profile_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Save" />
-            </form>
-        </div>
-        <div id="password" class="eight-col">
+            <div class="eight-col">
+                <form action="." method="post">{% csrf_token %}
+                    <ul>
+                        {% for field in profile_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                    </ul>
+                    <input type="hidden" name="profile_submit" value="1" />
+                    <input type="submit" class="cta-ubuntu right" value="Save" />
+                </form>
+            </div>
+        </section>
+        <section id="password" class="eight-col border">
             <h2>Password</h2>
-            <form action="." method="post">{% csrf_token %}
-                <ul>
-                    {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
-                </ul>
-                <input type="hidden" name="password_submit" value="1" />
-                <input type="submit" class="cta-ubuntu right" value="Change password" />
-            </form>
-        </div>
+            <div class="eight-col">
+                <form action="." method="post">{% csrf_token %}
+                    <ul>
+                        {% for field in password_form %} {% include "maasserver/form_field.html" %} {% endfor %}
+                    </ul>
+                    <input type="hidden" name="password_submit" value="1" />
+                    <input type="submit" class="cta-ubuntu right" value="Change password" />
+                </form>
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}

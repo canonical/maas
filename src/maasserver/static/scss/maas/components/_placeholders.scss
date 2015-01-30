@@ -1,8 +1,5 @@
 @charset "UTF-8";
 
-@import "../../ubuntu/core-constants";
-@import "../../ubuntu/core-mixins";
-
 /**
  * MAAS placeholder styles
  *
@@ -21,11 +18,10 @@
     border: 1px solid #D2D2D2;
     display: block;
     font-family: Ubuntu,Arial,"libra sans",sans-serif;
-    font-size: 0.778em;
+    font-size: 1em;
     font-weight: 300;
     padding: 0px 13px;
     box-shadow: inset 0 1px 1px rgba(000,000,000,0.1);
-    height: 30px;
 
     &:hover {
 
@@ -42,6 +38,63 @@
     }
 }
 
+.icon {
+    margin-left: 5px;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    text-indent: 999em;
+    overflow: hidden;
+    background-repeat: no-repeat;
+
+    &.edit {
+        background-image: url(../?img/icons/edit.png);
+        background-image: url(../?img/icons/edit.svg), none;
+    }
+
+    &.delete {
+        background-image: url(../?img/icons/remove.png);
+        background-image: url(../?img/icons/remove.svg), none;
+    }
+
+    &.warning {
+        background-image: url(../?img/icons/warning.png);
+        background-image: url(../?img/icons/warning.svg), none;
+    }
+
+    &.success {
+        background-image: url(../?img/icons/success.png);
+        background-image: url(../?img/icons/success.svg), none;
+    }
+
+    &.error {
+        background-image: url(../?img/icons/error.png);
+        background-image: url(../?img/icons/error.svg), none;
+    }
+}
+
+.clear {
+    clear: both;
+}
+
 .hidden {
     display: none;
+}
+
+.align-right {
+    text-align: right;
+}
+
+.border {
+    border-top: 1px dotted #B2B2B2;
+    padding-top: 20px;
+
+    &.bottom {
+        border-bottom: 1px dotted #B2B2B2;
+
+    }
+
+    &.solid {
+        border-style: solid;
+    }
 }

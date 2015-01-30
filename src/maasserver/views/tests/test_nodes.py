@@ -869,7 +869,7 @@ class NodeViewsTest(MAASServerTestCase):
         json_obj = json.loads(response.content)
         self.assertThat(
             json_obj['action_view'],
-            Contains('<h4>Node details</h4'))
+            Contains('<h3>Node details</h3'))
 
     def test_view_node_ajax_returns_latest_node_events(self):
         self.client_log_in()

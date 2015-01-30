@@ -14,7 +14,7 @@
             {% endfor %}
         </ul>
         <input type="submit" value="Save interface" class="cta-ubuntu right" />
-        <a class="link-cta-ubuntu secondary-alt" href="{% url 'cluster-edit' interface.nodegroup.uuid %}">Cancel</a>
+        <a class="link-cta-ubuntu secondary" href="{% url 'cluster-edit' interface.nodegroup.uuid %}">Cancel</a>
     </form>
 </div>
 {% endblock %}
