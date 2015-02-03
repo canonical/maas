@@ -246,6 +246,9 @@ builtin_architectures = [
         name="arm64/xgene-uboot", description="arm64/xgene-uboot",
         pxealiases=["arm"]),
     Architecture(
+        name="arm64/xgene-uboot-mustang",
+        description="arm64/xgene-uboot-mustang", pxealiases=["arm"]),
+    Architecture(
         name="armhf/highbank", description="armhf/highbank",
         pxealiases=["arm"], kernel_options=["console=ttyAMA0"]),
     Architecture(
