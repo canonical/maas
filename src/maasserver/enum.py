@@ -292,11 +292,17 @@ class BOOT_RESOURCE_FILE_TYPE:
     #: Boot Initrd (ISCSI initrd)
     BOOT_INITRD = 'boot-initrd'
 
+    #: Boot DTB (ISCSI dtb)
+    BOOT_DTB = 'boot-dtb'
+
     #: DI Kernel (Debian Installer kernel)
     DI_KERNEL = 'di-kernel'
 
     #: DI Initrd (Debian Installer initrd)
     DI_INITRD = 'di-initrd'
+
+    #: DI DTB (Debian Installer dtb)
+    DI_DTB = 'di-dtb'
 
 
 # Django choices for BOOT_RESOURCE_FILE_TYPE: sequence of tuples (key, UI
@@ -307,6 +313,8 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.ROOT_IMAGE, "Compressed Root Image"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_KERNEL, "Linux ISCSI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.BOOT_INITRD, "Initial ISCSI Ramdisk"),
+    (BOOT_RESOURCE_FILE_TYPE.BOOT_DTB, "ISCSI Device Tree Blob"),
     (BOOT_RESOURCE_FILE_TYPE.DI_KERNEL, "Linux DI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.DI_INITRD, "Initial DI Ramdisk"),
+    (BOOT_RESOURCE_FILE_TYPE.DI_DTB, "DI Device Tree Blob"),
     )
