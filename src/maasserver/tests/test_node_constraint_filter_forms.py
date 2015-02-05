@@ -894,3 +894,23 @@ class TestAcquireNodeForm(MAASServerTestCase):
             for constraint in form.describe_constraints().split()
             }
         self.assertItemsEqual(constraints.keys(), described_constraints)
+
+
+class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
+
+    def test_describe_constraints_shows_all_constraints(self):
+        nodes = [
+            factory.make_Node(
+                cpu_count=randint(5, 32),
+                memory=randint(1024, 256 * 1024)
+            )
+            for _ in range(4)]
+        sorted_nodes = sorted(
+            nodes, key=lambda n: n.cpu_count + n.memory / 1024)
+        # The form should select all the nodes.  All we're interested
+        # in here is the ordering.
+        form = AcquireNodeForm(data={'cpu_count': 4})
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(
+            sorted_nodes,
+            list(form.filter_nodes(Node.objects.all())))

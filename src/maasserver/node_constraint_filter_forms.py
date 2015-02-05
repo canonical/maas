@@ -568,4 +568,12 @@ class AcquireNodeForm(RenamableFieldsForm):
             if node_ids is not None:
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
-        return filtered_nodes.distinct()
+        # This uses a very simple procedure to compute a machine's
+        # cost. This procedure is loosely based on how ec2 computes
+        # the costs of machines. This is here to give a hint to let
+        # the call to acquire() decide which machine to return based
+        # on the machine's cost when multiple machines match the
+        # constraints.
+        filtered_nodes = filtered_nodes.distinct().extra(
+            select={'cost': "cpu_count + memory / 1024"})
+        return filtered_nodes.order_by("cost")

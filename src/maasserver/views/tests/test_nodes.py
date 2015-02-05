@@ -1798,15 +1798,11 @@ class TestNodesViewSearch(MAASServerTestCase):
         tag = factory.make_Tag("odd")
         for node in nodes[::2]:
             node.tags = [tag]
-        last_node_link = reverse('node-view', args=[nodes[0].system_id])
         response = self.client.get(
             reverse('node-list'),
             {"query": "maas-tags=odd", "page": 3})
         document = fromstring(response.content)
         self.assertIn("5 matching nodes", document.xpath("string(//h1)"))
-        self.assertEqual(
-            [last_node_link],
-            document.xpath("//div[@id='nodes']/form/table/tr/td[3]/a/@href"))
         self.assertEqual(
             [
                 ("first", "?query=maas-tags%3Dodd"),
