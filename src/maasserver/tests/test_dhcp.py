@@ -200,6 +200,14 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         self.expectThat(
             config['ip_range_low'], Not(Equals(interface.static_ip_range_low)))
 
+    def test__doesnt_convert_None_router_ip(self):
+        interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
+        interface.router_ip = None
+        interface.save()
+        config = make_subnet_config(
+            interface, factory.make_name('dns'), factory.make_name('ntp'))
+        self.assertEqual(None, config['router_ip'])
+
 
 class TestDoConfigureDHCP(MAASServerTestCase):
     """Tests for `do_configure_dhcp`."""

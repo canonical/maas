@@ -56,7 +56,9 @@ def make_subnet_config(interface, dns_servers, ntp_server):
         'subnet_cidr': unicode(interface.network.cidr),
         'broadcast_ip': interface.broadcast_ip,
         'interface': interface.interface,
-        'router_ip': unicode(interface.router_ip),
+        'router_ip': (
+            None if not interface.router_ip
+            else unicode(interface.router_ip)),
         'dns_servers': dns_servers,
         'ntp_server': ntp_server,
         'domain_name': interface.nodegroup.name,
