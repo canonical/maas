@@ -17,6 +17,7 @@ __all__ = []
 from functools import partial
 import json
 import os
+import random
 from socket import (
     AF_INET,
     AF_INET6,
@@ -204,7 +205,7 @@ class TestTFTPBackend(MAASTestCase):
             MockNotCalled())
 
     @inlineCallbacks
-    def test_get_render_file(self):
+    def _test_get_render_file(self, local, remote):
         # For paths matching PXEBootMethod.match_path, TFTPBackend.get_reader()
         # returns a Deferred that will yield a BytesReader.
         cluster_uuid = factory.make_UUID()
@@ -216,14 +217,7 @@ class TestTFTPBackend(MAASTestCase):
         backend = TFTPBackend(self.make_dir(), b"http://example.com/")
         # python-tx-tftp sets up call context so that backends can discover
         # more about the environment in which they're running.
-        call_context = {
-            "local": (
-                factory.make_ipv4_address(),
-                factory.pick_port()),
-            "remote": (
-                factory.make_ipv4_address(),
-                factory.pick_port()),
-            }
+        call_context = {"local": local, "remote": remote}
 
         @partial(self.patch, backend, "get_boot_method_reader")
         def get_boot_method_reader(boot_method, params):
@@ -244,6 +238,33 @@ class TestTFTPBackend(MAASTestCase):
             }
         observed_params = json.loads(output)
         self.assertEqual(expected_params, observed_params)
+
+    def test_get_render_file_with_ipv4_hosts(self):
+        return self._test_get_render_file(
+            local=(
+                factory.make_ipv4_address(),
+                factory.pick_port()),
+            remote=(
+                factory.make_ipv4_address(),
+                factory.pick_port()),
+        )
+
+    def test_get_render_file_with_ipv6_hosts(self):
+        # Some versions of Twisted have the scope and flow info in the remote
+        # address tuple. See https://twistedmatrix.com/trac/ticket/6826 (the
+        # address is captured by tftp.protocol.TFTP.dataReceived).
+        return self._test_get_render_file(
+            local=(
+                factory.make_ipv6_address(),
+                factory.pick_port(),
+                random.randint(1, 1000),
+                random.randint(1, 1000)),
+            remote=(
+                factory.make_ipv6_address(),
+                factory.pick_port(),
+                random.randint(1, 1000),
+                random.randint(1, 1000)),
+        )
 
     @inlineCallbacks
     def test_get_boot_method_reader_returns_rendered_params(self):

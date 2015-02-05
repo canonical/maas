@@ -42,6 +42,7 @@ from provisioningserver.events import (
     send_event_node_mac_address,
     )
 from provisioningserver.kernel_opts import KernelParameters
+from provisioningserver.utils import tftp
 from provisioningserver.utils.network import get_all_interface_addresses
 from provisioningserver.utils.twisted import deferred
 from tftp.backend import FilesystemSynchronousBackend
@@ -60,7 +61,6 @@ from twisted.internet.defer import (
     maybeDeferred,
     returnValue,
     )
-from twisted.python.context import get
 from twisted.web.client import getPage
 import twisted.web.error
 
@@ -193,9 +193,9 @@ class TFTPBackend(FilesystemSynchronousBackend):
                 params["arch"] = maasarch.name.split("/")[0]
 
         # Send the local and remote endpoint addresses.
-        local_host, local_port = get("local", (None, None))
+        local_host, local_port = tftp.get_local_address()
         params["local"] = local_host
-        remote_host, remote_port = get("remote", (None, None))
+        remote_host, remote_port = tftp.get_remote_address()
         params["remote"] = remote_host
         params["cluster_uuid"] = get_cluster_uuid()
         d = self.get_boot_method_reader(boot_method, params)

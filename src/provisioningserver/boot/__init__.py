@@ -28,12 +28,14 @@ from os import path
 
 from provisioningserver.boot.tftppath import compose_image_path
 from provisioningserver.kernel_opts import compose_kernel_command_line
-from provisioningserver.utils import locate_config
+from provisioningserver.utils import (
+    locate_config,
+    tftp,
+    )
 from provisioningserver.utils.network import find_mac_via_arp
 from provisioningserver.utils.registry import Registry
 import tempita
 from tftp.backend import IReader
-from twisted.python.context import get
 from zope.interface import implementer
 
 
@@ -102,7 +104,7 @@ def get_remote_mac():
     This is used, when the dhcp lease file is not up-to-date soon enough
     to extract the MAC address from the IP address assigned by dhcp.
     """
-    remote_host, remote_port = get("remote", (None, None))
+    remote_host, remote_port = tftp.get_remote_address()
     return find_mac_via_arp(remote_host)
 
 
