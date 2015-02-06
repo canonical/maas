@@ -97,3 +97,12 @@ Inside that newly created source ('2') you can add selections::
         "id": 3,
         "resource_uri": "<url omitted for readability>"
     }
+
+Deleting a source
+---------------
+
+Let's say you need to delete the newly added source.
+
+To delete the source::
+
+    $ maas $PROFILE boot-source delete 2
