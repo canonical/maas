@@ -16,6 +16,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+from random import randint
 import re
 
 from maastesting.factory import factory
@@ -23,6 +24,7 @@ from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
 from mock import (
     ANY,
+    Mock,
     sentinel,
     )
 import provisioningserver.power.poweraction
@@ -242,17 +244,26 @@ class TestPowerAction(MAASTestCase):
         self.assertIn('power_control_ucsm', script)
 
     def test_mscm_renders_template(self):
-        # I'd like to assert that escape_py_literal is being used here,
-        # but it's not obvious how to mock things in the template
-        # rendering namespace so I passed on that.
+        context = {
+            'power_address': 'foo', 'power_user': 'bar', 'power_pass': 'baz',
+            'node_id': 'c1n1', 'power_change': 'on',
+        }
         action = PowerAction('mscm')
-        script = action.render_template(
-            action.get_template(),
-            action.update_context(dict(
-                power_address='foo', power_user='bar', power_pass='baz',
-                node_id='c1n1', power_change='on')),
-        )
+        action.update_context(context)
+        context['escape_py_literal'] = Mock()
+        script = action.render_template(action.get_template(), context)
         self.assertIn('power_control_mscm', script)
+
+    def test_apc_renders_template(self):
+        context = {
+            'power_address': 'foo', 'power_user': 'bar', 'power_pass': 'baz',
+            'node_outlet': "%s" % randint(1, 16), 'power_change': 'on',
+        }
+        action = PowerAction('apc')
+        action.update_context(context)
+        context['escape_py_literal'] = Mock()
+        script = action.render_template(action.get_template(), context)
+        self.assertIn('power_control_apc', script)
 
 
 class TestTemplateContext(MAASTestCase):
