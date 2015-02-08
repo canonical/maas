@@ -207,6 +207,8 @@ class BootMethod:
         """Composes the namespace variables that are used by a boot
         method template.
         """
+        dtb_subarchs = ['xgene-uboot-mustang']
+
         def image_dir(params):
             return compose_image_path(
                 params.osystem, params.arch, params.subarch,
@@ -224,6 +226,13 @@ class BootMethod:
             else:
                 return "%s/boot-kernel" % image_dir(params)
 
+        def dtb_path(params):
+            if params.subarch in dtb_subarchs:
+                if params.purpose == "install":
+                    return "%s/di-dtb" % image_dir(params)
+                else:
+                    return "%s/boot-dtb" % image_dir(params)
+
         def kernel_command(params):
             return compose_kernel_command_line(params)
 
@@ -232,6 +241,7 @@ class BootMethod:
             "kernel_command": kernel_command,
             "kernel_params": kernel_params,
             "kernel_path": kernel_path,
+            "dtb_path": dtb_path,
             }
 
         return namespace

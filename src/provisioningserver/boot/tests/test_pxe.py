@@ -259,6 +259,74 @@ class TestPXEBootMethodRender(MAASTestCase):
                     r'.*^\s+APPEND .+?$',
                     re.MULTILINE | re.DOTALL)))
 
+    def test_get_reader_install_mustang_dtb(self):
+        # Architecture specific test.
+        # Given the right configuration options, the PXE configuration is
+        # correctly rendered for Mustang.
+        method = PXEBootMethod()
+        params = make_kernel_parameters(
+            testcase=self, osystem="ubuntu", arch="arm64",
+            subarch="xgene-uboot-mustang", purpose="install")
+        output = method.get_reader(backend=None, kernel_params=params)
+        # The output is a BytesReader.
+        self.assertThat(output, IsInstance(BytesReader))
+        output = output.read(10000)
+        # The template has rendered without error. PXELINUX configurations
+        # typically start with a DEFAULT line.
+        self.assertThat(output, StartsWith("DEFAULT "))
+        # The PXE parameters are all set according to the options.
+        image_dir = compose_image_path(
+            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
+            release=params.release, label=params.label)
+        self.assertThat(
+            output, MatchesAll(
+                MatchesRegex(
+                    r'.*^\s+KERNEL %s/di-kernel$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+INITRD %s/di-initrd$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+FDT %s/di-dtb$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+APPEND .+?$',
+                    re.MULTILINE | re.DOTALL)))
+
+    def test_get_reader_xinstall_mustang_dtb(self):
+        # Architecture specific test.
+        # Given the right configuration options, the PXE configuration is
+        # correctly rendered for Mustang.
+        method = PXEBootMethod()
+        params = make_kernel_parameters(
+            testcase=self, osystem="ubuntu", arch="arm64",
+            subarch="xgene-uboot-mustang", purpose="xinstall")
+        output = method.get_reader(backend=None, kernel_params=params)
+        # The output is a BytesReader.
+        self.assertThat(output, IsInstance(BytesReader))
+        output = output.read(10000)
+        # The template has rendered without error. PXELINUX configurations
+        # typically start with a DEFAULT line.
+        self.assertThat(output, StartsWith("DEFAULT "))
+        # The PXE parameters are all set according to the options.
+        image_dir = compose_image_path(
+            osystem=params.osystem, arch=params.arch, subarch=params.subarch,
+            release=params.release, label=params.label)
+        self.assertThat(
+            output, MatchesAll(
+                MatchesRegex(
+                    r'.*^\s+KERNEL %s/boot-kernel$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+INITRD %s/boot-initrd$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+FDT %s/boot-dtb$' % re.escape(image_dir),
+                    re.MULTILINE | re.DOTALL),
+                MatchesRegex(
+                    r'.*^\s+APPEND .+?$',
+                    re.MULTILINE | re.DOTALL)))
+
     def test_get_reader_with_extra_arguments_does_not_affect_output(self):
         # get_reader() allows any keyword arguments as a safety valve.
         method = PXEBootMethod()
