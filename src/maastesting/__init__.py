@@ -52,9 +52,12 @@ packages_expr = r"^(?:%s)\b" % "|".join(
     re.escape(package) for package in packages)
 
 # Enable some warnings that we ought to pay heed to.
-filterwarnings('default', category=BytesWarning, module=packages_expr)
+filterwarnings('error', category=BytesWarning, module=packages_expr)
 filterwarnings('default', category=DeprecationWarning, module=packages_expr)
 filterwarnings('default', category=ImportWarning, module=packages_expr)
+
+# Ignore noisy deprecation warnings inside Twisted.
+filterwarnings('ignore', category=DeprecationWarning, module=r"^twisted\b")
 
 # Make sure that sentinel objects are not copied.
 sentinel_type = type(mock.sentinel.foo)

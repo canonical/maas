@@ -14,13 +14,14 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from os.path import splitext
+from random import randint
 from warnings import (
     catch_warnings,
-    warn,
+    warn_explicit,
     )
 
 import maastesting
+from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (
     Equals,
@@ -28,7 +29,6 @@ from testtools.matchers import (
     MatchesAll,
     MatchesListwise,
     MatchesStructure,
-    StartsWith,
     )
 
 
@@ -47,11 +47,15 @@ class TestWarnings(MAASTestCase):
         self.assertRegexpMatches(
             self.package_name + ".foo", maastesting.packages_expr)
 
+    def warn(self, message, category):
+        warn_explicit(
+            message, category=category, filename=factory.make_name("file"),
+            lineno=randint(1, 1000), module=self.package_name)
+
     def assertWarningsEnabled(self, category):
         message = "%s from %s" % (category.__name__, self.package_name)
-        filename, ext = splitext(__file__)
         with catch_warnings(record=True) as log:
-            warn(message, category=category)
+            self.warn(message, category=category)
         self.assertThat(log, MatchesListwise([
             MatchesStructure(
                 message=MatchesAll(
@@ -59,12 +63,13 @@ class TestWarnings(MAASTestCase):
                     MatchesStructure.byEquality(args=(message,)),
                 ),
                 category=Equals(category),
-                filename=StartsWith(filename),
             ),
         ]))
 
     def test_BytesWarning_enabled(self):
-        self.assertWarningsEnabled(BytesWarning)
+        self.assertRaises(
+            BytesWarning, self.warn, factory.make_name("message"),
+            category=BytesWarning)
 
     def test_DeprecationWarning_enabled(self):
         self.assertWarningsEnabled(DeprecationWarning)
