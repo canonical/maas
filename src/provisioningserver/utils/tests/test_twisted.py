@@ -632,7 +632,8 @@ class TestDeferredValue(MAASTestCase):
 
     def test__create(self):
         dvalue = DeferredValue()
-        self.assertEqual({"waiters": set()}, vars(dvalue))
+        self.assertThat(dvalue, MatchesStructure.byEquality(
+            waiters=set(), capturing=None, observing=None))
 
     def test__get_returns_a_Deferred(self):
         dvalue = DeferredValue()
@@ -667,6 +668,22 @@ class TestDeferredValue(MAASTestCase):
         self.expectThat(extract_result(waiter0), Is(sentinel.value))
         self.expectThat(extract_result(waiter2), Is(sentinel.value))
         self.assertRaises(CancelledError, extract_result, waiter1)
+
+    def test__set_clears_and_cancels_capturing(self):
+        dvalue = DeferredValue()
+        source = Deferred()
+        dvalue.capturing = source
+        dvalue.set(sentinel.value)
+        self.assertIsNone(dvalue.capturing)
+        self.assertRaises(CancelledError, extract_result, source)
+
+    def test__set_clears_observing(self):
+        dvalue = DeferredValue()
+        source = Deferred()
+        dvalue.observing = source
+        dvalue.set(sentinel.value)
+        self.assertIsNone(dvalue.observing)
+        self.assertFalse(source.called)
 
     def test__get_after_set_returns_the_value(self):
         dvalue = DeferredValue()
@@ -706,6 +723,22 @@ class TestDeferredValue(MAASTestCase):
         dvalue.set(sentinel.value)
         dvalue.cancel()
         self.assertEqual(sentinel.value, extract_result(dvalue.get()))
+
+    def test__cancel_clears_and_cancels_capturing(self):
+        dvalue = DeferredValue()
+        source = Deferred()
+        dvalue.capturing = source
+        dvalue.cancel()
+        self.assertIsNone(dvalue.capturing)
+        self.assertRaises(CancelledError, extract_result, source)
+
+    def test__cancel_clears_observing(self):
+        dvalue = DeferredValue()
+        source = Deferred()
+        dvalue.observing = source
+        dvalue.cancel()
+        self.assertIsNone(dvalue.observing)
+        self.assertFalse(source.called)
 
     def test__set_exception_results_in_a_callback(self):
         exception = factory.make_exception()
@@ -765,6 +798,25 @@ class TestDeferredValue(MAASTestCase):
         self.assertRaises(type(exception), extract_result, waiter)
         self.assertIsNone(extract_result(d))
 
+    def test__capture_records_source_as_capturing_attribute(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        self.assertIs(d, dvalue.capturing)
+
+    def test__capture_can_only_be_called_once(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.capture(d)
+        self.assertRaises(AlreadyCalledError, dvalue.capture, d)
+        # It's not possible to call observe() once capture() has been called.
+        self.assertRaises(AlreadyCalledError, dvalue.observe, d)
+
+    def test__capture_cannot_be_called_once_value_is_set(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.value)
+        self.assertRaises(AlreadyCalledError, dvalue.capture, sentinel.unused)
+
     def test__observe_observes_callback(self):
         dvalue = DeferredValue()
         d = Deferred()
@@ -785,3 +837,36 @@ class TestDeferredValue(MAASTestCase):
         d.errback(exception)
         self.assertRaises(type(exception), extract_result, waiter)
         self.assertRaises(type(exception), extract_result, d)
+
+    def test__observe_records_source_as_observing_attribute(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        self.assertIs(d, dvalue.observing)
+
+    def test__observe_can_only_be_called_once(self):
+        dvalue = DeferredValue()
+        d = Deferred()
+        dvalue.observe(d)
+        self.assertRaises(AlreadyCalledError, dvalue.observe, d)
+        # It's not possible to call capture() once observe() has been called.
+        self.assertRaises(AlreadyCalledError, dvalue.capture, d)
+
+    def test__observe_cannot_be_called_once_value_is_set(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.value)
+        self.assertRaises(AlreadyCalledError, dvalue.observe, sentinel.unused)
+
+    def test__isSet_is_False_when_there_is_no_value(self):
+        dvalue = DeferredValue()
+        self.assertFalse(dvalue.isSet)
+
+    def test__isSet_is_True_when_there_is_a_value(self):
+        dvalue = DeferredValue()
+        dvalue.set(sentinel.foobar)
+        self.assertTrue(dvalue.isSet)
+
+    def test__isSet_is_True_when_there_is_a_failure(self):
+        dvalue = DeferredValue()
+        dvalue.fail(factory.make_exception())
+        self.assertTrue(dvalue.isSet)

@@ -311,17 +311,45 @@ class DeferredValue:
     :ivar waiters: A set of :py:class:`Deferreds`, each of which has been
         handed to a caller of `get`, and which will be fired when `set` is
         called... or ``None``, immediately after `set` has been called.
+    :ivar capturing: A `Deferred` from which the value or failure will be
+        recorded, or `None`. The value or failure *will not* be passed back
+        into the callback chain. If this `DeferredValue` is cancelled,
+        `capturing` *will* also be cancelled.
+    :ivar observing: A `Deferred` from which the value or failure will be
+        recorded, or `None`. The value or failure *will* be passed back into
+        the callback chain. If this `DeferredValue` is cancelled, `observing`
+        *will not* be cancelled.
+    :ivar value: The recorded value. This will not be present until the moment
+        it is actually recorded; i.e. ``my_deferred_value.value`` will raise
+        `AttributeError`.
     """
 
     def __init__(self):
         super(DeferredValue, self).__init__()
         self.waiters = set()
+        self.capturing = None
+        self.observing = None
+
+    @property
+    def isSet(self):
+        """Has a value been recorded?
+
+        Returns `True` if a value has been recorded, be that a failure or
+        otherwise.
+        """
+        return self.waiters is None
 
     def set(self, value):
         """Set the promised value.
 
         Notifies all waiters of the value, or raises `AlreadyCalledError` if
         the value has been set previously.
+
+        If a `Deferred` was being captured, it is cancelled, which is a no-op
+        if it has already fired, and this object's reference to it is cleared.
+
+        If a `Deferred` was being observed, it is *not* cancelled, and this
+        object's reference to it is cleared.
         """
         if self.waiters is None:
             raise AlreadyCalledError(
@@ -331,12 +359,18 @@ class DeferredValue:
         waiters, self.waiters = self.waiters, None
         for waiter in waiters.copy():
             waiter.callback(value)
+        capturing, self.capturing = self.capturing, None
+        if capturing is not None:
+            capturing.cancel()
+        self.observing = None
 
     def fail(self, failure=None):
         """Set the promised value to a `Failure`.
 
         Notifies all waiters via `errback`, or raises `AlreadyCalledError` if
         the value has been set previously.
+
+        :see: `DeferredValue.set`
         """
         if not isinstance(failure, Failure):
             failure = Failure(failure)
@@ -351,28 +385,49 @@ class DeferredValue:
         `None`.
 
         :param d: :py:class:`Deferred`.
+        :raise AlreadyCalledError: If another `Deferred` is already being
+            captured or observed.
         """
+        if self.waiters is None:
+            raise AlreadyCalledError(
+                "Value already set to %r." % (self.value,))
+        if self.capturing is not None:
+            raise AlreadyCalledError(
+                "Already capturing %r." % (self.capturing,))
+        if self.observing is not None:
+            raise AlreadyCalledError(
+                "Already observing %r." % (self.observing,))
+
+        self.capturing = d
         return d.addCallbacks(self.set, self.fail)
 
     def observe(self, d):
-        """Observe the result of `d`.
+        """Capture and pass-through the result of `d`.
 
         The result (or failure) coming out of `d` will be saved in this
         `DeferredValue`, but the result (or failure) will be propagated
         intact.
 
         :param d: :py:class:`Deferred`.
+        :raise AlreadyCalledError: If another `Deferred` is already being
+            captured or observed.
         """
+        if self.waiters is None:
+            raise AlreadyCalledError(
+                "Value already set to %r." % (self.value,))
+        if self.capturing is not None:
+            raise AlreadyCalledError(
+                "Already capturing %r." % (self.capturing,))
+        if self.observing is not None:
+            raise AlreadyCalledError(
+                "Already observing %r." % (self.observing,))
+
         def set_and_return(value):
             self.set(value)
             return value
 
-        def fail_and_return(failure):
-            self.fail(failure)
-            return failure
-
-        return d.addCallbacks(
-            set_and_return, fail_and_return)
+        self.observing = d
+        return d.addBoth(set_and_return)
 
     def get(self, timeout=None):
         """Get a promise for the value.
@@ -402,8 +457,14 @@ class DeferredValue:
     def cancel(self):
         """Cancel all waiters and prevent further use of this object.
 
+        If a `Deferred` was being captured, it is cancelled, which is a no-op
+        if it has already fired, and this object's reference to it is cleared.
+
+        If a `Deferred` was being observed, it is *not* cancelled, and this
+        object's reference to it is cleared.
+
         After cancelling, `AlreadyCalledError` will be raised if `set` is
-        called, and the `Deferred` returned from `get` will have already been
+        called, and any `Deferred`s returned from `get` will be already
         cancelled.
         """
         if self.waiters is None:
@@ -413,3 +474,7 @@ class DeferredValue:
         waiters, self.waiters = self.waiters, None
         for waiter in waiters.copy():
             waiter.cancel()
+        capturing, self.capturing = self.capturing, None
+        if capturing is not None:
+            capturing.cancel()
+        self.observing = None
