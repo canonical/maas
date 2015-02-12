@@ -202,7 +202,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'moonshot',
-        'description': 'iLO4 Moonshot Chassis',
+        'description': 'HP Moonshot - iLO4 (IPMI)',
         'fields': [
             make_json_field('power_address', "Power address"),
             make_json_field('power_user', "Power user"),
@@ -259,7 +259,7 @@ JSON_POWER_TYPE_PARAMETERS = [
     },
     {
         'name': 'mscm',
-        'description': "Moonshot HP iLO Chassis Manager",
+        'description': "HP Moonshot - iLO Chassis Manager",
         'fields': [
             make_json_field('power_address', "IP for MSCM CLI API"),
             make_json_field('power_user', "MSCM CLI API user"),
