@@ -107,6 +107,14 @@ adulterated.
 
 .. _nose: http://readthedocs.org/docs/nose/en/latest/
 
+.. Note::
+
+   When running ``make test`` through ssh from a machine with locales
+   that are not set up on the machine that runs the tests, some tests
+   will fail with a ``MismatchError`` and an "unsupported locale
+   setting" message. Running ``locale-gen`` for the missing locales or
+   changing your locales on your workstation to ones present on the
+   server will solve the issue.
 
 Running JavaScript tests
 ^^^^^^^^^^^^^^^^^^^^^^^^
