@@ -85,6 +85,7 @@ API / CLI Documentation
    :maxdepth: 2
 
    api
+   api_authentication
    maascli
    capabilities
 
