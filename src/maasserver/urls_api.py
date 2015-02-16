@@ -42,6 +42,10 @@ from maasserver.api.commissioning_scripts import (
     CommissioningScriptHandler,
     CommissioningScriptsHandler,
     )
+from maasserver.api.devices import (
+    DeviceHandler,
+    DevicesHandler,
+    )
 from maasserver.api.doc_handler import (
     api_doc,
     describe,
@@ -120,6 +124,8 @@ network_handler = RestrictedResource(NetworkHandler, authentication=api_auth)
 networks_handler = RestrictedResource(NetworksHandler, authentication=api_auth)
 node_handler = RestrictedResource(NodeHandler, authentication=api_auth)
 nodes_handler = RestrictedResource(NodesHandler, authentication=api_auth)
+device_handler = RestrictedResource(DeviceHandler, authentication=api_auth)
+devices_handler = RestrictedResource(DevicesHandler, authentication=api_auth)
 node_mac_handler = RestrictedResource(NodeMacHandler, authentication=api_auth)
 node_macs_handler = RestrictedResource(
     NodeMacsHandler, authentication=api_auth)
@@ -203,6 +209,10 @@ urlpatterns += patterns(
     # For backward compatibility, handle obviously repeated paths as if they
     # were not repeated. See https://bugs.launchpad.net/maas/+bug/1131323.
     url(r'^nodes/.*/nodes/$', nodes_handler),
+    url(
+        r'^devices/(?P<system_id>[\w\-]+)/$', device_handler,
+        name='device_handler'),
+    url(r'^devices/$', devices_handler, name='devices_handler'),
     url(
         r'^nodegroups/(?P<uuid>[^/]+)/$',
         nodegroup_handler, name='nodegroup_handler'),

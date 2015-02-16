@@ -1035,6 +1035,11 @@ class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
     """
 
 
+class DeviceWithMACsForm(WithMACAddressesMixin, DeviceForm):
+    """A version of the DeviceForm which includes the multi-MAC address field.
+    """
+
+
 def get_node_create_form(user):
     if user.is_superuser:
         return AdminNodeWithMACAddressesForm
