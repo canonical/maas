@@ -350,111 +350,6 @@ class EnlistmentAPITest(MultipleUsersScenarios,
         self.assertItemsEqual(
             ['architecture'], parsed_result, response.content)
 
-    def test_POST_rejects_empty_architecture_if_implicitely_installable(self):
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
-            })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('application/json', response['Content-Type'])
-        parsed_result = json.loads(response.content)
-        self.assertItemsEqual(
-            {"architecture":
-                ["Architecture must be defined for installable nodes."]},
-            parsed_result, response.content)
-
-    def test_POST_rejects_empty_architecture_if_explicitely_installable(self):
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'autodetect_nodegroup': '1',
-                'hostname': 'diane',
-                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
-                'installable': True,
-            })
-
-        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
-        self.assertIn('application/json', response['Content-Type'])
-        parsed_result = json.loads(response.content)
-        self.assertItemsEqual(
-            {"architecture":
-                ["Architecture must be defined for installable nodes."]},
-            parsed_result, response.content)
-
-
-class NonInstallableNodeEnlistmentAPITest(MultipleUsersScenarios,
-                                          MAASServerTestCase):
-    """Enlistment tests for non-installable nodes."""
-
-    scenarios = [
-        ('user', dict(userfactory=factory.make_User)),
-        ('admin', dict(userfactory=factory.make_admin)),
-    ]
-
-    def test_POST_enlists_non_installable_node(self):
-        cluster = factory.make_NodeGroup()
-        hostname = factory.make_name('hostname')
-        mac1 = 'aa:bb:cc:dd:ee:ff'
-        mac2 = 'ff:bb:cc:dd:ee:ff'
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'nodegroup': cluster.uuid,
-                'hostname': hostname,
-                'mac_addresses': [mac1, mac2],
-                'installable': False,
-            })
-
-        self.assertEqual(
-            httplib.OK, response.status_code, response.content)
-        [host] = Node.objects.filter(hostname=hostname)
-        self.assertEqual(
-            [
-                hostname,
-                [mac1, mac2],
-                None,
-                self.logged_in_user,
-            ],
-            [
-                host.hostname,
-                [mac.mac_address for mac in host.macaddress_set.all()],
-                host.architecture,
-                host.owner,
-            ])
-
-
-class NonInstallableNodeAnonEnlistmentAPITest(MAASServerTestCase):
-    """Enlistment tests for non-installable nodes. Anonymous users."""
-
-    def test_POST_anon_user_cannot_enlist_noninstallable_nodes(self):
-        cluster = factory.make_NodeGroup()
-        hostname = factory.make_name('hostname')
-        mac = 'aa:bb:cc:dd:ee:ff'
-        response = self.client.post(
-            reverse('nodes_handler'),
-            {
-                'op': 'new',
-                'nodegroup': cluster.uuid,
-                'hostname': hostname,
-                'mac_addresses': [mac],
-                'installable': False,
-            })
-
-        self.assertEqual(
-            (
-                httplib.BAD_REQUEST,
-                {'installable':
-                    ['Anonymous users cannot register non-installable nodes']},
-            ),
-            (response.status_code, json.loads(response.content)))
-
 
 class NodeHostnameEnlistmentTest(MultipleUsersScenarios,
                                  MAASServerTestCase):
@@ -632,7 +527,6 @@ class AnonymousEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
-                'installable',
                 'parent',
                 'status',
                 'osystem',
@@ -730,7 +624,6 @@ class SimpleUserLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
-                'installable',
                 'parent',
                 'status',
                 'substatus',
@@ -883,7 +776,6 @@ class AdminLoggedInEnlistmentAPITest(MAASServerTestCase):
                 'system_id',
                 'macaddress_set',
                 'architecture',
-                'installable',
                 'parent',
                 'status',
                 'substatus',

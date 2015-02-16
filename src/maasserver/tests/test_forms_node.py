@@ -64,7 +64,6 @@ class TestNodeForm(MAASServerTestCase):
             [
                 'hostname',
                 'architecture',
-                'installable',
                 'osystem',
                 'distro_series',
                 'license_key',
@@ -480,7 +479,6 @@ class TestAdminNodeForm(MAASServerTestCase):
             [
                 'hostname',
                 'architecture',
-                'installable',
                 'osystem',
                 'distro_series',
                 'license_key',

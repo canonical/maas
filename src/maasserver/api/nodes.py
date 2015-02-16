@@ -40,7 +40,6 @@ from maasserver.api.utils import (
     get_optional_param,
     )
 from maasserver.clusterrpc.power_parameters import get_power_types
-from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_PERMISSION,
@@ -91,7 +90,6 @@ DISPLAYED_NODE_FIELDS = (
     'owner',
     ('macaddress_set', ('mac_address',)),
     'architecture',
-    'installable',
     'parent',
     'cpu_count',
     'memory',
@@ -219,7 +217,7 @@ class NodeHandler(OperationsHandler):
 
         Returns 404 if the node is not found.
         """
-        return Node.objects.get_node_or_404(
+        return Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id):
@@ -256,14 +254,9 @@ class NodeHandler(OperationsHandler):
         Returns 404 if the node is node found.
         Returns 403 if the user does not have permission to update the node.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        if 'installable' in request.data:
-            installable = request.data.get('installable', 'True') != 'False'
-            Form = get_node_edit_form(request.user, installable=installable)
-        else:
-            Form = get_node_edit_form(
-                request.user, installable=node.installable)
+        Form = get_node_edit_form(request.user)
         form = Form(data=request.data, instance=node)
 
         if form.is_valid():
@@ -278,7 +271,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to delete the node.
         Returns 204 if the node is successfully deleted.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.ADMIN)
         node.delete()
@@ -313,7 +306,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to stop the node.
         """
         stop_mode = request.POST.get('stop_mode', 'hard')
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
         power_action_sent = node.stop(request.user, stop_mode=stop_mode)
@@ -348,7 +341,7 @@ class NodeHandler(OperationsHandler):
         series = request.POST.get('distro_series', None)
         license_key = request.POST.get('license_key', None)
 
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
 
@@ -384,7 +377,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to release the node.
         Returns 409 if the node is in a state where it may not be released.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.READY:
             # Nothing to do.  This may be a redundant retry, and the
@@ -471,7 +464,7 @@ class NodeHandler(OperationsHandler):
         Returns 503 if there are not enough IPs left on the cluster interface
         to which the mac_address is linked.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
         if node.status == NODE_STATUS.ALLOCATED:
             raise NodeStateViolation(
@@ -491,14 +484,6 @@ class NodeHandler(OperationsHandler):
         sticky_ips = mac_address.claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY,
             requested_address=requested_address)
-        # If the node is non-installable, generate the DHCP mappings and
-        # update the DNS zone.
-        if not node.installable:
-            claims = [
-                (static_ip.ip, mac_address.mac_address.get_raw())
-                for static_ip in sticky_ips]
-            node.update_host_maps(claims)
-            dns_update_zones([node.nodegroup])
         maaslog.info(
             "%s: Sticky IP address(es) allocated: %s", node.hostname,
             ', '.join(allocation.ip for allocation in sticky_ips))
@@ -518,7 +503,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to mark the node
         broken.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.EDIT)
         error_description = get_optional_param(
             request.POST, 'error_description', '')
@@ -533,7 +518,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to mark the node
         broken.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             user=request.user, system_id=system_id, perm=NODE_PERMISSION.ADMIN)
         node.mark_fixed()
         maaslog.info(
@@ -622,7 +607,7 @@ class NodeHandler(OperationsHandler):
         Returns 403 if the user does not have permission to abort the
         current operation.
         """
-        node = Node.objects.get_node_or_404(
+        node = Node.nodes.get_node_or_404(
             system_id=system_id, user=request.user,
             perm=NODE_PERMISSION.EDIT)
         node.abort_operation(request.user)
@@ -681,14 +666,7 @@ def create_node(request):
         if nodegroup is not None:
             altered_query_data['nodegroup'] = nodegroup
 
-    installable = not (request.data.get('installable', 'True') == 'False')
-
-    if not installable and request.user.is_anonymous():
-        raise MAASAPIValidationError(
-            {'installable':
-                ["Anonymous users cannot register non-installable nodes"]})
-
-    Form = get_node_create_form(request.user, installable=installable)
+    Form = get_node_create_form(request.user)
     form = Form(data=altered_query_data, request=request)
     if form.is_valid():
         node = form.save()
@@ -724,17 +702,9 @@ class AnonNodesHandler(AnonymousOperationsHandler):
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        for installable nodes or
-        installable=False
-        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        for non-installable nodes.
 
         :param architecture: A string containing the architecture type of
-            the node.  Can be empty where creating non-installable nodes.
-        :param installable: Whether or not this node can be installable. A
-            installable node is a full fledged node MAAS controls.  A
-            non-installable node is a node for which MAAS only manages
-            DHCP and DNS records (defaults to True).
+            the node.
         :param mac_addresses: One or more MAC addresses for the node.
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
@@ -793,24 +763,16 @@ class NodesHandler(OperationsHandler):
         The minimum data required is:
         architecture=<arch string> (e.g. "i386/generic")
         mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        for installable nodes or
-        installable=False
-        mac_addresses=<value> (e.g. "aa:bb:cc:dd:ee:ff")
-        for non-installable nodes.
 
         :param architecture: A string containing the architecture type of
-            the node.  Can be empty where creating non-installable nodes.
-        :param installable: Whether or not this node can be installable. A
-            installable node is a full fledged node MAAS controls.  A
-            non-installable node is a node for which MAAS only manages
-            DHCP and DNS records (defaults to True).
+            the node.
         :param mac_addresses: One or more MAC addresses for the node.
         :param hostname: A hostname. If not given, one will be generated.
         :param power_type: A power management type, if applicable (e.g.
             "virsh", "ipmi").
         """
         node = create_node(request)
-        if request.user.is_superuser and node.installable:
+        if request.user.is_superuser:
             node.accept_enlistment(request.user)
         return node
 
@@ -823,7 +785,7 @@ class NodesHandler(OperationsHandler):
         """
         if not system_ids:
             return
-        existing_nodes = Node.objects.filter(system_id__in=system_ids)
+        existing_nodes = Node.nodes.filter(system_id__in=system_ids)
         existing_ids = set(existing_nodes.values_list('system_id', flat=True))
         unknown_ids = system_ids - existing_ids
         if len(unknown_ids) > 0:
@@ -856,7 +818,7 @@ class NodesHandler(OperationsHandler):
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.objects.get_nodes(
+        nodes = Node.nodes.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN, ids=system_ids)
         if len(nodes) < len(system_ids):
             permitted_ids = set(node.system_id for node in nodes)
@@ -880,7 +842,7 @@ class NodesHandler(OperationsHandler):
             by this call.  Thus, nodes that were already accepted are excluded
             from the result.
         """
-        nodes = Node.objects.get_nodes(
+        nodes = Node.nodes.get_nodes(
             request.user, perm=NODE_PERMISSION.ADMIN)
         nodes = nodes.filter(status=NODE_STATUS.NEW)
         nodes = [node.accept_enlistment(request.user) for node in nodes]
@@ -912,7 +874,7 @@ class NodesHandler(OperationsHandler):
             'failed_tests': NODE_STATUS.FAILED_COMMISSIONING,
             'minutes': settings.COMMISSIONING_TIMEOUT
             }
-        query = Node.objects.raw("""
+        query = Node.nodes.raw("""
             UPDATE maasserver_node
             SET
                 status = %(failed_tests)s,
@@ -949,7 +911,7 @@ class NodesHandler(OperationsHandler):
          # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.objects.get_nodes(
+        nodes = Node.nodes.get_nodes(
             request.user, perm=NODE_PERMISSION.EDIT, ids=system_ids)
         if len(nodes) < len(system_ids):
             permitted_ids = set(node.system_id for node in nodes)
@@ -1009,7 +971,7 @@ class NodesHandler(OperationsHandler):
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
 
         # Fetch nodes and apply filters.
-        nodes = Node.objects.get_nodes(
+        nodes = Node.nodes.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             nodes = nodes.filter(macaddress__mac_address__in=match_macs)
@@ -1038,7 +1000,7 @@ class NodesHandler(OperationsHandler):
         """Fetch Nodes that were allocated to the User/oauth token."""
         token = get_oauth_token(request)
         match_ids = get_optional_list(request.GET, 'id')
-        nodes = Node.objects.get_allocated_visible_nodes(token, match_ids)
+        nodes = Node.nodes.get_allocated_visible_nodes(token, match_ids)
         return nodes.order_by('id')
 
     @operation(idempotent=False)
@@ -1110,7 +1072,7 @@ class NodesHandler(OperationsHandler):
         # This lock prevents a node we've picked as available from
         # becoming unavailable before our transaction commits.
         with locks.node_acquire:
-            nodes = Node.objects.get_available_nodes_for_acquisition(
+            nodes = Node.nodes.get_available_nodes_for_acquisition(
                 request.user)
             nodes = form.filter_nodes(nodes)
             node = get_first(nodes)
@@ -1169,9 +1131,9 @@ class NodesHandler(OperationsHandler):
         match_ids = get_optional_list(request.GET, 'id')
 
         if match_ids is None:
-            nodes = Node.objects.all()
+            nodes = Node.nodes.all()
         else:
-            nodes = Node.objects.filter(system_id__in=match_ids)
+            nodes = Node.nodes.filter(system_id__in=match_ids)
 
         return {node.system_id: node.power_parameters for node in nodes}
 
@@ -1189,7 +1151,7 @@ class NodesHandler(OperationsHandler):
         # Check the existence of these nodes first.
         self._check_system_ids_exist(system_ids)
         # Make sure that the user has the required permission.
-        nodes = Node.objects.get_nodes(
+        nodes = Node.nodes.get_nodes(
             request.user, perm=NODE_PERMISSION.VIEW, ids=system_ids)
         permitted_ids = set(node.system_id for node in nodes)
         if len(nodes) != len(system_ids):

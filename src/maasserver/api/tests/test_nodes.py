@@ -456,6 +456,23 @@ class TestNodesAPI(APITestCase):
             [node.system_id for node in nodes],
             extract_system_ids(parsed_result))
 
+    def test_GET_list_doesnt_list_devices(self):
+        nodes = [
+            factory.make_Node(agent_name=factory.make_name('agent-name'))
+            for _ in range(3)]
+        # Create devices.
+        nodes = [
+            factory.make_Node(installable=False)
+            for _ in range(3)]
+        response = self.client.get(reverse('nodes_handler'), {'op': 'list'})
+        self.assertEqual(httplib.OK, response.status_code)
+        parsed_result = json.loads(response.content)
+        system_ids = extract_system_ids(parsed_result)
+        self.assertEqual(
+            [],
+            [node.system_id for node in nodes if node.system_id in system_ids],
+            "Node listing contains devices.")
+
     def test_GET_list_with_zone_filters_by_zone(self):
         non_listed_node = factory.make_Node(
             zone=factory.make_Zone(name='twilight'))
@@ -1064,6 +1081,16 @@ class TestNodesAPI(APITestCase):
             (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
             (response.status_code, response.content))
 
+    def test_POST_accept_fails_for_device(self):
+        self.become_admin()
+        factory.make_Node(installable=False)
+        node_id = factory.make_string()
+        response = self.client.post(
+            reverse('nodes_handler'), {'op': 'accept', 'nodes': [node_id]})
+        self.assertEqual(
+            (httplib.BAD_REQUEST, "Unknown node(s): %s." % node_id),
+            (response.status_code, response.content))
+
     def test_POST_accept_accepts_multiple_nodes(self):
         # This will change when we add provisioning.  Until then,
         # acceptance gets a node straight to Ready state.
@@ -1109,6 +1136,18 @@ class TestNodesAPI(APITestCase):
             reverse('nodes_handler'), {'op': 'release'})
         self.assertEqual(
             (httplib.OK, "[]"), (response.status_code, response.content))
+
+    def test_POST_release_ignores_devices(self):
+        node_ids = {
+            factory.make_Node(installable=False).system_id
+            for _ in xrange(3)
+            }
+        response = self.client.post(
+            reverse('nodes_handler'), {
+                'op': 'release',
+                'nodes': node_ids
+                })
+        self.assertEqual(httplib.BAD_REQUEST, response.status_code)
 
     def test_POST_release_rejects_request_from_unauthorized_user(self):
         node = factory.make_Node(
@@ -1388,6 +1427,17 @@ class TestDeploymentStatus(APITestCase):
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual("Unknown node(s): foo, bar.", response.content)
+
+    def test_GET_rejects_devices(self):
+        owned_node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.get(
+            self.endpoint,
+            {'op': 'deployment_status', 'nodes': [owned_node.system_id]})
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
+        self.assertThat(
+            response.content, Contains("Unknown node(s)"))
 
 
 class TestBackwardCompatiblityFixNodesAPI(APITestCase):

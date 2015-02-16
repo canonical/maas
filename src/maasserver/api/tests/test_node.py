@@ -23,12 +23,10 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver import forms
-from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODE_STATUS_CHOICES,
-    NODEGROUPINTERFACE_MANAGEMENT,
     POWER_STATE,
     )
 from maasserver.fields import (
@@ -235,12 +233,26 @@ class TestNodeAPI(APITestCase):
         self.assertItemsEqual(
             [device.name for device in devices], parsed_devices)
 
+    def test_GET_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.get(self.get_node_uri(node))
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
     def test_POST_stop_checks_permission(self):
         node = factory.make_Node()
         node_stop = self.patch(node, 'stop')
         response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertThat(node_stop, MockNotCalled())
+
+    def test_POST_stop_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.post(self.get_node_uri(node), {'op': 'stop'})
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
         # The node may not be stopped by stop_nodes because, for example, its
@@ -305,6 +317,13 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             node.system_id, json.loads(response.content)['system_id'])
+
+    def test_POST_start_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.post(self.get_node_uri(node), {'op': 'start'})
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_start_sets_osystem_and_distro_series(self):
         self.patch(node_module, 'wait_for_power_command')
@@ -474,6 +493,13 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(NODE_STATUS.READY, reload_object(node).status)
 
+    def test_POST_release_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.post(self.get_node_uri(node), {'op': 'release'})
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
     def test_POST_release_forbidden_if_user_cannot_edit_node(self):
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.client.post(
@@ -570,36 +596,6 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(0, Node.objects.filter(hostname='diane').count())
         self.assertEqual(1, Node.objects.filter(hostname='francis').count())
 
-    def test_PUT_validates_architecture_for_installable_node(self):
-        node = factory.make_Node(
-            owner=self.logged_in_user, installable=False)
-        response = self.client_put(
-            self.get_node_uri(node), {'installable': True})
-        self.assertEqual(
-            httplib.BAD_REQUEST, response.status_code, response.content)
-        self.assertIn('application/json', response['Content-Type'])
-        parsed_result = json.loads(response.content)
-        self.assertItemsEqual(
-            {"architecture":
-                ["Architecture must be defined for installable nodes."]},
-            parsed_result, response.content)
-
-    def test_PUT_updates_parent(self):
-        old_parent = factory.make_Node()
-        new_parent = factory.make_Node()
-        arch = make_usable_architecture(self)
-        node = factory.make_Node(
-            owner=self.logged_in_user, parent=old_parent, architecture=arch,
-            installable=False)
-        response = self.client_put(
-            self.get_node_uri(node), {'parent': new_parent.system_id})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_result = json.loads(response.content)
-        self.assertEqual(new_parent.system_id, parsed_result['parent'])
-        self.assertEqual(
-            new_parent.system_id,
-            Node.objects.get(system_id=node.system_id).parent.system_id)
-
     def test_PUT_omitted_hostname(self):
         hostname = factory.make_name('hostname')
         arch = make_usable_architecture(self)
@@ -610,6 +606,13 @@ class TestNodeAPI(APITestCase):
             {'architecture': arch})
         self.assertEqual(httplib.OK, response.status_code, response.content)
         self.assertTrue(Node.objects.filter(hostname=hostname).exists())
+
+    def test_PUT_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.put(self.get_node_uri(node))
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_PUT_ignores_unknown_fields(self):
         node = factory.make_Node(
@@ -991,6 +994,13 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(204, response.status_code)
         self.assertItemsEqual([], Node.objects.filter(system_id=system_id))
 
+    def test_DELETE_rejects_device(self):
+        node = factory.make_Node(
+            installable=False, owner=self.logged_in_user)
+        response = self.client.delete(self.get_node_uri(node))
+        self.assertEqual(
+            httplib.NOT_FOUND, response.status_code, response.content)
+
     def test_DELETE_deletes_node_fails_if_not_admin(self):
         # Only superusers can delete nodes.
         node = factory.make_Node(owner=self.logged_in_user)
@@ -1197,62 +1207,6 @@ class TestStickyIP(APITestCase):
             })
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
-
-
-class TestNonInstallableStickyIP(APITestCase):
-    """Tests for /api/1.0/nodes/<node>/?op=claim_sticky_ip_address for
-    non-installable nodes.
-    """
-
-    def get_node_uri(self, node):
-        """Get the API URI for `node`."""
-        return reverse('node_handler', args=[node.system_id])
-
-    def test_claim_ip_address_claims_ip_address(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
-        node = factory.make_Node(
-            installable=False, parent=parent, mac=True, disable_ipv4=False,
-            owner=self.logged_in_user)
-        # Silence 'update_host_maps'.
-        self.patch(node_module, "update_host_maps")
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-        parsed_node = json.loads(response.content)
-        [returned_ip] = parsed_node["ip_addresses"]
-        [given_ip] = StaticIPAddress.objects.all()
-        self.assertEqual(
-            (given_ip.ip, IPADDRESS_TYPE.STICKY),
-            (returned_ip, given_ip.alloc_type)
-            )
-
-    def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface(
-            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
-        node = factory.make_Node(
-            installable=False, parent=parent, mac=True, disable_ipv4=False,
-            owner=self.logged_in_user, nodegroup=parent.nodegroup)
-        dns_update_zones = self.patch(api_nodes, 'dns_update_zones')
-        update_host_maps = self.patch(node_module, "update_host_maps")
-        update_host_maps.return_value = []  # No failures.
-        response = self.client.post(
-            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
-        self.assertEqual(httplib.OK, response.status_code, response.content)
-
-        self.assertItemsEqual(
-            [node.get_primary_mac()],
-            node.mac_addresses_on_managed_interfaces())
-        # Host maps are updated.
-        self.assertThat(
-            update_host_maps, MockCalledOnceWith({
-                node.nodegroup: {
-                    ip_address.ip: mac.mac_address
-                    for ip_address in mac.ip_addresses.all()
-                }
-                for mac in node.mac_addresses_on_managed_interfaces()
-            }))
-        # DNS has been updated.
-        self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
 
 class TestGetDetails(APITestCase):

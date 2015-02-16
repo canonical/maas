@@ -495,16 +495,6 @@ class NodeForm(MAASModelForm):
 
         return new_hostname
 
-    def clean_installable(self):
-        data = self.submitted_data
-        if 'ui_submission' in data and 'installable' not in data:
-            # In the UI, where all fields are submitted except checkboxes in
-            # the "off" state, a missing boolean field means False.
-            # (In the API, as enforced by MAASModelForm, a missing boolean
-            # field means "unchanged").
-            self.cleaned_data['installable'] = False
-        return self.cleaned_data['installable']
-
     def clean_distro_series(self):
         return clean_distro_series_field(self, 'distro_series', 'osystem')
 
@@ -537,20 +527,10 @@ class NodeForm(MAASModelForm):
         is_valid = super(NodeForm, self).is_valid()
         if not is_valid:
             return False
-        installable = self.cleaned_data.get('installable')
-        architecture = self.cleaned_data.get('architecture', '')
-        if installable:
-            # If the node is installable, its architecture must be defined.
-            if not architecture:
-                set_form_error(
-                    self, "architecture",
-                    "Architecture must be defined for installable nodes.")
-                is_valid = False
-            else:
-                if len(list_all_usable_architectures()) == 0:
-                    set_form_error(
-                        self, "architecture", NO_ARCHITECTURES_AVAILABLE)
-                    is_valid = False
+        if len(list_all_usable_architectures()) == 0:
+            set_form_error(
+                self, "architecture", NO_ARCHITECTURES_AVAILABLE)
+            is_valid = False
         return is_valid
 
     def clean_license_key(self):
@@ -633,9 +613,6 @@ class NodeForm(MAASModelForm):
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
 
-    installable = forms.BooleanField(
-        required=False, initial=True, widget=CheckboxInputTrueDefault())
-
     class Meta:
         model = Node
 
@@ -644,7 +621,6 @@ class NodeForm(MAASModelForm):
         fields = (
             'hostname',
             'architecture',
-            'installable',
             'osystem',
             'distro_series',
             'license_key',
@@ -652,7 +628,7 @@ class NodeForm(MAASModelForm):
             )
 
 
-class NonInstallableNodeForm(MAASModelForm):
+class DeviceForm(MAASModelForm):
     parent = forms.ModelChoiceField(
         required=False, initial=None,
         queryset=Node.objects.all(), to_field_name='system_id')
@@ -663,12 +639,11 @@ class NonInstallableNodeForm(MAASModelForm):
         fields = (
             'nodegroup',
             'hostname',
-            'installable',
             'parent',
         )
 
     def __init__(self, request=None, *args, **kwargs):
-        super(NonInstallableNodeForm, self).__init__(*args, **kwargs)
+        super(DeviceForm, self).__init__(*args, **kwargs)
         self.request = request
 
         instance = kwargs.get('instance')
@@ -680,7 +655,8 @@ class NonInstallableNodeForm(MAASModelForm):
                 required=False, empty_label="Default (master)")
 
     def save(self, commit=True):
-        node = super(NonInstallableNodeForm, self).save(commit=False)
+        node = super(DeviceForm, self).save(commit=False)
+        node.installable = False
         if self.new_node:
             # Set the owner: non-installable nodes are owned by their
             # creator.
@@ -846,9 +822,7 @@ class AdminNodeForm(NodeForm):
         return node
 
 
-def get_node_edit_form(user, installable=True):
-    if not installable:
-        return NonInstallableNodeForm
+def get_node_edit_form(user):
     if user.is_superuser:
         return AdminNodeForm
     else:
@@ -1061,16 +1035,7 @@ class NodeWithMACAddressesForm(WithMACAddressesMixin, NodeForm):
     """
 
 
-class NonInstallableNodeWithMACsForm(WithMACAddressesMixin,
-                                     NonInstallableNodeForm):
-    """A version of the NonInstallableNodeForm which includes the multi-MAC
-    address field.
-    """
-
-
-def get_node_create_form(user, installable=True):
-    if not installable:
-        return NonInstallableNodeWithMACsForm
+def get_node_create_form(user):
     if user.is_superuser:
         return AdminNodeWithMACAddressesForm
     else:

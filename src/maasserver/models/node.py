@@ -475,7 +475,7 @@ class Node(CleanSave, TimestampedModel):
 
     architecture = CharField(max_length=31, blank=True, null=True)
 
-    installable = BooleanField(default=True, db_index=True)
+    installable = BooleanField(default=True, db_index=True, editable=False)
 
     parent = ForeignKey(
         "Node", default=None, blank=True, null=True, editable=True,
