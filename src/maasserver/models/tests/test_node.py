@@ -2176,12 +2176,8 @@ class NodeManagerTest(MAASServerTestCase):
         node.set_netboot(False)
         self.assertFalse(node.netboot)
 
-    def test_children_field_returns_children(self):
-        parent = factory.make_Node()
-        # Create other nodes.
-        [factory.make_Node() for _ in range(3)]
-        children = [factory.make_Node(parent=parent) for _ in range(3)]
-        self.assertItemsEqual(parent.children.all(), children)
+
+class TestNodeErase(MAASServerTestCase):
 
     def test_release_or_erase_erases_when_enabled(self):
         owner = factory.make_User()
@@ -2205,6 +2201,16 @@ class NodeManagerTest(MAASServerTestCase):
         self.assertThat(release_mock, MockCalledOnceWith())
         self.assertThat(erase_mock, MockNotCalled())
 
+
+class TestNodeParentRelationShip(MAASServerTestCase):
+
+    def test_children_field_returns_children(self):
+        parent = factory.make_Node()
+        # Create other nodes.
+        [factory.make_Node() for _ in range(3)]
+        children = [factory.make_Node(parent=parent) for _ in range(3)]
+        self.assertItemsEqual(parent.children.all(), children)
+
     def test_children_get_deleted_when_parent_is_deleted(self):
         parent = factory.make_Node()
         # Create children.
@@ -2222,6 +2228,31 @@ class NodeManagerTest(MAASServerTestCase):
         parent.release()
         self.assertItemsEqual([], parent.children.all())
         self.assertItemsEqual(other_nodes + [parent], Node.objects.all())
+
+
+class TestAllNodeManagers(MAASServerTestCase):
+    """Test the node's managers."""
+
+    def test_objects_lists_installable_nodes(self):
+        # Create nodes.
+        nodes = [factory.make_Node(installable=True) for _ in range(3)]
+        # Create devices.
+        [factory.make_Node(installable=False) for _ in range(3)]
+        self.assertItemsEqual(nodes, Node.nodes.all())
+
+    def test_devices_lists_noninstallable_nodes(self):
+        # Create nodes.
+        [factory.make_Node(installable=True) for _ in range(3)]
+        # Create devices.
+        devices = [factory.make_Node(installable=False) for _ in range(3)]
+        self.assertItemsEqual(devices, Node.devices.all())
+
+    def test_all_lists_all_nodes(self):
+        # Create nodes.
+        nodes = [factory.make_Node(installable=True) for _ in range(3)]
+        # Create devices.
+        devices = [factory.make_Node(installable=False) for _ in range(3)]
+        self.assertItemsEqual(nodes + devices, Node.objects.all())
 
 
 class TestNodeTransitionMonitors(MAASServerTestCase):

@@ -193,8 +193,14 @@ PowerInfo = namedtuple("PowerInfo", (
     "power_parameters"))
 
 
-class NodeManager(Manager):
+class BaseNodeManager(Manager):
     """A utility to manage the collection of Nodes."""
+
+    extra_filters = {}
+
+    def get_queryset(self):
+        return super(
+            BaseNodeManager, self).get_queryset().filter(**self.extra_filters)
 
     def filter_by_ids(self, query, ids=None):
         """Filter `query` result set by system_id values.
@@ -311,7 +317,8 @@ class NodeManager(Manager):
            docs.djangoproject.com/en/dev/topics/http/views/
            #the-http404-exception
         """
-        node = get_object_or_404(Node, system_id=system_id)
+        node = get_object_or_404(
+            Node, system_id=system_id, **self.extra_filters)
         if user.has_perm(perm, node):
             return node
         else:
@@ -327,6 +334,22 @@ class NodeManager(Manager):
         """
         available_nodes = self.get_nodes(for_user, NODE_PERMISSION.VIEW)
         return available_nodes.filter(status=NODE_STATUS.READY)
+
+
+class GeneralManager(BaseNodeManager):
+    """All the nodes: installable and non-installable together."""
+
+
+class NodeManager(BaseNodeManager):
+    """Installable nodes (i.e. non-devices objects)."""
+
+    extra_filters = {'installable': True}
+
+
+class DeviceManager(BaseNodeManager):
+    """Devices are all the non-installable nodes."""
+
+    extra_filters = {'installable': False}
 
 
 def patch_pgarray_types():
@@ -533,7 +556,18 @@ class Node(CleanSave, TimestampedModel):
         MACAddress, default=None, blank=True, null=True, editable=False,
         related_name='+', on_delete=SET_NULL)
 
-    objects = NodeManager()
+    # Note that the ordering of the managers is meaningul.  More precisely, the
+    # first manager defined is important: see
+    # https://docs.djangoproject.com/en/1.7/topics/db/managers/ ("Default
+    # managers") for details.
+    # 'objects' are all the nodes: installable and non-installable together.
+    objects = GeneralManager()
+
+    # 'nodes' are all the installable nodes (i.e. non-devices objects).
+    nodes = NodeManager()
+
+    # 'devices' are all the non-installable nodes.
+    devices = DeviceManager()
 
     def __unicode__(self):
         if self.hostname:
