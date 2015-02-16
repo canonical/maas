@@ -284,10 +284,17 @@ man_pages = [
 intersphinx_mapping = {'http://docs.python.org/': None}
 
 # Gather information about the branch and the build date.
-from subprocess import check_output
-bzr_last_revision_number = check_output(['bzr', 'revno'])
-bzr_last_revision_date = check_output(['bzr', 'version-info', '--template={date}', '--custom'])
-bzr_build_date = check_output(['bzr', 'version-info', '--template={build_date}', '--custom'])
+from subprocess import check_output, CalledProcessError
+try:
+    bzr_last_revision_number = check_output(['bzr', 'revno'])
+    bzr_last_revision_date = check_output(['bzr', 'version-info', '--template={date}', '--custom'])
+    bzr_build_date = check_output(['bzr', 'version-info', '--template={build_date}', '--custom'])
+except (CalledProcessError):
+    # not a bzr repository
+    bzr_last_revision_number = 'unknown'
+    bzr_last_revision_date = check_output(['date', '-u', '+%Y-%m-%d %H:%M:%S %z'])
+    bzr_build_date = bzr_last_revision_date
+
 
 # Populate html_context with the variables used in the templates.
 html_context = {
