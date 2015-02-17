@@ -61,6 +61,8 @@ from twisted.application.service import MultiService
 from twisted.internet import reactor
 from twisted.internet.endpoints import AdoptedStreamServerEndpoint
 
+# Default port for regiond.
+DEFAULT_PORT = 5240
 
 logger = getLogger(__name__)
 
@@ -147,18 +149,19 @@ def make_ImportResourcesProgressService():
 
 def make_WebApplicationService():
     from maasserver.webapp import WebApplicationService
-    site_port = 5243  # config["port"]
+    site_port = DEFAULT_PORT  # config["port"]
     # Make a socket with SO_REUSEPORT set so that we can run multiple web
     # applications. This is easier to do from outside of Twisted as there's
     # not yet official support for setting socket options.
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-    s.bind(('localhost', site_port))
+    s.bind(('0.0.0.0', site_port))
     # Use a backlog of 50, which seems to be fairly common.
     s.listen(50)
     # Adopt this socket into Twisted's reactor.
     site_endpoint = AdoptedStreamServerEndpoint(reactor, s.fileno(), s.family)
+    site_endpoint.port = site_port  # Make it easy to get the port number.
     site_endpoint.socket = s  # Prevent garbage collection.
     site_service = WebApplicationService(site_endpoint)
     return site_service

@@ -248,6 +248,7 @@ def get_curtin_installer_url(node):
     cluster_host = pick_cluster_controller_address(node)
     # XXX rvb(?): The path shouldn't be hardcoded like this, but rather synced
     # somehow with the content of contrib/maas-cluster-http.conf.
+    # Per etc/services cluster is opening port 5248 to serve images via HTTP
     image = get_curtin_image(node)
     if image['xinstall_type'] == 'tgz':
         url_prepend = ''
@@ -262,7 +263,7 @@ def get_curtin_installer_url(node):
         image['xinstall_path'],
         ])
     url = compose_URL(
-        'http:///MAAS/static/images/%s' % dyn_uri, cluster_host)
+        'http://:5248/images/%s' % dyn_uri, cluster_host)
     return url_prepend + url
 
 

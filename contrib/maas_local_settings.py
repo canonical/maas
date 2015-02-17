@@ -1,7 +1,7 @@
 # Default URL specifying protocol, host, and (if necessary) port where
 # systems in this MAAS can find the MAAS server.  Configuration can, and
 # probably should, override this.
-DEFAULT_MAAS_URL = "http://maas.internal.example.com/"
+DEFAULT_MAAS_URL = "http://maas.internal.example.com:5240/"
 
 # Absolute path to the directory static files should be collected to.
 STATIC_ROOT = '/usr/share/maas/web/static/'

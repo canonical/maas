@@ -1071,7 +1071,7 @@ class TestCurtinUtilities(
 
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
-            '%s:http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
+            '%s:http://%s:5248/images/%s/%s/%s/%s/%s/%s' % (
                 xinstall_type, interface.ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)
@@ -1130,7 +1130,7 @@ class TestCurtinUtilities(
 
         [interface] = node.nodegroup.get_managed_interfaces()
         self.assertEqual(
-            'http://%s/MAAS/static/images/%s/%s/%s/%s/%s/%s' % (
+            'http://%s:5248/images/%s/%s/%s/%s/%s/%s' % (
                 interface.ip, osystem['name'], arch, subarch,
                 series, boot_image['label'], xinstall_path),
             installer_url)

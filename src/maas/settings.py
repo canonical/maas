@@ -69,7 +69,7 @@ MAAS_CLI = 'sudo maas-region-admin'
 # Default URL specifying protocol, host, and (if necessary) port where
 # systems in this MAAS can find the MAAS server.  Configuration can, and
 # probably should, override this.
-DEFAULT_MAAS_URL = compose_URL("http:///", guess_server_host())
+DEFAULT_MAAS_URL = compose_URL("http:///:5240", guess_server_host())
 
 API_URL_REGEXP = '^/api/1[.]0/'
 METADATA_URL_REGEXP = '^/metadata/'

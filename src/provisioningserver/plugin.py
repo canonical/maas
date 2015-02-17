@@ -16,6 +16,9 @@ __all__ = [
     "ProvisioningServiceMaker",
 ]
 
+import os
+import socket
+
 from twisted.application.internet import TCPServer
 from twisted.application.service import IServiceMaker
 from twisted.cred.checkers import ICredentialsChecker
@@ -104,6 +107,35 @@ class ProvisioningServiceMaker:
         site_service.setName("site")
         return site_service
 
+    def _makeImageService(self):
+        from provisioningserver.pserv_services.image import (
+            BootImageEndpointService)
+        from twisted.internet.endpoints import AdoptedStreamServerEndpoint
+        from provisioningserver import config
+
+        port = 5248  # config["port"]
+        # Make a socket with SO_REUSEPORT set so that we can run multiple we
+        # applications. This is easier to do from outside of Twisted as there's
+        # not yet official support for setting socket options.
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        s.bind(('0.0.0.0', port))
+        # Use a backlog of 50, which seems to be fairly common.
+        s.listen(50)
+        # Adopt this socket into Twisted's reactor.
+        site_endpoint = AdoptedStreamServerEndpoint(
+            reactor, s.fileno(), s.family)
+        site_endpoint.port = port  # Make it easy to get the port number.
+        site_endpoint.socket = s  # Prevent garbage collection.
+
+        image_service = BootImageEndpointService(
+            resource_root=os.path.join(
+                config.BOOT_RESOURCES_STORAGE, "current"),
+            endpoint=site_endpoint)
+        image_service.setName("image_service")
+        return image_service
+
     def _makeTFTPService(self, tftp_config):
         """Create the dynamic TFTP service."""
         from provisioningserver.pserv_services.tftp import TFTPService
@@ -160,6 +192,9 @@ class ProvisioningServiceMaker:
         from provisioningserver.config import Config
 
         config = Config.load(options["config-file"])
+
+        image_service = self._makeImageService()
+        image_service.setServiceParent(services)
 
         tftp_service = self._makeTFTPService(config["tftp"])
         tftp_service.setServiceParent(services)

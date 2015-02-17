@@ -368,7 +368,7 @@ class TestConfig(MAASTestCase):
     default_development_config = deepcopy(default_production_config)
     default_development_config.update(logfile="/dev/null")
     default_development_config["tftp"].update(
-        port=5244, generator="http://localhost:5243/api/1.0/pxeconfig/")
+        port=5244, generator="http://localhost:5240/api/1.0/pxeconfig/")
 
     def test_get_defaults_returns_default_config(self):
         # The default configuration is production-ready.
@@ -412,7 +412,7 @@ class TestConfig(MAASTestCase):
             tftp:
               root: /var/lib/maas/tftp
               port: 5244
-              generator: http://localhost:5243/api/1.0/pxeconfig/
+              generator: http://localhost:5240/api/1.0/pxeconfig/
             boot:
               architectures: ['i386', 'armhf']
               ephemeral:

@@ -41,14 +41,27 @@ from twisted.python.threadpool import ThreadPool
 from twisted.web.resource import Resource
 from twisted.web.server import Site
 from twisted.web.test.requesthelper import DummyRequest
-from twisted.web.wsgi import WSGIResource
 
 
 crochet.setup()
 
 
-class TestWebApplicationService(MAASTestCase):
+class TestResourceOverlay(MAASTestCase):
 
+    def make_resourceoverlay(self):
+        return webapp.ResourceOverlay(Resource())
+
+    def test__init__(self):
+        resource = self.make_resourceoverlay()
+        self.assertThat(resource, IsInstance(Resource))
+
+    def test_getChild(self):
+        resource = self.make_resourceoverlay()
+        self.assertThat(resource, IsInstance(webapp.ResourceOverlay))
+        self.assertThat(resource.basis, IsInstance(Resource))
+
+
+class TestWebApplicationService(MAASTestCase):
     def make_endpoint(self):
         return TCP4ServerEndpoint(reactor, 0, interface="localhost")
 
@@ -159,9 +172,9 @@ class TestWebApplicationService(MAASTestCase):
 
         resource = service.site.resource
         self.assertThat(resource, IsInstance(Resource))
-        wsgi_resource = resource.getChildWithDefault("MAAS", request=None)
-        self.assertThat(wsgi_resource, IsInstance(WSGIResource))
-        self.assertThat(wsgi_resource, MatchesStructure(
+        overlay_resource = resource.getChildWithDefault("MAAS", request=None)
+        self.assertThat(overlay_resource, IsInstance(webapp.ResourceOverlay))
+        self.assertThat(overlay_resource.basis, MatchesStructure(
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),
             _application=IsInstance(WSGIHandler)))
 

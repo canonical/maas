@@ -30,6 +30,7 @@ from twisted.web.resource import (
     Resource,
     )
 from twisted.web.server import Site
+from twisted.web.static import File
 from twisted.web.wsgi import WSGIResource
 
 
@@ -53,6 +54,39 @@ class StartFailedPage(ErrorPage, object):
         super(StartFailedPage, self).__init__(
             status=SERVICE_UNAVAILABLE, brief="MAAS failed to start",
             detail=html.tostring(traceback, encoding=unicode))
+
+
+class ResourceOverlay(Resource, object):
+    """A resource that can fall-back to a basis resource.
+
+    Children can be set using `putChild()` as usual. However, if path
+    traversal doesn't find one of these children, the `basis` resource is
+    returned, and path traversal will then be tried again through that it. In
+    addition, if path traversal results in this resource, rendering will also
+    be passed-through to the `basis` resource.
+
+    :ivar basis: An `IResource`.
+    """
+
+    def __init__(self, basis):
+        super(ResourceOverlay, self).__init__()
+        self.basis = basis
+
+    def getChild(self, path, request):
+        """Return the basis resource.
+
+        Also undo the path traversal that brought us here so that the basis
+        resource can be asked for it.
+        """
+        # Move back up one level in path traversal.
+        request.postpath.insert(0, path)
+        request.prepath.pop()
+        # Traversal will continue with the basis resource.
+        return self.basis
+
+    def render(self, request):
+        """Pass-through to the basis resource."""
+        return self.basis.render(request)
 
 
 class WebApplicationService(StreamServerEndpointService):
@@ -91,9 +125,12 @@ class WebApplicationService(StreamServerEndpointService):
         front-end configuration (i.e. Apache) so that there's no need to force
         script names.
         """
+
         root = Resource()
-        root.putChild("MAAS", WSGIResource(
-            reactor, self.threadpool, application))
+        webapp = ResourceOverlay(
+            WSGIResource(reactor, self.threadpool, application))
+        root.putChild("MAAS", webapp)
+        webapp.putChild('static', File("/usr/share/maas/web/static/"))
         self.site.resource = root
 
     def installFailed(self, failure):

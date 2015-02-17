@@ -177,7 +177,7 @@ class TestFactories(MAASTestCase):
             reactor=reactor, addressFamily=socket.AF_INET))
         self.assertThat(
             service.endpoint.socket.getsockname(),
-            Equals(("127.0.0.1", 5243)))
+            Equals(("0.0.0.0", 5240)))
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_WebApplicationService,

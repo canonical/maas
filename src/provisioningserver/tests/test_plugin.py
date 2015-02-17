@@ -32,6 +32,7 @@ from provisioningserver.plugin import (
 from provisioningserver.pserv_services.dhcp_probe_service import (
     DHCPProbeService,
     )
+from provisioningserver.pserv_services.image import BootImageEndpointService
 from provisioningserver.pserv_services.image_download_service import (
     ImageDownloadService,
     )
@@ -108,7 +109,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(service, MultiService)
         expected_services = [
             "dhcp_probe", "image_download", "lease_upload",
-            "node_monitor", "rpc", "tftp",
+            "node_monitor", "rpc", "tftp", "image_service"
             ]
         self.assertItemsEqual(expected_services, service.namedServices)
         self.assertEqual(
@@ -170,6 +171,28 @@ class TestProvisioningServiceMaker(MAASTestCase):
                 backend=expected_backend,
                 port=Equals(config["tftp"]["port"]),
             ))
+
+    def test_image_service(self):
+        from provisioningserver import config
+        from twisted.web.server import Site
+        from twisted.python.filepath import FilePath
+
+        options = Options()
+        options["config-file"] = self.write_config({})
+        service_maker = ProvisioningServiceMaker("Harry", "Hill")
+        service = service_maker.makeService(options)
+        image_service = service.getServiceNamed("image_service")
+        self.assertIsInstance(image_service, BootImageEndpointService)
+        self.assertIsInstance(image_service.site, Site)
+        resource = image_service.site.resource
+        root = resource.getChildWithDefault(
+            "images", request=None)
+        self.assertThat(root, IsInstance(FilePath))
+
+        resource_root = os.path.join(
+            config.BOOT_RESOURCES_STORAGE, "current")
+
+        self.assertEqual(resource_root, root.path)
 
 
 class TestSingleUsernamePasswordChecker(MAASTestCase):

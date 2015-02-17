@@ -4,4 +4,4 @@ tftp            5244/udp        # Cluster TFTP service
 domain          5246/tcp        # DNS
 domain          5246/udp        # DNS
 rndc            5247/tcp        # DNS RNDC
-rpc-cluster     5248/tcp        # Cluster RPC
+cluster         5248/tcp        # Cluster Image Server
