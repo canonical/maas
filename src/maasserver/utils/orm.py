@@ -36,6 +36,7 @@ from django.core.exceptions import MultipleObjectsReturned
 from django.db import transaction
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
+import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 
 
@@ -155,6 +156,44 @@ def find_pgcode(exception):
             return find_pgcode(exception)
 
 
+def get_psycopg2_exception(exception):
+    """Find the root PostgreSQL error from an database exception.
+
+    We may be dealing with a raw exception or with a wrapper provided by
+    Django, put there by ``DatabaseErrorWrapper``. As a belt-n-braces measure
+    this searches for instances of `psycopg2.Error`, then, if not found, in
+    the exception's cause (``__cause__``), recursively.
+
+    :return: The underlying `psycopg2.Error`, or `None` if there isn't one.
+    """
+    try:
+        exception = exception.__cause__
+    except AttributeError:
+        return exception if isinstance(exception, psycopg2.Error) else None
+    else:
+        return get_psycopg2_exception(exception)
+
+
+def get_psycopg2_serialization_exception(exception):
+    """Return the root-cause if `exception` is a serialization failure.
+
+    PostgreSQL sets a specific error code, "40001", when a transaction breaks
+    because of a serialization failure.
+
+    :return: The underlying `psycopg2.Error` if it's a serialization failure,
+    or `None` if there isn't one.
+
+    :see: http://www.postgresql.org/docs/9.3/static/transaction-iso.html
+    """
+    exception = get_psycopg2_exception(exception)
+    if exception is None:
+        return None
+    elif exception.pgcode == SERIALIZATION_FAILURE:
+        return exception
+    else:
+        return None
+
+
 def is_serialization_failure(exception):
     """Does `exception` represent a serialization failure?
 
@@ -164,21 +203,27 @@ def is_serialization_failure(exception):
 
     :see: http://www.postgresql.org/docs/9.3/static/transaction-iso.html
     """
-    if isinstance(exception, OperationalError):
-        return find_pgcode(exception) == SERIALIZATION_FAILURE
-    else:
-        return False
+    return get_psycopg2_serialization_exception(exception) is not None
+
+
+class SerializationFailure(psycopg2.OperationalError):
+    """Explicit serialization failure."""
+
+    pgcode = SERIALIZATION_FAILURE
 
 
 def make_serialization_failure():
     """Make a serialization exception.
 
-    :returns: an instance of :py:class:`OperationalError` that will pass an
+    Artificially construct an exception that resembles what Django's ORM would
+    raise when PostgreSQL fails a transaction because of a serialization
+    failure.
+
+    :returns: an instance of :py:class:`OperationalError` that will pass the
         `is_serialization_failure` predicate.
     """
     exception = OperationalError()
-    exception.__cause__ = Exception()
-    exception.__cause__.pgcode = SERIALIZATION_FAILURE
+    exception.__cause__ = SerializationFailure()
     assert is_serialization_failure(exception)
     return exception
 
@@ -258,15 +303,15 @@ def outside_atomic_block(using="default"):
             depth = depth - 1
 
 
-def validate_in_transaction(connection):
-    """Ensure that `connection` is within a transaction.
+def in_transaction(connection):
+    """Is `connection` in the midst of a transaction?
 
     This only enquires as to Django's perspective on the situation. It does
     not actually check that the database agrees with Django.
 
-    :raise TransactionManagementError: If no transaction is in progress.
+    :return: bool
     """
-    in_transaction = (
+    return (
         # Django's new transaction management stuff is active.
         connection.in_atomic_block or (
             # Django's "legacy" transaction management system is active.
@@ -275,7 +320,17 @@ def validate_in_transaction(connection):
             connection.transaction_state[-1]
         )
     )
-    if not in_transaction:
+
+
+def validate_in_transaction(connection):
+    """Ensure that `connection` is within a transaction.
+
+    This only enquires as to Django's perspective on the situation. It does
+    not actually check that the database agrees with Django.
+
+    :raise TransactionManagementError: If no transaction is in progress.
+    """
+    if not in_transaction(connection):
         raise TransactionManagementError(
             "PostgreSQL's large object support demands that all interactions "
             "are done in a transaction. Further, lobject() has been known to "

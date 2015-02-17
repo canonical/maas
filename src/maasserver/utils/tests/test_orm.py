@@ -31,6 +31,8 @@ from maasserver.utils.orm import (
     find_pgcode,
     get_first,
     get_one,
+    get_psycopg2_exception,
+    get_psycopg2_serialization_exception,
     is_serialization_failure,
     macs_contain,
     macs_do_not_contain,
@@ -53,6 +55,7 @@ from mock import (
     Mock,
     sentinel,
     )
+import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from testtools.matchers import MatchesPredicate
 
@@ -213,6 +216,42 @@ class TestFindPGCode(SerializationFailureTestCase):
             OperationalError, self.cause_serialization_failure)
         self.assertEqual(SERIALIZATION_FAILURE, find_pgcode(error.__cause__))
         self.assertRaises(AttributeError, getattr, error, "pgcode")
+
+
+class TestGetPsycopg2Exception(MAASTestCase):
+    """Tests for `get_psycopg2_exception`."""
+
+    def test__returns_psycopg2_error(self):
+        exception = psycopg2.Error()
+        self.assertIs(exception, get_psycopg2_exception(exception))
+
+    def test__returns_None_for_other_error(self):
+        exception = factory.make_exception()
+        self.assertIsNone(get_psycopg2_serialization_exception(exception))
+
+    def test__returns_psycopg2_error_root_cause(self):
+        exception = Exception()
+        exception.__cause__ = orm.SerializationFailure()
+        self.assertIs(exception.__cause__, get_psycopg2_exception(exception))
+
+
+class TestGetPsycopg2SerializationException(MAASTestCase):
+    """Tests for `get_psycopg2_serialization_exception`."""
+
+    def test__returns_None_for_plain_psycopg2_error(self):
+        exception = psycopg2.Error()
+        self.assertIsNone(get_psycopg2_serialization_exception(exception))
+
+    def test__returns_None_for_other_error(self):
+        exception = factory.make_exception()
+        self.assertIsNone(get_psycopg2_serialization_exception(exception))
+
+    def test__returns_psycopg2_error_root_cause(self):
+        exception = Exception()
+        exception.__cause__ = orm.SerializationFailure()
+        self.assertIs(
+            exception.__cause__,
+            get_psycopg2_serialization_exception(exception))
 
 
 class TestIsSerializationFailure(SerializationFailureTestCase):
