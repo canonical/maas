@@ -68,7 +68,6 @@ setup(
              'etc/maas/drivers.yaml',
              'etc/maas_cluster.conf',
              'contrib/maas-http.conf',
-             'contrib/maas-cluster-http.conf',
              'contrib/maas_local_settings.py']),
         ('/etc/maas/templates/uefi',
             glob('etc/maas/templates/uefi/*.template')),
