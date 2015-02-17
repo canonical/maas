@@ -405,10 +405,17 @@ class TestNodeGroupAPI(APITestCase):
                 password=password, prefix_filter=prefix_filter,
                 accept_all=True))
 
+
+class TestNodeGroupAPIForUCSM(APITestCase):
+
+    scenarios = [
+        ('deprecated', {'endpoint': 'probe_and_enlist_ucsm'}),
+        ('unified', {'endpoint': 'probe_and_enlist_hardware'}),
+    ]
+
     def test_probe_and_enlist_ucsm_adds_ucsm(self):
         self.become_admin()
         user = self.logged_in_user
-        nodegroup = factory.make_NodeGroup()
         url = 'http://url'
         username = factory.make_name('user')
         password = factory.make_name('password')
@@ -421,7 +428,10 @@ class TestNodeGroupAPI(APITestCase):
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
-                'op': 'probe_and_enlist_ucsm',
+                'op': self.endpoint,
+                # The deprecated version of the API doesn't need the
+                # 'model' key, but it will simply be ignored.
+                'model': 'ucsm',
                 'url': url,
                 'username': username,
                 'password': password,
@@ -438,6 +448,14 @@ class TestNodeGroupAPI(APITestCase):
                 EnlistNodesFromUCSM, user=user.username, url=url,
                 username=username, password=password, accept_all=True))
 
+
+class TestNodeGroupAPIForMSCM(APITestCase):
+
+    scenarios = [
+        ('deprecated', {'endpoint': 'probe_and_enlist_mscm'}),
+        ('unified', {'endpoint': 'probe_and_enlist_hardware'}),
+    ]
+
     def test_probe_and_enlist_mscm_adds_mscm(self):
         self.become_admin()
         user = self.logged_in_user
@@ -453,7 +471,10 @@ class TestNodeGroupAPI(APITestCase):
         response = self.client.post(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
-                'op': 'probe_and_enlist_mscm',
+                'op': self.endpoint,
+                # The deprecated version of the API doesn't need the
+                # 'model' key, but it will simply be ignored.
+                'model': 'mcsm',
                 'host': host,
                 'username': username,
                 'password': password,

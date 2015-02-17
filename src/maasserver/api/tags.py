@@ -23,7 +23,7 @@ import httplib
 from django.core.exceptions import PermissionDenied
 from django.db.utils import DatabaseError
 from django.http import HttpResponse
-from maasserver.api.node_groups import check_nodegroup_access
+from maasserver.api.nodegroups import check_nodegroup_access
 from maasserver.api.support import (
     operation,
     OperationsHandler,

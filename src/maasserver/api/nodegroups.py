@@ -440,15 +440,32 @@ class NodeGroupHandler(OperationsHandler):
             nodegroup.add_virsh(
                 user, poweraddr, password=password,
                 prefix_filter=prefix_filter, accept_all=accept_all)
+        elif model == 'ucsm':
+            self.do_probe_and_enlist_ucsm(nodegroup, request, user)
+        elif model == 'mcsm':
+            self.do_probe_and_enlist_mscm(nodegroup, request, user)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 
         return HttpResponse(status=httplib.OK)
 
+    def do_probe_and_enlist_ucsm(self, nodegroup, request, user):
+        """Probe and enlist UCSM"""
+        url = get_mandatory_param(request.data, 'url')
+        username = get_mandatory_param(request.data, 'username')
+        password = get_mandatory_param(request.data, 'password')
+        accept_all = self.accept_all_nodes(
+            get_optional_param(request.data, 'accept_all'))
+        nodegroup.enlist_nodes_from_ucsm(
+            user, url, username, password, accept_all)
+
     @admin_method
     @operation(idempotent=False)
     def probe_and_enlist_ucsm(self, request, uuid):
         """Add the nodes from a Cisco UCS Manager.
+
+        **Warning: this API is deprecated in favor of
+        probe_and_enlist_hardware.**
 
         :param url: The URL of the UCS Manager API.
         :type url: unicode
@@ -465,23 +482,29 @@ class NodeGroupHandler(OperationsHandler):
         Returns 400 if the required parameters were not passed.
         """
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
-
         user = request.user.username
-        url = get_mandatory_param(request.data, 'url')
+
+        self.do_probe_and_enlist_ucsm(nodegroup, request, user)
+
+        return HttpResponse(status=httplib.OK)
+
+    def do_probe_and_enlist_mscm(self, nodegroup, request, user):
+        """Probe and enlist MSCM"""
+        host = get_mandatory_param(request.data, 'host')
         username = get_mandatory_param(request.data, 'username')
         password = get_mandatory_param(request.data, 'password')
         accept_all = self.accept_all_nodes(
             get_optional_param(request.data, 'accept_all'))
-
-        nodegroup.enlist_nodes_from_ucsm(
-            user, url, username, password, accept_all)
-
-        return HttpResponse(status=httplib.OK)
+        nodegroup.enlist_nodes_from_mscm(
+            user, host, username, password, accept_all)
 
     @admin_method
     @operation(idempotent=False)
     def probe_and_enlist_mscm(self, request, uuid):
         """Add the nodes from a Moonshot HP iLO Chassis Manager (MSCM).
+
+        **Warning: this API is deprecated in favor of
+        probe_and_enlist_hardware.**
 
         :param host: IP Address for the MSCM.
         :type host: unicode
@@ -500,13 +523,6 @@ class NodeGroupHandler(OperationsHandler):
         nodegroup = get_object_or_404(NodeGroup, uuid=uuid)
 
         user = request.user.username
-        host = get_mandatory_param(request.data, 'host')
-        username = get_mandatory_param(request.data, 'username')
-        password = get_mandatory_param(request.data, 'password')
-        accept_all = self.accept_all_nodes(
-            get_optional_param(request.data, 'accept_all'))
-
-        nodegroup.enlist_nodes_from_mscm(
-            user, host, username, password, accept_all)
+        self.do_probe_and_enlist_mscm(nodegroup, request, user)
 
         return HttpResponse(status=httplib.OK)

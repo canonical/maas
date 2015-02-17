@@ -68,13 +68,13 @@ from maasserver.api.node_group_interfaces import (
     NodeGroupInterfaceHandler,
     NodeGroupInterfacesHandler,
     )
-from maasserver.api.node_groups import (
-    NodeGroupHandler,
-    NodeGroupsHandler,
-    )
 from maasserver.api.node_macs import (
     NodeMacHandler,
     NodeMacsHandler,
+    )
+from maasserver.api.nodegroups import (
+    NodeGroupHandler,
+    NodeGroupsHandler,
     )
 from maasserver.api.nodes import (
     NodeHandler,
