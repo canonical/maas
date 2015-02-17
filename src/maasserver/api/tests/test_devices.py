@@ -23,6 +23,7 @@ from maasserver.api import devices as api_devices
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
+    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
@@ -245,3 +246,65 @@ class TestDeviceAPI(APITestCase):
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], StaticIPAddress.objects.all())
+
+    def test_connect_mac_to_cluster_interface_connects_mac(self):
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        interface = factory.make_NodeGroupInterface(
+            cluster, network=None,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        mac = device.macaddress_set.all()[0]
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'connect_mac_to_cluster_interface',
+                'mac_address': (
+                    mac.mac_address.get_raw()),
+                'cluster_uuid': cluster.uuid,
+                'cluster_interface': interface.name,
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        self.assertEqual(interface, reload_object(mac).cluster_interface)
+
+    def test_connect_mac_to_cluster_interface_checks_permission(self):
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        interface = factory.make_NodeGroupInterface(
+            cluster, network=None,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=factory.make_User())
+        mac = device.macaddress_set.all()[0]
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'connect_mac_to_cluster_interface',
+                'mac_address': (
+                    mac.mac_address.get_raw()),
+                'cluster_uuid': cluster.uuid,
+                'cluster_interface': interface.name,
+            })
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_connect_mac_to_cluster_interface_rejects_unknown_mac(self):
+        cluster = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        interface = factory.make_NodeGroupInterface(
+            cluster, network=None,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        device = factory.make_Node(
+            installable=False, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'connect_mac_to_cluster_interface',
+                'mac_address': (
+                    factory.make_MAC()),
+                'cluster_uuid': cluster.uuid,
+                'cluster_interface': interface.name,
+            })
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
