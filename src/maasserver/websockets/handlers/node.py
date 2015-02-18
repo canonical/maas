@@ -29,7 +29,7 @@ class NodeHandler(TimestampedModelHandler):
 
     class Meta:
         queryset = (
-            Node.objects.filter(installable=True)
+            Node.nodes.filter(installable=True)
                 .select_related('nodegroup', 'pxe_mac', 'owner')
                 .prefetch_related('macaddress_set')
                 .prefetch_related('nodegroup__nodegroupinterface_set')
@@ -51,7 +51,6 @@ class NodeHandler(TimestampedModelHandler):
             "system_id",
             "hostname",
             "owner",
-            "zone",
             "cpu_count",
             "memory",
             "power_state",
@@ -65,7 +64,7 @@ class NodeHandler(TimestampedModelHandler):
     def get_queryset(self):
         """Return `QuerySet` for nodes only vewable by `user`."""
         nodes = super(NodeHandler, self).get_queryset()
-        return Node.objects.get_nodes(
+        return Node.nodes.get_nodes(
             self.user, NODE_PERMISSION.VIEW, from_nodes=nodes)
 
     def dehydrate_owner(self, user):
@@ -74,13 +73,6 @@ class NodeHandler(TimestampedModelHandler):
             return ""
         else:
             return user.username
-
-    def dehydrate_pxe_mac(self, mac_address):
-        """Return pxe mac as a string."""
-        if mac_address is None:
-            return None
-        else:
-            return "%s" % mac_address.mac_address
 
     def dehydrate_zone(self, zone):
         """Return zone name."""

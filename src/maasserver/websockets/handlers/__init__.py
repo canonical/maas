@@ -14,7 +14,13 @@ str = None
 __metaclass__ = type
 __all__ = [
     "NodeHandler",
+    "DeviceHandler",
     ]
 
-
+from maasserver.utils import ignore_unused
+from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.node import NodeHandler
+
+
+ignore_unused(DeviceHandler)
+ignore_unused(NodeHandler)

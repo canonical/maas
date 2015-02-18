@@ -368,7 +368,7 @@ class Handler:
                 )
 
     def listen(self, channel, action, pk):
-        """Called when the handler listens for events on channles with
+        """Called when the handler listens for events on channels with
         `Meta.listen_channels`.
 
         :param channel: Channel event occured on.

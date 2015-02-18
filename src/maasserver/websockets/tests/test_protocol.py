@@ -23,7 +23,10 @@ from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.async import transactional
 from maasserver.websockets import protocol as protocol_module
-from maasserver.websockets.handlers.node import NodeHandler
+from maasserver.websockets.handlers import (
+    DeviceHandler,
+    NodeHandler,
+    )
 from maasserver.websockets.protocol import (
     MSG_TYPE,
     RESPONSE_TYPE,
@@ -478,7 +481,7 @@ class TestWebSocketFactory(MAASTestCase):
 
     def test_loads_all_handlers(self):
         factory = WebSocketFactory()
-        self.assertItemsEqual(["node"], factory.handlers.keys())
+        self.assertItemsEqual(["device", "node"], factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
         mock_import = self.patch_autospec(protocol_module, "import_module")
@@ -497,6 +500,12 @@ class TestWebSocketFactory(MAASTestCase):
         self.assertIs(
             NodeHandler,
             factory.getHandler("node"))
+
+    def test_getHandler_returns_DeviceHandler(self):
+        factory = WebSocketFactory()
+        self.assertIs(
+            DeviceHandler,
+            factory.getHandler("device"))
 
     def test_buildProtocol_returns_WebSocketProtocol(self):
         factory = WebSocketFactory()

@@ -142,6 +142,16 @@ class TestNodeHandler(MAASServerTestCase):
             [self.dehydrate_node(node, for_list=True)],
             handler.list({}))
 
+    def test_list_ignores_devices(self):
+        owner = factory.make_User()
+        handler = NodeHandler(owner)
+        # Create a device.
+        factory.make_Node(owner=owner, installable=False)
+        node = factory.make_Node(owner=owner)
+        self.assertItemsEqual(
+            [self.dehydrate_node(node, for_list=True)],
+            handler.list({}))
+
     def test_list_num_queries_is_independent_of_num_nodes(self):
         handler = NodeHandler(factory.make_User())
         nodegroup = factory.make_NodeGroup()
