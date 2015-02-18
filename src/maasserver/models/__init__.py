@@ -22,6 +22,7 @@ __all__ = [
     'BootSourceSelection',
     'ComponentError',
     'Config',
+    'Device',
     'DHCPLease',
     'DownloadProgress',
     'Event',
@@ -72,7 +73,10 @@ from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
 from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.network import Network
-from maasserver.models.node import Node
+from maasserver.models.node import (
+    Device,
+    Node,
+    )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice

@@ -45,7 +45,20 @@ from maasserver.models import (
     NodeGroup,
     NodeGroupInterface,
     )
+from maasserver.models.node import Device
 from piston.utils import rc
+
+# Device's fields exposed on the API.
+DISPLAYED_DEVICE_FIELDS = (
+    'system_id',
+    'hostname',
+    'owner',
+    ('macaddress_set', ('mac_address',)),
+    'parent',
+    'tag_names',
+    'ip_addresses',
+    'zone',
+    )
 
 
 class DeviceHandler(OperationsHandler):
@@ -55,12 +68,36 @@ class DeviceHandler(OperationsHandler):
     """
     api_doc_section_name = "Device"
 
+    model = Device
+    fields = DISPLAYED_DEVICE_FIELDS
+
+    @classmethod
+    def parent(handler, node):
+        """Return the system ID of the parent, if any."""
+        if node.parent is None:
+            return None
+        else:
+            return node.parent.system_id
+
+    @classmethod
+    def hostname(handler, node):
+        """Override the 'hostname' field so that it returns the FQDN."""
+        return node.fqdn
+
+    @classmethod
+    def owner(handler, node):
+        """Override 'owner' so it emits the owner's name rather than a
+        full nested user object."""
+        if node.owner is None:
+            return None
+        return node.owner.username
+
     def read(self, request, system_id):
         """Read a specific device.
 
         Returns 404 if the device is not found.
         """
-        return Node.devices.get_node_or_404(
+        return Device.devices.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.VIEW)
 
     def update(self, request, system_id):
@@ -230,7 +267,7 @@ class DevicesHandler(OperationsHandler):
                     "Invalid MAC address(es): %s" % ", ".join(invalid_macs))
 
         # Fetch nodes and apply filters.
-        devices = Node.devices.get_nodes(
+        devices = Device.devices.get_nodes(
             request.user, NODE_PERMISSION.VIEW, ids=match_ids)
         if match_macs is not None:
             devices = devices.filter(macaddress__mac_address__in=match_macs)

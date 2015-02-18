@@ -68,6 +68,31 @@ class TestDevicesAPI(APITestCase):
             macs,
             {mac.mac_address for mac in device.macaddress_set.all()})
 
+    def test_POST_returns_limited_fields(self):
+        cluster = factory.make_NodeGroup()
+        response = self.client.post(
+            reverse('devices_handler'),
+            {
+                'op': 'new',
+                'nodegroup': cluster.id,
+                'hostname': factory.make_string(),
+                'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
+            })
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [
+                'hostname',
+                'owner',
+                'system_id',
+                'macaddress_set',
+                'parent',
+                'tag_names',
+                'ip_addresses',
+                'resource_uri',
+                'zone',
+            ],
+            list(parsed_result))
+
     def create_devices(self, owner, nodegroup=None, nb=3):
         return [
             factory.make_Node(
@@ -114,6 +139,24 @@ class TestDevicesAPI(APITestCase):
         self.assertItemsEqual(
             [matching_id],
             [device.get('system_id') for device in parsed_result])
+
+    def test_list_returns_limited_fields(self):
+        self.create_devices(owner=self.logged_in_user)
+        response = self.client.get(reverse('devices_handler'), {'op': 'list'})
+        parsed_result = json.loads(response.content)
+        self.assertItemsEqual(
+            [
+                'hostname',
+                'owner',
+                'system_id',
+                'macaddress_set',
+                'parent',
+                'tag_names',
+                'ip_addresses',
+                'resource_uri',
+                'zone',
+            ],
+            list(parsed_result[0]))
 
 
 def get_device_uri(device):

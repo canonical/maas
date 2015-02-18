@@ -114,6 +114,7 @@ from maasserver.models import (
     BootSourceCache,
     BootSourceSelection,
     Config,
+    Device,
     DownloadProgress,
     LargeFile,
     LicenseKey,
@@ -634,7 +635,7 @@ class DeviceForm(MAASModelForm):
         queryset=Node.objects.all(), to_field_name='system_id')
 
     class Meta:
-        model = Node
+        model = Device
 
         fields = (
             'nodegroup',

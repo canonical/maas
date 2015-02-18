@@ -90,7 +90,6 @@ DISPLAYED_NODE_FIELDS = (
     'owner',
     ('macaddress_set', ('mac_address',)),
     'architecture',
-    'parent',
     'cpu_count',
     'memory',
     'storage',
@@ -189,14 +188,6 @@ class NodeHandler(OperationsHandler):
         node got reworked.
         """
         return node.status
-
-    @classmethod
-    def parent(handler, node):
-        """Return the system ID of the parent, if any."""
-        if node.parent is None:
-            return None
-        else:
-            return node.parent.system_id
 
     # Override the 'hostname' field so that it returns the FQDN instead as
     # this is used by Juju to reach that node.

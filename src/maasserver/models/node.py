@@ -319,7 +319,7 @@ class BaseNodeManager(Manager):
            #the-http404-exception
         """
         node = get_object_or_404(
-            Node, system_id=system_id, **self.extra_filters)
+            self.model, system_id=system_id, **self.extra_filters)
         if user.has_perm(perm, node):
             return node
         else:
@@ -1704,3 +1704,13 @@ class Node(CleanSave, TimestampedModel):
             power_info)
         wait_for_power_command(d)
         return True
+
+
+# Piston serializes objects based on the object class.
+# Here we define a proxy class so that we can specialize how devices are
+# serialized on the API.
+class Device(Node):
+    """A non-installable node."""
+
+    class Meta:
+        proxy = True
