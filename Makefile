@@ -299,7 +299,7 @@ endef
 # Development services.
 #
 
-service_names_region := database dns regiond regiond2 reloader web
+service_names_region := database dns regiond regiond2 reloader
 service_names_cluster := clusterd reloader
 service_names_all := $(service_names_region) $(service_names_cluster)
 
@@ -389,8 +389,6 @@ services/database/@deps: bin/database
 services/clusterd/@deps: bin/twistd.cluster
 
 services/reloader/@deps:
-
-services/web/@deps:
 
 services/regiond/@deps: bin/maas-region-admin
 

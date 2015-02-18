@@ -354,17 +354,13 @@ console. More importantly, it allows you to use ``pdb``, for example.
 A note of caution: some of the services have slightly different
 behaviour when run in the foreground:
 
-* Django (the *webapp* service) will be run with its auto-reloading
+* regiond (the *webapp* service) will be run with its auto-reloading
   enabled.
 
-* Apache (the *web* service) will run with ``-X``, which puts it in
-  debug mode: only one worker will be started and the server will not
-  detach from the console.
+There's a convenience target for hacking regiond that starts everything
+up, but with regiond in the foreground::
 
-There's a convenience target for hacking Django that starts everything
-up, but with Django in the foreground::
-
-  $ make run+webapp
+  $ make run+regiond
 
 Apparently Django needs a lot of debugging ;)
 

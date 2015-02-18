@@ -1,5 +1,4 @@
-http-region     5240/tcp        # Region front-end
-http-region-dev 5243/tcp        # Region application
+http-region     5240/tcp        # Region application
 tftp            5244/udp        # Cluster TFTP service
 domain          5246/tcp        # DNS
 domain          5246/udp        # DNS
