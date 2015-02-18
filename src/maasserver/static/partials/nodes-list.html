@@ -3,19 +3,19 @@
     <div class="filters three-col">
         <h3 class="filters__title">Filter by</h3>
         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-        <div class="ng-hide filters-data" data-ng-show="metadata.statuses.length">
+        <div class="ng-hide filters-data" data-ng-show="metadata.status.length">
             <h4 class="filters-data__title">Status</h4>
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-            <ul class="filters-data__list" data-ng-repeat="status in metadata.statuses | orderBy:['-count', 'name']">
+            <ul class="filters-data__list" data-ng-repeat="status in metadata.status | orderBy:['-count', 'name']">
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                 <li class="filters-data__item" data-ng-class="{ active: isFilterActive('status', status.name) }">
                     <a class="filters-data__link" href="" data-ng-click="toggleFilter('status', status.name)">{$ status.name $}</a> ({$ status.count $})
                 </li>
             </ul>
         </div>
-        <div class="ng-hide filters-data" data-ng-show="metadata.owners.length">
+        <div class="ng-hide filters-data" data-ng-show="metadata.owner.length">
             <h4 class="filters-data__title">Owner</h4>
-            <ul class="filters-data__list" data-ng-repeat="owner in metadata.owners | orderBy:['-count', 'name']">
+            <ul class="filters-data__list" data-ng-repeat="owner in metadata.owner | orderBy:['-count', 'name']">
                 <li class="filters-data__item" data-ng-class="{ active: isFilterActive('owner', owner.name) }">
                     <a class="filters-data__link" href="" data-ng-click="toggleFilter('owner', owner.name)">{$ owner.name $}</a> ({$ owner.count $})
                 </li>

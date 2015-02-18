@@ -16,8 +16,8 @@ angular.module('MAAS').controller('NodesListController', [
         // Set initial values.
         $scope.search = "";
         $scope.searchValid = true;
-        $scope.nodes = NodesManager.getNodes();
-        $scope.selectedNodes = NodesManager.getSelectedNodes();
+        $scope.nodes = NodesManager.getItems();
+        $scope.selectedNodes = NodesManager.getSelectedItems();
         $scope.filtered_nodes = [];
         $scope.predicate = 'fqdn';
         $scope.allViewableChecked = false;
@@ -47,9 +47,9 @@ angular.module('MAAS').controller('NodesListController', [
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node) {
             if(NodesManager.isSelected(node.system_id)) {
-                NodesManager.unselectNode(node.system_id);
+                NodesManager.unselectItem(node.system_id);
             } else {
-                NodesManager.selectNode(node.system_id);
+                NodesManager.selectItem(node.system_id);
             }
             updateAllViewableChecked();
         };
@@ -58,11 +58,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.toggleCheckAll = function() {
             if($scope.allViewableChecked) {
                 angular.forEach($scope.filtered_nodes, function(node) {
-                    NodesManager.unselectNode(node.system_id);
+                    NodesManager.unselectItem(node.system_id);
                 });
             } else {
                 angular.forEach($scope.filtered_nodes, function(node) {
-                    NodesManager.selectNode(node.system_id);
+                    NodesManager.selectItem(node.system_id);
                 });
             }
             updateAllViewableChecked();
@@ -102,7 +102,7 @@ angular.module('MAAS').controller('NodesListController', [
         RegionConnection.defaultConnect().then(function() {
             if(!NodesManager.isLoaded()) {
                 // Load the initial nodes.
-                NodesManager.loadNodes().then(null, function(error) {
+                NodesManager.loadItems().then(null, function(error) {
                     // Report error loading. This is simple handlng for now
                     // but this should show a nice error dialog or something.
                     console.log(error);

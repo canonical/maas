@@ -48,7 +48,7 @@ describe("NodesListController", function() {
             system_id: makeName("system_id"),
             $selected: false
         };
-        NodesManager._nodes.push(node);
+        NodesManager._items.push(node);
         return node;
     }
 
@@ -62,8 +62,8 @@ describe("NodesListController", function() {
         var controller = makeController();
         expect($scope.search).toBe("");
         expect($scope.searchValid).toBe(true);
-        expect($scope.nodes).toBe(NodesManager.getNodes());
-        expect($scope.selectedNodes).toBe(NodesManager.getSelectedNodes());
+        expect($scope.nodes).toBe(NodesManager.getItems());
+        expect($scope.selectedNodes).toBe(NodesManager.getSelectedItems());
         expect($scope.filtered_nodes).toEqual([]);
         expect($scope.predicate).toBe("fqdn");
         expect($scope.allViewableChecked).toBe(false);
@@ -72,19 +72,19 @@ describe("NodesListController", function() {
         expect($scope.column).toBe("fqdn");
     });
 
-    it("calls loadNodes if not loaded", function(done) {
-        spyOn(NodesManager, "loadNodes").and.callFake(function() {
+    it("calls loadItems if not loaded", function(done) {
+        spyOn(NodesManager, "loadItems").and.callFake(function() {
             done();
             return $q.defer().promise;
         });
         var controller = makeController();
     });
 
-    it("doesnt call loadNodes if loaded", function() {
+    it("doesnt call loadItems if loaded", function() {
         spyOn(NodesManager, "isLoaded").and.returnValue("true");
-        spyOn(NodesManager, "loadNodes").and.returnValue($q.defer().promise);
+        spyOn(NodesManager, "loadItems").and.returnValue($q.defer().promise);
         var controller = makeController();
-        expect(NodesManager.loadNodes).not.toHaveBeenCalled();
+        expect(NodesManager.loadItems).not.toHaveBeenCalled();
     });
 
     describe("toggleChecked", function() {
@@ -102,7 +102,7 @@ describe("NodesListController", function() {
         });
 
         it("deselects node", function() {
-            NodesManager.selectNode(node.system_id);
+            NodesManager.selectItem(node.system_id);
             $scope.toggleChecked(node);
             expect(node.$selected).toBe(false);
         });
