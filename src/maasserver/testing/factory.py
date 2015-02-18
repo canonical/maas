@@ -1038,14 +1038,16 @@ class Factory(maastesting.factory.Factory):
         return resource
 
     def make_BlockDevice(
-            self, node=None, name=None, path=None, size=None, block_size=None,
-            tags=None):
+            self, node=None, name=None, path=None, id_path=None, size=None,
+            block_size=None, tags=None):
         if node is None:
             node = self.make_Node()
         if name is None:
             name = self.make_name('name')
         if path is None:
             path = '/dev/%s' % name
+        if id_path is None:
+            id_path = '/dev/disk/by-id/id_%s' % name
         if size is None:
             size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:

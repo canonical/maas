@@ -108,6 +108,7 @@ DISPLAYED_NODE_FIELDS = (
     ('physicalblockdevice_set', (
         'name',
         'path',
+        'id_path',
         'size',
         'block_size',
         'model',

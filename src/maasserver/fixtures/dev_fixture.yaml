@@ -278,6 +278,7 @@
     node: 15
     name: sda
     path: /dev/sda
+    id_path: /dev/disk/by-id/id_for_sda
     size: 250059350016
     block_size: 4096
     tags: ['ssd', 'sata']
