@@ -23,6 +23,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.allViewableChecked = false;
         $scope.metadata = NodesManager.getMetadata();
         $scope.filters = SearchService.emptyFilter;
+        $scope.column = 'fqdn';
 
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {

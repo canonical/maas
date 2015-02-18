@@ -2,9 +2,12 @@
 <aside id="sidebar">
     <div class="filters three-col">
         <h3 class="filters__title">Filter by</h3>
+        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
         <div class="ng-hide filters-data" data-ng-show="metadata.statuses.length">
             <h4 class="filters-data__title">Status</h4>
+            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
             <ul class="filters-data__list" data-ng-repeat="status in metadata.statuses | orderBy:['-count', 'name']">
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                 <li class="filters-data__item" data-ng-class="{ active: isFilterActive('status', status.name) }">
                     <a class="filters-data__link" href="" data-ng-click="toggleFilter('status', status.name)">{$ status.name $}</a> ({$ status.count $})
                 </li>
@@ -22,6 +25,7 @@
 </aside>
 <div class="nine-col last-col">
     <div id="search-bar" class="node-search">
+        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
         <input
             type="search" placeholder="Search nodes" class="node-search__input"
             data-ng-model="search" data-ng-change="updateFilters()"
@@ -32,71 +36,76 @@
         <thead>
             <tr>
                 <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                     <input type="checkbox" data-ng-click="toggleCheckAll()" data-ng-model="allViewableChecked" />
                 </th>
-                <th class="powerstate"></th>
-                <th>
-                    <a href="" data-ng-click="predicate='fqdn'; reverse=!reverse">
+                <th colspan="2" claas="table-listing__cell-fixed">
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='fqdn'; reverse=!reverse; column='fqdn'">
                         <acronym title="Fully Qualified Domain Name">FQDN</acronym>
-                    </a>
-                </th>
-                <th></th>
-                <th>
-                    <a href="" data-ng-click="predicate='status'; reverse=!reverse">Status</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='owner'; reverse=!reverse">Owner</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='cpu_count'; reverse=!reverse">Cores</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='memory'; reverse=!reverse">RAM (GiB)</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='disks'; reverse=!reverse">Disks</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='storage'; reverse=!reverse">Storage (GB)</a>
-                </th>
-                <th>
-                    <a href="" data-ng-click="predicate='pxe_mac'; reverse=!reverse">
+                    </a> /
+                    <a href="" data-ng-click="predicate='pxe_mac'; reverse=!reverse; column='pxe_mac'">
                         <acronym title="Media Access Control addresses">MAC</acronym>
                     </a>
                 </th>
                 <th>
-                    <a href="" data-ng-click="predicate='zone.name'; reverse=!reverse">Zone</a>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='owner'; reverse=!reverse">Owner</a>
+                </th>
+                <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='status'; reverse=!reverse">Status</a>
+                </th>
+                <th class="powerstate">
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='power_state'; reverse=!reverse">Power</a>
+                </th>
+                <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='cpu_count'; reverse=!reverse">Cores</a>
+                </th>
+                <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='memory'; reverse=!reverse">RAM (GiB)</a>
+                </th>
+                <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='storage'; reverse=!reverse">Storage (GB)</a>
+                </th>
+                <th>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                    <a href="" data-ng-click="predicate='disks'; reverse=!reverse">Disks</a>
                 </th>
             </tr>
         </thead>
+            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
             <tr data-ng-repeat="node in filtered_nodes = (nodes | nodesFilter:search | orderBy:predicate:reverse) track by node.system_id">
                 <td>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                     <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-model="node.$selected" />
                 </td>
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                <td class="node-column table-listing__cell-fixed" data-ng-show="$parent.column === 'fqdn'" colspan="2">
+                    <a href="{$ node.url $}">{$ node.fqdn $}</a>
+                </td>
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                <td class="ng-hide table-listing__cell-fixed" data-ng-show="$parent.column === 'pxe_mac'" colspan="2">
+                    <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                    <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                </td>
+                <td>{$ node.owner $}</td>
+                <td>{$ node.status $}</td>
                 <td class="powerstate">
                     <div title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}">
                     </div>
                 </td>
-                <td class="node-column">
-                    <a href="{$ node.url $}">{$ node.fqdn $}</a>
-                </td>
-                <td>
-                </td>
-                <td>{$ node.status $}</td>
-                <td>{$ node.owner $}</td>
                 <td>{$ node.cpu_count $}</td>
                 <td>{$ node.memory $}</td>
-                <td>{$ node.disks $}</td>
                 <td>{$ node.storage $}</td>
-                <td>
-                    <span title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</span>
-                    <span class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</span>
-                </td>
-                <td class="zone-column">
-                    <a href="{$ node.zone.url $}">{$ node.zone.name $}</a>
-                </td>
+                <td>{$ node.disks $}</td>
             </tr>
     </table>
+    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
     <div id="bulk-actions" class="ng-hide" data-ng-show="selectedNodes.length">
         {$ selectedNodes.length $} Selected Nodes
     </div>

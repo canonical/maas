@@ -69,6 +69,7 @@ describe("NodesListController", function() {
         expect($scope.allViewableChecked).toBe(false);
         expect($scope.metadata).toBe(NodesManager.getMetadata());
         expect($scope.filters).toBe(SearchService.emptyFilter);
+        expect($scope.column).toBe("fqdn");
     });
 
     it("calls loadNodes if not loaded", function(done) {

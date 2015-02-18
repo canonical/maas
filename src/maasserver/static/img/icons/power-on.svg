@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="14px" height="15px" viewBox="0 0 14 15" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns">
+    <!-- Generator: Sketch 3.2.2 (9983) - http://www.bohemiancoding.com/sketch -->
+    <title>power-on</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="power-icons" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" sketch:type="MSPage">
+        <g id="power-on" sketch:type="MSArtboardGroup" fill="#38B44A">
+            <path d="M11.0402963,2.32344828 L10.7157037,4.59103448 C11.5888889,5.53241379 12.068,6.7437931 12.068,8.01724138 C12.068,10.8041379 9.79377778,13.0727586 7,13.0727586 C4.20622222,13.0727586 1.93303704,10.8041379 1.93303704,8.01724138 C1.93303704,6.7437931 2.41214815,5.53241379 3.2842963,4.59103448 L2.9597037,2.32344828 C1.09925926,3.63517241 0,5.73517241 0,8.01724138 C0,11.8675862 3.14014815,15 7,15 C10.8598519,15 14,11.8675862 14,8.01724138 C14,5.73413793 12.9007407,3.63517241 11.0402963,2.32344828 Z M6,0 L8,0 L8,7 L6,7 L6,0 Z" id="Fill-2" sketch:type="MSShapeGroup"></path>
+        </g>
+    </g>
+</svg>

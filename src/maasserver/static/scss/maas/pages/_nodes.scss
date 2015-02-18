@@ -63,32 +63,37 @@
 }
 
 .powerstates {
-    @include rounded-corners(50%);
-    width: 10px;
-    height: 10px;
+    width: 14px;
+    height: 15px;
     display: inline-block;
 
     &.power-on {
-        background-color: #33CC00;
+        background: transparent url('../?img/icons/power-on.svg') left top no-repeat;
     }
 
     &.power-off {
-        background-color: #000000;
+        background: transparent url('../?img/icons/power-off.svg') left top no-repeat;
     }
 
     &.power-unknown {
-        background-color: #FFCC00;
+        background: none;
     }
 
     &.power-error {
-        background-color: #D00000;
+        background: transparent url('../?img/icons/power-on.svg') left top no-repeat;
     }
 
     &.power-check-ok {
+        @include rounded-corners(50%);
+        width: 10px;
+        height: 10px;
         color: #33CC00;
     }
 
     &.power-check-error {
+        @include rounded-corners(50%);
+        width: 10px;
+        height: 10px;
         color: #FF0000;
     }
 }

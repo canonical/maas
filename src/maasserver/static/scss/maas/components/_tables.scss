@@ -70,3 +70,12 @@ table {
         }
     }
 }
+
+.table-listing {
+
+    &__cell-fixed {
+        max-width: 200px;
+        min-width: 200px;
+        width: 200px;
+    }
+}
