@@ -340,7 +340,8 @@ LIST_MODALIASES_SCRIPT = \
     'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
 
 
-def gather_physical_block_devices(print_output=True):
+def gather_physical_block_devices(
+        print_output=True, dev_disk_byid='/dev/disk/by-id/'):
     """Gathers information about a nodes physical block devices.
 
     The following commands are ran in order to gather the required information.
@@ -359,6 +360,15 @@ def gather_physical_block_devices(print_output=True):
     """
     import shlex
     from subprocess import check_output
+
+    def _path_to_idpath(path):
+        """Searches dev_disk_byid for a device symlinked to /dev/[path]"""
+        if os.path.exists(dev_disk_byid):
+            for link in os.listdir(dev_disk_byid):
+                if os.path.exists(path) and os.path.samefile(
+                        os.path.join(dev_disk_byid, link), path):
+                    return os.path.join(dev_disk_byid, link)
+        return None
 
     # Grab the block devices from lsblk.
     blockdevs = []
@@ -410,6 +420,9 @@ def gather_physical_block_devices(print_output=True):
     # Grab the size of the device and block size.
     for block_info in blockdevs:
         block_path = block_info["PATH"]
+        id_path = _path_to_idpath(block_path)
+        if id_path is not None:
+            block_info["ID_PATH"] = id_path
         device_size = check_output(
             ("blockdev", "--getsize64", block_path))
         device_block_size = check_output(
@@ -472,6 +485,7 @@ def update_node_physical_block_devices(node, output, exit_status):
             node=node,
             name=block_info["NAME"],
             path=block_info["PATH"],
+            id_path=block_info.get("ID_PATH"),
             size=long(block_info["SIZE"]),
             block_size=int(block_info["BLOCK_SIZE"]),
             tags=tags,

@@ -637,24 +637,29 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         return 'NAME="%s" RO="%s" RM="%s" MODEL="%s" ROTA="%s"' % (
             name, read_only, removable, model, rotary)
 
-    def make_udevadm_output(self, name, serial=None, sata=True, cdrom=False):
+    def make_udevadm_output(
+            self, name, serial=None, sata=True, cdrom=False, dev='/dev'):
         if serial is None:
             serial = factory.make_name('serial')
         sata = "1" if sata else "0"
         output = dedent("""\
             P: /devices/pci0000:00/ata3/host2/target2:0:0/2:0:0:0/block/{name}
             N: {name}
-            E: DEVNAME=/dev/{name}
+            E: DEVNAME={dev}/{name}
             E: DEVTYPE=disk
             E: ID_ATA_SATA={sata}
             E: ID_SERIAL_SHORT={serial}
-            """).format(name=name, serial=serial, sata=sata)
+            """).format(dev=os.path.abspath(dev), name=name,
+                        serial=serial, sata=sata)
         if cdrom:
             output += "E: ID_CDROM=1"
         return output
 
-    def call_gather_physical_block_devices(self):
-        return json.loads(gather_physical_block_devices(print_output=False))
+    def call_gather_physical_block_devices(self,
+                                           dev_disk_byid='/dev/disk/by-id/'):
+        return json.loads(gather_physical_block_devices(
+            print_output=False,
+            dev_disk_byid=dev_disk_byid))
 
     def test__calls_lsblk(self):
         check_output = self.patch(subprocess, "check_output")
@@ -699,6 +704,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         serial = factory.make_name('serial')
         size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
+
         check_output = self.patch(subprocess, "check_output")
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
@@ -720,15 +726,26 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
         size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         check_output = self.patch(subprocess, "check_output")
+
+        # Create simulated /dev tree
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+        os.mknod(os.path.join(devroot, name))
+        os.symlink(os.path.join(devroot, name),
+                   os.path.join(byidroot, 'deviceid'))
+
         check_output.side_effect = [
             self.make_lsblk_output(name=name, model=model),
-            self.make_udevadm_output(name, serial=serial),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
             '%s' % size,
             '%s' % block_size,
             ]
         self.assertEquals([{
             "NAME": name,
-            "PATH": "/dev/%s" % name,
+            "PATH": os.path.join(devroot, name),
+            "ID_PATH": os.path.join(byidroot, 'deviceid'),
             "RO": "0",
             "RM": "0",
             "MODEL": model,
@@ -737,7 +754,42 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
-            }], self.call_gather_physical_block_devices())
+            }], self.call_gather_physical_block_devices(byidroot))
+
+    def test__returns_block_device_without_id_path(self):
+        """Block devices without by-id links should not have ID_PATH key"""
+        name = factory.make_name('name')
+        model = factory.make_name('model')
+        serial = factory.make_name('serial')
+        size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
+        block_size = random.choice([512, 1024, 4096])
+        check_output = self.patch(subprocess, "check_output")
+
+        # Create simulated /dev tree without by-id link
+        devroot = self.make_dir()
+        os.mkdir(os.path.join(devroot, 'disk'))
+        byidroot = os.path.join(devroot, 'disk', 'by_id')
+        os.mkdir(byidroot)
+        os.mknod(os.path.join(devroot, name))
+
+        check_output.side_effect = [
+            self.make_lsblk_output(name=name, model=model),
+            self.make_udevadm_output(name, serial=serial, dev=devroot),
+            '%s' % size,
+            '%s' % block_size,
+            ]
+        self.assertEquals([{
+            "NAME": name,
+            "PATH": os.path.join(devroot, name),
+            "RO": "0",
+            "RM": "0",
+            "MODEL": model,
+            "ROTA": "1",
+            "SATA": "1",
+            "SERIAL": serial,
+            "SIZE": "%s" % size,
+            "BLOCK_SIZE": "%s" % block_size,
+            }], self.call_gather_physical_block_devices(byidroot))
 
     def test__returns_block_device_readonly(self):
         name = factory.make_name('name')
@@ -870,12 +922,15 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
 class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def make_block_device(
-            self, name=None, path=None, size=None, block_size=None,
-            model=None, serial=None, rotary=True, removable=False, sata=False):
+            self, name=None, path=None, id_path=None, size=None,
+            block_size=None, model=None, serial=None, rotary=True,
+            removable=False, sata=False):
         if name is None:
             name = factory.make_name('name')
         if path is None:
             path = '/dev/%s' % name
+        if id_path is None:
+            id_path = '/dev/disk/by-id/deviceid'
         if size is None:
             size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         if block_size is None:
@@ -887,6 +942,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         return {
             "NAME": name,
             "PATH": path,
+            "ID_PATH": id_path,
             "SIZE": '%s' % size,
             "BLOCK_SIZE": '%s' % block_size,
             "MODEL": model,
@@ -937,6 +993,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
     def test__creates_physical_block_device(self):
         name = factory.make_name('name')
         path = '/dev/%s' % name
+        id_path = '/dev/disk/by-id/deviceid'
         size = random.randint(1000 * 1000, 1000 * 1000 * 1000)
         block_size = random.choice([512, 1024, 4096])
         model = factory.make_name('model')
@@ -950,8 +1007,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.assertThat(
             PhysicalBlockDevice.objects.filter(node=node).first(),
             MatchesStructure.byEquality(
-                name=name, path=path, size=size, block_size=block_size,
-                model=model, serial=serial))
+                name=name, path=path, id_path=id_path, size=size,
+                block_size=block_size, model=model, serial=serial))
 
     def test__creates_physical_block_device_only_for_node(self):
         device = self.make_block_device()

@@ -69,6 +69,10 @@ class BlockDevice(CleanSave, TimestampedModel):
         blank=False,
         help_text="Path of block device. (e.g. /dev/sda)")
 
+    id_path = FilePathField(
+        blank=True, null=True,
+        help_text="Path of by-id alias. (e.g. /dev/disk/by-id/wwn-0x50004...)")
+
     size = BigIntegerField(
         blank=False, null=False,
         help_text="Size of block device in bytes.")
