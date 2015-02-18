@@ -57,9 +57,9 @@ class ZoneView(DetailView):
     def get_context_data(self, **kwargs):
         context = super(ZoneView, self).get_context_data(**kwargs)
         query_string = urlencode(
-            [('query', 'zone=%s' % self.get_object().name)])
+            [('query', 'zone:(%s)' % self.get_object().name)])
         context["node_list_link"] = (
-            reverse('node-list') + "?" + query_string)
+            reverse('index') + "#/nodes" + "?" + query_string)
         return context
 
 

@@ -164,7 +164,7 @@ class SeleniumTestCase(TransactionTestCase, LiveServerTestCase):
     """
 
     # Load the selenium test fixture.
-    fixtures = ['selenium_tests_fixture.yaml']
+    fixtures = ['src/maastesting/protractor/fixture.yaml']
 
     @classmethod
     def setUpClass(cls):

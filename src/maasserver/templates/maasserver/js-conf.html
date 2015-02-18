@@ -1,3 +1,13 @@
+<script type="text/javascript"
+    src="{% url "combo-jquery" %}?jquery.min.js">
+</script>
+<script type="text/javascript"
+    src="{% url "combo-angularjs" %}?angular.min.js&angular-route.min.js">
+</script>
+<script type="text/javascript"
+    src="{% url "combo-maas" %}?{{ ANGULAR_LIST|join:"&" }}">
+</script>
+
 <script type="text/javascript">
 <!--
 var YUI_config = {

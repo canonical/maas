@@ -1,0 +1,5 @@
+## TFTP configuration.
+#
+tftp:
+  port: 5254
+  generator: http://localhost:5253/MAAS/api/1.0/pxeconfig/

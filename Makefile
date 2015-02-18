@@ -53,6 +53,8 @@ build: \
     bin/test.cli \
     bin/test.cluster \
     bin/test.config \
+    bin/test.js \
+    bin/skip.e2e \
     bin/test.region \
     bin/test.testing \
     bin/py bin/ipy \
@@ -101,6 +103,14 @@ bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install cli-test
 	@touch --no-create $@
 
+bin/test.js: bin/karma bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install js-test
+	@touch --no-create $@
+
+bin/skip.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install e2e-test
+	@touch --no-create $@
+
 bin/test.testing: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
@@ -129,6 +139,29 @@ bin/sphinx bin/sphinx-build: bin/buildout buildout.cfg versions.cfg setup.py
 bin/py bin/ipy: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install repl
 	@touch --no-create bin/py bin/ipy
+
+define karma-deps
+  karma
+  karma-chrome-launcher
+  karma-firefox-launcher
+  karma-jasmine
+  karma-opera-launcher
+  karma-phantomjs-launcher
+  karma-failed-reporter
+endef
+
+bin/karma: deps = $(strip $(karma-deps))
+bin/karma: prefix = include/nodejs
+bin/karma:
+	@mkdir -p $(@D) $(prefix)
+	npm install --cache-min 5184000 --prefix $(prefix) $(deps)
+	@ln -srf $(prefix)/node_modules/karma/bin/karma $@
+
+bin/protractor: prefix = include/nodejs
+bin/protractor:
+	@mkdir -p $(@D) $(prefix)
+	npm install --cache-min 5184000 --prefix $(prefix) protractor
+	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
 test: build
 	echo $(wildcard bin/test.*) | xargs -n1 env
@@ -217,7 +250,7 @@ distclean: clean stop
 	$(RM) -r build dist logs/* parts
 	$(RM) tags TAGS .installed.cfg
 	$(RM) -r *.egg *.egg-info src/*.egg-info
-	$(RM) -r run/* services/*/supervise
+	$(RM) -r run/* run-e2e/* services/*/supervise
 
 harness: bin/maas-region-admin bin/database
 	$(dbrun) bin/maas-region-admin shell --settings=maas.demo

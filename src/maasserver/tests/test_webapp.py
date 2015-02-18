@@ -24,6 +24,7 @@ from maasserver import (
     start_up,
     webapp,
     )
+from maasserver.websockets.protocol import WebSocketFactory
 from maastesting.factory import factory
 from maastesting.matchers import MockCalledOnceWith
 from maastesting.testcase import MAASTestCase
@@ -74,6 +75,7 @@ class TestWebApplicationService(MAASTestCase):
         service = self.make_webapp()
         self.assertThat(service.site, IsInstance(Site))
         self.assertThat(service.threadpool, IsInstance(ThreadPool))
+        self.assertThat(service.websocket, IsInstance(WebSocketFactory))
         # The thread-pool has not been started.
         self.assertFalse(service.threadpool.started)
 
@@ -96,7 +98,7 @@ class TestWebApplicationService(MAASTestCase):
             request.outgoingHeaders,
             ContainsDict({"retry-after": Equals("5")}))
 
-    def test__startService_starts_threadpool_and_application(self):
+    def test__startService_starts_threadpool_websocket_and_application(self):
         service = self.make_webapp()
         self.addCleanup(service.stopService)
 
@@ -109,6 +111,7 @@ class TestWebApplicationService(MAASTestCase):
         self.assertTrue(service.running)
         self.assertTrue(service.threadpool.started)
         self.assertThat(start_up.start_up, MockCalledOnceWith())
+        self.assertTrue(service.websocket.listener.connected())
 
     def test__error_when_starting_is_logged(self):
         service = self.make_webapp()
@@ -178,7 +181,7 @@ class TestWebApplicationService(MAASTestCase):
             _reactor=Is(reactor), _threadpool=Is(service.threadpool),
             _application=IsInstance(WSGIHandler)))
 
-    def test__stopService_stops_the_service_and_the_threadpool(self):
+    def test__stopService_stops_the_service_threadpool_and_the_websocket(self):
         service = self.make_webapp()
         self.patch_autospec(start_up, "start_up")
 
@@ -187,3 +190,4 @@ class TestWebApplicationService(MAASTestCase):
 
         self.assertFalse(service.running)
         self.assertEqual([], service.threadpool.threads)
+        self.assertFalse(service.websocket.listener.connected())

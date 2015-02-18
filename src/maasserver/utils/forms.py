@@ -14,7 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = [
     'compose_invalid_choice_text',
+    'get_QueryDict',
 ]
+
+from django.http import QueryDict
 
 
 def compose_invalid_choice_text(choice_of_what, valid_choices):
@@ -35,3 +38,14 @@ def compose_invalid_choice_text(choice_of_what, valid_choices):
         choice_of_what,
         ", ".join("'%s'" % name for name, value in valid_choices),
     )
+
+
+def get_QueryDict(params):
+    """Convert `params` to a `QueryDict`."""
+    query_dict = QueryDict('', mutable=True)
+    for k, v in params.items():
+        if isinstance(v, list):
+            query_dict.setlist(k, v)
+        else:
+            query_dict[k] = v
+    return query_dict

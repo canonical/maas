@@ -40,7 +40,7 @@
             <ul id="main-nav" class="nav">
                 {% if user.is_authenticated %}
                 <li>
-                    <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'node-list' %}">Nodes</a>
+                    <a class="{% block nav-active-node-list %}{% endblock %}" href="{% url 'index' %}#/nodes">Nodes</a>
                 </li>
                 {% if user.is_superuser %}
                 <li>

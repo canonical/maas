@@ -26,7 +26,6 @@ from maasserver.bootresources import (
     simplestreams_stream_handler,
     )
 from maasserver.enum import NODEGROUP_STATUS
-from maasserver.models import Node
 from maasserver.views import TextTemplateView
 from maasserver.views.account import (
     login,
@@ -44,6 +43,7 @@ from maasserver.views.images import (
     ImageDeleteView,
     ImagesView,
     )
+from maasserver.views.index import IndexView
 from maasserver.views.networks import (
     NetworkAdd,
     NetworkDelete,
@@ -63,7 +63,6 @@ from maasserver.views.nodes import (
     NodeDelete,
     NodeEdit,
     NodeEventListView,
-    NodeListView,
     NodePreseedView,
     NodeView,
     )
@@ -167,9 +166,8 @@ urlpatterns += patterns(
     'maasserver.views',
     url(
         r'^$',
-        NodeListView.as_view(template_name="maasserver/index.html"),
+        IndexView.as_view(),
         name='index'),
-    url(r'^nodes/$', NodeListView.as_view(model=Node), name='node-list'),
     url(r'^nodes/enlist-preseed/$', enlist_preseed_view,
         name='enlist-preseed-view'),
     url(

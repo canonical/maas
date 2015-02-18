@@ -111,46 +111,6 @@ class TestSnippets(MAASServerTestCase):
         self._assertTemplateExistsAndContains(
             content, template_selector, contains_selector, reverse=True)
 
-    def test_architecture_snippet(self):
-        self.client_log_in()
-        response = self.client.get('/')
-        self.assertTemplateExistsAndContains(
-            response.content, '#add-node', 'select#id_architecture')
-
-    def test_hostname(self):
-        self.client_log_in()
-        response = self.client.get('/')
-        self.assertTemplateExistsAndContains(
-            response.content, '#add-node', 'input#id_hostname')
-
-    def test_power_type_does_not_exist_if_not_admin(self):
-        self.client_log_in()
-        response = self.client.get('/')
-        self.assertTemplateExistsAndDoesNotContain(
-            response.content, '#add-node',
-            'select#id_power_type')
-
-    def test_power_type_exists_if_admin(self):
-        self.client_log_in(as_admin=True)
-        response = self.client.get('/')
-        self.assertTemplateExistsAndContains(
-            response.content, '#add-node',
-            'select#id_power_type')
-
-    def test_zone_does_not_exist_if_not_admin(self):
-        self.client_log_in()
-        response = self.client.get('/')
-        self.assertTemplateExistsAndDoesNotContain(
-            response.content, '#add-node',
-            'select#id_zone')
-
-    def test_zone_exists_if_admin(self):
-        self.client_log_in(as_admin=True)
-        response = self.client.get('/')
-        self.assertTemplateExistsAndContains(
-            response.content, '#add-node',
-            'select#id_zone')
-
 
 class FakeDeletableModel:
     """A fake model class, with a delete method."""
@@ -422,7 +382,6 @@ class PermanentErrorDisplayTest(MAASServerTestCase):
             register_persistent_error(component, error_message)
         links = [
             reverse('index'),
-            reverse('node-list'),
             reverse('prefs'),
         ]
         for link in links:

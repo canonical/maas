@@ -100,13 +100,13 @@ class NetworkListingViewTest(MAASServerTestCase):
         sorted_networks = sorted(networks, key=attrgetter('name'))
         response = self.client.get(reverse('network-list'))
         network_node_links = [
-            reverse('node-list') + "?" +
-            urlencode({'query': 'networks=%s' % network.name})
+            reverse('index') + "#/nodes?" +
+            urlencode({'query': 'networks:(%s)' % network.name})
             for network in sorted_networks]
         self.assertEqual(
             network_node_links,
             [link for link in get_content_links(response)
-                if link.startswith('/nodes/')])
+                if link.startswith('/#/nodes')])
 
     def test_network_listing_is_paginated(self):
         self.patch(NetworkListView, "paginate_by", 3)
@@ -231,8 +231,8 @@ class NetworkDetailViewTest(MAASServerTestCase):
             ContainsAll([
                 network.name,
                 network.description,
-                reverse('node-list') + "?" + urlencode(
-                    {'query': 'networks=%s' % network.name}),
+                reverse('index') + "#/nodes?" + urlencode(
+                    {'query': 'networks:(%s)' % network.name}),
             ])
         )
 

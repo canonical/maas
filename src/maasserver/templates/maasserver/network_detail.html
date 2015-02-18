@@ -41,7 +41,7 @@ Physical network: {{ network.name }}
                 <li class="two-col">
                     <h4>Attached nodes</h4>
                     <span id="nodecount">
-                        <a title="View nodes attached to network {{ network.name }}" href="{% url 'node-list' %}?query=networks%3D{{ network.name }}">{{ network.get_connected_nodes.count }}</a>
+                        <a title="View nodes attached to network {{ network.name }}" href="{% url 'index' %}#/nodes?query=networks%3A%28{{ network.name }}%29">{{ network.get_connected_nodes.count }}</a>
                     </span>
                 </li>
                 <li class="four-col last-col">

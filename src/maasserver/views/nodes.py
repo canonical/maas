@@ -18,7 +18,6 @@ __all__ = [
     'MacDelete',
     'NodeDelete',
     'NodeEventListView',
-    'NodeListView',
     'NodePreseedView',
     'NodeView',
     'NodeEdit',
@@ -28,18 +27,12 @@ __all__ = [
 from cgi import escape
 import json
 import logging
-from operator import attrgetter
 import re
 from textwrap import dedent
-from urllib import urlencode
 
 from django.contrib import messages
 from django.core.urlresolvers import reverse
-from django.db.models import Q
-from django.http import (
-    HttpResponse,
-    QueryDict,
-    )
+from django.http import HttpResponse
 from django.shortcuts import (
     get_object_or_404,
     render_to_response,
@@ -54,10 +47,6 @@ from django.views.generic import (
     DetailView,
     UpdateView,
     )
-from django.views.generic.edit import (
-    FormMixin,
-    ProcessFormView,
-    )
 from lxml import etree
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
@@ -68,11 +57,9 @@ from maasserver.enum import (
     )
 from maasserver.exceptions import MAASAPIException
 from maasserver.forms import (
-    BulkNodeActionForm,
     get_action_form,
     get_node_edit_form,
     MACAddressForm,
-    SetZoneBulkAction,
     )
 from maasserver.models import (
     MACAddress,
@@ -83,11 +70,6 @@ from maasserver.models import (
 from maasserver.models.config import Config
 from maasserver.models.event import Event
 from maasserver.models.nodeprobeddetails import get_single_probed_details
-from maasserver.node_action import ACTIONS_DICT
-from maasserver.node_constraint_filter_forms import (
-    AcquireNodeForm,
-    JUJU_ACQUIRE_FORM_FIELDS_MAPPING,
-    )
 from maasserver.preseed import (
     get_enlist_preseed,
     get_preseed,
@@ -103,39 +85,6 @@ from metadataserver.enum import RESULT_TYPE
 from metadataserver.models import NodeResult
 from netaddr import IPAddress
 from provisioningserver.tags import merge_details_cleanly
-
-# Fields on the Node model that will be searched.
-NODE_SEARCH_FIELDS = {
-    'status': 'status__in',
-    'hostname': 'hostname__icontains',
-    'owner': 'owner__username__icontains',
-    'arch': 'architecture__icontains',
-    'zone': 'zone__name__icontains',
-    'power': 'power_state__icontains',
-    'cluster': 'nodegroup__name__icontains',
-    'tag': 'tags__name__icontains',
-    'mac': 'macaddress__mac_address__icontains',
-    }
-
-
-def _parse_constraints(query_string):
-    """Turn query string from user into a QueryDict.
-
-    This method parse the given query string and returns a QueryDict suitable
-    to be passed to AcquireNodeForm().
-    This is basically to mimic the way the juju behaves: any parameters with
-    a value of 'any' will be ignored.
-    """
-    constraints = []
-    for word in query_string.strip().split():
-        parts = word.split("=", 1)
-        if len(parts) != 2:
-            # Empty constraint.
-            constraints.append("%s=" % parts[0])
-        elif parts[1] != "any":
-            # 'any' constraint: discard it.
-            constraints.append("%s=%s" % tuple(parts))
-    return QueryDict('&'.join(constraints))
 
 
 def message_from_form_stats(action, done, not_actionable, not_permitted):
@@ -277,290 +226,6 @@ def convert_query_status(value):
     if len(ids) == 0:
         return None
     return ids
-
-
-class NodeListView(PaginatedListView, FormMixin, ProcessFormView):
-
-    context_object_name = "node_list"
-    form_class = BulkNodeActionForm
-    sort_fields = (
-        'hostname', 'status', 'owner', 'cpu_count',
-        'memory', 'storage', 'zone')
-    late_sort_fields = ('primary_mac', )
-
-    def populate_modifiers(self, request):
-        self.query = request.GET.get("query")
-        self.query_error = None
-        self.sort_by = request.GET.get("sort")
-        self.sort_dir = request.GET.get("dir")
-
-    def get(self, request, *args, **kwargs):
-        """Handle a GET request."""
-        if request.is_ajax():
-            return self.handle_ajax_request(request, *args, **kwargs)
-
-        self.populate_modifiers(request)
-
-        if Config.objects.get_config("enable_third_party_drivers"):
-            # Show a notice to all users that third-party drivers are
-            # enabled. Administrative users also get a link to the
-            # settings page where they can disable this feature.
-            notice = construct_third_party_drivers_notice(
-                request.user.is_superuser)
-            messages.info(request, notice)
-
-        return super(NodeListView, self).get(request, *args, **kwargs)
-
-    def get_preserved_params(self):
-        """List of GET parameters that need to be preserved by POST
-        requests.
-
-        These are sorting and search option we want a POST request to
-        preserve so that the display after a POST request is similar
-        to the display before the request."""
-        return ["dir", "query", "test", "page", "sort"]
-
-    def get_preserved_query(self):
-        params = {
-            param: self.request.GET.get(param)
-            for param in self.get_preserved_params()
-            if self.request.GET.get(param) is not None}
-        return urlencode(params)
-
-    def get_next_url(self):
-        return reverse('node-list') + "?" + self.get_preserved_query()
-
-    def get_success_url(self):
-        return self.get_next_url()
-
-    def get_form_kwargs(self):
-        kwargs = super(NodeListView, self).get_form_kwargs()
-        kwargs['user'] = self.request.user
-        return kwargs
-
-    def post(self, request, *args, **kwargs):
-        """Handle a POST request."""
-        self.populate_modifiers(request)
-        return super(NodeListView, self).post(request, *args, **kwargs)
-
-    def form_invalid(self, form):
-        """Handle the view response when the form is invalid."""
-        self.object_list = self.get_queryset()
-        context = self.get_context_data(
-            object_list=self.object_list,
-            form=form)
-        return self.render_to_response(context)
-
-    def form_valid(self, form):
-        """Handle the view response when the form is valid."""
-        stats = form.save()
-        action_name = form.cleaned_data['action']
-        if action_name == SetZoneBulkAction.name:
-            action_class = SetZoneBulkAction
-        else:
-            action_class = ACTIONS_DICT[form.cleaned_data['action']]
-        message, level = message_from_form_stats(action_class, *stats)
-        getattr(messages, level)(self.request, message)
-        return super(NodeListView, self).form_valid(form)
-
-    def _compose_sort_order(self):
-        """Put together a tuple describing the sort order.
-
-        The result can be passed to a node query's `order_by` method.
-        Wherever two nodes are equal under the sorter order, creation date
-        is used as a tie-breaker: newest node first.
-        """
-        if self.sort_by not in self.sort_fields:
-            order_by = ()
-        else:
-            custom_order = self.sort_by
-            if self.sort_dir == 'desc':
-                custom_order = '-%s' % custom_order
-            order_by = (custom_order, )
-        return order_by + ('-created', )
-
-    def _constrain_nodes(self, nodes_query, query):
-        """Filter the given nodes query by user-specified constraints.
-
-        If the specified constraints are invalid, this will set an error and
-        return an empty query set.
-
-        :param nodes_query: A query set of nodes.
-        :return: A query set of nodes that returns a subset of `nodes_query`.
-        """
-        data = _parse_constraints(query)
-        form = AcquireNodeForm.Strict(data=data)
-        # Change the field names of the AcquireNodeForm object to
-        # conform to Juju's naming.
-        form.rename_fields(JUJU_ACQUIRE_FORM_FIELDS_MAPPING)
-        if form.is_valid():
-            return form.filter_nodes(nodes_query)
-        else:
-            self.query_error = ', '.join(
-                ["%s: %s" % (field, ', '.join(errors))
-                 for field, errors in form.errors.items()])
-            return Node.objects.none()
-
-    def _query_all_fields(self, term):
-        """Build query that will search all fields in the node table."""
-        sub_query = Q()
-        for field, query_term in NODE_SEARCH_FIELDS.items():
-            if field == 'status':
-                status_ids = convert_query_status(term)
-                if status_ids is None:
-                    continue
-                sub_query = sub_query | Q(**{query_term: status_ids})
-            else:
-                sub_query = sub_query | Q(**{query_term: term})
-        return sub_query
-
-    def _query_specific_field(self, field, value):
-        """Build query that will search the specific field from the given term
-        in the node table.
-
-        This supports the term as "field:value", allowing users to be
-        specific on which field they want to search.
-        """
-        if field == 'status':
-            value = convert_query_status(value)
-            if value is None:
-                return Q()
-        # Perform the query based on the ORM matcher specified
-        # in NODE_SEARCH_FIELDS.
-        if field in NODE_SEARCH_FIELDS:
-            return Q(**{NODE_SEARCH_FIELDS[field]: value})
-        return Q()
-
-    def _query_mac_address_field(self, term):
-        """Build query that will search the MAC addresses in the node table.
-
-        Note: If you want to query the mac address using only the first
-        two octets, then you need to use 'mac:aa:bb' or the first octet will
-        be mistaken as the field to search.
-        """
-        term = term.replace('mac:', '')
-        return Q(**{NODE_SEARCH_FIELDS['mac']: term})
-
-    def _search_nodes(self, nodes_query):
-        """Filter the given nodes query by searching field data.
-
-        The search query is substring matched non-case sensitively
-        against some fields in the nodes. See `NODE_SEARCH_FIELDS`.
-
-        :param nodes_query: A queryset of nodes.
-        :return: A query set of nodes that returns a subset of `nodes_query`.
-        """
-        # Split the query into different terms.
-        terms = self.query.split(' ')
-
-        # If any of the terms contain '=' then its a juju constraint and all
-        # other terms not using '=' are ignored.
-        constraint_terms = [
-            term
-            for term in terms
-            if '=' in term
-            ]
-        if len(constraint_terms) > 0:
-            return self._constrain_nodes(
-                nodes_query, ' '.join(constraint_terms))
-
-        # Loop through the terms building the search query.
-        query = Q()
-        for term in terms:
-            colon_count = term.count(':')
-            if colon_count == 0:
-                query = query & self._query_all_fields(term)
-            elif colon_count == 1:
-                field, value = term.split(':', 1)
-                if field == '':
-                    # In the case the user miss typed and placed a colon at
-                    # the beginning of the term without the field, just search
-                    # all fields with the value.
-                    query = query & self._query_all_fields(value)
-                else:
-                    query = query & self._query_specific_field(field, value)
-            elif colon_count > 1:
-                query = query & self._query_mac_address_field(term)
-        query = nodes_query.filter(query)
-        return query.distinct()
-
-    def get_queryset(self):
-        nodes = Node.objects.get_nodes(
-            user=self.request.user, perm=NODE_PERMISSION.VIEW)
-        nodes = nodes.order_by(*self._compose_sort_order())
-        if self.query:
-            nodes = self._search_nodes(nodes)
-        nodes = prefetch_nodes_listing(nodes)
-        return nodes
-
-    def _prepare_sort_links(self):
-        """Returns 2 dicts, with sort fields as keys and
-        links and CSS classes for the that field.
-        """
-
-        # Build relative URLs for the links, just with the params
-        fields = self.sort_fields + self.late_sort_fields
-        links = {field: '?' for field in fields}
-        classes = {field: 'sort-none' for field in fields}
-
-        params = self.request.GET.copy()
-        reverse_dir = 'asc' if self.sort_dir == 'desc' else 'desc'
-
-        for field in fields:
-            params['sort'] = field
-            if field == self.sort_by:
-                params['dir'] = reverse_dir
-                classes[field] = 'sort-%s' % self.sort_dir
-            else:
-                params['dir'] = 'asc'
-
-            links[field] += params.urlencode()
-
-        return links, classes
-
-    def late_sort(self, context):
-        """Sorts the node_list with sorting arguments that require
-        late sorting.
-        """
-        node_list = context['node_list']
-        reverse = (self.sort_dir == 'desc')
-        if self.sort_by in self.late_sort_fields:
-            node_list = sorted(
-                node_list, key=attrgetter(self.sort_by),
-                reverse=reverse)
-        context['node_list'] = node_list
-        return context
-
-    def get_context_data(self, **kwargs):
-        context = super(NodeListView, self).get_context_data(**kwargs)
-        context = self.late_sort(context)
-        form_class = self.get_form_class()
-        form = self.get_form(form_class)
-        context["preserved_query"] = self.get_preserved_query()
-        context["form"] = form
-        context["input_query"] = self.query
-        context["input_query_error"] = self.query_error
-        links, classes = self._prepare_sort_links()
-        context["sort_links"] = links
-        context["sort_classes"] = classes
-        context['power_types'] = generate_js_power_types()
-        return context
-
-    def handle_ajax_request(self, request):
-        """JSON response to update the nodes listing.
-
-        :param id: An list of system ids.  Only nodes with
-            matching system ids will be returned.
-        """
-        match_ids = request.GET.getlist('id')
-        if len(match_ids) == 0:
-            nodes = []
-        else:
-            nodes = Node.objects.get_nodes(
-                request.user, NODE_PERMISSION.VIEW, ids=match_ids)
-            nodes = prefetch_nodes_listing(nodes)
-        nodes = [node_to_dict(node) for node in nodes]
-        return HttpResponse(json.dumps(nodes), mimetype='application/json')
 
 
 def enlist_preseed_view(request):
@@ -893,7 +558,7 @@ class NodeDelete(HelpfulDeleteView):
         return node
 
     def get_next_url(self):
-        return reverse('node-list')
+        return reverse('index') + "#/nodes"
 
     def name_object(self, obj):
         """See `HelpfulDeleteView`."""

@@ -1,5 +1,3 @@
-# Copyright 2015 Canonical Ltd.  This software is licensed under the
-# GNU Affero General Public License version 3 (see the file LICENSE).
 #
 # Copyright (c) Twisted Matrix Laboratories.
 #
@@ -30,7 +28,6 @@ from maasserver.websockets.websockets import (
     WebSocketsTransport,
     )
 from maastesting.testcase import MAASTestCase
-from twisted.internet import base
 from twisted.internet.protocol import (
     Factory,
     Protocol,
@@ -56,9 +53,6 @@ from twisted.web.test.test_web import (
     )
 from zope.interface import implementer
 from zope.interface.verify import verifyObject
-
-
-base.DelayedCall.debug = True
 
 
 class TestFrameHelpers(MAASTestCase):

@@ -28,6 +28,7 @@ from datetime import (
     timedelta,
     )
 from itertools import chain
+from operator import attrgetter
 import re
 from string import whitespace
 from uuid import uuid1
@@ -1551,7 +1552,12 @@ class Node(CleanSave, TimestampedModel):
         if self.pxe_mac is not None:
             return self.pxe_mac
 
-        return self.macaddress_set.order_by('id').first()
+        # Only use "all" and perform the sorting manually to stop extra queries
+        # when the `macaddress_set` is prefetched.
+        macs = sorted(self.macaddress_set.all(), key=attrgetter('id'))
+        if len(macs) == 0:
+            return None
+        return macs[0]
 
     def get_pxe_mac_vendor(self):
         """Return the vendor of the MAC address the node pxebooted from."""
@@ -1566,7 +1572,14 @@ class Node(CleanSave, TimestampedModel):
         pxe_mac = self.get_pxe_mac()
         extra_macs = self.macaddress_set.all()
         if pxe_mac is not None:
-            extra_macs = extra_macs.exclude(mac_address=pxe_mac.mac_address)
+            # Remove the pxe_mac without "exclude" as exclude will cause
+            # another query to be performed if the `macaddress_set` is
+            # prefetched.
+            extra_macs = [
+                mac
+                for mac in extra_macs
+                if mac != pxe_mac
+                ]
         return extra_macs
 
     def is_pxe_mac_on_managed_interface(self):

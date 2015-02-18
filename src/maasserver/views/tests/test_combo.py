@@ -169,10 +169,3 @@ class TestComboLoaderView(MAASServerTestCase):
         self.assertEqual(
             '%s%s' % (settings.STATIC_URL, img_path),
             extract_redirect(response))
-
-    def test_raphael_load_js(self):
-        requested_files = ['raphael-min.js']
-        url = '%s?%s' % (reverse('combo-raphael'), '&'.join(requested_files))
-        response = self.client.get(url)
-        # No sign of a missing js file.
-        self.assertNotIn(CONVOY_MISSING_FILE, response.content.decode('utf8'))

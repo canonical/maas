@@ -1,10 +1,13 @@
 build-essential
+chromium-chromedriver
 curl
 firefox
 gjs
 ipython
 libjs-yui3-full
 make
+nodejs-legacy
+npm
 pep8
 pyflakes
 python-extras

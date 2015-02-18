@@ -89,13 +89,6 @@ LOCAL_CLUSTER_CONFIG = "/etc/maas/maas_cluster.conf"
 
 TEMPLATE_DEBUG = DEBUG
 
-# Set this to where RaphaelJS files can be found.
-# Use a relative path (i.e. a path not starting with '/') to indicate a
-# path relative to the 'static' directory.
-# Use an absolute path (like '/usr/share/javascript/raphael/') to serve the
-# files from a custom location.
-RAPHAELJS_LOCATION = '/usr/share/javascript/raphael/'
-
 YUI_DEBUG = DEBUG
 
 # Set this to where YUI3 files can be found.
@@ -104,6 +97,12 @@ YUI_DEBUG = DEBUG
 # Use an absolute path (like '/usr/share/javascript/yui3/') to serve the files
 # from a custom location.
 YUI_LOCATION = '/usr/share/javascript/yui3/'
+
+# Set this to where jQuery files can be found.
+JQUERY_LOCATION = '/usr/share/javascript/jquery/'
+
+# Set this to where AngularJS files can be found.
+ANGULARJS_LOCATION = '/usr/share/javascript/angular.js/'
 
 STATIC_LOCAL_SERVE = DEBUG
 

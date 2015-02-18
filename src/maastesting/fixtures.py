@@ -34,6 +34,7 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     )
+from selenium.webdriver.chrome.service import Service as ChromeService
 from sst.actions import (
     start,
     stop,
@@ -160,3 +161,21 @@ class TempWDFixture(TempDirectory):
         super(TempWDFixture, self).setUp()
         self.addCleanup(os.chdir, cwd)
         os.chdir(self.path)
+
+
+class ChromiumWebDriverFixture(Fixture):
+    """Starts and starts the selenium Chromium webdriver."""
+
+    def setUp(self):
+        super(ChromiumWebDriverFixture, self).setUp()
+        service = ChromeService(
+            "/usr/lib/chromium-browser/chromedriver", 4444)
+
+        # Set the LD_LIBRARY_PATH so the chrome driver can find the required
+        # libraries.
+        self.useFixture(EnvironmentVariableFixture(
+            "LD_LIBRARY_PATH", "/usr/lib/chromium-browser/libs"))
+        service.start()
+
+        # Stop service on cleanup.
+        self.addCleanup(service.stop)

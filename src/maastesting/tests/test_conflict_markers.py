@@ -47,6 +47,6 @@ class TestConflictMarkers(MAASTestCase):
         self.assertEqual(1, process.wait(), "(return code is not one)")
 
     def test_no_conflict_markers(self):
-        command = ["egrep", "-rI", "--exclude=*~"]
+        command = ["egrep", "-rI", "--exclude=*~", "--exclude-dir=include"]
         command.append("|".join(CONFLICT_MARKERS))
         self.execute(*command)

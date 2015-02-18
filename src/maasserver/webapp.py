@@ -19,6 +19,11 @@ __all__ = [
 from httplib import SERVICE_UNAVAILABLE
 
 from lxml import html
+from maasserver.websockets.protocol import WebSocketFactory
+from maasserver.websockets.websockets import (
+    lookupProtocolForFactory,
+    WebSocketsResource,
+    )
 from provisioningserver.utils.twisted import asynchronous
 from twisted.application.internet import StreamServerEndpointService
 from twisted.internet import reactor
@@ -105,6 +110,7 @@ class WebApplicationService(StreamServerEndpointService):
         self.site = Site(StartPage())
         super(WebApplicationService, self).__init__(endpoint, self.site)
         self.threadpool = ThreadPool(name=self.__class__.__name__)
+        self.websocket = WebSocketFactory()
 
     def prepareApplication(self):
         """Perform start-up tasks and return the WSGI application.
@@ -118,6 +124,12 @@ class WebApplicationService(StreamServerEndpointService):
         from maasserver.utils.views import WebApplicationHandler
         return WebApplicationHandler()
 
+    def startWebsocket(self, application):
+        """Start the websocket factory for the `WebSocketsResource`."""
+        d = self.websocket.startFactory()
+        d.addCallback(lambda _: application)
+        return d
+
     def installApplication(self, application):
         """Install the WSGI application into the Twisted site.
 
@@ -130,6 +142,8 @@ class WebApplicationService(StreamServerEndpointService):
         webapp = ResourceOverlay(
             WSGIResource(reactor, self.threadpool, application))
         root.putChild("MAAS", webapp)
+        webapp.putChild(
+            'ws', WebSocketsResource(lookupProtocolForFactory(self.websocket)))
         webapp.putChild('static', File("/usr/share/maas/web/static/"))
         self.site.resource = root
 
@@ -141,6 +155,7 @@ class WebApplicationService(StreamServerEndpointService):
     def startApplication(self):
         """Start the Django application, and install it."""
         d = deferToThread(self.prepareApplication)
+        d.addCallback(self.startWebsocket)
         d.addCallback(self.installApplication)
         d.addErrback(self.installFailed)
         return d
@@ -153,9 +168,11 @@ class WebApplicationService(StreamServerEndpointService):
 
     @asynchronous(timeout=30)
     def stopService(self):
+        self.websocket.stopFactory()
         d = super(WebApplicationService, self).stopService()
         # Stop the threadpool from a thread in the reactor's thread-pool so
         # that we don't block the reactor thread (or the thread-pool we're
         # trying to stop).
         d.addCallback(lambda _: deferToThread(self.threadpool.stop))
+        d.addCallback(lambda _: self.websocket.stopFactory())
         return d

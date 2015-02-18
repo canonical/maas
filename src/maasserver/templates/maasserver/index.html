@@ -1,70 +1,113 @@
-{% extends "maasserver/base.html" %}
+<!DOCTYPE html>
+<html class="no-js" lang="en" data-ng-app="MAAS">
+<head>
+    <base href="{% url 'index' %}" data-websocket-port="{{ webapp_port }}">
+    <title data-ng-bind="title + ' | {{ global_options.site_name }} MAAS'"></title>
 
-{% block nav-active-index %}active{% endblock %}
-{% block title %}Dashboard{% endblock %}
-{% block site-switcher %}{% endblock %}
+    <meta charset="UTF-8" />
+    <meta name="description" content="{% block meta_description %}{% endblock %}" />
+    <meta name="keywords" content="{% block meta_keywords %}{% endblock %}" />
+    <meta name="author" content="Canonical" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-{% block html_includes %}{% include "maasserver/snippets.html" %}{% endblock %}
+    <!--[if IE]>
+        <meta http-equiv="X-UA-Compatible" content="IE=8">
+    <![endif]-->
 
-{% block head %}
-    <script type="text/javascript" src="{% url "combo-raphael" %}?raphael-min.js"></script>
-    <script type="text/javascript">
-    <!--
-        YUI().use('maas.enums', 'maas.node_add', 'maas.node','maas.node_views','maas.utils', 'maas.shortpoll', function (Y) {Y.on('load', function() {
-            // Create Dashboard view.
-            var power_types = {{ power_types }};
-            var view = new Y.maas.node_views.NodesDashboard({
-                srcNode: '#dashboard',
-                summaryNode: '#summary',
-                numberNode: '#nodes-number',
-                descriptionNode: '#nodes-description',
-                reservedNode: '#reserved-nodes',
-                retiredNode: '#retired-nodes'});
+    <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico" type="image/x-icon" />
+    <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
 
-            var poller = new Y.maas.shortpoll.ShortPollManager({
-                uri: MAAS_config.uris.nodes_handler + "?op=list"
-            });
+    {% include "maasserver/js-conf.html" %}
+</head>
+<body>
+    <header class="banner global" role="banner">
+        <nav role="navigation" class="nav-primary nav-right">
+            <div class="logo">
+                <a class="logo-ubuntu" href="{% url 'index' %}">
+                    <img width="110" height"10" src="{{ STATIC_URL }}img/logos/logo.svg" alt="MAAS" />
+                </a>
+            </div>
+            <ul id="main-nav" class="nav">
+                {% if user.is_authenticated %}
+                <li>
+                    <a data-ng-class="{ active: page === 'nodes' }" href="#/nodes">Nodes</a>
+                </li>
+                {% if user.is_superuser %}
+                <li>
+                    <a data-ng-class="{ active: page === 'clusters' }" href="{% url 'cluster-list' %}">Clusters</a>
+                </li>
+                {% endif %}
+                <li>
+                    <a data-ng-class="{ active: page === 'images' }" href="{% url 'images' %}">Images</a>
+                </li>
+                <li>
+                    <a data-ng-class="{ active: page === 'zones' }" href="{% url 'zone-list' %}">Zones</a>
+                </li>
+                <li>
+                    <a data-ng-class="{ active: page === 'networks' }" href="{% url 'network-list' %}">Networks</a>
+                </li>
+                {% if user.is_superuser %}
+                <li>
+                    <a data-ng-class="{ active: page == 'settings' }" href="{% url 'settings' %}">Settings</a>
+                </li>
+                {% endif %}
+                {% endif %}
+            </ul>
+            {% if user.is_authenticated %}
+            <ul id="right-nav" class="nav">
+                <li id="user-link">
+                    <a href="#">
+                        <img src="{{ STATIC_URL }}img/icons/user_dark.png" alt="" class="normal">
+                        <img src="{{ STATIC_URL }}img/icons/user_light.png" alt="" class="hover">
+                        {{ user.username }}
+                    </a>
+                    <ul class="nav" id="user-options">
+                        <li>
+                            <a data-ng-class="{ active: page == 'account' }" href="{% url 'prefs' %}">Account</a>
+                        </li>
+                        <li>
+                            <a href="{% url 'logout' %}">Logout</a>
+                        </li>
+                    </ul>
+                </li>
+            </ul>
+            {% endif %}
+        </nav>
+        <div class="nav-toggles">
+            <a href="#canonlist" class="nav-toggle open"></a>
+            <a href="#" class="nav-toggle close"></a>
+        </div>
 
-            view.addLoader(poller.get("io"));
-            poller.poll();
-
-            Y.one('#addnode').on('click', function(e) {
-                e.preventDefault();
-                Y.maas.node_add.showAddNodeWidget({
-                    powerTypes: power_types,
-                    targetNode: '#dashboard'
-                });
-            });
-
-            // Setup TitleEditWidget.
-            var title_widget = new Y.maas.utils.TitleEditWidget(
-                {srcNode: '.page-title-form'});
-                title_widget.render();
-            });
-        });
-        // -->
-    </script>
-{% endblock %}
-
-{% block page-title-block %}
-{% if user.is_superuser %}
-<form action="" method="" class="page-title-form">
-    <input type="text" value="{{ global_options.site_name }} MAAS" title="Edit the name of this MAAS" />
-</form>
-{% else %}
-<h1 id="page-title">{% include "maasserver/site_title.html" %}</h1>
-{% endif %}
-{% endblock %}
-
-{% block content %}
-<div id="dashboard" class="twelve-col">
-   <section id="chart" class="four-col"></section>
-   <section id="summary" class="eight-col last-col">
-        <h2 id="nodes-number"></h2>
-        <p id="nodes-description"></p>
-    </section>
-    <p id="reserved-nodes"></p>
-    <p id="retired-nodes"></p>
-    <a href="#" id="addnode" class="link-cta-ubuntu">+ Add node</a>
-</div>
-{% endblock %}
+    </header>
+    <main id="body" class="wrapper">
+        {% if user.is_authenticated %}
+        <ul id="flash-messages"  class="flash-messages">
+            {% for persistent_error in persistent_errors %}
+            <li class="warning">{{ persistent_error }}</li>
+            {% endfor %}
+            {% if messages %}
+                {% for message in messages %}
+                    <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+                {% endfor %}
+            {% endif %}
+        </ul>
+        {% endif %}
+        <div id="main-content" class="row">
+            <div class="inner-wrapper" id="content" data-ng-view>
+            </div>
+        </div>
+    </main>
+    <div class="footer-wrapper">
+        <footer class="global inner-wrapper clearfix">
+            <div class="legal clearfix">
+                <div class="legal-inner">
+                    <p class="twelve-col">
+                        <span class="version">MAAS</span> <a href="http://maas.ubuntu.com/docs1.7/changelog.html#id1">View release notes</a>|<a href="https://maas.ubuntu.com/documentation/">View documentation</a>
+                    </p>
+                    <p class="twelve-col copy">&copy; 2015 Canonical Ltd. Ubuntu and Canonical are registered trademarks of Canonical Ltd.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

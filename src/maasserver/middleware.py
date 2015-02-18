@@ -97,7 +97,8 @@ class AccessMiddleware:
             # The combo loaders are publicly accessible.
             reverse('combo-yui'),
             reverse('combo-maas'),
-            reverse('combo-raphael'),
+            reverse('combo-jquery'),
+            reverse('combo-angularjs'),
             # Static resources are publicly visible.
             settings.STATIC_URL_PATTERN,
             reverse('robots'),

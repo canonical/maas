@@ -30,11 +30,15 @@ urlpatterns = patterns(
             location='', default_redirect=settings.STATIC_URL),
         name='combo-maas'),
     url(
-        r'^raphael/',
-        get_combo_view(location=settings.RAPHAELJS_LOCATION),
-        name='combo-raphael'),
-    url(
         r'^yui/',
         get_combo_view(location=settings.YUI_LOCATION),
         name='combo-yui'),
+    url(
+        r'^jquery/',
+        get_combo_view(location=settings.JQUERY_LOCATION),
+        name='combo-jquery'),
+    url(
+        r'^angularjs/',
+        get_combo_view(location=settings.ANGULARJS_LOCATION),
+        name='combo-angularjs'),
 )

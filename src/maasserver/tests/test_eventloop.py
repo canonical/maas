@@ -24,6 +24,7 @@ from maasserver import (
     nonces_cleanup,
     webapp,
     )
+from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.utils.async import transactional
@@ -176,8 +177,10 @@ class TestFactories(MAASTestCase):
         self.assertThat(service.endpoint, MatchesStructure.byEquality(
             reactor=reactor, addressFamily=socket.AF_INET))
         self.assertThat(
+            service.endpoint.port, Equals(DEFAULT_PORT))
+        self.assertThat(
             service.endpoint.socket.getsockname(),
-            Equals(("0.0.0.0", 5240)))
+            Equals(("0.0.0.0", DEFAULT_PORT)))
         # It is registered as a factory in RegionEventLoop.
         self.assertIn(
             eventloop.make_WebApplicationService,

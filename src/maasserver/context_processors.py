@@ -37,6 +37,14 @@ def static_resources(context):
             'css/base.css',
             'css/maas-styles.css',
         ],
+        'ANGULAR_LIST': [
+            'js/angular/maas.js',
+            'js/angular/factories/region.js',
+            'js/angular/factories/nodes.js',
+            'js/angular/services/search.js',
+            'js/angular/filters/nodes.js',
+            'js/angular/controllers/nodes_list.js',
+        ],
         'JS_LIST': [
             'js/image.js',
             'js/image_views.js',

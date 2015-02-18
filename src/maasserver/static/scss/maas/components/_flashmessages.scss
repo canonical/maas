@@ -13,7 +13,7 @@
     margin: 20px auto 0;
     padding: 0;
     overflow: hidden;
-    max-width: 1030px;
+    max-width: 1440px;
 
     @media screen and (max-width: 1030px) {
         margin: 20px 10px 0;
@@ -32,7 +32,6 @@
         background-repeat: no-repeat;
         margin: 0 0 10px;
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-        border: 1px solid #EEE;
 
         &.info {
             background-image: url('../?img/icons/info.png');

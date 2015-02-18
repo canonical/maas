@@ -28,6 +28,7 @@ from maasserver.bootresources import ensure_boot_source_definition
 from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import NodeGroup
+from maasserver.triggers import register_all_triggers
 from provisioningserver.upgrade_cluster import create_gnupg_home
 
 
@@ -68,6 +69,9 @@ def inner_start_up():
 
     # If there are no boot-source definitions yet, create defaults.
     ensure_boot_source_definition()
+
+    # Register all of the triggers.
+    register_all_triggers()
 
     # Regenerate MAAS's DNS configuration.  This should be reentrant, really.
     dns_update_all_zones(reload_retry=True)

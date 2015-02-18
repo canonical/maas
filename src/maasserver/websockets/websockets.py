@@ -684,6 +684,10 @@ class WebSocketsResource(object):
         # transport's lifecycle.
         transport, request.transport = request.transport, None
 
+        # Set the cookies on the transport. So the protocol can view the
+        # cookies.
+        transport.cookies = request.getHeader("cookie")
+
         if not isinstance(protocol, WebSocketsProtocol):
             protocol = WebSocketsProtocolWrapper(protocol)
 

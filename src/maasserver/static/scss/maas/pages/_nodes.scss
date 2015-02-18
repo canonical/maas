@@ -151,3 +151,97 @@
         border: 1px solid #EEE;
     }
 }
+
+/*
+ * Node Search
+ *
+ */
+
+.node-search {
+    position: relative;
+    padding-bottom: 20px;
+
+    .node-search__input {
+        @include box-sizing();
+        @include rounded-corners(4px);
+        list-style: none;
+        background:#FFF;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+        width: 100%;
+        border: none;
+        padding: 14px 20px;
+        font-size: 1.1em;
+    }
+
+    .node-search__submit {
+        position: absolute;
+        top: 15px;
+        right: 25px;
+        background-color: transparent;
+        background-image: url('../?img/search-orange.png');
+        background-repeat: no-repeat;
+        text-indent: -999em;
+        display: block;
+        width: 19px;
+        height: 19px;
+        overflow: hidden;
+        outline: none;
+        padding: 0;
+        border: none;
+    }
+}
+
+/*
+ * Node Filter
+ *
+ */
+
+.filters {
+    @include box-sizing();
+    @include rounded-corners(2px);
+    list-style: none;
+    background:#FFF;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+
+    .filters__title {
+        border-bottom: 1px dotted #B2B2B2;
+        padding: 10px 20px;
+        margin: 0;
+    }
+
+    .filters-data {
+        border-bottom: 1px dotted #B2B2B2;
+        padding-bottom: 20px;
+
+        &:last-of-type {
+            border: none;
+        }
+
+        .filters-data__title {
+            padding: 10px 20px;
+            margin: 0;
+            color: #888;
+        }
+
+        .filters-data__list {
+            list-style-type: none;
+            padding: 0 20px;
+            margin: 0;
+
+            .filters-data__item {
+
+                .filters-data__link {
+                    color: #333;
+                }
+
+                &.active {
+                    color: $ubuntu-orange;
+
+                    .filters-data__link {
+                        color: $ubuntu-orange;
+                    }
+                }
+            }
+        }
+    }
+}
