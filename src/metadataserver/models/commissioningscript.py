@@ -358,6 +358,7 @@ def gather_physical_block_devices(
     :param print_output: False will return the output instead of
         printing. (Used only for testing.)
     """
+    import os
     import shlex
     from subprocess import check_output
 
