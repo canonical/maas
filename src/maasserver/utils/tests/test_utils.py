@@ -163,6 +163,25 @@ class TestStripDomain(MAASTestCase):
         self.assertEqual(results, map(strip_domain, inputs))
 
 
+class TestGetLocalClusterUUID(MAASTestCase):
+
+    def test_get_local_cluster_UUID_returns_None_if_no_config_file(self):
+        bogus_file_name = '/tmp/bogus/%s' % factory.make_name('name')
+        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', bogus_file_name)
+        self.assertIsNone(get_local_cluster_UUID())
+
+    def test_get_local_cluster_UUID_returns_None_if_parsing_fails(self):
+        file_name = self.make_file(contents="wrong content")
+        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+        self.assertIsNone(get_local_cluster_UUID())
+
+    def test_get_local_cluster_UUID_returns_cluster_UUID(self):
+        uuid = factory.make_UUID()
+        file_name = self.make_file(contents='CLUSTER_UUID="%s"' % uuid)
+        self.patch(settings, 'LOCAL_CLUSTER_CONFIG', file_name)
+        self.assertEqual(uuid, get_local_cluster_UUID())
+
+
 def make_request(origin_ip):
     """Return a fake HTTP request with the given remote address."""
     return RequestFactory().post('/', REMOTE_ADDR=unicode(origin_ip))

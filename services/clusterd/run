@@ -16,7 +16,12 @@ cd "$(dirname "$0")/../.."
 
 # Exec the Provisioning Server.
 script="$(readlink -f bin/twistd.cluster)"
-config="$(readlink -f var/lib/maas/clusterd.db)"
+config="$(readlink -f etc/maas/pserv.yaml)"
+
+# Obtain the development setting for CLUSTER_UUID.
+. etc/demo_maas_cluster.conf
+export CLUSTER_UUID
+export MAAS_URL
 
 exec $(command -v authbind && echo --deep) \
     "${script}" --nodaemon --pidfile="" maas-clusterd --config-file "${config}"

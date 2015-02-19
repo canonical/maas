@@ -4,7 +4,9 @@
 """MAAS Provisioning Configuration.
 
 Configuration for most elements of a Cluster Controller can be obtained
-through this module's `Config` validator class.
+through this module's `Config` validator class. At the time of writing the
+exceptions are the `CLUSTER_UUID` and `MAAS_URL` environment variables (see
+`provisioningserver.cluster_config`).
 
 It's pretty simple. Typical usage is::
 

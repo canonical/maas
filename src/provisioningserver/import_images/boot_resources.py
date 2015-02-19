@@ -356,6 +356,10 @@ def main_with_services(args):
         finally:
             reactor.callLater(0, reactor.stop)
 
+    cluster_config = get_cluster_config('/etc/maas/maas_cluster.conf')
+    os.environ['MAAS_URL'] = cluster_config['MAAS_URL']
+    os.environ['CLUSTER_UUID'] = cluster_config['CLUSTER_UUID']
+
     reactor.callWhenRunning(run_main)
     reactor.run()
 

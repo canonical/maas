@@ -25,6 +25,25 @@ The cluster obviously needs to know where the region controller is, and this is
 configured in a file ``/etc/maas/maas_cluster.conf`` (or
 ``etc/demo_maas_cluster.conf`` for development environments).
 
+Cluster configuration file
+--------------------------
+
+This config file generally contains two items like this::
+
+  MAAS_URL=http://0.0.0.0:5240/
+  CLUSTER_UUID="adfd3977-f251-4f2c-8d61-745dbd690bf2"
+
+The values here are the defaults in the development environment.  MAAS_URL
+tells the cluster controller where to find the region controller.
+
+``CLUSTER_UUID`` is what the region uses to tell clusters apart when they
+connect.  Each cluster is free to generate its own UUID but the development
+environment fixes it in advance.  The Ubuntu packaging generates a new UUID for
+a cluster controller each time it is installed.
+
+.. warning::
+  The format of this config file is very sensitive due to the code that parses
+  it.  It will not accept quoting, or any kind of comments.
 
 .. _first-cluster:
 

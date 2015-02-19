@@ -36,3 +36,13 @@ class TestClusterConfig(MAASTestCase):
         self.assertRaises(
             AssertionError,
             get_cluster_variable, factory.make_name('nonexistent-variable'))
+
+    def test_get_cluster_uuid_reads_CLUSTER_UUID(self):
+        uuid = factory.make_name('uuid')
+        self.useFixture(EnvironmentVariableFixture('CLUSTER_UUID', uuid))
+        self.assertEqual(uuid, get_cluster_uuid())
+
+    def test_get_maas_url_reads_MAAS_URL(self):
+        maas_url = factory.make_name('maas_url')
+        self.useFixture(EnvironmentVariableFixture('MAAS_URL', maas_url))
+        self.assertEqual(maas_url, get_maas_url())

@@ -161,10 +161,17 @@ class MAASRegionServiceFixture(Fixture):
 class MAASClusterServiceFixture(Fixture):
     """Starts and stops the MAAS cluster service."""
 
+    MAAS_URL = "http://0.0.0.0:5253/MAAS/"
+    CLUSTER_UUID = "adfd3977-f251-4f2c-8d61-745dbd690bf2"
+    CONFIG_FILE = "src/maastesting/protractor.yaml"
 
     def setUp(self):
         """Start the clusterd service."""
         super(MAASClusterServiceFixture, self).setUp()
+        self.useFixture(EnvironmentVariableFixture(
+            "MAAS_URL", self.MAAS_URL))
+        self.useFixture(EnvironmentVariableFixture(
+            "CLUSTER_UUID", self.CLUSTER_UUID))
 
         # Fork the process to have clusterd run in its own process.
         twistd_pid = os.fork()

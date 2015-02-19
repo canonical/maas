@@ -794,6 +794,10 @@ class TestClusterClient(MAASTestCase):
 
     def setUp(self):
         super(TestClusterClient, self).setUp()
+        self.useFixture(EnvironmentVariable(
+            "MAAS_URL", factory.make_simple_http_url()))
+        self.useFixture(EnvironmentVariable(
+            "CLUSTER_UUID", factory.make_UUID().encode("ascii")))
 
     def make_running_client(self):
         client = clusterservice.ClusterClient(
