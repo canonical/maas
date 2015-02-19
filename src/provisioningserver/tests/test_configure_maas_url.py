@@ -70,21 +70,6 @@ class TestUpdateMAASClusterConf(MAASTestCase):
         self.patch(configure_maas_url, 'MAAS_CLUSTER_CONF', path)
         return path
 
-    def test__updates_realistic_file(self):
-        config_file = self.patch_file(dedent("""\
-            # Leading comments.
-            MAAS_URL="http://10.9.8.7/MAAS"
-            CLUSTER_UUID="5d02950e-6318-8195-ac3e-e6ccb12673c5"
-            """))
-        configure_maas_url.update_maas_cluster_conf('http://1.2.3.4/MAAS')
-        self.assertThat(
-            config_file,
-            FileContains(dedent("""\
-                # Leading comments.
-                MAAS_URL="http://1.2.3.4/MAAS"
-                CLUSTER_UUID="5d02950e-6318-8195-ac3e-e6ccb12673c5"
-                """)))
-
     def test__updates_quoted_value(self):
         old_url = factory.make_url()
         new_url = factory.make_url()

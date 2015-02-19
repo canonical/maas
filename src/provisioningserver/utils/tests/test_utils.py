@@ -585,37 +585,6 @@ class TestCommissionNode(PservTestCase):
                 system_id, error.args[0]))
 
 
-class TestGetClusterConfig(MAASTestCase):
-    scenarios = [
-        ('Variable with quoted value', dict(
-            contents='MAAS_URL="http://site/MAAS"',
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Variable with quoted value, comment', dict(
-            contents="# Ignore this\nMAAS_URL=\"http://site/MAAS\"",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Two Variables', dict(
-            contents="CLUSTER_UUID=\"uuid\"\nMAAS_URL=\"http://site/MAAS\"",
-            expected={
-                'MAAS_URL': "http://site/MAAS",
-                'CLUSTER_UUID': "uuid",
-            })),
-        ('Variable with single quoted value', dict(
-            contents="MAAS_URL='http://site/MAAS'",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-        ('Variable with unquoted valued', dict(
-            contents="MAAS_URL=http://site/MAAS",
-            expected={'MAAS_URL': "http://site/MAAS"})),
-    ]
-
-    def test_parses_config_file(self):
-        open_mock = self.patch(provisioningserver.utils, "open")
-        open_mock.return_value = StringIO(self.contents)
-        path = factory.make_name('path')
-        result = get_cluster_config(path)
-        self.assertThat(open_mock, MockCalledOnceWith(path))
-        self.assertItemsEqual(self.expected, result)
-
-
 class TestFlatten(MAASTestCase):
 
     def test__returns_iterator(self):

@@ -37,6 +37,8 @@ from maasserver.exceptions import NodeGroupMisconfiguration
 from maasserver.utils.orm import get_one
 from provisioningserver.utils.text import make_bullet_list
 
+from provisioningserver.cluster_config import get_cluster_uuid
+
 
 def get_db_state(instance, field_name):
     """Get the persisted state of a given field for a given model instance.
@@ -106,23 +108,7 @@ def strip_domain(hostname):
 
 
 def get_local_cluster_UUID():
-    """Return the UUID of the local cluster (or None if it cannot be found)."""
-    try:
-        cluster_config = open(settings.LOCAL_CLUSTER_CONFIG).read()
-        match = re.search(
-            "CLUSTER_UUID=(?P<quote>[\"']?)([^\"']+)(?P=quote)",
-            cluster_config)
-        if match is not None:
-            return match.groups()[1]
-        else:
-            return None
-    except IOError as error:
-        if error.errno == errno.ENOENT:
-            # Cluster config file is not present.
-            return None
-        else:
-            # Anything else is an error.
-            raise
+    return get_cluster_uuid()
 
 
 def find_nodegroup(request):

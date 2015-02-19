@@ -15,9 +15,8 @@ __metaclass__ = type
 __all__ = [
     'get_cluster_uuid',
     'get_maas_url',
+    'set_cluster_uuid'
     ]
-
-from os import environ
 
 
 def get_cluster_variable(var):
@@ -27,7 +26,11 @@ def get_cluster_variable(var):
     started the current process neglected to run maas_cluster.conf.
     In that case, fail helpfully but utterly.
     """
-    value = environ.get(var)
+    value = None
+    from maascli.config import ProfileConfig
+    with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
+        value = config[var]
+
     if value is None:
         raise AssertionError(
             "%s is not set.  This probably means that the script which "
@@ -37,10 +40,18 @@ def get_cluster_variable(var):
 
 
 def get_cluster_uuid():
-    """Return the `CLUSTER_UUID` setting."""
-    return get_cluster_variable('CLUSTER_UUID')
+    """Return the `cluster uuid` setting."""
+    return get_cluster_variable(CLUSTERD_DB_cluster_uuid)
 
 
 def get_maas_url():
-    """Return the `MAAS_URL` setting."""
-    return get_cluster_variable('MAAS_URL')
+    """Return the `maas url` setting."""
+    return get_cluster_variable(CLUSTERD_DB_maas_url)
+
+def set_cluster_variable(var, value):
+    from maascli.config import ProfileConfig
+    with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
+        config[var] = value
+
+def set_cluster_uuid(value):
+    set_cluster_variable(CLUSTERD_DB_cluster_uuid, value)

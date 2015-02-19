@@ -216,11 +216,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
     @asynchronous(timeout=15)
     def setUp(self):
         super(MockClusterToRegionRPCFixtureBase, self).setUp()
-        # Ensure that we have MAAS_URL and CLUSTER_UUID set.
-        self.useFixture(EnvironmentVariable(
-            "MAAS_URL", factory.make_simple_http_url()))
-        self.useFixture(EnvironmentVariable(
-            "CLUSTER_UUID", factory.make_UUID().encode("ascii")))
+
         # Use an inert clock with ClusterClientService so it doesn't update
         # itself except when we ask it to.
         self.rpc_service = ClusterClientService(Clock())

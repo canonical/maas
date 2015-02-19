@@ -83,9 +83,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         super(TestProvisioningServiceMaker, self).setUp()
         self.patch(provisioningserver, "services", MultiService())
         self.tempdir = self.make_dir()
-        self.useFixture(
-            EnvironmentVariableFixture(
-                "CLUSTER_UUID", factory.make_UUID()))
 
     def write_config(self, config):
         config_filename = os.path.join(self.tempdir, "config.yaml")

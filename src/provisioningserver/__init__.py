@@ -18,6 +18,11 @@ __all__ = []
 from twisted.application.service import MultiService
 from twisted.internet.protocol import Factory
 
+CLUSTERD_DB_PATH = '/var/lib/maas/clusterd.db'
+CLUSTERD_DB_maas_url = 'MAAS_URL'
+CLUSTERD_DB_generator = 'generator'
+CLUSTERD_DB_cluster_uuid = 'CLUSTER_UUID'
+
 # The cluster's services. This is initialised by
 # ProvisioningServiceMaker.
 services = MultiService()
