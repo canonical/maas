@@ -438,7 +438,7 @@ class AddESXi(amp.Command):
         (b"poweraddr", amp.Unicode()),
         (b"password", amp.Unicode()),
         (b"prefix_filter", amp.Unicode(optional=True)),
-        (b"accept_all", amp.Boolean(optional=True)),
+        (b"accept_all", amp.Boolean()),
     ]
     response = []
     errors = []

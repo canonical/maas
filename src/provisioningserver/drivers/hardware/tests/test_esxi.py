@@ -23,7 +23,10 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import call
 from provisioningserver.drivers.hardware import esxi as virsh
 from testtools.testcase import ExpectedException
@@ -53,6 +56,8 @@ SAMPLE_DUMPXML = dedent("""
 
 class TestESXi(MAASTestCase):
     """Tests for `probe_esxi_and_enlist`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
     def test_probe_and_enlist(self):
         # Patch VirshSSH list so that some machines are returned
