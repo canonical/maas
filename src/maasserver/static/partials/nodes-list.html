@@ -14,38 +14,7 @@
                 <span class="page-header__cta-feedback left">
                     {$ selectedNodes.length $} Selected
                 </span>
-                <div class="cta-group left">
-                    <a href="#" class="cta-group__link">Take action</a>
-                    <a class="cta-group__link--toggle" data-ng-click="toggleButton()" aria-expanded="false">
-                        <span class="caret">&#711;</span>
-                    </a>
-                    <ul class="cta-group__dropdown" data-ng-show="visible" role="menu">
-                        <li class="cta-group__item">
-                            <a href="#">Commision</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Deploy</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Release</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Mark broken</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Delete</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Tag</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Assign Owner</a>
-                        </li>
-                        <li class="cta-group__item">
-                            <a href="#">Set phyiscal zone</a>
-                        </li>
-                    </ul>
-                </div>
+                <div class="left" data-maas-cta="takeActionOptions" data-ng-model="actionOption" data-ng-change="actionOptionSelected()"></div>
             </div>
         </div>
     </div>

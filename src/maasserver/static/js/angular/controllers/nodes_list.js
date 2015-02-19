@@ -25,6 +25,35 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.filters = SearchService.emptyFilter;
         $scope.column = 'fqdn';
 
+        // Take action dropdown options.
+        $scope.actionOption = null;
+        $scope.takeActionOptions = [
+            {
+                title: "Commission"
+            },
+            {
+                title: "Allocate"
+            },
+            {
+                title: "Deploy"
+            },
+            {
+                title: "Release"
+            },
+            {
+                title: "Mark broken"
+            },
+            {
+                title: "Delete"
+            },
+            {
+                title: "Set physical zone"
+            }
+        ];
+        $scope.actionOptionSelected = function() {
+            // XXX blake_r - TODO
+        };
+
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {
             // Not checked when the filtered nodes are empty.
