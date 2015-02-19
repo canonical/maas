@@ -35,46 +35,43 @@ from textwrap import dedent
 from django.db import connection
 from maasserver.utils.async import transactional
 
-
-NODE_CREATE_PROCEDURE = dedent("""\
-    CREATE OR REPLACE FUNCTION node_create_notify() RETURNS trigger AS $$
-    DECLARE
-    BEGIN
-      PERFORM pg_notify('node_create',CAST(NEW.system_id AS text));
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-NODE_UPDATE_PROCEDURE = dedent("""\
-    CREATE OR REPLACE FUNCTION node_update_notify() RETURNS trigger AS $$
-    DECLARE
-    BEGIN
-      PERFORM pg_notify('node_update',CAST(NEW.system_id AS text));
-      RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
-
-NODE_DELETE_PROCEDURE = dedent("""\
-    CREATE OR REPLACE FUNCTION node_delete_notify() RETURNS trigger AS $$
-    DECLARE
-    BEGIN
-      PERFORM pg_notify('node_delete',CAST(OLD.system_id AS text));
-      RETURN OLD;
-    END;
-    $$ LANGUAGE plpgsql;
-    """)
+# Note that the corresponding test module (test_triggers) only tests that the
+# triggers and procedures are registered.  The behavior of these procedures
+# is tested (end-to-end testing) in test_listeners.  We test it there because
+# the asynchronous nature of the PG events makes it easier to test in
+# test_listeners where all the Twisted infrastructure is already in place.
 
 
-def register_trigger(table, procedure, event, when="after"):
+def get_notification_procedure(proc_name, event_name, cast):
+    return dedent("""\
+        CREATE OR REPLACE FUNCTION %s() RETURNS trigger AS $$
+        DECLARE
+        BEGIN
+          PERFORM pg_notify('%s',CAST(%s AS text));
+          RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+        """ % (proc_name, event_name, cast))
+
+
+def register_trigger(table, procedure, event, params=None, when="after"):
     """Register `trigger` on `table` if it doesn't exist."""
     trigger_name = "%s_%s" % (table, procedure)
+    if params is not None:
+        filter = 'WHEN (' + ''.join(
+            [
+                "%s = '%s'" % (key, value)
+                for key, value in params.items()
+            ]) + ')'
+    else:
+        filter = ''
     trigger_sql = dedent("""\
         DROP TRIGGER IF EXISTS %s ON %s;
         CREATE TRIGGER %s
         %s %s ON %s
-        FOR EACH ROW EXECUTE PROCEDURE %s();
+        FOR EACH ROW
+        %s
+        EXECUTE PROCEDURE %s();
         """) % (
         trigger_name,
         table,
@@ -82,6 +79,7 @@ def register_trigger(table, procedure, event, when="after"):
         when.upper(),
         event.upper(),
         table,
+        filter,
         procedure,
         )
     with closing(connection.cursor()) as cursor:
@@ -97,9 +95,41 @@ def register_procedure(procedure):
 @transactional
 def register_all_triggers():
     """Register all triggers into the database."""
-    register_procedure(NODE_CREATE_PROCEDURE)
-    register_procedure(NODE_UPDATE_PROCEDURE)
-    register_procedure(NODE_DELETE_PROCEDURE)
-    register_trigger("maasserver_node", "node_create_notify", "insert")
-    register_trigger("maasserver_node", "node_update_notify", "update")
-    register_trigger("maasserver_node", "node_delete_notify", "delete")
+    # Register all the procedures.
+    register_procedure(
+        get_notification_procedure(
+            'node_create_notify', 'node_create', 'NEW.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'node_update_notify', 'node_update', 'NEW.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'node_delete_notify', 'node_delete', 'OLD.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'device_create_notify', 'device_create', 'NEW.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'device_update_notify', 'device_update', 'NEW.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'device_delete_notify', 'device_delete', 'OLD.system_id'))
+    # Register the triggers.
+    register_trigger(
+        "maasserver_node", "node_create_notify", "insert",
+        {'NEW.installable': True})
+    register_trigger(
+        "maasserver_node", "node_update_notify", "update",
+        {'NEW.installable': True})
+    register_trigger(
+        "maasserver_node", "node_delete_notify", "delete",
+        {'OLD.installable': True})
+    register_trigger(
+        "maasserver_node", "device_create_notify", "insert",
+        {'NEW.installable': False})
+    register_trigger(
+        "maasserver_node", "device_update_notify", "update",
+        {'NEW.installable': False})
+    register_trigger(
+        "maasserver_node", "device_delete_notify", "delete",
+        {'OLD.installable': False})

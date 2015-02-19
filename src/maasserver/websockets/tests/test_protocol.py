@@ -532,9 +532,8 @@ class TestWebSocketFactory(MAASTestCase):
 
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = WebSocketFactory()
-        self.assertItemsEqual([
-            "node",
-            ], factory.listener.listeners.keys())
+        self.assertItemsEqual(
+            ["node", "device"], factory.listener.listeners.keys())
 
     @transactional
     def make_user(self):

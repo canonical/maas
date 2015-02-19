@@ -67,10 +67,9 @@ class DeviceHandler(TimestampedModelHandler):
             "zone",
             "parent",
             ]
-        # TODO: add listen_channel in the follow-up branch.
-        #listen_channels = [
-        #    "device",
-        #    ]
+        listen_channels = [
+            "device",
+            ]
 
     def get_queryset(self):
         """Return `QuerySet` for devices only vewable by `user`."""

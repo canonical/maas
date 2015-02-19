@@ -19,7 +19,7 @@ from contextlib import closing
 from django.db import connection
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import (
-    NODE_CREATE_PROCEDURE,
+    get_notification_procedure,
     register_all_triggers,
     register_procedure,
     register_trigger,
@@ -30,9 +30,13 @@ from maasserver.utils.orm import psql_array
 class TestTriggers(MAASServerTestCase):
 
     def test_register_trigger_doesnt_create_trigger_if_already_exists(self):
+        NODE_CREATE_PROCEDURE = get_notification_procedure(
+            'node_create_notify', 'node_create', 'NEW.system_id')
         register_procedure(NODE_CREATE_PROCEDURE)
         with closing(connection.cursor()) as cursor:
             cursor.execute(
+                "DROP TRIGGER IF EXISTS maasserver_node_node_create_notify ON "
+                "maasserver_node;"
                 "CREATE TRIGGER maasserver_node_node_create_notify "
                 "AFTER INSERT ON maasserver_node "
                 "FOR EACH ROW EXECUTE PROCEDURE node_create_notify();")
@@ -41,6 +45,8 @@ class TestTriggers(MAASServerTestCase):
         register_trigger("maasserver_node", "node_create_notify", "insert")
 
     def test_register_trigger_creates_missing_trigger(self):
+        NODE_CREATE_PROCEDURE = get_notification_procedure(
+            'node_create_notify', 'node_create', 'NEW.system_id')
         register_procedure(NODE_CREATE_PROCEDURE)
         register_trigger("maasserver_node", "node_create_notify", "insert")
 
@@ -58,6 +64,9 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_node_node_create_notify",
             "maasserver_node_node_update_notify",
             "maasserver_node_node_delete_notify",
+            "maasserver_node_device_create_notify",
+            "maasserver_node_device_update_notify",
+            "maasserver_node_device_delete_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
