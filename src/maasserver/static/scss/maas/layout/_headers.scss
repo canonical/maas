@@ -1,17 +1,49 @@
 @charset "UTF-8";
 
+/* -------------------------------------------------------------------
+----------------------------------------------------------------------
+
+    MAAS header styles
+
+    @project     MAAS
+    @author      Web Team at Canonical Ltd
+    @copyright   2015 Canonical Ltd
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* INTRODUCTION ------------------------------------------------------
+----------------------------------------------------------------------
+
+    1. VARIABLES
+    2. GLOBAL HEADER   -- Main page header style
+    3. PAGE HEADER     -- Default fix page header style
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* 1. VARIABLES ------------------------------------------------------
+--------------------------------------------------------------------*/
+
 /**
- * MAAS header styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
+ * Main page title font size
  */
+$title-size:            2.00em;
+
+/**
+ * Sub action title font size
+ */
+$title-action-size:     0.60em;
+
+
+/* 2. GLOBAL HEADER --------------------------------------------------
+--------------------------------------------------------------------*/
 
 header.banner {
-
     overflow: visible;
+    z-index: 20;
 
     nav.nav-primary {
         border-bottom: none;
@@ -182,4 +214,74 @@ header.banner {
         }
     }
 
+}
+
+/* 3. PAGE HEADER ----------------------------------------------------
+--------------------------------------------------------------------*/
+
+.page-header {
+    @include box-sizing();
+    background:#FFF;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    margin-bottom: 20px;
+    width: 100%;
+    float: left;
+    position: relative;
+    z-index: 10;
+
+    .page-header__title {
+        font-size: $title-size;
+        width: auto;
+        padding: 31px 0;
+        margin: 0;
+        float: left;
+
+        .page-header__title--identicator {
+            font-size: $title-action-size;
+            width: auto;
+            display: inline-block;
+            position: relative;
+            top: -3px;
+            padding-left: 20px;
+            border-left: 1px solid #B2B2B2;
+            margin-left: 20px;
+
+            a {
+                color: #888;
+
+                &.active {
+                    color: #333;
+
+                    &:hover {
+                        text-decoration: none;
+                        cursor: default;
+                    }
+                }
+            }
+        }
+    }
+
+    .page-header__actions {
+        float: right;
+        padding: 34px 0;
+
+        .page-header__cta {
+            float: right;
+            position: relative;
+            height: auto;
+            max-height: 36px;
+
+            .page-header__cta-feedback {
+                display: inline-block;
+                position: relative;
+                line-height: 36px;
+                margin-right: 20px;
+                float: left;
+            }
+        }
+    }
+
+    & + .inner-wrapper {
+        margin-top: $header-height + 68px;
+    }
 }

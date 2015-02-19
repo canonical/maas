@@ -2,7 +2,7 @@
 <html class="no-js" lang="en" data-ng-app="MAAS">
 <head>
     <base href="{% url 'index' %}" data-websocket-port="{{ webapp_port }}">
-    <title data-ng-bind="title + ' | {{ global_options.site_name }} MAAS'"></title>
+    <title data-ng-bind="title + ' | ' + site + ' MAAS'"></title>
 
     <meta charset="UTF-8" />
     <meta name="description" content="{% block meta_description %}{% endblock %}" />
@@ -19,8 +19,8 @@
 
     {% include "maasserver/js-conf.html" %}
 </head>
-<body>
-    <header class="banner global" role="banner">
+<body data-ng-init="site = '{{ global_options.site_name }}'">
+    <header class="banner global fixed" role="banner">
         <nav role="navigation" class="nav-primary nav-right">
             <div class="logo">
                 <a class="logo-ubuntu" href="{% url 'index' %}">
@@ -77,23 +77,22 @@
             <a href="#canonlist" class="nav-toggle open"></a>
             <a href="#" class="nav-toggle close"></a>
         </div>
-
     </header>
     <main id="body" class="wrapper">
-        {% if user.is_authenticated %}
-        <ul id="flash-messages"  class="flash-messages">
-            {% for persistent_error in persistent_errors %}
-            <li class="warning">{{ persistent_error }}</li>
-            {% endfor %}
-            {% if messages %}
-                {% for message in messages %}
-                    <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+        <div id="main-content">
+            {% if user.is_authenticated %}
+            <ul id="flash-messages"  class="flash-messages hidden">
+                {% for persistent_error in persistent_errors %}
+                <li class="flash-messages__item warning">{{ persistent_error }}</li>
                 {% endfor %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
             {% endif %}
-        </ul>
-        {% endif %}
-        <div id="main-content" class="row">
-            <div class="inner-wrapper" id="content" data-ng-view>
+            <div id="content" data-ng-view>
             </div>
         </div>
     </main>

@@ -49,3 +49,13 @@ ul,
 ol {
     margin-left: 0;
 }
+
+::selection {
+    color: #FFF;
+    background: #F07746;
+}
+
+::-moz-selection {
+    color: #FFF;
+    background: #F07746;
+}

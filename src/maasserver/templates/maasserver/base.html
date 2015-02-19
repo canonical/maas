@@ -92,11 +92,11 @@
         {% if user.is_authenticated %}
         <ul id="flash-messages" class="flash-messages">
             {% for persistent_error in persistent_errors %}
-            <li class="warning">{{ persistent_error }}</li>
+            <li class="flash-messages__item warning">{{ persistent_error }}</li>
             {% endfor %}
             {% if messages %}
                 {% for message in messages %}
-                    <li{% if message.tags %} class="{{ message.tags }}" {% endif %}>{{ message }}</li>
+                    <li{% if message.tags %} class="flash-messages__item {{ message.tags }}" {% endif %}>{{ message }}</li>
                 {% endfor %}
             {% endif %}
         </ul>

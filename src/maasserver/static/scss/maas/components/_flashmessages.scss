@@ -10,7 +10,7 @@
  */
 
 .flash-messages {
-    margin: 20px auto 0;
+    margin: 0px auto 20px;
     padding: 0;
     overflow: hidden;
     max-width: 1440px;
@@ -19,7 +19,7 @@
         margin: 20px 10px 0;
     }
 
-    li {
+    .flash-messages__item {
         @include box-sizing();
         @include rounded-corners(2px);
         list-style: none;

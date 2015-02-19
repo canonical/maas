@@ -1,51 +1,119 @@
-@charset "UTF-8";
+@charset 'UTF-8';
+
+/* -------------------------------------------------------------------
+----------------------------------------------------------------------
+
+    MAAS button styles
+
+    @project     MAAS
+    @author      Web Team at Canonical Ltd
+    @copyright   2015 Canonical Ltd
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* INTRODUCTION ------------------------------------------------------
+----------------------------------------------------------------------
+
+    1. VARIABLES & PLACEHOLDERS
+    2. BUTTON                       -- Form and link cta button styles
+    3. BUTTON GROUP                 -- Button group styles
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* 1. VARIABLES & PLACEHOLDERS ---------------------------------------
+--------------------------------------------------------------------*/
 
 /**
- * MAAS button styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
+ * General call to action styling and hover state placehlder.
  */
+%cta-link {
+    @include box-sizing();
+    @include rounded-corners(3px 0px 0px 3px);
+    display: inline-block;
+    padding: 8px 14px;
+    text-align: center;
+    color: $white;
+    background-color: $ubuntu-orange;
 
-a.link-cta-ubuntu,
-button.cta-ubuntu,
-input[type="submit"],
-form button[type="submit"],
-form input[type="submit"] {
-    font-size: 1em;
+    &:hover {
+        cursor: pointer;
+        text-decoration: none;
+        background: darken($ubuntu-orange, 6.2%);
+    }
 
     &.disabled {
         cursor: default;
-        opacity: 0.5;
+        opacity: .5;
 
         &:hover {
             background-color: $ubuntu-orange;
         }
     }
+}
 
-    &.secondary {
-        background: #EEE;
-        color: #333;
-        border: 1px solid #B2B2B2;
+%secondary-cta {
+    color: #333;
+    border: 1px solid #b2b2b2;
+    background: #eee;
+
+    &:hover {
+        background: #fff;
+    }
+
+    &.disabled {
+        cursor: default;
+        opacity: .5;
 
         &:hover {
-            background: #FFF;
+            background-color: #eee;
+        }
+    }
+}
+
+/* 2. BUTTON ---------------------------------------------------------
+--------------------------------------------------------------------*/
+
+a.link-cta-ubuntu,
+button.cta-ubuntu,
+input[type='submit'],
+form button[type='submit'],
+form input[type='submit'] {
+    font-size: 1em;
+
+    &.disabled {
+        cursor: default;
+        opacity: .5;
+
+        &:hover {
+            background-color: $ubuntu-orange;
+        }
+    }
+    &.secondary {
+        color: #333;
+        border: 1px solid #b2b2b2;
+        background: #eee;
+
+        &:hover {
+            background: #fff;
         }
 
         &.disabled {
-        cursor: default;
-        opacity: 0.5;
+            cursor: default;
+            opacity: .5;
 
             &:hover {
-                background-color: #EEE;
+                background-color: #eee;
             }
         }
     }
 
     &.full {
         display: block;
+
         width: 100%;
     }
 
@@ -56,4 +124,88 @@ form input[type="submit"] {
 
 a.link-cta-ubuntu {
     line-height: 20px;
+}
+
+/* 3. BUTTON GROUP ---------------------------------------------------
+--------------------------------------------------------------------*/
+
+/**
+ * Button group to trigger a dropdown and to change any active
+ * button state to a different option where required.
+ */
+.cta-group {
+    position: relative;
+    display: inline-block;
+
+    /**
+     * cta link style and dropdown toggle
+     */
+    .cta-group__link {
+        @extend %cta-link;
+        float: left;
+
+        /**
+         * Toggle caret button
+         */
+        &--toggle {
+            @extend %cta-link;
+            @include rounded-corners(0px 3px 3px 0px);
+            float: left;
+
+            .secondary & {
+                @extend %secondary-cta;
+            }
+
+            .caret {
+                line-height: 30px;
+                display: block;
+                height: 20px;
+            }
+        }
+    }
+
+    /**
+     * cta group dropdown styles
+     */
+    .cta-group__dropdown {
+        @include box-sizing();
+        @include rounded-corners(3px);
+        position: absolute;
+        top: 35px;
+        max-width: inherit;
+        width: 100%;
+        list-style: none;
+        background: #fff;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+        padding: 10px;
+        z-index: 20;
+
+        .cta-group__item {
+            font-size: 0.775em;
+
+            a {
+                color: #333;
+
+                &:hover {
+                    color: $ubuntu-orange;
+                }
+            }
+        }
+    }
+
+    /**
+     * cta group secondary style
+     */
+    &.secondary  {
+
+        .cta-group__link {
+            @extend %secondary-cta;
+            border-right: none;
+
+            &--toggle {
+                @extend %secondary-cta;
+                border-left: none;
+            }
+        }
+    }
 }

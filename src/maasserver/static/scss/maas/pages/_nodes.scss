@@ -1,13 +1,31 @@
 @charset 'UTF-8';
 
-/**
- * MAAS node styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
- */
+/* -------------------------------------------------------------------
+----------------------------------------------------------------------
+
+    MAAS node styles
+
+    @project     MAAS
+    @author      Web Team at Canonical Ltd
+    @copyright   2015 Canonical Ltd
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* INTRODUCTION ------------------------------------------------------
+----------------------------------------------------------------------
+
+    1. NODES                        -- Node listing styles
+    2. NODES SEARCH                 -- Button group styles
+    3. ACCORDION
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* 1. NODES ----------------------------------------------------------
+--------------------------------------------------------------------*/
 
 .nodes {
     position: relative;
@@ -80,7 +98,7 @@
     }
 
     &.power-error {
-        background: transparent url('../?img/icons/power-on.svg') left top no-repeat;
+        background: transparent url('../?img/icons/power-error.svg') left top no-repeat;
     }
 
     &.power-check-ok {
@@ -157,10 +175,8 @@
     }
 }
 
-/*
- * Node Search
- *
- */
+/* 2. NODE SEARCH ----------------------------------------------------
+--------------------------------------------------------------------*/
 
 .node-search {
     position: relative;
@@ -174,8 +190,8 @@
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
         width: 100%;
         border: none;
-        padding: 14px 20px;
-        font-size: 1.1em;
+        padding: 13px 20px;
+        font-size: 1.25em;
     }
 
     .node-search__submit {
@@ -196,54 +212,91 @@
     }
 }
 
-/*
- * Node Filter
- *
- */
+/* 3. ACCORDION ------------------------------------------------------
+--------------------------------------------------------------------*/
 
-.filters {
+.accordion {
     @include box-sizing();
     @include rounded-corners(2px);
     list-style: none;
     background:#FFF;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
 
-    .filters__title {
+    /**
+     * accordion main sidebar title
+     */
+    .accordion__title {
         border-bottom: 1px dotted #B2B2B2;
-        padding: 10px 20px;
+        padding: 13px 20px 12px;
         margin: 0;
+        font-size: 1.3em;
     }
 
-    .filters-data {
+    /**
+     * accordion data block, contains all filter links and controls.
+     */
+    .accordion__tab {
         border-bottom: 1px dotted #B2B2B2;
-        padding-bottom: 20px;
 
         &:last-of-type {
             border: none;
         }
 
-        .filters-data__title {
-            padding: 10px 20px;
+        /**
+         * Block level title
+         */
+        .accordion__tab-title {
+            padding: 12px 20px;
             margin: 0;
             color: #888;
+            cursor: pointer;
+            background: transparent url('../?img/icons/accordion-open.svg') top 20px right 20px no-repeat;
+
+            &.active {
+                background-image: url('../?img/icons/accordion-close.svg');
+
+                & + .accordion__tab-content {
+                    display: block;
+                }
+            }
         }
 
-        .filters-data__list {
-            list-style-type: none;
-            padding: 0 20px;
-            margin: 0;
+        /**
+         * Filter list
+         */
+        .accordion__tab-content {
+            display: none;
 
-            .filters-data__item {
+            .accordion__tab-list {
+                list-style-type: none;
+                padding: 0 20px 14px;
+                margin: 0;
 
-                .filters-data__link {
-                    color: #333;
-                }
+                .accordion__tab-item {
+                    margin-bottom: 0.15em;
 
-                &.active {
-                    color: $ubuntu-orange;
+                    .accordion__tab-link {
+                        color: #333;
+                        width: 100%;
+                        display: inline-block;
+                    }
 
-                    .filters-data__link {
-                        color: $ubuntu-orange;
+                    &.active {
+                        color: #D2D2D2;
+                        background: transparent url('../?img/icons/filter-remove.svg') top 7px right 0px no-repeat;
+
+                        .accordion__tab-link {
+                            color: #D2D2D2;
+                        }
+
+                        &:hover {
+                            background-image: url('../?img/icons/filter-remove-hover.svg');
+                            color: #888;
+
+                            .accordion__tab-link {
+                                color: #888;
+                            }
+                        }
                     }
                 }
             }
