@@ -49,6 +49,7 @@ from piston.models import (
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
+    AddESXi,
     AddSeaMicro15k,
     AddVirsh,
     EnlistNodesFromMSCM,
@@ -348,7 +349,7 @@ class NodeGroup(TimestampedModel):
         :param user: user for the nodes.
         :param poweraddr: virsh connection string.
         :param password: ssh password.
-        :param prefix_filter: import based on prefix.
+        :param prefix_filter: imports virsh domains filtered by this prefix.
         :param accept_all: commission enlisted nodes.
 
         :raises NoConnectionsAvailable: If no connections to the cluster
@@ -364,6 +365,31 @@ class NodeGroup(TimestampedModel):
         else:
             return client(
                 AddVirsh, user=user, poweraddr=poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=accept_all)
+
+    def add_esxi(self, user, poweraddr, password,
+                 prefix_filter=None, accept_all=False):
+        """ Add all of the virtual machines inside a virsh controller.
+
+        :param user: user for the ESXi host.
+        :param poweraddr: IP address of esxi host string.
+        :param password: password.
+        :param prefix_filter: import based on prefix.
+        :param accept_all: commission enlisted nodes.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
+        """
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                AddESXi, user=user, poweraddr=poweraddr, password=password,
                 prefix_filter=prefix_filter, accept_all=accept_all)
 
     def enlist_nodes_from_ucsm(self, user, url, username,

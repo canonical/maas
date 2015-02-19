@@ -52,6 +52,7 @@ from mock import (
     )
 from provisioningserver.dhcp.omshell import generate_omapi_key
 from provisioningserver.rpc.cluster import (
+    AddESXi,
     AddSeaMicro15k,
     AddVirsh,
     EnlistNodesFromMSCM,
@@ -538,6 +539,56 @@ class TestNodeGroup(MAASServerTestCase):
 
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_virsh, user,
+            poweraddr, password, True)
+
+    def test_add_esxi_end_to_end(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, AddESXi)
+        protocol.AddESXi.return_value = defer.succeed(
+            {'system_id': factory.make_name('system-id')})
+
+        user = factory.make_name('user')
+        poweraddr = factory.make_name('poweraddr')
+        password = factory.make_name('password')
+        nodegroup.add_esxi(user, poweraddr, password, None, True).wait(10)
+
+        self.expectThat(
+            protocol.AddESXi,
+            MockCalledOnceWith(
+                ANY, user=user, poweraddr=poweraddr,
+                password=password, prefix_filter=None, accept_all=True))
+
+    def test_add_esxi_calls_client_with_resource_endpoint(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        poweraddr = factory.make_name('poweraddr')
+        password = factory.make_name('password')
+        nodegroup.add_esxi(user, poweraddr, password, None, True)
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddESXi, user=user, poweraddr=poweraddr,
+                password=password, prefix_filter=None, accept_all=True))
+
+    def test_add_esxi_raises_if_no_connection_to_cluster(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        poweraddr = factory.make_name('poweraddr')
+        password = factory.make_name('password')
+
+        self.assertRaises(
+            NoConnectionsAvailable, nodegroup.add_esxi, user,
             poweraddr, password, True)
 
     def test_add_seamicro15k_end_to_end(self):

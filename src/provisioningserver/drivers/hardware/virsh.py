@@ -31,6 +31,7 @@ XPATH_ARCH = "/domain/os/type/@arch"
 ARCH_FIX = {
     'x86_64': 'amd64',
     'ppc64': 'ppc64el',
+    'i686': 'i386',
     }
 
 
@@ -161,7 +162,9 @@ class VirshSSH(pexpect.spawn):
         if 'error' in output:
             return None
         output = output.splitlines()[2:]
-        return [line.split()[4] for line in output]
+        # Only return the last item of the line, as it is ensured that the
+        # last item is the MAC Address.
+        return [line.split()[-1] for line in output]
 
     def get_arch(self, machine):
         """Gets the virtual machine architecture."""

@@ -427,6 +427,23 @@ class AddVirsh(amp.Command):
     errors = []
 
 
+class AddESXi(amp.Command):
+    """Probe for and enlist ESXi VMs attached to the cluster.
+
+    :since: 1.8
+    """
+
+    arguments = [
+        (b"user", amp.Unicode()),
+        (b"poweraddr", amp.Unicode()),
+        (b"password", amp.Unicode()),
+        (b"prefix_filter", amp.Unicode(optional=True)),
+        (b"accept_all", amp.Boolean(optional=True)),
+    ]
+    response = []
+    errors = []
+
+
 class AddSeaMicro15k(amp.Command):
     """Probe for and enlist seamicro15k machines attached to the cluster.
 

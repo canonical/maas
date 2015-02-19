@@ -444,6 +444,16 @@ class NodeGroupHandler(OperationsHandler):
             self.do_probe_and_enlist_ucsm(nodegroup, request, user)
         elif model == 'mcsm':
             self.do_probe_and_enlist_mscm(nodegroup, request, user)
+        elif model == 'esxi':
+            poweraddr = get_mandatory_param(request.data, 'address')
+            username = get_mandatory_param(request.data, 'username')
+            password = get_mandatory_param(request.data, 'password')
+            prefix_filter = get_optional_param(
+                request.data, 'prefix_filter', default=None)
+
+            nodegroup.add_esxi(
+                username, poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=accept_all)
         else:
             return HttpResponse(status=httplib.BAD_REQUEST)
 

@@ -174,6 +174,16 @@ JSON_POWER_TYPE_PARAMETERS = [
         ],
     },
     {
+        'name': 'esxi',
+        'description': 'VMWare ESXi (virtual systems)',
+        'fields': [
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_id', "Power ID"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+        ],
+    },
+    {
         'name': 'fence_cdu',
         'description': 'Sentry Switch CDU',
         'fields': [

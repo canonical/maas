@@ -61,7 +61,7 @@ from twisted.python import log
 # state for these power types.
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
-QUERY_POWER_TYPES = ['amt', 'ipmi', 'mscm', 'sm15k', 'ucsm', 'virsh']
+QUERY_POWER_TYPES = ['amt', 'esxi', 'ipmi', 'mscm', 'sm15k', 'ucsm', 'virsh']
 
 
 # Timeout for change_power_state(). We set it to 2 minutes by default,

@@ -34,6 +34,7 @@ from provisioningserver.drivers import (
     ArchitectureRegistry,
     PowerTypeRegistry,
     )
+from provisioningserver.drivers.hardware.esxi import probe_esxi_and_enlist
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
@@ -358,6 +359,18 @@ class Cluster(RPCProtocol):
             probe_virsh_and_enlist,
             user, poweraddr, password, prefix_filter, accept_all)
         d.addErrback(partial(catch_probe_and_enlist_error, "virsh"))
+        return {}
+
+    @cluster.AddESXi.responder
+    def add_esxi(self, user, poweraddr, password, prefix_filter, accept_all):
+        """add_esxi()
+
+        Implementation of :py:class:`~provisioningserver.rpc.cluster.AddESXi`.
+        """
+        d = deferToThread(
+            probe_esxi_and_enlist,
+            user, poweraddr, password, prefix_filter, accept_all)
+        d.addErrback(partial(catch_probe_and_enlist_error, "esxi"))
         return {}
 
     @cluster.AddSeaMicro15k.responder

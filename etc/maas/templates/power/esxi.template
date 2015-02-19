@@ -1,0 +1,65 @@
+# -*- mode: shell-script -*-
+#
+# Control virtual system's "power" through virsh for ESXi
+#
+
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
+}
+
+issue_virsh_command() {
+python - << END
+import sys
+from provisioningserver.drivers.hardware.esxi import power_control_esxi
+try:
+    power_control_esxi(
+        {{escape_py_literal(power_address).decode("ascii") | safe}},
+        {{escape_py_literal(power_id).decode("ascii") | safe}},
+        {{escape_py_literal(power_change).decode("ascii") | safe}},
+        {{escape_py_literal(power_user).decode("ascii") | safe}},
+        {{escape_py_literal(power_pass).decode("ascii") | safe}},
+    )
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+query_state() {
+python - << END
+import sys
+from provisioningserver.drivers.hardware.esxi import power_state_esxi
+try:
+    print(power_state_esxi(
+        {{escape_py_literal(power_address).decode("ascii") | safe}},
+        {{escape_py_literal(power_id).decode("ascii") | safe}},
+        {{escape_py_literal(power_user).decode("ascii") | safe}},
+        {{escape_py_literal(power_pass).decode("ascii") | safe}},
+    ))
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+main() {
+    case $1 in
+    'on'|'off')
+        issue_virsh_command
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 2 "Unknown power command: '$1'"
+    esac
+}
+
+main "{{power_change}}"
