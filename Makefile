@@ -53,8 +53,8 @@ build: \
     bin/test.cli \
     bin/test.cluster \
     bin/test.config \
+    bin/test.e2e \
     bin/test.js \
-    bin/skip.e2e \
     bin/test.region \
     bin/test.testing \
     bin/py bin/ipy \
@@ -107,7 +107,7 @@ bin/test.js: bin/karma bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install js-test
 	@touch --no-create $@
 
-bin/skip.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
+bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
@@ -163,8 +163,11 @@ bin/protractor:
 	npm install --cache-min 5184000 --prefix $(prefix) protractor
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
+test: test-scripts := $(wildcard bin/test.*)
+# Don't run bin/test.e2e for now; it breaks.
+test: test-scripts := $(filter-out bin/test.e2e,$(test-scripts))
 test: build
-	echo $(wildcard bin/test.*) | xargs -n1 env
+	echo $(test-scripts) | xargs -n1 env
 
 lint: lint-py lint-js lint-doc
 
