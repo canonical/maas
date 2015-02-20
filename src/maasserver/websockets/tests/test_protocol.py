@@ -482,7 +482,8 @@ class TestWebSocketFactory(MAASTestCase):
     def test_loads_all_handlers(self):
         factory = WebSocketFactory()
         self.assertItemsEqual(
-            ["device", "general", "node"], factory.handlers.keys())
+            ["device", "general", "node", "cluster", "zone"],
+            factory.handlers.keys())
 
     def test_get_SessionEngine_calls_import_module_with_SESSION_ENGINE(self):
         mock_import = self.patch_autospec(protocol_module, "import_module")
@@ -534,7 +535,8 @@ class TestWebSocketFactory(MAASTestCase):
     def test_registerNotifiers_registers_all_notifiers(self):
         factory = WebSocketFactory()
         self.assertItemsEqual(
-            ["node", "device"], factory.listener.listeners.keys())
+            ["node", "device", "nodegroup", "zone"],
+            factory.listener.listeners.keys())
 
     @transactional
     def make_user(self):
