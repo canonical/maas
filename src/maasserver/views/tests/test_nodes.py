@@ -47,10 +47,10 @@ from maasserver.models import (
     node as node_module,
     )
 from maasserver.node_action import (
-    AcquireNode,
+    Acquire,
     Commission,
     Delete,
-    StartNode,
+    Deploy,
     )
 from maasserver.preseed import (
     get_enlist_preseed,
@@ -845,7 +845,7 @@ class NodeViewsTest(MAASServerTestCase):
             owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
         response = self.client.post(
-            node_link, data={NodeActionForm.input_name: StartNode.name})
+            node_link, data={NodeActionForm.input_name: Deploy.name})
         self.assertEqual(httplib.FOUND, response.status_code)
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
@@ -933,7 +933,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.set_up_oauth_token()
         node = factory.make_Node(status=NODE_STATUS.READY)
         response = self.perform_action_and_get_node_page(
-            node, AcquireNode.name)
+            node, Acquire.name)
         self.assertIn(
             "This node is now allocated to you.",
             '\n'.join(msg.message for msg in response.context['messages']))
@@ -1395,13 +1395,13 @@ class MessageFromFormStatsTest(MAASServerTestCase):
             (
                 (Delete, 2, 0, 0),
                 ('The action "%s" was successfully performed on 2 nodes'
-                 % Delete.display_bulk,),
+                 % Delete.display,),
             ),
             (
                 (Delete, 1, 4, 2),
                 (
                     'The action "%s" was successfully performed on 1 node'
-                    % Delete.display_bulk,
+                    % Delete.display,
                     'It could not be performed on 4 nodes because their '
                     'state does not allow that action.',
                     "It could not be performed on 2 nodes because that "
@@ -1412,7 +1412,7 @@ class MessageFromFormStatsTest(MAASServerTestCase):
                 (Delete, 0, 0, 3),
                 ('The action "%s" could not be performed on 3 nodes '
                  "because that action is not permitted on these nodes."
-                 % Delete.display_bulk,),
+                 % Delete.display,),
             ),
         ]
         # level precedence is worst-case for the concantenation of messages

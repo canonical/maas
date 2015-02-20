@@ -810,6 +810,16 @@ class NodeTest(MAASServerTestCase):
                 "%s: Unable to start node: %s",
                 node.hostname, unicode(exception)))
 
+    def test_abort_operation_aborts_commissioning(self):
+        agent_name = factory.make_name('agent-name')
+        user = factory.make_admin()
+        node = factory.make_Node(
+            status=NODE_STATUS.COMMISSIONING,
+            agent_name=agent_name)
+        abort_commissioning = self.patch_autospec(node, 'abort_commissioning')
+        node.abort_operation(user)
+        self.assertThat(abort_commissioning, MockCalledOnceWith(user))
+
     def test_abort_operation_aborts_disk_erasing(self):
         agent_name = factory.make_name('agent-name')
         owner = factory.make_User()

@@ -37,7 +37,6 @@ from crochet import TimeoutError
 from django.core.urlresolvers import reverse
 from maasserver import locks
 from maasserver.enum import (
-    NODE_BOOT,
     NODE_PERMISSION,
     NODE_STATUS,
     NODE_STATUS_CHOICES_DICT,
@@ -47,7 +46,6 @@ from maasserver.exceptions import (
     Redirect,
     StaticIPAddressExhaustion,
     )
-from maasserver.models import SSHKey
 from maasserver.node_status import is_failed_status
 from provisioningserver.rpc.exceptions import (
     MultipleFailures,
@@ -86,13 +84,6 @@ class NodeAction:
         Action name.
 
         Will be used as the label for the action's button.
-        """)
-
-    display_bulk = abstractproperty("""
-        Action name (bulk action).
-
-        Will be used as the label for the action's name in bulk action
-        dropdowns.
         """)
 
     actionable_statuses = abstractproperty("""
@@ -168,8 +159,7 @@ class NodeAction:
 class Delete(NodeAction):
     """Delete a node."""
     name = "delete"
-    display = "Delete node"
-    display_bulk = "Delete selected nodes"
+    display = "Delete"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
@@ -197,8 +187,7 @@ class InstallableNodeAction(NodeAction):
 class Commission(InstallableNodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
     name = "commission"
-    display = "Commission node"
-    display_bulk = "Commission selected nodes"
+    display = "Commission"
     actionable_statuses = (
         NODE_STATUS.NEW, NODE_STATUS.FAILED_COMMISSIONING, NODE_STATUS.READY,
         NODE_STATUS.BROKEN)
@@ -214,33 +203,13 @@ class Commission(InstallableNodeAction):
             return "Node commissioning started."
 
 
-class AbortCommissioning(InstallableNodeAction):
-    """Abort the commissioning process."""
-    name = "abort commissioning"
-    display = "Abort commissioning"
-    display_bulk = "Abort commissioning"
-    actionable_statuses = (
-        NODE_STATUS.COMMISSIONING,)
-    permission = NODE_PERMISSION.ADMIN
-
-    def execute(self, allow_redirect=True):
-        """See `NodeAction.execute`."""
-        try:
-            self.node.abort_commissioning(self.user)
-        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
-            raise NodeActionError(exception)
-        else:
-            return "Node commissioning aborted."
-
-
-class AbortOperation(InstallableNodeAction):
+class Abort(InstallableNodeAction):
     """Abort the current operation."""
-    name = "abort operation"
-    display = "Abort disk erasure"
-    display_bulk = "Abort disk erasure"
+    name = "abort"
+    display = "Abort"
     actionable_statuses = (
-        NODE_STATUS.DISK_ERASING,)
-    permission = NODE_PERMISSION.EDIT
+        NODE_STATUS.COMMISSIONING, NODE_STATUS.DISK_ERASING,)
+    permission = NODE_PERMISSION.ADMIN
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
@@ -252,90 +221,30 @@ class AbortOperation(InstallableNodeAction):
             return "Node operation aborted."
 
 
-class UseCurtin(InstallableNodeAction):
-    """Set this node to use curtin for installation."""
-    name = "usecurtin"
-    display = "Use the fast installer"
-    display_bulk = "Mark nodes as using the fast installer"
-    actionable_statuses = map_enum(NODE_STATUS).values()
-    permission = NODE_PERMISSION.EDIT
-
-    def is_permitted(self):
-        permitted = super(UseCurtin, self).is_permitted()
-        return permitted and self.node.boot_type == NODE_BOOT.DEBIAN
-
-    def execute(self, allow_redirect=True):
-        """See `NodeAction.execute`."""
-        self.node.boot_type = NODE_BOOT.FASTPATH
-        self.node.save()
-        return "Node marked as using curtin for install."
-
-
-class UseDI(InstallableNodeAction):
-    """Set this node to use d-i for installation."""
-    name = "usedi"
-    display = "Use the Debian installer"
-    display_bulk = "Mark nodes as using the Debian installer"
-    actionable_statuses = map_enum(NODE_STATUS).values()
-    permission = NODE_PERMISSION.EDIT
-
-    def is_permitted(self):
-        permitted = super(UseDI, self).is_permitted()
-        return permitted and self.node.boot_type == NODE_BOOT.FASTPATH
-
-    def execute(self, allow_redirect=True):
-        """See `NodeAction.execute`."""
-        self.node.boot_type = NODE_BOOT.DEBIAN
-        self.node.save()
-        return "Node marked as using the Debian installer."
-
-
-class AcquireNode(InstallableNodeAction):
+class Acquire(InstallableNodeAction):
     """Acquire a node."""
     name = "acquire"
-    display = "Acquire node"
-    display_bulk = "Acquire selected nodes"
+    display = "Acquire"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
 
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
-        # The UI does not use OAuth, so there is no token to pass to the
-        # acquire() call.
-
         with locks.node_acquire:
             self.node.acquire(self.user, token=None)
-
         return "This node is now allocated to you."
 
 
-class StartNode(InstallableNodeAction):
-    """Start a node."""
-    name = "start"
-    display_bulk = "Start selected nodes"
-    actionable_statuses = (
-        NODE_STATUS.READY, NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED)
-    permission = NODE_PERMISSION.EDIT
-
-    @property
-    def display(self):
-        # We explictly check for owner is None here, rather than owner
-        # != self.user, because in practice the only people who are
-        # going to see this button other than the node's owner are
-        # administrators (because once once the node's owned, you need
-        # EDIT permission to see this button).
-        # We can safely assume that if you're seeing this and you don't
-        # own the node, you're an admin, so you can still start it even
-        # though you don't own it.
-        if self.node.status == NODE_STATUS.READY and self.node.owner is None:
-            label = "Acquire and start node"
-        else:
-            label = "Start node"
-        return label
+class Deploy(InstallableNodeAction):
+    """Deploy a node."""
+    name = "deploy"
+    display = "Deploy"
+    actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
+    permission = NODE_PERMISSION.VIEW
 
     def inhibit(self):
         """The user must have an SSH key, so that they access the node."""
-        if not SSHKey.objects.get_keys_for_user(self.user).exists():
+        if not len(self.user.sshkey_set.all()) > 0:
             return dedent("""\
                 You have no means of accessing the node after starting it.
                 Register an SSH key first.  Do this on your Preferences
@@ -347,8 +256,34 @@ class StartNode(InstallableNodeAction):
     def execute(self, allow_redirect=True):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
-            self.node.acquire(self.user, token=None)
+            with locks.node_acquire:
+                self.node.acquire(self.user, token=None)
 
+        try:
+            self.node.start(self.user)
+        except StaticIPAddressExhaustion:
+            raise NodeActionError(
+                "%s: Failed to start, static IP addresses are exhausted."
+                % self.node.hostname)
+        except RPC_EXCEPTIONS + (ExternalProcessError,) as exception:
+            raise NodeActionError(exception)
+        else:
+            return "This node has been asked to deploy."
+
+    def is_actionable(self):
+        is_actionable = super(Deploy, self).is_actionable()
+        return is_actionable and len(self.user.sshkey_set.all()) > 0
+
+
+class Start(InstallableNodeAction):
+    """Start a node."""
+    name = "start"
+    display = "Start"
+    actionable_statuses = (NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED)
+    permission = NODE_PERMISSION.EDIT
+
+    def execute(self, allow_redirect=True):
+        """See `NodeAction.execute`."""
         try:
             self.node.start(self.user)
         except StaticIPAddressExhaustion:
@@ -360,6 +295,10 @@ class StartNode(InstallableNodeAction):
         else:
             return "This node has been asked to start up."
 
+    def is_actionable(self):
+        is_actionable = super(Start, self).is_actionable()
+        return is_actionable and self.node.owner is not None
+
 
 FAILED_STATUSES = [
     status for status in map_enum(NODE_STATUS).values()
@@ -367,11 +306,10 @@ FAILED_STATUSES = [
 ]
 
 
-class StopNode(InstallableNodeAction):
+class Stop(InstallableNodeAction):
     """Stop a node."""
     name = "stop"
-    display = "Stop node"
-    display_bulk = "Stop selected nodes"
+    display = "Stop"
     actionable_statuses = (
         [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
         # Also let a user ask a failed node to shutdown: this
@@ -390,11 +328,10 @@ class StopNode(InstallableNodeAction):
             return "This node has been asked to shut down."
 
 
-class ReleaseNode(InstallableNodeAction):
+class Release(InstallableNodeAction):
     """Release a node."""
     name = "release"
-    display = "Release node"
-    display_bulk = "Release selected nodes"
+    display = "Release"
     actionable_statuses = (
         NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
         NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT,
@@ -415,8 +352,7 @@ class ReleaseNode(InstallableNodeAction):
 class MarkBroken(InstallableNodeAction):
     """Mark a node as 'broken'."""
     name = "mark-broken"
-    display = "Mark node as broken"
-    display_bulk = "Mark selected nodes as broken"
+    display = "Mark broken"
     actionable_statuses = [
         NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
         NODE_STATUS.ALLOCATED, NODE_STATUS.RELEASING,
@@ -433,8 +369,7 @@ class MarkBroken(InstallableNodeAction):
 class MarkFixed(InstallableNodeAction):
     """Mark a broken node as fixed and set its state to 'READY'."""
     name = "mark-fixed"
-    display = "Mark node as fixed"
-    display_bulk = "Mark selected nodes as fixed"
+    display = "Mark fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
 
@@ -445,21 +380,16 @@ class MarkFixed(InstallableNodeAction):
 
 
 ACTION_CLASSES = (
-    # Status-changing actions.
-    AcquireNode,
     Commission,
-    ReleaseNode,
-    AbortCommissioning,
-    AbortOperation,
+    Acquire,
+    Deploy,
+    Start,
+    Stop,
+    Release,
+    Abort,
     MarkBroken,
     MarkFixed,
     Delete,
-    # Start / stop actions.
-    StartNode,
-    StopNode,
-    # Config change actions.
-    UseCurtin,
-    UseDI,
     )
 
 

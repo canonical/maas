@@ -1295,6 +1295,9 @@ class Node(CleanSave, TimestampedModel):
         if self.status == NODE_STATUS.DISK_ERASING:
             self.abort_disk_erasing(user)
             return
+        if self.status == NODE_STATUS.COMMISSIONING:
+            self.abort_commissioning(user)
+            return
 
         raise NodeStateViolation(
             "Cannot abort in current state: "

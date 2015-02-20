@@ -23,8 +23,8 @@ from maasserver.forms import (
 from maasserver.models import Node
 from maasserver.node_action import (
     Delete,
-    StartNode,
-    StopNode,
+    Start,
+    Stop,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
@@ -58,14 +58,14 @@ class TestBulkNodeActionForm(MAASServerTestCase):
     def test_perform_action_catches_start_action_errors(self):
         error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
-        self.patch(StartNode, "execute").side_effect = exc
+        self.patch(Start, "execute").side_effect = exc
         user = factory.make_User()
         factory.make_SSHKey(user)
         node = factory.make_Node(status=NODE_STATUS.READY, owner=user)
         form = BulkNodeActionForm(
             user=user,
             data=dict(
-                action=StartNode.name,
+                action=Start.name,
                 system_id=[node.system_id]))
 
         self.assertTrue(form.is_valid(), form._errors)
@@ -104,7 +104,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data=dict(
-                action=StartNode.name,
+                action=Start.name,
                 system_id=system_id_for_action))
         self.assertTrue(form.is_valid(), form._errors)
         done, not_actionable, not_permitted = form.save()
@@ -120,7 +120,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=user,
             data=dict(
-                action=StopNode.name,
+                action=Stop.name,
                 system_id=system_id_for_action))
         self.assertTrue(form.is_valid(), form._errors)
         done, not_actionable, not_permitted = form.save()
@@ -134,7 +134,7 @@ class TestBulkNodeActionForm(MAASServerTestCase):
         form = BulkNodeActionForm(
             user=factory.make_admin(),
             data=dict(
-                action=StartNode.name,
+                action=Start.name,
                 system_id=[node.system_id]))
         self.assertTrue(form.is_valid(), form._errors)
         done, not_actionable, not_permitted = form.save()

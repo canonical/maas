@@ -14,11 +14,15 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
+from maasserver.exceptions import NodeActionError
+from maasserver.node_action import compile_node_actions
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.node import NodeHandler
 from maastesting.djangotestcase import count_queries
 
@@ -42,12 +46,13 @@ class TestNodeHandler(MAASServerTestCase):
             tags = tags.union(blockdevice.tags)
         return list(tags)
 
-    def dehydrate_node(self, node, for_list=False):
+    def dehydrate_node(self, node, user, for_list=False):
         pxe_mac = node.get_pxe_mac()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         physicalblockdevices = list(
             node.physicalblockdevice_set.all().order_by('name'))
         data = {
+            "actions": compile_node_actions(node, user).keys(),
             "architecture": node.architecture,
             "boot_type": node.boot_type,
             "cpu_count": node.cpu_count,
@@ -103,6 +108,7 @@ class TestNodeHandler(MAASServerTestCase):
             }
         if for_list:
             allowed_fields = NodeHandler.Meta.list_fields + [
+                "actions",
                 "url",
                 "fqdn",
                 "status",
@@ -127,19 +133,21 @@ class TestNodeHandler(MAASServerTestCase):
             factory.make_PhysicalBlockDevice(node)
 
     def test_get(self):
-        handler = NodeHandler(factory.make_User())
-        node = factory.make_Node(status=NODE_STATUS.READY)
+        user = factory.make_User()
+        handler = NodeHandler(user)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_PhysicalBlockDevice(node)
         self.assertEquals(
-            self.dehydrate_node(node),
+            self.dehydrate_node(node, user),
             handler.get({"system_id": node.system_id}))
 
     def test_list(self):
-        handler = NodeHandler(factory.make_User())
-        node = factory.make_Node()
+        user = factory.make_User()
+        handler = NodeHandler(user)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_PhysicalBlockDevice(node)
         self.assertItemsEqual(
-            [self.dehydrate_node(node, for_list=True)],
+            [self.dehydrate_node(node, user, for_list=True)],
             handler.list({}))
 
     def test_list_ignores_devices(self):
@@ -149,11 +157,14 @@ class TestNodeHandler(MAASServerTestCase):
         factory.make_Node(owner=owner, installable=False)
         node = factory.make_Node(owner=owner)
         self.assertItemsEqual(
-            [self.dehydrate_node(node, for_list=True)],
+            [self.dehydrate_node(node, owner, for_list=True)],
             handler.list({}))
 
     def test_list_num_queries_is_independent_of_num_nodes(self):
-        handler = NodeHandler(factory.make_User())
+        user = factory.make_User()
+        user_ssh_prefetch = User.objects.filter(
+            id=user.id).prefetch_related('sshkey_set').first()
+        handler = NodeHandler(user_ssh_prefetch)
         nodegroup = factory.make_NodeGroup()
         self.make_nodes(nodegroup, 10)
         query_10_count, _ = count_queries(handler.list, {})
@@ -182,8 +193,8 @@ class TestNodeHandler(MAASServerTestCase):
             owner=other_user, status=NODE_STATUS.ALLOCATED)
         handler = NodeHandler(user)
         self.assertItemsEqual([
-            self.dehydrate_node(node, for_list=True),
-            self.dehydrate_node(ownered_node, for_list=True),
+            self.dehydrate_node(node, user, for_list=True),
+            self.dehydrate_node(ownered_node, user, for_list=True),
             ], handler.list({}))
 
     def test_get_object_returns_node_if_super_user(self):
@@ -207,8 +218,43 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             node, handler.get_object({"system_id": node.system_id}))
 
-    def test_get_object_returns_None_if_owner_by_another_user(self):
+    def test_get_object_raises_error_if_owner_by_another_user(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
         handler = NodeHandler(user)
-        self.assertIsNone(handler.get_object({"system_id": node.system_id}))
+        self.assertRaises(
+            HandlerDoesNotExistError,
+            handler.get_object, {"system_id": node.system_id})
+
+    def test_missing_action_raises_error(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        handler = NodeHandler(user)
+        self.assertRaises(
+            NodeActionError,
+            handler.action, {"system_id": node.system_id})
+
+    def test_invalid_action_raises_error(self):
+        user = factory.make_User()
+        node = factory.make_Node()
+        handler = NodeHandler(user)
+        self.assertRaises(
+            NodeActionError,
+            handler.action, {"system_id": node.system_id, "action": "unknown"})
+
+    def test_not_available_action_raises_error(self):
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.DEPLOYED, owner=user)
+        handler = NodeHandler(user)
+        self.assertRaises(
+            NodeActionError,
+            handler.action, {"system_id": node.system_id, "action": "unknown"})
+
+    def test_action_performs_action(self):
+        user = factory.make_User()
+        factory.make_SSHKey(user)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        handler = NodeHandler(user)
+        self.assertEquals(
+            handler.action({"system_id": node.system_id, "action": "deploy"}),
+            "This node has been asked to deploy.")

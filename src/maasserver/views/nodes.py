@@ -89,7 +89,7 @@ from provisioningserver.tags import merge_details_cleanly
 
 def message_from_form_stats(action, done, not_actionable, not_permitted):
     """Return a message suitable for user display from the given stats."""
-    action_name = 'The action "%s"' % action.display_bulk
+    action_name = 'The action "%s"' % action.display
     # singular/plural messages.
     done_templates = [
         '%s was successfully performed on %d node.',

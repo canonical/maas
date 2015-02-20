@@ -26,6 +26,7 @@ from django.contrib.auth import (
     load_backend,
     SESSION_KEY,
     )
+from django.contrib.auth.models import User
 from django.utils.importlib import import_module
 from maasserver.utils.async import transactional
 from maasserver.websockets import handlers
@@ -125,7 +126,12 @@ class WebSocketProtocol(Protocol):
             return None
         auth_backend = load_backend(backend)
         if user_id is not None and auth_backend is not None:
-            return auth_backend.get_user(user_id)
+            user = auth_backend.get_user(user_id)
+            # Get the user again prefetching the SSHKey for the user. This is
+            # done so a query is not made for each action that is possible on
+            # a node in the node listing.
+            return User.objects.filter(
+                id=user.id).prefetch_related('sshkey_set').first()
         else:
             return None
 

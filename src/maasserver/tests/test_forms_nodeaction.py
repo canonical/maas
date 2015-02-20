@@ -27,9 +27,8 @@ from maasserver.forms import (
 from maasserver.node_action import (
     Commission,
     Delete,
+    Deploy,
     MarkBroken,
-    StartNode,
-    UseCurtin,
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
@@ -58,7 +57,7 @@ class TestNodeActionForm(MAASServerTestCase):
         form = get_action_form(admin)(node)
 
         self.assertItemsEqual(
-            [Commission.name, Delete.name, UseCurtin.name, MarkBroken.name],
+            [Commission.name, Delete.name, MarkBroken.name],
             form.actions)
 
     def test_get_action_form_for_user(self):
@@ -102,11 +101,12 @@ class TestNodeActionForm(MAASServerTestCase):
     def test_shows_error_message_for_NodeActionError(self):
         error_text = factory.make_string(prefix="NodeActionError")
         exc = NodeActionError(error_text)
-        self.patch(StartNode, "execute").side_effect = exc
+        self.patch(Deploy, "execute").side_effect = exc
         user = factory.make_User()
+        factory.make_SSHKey(user)
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=user)
-        action = StartNode.name
+        action = Deploy.name
         # Required for messages to work:
         request = factory.make_fake_request("/fake")
         form = get_action_form(user, request)(

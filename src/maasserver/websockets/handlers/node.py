@@ -18,8 +18,11 @@ __all__ = [
 
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_PERMISSION
+from maasserver.exceptions import NodeActionError
 from maasserver.models.node import Node
+from maasserver.node_action import compile_node_actions
 from maasserver.utils.converters import human_readable_bytes
+from maasserver.websockets.base import HandlerDoesNotExistError
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
     )
@@ -37,7 +40,7 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get']
+        allowed_methods = ['list', 'get', 'action']
         exclude = [
             "id",
             "installable",
@@ -103,6 +106,7 @@ class NodeHandler(TimestampedModelHandler):
         data["url"] = reverse('node-view', args=[obj.system_id])
         data["fqdn"] = obj.fqdn
         data["status"] = obj.display_status()
+        data["actions"] = compile_node_actions(obj, self.user).keys()
 
         data["extra_macs"] = [
             "%s" % mac_address.mac_address
@@ -171,4 +175,15 @@ class NodeHandler(TimestampedModelHandler):
             return obj
         if obj.owner is None or obj.owner == self.user:
             return obj
-        return None
+        raise HandlerDoesNotExistError(params[self._meta.pk])
+
+    def action(self, params):
+        """Perform the action on the object."""
+        obj = self.get_object(params)
+        action_name = params.get("action")
+        actions = compile_node_actions(obj, self.user)
+        action = actions.get(action_name)
+        if action is None:
+            raise NodeActionError(
+                "%s action is not available for this node." % action_name)
+        return action.execute(allow_redirect=False)

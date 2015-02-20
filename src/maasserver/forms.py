@@ -1061,7 +1061,7 @@ class NodeActionForm(forms.Form):
     action = forms.ChoiceField(
         required=True,
         choices=[
-            (action.name, action.display_bulk)
+            (action.name, action.display)
             for action in ACTION_CLASSES])
 
     # The name of the input button used with this form.
@@ -2031,7 +2031,7 @@ class SetZoneBulkAction:
     difference is that this action takes an argument: the zone.
     """
     name = 'set_zone'
-    display_bulk = "Set physical zone"
+    display = "Set physical zone"
 
 
 class BulkNodeActionForm(forms.Form):
@@ -2046,7 +2046,7 @@ class BulkNodeActionForm(forms.Form):
             # Put an empty action as the first displayed option to avoid
             # fat-fingered bulk actions.
             [('', 'Select Action')] +
-            [(action.name, action.display_bulk) for action in ACTION_CLASSES]
+            [(action.name, action.display) for action in ACTION_CLASSES]
             )
         add_zone_field = (
             user.is_superuser and
@@ -2063,7 +2063,7 @@ class BulkNodeActionForm(forms.Form):
         # submitted with an action other than SetZoneBulkAction.name.
         if add_zone_field:
             action_choices.append(
-                (SetZoneBulkAction.name, SetZoneBulkAction.display_bulk))
+                (SetZoneBulkAction.name, SetZoneBulkAction.display))
             # This adds an input field: the zone.
             self.fields['zone'] = forms.ModelChoiceField(
                 label="Physical zone", required=True,
