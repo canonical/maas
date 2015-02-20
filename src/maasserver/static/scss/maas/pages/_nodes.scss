@@ -40,7 +40,7 @@
             top: 8px;
             right: 12px;
             background-color: transparent;
-            background-image: url('../?img/search-icon.svg');
+            background-image: url('../img/search-icon.svg');
             background-repeat: no-repeat;
             text-indent: -999em;
             display: block;
@@ -53,7 +53,7 @@
             &:hover {
                 color: transparent;
                 background-color: transparent;
-                background-image: url('../?img/search-icon.svg');
+                background-image: url('../img/search-icon.svg');
                 background-repeat: no-repeat;
             }
         }
@@ -87,11 +87,11 @@
     display: inline-block;
 
     &.power-on {
-        background: transparent url('../?img/icons/power-on.svg') left top no-repeat;
+        background: transparent url('../img/icons/power-on.svg') left top no-repeat;
     }
 
     &.power-off {
-        background: transparent url('../?img/icons/power-off.svg') left top no-repeat;
+        background: transparent url('../img/icons/power-off.svg') left top no-repeat;
     }
 
     &.power-unknown {
@@ -99,7 +99,7 @@
     }
 
     &.power-error {
-        background: transparent url('../?img/icons/power-error.svg') left top no-repeat;
+        background: transparent url('../img/icons/power-error.svg') left top no-repeat;
     }
 
     &.power-check-ok {
@@ -200,7 +200,7 @@
         top: 15px;
         right: 25px;
         background-color: transparent;
-        background-image: url('../?img/search-icon.svg');
+        background-image: url('../img/search-icon.svg');
         background-repeat: no-repeat;
         text-indent: -999em;
         display: block;
@@ -221,7 +221,7 @@
     .add-machine__details {
         @extend %border-bottom;
         margin-bottom: 13px;
-        background: transparent url('../?img/icons/accordion-open.svg') top 12px right 10px no-repeat;
+        background: transparent url('../img/icons/accordion-open.svg') top 12px right 10px no-repeat;
 
         > div {
             margin-bottom: 0;
@@ -232,7 +232,7 @@
         }
 
         &.active {
-            background-image: url('../?img/icons/accordion-close.svg');
+            background-image: url('../img/icons/accordion-close.svg');
 
             .add-machine__details-form {
                 display: block;
@@ -279,10 +279,10 @@
             margin: 0;
             color: #888;
             cursor: pointer;
-            background: transparent url('../?img/icons/accordion-open.svg') top 20px right 20px no-repeat;
+            background: transparent url('../img/icons/accordion-open.svg') top 20px right 20px no-repeat;
 
             &.active {
-                background-image: url('../?img/icons/accordion-close.svg');
+                background-image: url('../img/icons/accordion-close.svg');
 
                 & + .accordion__tab-content {
                     display: block;
@@ -312,14 +312,14 @@
 
                     &.active {
                         color: #D2D2D2;
-                        background: transparent url('../?img/icons/filter-remove.svg') top 7px right 0px no-repeat;
+                        background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
 
                         .accordion__tab-link {
                             color: #D2D2D2;
                         }
 
                         &:hover {
-                            background-image: url('../?img/icons/filter-remove-hover.svg');
+                            background-image: url('../img/icons/filter-remove-hover.svg');
                             color: #888;
 
                             .accordion__tab-link {

@@ -15,7 +15,8 @@
     <![endif]-->
 
     <link rel="shortcut icon" href="{{ STATIC_URL }}img/favicon.ico" type="image/x-icon" />
-    <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
+
+    {% include "maasserver/css-conf.html" %}
 
     {% include "maasserver/js-conf.html" %}
 </head>

@@ -16,7 +16,7 @@
         img {
             @include box-sizing();
             display: inline-block;
-            background: url('../?img/icons/help.svg') no-repeat;
+            background: url('../img/icons/help.svg') no-repeat;
             width: 16px;
             height: 16px;
             padding-left: 16px;
@@ -77,18 +77,18 @@
                 margin: 0 auto;
 
                 &.selector-add {
-                    background-image: url('../?img/icons/chevron_right.svg');
+                    background-image: url('../img/icons/chevron_right.svg');
 
                     @media screen and (max-width: 768px) {
-                        background-image: url('../?img/icons/chevron_down.svg');
+                        background-image: url('../img/icons/chevron_down.svg');
                     }
                 }
 
                 &.selector-remove {
-                    background-image: url('../?img/icons/chevron_left.svg');
+                    background-image: url('../img/icons/chevron_left.svg');
 
                     @media screen and (max-width: 768px) {
-                        background-image: url('../?img/icons/chevron_up.svg');
+                        background-image: url('../img/icons/chevron_up.svg');
                     }
                 }
             }
@@ -103,7 +103,7 @@
         }
 
         input {
-            background-image: url('../?img/search-orange.png');
+            background-image: url('../img/search-orange.png');
             background-repeat: no-repeat;
             background-position: top 7px right 8px;
         }

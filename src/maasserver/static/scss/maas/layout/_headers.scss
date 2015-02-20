@@ -180,8 +180,8 @@ header.banner {
     }
 
     .nav-toggle {
-        background-image: url('../?img/icons/navigation-menu-plain.png');
-        background-image: url('../?img/icons/navigation-menu-plain.svg'), none;
+        background-image: url('../img/icons/navigation-menu-plain.png');
+        background-image: url('../img/icons/navigation-menu-plain.svg'), none;
         top: 0;
     }
 
@@ -327,8 +327,8 @@ header.banner {
                 padding-left: 25px;
 
                 &.info {
-                    background-image: url('../?img/icons/info.png');
-                    background-image: url('../?img/icons/info.svg'), none;
+                    background-image: url('../img/icons/info.png');
+                    background-image: url('../img/icons/info.svg'), none;
                 }
             }
         }

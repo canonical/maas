@@ -71,7 +71,7 @@ header.banner {
 
     .nav-primary.nav-right .logo-ubuntu {
         @include background_size(73px 30px);
-        background-image: url(../../../static/img/logos/logo.svg);
+        background-image: url(../img/logos/logo.svg);
         background-position: 20px;
         background-repeat: no-repeat;
         min-width: 120px;

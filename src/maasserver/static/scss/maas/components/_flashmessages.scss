@@ -34,23 +34,23 @@
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
 
         &.info {
-            background-image: url('../?img/icons/info.png');
-            background-image: url('../?img/icons/info.svg'), none;
+            background-image: url('../img/icons/info.png');
+            background-image: url('../img/icons/info.svg'), none;
         }
 
         &.success {
-            background-image: url('../?img/icons/success.png');
-            background-image: url('../?img/icons/success.svg'), none;
+            background-image: url('../img/icons/success.png');
+            background-image: url('../img/icons/success.svg'), none;
         }
 
         &.warning {
-            background-image: url('../?img/icons/warning.png');
-            background-image: url('../?img/icons/warning.svg'), none;
+            background-image: url('../img/icons/warning.png');
+            background-image: url('../img/icons/warning.svg'), none;
         }
 
         &.error {
-            background-image: url('../?img/icons/error.png');
-            background-image: url('../?img/icons/error.svg'), none;
+            background-image: url('../img/icons/error.png');
+            background-image: url('../img/icons/error.svg'), none;
         }
     }
 }

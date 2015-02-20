@@ -19,7 +19,9 @@
     {% endblock %}
 
     <!-- stylesheets -->
-    <link rel="stylesheet" href="{% url "combo-maas" %}?{{ CSS_LIST|join:"&" }}" />
+    {% block css-conf %}
+        {% include "maasserver/css-conf.html" %}
+    {% endblock %}
 
     {% block js-conf %}
         {% include "maasserver/js-conf.html" %}
