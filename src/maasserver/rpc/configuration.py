@@ -20,7 +20,7 @@ __all__ = [
 from urlparse import urlparse
 
 from maasserver.models.config import Config
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.utils.twisted import synchronous
 
 

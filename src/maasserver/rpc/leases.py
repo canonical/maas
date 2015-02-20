@@ -18,7 +18,7 @@ __all__ = [
 
 from maasserver.models.dhcplease import DHCPLease
 from maasserver.models.nodegroup import NodeGroup
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.pserv_services.lease_upload_service import (
     convert_mappings_to_leases,
     )

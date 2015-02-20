@@ -17,23 +17,10 @@ __all__ = []
 from functools import partial
 from time import time
 
-from django.db import connection
-from django.db.utils import OperationalError
 from maasserver.exceptions import IteratorReusedError
-from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import async
-from maastesting.djangotestcase import TransactionTestCase
-from maastesting.matchers import (
-    MockCalledOnceWith,
-    MockCallsMatch,
-    MockNotCalled,
-    )
 from maastesting.testcase import MAASTestCase
-from mock import (
-    call,
-    Mock,
-    sentinel,
-    )
+from mock import sentinel
 from testtools.matchers import (
     Contains,
     Equals,
@@ -124,72 +111,3 @@ class TestUseOnceIterator(MAASTestCase):
         # and reuse it.
         list(iterator)
         self.assertRaises(IteratorReusedError, iterator.next)
-
-
-class TestTransactional(TransactionTestCase):
-
-    def test__calls_function_within_transaction_then_closes_connections(self):
-        close_old_connections = self.patch(async, "close_old_connections")
-
-        # No transaction has been entered (what Django calls an atomic
-        # block), and old connections have not been closed.
-        self.assertFalse(connection.in_atomic_block)
-        self.assertThat(close_old_connections, MockNotCalled())
-
-        def check_inner(*args, **kwargs):
-            # In here, the transaction (`atomic`) has been started but
-            # is not over, and old connections have not yet been closed.
-            self.assertTrue(connection.in_atomic_block)
-            self.assertThat(close_old_connections, MockNotCalled())
-
-        function = Mock()
-        function.__name__ = self.getUniqueString()
-        function.side_effect = check_inner
-
-        # Call `function` via the `transactional` decorator.
-        decorated_function = async.transactional(function)
-        decorated_function(sentinel.arg, kwarg=sentinel.kwarg)
-
-        # `function` was called -- and therefore `check_inner` too --
-        # and the arguments passed correctly.
-        self.assertThat(function, MockCalledOnceWith(
-            sentinel.arg, kwarg=sentinel.kwarg))
-
-        # After the decorated function has returned the transaction has
-        # been exited, and old connections have been closed.
-        self.assertFalse(connection.in_atomic_block)
-        self.assertThat(close_old_connections, MockCalledOnceWith())
-
-    def test__closes_connections_only_when_leaving_atomic_block(self):
-        close_old_connections = self.patch(async, "close_old_connections")
-
-        @async.transactional
-        def inner():
-            # We're inside a `transactional` context here.
-            return "inner"
-
-        @async.transactional
-        def outer():
-            # We're inside a `transactional` context here too.
-            # Call `inner`, thus nesting `transactional` contexts.
-            return "outer > " + inner()
-
-        self.assertEqual("outer > inner", outer())
-        # Old connections have been closed only once.
-        self.assertThat(close_old_connections, MockCalledOnceWith())
-
-
-class TestTransactionalRetries(SerializationFailureTestCase):
-
-    def test__retries_upon_serialization_failures(self):
-        # No-op close_old_connections().
-        self.patch(async, "close_old_connections")
-
-        function = Mock()
-        function.__name__ = self.getUniqueString()
-        function.side_effect = self.cause_serialization_failure
-        decorated_function = async.transactional(function)
-
-        self.assertRaises(OperationalError, decorated_function)
-        expected_calls = [call()] * 10
-        self.assertThat(function, MockCallsMatch(*expected_calls))

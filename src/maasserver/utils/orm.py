@@ -25,6 +25,7 @@ __all__ = [
     'psql_array',
     'request_transaction_retry',
     'retry_on_serialization_failure',
+    'transactional',
     'validate_in_transaction',
     ]
 
@@ -33,7 +34,11 @@ from functools import wraps
 from itertools import islice
 
 from django.core.exceptions import MultipleObjectsReturned
-from django.db import transaction
+from django.db import (
+    close_old_connections,
+    connection,
+    transaction,
+    )
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 import psycopg2
@@ -265,6 +270,35 @@ def retry_on_serialization_failure(func):
         else:
             return func(*args, **kwargs)
     return retrier
+
+
+def transactional(func):
+    """Decorator that wraps calls to `func` in a Django-managed transaction.
+
+    It ensures that connections are closed if necessary. This keeps Django
+    happy, especially in the test suite.
+
+    In addition, if `func` is being invoked from outside of a transaction,
+    this will retry if it fails with a serialization failure.
+    """
+    func_within_txn = transaction.atomic(func)  # For savepoints.
+    func_outside_txn = retry_on_serialization_failure(func_within_txn)
+
+    @wraps(func)
+    def call_within_transaction(*args, **kwargs):
+        try:
+            # Don't use the retry-capable function if we're already in a
+            # transaction; retrying is pointless when the txn is broken.
+            if connection.in_atomic_block:
+                return func_within_txn(*args, **kwargs)
+            else:
+                return func_outside_txn(*args, **kwargs)
+        finally:
+            # Close connections if we've left the outer-most atomic block.
+            if not connection.in_atomic_block:
+                close_old_connections()
+
+    return call_within_transaction
 
 
 def commit_within_atomic_block(using="default"):

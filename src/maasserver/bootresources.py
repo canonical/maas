@@ -64,8 +64,10 @@ from maasserver.models import (
     NodeGroup,
     )
 from maasserver.utils import absolute_reverse
-from maasserver.utils.async import transactional
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    transactional,
+    )
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
     )

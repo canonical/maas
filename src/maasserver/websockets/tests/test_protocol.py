@@ -21,7 +21,7 @@ import random
 from crochet import wait_for_reactor
 from maasserver.testing.factory import factory as maas_factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maasserver.websockets import protocol as protocol_module
 from maasserver.websockets.handlers import (
     DeviceHandler,

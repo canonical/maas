@@ -28,7 +28,7 @@ from django.contrib.auth import (
     )
 from django.contrib.auth.models import User
 from django.utils.importlib import import_module
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maasserver.websockets import handlers
 from maasserver.websockets.listener import PostgresListener
 from maasserver.websockets.websockets import STATUSES

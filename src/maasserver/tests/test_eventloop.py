@@ -27,7 +27,7 @@ from maasserver import (
 from maasserver.eventloop import DEFAULT_PORT
 from maasserver.rpc import regionservice
 from maasserver.testing.eventloop import RegionEventLoopFixture
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 from testtools.matchers import (

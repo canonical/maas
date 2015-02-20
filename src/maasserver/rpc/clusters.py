@@ -23,7 +23,7 @@ from django.core.exceptions import ValidationError
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.forms import NodeGroupDefineForm
 from maasserver.models.nodegroup import NodeGroup
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchCluster
 from provisioningserver.utils.twisted import synchronous

@@ -70,7 +70,7 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,

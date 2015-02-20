@@ -33,7 +33,7 @@ from contextlib import closing
 from textwrap import dedent
 
 from django.db import connection
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 
 # Note that the corresponding test module (test_triggers) only tests that the
 # triggers and procedures are registered.  The behavior of these procedures

@@ -24,7 +24,7 @@ from maasserver.models.eventtype import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maastesting.djangotestcase import TransactionTestCase
 from testtools.matchers import (
     AfterPreprocessing,

@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 from maasserver.models import Node
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.utils.twisted import synchronous
 

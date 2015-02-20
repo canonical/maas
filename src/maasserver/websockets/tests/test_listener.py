@@ -20,7 +20,7 @@ from maasserver.models.node import Node
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_all_triggers
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from maasserver.websockets.listener import (
     PostgresListener,
     PostgresListenerNotifyError,

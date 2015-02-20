@@ -22,7 +22,7 @@ import os
 
 from maasserver import locks
 from maasserver.models.config import Config
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.security import (
     get_shared_secret_filesystem_path,
     get_shared_secret_from_filesystem,

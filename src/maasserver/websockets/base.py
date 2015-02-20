@@ -22,8 +22,8 @@ __all__ = [
 
 from django.core.exceptions import ValidationError
 from django.utils.encoding import is_protected_type
-from maasserver.utils.async import transactional
 from maasserver.utils.forms import get_QueryDict
+from maasserver.utils.orm import transactional
 from provisioningserver.utils.twisted import synchronous
 
 

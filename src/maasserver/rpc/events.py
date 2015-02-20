@@ -24,7 +24,7 @@ from maasserver.models import (
     MACAddress,
     Node,
     )
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc.exceptions import NoSuchEventType
 from provisioningserver.utils.twisted import synchronous

@@ -30,7 +30,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     )
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.rpc.exceptions import (
     CommissionNodeFailed,
     NodeAlreadyExists,

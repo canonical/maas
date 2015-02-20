@@ -139,7 +139,6 @@ from maasserver.node_action import (
     compile_node_actions,
     )
 from maasserver.utils import strip_domain
-from maasserver.utils.async import transactional
 from maasserver.utils.forms import compose_invalid_choice_text
 from maasserver.utils.interfaces import (
     get_name_and_vlan_from_cluster_interface,
@@ -148,6 +147,7 @@ from maasserver.utils.interfaces import (
 from maasserver.utils.orm import (
     get_one,
     outside_atomic_block,
+    transactional,
     )
 from maasserver.utils.osystems import (
     get_distro_series_initial,

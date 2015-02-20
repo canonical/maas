@@ -18,7 +18,7 @@ __all__ = [
 ]
 
 from maasserver.models import NodeGroupInterface
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 
 
 @transactional

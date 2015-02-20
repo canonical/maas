@@ -55,7 +55,7 @@ from maasserver.utils import (
     make_validation_error_message,
     synchronised,
     )
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from netaddr import IPAddress
 from provisioningserver.rpc import (
     cluster,

@@ -20,7 +20,7 @@ __all__ = [
 
 import time
 
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from oauth.oauth import OAuthServer
 from piston.models import Nonce
 from provisioningserver.utils.twisted import synchronous

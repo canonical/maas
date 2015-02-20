@@ -34,7 +34,7 @@ from maasserver.models import (
     BootSourceSelection,
     Config,
     )
-from maasserver.utils.async import transactional
+from maasserver.utils.orm import transactional
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.import_images.download_descriptions import (
     download_all_image_descriptions,
