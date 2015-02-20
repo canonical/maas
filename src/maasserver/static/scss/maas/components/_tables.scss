@@ -73,9 +73,31 @@ table {
 
 .table-listing {
 
-    &__cell-fixed {
-        max-width: 200px;
-        min-width: 200px;
-        width: 200px;
+    .table-listing__row {
+
+        &.error {
+            background-color: #F3E3E2;
+
+            .status {
+                color: #DD3832;
+            }
+        }
+
+        &.progress {
+            background-color: rgba(25, 182, 238, 0.10);
+        }
+    }
+
+    .table-listing__header {
+
+    }
+
+    .table-listing__cell {
+
+        &.fixed {
+            max-width: 200px;
+            min-width: 200px;
+            width: 200px;
+        }
     }
 }

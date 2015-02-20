@@ -229,6 +229,9 @@ header.banner {
     position: relative;
     z-index: 10;
 
+    /**
+     * Main page title
+     */
     .page-header__title {
         font-size: $title-size;
         width: auto;
@@ -236,6 +239,10 @@ header.banner {
         margin: 0;
         float: left;
 
+        /**
+         * Title identicator is used to show any sub pages and where
+         * a user is currently.
+         */
         .page-header__title--identicator {
             font-size: $title-action-size;
             width: auto;
@@ -243,14 +250,20 @@ header.banner {
             position: relative;
             top: -3px;
             padding-left: 20px;
-            border-left: 1px solid #B2B2B2;
             margin-left: 20px;
 
             a {
                 color: #888;
+                margin-right: 10px;
+
+                &:hover {
+                    text-decoration: none;
+                    border-bottom: 1px solid #888;
+                }
 
                 &.active {
                     color: #333;
+                    border-bottom: 1px solid $ubuntu-orange;
 
                     &:hover {
                         text-decoration: none;
@@ -261,6 +274,10 @@ header.banner {
         }
     }
 
+    /**
+     * Page actions container, used to hold any call to action buttons
+     * and links
+     */
     .page-header__actions {
         float: right;
         padding: 34px 0;
@@ -271,12 +288,48 @@ header.banner {
             height: auto;
             max-height: 36px;
 
+            /**
+             * Feedback container for the cta, will contain positive or
+             * negative feedback
+             */
             .page-header__cta-feedback {
                 display: inline-block;
                 position: relative;
                 line-height: 36px;
                 margin-right: 20px;
                 float: left;
+                color: $ubuntu-orange;
+            }
+        }
+    }
+
+    /**
+     * Header dropdown section, can contain secondary information i.e
+     * flash messages or form controls / actions
+     */
+    .page-header__dropdown {
+        float: left;
+        width: 100%;
+        padding: 13px 0;
+        border-top: 1px dotted #888;
+
+        /**
+         * Feedback style, mainly used for actions feedback
+         */
+        .page-header__feedback {
+            padding: 6px 0 5px;
+
+            .page-header__feedback-message {
+                @include box-sizing();
+                margin: 0;
+                background-position: top 3px left 0px;
+                background-repeat: no-repeat;
+                padding-left: 25px;
+
+                &.info {
+                    background-image: url('../?img/icons/info.png');
+                    background-image: url('../?img/icons/info.svg'), none;
+                }
             }
         }
     }

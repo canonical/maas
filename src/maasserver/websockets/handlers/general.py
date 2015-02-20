@@ -30,18 +30,19 @@ class GeneralHandler(Handler):
     class Meta:
         allowed_methods = ['osinfo', 'actions']
 
-    def osinfo(self):
+    def osinfo(self, params):
         """Return all available operating systems and releases information."""
         return {
             "osystems": list_all_usable_releases(list_all_usable_osystems())
             }
 
-    def actions(self):
+    def actions(self, params):
         """Return all possible actions."""
         return [
             {
                 "name": name,
                 "title": action.display,
+                "sentence": action.display_sentence,
             }
             for name, action in ACTIONS_DICT.items()
             ]

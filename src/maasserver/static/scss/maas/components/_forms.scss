@@ -9,6 +9,34 @@
  *
  */
 
+%input--styles {
+    @include rounded-corners(2px);
+    @include box-sizing();
+    -webkit-appearance: none;
+    background: #FFF;
+    color: #333;
+    border: 1px solid #D2D2D2;
+    display: block;
+    font-family: Ubuntu,Arial,"libra sans",sans-serif;
+    font-size: 1em;
+    font-weight: 300;
+    padding: 0px 13px;
+
+    &:hover {
+
+    }
+
+    &:active {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+
+    &:focus {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+}
+
 form {
 
     li {
@@ -88,14 +116,14 @@ form {
 
     select {
         @extend %input--styles;
-        line-height: 34px;
         display: block;
         clear: both;
         cursor: pointer;
         margin: 0;
-        background-image: url('../?img/select-arrow.png');
+        background-image: url('../?img/icons/accordion-open.svg');
         background-repeat: no-repeat;
         background-position: top 16px right 10px;
+        padding: 6px 30px 7px 10px;
 
         /* Removes firefox select styles & arrow */
         -moz-appearance: none;
@@ -139,6 +167,7 @@ form {
     input[type='search'],
     input[type='password'],
     input[type='email'],
+    input[type='checkbox'],
     select {
         display: inline-block;
         width: auto;
@@ -146,14 +175,14 @@ form {
         margin-bottom: 0;
     }
 
-    label,
     input[type='submit']
     input[type='text'],
     input[type='number'],
     input[type='search'],
     input[type='password'],
     input[type='email'],
+    input[type='checkbox'],
     select {
-        margin-right: 10px;
+        margin-left: 10px;
     }
 }

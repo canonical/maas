@@ -13,7 +13,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '</a>',
             '<a class="cta-group__link--toggle" ',
                 'aria-expanded="false" data-ng-click="shown=!shown">',
-                '<span class="caret">&#711;</span>',
+                '<span class="chevron"></span>',
             '</a>',
             '<ul class="cta-group__dropdown ng-hide" ',
                 'role="menu" data-ng-show="shown">',

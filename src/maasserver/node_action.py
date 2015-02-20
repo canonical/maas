@@ -160,6 +160,7 @@ class Delete(NodeAction):
     """Delete a node."""
     name = "delete"
     display = "Delete"
+    display_sentence = "deleted"
     actionable_statuses = ALL_STATUSES
     permission = NODE_PERMISSION.ADMIN
 
@@ -188,6 +189,7 @@ class Commission(InstallableNodeAction):
     """Accept a node into the MAAS, and start the commissioning process."""
     name = "commission"
     display = "Commission"
+    display_sentence = "commissioned"
     actionable_statuses = (
         NODE_STATUS.NEW, NODE_STATUS.FAILED_COMMISSIONING, NODE_STATUS.READY,
         NODE_STATUS.BROKEN)
@@ -207,6 +209,7 @@ class Abort(InstallableNodeAction):
     """Abort the current operation."""
     name = "abort"
     display = "Abort"
+    display_sentence = "aborted"
     actionable_statuses = (
         NODE_STATUS.COMMISSIONING, NODE_STATUS.DISK_ERASING,)
     permission = NODE_PERMISSION.ADMIN
@@ -225,6 +228,7 @@ class Acquire(InstallableNodeAction):
     """Acquire a node."""
     name = "acquire"
     display = "Acquire"
+    display_sentence = "acquired"
     actionable_statuses = (NODE_STATUS.READY, )
     permission = NODE_PERMISSION.VIEW
 
@@ -239,6 +243,7 @@ class Deploy(InstallableNodeAction):
     """Deploy a node."""
     name = "deploy"
     display = "Deploy"
+    display_sentence = "deployed"
     actionable_statuses = (NODE_STATUS.READY, NODE_STATUS.ALLOCATED)
     permission = NODE_PERMISSION.VIEW
 
@@ -279,6 +284,7 @@ class Start(InstallableNodeAction):
     """Start a node."""
     name = "start"
     display = "Start"
+    display_sentence = "started"
     actionable_statuses = (NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED)
     permission = NODE_PERMISSION.EDIT
 
@@ -310,6 +316,7 @@ class Stop(InstallableNodeAction):
     """Stop a node."""
     name = "stop"
     display = "Stop"
+    display_sentence = "stopped"
     actionable_statuses = (
         [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
         # Also let a user ask a failed node to shutdown: this
@@ -332,6 +339,7 @@ class Release(InstallableNodeAction):
     """Release a node."""
     name = "release"
     display = "Release"
+    display_sentence = "released"
     actionable_statuses = (
         NODE_STATUS.ALLOCATED, NODE_STATUS.DEPLOYED,
         NODE_STATUS.DEPLOYING, NODE_STATUS.FAILED_DEPLOYMENT,
@@ -353,6 +361,7 @@ class MarkBroken(InstallableNodeAction):
     """Mark a node as 'broken'."""
     name = "mark-broken"
     display = "Mark broken"
+    display_sentence = "marked broken"
     actionable_statuses = [
         NODE_STATUS.NEW, NODE_STATUS.COMMISSIONING,
         NODE_STATUS.ALLOCATED, NODE_STATUS.RELEASING,
@@ -370,6 +379,7 @@ class MarkFixed(InstallableNodeAction):
     """Mark a broken node as fixed and set its state to 'READY'."""
     name = "mark-fixed"
     display = "Mark fixed"
+    display_sentence = "marked fixed"
     actionable_statuses = (NODE_STATUS.BROKEN, )
     permission = NODE_PERMISSION.ADMIN
 

@@ -34,7 +34,7 @@ class TestGeneralHandler(MAASServerTestCase):
                     ],
                 },
             }
-        self.assertItemsEqual(osinfo_expected, handler.osinfo())
+        self.assertItemsEqual(osinfo_expected, handler.osinfo({}))
 
     def test_actions(self):
         handler = GeneralHandler(factory.make_User())
@@ -42,7 +42,8 @@ class TestGeneralHandler(MAASServerTestCase):
             {
                 "name": name,
                 "title": action.display,
+                "sentence": action.display_sentence,
             }
             for name, action in ACTIONS_DICT.items()
             ]
-        self.assertItemsEqual(actions_expected, handler.actions())
+        self.assertItemsEqual(actions_expected, handler.actions({}))

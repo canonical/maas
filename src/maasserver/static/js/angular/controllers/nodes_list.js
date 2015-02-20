@@ -24,35 +24,9 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.metadata = NodesManager.getMetadata();
         $scope.filters = SearchService.emptyFilter;
         $scope.column = 'fqdn';
-
-        // Take action dropdown options.
         $scope.actionOption = null;
-        $scope.takeActionOptions = [
-            {
-                title: "Commission"
-            },
-            {
-                title: "Allocate"
-            },
-            {
-                title: "Deploy"
-            },
-            {
-                title: "Release"
-            },
-            {
-                title: "Mark broken"
-            },
-            {
-                title: "Delete"
-            },
-            {
-                title: "Set physical zone"
-            }
-        ];
-        $scope.actionOptionSelected = function() {
-            // XXX blake_r - TODO
-        };
+        $scope.takeActionOptions = [];
+        $scope.actionError = false;
 
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {
@@ -73,6 +47,16 @@ angular.module('MAAS').controller('NodesListController', [
             $scope.allViewableChecked = true;
         }
 
+        // Clear the action if required.
+        function shouldClearAction() {
+            if($scope.selectedNodes.length === 0) {
+                if($scope.search === "in:selected") {
+                    $scope.search = "";
+                }
+                $scope.actionOption = null;
+            }
+        }
+
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node) {
             if(NodesManager.isSelected(node.system_id)) {
@@ -81,6 +65,7 @@ angular.module('MAAS').controller('NodesListController', [
                 NodesManager.selectItem(node.system_id);
             }
             updateAllViewableChecked();
+            shouldClearAction();
         };
 
         // Select all viewable nodes or deselect all viewable nodes.
@@ -95,6 +80,7 @@ angular.module('MAAS').controller('NodesListController', [
                 });
             }
             updateAllViewableChecked();
+            shouldClearAction();
         };
 
         // When the filtered nodes change update if the all check button
@@ -127,6 +113,51 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
+        // Return True if the node supports the action.
+        $scope.supportsAction = function(node) {
+            if(!$scope.actionOption) {
+                return true;
+            }
+            return node.actions.indexOf($scope.actionOption.name) >= 0;
+        };
+
+        // Called when the action option gets changed.
+        $scope.actionOptionSelected = function() {
+            var i;
+            $scope.actionError = false;
+            for(i = 0; i < $scope.selectedNodes.length; i++) {
+                if(!$scope.supportsAction($scope.selectedNodes[i])) {
+                    $scope.actionError = true;
+                    break;
+                }
+            }
+            $scope.search = "in:selected";
+        };
+
+        // Called when the current action is cancelled.
+        $scope.actionCancel = function() {
+            if($scope.search === "in:selected") {
+                $scope.search = "";
+            }
+            $scope.actionOption = null;
+        };
+
+        // Perform the action on all nodes.
+        $scope.actionGo = function() {
+            angular.forEach($scope.selectedNodes, function(node) {
+                NodesManager.performAction(
+                    node, $scope.actionOption.name).then(function() {
+                        NodesManager.unselectItem(node.system_id);
+                        shouldClearAction();
+                    }, function(error) {
+                        // Report error loading. This is simple handlng for
+                        // now but this should show a nice error dialog or
+                        // something.
+                        console.log(error);
+                    });
+            });
+        };
+
         // Make sure connected to region then load all the nodes.
         RegionConnection.defaultConnect().then(function() {
             if(!NodesManager.isLoaded()) {
@@ -138,5 +169,11 @@ angular.module('MAAS').controller('NodesListController', [
                 });
             }
             NodesManager.enableAutoReload();
+
+            // Load all of the available actions.
+            RegionConnection.callMethod("general.actions", {}).then(
+                function(actions) {
+                    $scope.takeActionOptions = actions;
+                });
         });
     }]);

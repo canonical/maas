@@ -86,4 +86,19 @@ describe("NodesManager", function() {
             });
         });
     });
+
+    describe("performAction", function() {
+
+        it("calls node.action with system_id and action", function(done) {
+            var node = makeNode();
+            webSocket.returnData.push(makeFakeResponse("deleted"));
+            NodesManager.performAction(node, "delete").then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.action");
+                expect(sentObject.params.system_id).toBe(node.system_id);
+                expect(sentObject.params.action).toBe("delete");
+                done();
+            });
+        });
+    });
 });

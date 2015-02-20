@@ -70,6 +70,9 @@ describe("NodesListController", function() {
         expect($scope.metadata).toBe(NodesManager.getMetadata());
         expect($scope.filters).toBe(SearchService.emptyFilter);
         expect($scope.column).toBe("fqdn");
+        expect($scope.actionOption).toBeNull();
+        expect($scope.takeActionOptions).toEqual([]);
+        expect($scope.actionError).toBe(false);
     });
 
     it("calls loadItems if not loaded", function(done) {
@@ -125,6 +128,27 @@ describe("NodesListController", function() {
                 $scope.toggleChecked(node);
                 expect($scope.allViewableChecked).toBe(false);
             });
+
+        it("resets search when in:selected and none selected", function() {
+            $scope.search = "in:selected";
+            $scope.toggleChecked(node);
+            $scope.toggleChecked(node);
+            expect($scope.search).toBe("");
+        });
+
+        it("ignores search when not in:selected and none selected", function() {
+            $scope.search = "other";
+            $scope.toggleChecked(node);
+            $scope.toggleChecked(node);
+            expect($scope.search).toBe("other");
+        });
+
+        it("clears action option when none selected", function() {
+            $scope.actionOption = {};
+            $scope.toggleChecked(node);
+            $scope.toggleChecked(node);
+            expect($scope.actionOption).toBeNull();
+        });
     });
 
     describe("toggleCheckAll", function() {
@@ -148,6 +172,27 @@ describe("NodesListController", function() {
             $scope.toggleCheckAll();
             expect(node1.$selected).toBe(false);
             expect(node2.$selected).toBe(false);
+        });
+
+        it("resets search when in:selected and none selected", function() {
+            $scope.search = "in:selected";
+            $scope.toggleCheckAll();
+            $scope.toggleCheckAll();
+            expect($scope.search).toBe("");
+        });
+
+        it("ignores search when not in:selected and none selected", function() {
+            $scope.search = "other";
+            $scope.toggleCheckAll();
+            $scope.toggleCheckAll();
+            expect($scope.search).toBe("other");
+        });
+
+        it("clears action option when none selected", function() {
+            $scope.actionOption = {};
+            $scope.toggleCheckAll();
+            $scope.toggleCheckAll();
+            expect($scope.actionOption).toBeNull();
         });
     });
 
@@ -219,5 +264,174 @@ describe("NodesListController", function() {
                 expect($scope.filters).toBe(SearchService.emptyFilter);
                 expect($scope.searchValid).toBe(false);
             });
+    });
+
+    describe("supportsAction", function() {
+
+        it("returns true if actionOption is null", function() {
+            var controller = makeController();
+            var node = makeNode();
+            node.actions = ["start", "stop"];
+            expect($scope.supportsAction(node)).toBe(true);
+        });
+
+        it("returns true if actionOption in node.actions", function() {
+            var controller = makeController();
+            var node = makeNode();
+            node.actions = ["start", "stop"];
+            $scope.actionOption = { name: "start" };
+            expect($scope.supportsAction(node)).toBe(true);
+        });
+
+        it("returns false if actionOption not in node.actions", function() {
+            var controller = makeController();
+            var node = makeNode();
+            node.actions = ["start", "stop"];
+            $scope.actionOption = { name: "deploy" };
+            expect($scope.supportsAction(node)).toBe(false);
+        });
+    });
+
+    describe("actionOptionSelected", function() {
+
+        it("sets actionError to false", function() {
+            var controller = makeController();
+            $scope.actionError = true;
+            $scope.actionOptionSelected();
+            expect($scope.actionError).toBe(false);
+        });
+
+        it("sets actionError to true when selected node doesnt support action",
+            function() {
+                var controller = makeController();
+                var node = makeNode();
+                node.actions = ['start', 'stop'];
+                $scope.actionOption = { name: 'deploy' };
+                $scope.selectedNodes = [node];
+                $scope.actionOptionSelected();
+                expect($scope.actionError).toBe(true);
+            });
+
+        it("sets search to in:selected", function() {
+            var controller = makeController();
+            $scope.actionOptionSelected();
+            expect($scope.search).toBe("in:selected");
+        });
+    });
+
+    describe("actionCancel", function() {
+
+        it("clears search if in:selected", function() {
+            var controller = makeController();
+            $scope.search = "in:selected";
+            $scope.actionCancel();
+            expect($scope.search).toBe("");
+        });
+
+        it("doesnt clear search if not in:selected", function() {
+            var controller = makeController();
+            $scope.search = "other";
+            $scope.actionCancel();
+            expect($scope.search).toBe("other");
+        });
+
+        it("sets actionOption to null", function() {
+            var controller = makeController();
+            $scope.actionOption = {};
+            $scope.actionCancel();
+            expect($scope.actionOption).toBeNull();
+        });
+    });
+
+    describe("actionGo", function() {
+
+        it("calls performAction for selected node", function() {
+            spyOn(NodesManager, "performAction").and.returnValue(
+                $q.defer().promise);
+            var controller = makeController();
+            var node = makeNode();
+            $scope.actionOption = { name: "start" };
+            $scope.selectedNodes = [node];
+            $scope.actionGo();
+            expect(NodesManager.performAction).toHaveBeenCalledWith(
+                node, "start");
+        });
+
+        it("calls unselectItem after complete", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            spyOn(NodesManager, "unselectItem");
+            var controller = makeController();
+            var node = makeNode();
+            $scope.actionOption = { name: "start" };
+            $scope.selectedNodes = [node];
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect(NodesManager.unselectItem).toHaveBeenCalled();
+        });
+
+        it("calls unselectItem after complete", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            spyOn(NodesManager, "unselectItem");
+            var controller = makeController();
+            var node = makeNode();
+            $scope.actionOption = { name: "start" };
+            $scope.selectedNodes = [node];
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect(NodesManager.unselectItem).toHaveBeenCalled();
+        });
+
+        it("resets search when in:selected after complete", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            var node = makeNode();
+            NodesManager._items = [node];
+            NodesManager._selectedItems = [node];
+            var controller = makeController();
+            $scope.search = "in:selected";
+            $scope.actionOption = { name: "start" };
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.search).toBe("");
+        });
+
+        it("ignores search when not in:selected after complete", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            var node = makeNode();
+            NodesManager._items = [node];
+            NodesManager._selectedItems = [node];
+            var controller = makeController();
+            $scope.search = "other";
+            $scope.actionOption = { name: "start" };
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.search).toBe("other");
+        });
+
+        it("clears action option when complete", function() {
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            var node = makeNode();
+            NodesManager._items = [node];
+            NodesManager._selectedItems = [node];
+            var controller = makeController();
+            $scope.actionOption = { name: "start" };
+            $scope.actionGo();
+            defer.resolve();
+            $scope.$digest();
+            expect($scope.actionOption).toBeNull();
+        });
     });
 });

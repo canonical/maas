@@ -2,10 +2,12 @@
     <div class="inner-wrapper">
         <h1 class="page-header__title">{$ $parent.site $} MAAS
             <span class="page-header__title--identicator" id="bulk-actions">
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <a href="" data-ng-class="{ active: page === 'nodes' }">{$ nodes.length $} Nodes</a>
                 <a href="">0 Devices</a>
             </span>
         </h1>
+        <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div class="page-header__actions">
             <div class="page-header__cta" data-ng-hide="selectedNodes.length">
                 <a href="" class="link-cta-ubuntu">Add Hardware</a>
@@ -15,6 +17,41 @@
                     {$ selectedNodes.length $} Selected
                 </span>
                 <div class="left" data-maas-cta="takeActionOptions" data-ng-model="actionOption" data-ng-change="actionOptionSelected()"></div>
+            </div>
+        </div>
+        <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+        <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
+            <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+            <form class="form-inline" data-ng-hide="actionError">
+            <!--
+                XXX blake_r - TODO: Add options to actions.
+                <label for="iamge">Choose your image</label>
+                <select name="os" id="os">
+                    <option value="Ubuntu">Ubuntu</option>
+                    <option value="Windows">Windows</option>
+                    <option value="OSX">OSX</option>
+                    <option value="Red Hat">Red Hat</option>
+                </select>
+                <select name="version" id="version">
+                    <option value="14.10">14.10</option>
+                    <option value="14.04.1 LTS">14.01.1 LTS</option>
+                    <option value="14.04 LTS">14.01 LTS</option>
+                    <option value="12.04.5 LTS">12.04.5 LTS</option>
+                </select>
+            -->
+                <div class="right">
+                    <a href="#" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                    <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
+                </div>
+            </form>
+            <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+            <div class="page-header__feedback ng-hide" data-ng-show="actionError">
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <p class="page-header__feedback-message info">
+                    {$ selectedNodes.length $}
+                    <span data-ng-pluralize count="selectedNodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                    cannot be {$ actionOption.sentence $}. To proceed, update your selection.
+                </p>
             </div>
         </div>
     </div>
@@ -67,9 +104,9 @@
                 data-ng-class="{ error: !searchValid }" />
             <input type="submit" class="node-search__submit" />
         </div>
-        <table class="list" id="nodes-listing">
+        <table class="table-listing" id="nodes-listing">
             <thead>
-                <tr>
+                <tr class="table-listing__row">
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <input type="checkbox" data-ng-click="toggleCheckAll()" data-ng-model="allViewableChecked" />
@@ -85,60 +122,62 @@
                     </th>
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='owner'; reverse=!reverse">Owner</a>
+                        <a href="" class="align-center" data-ng-click="predicate='power_state'; reverse=!reverse">Power</a>
                     </th>
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <a href="" data-ng-click="predicate='status'; reverse=!reverse">Status</a>
                     </th>
-                    <th class="powerstate">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='power_state'; reverse=!reverse">Power</a>
-                    </th>
                     <th>
+                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                        <a href="" data-ng-click="predicate='owner'; reverse=!reverse">Owner</a>
+                    </th>
+
+                    <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <a href="" data-ng-click="predicate='cpu_count'; reverse=!reverse">Cores</a>
                     </th>
-                    <th>
+                    <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='memory'; reverse=!reverse">RAM (GiB)</a>
+                        <a href="" data-ng-click="predicate='memory'; reverse=!reverse">RAM (GB)</a>
                     </th>
-                    <th>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='storage'; reverse=!reverse">Storage (GB)</a>
-                    </th>
-                    <th>
+                    <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <a href="" data-ng-click="predicate='disks'; reverse=!reverse">Disks</a>
+                    </th>
+                    <th class="align-right">
+                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                        <a href="" data-ng-click="predicate='storage'; reverse=!reverse">Storage (GB)</a>
                     </th>
                 </tr>
             </thead>
             <tbody>
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
-                <tr data-ng-repeat="node in filtered_nodes = (nodes | nodesFilter:search | orderBy:predicate:reverse) track by node.system_id">
+                <tr class="table-listing__row"
+                    data-ng-repeat="node in filtered_nodes = (nodes | nodesFilter:search | orderBy:predicate:reverse) track by node.system_id"
+                    data-ng-class="{ error: !supportsAction(node) }">
                     <td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-model="node.$selected" />
                     </td>
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="node-column table-listing__cell-fixed" data-ng-show="$parent.column === 'fqdn'" colspan="2">
+                    <td class="node-column table-listing__cell fixed" data-ng-show="$parent.column === 'fqdn'" colspan="2">
                         <a href="{$ node.url $}">{$ node.fqdn $}</a>
                     </td>
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="ng-hide table-listing__cell-fixed" data-ng-show="$parent.column === 'pxe_mac'" colspan="2">
+                    <td class="ng-hide table-listing__cell fixed" data-ng-show="$parent.column === 'pxe_mac'" colspan="2">
                         <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                         <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
                     </td>
-                    <td>{$ node.owner $}</td>
-                    <td>{$ node.status $}</td>
-                    <td class="powerstate">
-                        <div title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}">
-                        </div>
+                    <td class="powerstate align-center">
+                        <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
                     </td>
-                    <td>{$ node.cpu_count $}</td>
-                    <td>{$ node.memory $}</td>
-                    <td>{$ node.storage $}</td>
-                    <td>{$ node.disks $}</td>
+                    <td class="table-listing__cell status">{$ node.status $}</td>
+                    <td>{$ node.owner $}</td>
+                    <td class="align-right">{$ node.cpu_count $}</td>
+                    <td class="align-right">{$ node.memory $}</td>
+                    <td class="align-right">{$ node.disks $}</td>
+                    <td class="align-right">{$ node.storage $}</td>
                 </tr>
             </tbody>
         </table>

@@ -83,6 +83,7 @@ input[type='submit'],
 form button[type='submit'],
 form input[type='submit'] {
     font-size: 1em;
+    border: none;
 
     &.disabled {
         cursor: default;
@@ -92,6 +93,7 @@ form input[type='submit'] {
             background-color: $ubuntu-orange;
         }
     }
+
     &.secondary {
         color: #333;
         border: 1px solid #b2b2b2;
@@ -143,6 +145,7 @@ a.link-cta-ubuntu {
     .cta-group__link {
         @extend %cta-link;
         float: left;
+        max-height: 36px;
 
         /**
          * Toggle caret button
@@ -151,15 +154,15 @@ a.link-cta-ubuntu {
             @extend %cta-link;
             @include rounded-corners(0px 3px 3px 0px);
             float: left;
+            height: 36px;
+            width: 34px;
+            padding: 0;
 
-            .secondary & {
-                @extend %secondary-cta;
-            }
-
-            .caret {
-                line-height: 30px;
+            .chevron {
+                width: 100%;
+                height: 100%;
                 display: block;
-                height: 20px;
+                background: transparent url('../?img/chevron-white.svg') no-repeat center center;
             }
         }
     }
@@ -171,7 +174,7 @@ a.link-cta-ubuntu {
         @include box-sizing();
         @include rounded-corners(3px);
         position: absolute;
-        top: 35px;
+        top: 36px;
         max-width: inherit;
         width: 100%;
         list-style: none;
@@ -185,6 +188,7 @@ a.link-cta-ubuntu {
 
             a {
                 color: #333;
+                cursor: pointer;
 
                 &:hover {
                     color: $ubuntu-orange;
@@ -205,6 +209,10 @@ a.link-cta-ubuntu {
             &--toggle {
                 @extend %secondary-cta;
                 border-left: none;
+
+                .chevron {
+                    background-image: url('../?img/icons/accordion-open.svg');
+                }
             }
         }
     }

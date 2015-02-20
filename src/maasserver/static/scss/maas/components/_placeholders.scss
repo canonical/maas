@@ -9,35 +9,6 @@
  *
  */
 
-%input--styles {
-    @include rounded-corners(2px);
-    @include box-sizing();
-    -webkit-appearance: none;
-    background: #FFF;
-    color: #333;
-    border: 1px solid #D2D2D2;
-    display: block;
-    font-family: Ubuntu,Arial,"libra sans",sans-serif;
-    font-size: 1em;
-    font-weight: 300;
-    padding: 0px 13px;
-    box-shadow: inset 0 1px 1px rgba(000,000,000,0.1);
-
-    &:hover {
-
-    }
-
-    &:active {
-        border-color: #B2B2B2;
-        outline: none;
-    }
-
-    &:focus {
-        border-color: #B2B2B2;
-        outline: none;
-    }
-}
-
 .icon {
     margin-left: 5px;
     width: 16px;
@@ -47,29 +18,34 @@
     overflow: hidden;
     background-repeat: no-repeat;
 
+    &.info {
+        background-image: url('../?img/icons/info.png');
+        background-image: url('../?img/icons/info.svg'), none;
+    }
+
     &.edit {
-        background-image: url(../?img/icons/edit.png);
-        background-image: url(../?img/icons/edit.svg), none;
+        background-image: url('../?img/icons/edit.png');
+        background-image: url('../?img/icons/edit.svg'), none;
     }
 
     &.delete {
-        background-image: url(../?img/icons/remove.png);
-        background-image: url(../?img/icons/remove.svg), none;
+        background-image: url('../?img/icons/remove.png');
+        background-image: url('../?img/icons/remove.svg'), none;
     }
 
     &.warning {
-        background-image: url(../?img/icons/warning.png);
-        background-image: url(../?img/icons/warning.svg), none;
+        background-image: url('../?img/icons/warning.png');
+        background-image: url('../?img/icons/warning.svg'), none;
     }
 
     &.success {
-        background-image: url(../?img/icons/success.png);
-        background-image: url(../?img/icons/success.svg), none;
+        background-image: url('../?img/icons/success.png');
+        background-image: url('../?img/icons/success.svg'), none;
     }
 
     &.error {
-        background-image: url(../?img/icons/error.png);
-        background-image: url(../?img/icons/error.svg), none;
+        background-image: url('../?img/icons/error.png');
+        background-image: url('../?img/icons/error.svg'), none;
     }
 }
 
@@ -83,6 +59,14 @@
 
 .align-right {
     text-align: right;
+}
+
+.align-center {
+    text-align: center;
+}
+
+.align-left {
+    text-align: left;
 }
 
 .border {
@@ -106,4 +90,20 @@
   -webkit-transform: translateY(-50%);
   -ms-transform: translateY(-50%);
   transform: translateY(-50%);
+}
+
+.margin-top {
+    margin-top: 20px;
+}
+
+.margin-right {
+    margin-right: 20px;
+}
+
+.margin-bottom {
+    margin-bottom: 20px;
+}
+
+.margin-left {
+    margin-left: 20px;
 }
