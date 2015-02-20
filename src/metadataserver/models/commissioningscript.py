@@ -340,8 +340,7 @@ LIST_MODALIASES_SCRIPT = \
     'find /sys -name modalias -print0 | xargs -0 cat | sort -u'
 
 
-def gather_physical_block_devices(
-        print_output=True, dev_disk_byid='/dev/disk/by-id/'):
+def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
     """Gathers information about a nodes physical block devices.
 
     The following commands are ran in order to gather the required information.
@@ -355,9 +354,8 @@ def gather_physical_block_devices(
 
     blockdev    Grabs the block size and size of the disk in bytes.
 
-    :param print_output: False will return the output instead of
-        printing. (Used only for testing.)
     """
+    import json
     import os
     import shlex
     from subprocess import check_output
@@ -433,10 +431,7 @@ def gather_physical_block_devices(
 
     # Output block device information in json
     json_output = json.dumps(blockdevs, indent=True)
-    if print_output:
-        print(json_output)
-    else:
-        return json_output
+    print(json_output)
 
 
 def get_tags_from_block_info(block_info):

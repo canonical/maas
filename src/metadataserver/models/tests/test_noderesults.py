@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import doctest
+from functools import partial
 from inspect import getsource
 from io import BytesIO
 import json
@@ -59,7 +60,6 @@ from metadataserver.models import (
 from metadataserver.models.commissioningscript import (
     ARCHIVE_PREFIX,
     extract_router_mac_addresses,
-    gather_physical_block_devices,
     inject_lldp_result,
     inject_lshw_result,
     inject_result,
@@ -227,11 +227,15 @@ class TestMakeFunctionCallScript(MAASServerTestCase):
         self.assertEqual(b"Equal\n", self.run_script(script))
 
 
-def isolate_function(function):
-    """Recompile the given function in an empty namespace."""
+def isolate_function(function, namespace=None):
+    """Recompile the given function in the given namespace.
+
+    :param namespace: A dict to use as the namespace. If not provided, and
+        empty namespace will be used.
+    """
     source = dedent(getsource(function))
-    modcode = compile(source, "lldpd.py", "exec")
-    namespace = {}
+    modcode = compile(source, "isolated.py", "exec")
+    namespace = {} if namespace is None else namespace
     exec(modcode, namespace)
     return namespace[function.__name__]
 
@@ -655,11 +659,14 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             output += "E: ID_CDROM=1"
         return output
 
-    def call_gather_physical_block_devices(self,
-                                           dev_disk_byid='/dev/disk/by-id/'):
-        return json.loads(gather_physical_block_devices(
-            print_output=False,
-            dev_disk_byid=dev_disk_byid))
+    def call_gather_physical_block_devices(
+            self, dev_disk_byid='/dev/disk/by-id/'):
+        output = BytesIO()
+        namespace = {"print": partial(print, file=output)}
+        gather_physical_block_devices = isolate_function(
+            cs_module.gather_physical_block_devices, namespace)
+        gather_physical_block_devices(dev_disk_byid=dev_disk_byid)
+        return json.loads(output.getvalue())
 
     def test__calls_lsblk(self):
         check_output = self.patch(subprocess, "check_output")
