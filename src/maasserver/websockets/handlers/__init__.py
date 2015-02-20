@@ -15,12 +15,15 @@ __metaclass__ = type
 __all__ = [
     "NodeHandler",
     "DeviceHandler",
+    "GeneralHandler"
     ]
 
 from maasserver.utils import ignore_unused
 from maasserver.websockets.handlers.device import DeviceHandler
+from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.node import NodeHandler
 
 
 ignore_unused(DeviceHandler)
+ignore_unused(GeneralHandler)
 ignore_unused(NodeHandler)
