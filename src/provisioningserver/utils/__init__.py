@@ -50,6 +50,7 @@ from provisioningserver.rpc.exceptions import (
     NodeAlreadyExists,
     )
 from provisioningserver.utils.twisted import (
+    asynchronous,
     pause,
     retries,
     )
@@ -84,6 +85,7 @@ def node_exists(macs, url, client):
     return len(content) > 0
 
 
+@asynchronous
 @inlineCallbacks
 def create_node(macs, arch, power_type, power_parameters):
     """Create a Node on the region and return its system_id.
@@ -137,6 +139,7 @@ def create_node(macs, arch, power_type, power_parameters):
         returnValue(response['system_id'])
 
 
+@asynchronous
 @inlineCallbacks
 def commission_node(system_id, user):
     """Commission a Node on the region.

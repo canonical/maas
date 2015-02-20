@@ -20,7 +20,7 @@ from provisioningserver.utils import (
     commission_node,
     create_node,
     )
-from twisted.internet.defer import inlineCallbacks
+from provisioningserver.utils.twisted import synchronous
 
 
 XPATH_ARCH = "/domain/os/type/@arch"
@@ -195,7 +195,7 @@ class VirshSSH(pexpect.spawn):
         return True
 
 
-@inlineCallbacks
+@synchronous
 def probe_virsh_and_enlist(user, poweraddr, password=None,
                            prefix_filter=None, accept_all=False):
     """Extracts all of the virtual machines from virsh and enlists them
@@ -227,7 +227,7 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
         }
         if password is not None:
             params['power_pass'] = password
-        system_id = yield create_node(macs, arch, 'virsh', params)
+        system_id = create_node(macs, arch, 'virsh', params).wait(30)
 
         if accept_all:
             commission_node(system_id, user)
