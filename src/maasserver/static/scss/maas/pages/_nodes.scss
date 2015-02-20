@@ -18,7 +18,8 @@
 
     1. NODES                        -- Node listing styles
     2. NODES SEARCH                 -- Button group styles
-    3. ACCORDION
+    3. ADD MACHINE LIST
+    4. ACCORDION
 
 ----------------------------------------------------------------------
 ------------------------------------------------------------------- */
@@ -212,7 +213,35 @@
     }
 }
 
-/* 3. ACCORDION ------------------------------------------------------
+/* 3. ADD MACHINE LIST -----------------------------------------------
+--------------------------------------------------------------------*/
+
+.add-machine__list {
+
+    .add-machine__details {
+        @extend %border-bottom;
+        margin-bottom: 13px;
+        background: transparent url('../?img/icons/accordion-open.svg') top 12px right 10px no-repeat;
+
+        > div {
+            margin-bottom: 0;
+        }
+
+        .add-machine__details-form {
+            display: none;
+        }
+
+        &.active {
+            background-image: url('../?img/icons/accordion-close.svg');
+
+            .add-machine__details-form {
+                display: block;
+            }
+        }
+    }
+}
+
+/* 4. ACCORDION ------------------------------------------------------
 --------------------------------------------------------------------*/
 
 .accordion {

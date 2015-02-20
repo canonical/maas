@@ -1,13 +1,64 @@
-@charset "UTF-8";
+@charset 'UTF-8';
 
-/**
- * MAAS form styles
- *
- * @project     MAAS
- * @author      Web Team at Canonical Ltd
- * @copyright   2015 Canonical Ltd
- *
- */
+/* -------------------------------------------------------------------
+----------------------------------------------------------------------
+
+    MAAS form styles
+
+    @project     MAAS
+    @author      Web Team at Canonical Ltd
+    @copyright   2015 Canonical Ltd
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* INTRODUCTION ------------------------------------------------------
+----------------------------------------------------------------------
+
+    1. VARIABLES & PLACEHOLDERS
+    2. FORM
+    3. FEEDBACK STYLES
+    4. INLINE ELEMENTS
+    5. INLINE FORM
+
+----------------------------------------------------------------------
+------------------------------------------------------------------- */
+
+
+/* 1. VARIABLES & PLACEHOLDERS  --------------------------------------
+--------------------------------------------------------------------*/
+
+%input--styles {
+    @include rounded-corners(2px);
+    @include box-sizing();
+    -webkit-appearance: none;
+    background: #FFF;
+    color: #333;
+    border: 1px solid #D2D2D2;
+    display: block;
+    font-family: Ubuntu,Arial,"libra sans",sans-serif;
+    font-size: 1em;
+    font-weight: 300;
+    padding: 0px 13px;
+
+    &:hover {
+
+    }
+
+    &:active {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+
+    &:focus {
+        border-color: #B2B2B2;
+        outline: none;
+    }
+}
+
+/* 2. FORM -----------------------------------------------------------
+--------------------------------------------------------------------*/
 
 %input--styles {
     @include rounded-corners(2px);
@@ -143,7 +194,15 @@ form {
             text-shadow: 0 0 0 #000;
         }
     }
+
+    fieldset {
+        background: none;
+        margin-left: 0;
+    }
 }
+
+/* 3. FEEDBACK STYLES ------------------------------------------------
+--------------------------------------------------------------------*/
 
 .field-error,
 .errors {
@@ -158,7 +217,62 @@ form {
     }
 }
 
+/* 4. INLINE ELEMENTS ------------------------------------------------
+--------------------------------------------------------------------*/
+
+.inline {
+    display: inline-block;
+    width: 100%;
+    font-size: 0;
+    margin-bottom: 10px;
+
+    label {
+        display: inline-block;
+        max-width: calc(100% / 3);
+        width: 100%;
+
+        /**
+         * Required to fix the inline block invisible margin
+         */
+        font-size: 16px;
+    }
+
+    input[type='submit'],
+    input[type='text'],
+    input[type='number'],
+    input[type='search'],
+    input[type='password'],
+    input[type='email'],
+    input[type='checkbox'],
+    select {
+        display: inline-block;
+        max-width: calc(100% / 3 * 2);
+        width: 100%;
+        clear: none;
+
+        /**
+         * Required to fix the inline block invisible margin
+         */
+        font-size: 16px;
+    }
+
+    input.cta-ubuntu,
+    a.link-cta-ubuntu,
+    button.cta-ubuntu {
+        /**
+         * Required to fix the inline block invisible margin
+         */
+        font-size: 16px;
+        margin-top: 10px;
+    }
+
+}
+
+/* 1. INLINE FORM ----------------------------------------------------
+--------------------------------------------------------------------*/
+
 .form-inline {
+
     label,
     button,
     input[type='submit'],
