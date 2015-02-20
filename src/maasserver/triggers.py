@@ -114,6 +114,24 @@ def register_all_triggers():
     register_procedure(
         get_notification_procedure(
             'device_delete_notify', 'device_delete', 'OLD.system_id'))
+    register_procedure(
+        get_notification_procedure(
+            'nodegroup_create_notify', 'nodegroup_create', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'nodegroup_update_notify', 'nodegroup_update', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'nodegroup_delete_notify', 'nodegroup_delete', 'OLD.id'))
+    register_procedure(
+        get_notification_procedure(
+            'zone_create_notify', 'zone_create', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'zone_update_notify', 'zone_update', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'zone_delete_notify', 'zone_delete', 'OLD.id'))
     # Register the triggers.
     register_trigger(
         "maasserver_node", "node_create_notify", "insert",
@@ -133,3 +151,15 @@ def register_all_triggers():
     register_trigger(
         "maasserver_node", "device_delete_notify", "delete",
         {'OLD.installable': False})
+    register_trigger(
+        "maasserver_nodegroup", "nodegroup_create_notify", "insert")
+    register_trigger(
+        "maasserver_nodegroup", "nodegroup_update_notify", "update")
+    register_trigger(
+        "maasserver_nodegroup", "nodegroup_delete_notify", "delete")
+    register_trigger(
+        "maasserver_zone", "zone_create_notify", "insert")
+    register_trigger(
+        "maasserver_zone", "zone_update_notify", "update")
+    register_trigger(
+        "maasserver_zone", "zone_delete_notify", "delete")

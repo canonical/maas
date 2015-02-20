@@ -17,8 +17,13 @@ __all__ = []
 from crochet import wait_for_reactor
 from django.db import connection
 from maasserver.models.node import Node
+from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    TransactionTestCase,
+    )
 from maasserver.triggers import register_all_triggers
 from maasserver.utils.orm import transactional
 from maasserver.websockets.listener import (
@@ -30,10 +35,7 @@ from maastesting.matchers import (
     MockCalledWith,
     )
 from mock import sentinel
-from provisioningserver.utils.twisted import (
-    DeferredValue,
-    synchronous,
-    )
+from provisioningserver.utils.twisted import DeferredValue
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.threads import deferToThread
@@ -162,8 +164,8 @@ class TestPostgresListener(MAASServerTestCase):
             listener.convertChannel, "node_unknown")
 
 
-# This is an end-to-end test of both the listeners code and the triggers code.
-class TestNodeListener(MAASServerTestCase):
+class TestNodeListener(TransactionTestCase):
+    """End-to-end test of both the listeners code and the triggers code."""
 
     scenarios = (
         ('node', {
@@ -195,16 +197,6 @@ class TestNodeListener(MAASServerTestCase):
         node.delete()
 
     @wait_for_reactor
-    def clean_node(self, node):
-
-        @synchronous
-        @transactional
-        def delete_node():
-            node.delete()
-
-        return deferToThread(delete_node)
-
-    @wait_for_reactor
     @inlineCallbacks
     def test__calls_handler_on_create_notification(self):
         yield deferToThread(register_all_triggers)
@@ -214,7 +206,6 @@ class TestNodeListener(MAASServerTestCase):
         yield listener.start()
         try:
             node = yield deferToThread(self.create_node, self.params)
-            self.addCleanup(self.clean_node, node)
             yield dv.get(timeout=2)
             self.assertEqual(('create', node.system_id), dv.value)
         finally:
@@ -228,7 +219,6 @@ class TestNodeListener(MAASServerTestCase):
         dv = DeferredValue()
         listener.register(self.listener, lambda *args: dv.set(args))
         node = yield deferToThread(self.create_node, self.params)
-        self.addCleanup(self.clean_node, node)
 
         yield listener.start()
         try:
@@ -254,5 +244,153 @@ class TestNodeListener(MAASServerTestCase):
             yield deferToThread(self.delete_node, node.system_id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestClusterListener(TransactionTestCase):
+    """End-to-end test of both the listeners code and the cluster
+    triggers code."""
+
+    @transactional
+    def create_nodegroup(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_NodeGroup(**params)
+
+    @transactional
+    def update_nodegroup(self, id, params):
+        nodegroup = NodeGroup.objects.get(id=id)
+        for key, value in params.items():
+            setattr(nodegroup, key, value)
+        return nodegroup.save()
+
+    @transactional
+    def delete_nodegroup(self, id):
+        nodegroup = NodeGroup.objects.get(id=id)
+        nodegroup.delete()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            nodegroup = yield deferToThread(self.create_nodegroup)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        nodegroup = yield deferToThread(self.create_nodegroup)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_nodegroup,
+                nodegroup.id,
+                {'cluster_name': factory.make_name('cluster_name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("nodegroup", lambda *args: dv.set(args))
+        nodegroup = yield deferToThread(self.create_nodegroup)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_nodegroup, nodegroup.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % nodegroup.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestZoneListener(TransactionTestCase):
+    """End-to-end test of both the listeners code and the zone
+    triggers code."""
+
+    @transactional
+    def create_zone(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Zone(**params)
+
+    @transactional
+    def update_zone(self, id, params):
+        zone = Zone.objects.get(id=id)
+        for key, value in params.items():
+            setattr(zone, key, value)
+        return zone.save()
+
+    @transactional
+    def delete_zone(self, id):
+        zone = Zone.objects.get(id=id)
+        zone.delete()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("zone", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            zone = yield deferToThread(self.create_zone)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % zone.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("zone", lambda *args: dv.set(args))
+        zone = yield deferToThread(self.create_zone)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_zone,
+                zone.id,
+                {'cluster_name': factory.make_name('cluster_name')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % zone.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("zone", lambda *args: dv.set(args))
+        zone = yield deferToThread(self.create_zone)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_zone, zone.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % zone.id), dv.value)
         finally:
             yield listener.stop()
