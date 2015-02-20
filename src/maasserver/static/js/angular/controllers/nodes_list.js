@@ -5,9 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', 'NodesManager', 'RegionConnection',
-    'SearchService', function($scope, $rootScope, NodesManager,
-        RegionConnection, SearchService) {
+    '$scope', '$rootScope', 'NodesManager', 'DevicesManager',
+    'RegionConnection', 'SearchService', function($scope,
+        $rootScope, NodesManager, DevicesManager, RegionConnection,
+        SearchService) {
 
         // Set title and page.
         $rootScope.title = "Nodes";
@@ -17,6 +18,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.search = "";
         $scope.searchValid = true;
         $scope.nodes = NodesManager.getItems();
+        $scope.devices = DevicesManager.getItems();
         $scope.selectedNodes = NodesManager.getSelectedItems();
         $scope.filtered_nodes = [];
         $scope.predicate = 'fqdn';
@@ -169,6 +171,16 @@ angular.module('MAAS').controller('NodesListController', [
                 });
             }
             NodesManager.enableAutoReload();
+
+            if(!DevicesManager.isLoaded()) {
+                // Load the initial nodes.
+                DevicesManager.loadItems().then(null, function(error) {
+                    // Report error loading. This is simple handlng for now
+                    // but this should show a nice error dialog or something.
+                    console.log(error);
+                });
+            }
+            DevicesManager.enableAutoReload();
 
             // Load all of the available actions.
             RegionConnection.callMethod("general.actions", {}).then(

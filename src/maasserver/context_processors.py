@@ -41,6 +41,7 @@ def static_resources(context):
             'js/angular/maas.js',
             'js/angular/factories/region.js',
             'js/angular/factories/nodes.js',
+            'js/angular/factories/devices.js',
             'js/angular/services/search.js',
             'js/angular/services/manager.js',
             'js/angular/directives/call_to_action.js',

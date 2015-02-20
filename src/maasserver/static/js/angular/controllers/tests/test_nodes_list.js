@@ -18,11 +18,13 @@ describe("NodesListController", function() {
         $q = $injector.get("$q");
     }));
 
-    // Load the NodesManager, RegionConnection, SearchService and mock the
-    // websocket connection.
-    var NodesManager, RegionConnection, SearchService, webSocket;
+    // Load the NodesManager, DevicesManager, RegionConnection,
+    // SearchService and mock the websocket connection.
+    var NodesManager, DevicesManager, RegionConnection, SearchService;
+    var webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
+        DevicesManager = $injector.get("DevicesManager");
         RegionConnection = $injector.get("RegionConnection");
         SearchService = $injector.get("SearchService");
 
@@ -37,6 +39,7 @@ describe("NodesListController", function() {
             $scope: $scope,
             $rootScope: $rootScope,
             NodesManager: NodesManager,
+            DevicesManager: DevicesManager,
             RegionConnection: RegionConnection,
             SearchService: SearchService
         });
@@ -51,6 +54,15 @@ describe("NodesListController", function() {
         NodesManager._items.push(node);
         return node;
     }
+    // Makes a fake device.
+    function makeDevice() {
+        var device = {
+            system_id: makeName("system_id"),
+            $selected: false
+        };
+        DevicesManager._items.push(device);
+        return device;
+    }
 
     it("sets title and page on $rootScope", function() {
         var controller = makeController();
@@ -63,6 +75,7 @@ describe("NodesListController", function() {
         expect($scope.search).toBe("");
         expect($scope.searchValid).toBe(true);
         expect($scope.nodes).toBe(NodesManager.getItems());
+        expect($scope.devices).toBe(DevicesManager.getItems());
         expect($scope.selectedNodes).toBe(NodesManager.getSelectedItems());
         expect($scope.filtered_nodes).toEqual([]);
         expect($scope.predicate).toBe("fqdn");
@@ -75,7 +88,7 @@ describe("NodesListController", function() {
         expect($scope.actionError).toBe(false);
     });
 
-    it("calls loadItems if not loaded", function(done) {
+    it("calls loadItems for nodes if not loaded", function(done) {
         spyOn(NodesManager, "loadItems").and.callFake(function() {
             done();
             return $q.defer().promise;
@@ -83,11 +96,26 @@ describe("NodesListController", function() {
         var controller = makeController();
     });
 
-    it("doesnt call loadItems if loaded", function() {
+    it("calls loadItems for devices if not loaded", function(done) {
+        spyOn(DevicesManager, "loadItems").and.callFake(function() {
+            done();
+            return $q.defer().promise;
+        });
+        var controller = makeController();
+    });
+
+    it("doesnt call loadItems for nodes if loaded", function() {
         spyOn(NodesManager, "isLoaded").and.returnValue("true");
         spyOn(NodesManager, "loadItems").and.returnValue($q.defer().promise);
         var controller = makeController();
         expect(NodesManager.loadItems).not.toHaveBeenCalled();
+    });
+
+    it("doesnt call loadItems for devices if loaded", function() {
+        spyOn(DevicesManager, "isLoaded").and.returnValue("true");
+        spyOn(DevicesManager, "loadItems").and.returnValue($q.defer().promise);
+        var controller = makeController();
+        expect(DevicesManager.loadItems).not.toHaveBeenCalled();
     });
 
     describe("toggleChecked", function() {
