@@ -56,11 +56,10 @@ def get_absolute_location(location=''):
     """
     if location.startswith(os.path.sep):
         return location
-    elif django_settings.STATIC_ROOT:
-        return os.path.join(
-            django_settings.STATIC_ROOT, location)
-    else:
+    elif os.getenv("DJANGO_SETTINGS_MODULE") == "maas.development":
         return os.path.join(LOCAL_STATIC_ROOT, location)
+    else:
+        return os.path.join(django_settings.STATIC_ROOT, location)
 
 
 def get_combo_view(location='', default_redirect=None):

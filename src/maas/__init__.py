@@ -52,14 +52,8 @@ def import_local_settings():
 
     Local settings means settings defined in a `maas_local_settings` module.
     """
-    try:
-        import maas_local_settings as whence
-    except ImportError:
-        pass
-    else:
-        source = find_settings(whence)
-        target = sys._getframe(1).f_globals
-        target.update(source)
+    #NOTE: To be removed
+    pass
 
 
 def fix_up_databases(databases):

@@ -19,8 +19,6 @@ __all__ = [
 
 import logging
 
-# The configuration for this logger is in
-# contrib/maas_local_settings.py.
 logger = logging.getLogger("maasserver")
 
 

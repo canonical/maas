@@ -289,6 +289,7 @@ class TestComposeSourcePath(MAASTestCase, DisklessTestMixin):
             release, sentinel.label)
 
     def test__returns_valid_path(self):
+        from provisioningserver.cluster_config import get_boot_resources_storage
         os_name, release = self.make_usable_osystem_with_release()
         arch = factory.make_name('arch')
         subarch = factory.make_name('subarch')
@@ -299,7 +300,7 @@ class TestComposeSourcePath(MAASTestCase, DisklessTestMixin):
         mock_xi_params.return_value = (root_path, 'tgz')
         self.assertEqual(
             os.path.join(
-                config.BOOT_RESOURCES_STORAGE, 'current', os_name,
+                get_boot_resources_storage(), os_name,
                 arch, subarch, release, label, root_path),
             compose_source_path(os_name, arch, subarch, release, label))
 

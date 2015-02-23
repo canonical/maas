@@ -18,7 +18,6 @@ __all__ = [
 
 import os
 
-from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -55,8 +54,10 @@ class CustomOS(OperatingSystem):
 
     def get_xinstall_parameters(self, arch, subarch, release, label):
         """Returns the xinstall image name and type for given image."""
+        from provisioningserver.cluster_config import get_boot_resources_storage
+
         path = os.path.join(
-            BOOT_RESOURCES_STORAGE, 'current', 'custom',
+            get_boot_resources_storage(), 'custom',
             arch, subarch, release, label)
         if os.path.exists(os.path.join(path, 'root-dd')):
             return "root-dd", "dd-tgz"

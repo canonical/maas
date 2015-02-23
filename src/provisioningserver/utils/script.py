@@ -26,6 +26,13 @@ import sys
 
 from provisioningserver.utils.fs import atomic_write
 
+# NOTE! NOTE NOTE!
+#
+# DUPLICATING THESE IN TWO PLACES FOR THE MOMENT UNTIL A SIGNLE LOCATION IS SELECTED
+#
+# NOTE! NOTE NOTE!
+
+CLUSTERD_DB_PATH = '/var/lib/maas/clusterd.db'
 
 class ActionScript:
     """A command-line script that follows a command+verb pattern."""
@@ -92,20 +99,18 @@ class MainScript(ActionScript):
 
     The `--config-file` option defaults to the value of
     `MAAS_PROVISIONING_SETTINGS` in the process's environment, or absent
-    that, `$MAAS_CONFIG_DIR/pserv.yaml` (normally /etc/maas/pserv.yaml for
-    packaged installations, or when running from branch, the equivalent
+    that, or when running from branch, the equivalent
     inside that branch).
     """
 
     def __init__(self, description):
         # Avoid circular imports.
-        from provisioningserver.config import Config
 
         super(MainScript, self).__init__(description)
         self.parser.add_argument(
             "-c", "--config-file", metavar="FILENAME",
             help="Configuration file to load [%(default)s].",
-            default=Config.DEFAULT_FILENAME)
+            default=CLUSTERD_DB_PATH)
 
 
 class AtomicWriteScript:

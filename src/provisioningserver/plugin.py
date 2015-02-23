@@ -82,7 +82,7 @@ class Options(usage.Options):
     """Command line options for the provisioning server."""
 
     optParameters = [
-        ["config-file", "c", "pserv.yaml", "Configuration file to load."],
+        ["config-file", "c", "clusterd.db", "Configuration file to load."],
         ]
 
 
@@ -129,19 +129,21 @@ class ProvisioningServiceMaker:
         site_endpoint.port = port  # Make it easy to get the port number.
         site_endpoint.socket = s  # Prevent garbage collection.
 
+        from provisioningserver.cluster_config import get_boot_resources_storage
+        
+        print("_makeImageService tftp storage: ", get_boot_resources_storage())
         image_service = BootImageEndpointService(
-            resource_root=os.path.join(
-                config.BOOT_RESOURCES_STORAGE, "current"),
+            resource_root=get_boot_resources_storage(),
             endpoint=site_endpoint)
         image_service.setName("image_service")
         return image_service
 
-    def _makeTFTPService(self, tftp_config):
+    def _makeTFTPService(self, tftp_root, tftp_port, tftp_generator):
         """Create the dynamic TFTP service."""
+        print("tftp_root: %s tftp_port: %i tftp_generator: %s" % (tftp_root, tftp_port, tftp_generator))
         from provisioningserver.pserv_services.tftp import TFTPService
         tftp_service = TFTPService(
-            resource_root=tftp_config['resource_root'],
-            port=tftp_config['port'], generator=tftp_config['generator'])
+            resource_root=tftp_root, port=tftp_port, generator=tftp_generator)
         tftp_service.setName("tftp")
         return tftp_service
 
@@ -171,7 +173,7 @@ class ProvisioningServiceMaker:
         node_monitor.setName("node_monitor")
         return node_monitor
 
-    def _makeRPCService(self, rpc_config):
+    def _makeRPCService(self):
         from provisioningserver.rpc.clusterservice import ClusterClientService
         rpc_service = ClusterClientService(reactor)
         rpc_service.setName("rpc")
@@ -189,17 +191,17 @@ class ProvisioningServiceMaker:
     def makeService(self, options):
         """Construct a service."""
         from provisioningserver import services
-        from provisioningserver.config import Config
-
-        config = Config.load(options["config-file"])
+        from provisioningserver.cluster_config import get_tftp_resource_root
+        from provisioningserver.cluster_config import get_tftp_port
+        from provisioningserver.cluster_config import get_tftp_generator
 
         image_service = self._makeImageService()
         image_service.setServiceParent(services)
 
-        tftp_service = self._makeTFTPService(config["tftp"])
+        tftp_service = self._makeTFTPService(get_tftp_resource_root(), get_tftp_port(), get_tftp_generator())
         tftp_service.setServiceParent(services)
 
-        rpc_service = self._makeRPCService(config["rpc"])
+        rpc_service = self._makeRPCService()
         rpc_service.setServiceParent(services)
 
         node_monitor = self._makeNodePowerMonitorService()

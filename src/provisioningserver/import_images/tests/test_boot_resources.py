@@ -37,7 +37,6 @@ from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import mock
 from provisioningserver.boot import BootMethodRegistry
-import provisioningserver.config
 from provisioningserver.config import BootSources
 from provisioningserver.import_images import boot_resources
 from provisioningserver.import_images.boot_image_mapping import (

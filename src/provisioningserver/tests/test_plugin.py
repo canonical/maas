@@ -83,9 +83,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         super(TestProvisioningServiceMaker, self).setUp()
         self.patch(provisioningserver, "services", MultiService())
         self.tempdir = self.make_dir()
-        self.useFixture(
-            EnvironmentVariableFixture(
-                "CLUSTER_UUID", factory.make_UUID()))
 
     def write_config(self, config):
         config_filename = os.path.join(self.tempdir, "config.yaml")
@@ -142,6 +139,9 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(dhcp_probe, DHCPProbeService)
 
     def test_tftp_service(self):
+        from provisioningserver.config import get_tftp_resource_root
+        from provisioningserver.config import get_tftp_port
+        
         # A TFTP service is configured and added to the top-level service.
         config = {
             "tftp": {
@@ -161,10 +161,10 @@ class TestProvisioningServiceMaker(MAASTestCase):
             IsInstance(TFTPBackend),
             AfterPreprocessing(
                 lambda backend: backend.base.path,
-                Equals(config["tftp"]["resource_root"])),
+                Equals(get_tftp_resource_root())),
             AfterPreprocessing(
                 lambda backend: backend.generator_url.geturl(),
-                Equals(config["tftp"]["generator"])))
+                Equals(get_tftp_port())))
 
         self.assertThat(
             tftp_service, MatchesStructure(
@@ -176,6 +176,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         from provisioningserver import config
         from twisted.web.server import Site
         from twisted.python.filepath import FilePath
+        from provisioningserver.cluster_config import get_boot_resources_storage
 
         options = Options()
         options["config-file"] = self.write_config({})
@@ -189,8 +190,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
             "images", request=None)
         self.assertThat(root, IsInstance(FilePath))
 
-        resource_root = os.path.join(
-            config.BOOT_RESOURCES_STORAGE, "current")
+        resource_root = get_boot_resources_storage()
 
         self.assertEqual(resource_root, root.path)
 
