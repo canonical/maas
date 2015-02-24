@@ -14,6 +14,25 @@ str = None
 
 __metaclass__ = type
 
+import os
+
+
+def init_clusterd_db():
+    CLUSTERD_DB_PATH = '/var/lib/maas/clusterd.db'
+    print("init_clusterd_db")
+    if not os.access(CLUSTERD_DB_PATH, os.W_OK):
+        print("AHHAHAHAHA init_clusterd_db")
+        from maascli.config import ProfileConfig
+        
+        with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
+          config['resource_root'] = '/var/lib/maas/boot-resources/current/'
+          config['CLUSTER_UUID']="a25a9557-5525-4c5d-9d98-b7c414c62ffe"
+          config['MAAS_URL']='http://localhost:5240/MAAS'
+
+
+init_clusterd_db()
+
+
 from provisioningserver import security
 import provisioningserver.boot.install_bootloader
 import provisioningserver.boot.install_grub

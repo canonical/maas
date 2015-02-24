@@ -247,7 +247,13 @@ def import_images(sources):
                 "any boot images available.")
             return
 
+<<<<<<< TREE
+        from provisioningserver.cluster_config import get_boot_resources_storage
+
+        storage = os.path.split(os.path.split(get_boot_resources_storage())[0])[0]
+=======
         storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
+>>>>>>> MERGE-SOURCE
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
             maaslog.info(

@@ -19,6 +19,7 @@ __all__ = [
     "import_local_settings",
     ]
 
+import os
 import sys
 import warnings
 
@@ -47,20 +48,30 @@ def import_settings(whence):
     target.update(source)
 
 
+def init_regiond_db():
+    REGIOND_DB_PATH = '/var/lib/maas/regiond.db'
+    if not os.access(REGIOND_DB_PATH, os.W_OK):
+        from maascli.config import ProfileConfig
+    
+        with ProfileConfig.open(REGIOND_DB_PATH) as config:
+          config['resource_root'] = '/var/lib/maas/boot-resources/current/'
+          config['MAAS_URL']='http://localhost:5240/MAAS'
+          config['tftpport']=69
+          config['DB_NAME'] = 'maasdb'
+          config['DB_USER'] = 'maas' 
+          config['DB_PASSWORD'] = 'DEFAULT'
+          config['DB_HOST'] = 'localhost'
+          config['DB_ENGINE'] = 'django.db.backends.postgresql_psycopg2'
+          config['STATIC_ROOT'] = '/usr/share/maas/web/static/'
+
+
 def import_local_settings():
     """Import local settings into the caller's global scope.
 
     Local settings means settings defined in a `maas_local_settings` module.
     """
-    try:
-        import maas_local_settings as whence
-    except ImportError:
-        pass
-    else:
-        source = find_settings(whence)
-        target = sys._getframe(1).f_globals
-        target.update(source)
 
+    init_regiond_db()
 
 def fix_up_databases(databases):
     """Increase isolation level, use atomic requests.

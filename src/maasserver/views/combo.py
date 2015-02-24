@@ -56,11 +56,21 @@ def get_absolute_location(location=''):
     """
     if location.startswith(os.path.sep):
         return location
+<<<<<<< TREE
+    elif os.getenv("DJANGO_SETTINGS_MODULE") == "maas.development":
+        root =  os.path.join(LOCAL_STATIC_ROOT, location)
+    else:
+        from maasserver.config import get_static_route
+        root = get_static_route()
+
+    return root
+=======
     elif django_settings.STATIC_ROOT:
         return os.path.join(
             django_settings.STATIC_ROOT, location)
     else:
         return os.path.join(LOCAL_STATIC_ROOT, location)
+>>>>>>> MERGE-SOURCE
 
 
 def get_combo_view(location='', default_redirect=None):

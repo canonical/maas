@@ -232,6 +232,7 @@ def add_arguments(parser):
 
 # The docstring for the "run" function is also the command's documentation.
 def run(args):
+    
     """Perform any data migrations needed for upgrading this cluster."""
     for hook in UPGRADE_HOOKS:
         maaslog.info("Cluster upgrade hook %s started." % hook.__name__)
