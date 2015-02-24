@@ -101,7 +101,9 @@ class DNSException(MAASException):
 WARNING_MESSAGE = (
     "The DNS server will use the address '%s',  which is inside the "
     "loopback network.  This may not be a problem if you're not using "
-    "MAAS's DNS features or if you don't rely on this information.  ")
+    "MAAS's DNS features or if you don't rely on this information.  "
+    "Be sure to configure the DEFAULT_MAAS_URL setting in MAAS's "
+    "/etc/maas/maas_local_settings.py.")
 
 
 def warn_loopback(ip):

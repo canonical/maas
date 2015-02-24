@@ -112,29 +112,19 @@ AUTHENTICATION_BACKENDS = (
     'maasserver.models.MAASAuthorizationBackend',
     )
 
-STATIC_ROOT = '/usr/share/maas/web/static/'
-
-# NOTE!!  
-#
-#  JUST THROWING ALL SETTINGS IN clusterd.db FOR NOW
-#  WILL SPLIT INTO regiond.db ONCE THINGS ARE WORKING!!!!!!
-#
-# NOTE!! 
-
-CLUSTERD_DB_PATH = '/var/lib/maas/clusterd.db'
-from maascli.config import ProfileConfig
-with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
-    # Database access configuration.
-    DATABASES = {
-        'default': {
-            # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
-            'ENGINE': config['DB_ENGINE'],
-            'NAME': config['DB_NAME'],
-            'USER': config['DB_USER'],
-            'PASSWORD': config['DB_PASSWORD'],
-            'HOST': config['DB_HOST'],
-        }
-    }
+DATABASES = {
+    'default': {
+        # 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' etc.
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'maas',
+        'USER': '',
+        'PASSWORD': '',
+        # For PostgreSQL, a "hostname" starting with a slash indicates a
+        # Unix socket directory.
+        'HOST': '',
+        'PORT': '',
+    },
+}
 
 # Local time zone for this installation. Choices can be found here:
 # http://en.wikipedia.org/wiki/List_of_tz_zones_by_name
@@ -167,6 +157,12 @@ MEDIA_ROOT = ''
 # trailing slash.
 # Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_URL = ''
+
+# Absolute path to the directory static files should be collected to.
+# Don't put anything in this directory yourself; store your static files
+# in apps' "static/" subdirectories and in STATICFILES_DIRS.
+# Example: "/home/media/media.lawrence.com/static/"
+STATIC_ROOT = ''
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"

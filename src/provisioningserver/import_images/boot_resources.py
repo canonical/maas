@@ -247,10 +247,7 @@ def import_images(sources):
                 "any boot images available.")
             return
 
-        from provisioningserver.cluster_config import get_boot_resources_storage
-
-        storage = os.path.split(os.path.split(get_boot_resources_storage())[0])[0]
-        print('import_images storage:', storage)
+        storage = provisioningserver.config.BOOT_RESOURCES_STORAGE
         meta_file_content = image_descriptions.dump_json()
         if meta_contains(storage, meta_file_content):
             maaslog.info(
@@ -358,6 +355,10 @@ def main_with_services(args):
             traceback.print_exc()
         finally:
             reactor.callLater(0, reactor.stop)
+
+    cluster_config = get_cluster_config('/etc/maas/maas_cluster.conf')
+    os.environ['MAAS_URL'] = cluster_config['MAAS_URL']
+    os.environ['CLUSTER_UUID'] = cluster_config['CLUSTER_UUID']
 
     reactor.callWhenRunning(run_main)
     reactor.run()

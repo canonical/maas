@@ -24,7 +24,7 @@ from urlparse import urlparse
 from provisioningserver import concurrency
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot import tftppath
-from provisioningserver.cluster_config import get_boot_resources_storage
+from provisioningserver.config import BOOT_RESOURCES_STORAGE
 from provisioningserver.import_images import boot_resources
 from provisioningserver.utils.env import environment_variables
 from provisioningserver.utils.twisted import synchronous
@@ -41,11 +41,10 @@ def list_boot_images():
     of IO, as this function is called often. To update the cache call
     `reload_boot_images`.
     """
-    
     global CACHED_BOOT_IMAGES
     if CACHED_BOOT_IMAGES is None:
         CACHED_BOOT_IMAGES = tftppath.list_boot_images(
-            get_boot_resources_storage())
+            os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
     return CACHED_BOOT_IMAGES
 
 
@@ -54,7 +53,7 @@ def reload_boot_images():
     most up-to-date boot images list."""
     global CACHED_BOOT_IMAGES
     CACHED_BOOT_IMAGES = tftppath.list_boot_images(
-        get_boot_resources_storage())
+        os.path.join(BOOT_RESOURCES_STORAGE, 'current'))
 
 
 def get_hosts_from_sources(sources):

@@ -26,7 +26,7 @@ from fixtures import (
     Fixture,
     )
 from maastesting.fixtures import TempDirectory
-
+from provisioningserver.config import Config
 import yaml
 
 

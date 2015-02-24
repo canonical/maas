@@ -52,7 +52,9 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "BOOT_RESOURCES_STORAGE",
     "BootSources",
+    "Config",
     "ConfigBase",
     "ConfigMeta",
     ]
@@ -77,6 +79,11 @@ from formencode.validators import (
     )
 from provisioningserver.utils.fs import atomic_write
 import yaml
+
+# Path to the directory on the cluster controller where boot resources are
+# stored.  This used to be configurable in bootresources.yaml, and may become
+# configurable again in the future.
+BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
 
 
 class ConfigOops(Schema):
@@ -112,6 +119,30 @@ class ConfigBroker(Schema):
     username = String(if_missing=getuser())
     password = String(if_missing=b"test")
     vhost = String(if_missing="/")
+
+
+class ConfigTFTP(Schema):
+    """Configuration validator for the TFTP service."""
+
+    if_key_missing = None
+
+    # Obsolete: old TFTP root directory.  This is retained for the purpose of
+    # deriving new, Simplestreams-based import configuration from previously
+    # imported boot images.
+    # The last time this is needed is for upgrading an older cluster
+    # controller to the Ubuntu 14.04 version of MAAS.  After installation of
+    # the 14.04 version, this setting is never used.
+    root = String(if_missing="/var/lib/maas/tftp")
+
+    # TFTP root directory, managed by the Simplestreams-based import script.
+    # The import script maintains "current" as a symlink pointing to the most
+    # recent images.
+    # XXX jtv 2014-05-22: Redundant with BOOT_RESOURCES_STORAGE.
+    resource_root = String(
+        if_missing=os.path.join(BOOT_RESOURCES_STORAGE, 'current/'))
+
+    port = Int(min=1, max=65535, if_missing=69)
+    generator = String(if_missing=b"http://localhost/MAAS/api/1.0/pxeconfig/")
 
 
 class ConfigLegacyEphemeral(Schema):
@@ -286,6 +317,23 @@ class ConfigMeta(DeclarativeMeta):
         _delete_default_filename, doc=(
             "The default config file to load. Refers to "
             "`cls.envvar` in the environment."))
+
+
+class Config(ConfigBase):
+    """Configuration for the provisioning server."""
+
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_PROVISIONING_SETTINGS"
+        default = "pserv.yaml"
+
+    if_key_missing = None
+
+    logfile = String(if_empty=b"pserv.log", if_missing=b"pserv.log")
+    oops = ConfigOops
+    broker = ConfigBroker
+    tftp = ConfigTFTP
+    rpc = ConfigRPC
+    boot = ConfigLegacyBoot
 
 
 class BootSources:

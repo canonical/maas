@@ -38,7 +38,7 @@ import shutil
 from subprocess import check_call
 from textwrap import dedent
 
-from provisioningserver.cluster_config import get_boot_resources_storage
+from provisioningserver import config
 from provisioningserver.auth import get_maas_user_gpghome
 from provisioningserver.boot.tftppath import (
     drill_down,
@@ -57,8 +57,8 @@ maaslog = get_maas_logger("cluster_upgrade")
 def make_maas_own_boot_resources():
     """Upgrade hook: make the `maas` user the owner of the boot resources."""
     # This reduces the privileges required for importing and managing images.
-    if os.path.isdir(get_boot_resources_storage()):
-        check_call(['chown', '-R', 'maas', get_boot_resources_storage()])
+    if os.path.isdir(config.BOOT_RESOURCES_STORAGE):
+        check_call(['chown', '-R', 'maas', config.BOOT_RESOURCES_STORAGE])
 
 
 def create_gnupg_home():
@@ -153,7 +153,7 @@ def filter_out_directories_with_extra_levels(paths):
     to move other operating systems under the ubuntu directory."""
     for arch, subarch, release, label in paths:
         path = os.path.join(
-            get_boot_resources_storage(),
+            config.BOOT_RESOURCES_STORAGE, 'current',
             arch, subarch, release, label)
         if len(list_subdirs(path)) == 0:
             yield (arch, subarch, release, label)
@@ -171,7 +171,7 @@ def migrate_architectures_into_ubuntu_directory():
     folders have structure arch/subarch/release/label and move them into
     ubuntu folder. Making the final path ubuntu/arch/subarch/release/label.
     """
-    current_dir = os.path.join(get_boot_resources_storage())
+    current_dir = os.path.join(config.BOOT_RESOURCES_STORAGE, "current")
     if not os.path.isdir(current_dir):
         return
     # If ubuntu folder already exists, then no reason to continue

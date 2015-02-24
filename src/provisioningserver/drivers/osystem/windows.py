@@ -19,6 +19,7 @@ __all__ = [
 import os
 import re
 
+from provisioningserver.config import Config
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
     OperatingSystem,
@@ -44,14 +45,13 @@ class WindowsOS(OperatingSystem):
     title = "Windows"
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
-        from provisioningserver.config import get_tftp_resource_root
         """Gets the purpose of each boot image. Windows only allows install."""
         # Windows can support both xinstall and install, but the correct files
         # need to be available before it is enabled. This way if only xinstall
         # is available the node will boot correctly, even if fast-path
         # installer is not selected.
         purposes = []
-        resources = get_tftp_resource_root()
+        resources = Config.load_from_cache()['tftp']['resource_root']
         path = os.path.join(
             resources, 'windows', arch, subarch, release, label)
         if os.path.exists(os.path.join(path, 'root-dd')):

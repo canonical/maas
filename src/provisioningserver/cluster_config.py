@@ -15,26 +15,9 @@ __metaclass__ = type
 __all__ = [
     'get_cluster_uuid',
     'get_maas_url',
-    'set_cluster_uuid'
-    'get_boot_resources_storage'
-    'get_tftp_resource_root'
-    'get_tftp_port'
-    'get_tftp_generator'
     ]
 
-import os
-
-# NOTE! NOTE NOTE!
-#
-# DUPLICATING THESE IN TWO PLACES FOR THE MOMENT UNTIL A SIGNLE LOCATION IS SELECTED
-#
-# NOTE! NOTE NOTE!
-
-CLUSTERD_DB_PATH = '/var/lib/maas/clusterd.db'
-CLUSTERD_DB_cluster_uuid = 'CLUSTER_UUID'
-CLUSTERD_DB_maas_url = 'MAAS_URL'
-CLUSTERD_DB_tftp_resource_root = "resource_root"
-CLUSTERD_DB_tftpport = 'tftpport'
+from os import environ
 
 
 def get_cluster_variable(var):
@@ -44,11 +27,7 @@ def get_cluster_variable(var):
     started the current process neglected to run maas_cluster.conf.
     In that case, fail helpfully but utterly.
     """
-    value = None
-    from maascli.config import ProfileConfig
-    with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
-        value = config[var]
-
+    value = environ.get(var)
     if value is None:
         raise AssertionError(
             "%s is not set.  This probably means that the script which "
@@ -58,39 +37,10 @@ def get_cluster_variable(var):
 
 
 def get_cluster_uuid():
-    """Return the `cluster uuid` setting."""
-    return get_cluster_variable(CLUSTERD_DB_cluster_uuid)
+    """Return the `CLUSTER_UUID` setting."""
+    return get_cluster_variable('CLUSTER_UUID')
 
 
 def get_maas_url():
-    """Return the `maas url` setting."""
-    return get_cluster_variable(CLUSTERD_DB_maas_url)
-
-
-def set_cluster_variable(var, value):
-    from maascli.config import ProfileConfig
-    with ProfileConfig.open(CLUSTERD_DB_PATH) as config:
-        config[var] = value
-
-def set_cluster_uuid(value):
-    set_cluster_variable(CLUSTERD_DB_cluster_uuid, value)
-
-
-def get_boot_resources_storage():
-    """Return the `get_boot_resources_storage` setting."""
-    return get_cluster_variable(CLUSTERD_DB_tftp_resource_root)
-
-
-def get_tftp_resource_root():
-    """Return the `get_tftp_resource_root` setting."""
-    return get_cluster_variable(CLUSTERD_DB_tftp_resource_root)
-
-
-def get_tftp_port():
-    """Return the `get_tftp_port` setting."""
-    return get_cluster_variable(CLUSTERD_DB_tftpport)
-
-
-def get_tftp_generator():
-    """Return the `get_tftp_generator` setting, which is maas url/api/1.0/pxeconfig/"""
-    return os.path.join(get_maas_url(), 'api' , '1.0', 'pxeconfig')
+    """Return the `MAAS_URL` setting."""
+    return get_cluster_variable('MAAS_URL')

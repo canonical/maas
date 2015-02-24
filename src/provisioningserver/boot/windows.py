@@ -28,7 +28,7 @@ from provisioningserver.boot import (
     BytesReader,
     get_remote_mac,
     )
-
+from provisioningserver.config import Config
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.rpc import getRegionClient
 from provisioningserver.rpc.exceptions import NoSuchNode
@@ -300,8 +300,7 @@ class WindowsPXEBootMethod(BootMethod):
 
     def get_resource_path(self, kernel_params, path):
         """Gets the resource path from the kernel param."""
-        from provisioningserver.config import get_tftp_resource_root
-        resources = get_tftp_resource_root()
+        resources = Config.load_from_cache()['tftp']['resource_root']
         return os.path.join(
             resources, 'windows', kernel_params.arch, kernel_params.subarch,
             kernel_params.release, kernel_params.label, path)

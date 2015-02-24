@@ -102,13 +102,12 @@ class TestTFTPPath(MAASTestCase):
         self.assertIsNone(observed)
 
     def test_maas_meta_last_modified_defaults_tftproot(self):
-        from provisioningserver.cluster_config import get_boot_resources_storage
-        
         path = factory.make_file(self.tftproot, name="maas.meta")
         maas_meta_file_path = self.patch(tftppath, 'maas_meta_file_path')
         maas_meta_file_path.return_value = path
         maas_meta_last_modified()
-        expected_path = get_boot_resources_storage()
+        expected_path = os.path.join(
+            config.BOOT_RESOURCES_STORAGE, 'current')
         self.assertThat(maas_meta_file_path, MockCalledOnceWith(expected_path))
 
     def test_maas_meta_last_modified_reraises_non_ENOENT(self):

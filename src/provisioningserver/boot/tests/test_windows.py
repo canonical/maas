@@ -37,7 +37,7 @@ from provisioningserver.boot.windows import (
     Bcd,
     WindowsPXEBootMethod,
     )
-
+from provisioningserver.config import Config
 from provisioningserver.rpc.exceptions import NoSuchNode
 from provisioningserver.rpc.region import RequestNodeInfoByMACAddress
 from provisioningserver.rpc.testing import (

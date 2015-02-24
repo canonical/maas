@@ -129,6 +129,13 @@ PRESEED_TEMPLATE_LOCATIONS = (
 # Inject custom code for setting up the test database.
 patch_db_creation(abspath('db'), abspath('schema/baseline.sql'))
 
+# Override the default provisioning config filename.
+provisioningserver.config.Config.DEFAULT_FILENAME = abspath(
+    "etc/maas/pserv.yaml")
+
+# Use the in-branch development version of maas_cluster.conf.
+LOCAL_CLUSTER_CONFIG = abspath("etc/demo_maas_cluster.conf")
+
 PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.MD5PasswordHasher',
 )

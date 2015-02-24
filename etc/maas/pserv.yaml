@@ -1,0 +1,25 @@
+##
+## Provisioning Server (pserv) configuration.
+##
+
+## Where to log. This log can be rotated by sending SIGUSR1 to the
+## running server.
+#
+# logfile: "pserv.log"
+logfile: "/dev/null"
+
+## TFTP configuration.
+#
+tftp:
+  # The "root" setting has been replaced by "resource_root".  The old setting
+  # is used one final time when upgrading a pre-14.04 cluster controller to a
+  # 14.04 version.  After that upgrade, it can be removed.
+  #
+  # resource_root: /var/lib/maas/boot-resources/current/
+
+  # port: 69
+  port: 5244
+  ## The URL to be contacted to generate PXE configurations.
+  # generator: http://localhost/MAAS/api/1.0/pxeconfig/
+  generator: http://localhost:5240/api/1.0/pxeconfig/
+

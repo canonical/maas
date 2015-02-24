@@ -19,7 +19,8 @@ __all__ = [
 
 import os
 from textwrap import dedent
-from provisioningserver.cluster_config import get_boot_resources_storage
+
+from provisioningserver import config
 from provisioningserver.drivers.diskless import DisklessDriverRegistry
 from provisioningserver.drivers.osystem import (
     BOOT_IMAGE_PURPOSE,
@@ -47,7 +48,7 @@ def get_diskless_store():
     currently in use disk for diskless booting.
     """
     return os.path.join(
-        os.path.split(os.path.split(get_boot_resources_storage())[0])[0], 'diskless', 'store')
+        config.BOOT_RESOURCES_STORAGE, 'diskless', 'store')
 
 
 def compose_diskless_link_path(system_id):
@@ -99,7 +100,7 @@ def get_diskless_target(system_id):
 def get_diskless_tgt_path():
     """Return path to maas-diskless.tgt."""
     return os.path.join(
-        get_boot_resources_storage(), 'diskless', 'maas-diskless.tgt')
+        config.BOOT_RESOURCES_STORAGE, 'diskless', 'maas-diskless.tgt')
 
 
 def tgt_entry(system_id, image):
@@ -183,7 +184,7 @@ def compose_source_path(osystem_name, arch, subarch, release, label):
             "OS doesn't support diskless booting: %s" % osystem_name)
     root_path, _ = osystem.get_xinstall_parameters()
     return os.path.join(
-        get_boot_resources_storage(),
+        config.BOOT_RESOURCES_STORAGE, 'current',
         osystem_name, arch, subarch, release, label, root_path)
 
 

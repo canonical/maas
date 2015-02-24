@@ -51,12 +51,11 @@ def get_path_to_static_root():
     In the development environment the STATIC_ROOT setting is not set, so
     return the relative path to the static files from this files location.
     """
-    
-    if os.getenv("DJANGO_SETTINGS_MODULE") == "maas.development":
+    if settings.STATIC_ROOT:
+        return settings.STATIC_ROOT
+    else:
         return os.path.join(
             os.path.dirname(__file__), 'static')
-    else:
-        return settings.STATIC_ROOT
 
 
 class StartPage(ErrorPage, object):
@@ -165,9 +164,7 @@ class WebApplicationService(StreamServerEndpointService):
         root.putChild("MAAS", webapp)
         webapp.putChild(
             'ws', WebSocketsResource(lookupProtocolForFactory(self.websocket)))
-        staticpath = get_path_to_static_root()
-        #print("staticpath:", staticpath)
-        webapp.putChild('static', File(staticpath))
+        webapp.putChild('static', File(get_path_to_static_root()))
         self.site.resource = root
 
     def installFailed(self, failure):
