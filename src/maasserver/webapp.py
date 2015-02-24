@@ -51,25 +51,11 @@ def get_path_to_static_root():
     In the development environment the STATIC_ROOT setting is not set, so
     return the relative path to the static files from this files location.
     """
-<<<<<<< TREE
-    
-    if os.getenv("DJANGO_SETTINGS_MODULE") == "maas.development":
-        root = os.path.join(
-=======
     if settings.STATIC_ROOT:
         return settings.STATIC_ROOT
     else:
         return os.path.join(
->>>>>>> MERGE-SOURCE
             os.path.dirname(__file__), 'static')
-<<<<<<< TREE
-    else:
-        from maasserver.config import get_static_route
-        root = get_static_route()
-    
-    return root
-=======
->>>>>>> MERGE-SOURCE
 
 
 class StartPage(ErrorPage, object):

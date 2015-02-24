@@ -45,10 +45,6 @@ class WindowsOS(OperatingSystem):
     title = "Windows"
 
     def get_boot_image_purposes(self, arch, subarch, release, label):
-<<<<<<< TREE
-        from maasserver.config import get_tftp_resource_root
-=======
->>>>>>> MERGE-SOURCE
         """Gets the purpose of each boot image. Windows only allows install."""
         # Windows can support both xinstall and install, but the correct files
         # need to be available before it is enabled. This way if only xinstall

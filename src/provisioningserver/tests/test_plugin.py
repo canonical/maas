@@ -142,12 +142,6 @@ class TestProvisioningServiceMaker(MAASTestCase):
         self.assertIsInstance(dhcp_probe, DHCPProbeService)
 
     def test_tftp_service(self):
-<<<<<<< TREE
-        from maasserver.config import get_tftp_resource_root
-        from maasserver.config import get_tftp_port
-        
-=======
->>>>>>> MERGE-SOURCE
         # A TFTP service is configured and added to the top-level service.
         config = {
             "tftp": {
@@ -161,7 +155,7 @@ class TestProvisioningServiceMaker(MAASTestCase):
         service_maker = ProvisioningServiceMaker("Harry", "Hill")
         service = service_maker.makeService(options)
         tftp_service = service.getServiceNamed("tftp")
-        self.assertIsInstance(settings.tftp_service, TFTPService)
+        self.assertIsInstance(tftp_service, TFTPService)
 
         expected_backend = MatchesAll(
             IsInstance(TFTPBackend),

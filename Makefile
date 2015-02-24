@@ -420,7 +420,7 @@ package_export: TARBALL = maas_$(VER).orig.tar.gz
 package_export: package_branch
 	@$(RM) -f ../build-area/$(TARBALL)
 	@mkdir -p ../build-area
-	@bzr export --uncommitted --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
+	@bzr export --root=maas-$(VER).orig ../build-area/$(TARBALL) $(CURDIR)
 
 package: package_export
 	bzr bd --merge $(PACKAGING) --result-dir=../build-area -- -uc -us

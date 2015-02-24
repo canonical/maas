@@ -300,12 +300,7 @@ class WindowsPXEBootMethod(BootMethod):
 
     def get_resource_path(self, kernel_params, path):
         """Gets the resource path from the kernel param."""
-<<<<<<< TREE
-        from maasserver.config import get_tftp_resource_root
-        resources = get_tftp_resource_root()
-=======
         resources = Config.load_from_cache()['tftp']['resource_root']
->>>>>>> MERGE-SOURCE
         return os.path.join(
             resources, 'windows', kernel_params.arch, kernel_params.subarch,
             kernel_params.release, kernel_params.label, path)

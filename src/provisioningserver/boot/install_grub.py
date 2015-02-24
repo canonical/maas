@@ -20,10 +20,7 @@ __all__ = [
 import os.path
 
 from provisioningserver.boot.install_bootloader import make_destination
-<<<<<<< TREE
-=======
 from provisioningserver.config import Config
->>>>>>> MERGE-SOURCE
 from provisioningserver.utils.fs import write_text_file
 
 
@@ -47,8 +44,6 @@ def run(args):
     """Install a GRUB2 pre-boot loader config into the TFTP
     directory structure.
     """
-    from maasserver.config import get_tftp_resource_root
-    
     config = Config.load(args.config_file)
     grubroot = os.path.join(config["tftp"]["resource_root"], 'grub')
     destination_path = make_destination(grubroot)
