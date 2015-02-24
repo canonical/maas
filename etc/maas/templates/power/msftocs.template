@@ -1,0 +1,66 @@
+# -*- mode: shell-script -*-
+#
+# Control a system via Microsoft OCS Chassis Manager.
+
+# Exit with failure message.
+# Parameters: exit code, and error message.
+fail() {
+    echo "$2" >&2
+    exit $1
+}
+
+issue_msftocs_command() {
+python - << 'END'
+import sys
+from provisioningserver.drivers.hardware.msftocs import power_control_msftocs
+try:
+    power_control_msftocs(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_port) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(blade_id) | safe}},
+        {{escape_py_literal(power_change) | safe}},
+    )
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+query_state() {
+python - << 'END'
+import sys
+from provisioningserver.drivers.hardware.msftocs import power_state_msftocs
+try:
+    print(power_state_msftocs(
+        {{escape_py_literal(power_address) | safe}},
+        {{escape_py_literal(power_port) | safe}},
+        {{escape_py_literal(power_user) | safe}},
+        {{escape_py_literal(power_pass) | safe}},
+        {{escape_py_literal(blade_id) | safe}},
+    ))
+except Exception as e:
+    # This gets in the node event log: print the exception's message
+    # and not the stacktrace.
+    print(unicode(e))
+    sys.exit(1)
+END
+}
+
+main() {
+    case $1 in
+    'on'|'off')
+        issue_msftocs_command
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 2 "Unknown power command: '$1'"
+    esac
+}
+
+main "{{power_change}}"

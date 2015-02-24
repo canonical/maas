@@ -280,4 +280,15 @@ JSON_POWER_TYPE_PARAMETERS = [
                 "(X=cartridge number, Y=node number)."),
         ],
     },
+    {
+        'name': 'msftocs',
+        'description': "Microsoft OCS - Chassis Manager",
+        'fields': [
+            make_json_field('power_address', "Power address"),
+            make_json_field('power_port', "Power port"),
+            make_json_field('power_user', "Power user"),
+            make_json_field('power_pass', "Power password"),
+            make_json_field('blade_id', "Blade ID (Typically 1-24)"),
+        ],
+    },
 ]
