@@ -96,3 +96,8 @@ class BlockDevice(CleanSave, TimestampedModel):
         """Remove tag from block device."""
         if tag in self.tags:
             self.tags.remove(tag)
+
+    def __unicode__(self):
+        return '{size} attached to {node}'.format(
+            size=human_readable_bytes(self.size),
+            node=self.node)

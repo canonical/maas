@@ -23,6 +23,7 @@ from maasserver.models.blockdevice import (
     BlockDevice,
     BlockDeviceManager,
     )
+from maasserver.utils.converters import human_readable_bytes
 
 
 class PhysicalBlockDeviceManager(BlockDeviceManager):
@@ -52,3 +53,8 @@ class PhysicalBlockDevice(BlockDevice):
     serial = CharField(
         max_length=255, blank=True, null=False,
         help_text="Serial number of block device.")
+
+    def __unicode__(self):
+        return '{model} S/N {serial} {size} attached to {node}'.format(
+            model=self.model, serial=self.serial,
+            size=human_readable_bytes(self.size), node=self.node)

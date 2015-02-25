@@ -222,30 +222,75 @@ def get_storage_constraints_from_string(storage):
         for (size, tags) in groups
         ]
     count_tags = lambda (size, tags): 0 if tags is None else len(tags)
-    constraints.sort(key=count_tags, reverse=True)
-    return constraints
+    head, tail = constraints[:1], constraints[1:]
+    tail.sort(key=count_tags, reverse=True)
+    return head + tail
 
 
 def nodes_by_storage(storage):
-    """Return list of `Node.id` that match the given storage constraints."""
+    """
+    Return list of `Node.id` that match the given storage constraints.
+
+    The first constraint always refers to the block device that has the lowest
+    id. The remaining constraints can match any device of that node
+    """
     constraints = get_storage_constraints_from_string(storage)
+    # Return early if no constraints were given
     if constraints is None:
         return None
     matches = defaultdict(list)
+    root_device = True  # The 1st constraint refers to the node's 1st device
     for size, tags in constraints:
-        # Query for the `PhysicalBlockDevice`s that have the closest size
-        # and the given tags.
-        if tags is None:
-            matched_devices = PhysicalBlockDevice.objects.filter(
-                size__gte=size).order_by('size')
-        else:
-            matched_devices = PhysicalBlockDevice.objects.filter_by_tags(
-                tags).filter(size__gte=size).order_by('size')
+        if root_device:
+            # Sort the `PhysicalBlockDevice`s by id because we consider the
+            # first device as the root device.
+            root_device = False
+            matched_devices = PhysicalBlockDevice.objects.all().order_by('id')
+            matched_devices = matched_devices.values(
+                'id', 'node_id', 'size', 'tags')
 
-        # Loop through all the returned devices. Insert only the first device
-        # from each node into `matches`.
+            # Only keep the first device for every node. This is done to make
+            # sure filtering out the size and tags is not done to all the
+            # block devices. This should only be done to the first block
+            # device.
+            found_nodes = set()
+            devices = []
+            for device in matched_devices:
+                if device['node_id'] in found_nodes:
+                    continue
+                devices.append(device)
+                found_nodes.add(device['node_id'])
+
+            # Remove the devices that are not of correct size and the devices
+            # that are missing the correct tags.
+            devices = [
+                device
+                for device in devices
+                if device['size'] >= size
+                ]
+            if tags is not None:
+                tags = set(tags)
+                devices = [
+                    device
+                    for device in devices
+                    if tags.issubset(set(device['tags']))
+                    ]
+            matched_devices = devices
+        else:
+            # Query for the `PhysicalBlockDevice`s that have the closest size
+            # and the given tags.
+            if tags is None:
+                matched_devices = PhysicalBlockDevice.objects.filter(
+                    size__gte=size).order_by('size')
+            else:
+                matched_devices = PhysicalBlockDevice.objects.filter_by_tags(
+                    tags).filter(size__gte=size).order_by('size')
+            matched_devices = matched_devices.values('id', 'node_id')
+
+        # Loop through all the returned devices. Insert only the first
+        # device from each node into `matches`.
         matched_in_loop = []
-        for device in matched_devices.values('id', 'node_id'):
+        for device in matched_devices:
             device_id = device['id']
             device_node_id = device['node_id']
             if device_node_id in matched_in_loop:

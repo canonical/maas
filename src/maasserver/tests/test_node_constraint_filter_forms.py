@@ -147,12 +147,14 @@ class TestUtils(MAASServerTestCase):
             ])
 
     def test_get_storage_constraints_from_string_sorts_more_tags_first(self):
+        """Ensure first tag set remains first, all others are sorted"""
         self.assertEquals(
-            [['ssd', 'sata', 'removable'], ['ssd', 'sata'], ['ssd']],
+            [[u'ssd'], [u'ssd', u'sata', u'removable'], [u'ssd', u'sata'],
+             [u'ssd']],
             [
                 tags
                 for _, tags in get_storage_constraints_from_string(
-                    "0(ssd,sata),0(ssd),0(ssd,sata,removable)")
+                    "0(ssd),0(ssd,sata),0(ssd),0(ssd,sata,removable)")
             ])
 
     def test_nodes_by_storage_returns_None_when_storage_string_is_empty(self):
@@ -698,11 +700,11 @@ class TestAcquireNodeForm(MAASServerTestCase):
 
     def test_storage_single_contraint_matches_decimal_size(self):
         node1 = factory.make_Node()
-        # 1gb, 2gb block device
-        factory.make_PhysicalBlockDevice(
-            node=node1, size=1 * (1000 ** 3))
+        # 2gb, 4gb block device
         factory.make_PhysicalBlockDevice(
             node=node1, size=2 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(
+            node=node1, size=4 * (1000 ** 3))
         node2 = factory.make_Node()
         # 1gb block device
         factory.make_PhysicalBlockDevice(
@@ -775,6 +777,25 @@ class TestAcquireNodeForm(MAASServerTestCase):
             tags=['ssd'])
         self.assertConstrainedNodes(
             [node2], {'storage': '3(ssd),3(ssd)'})
+
+    def test_storage_first_constraint_matches_first_blockdevice(self):
+        """
+        Make sure a constraint like 10(ssd),5,20 will match a node with a
+        11(ssd) first device, a 21 second device and a 10 third device,
+        but not a 5/20/10(ssd) node
+        """
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1, size=6 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(node=node1, size=21 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(node=node1, size=11 * (1000 ** 3),
+                                         tags=['ssd'])
+        node2 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node2, size=11 * (1000 ** 3),
+                                         tags=['ssd'])
+        factory.make_PhysicalBlockDevice(node=node2, size=6 * (1000 ** 3))
+        factory.make_PhysicalBlockDevice(node=node2, size=21 * (1000 ** 3))
+        self.assertConstrainedNodes(
+            [node2], {'storage': '10(ssd),5,20'})
 
     def test_storage_multi_contraint_matches_large_disk_count(self):
         node1 = factory.make_Node()
