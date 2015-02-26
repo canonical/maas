@@ -29,8 +29,10 @@ from maastesting.testcase import (
     )
 from mock import call
 from provisioningserver.drivers.hardware import esxi as virsh
+from provisioningserver.utils.twisted import asynchronous
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 SAMPLE_IFLIST = dedent("""
@@ -59,6 +61,7 @@ class TestESXi(MAASTestCase):
 
     run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
 
+    @inlineCallbacks
     def test_probe_and_enlist(self):
         # Patch VirshSSH list so that some machines are returned
         # with some fake architectures.
@@ -106,7 +109,7 @@ class TestESXi(MAASTestCase):
         # actions to occur, but want to also check that they are called.
         mock_poweroff = self.patch(virsh.VirshSSH, 'poweroff')
         mock_create_node = self.patch(virsh, 'create_node')
-        mock_create_node.return_value = system_id
+        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
         mock_commission_node = self.patch(virsh, 'commission_node')
 
         # Patch login and logout so that we don't really contact
@@ -116,7 +119,8 @@ class TestESXi(MAASTestCase):
         mock_logout = self.patch(virsh.VirshSSH, 'logout')
 
         # Perform the probe and enlist
-        virsh.probe_esxi_and_enlist(
+        yield deferToThread(
+            virsh.probe_esxi_and_enlist,
             user, poweraddr, password=fake_password, accept_all=True)
 
         # Check that login was called with the provided poweraddr and
@@ -152,7 +156,8 @@ class TestESXi(MAASTestCase):
         mock_login = self.patch(virsh.VirshSSH, 'login')
         mock_login.return_value = False
         with ExpectedException(virsh.ESXiError):
-            yield virsh.probe_esxi_and_enlist(
+            yield deferToThread(
+                virsh.probe_esxi_and_enlist,
                 user, poweraddr, password=factory.make_string())
 
 

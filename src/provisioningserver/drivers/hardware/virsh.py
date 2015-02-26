@@ -230,7 +230,7 @@ def probe_virsh_and_enlist(user, poweraddr, password=None,
         system_id = create_node(macs, arch, 'virsh', params).wait(30)
 
         if accept_all:
-            commission_node(system_id, user)
+            commission_node(system_id, user).wait(30)
 
     conn.logout()
 

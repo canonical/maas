@@ -79,7 +79,7 @@ from provisioningserver.utils import (
     commission_node,
     create_node,
     )
-from twisted.internet.defer import inlineCallbacks
+from provisioningserver.utils.twisted import synchronous
 
 
 str = None
@@ -420,7 +420,7 @@ def power_state_ucsm(url, username, password, uuid):
             'Unknown power state: %s' % power_state, None)
 
 
-@inlineCallbacks
+@synchronous
 def probe_and_enlist_ucsm(user, url, username, password, accept_all=False):
     """Probe a UCS Manager and enlist all its servers.
 
@@ -463,7 +463,7 @@ def probe_and_enlist_ucsm(user, url, username, password, accept_all=False):
             'power_pass': password,
             'uuid': server.get('uuid'),
         }
-        system_id = yield create_node(macs, 'amd64', 'ucsm', params)
+        system_id = create_node(macs, 'amd64', 'ucsm', params).wait(30)
 
         if accept_all:
-            commission_node(system_id, user)
+            commission_node(system_id, user).wait(30)

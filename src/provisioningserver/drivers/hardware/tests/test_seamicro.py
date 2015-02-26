@@ -24,7 +24,10 @@ from maastesting.matchers import (
     MockCalledWith,
     MockCallsMatch,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     call,
     Mock,
@@ -42,6 +45,9 @@ from provisioningserver.drivers.hardware.seamicro import (
     SeaMicroError,
     select_seamicro15k_api_version,
     )
+from provisioningserver.utils.twisted import asynchronous
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 class FakeResponse:
@@ -247,6 +253,8 @@ class TestSeaMicroAPIV09(MAASTestCase):
 class TestSeaMicro(MAASTestCase):
     """Tests for SeaMicro custom hardware."""
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
     def test_select_seamicro15k_api_version_ipmi(self):
         versions = select_seamicro15k_api_version('ipmi')
         self.assertEqual(['v2.0', 'v0.9'], versions)
@@ -304,6 +312,7 @@ class TestSeaMicro(MAASTestCase):
         mock.return_value = token
         return mock
 
+    @inlineCallbacks
     def test_probe_seamicro15k_and_enlist_v09(self):
         self.configure_api_v09_login()
         user = factory.make_name('user')
@@ -337,10 +346,11 @@ class TestSeaMicro(MAASTestCase):
             SeaMicroAPIV09, 'get',
             Mock(return_value=result))
         mock_create_node = self.patch(seamicro, 'create_node')
-        mock_create_node.return_value = system_id
+        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
         mock_commission_node = self.patch(seamicro, 'commission_node')
 
-        probe_seamicro15k_and_enlist(
+        yield deferToThread(
+            probe_seamicro15k_and_enlist,
             user, ip, username, password,
             power_control='restapi', accept_all=True)
         self.assertEqual(3, mock_create_node.call_count)
@@ -404,6 +414,7 @@ class TestSeaMicro(MAASTestCase):
             SeaMicroAPIV09Error, power_control_seamicro15k_v09,
             ip, username, password, '25', 'on')
 
+    @inlineCallbacks
     def test_probe_seamicro15k_and_enlist_v2(self):
         user = factory.make_name('user')
         ip = factory.make_ipv4_address()
@@ -426,10 +437,11 @@ class TestSeaMicro(MAASTestCase):
             'get_seamicro15k_api')
         mock_get_api.return_value = fake_client
         mock_create_node = self.patch(seamicro, 'create_node')
-        mock_create_node.return_value = system_id
+        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
         mock_commission_node = self.patch(seamicro, 'commission_node')
 
-        probe_seamicro15k_and_enlist(
+        yield deferToThread(
+            probe_seamicro15k_and_enlist,
             user, ip, username, password,
             power_control='restapi2', accept_all=True)
         self.assertEqual(2, mock_create_node.call_count)

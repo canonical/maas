@@ -30,7 +30,10 @@ from maastesting.matchers import (
     MockCallsMatch,
     MockNotCalled,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import (
     ANY,
     call,
@@ -60,7 +63,10 @@ from provisioningserver.drivers.hardware.ucsm import (
     UCSM_XML_API,
     UCSM_XML_API_Error,
     )
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 def make_api(url='http://url', user='u', password='p',
@@ -564,6 +570,9 @@ class TestUCSMPowerState(MAASTestCase):
 class TestProbeAndEnlistUCSM(MAASTestCase):
     """Tests for ``probe_and_enlist_ucsm``."""
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
     def test_probe_and_enlist(self):
         user = factory.make_name('user')
         url = factory.make_name('url')
@@ -578,10 +587,12 @@ class TestProbeAndEnlistUCSM(MAASTestCase):
         probe_servers_mock.return_value = [server]
         set_lan_boot_default_mock = self.patch(ucsm, 'set_lan_boot_default')
         create_node_mock = self.patch(ucsm, 'create_node')
-        create_node_mock.return_value = system_id
+        create_node_mock.side_effect = asynchronous(lambda *args: system_id)
         commission_node_mock = self.patch(ucsm, 'commission_node')
 
-        probe_and_enlist_ucsm(user, url, username, password, accept_all=True)
+        yield deferToThread(
+            probe_and_enlist_ucsm, user, url, username,
+            password, accept_all=True)
         self.expectThat(
             set_lan_boot_default_mock,
             MockCalledOnceWith(api, server_element))

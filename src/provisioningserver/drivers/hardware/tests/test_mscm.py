@@ -24,7 +24,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
     )
-from maastesting.testcase import MAASTestCase
+from maastesting.testcase import (
+    MAASTestCase,
+    MAASTwistedRunTest,
+    )
 from mock import Mock
 from provisioningserver.drivers.hardware import mscm
 from provisioningserver.drivers.hardware.mscm import (
@@ -36,9 +39,11 @@ from provisioningserver.drivers.hardware.mscm import (
     power_state_mscm,
     probe_and_enlist_mscm,
     )
+from provisioningserver.utils.twisted import asynchronous
 from testtools.matchers import Equals
 from testtools.testcase import ExpectedException
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 
 
 def make_mscm_api():
@@ -165,6 +170,9 @@ class TestMSCMCliApi(MAASTestCase):
 class TestMSCMProbeAndEnlist(MAASTestCase):
     """Tests for `probe_and_enlist_mscm`."""
 
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
     def test_probe_and_enlist(self):
         user = factory.make_name('user')
         host = factory.make_hostname('mscm')
@@ -182,7 +190,7 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         node_macs_mock = self.patch(MSCM_CLI_API, 'get_node_macaddr')
         node_macs_mock.return_value = macs
         create_node_mock = self.patch(mscm, 'create_node')
-        create_node_mock.return_value = system_id
+        create_node_mock.side_effect = asynchronous(lambda *args: system_id)
         commission_node_mock = self.patch(mscm, 'commission_node')
         params = {
             'power_address': host,
@@ -191,7 +199,9 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
             'node_id': node_id,
         }
 
-        probe_and_enlist_mscm(user, host, username, password, accept_all=True)
+        yield deferToThread(
+            probe_and_enlist_mscm,
+            user, host, username, password, accept_all=True)
         self.expectThat(discover_nodes_mock, MockAnyCall())
         self.expectThat(boot_m2_mock, MockCalledWith(node_id))
         self.expectThat(node_arch_mock, MockCalledOnceWith(node_id))
@@ -212,7 +222,8 @@ class TestMSCMProbeAndEnlist(MAASTestCase):
         discover_nodes_mock = self.patch(MSCM_CLI_API, 'discover_nodes')
         discover_nodes_mock.side_effect = MSCMError('error')
         with ExpectedException(MSCMError):
-            yield probe_and_enlist_mscm(user, host, username, password)
+            yield deferToThread(
+                probe_and_enlist_mscm, user, host, username, password)
 
 
 class TestMSCMPowerControl(MAASTestCase):

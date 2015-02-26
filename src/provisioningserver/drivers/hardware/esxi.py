@@ -23,7 +23,7 @@ from provisioningserver.utils import (
     commission_node,
     create_node,
     )
-from twisted.internet.defer import inlineCallbacks
+from provisioningserver.utils.twisted import synchronous
 
 
 class ESXiError(Exception):
@@ -34,7 +34,7 @@ def compose_esxi_url(username, password):
     return "esx://%s@%s/?no_verify=1" % (username, password)
 
 
-@inlineCallbacks
+@synchronous
 def probe_esxi_and_enlist(
         user, poweraddr, password,
         prefix_filter=None, accept_all=False):
@@ -68,10 +68,10 @@ def probe_esxi_and_enlist(
             'power_id': machine,
             'power_pass': password,
         }
-        system_id = yield create_node(macs, arch, 'esxi', params)
+        system_id = create_node(macs, arch, 'esxi', params).wait(30)
 
         if accept_all:
-            commission_node(system_id, user)
+            commission_node(system_id, user).wait(30)
 
     conn.logout()
 
