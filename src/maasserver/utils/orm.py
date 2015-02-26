@@ -142,25 +142,6 @@ def macs_do_not_contain(key, macs):
     return where_clause, macs
 
 
-def find_pgcode(exception):
-    """Find the PostgreSQL error code from an exception.
-
-    We may be dealing with a raw exception or with a wrapper provided by
-    Django, put there by ``DatabaseErrorWrapper``. As a belt-n-braces measure
-    this searches for ``pgcode`` in the given exception, then, if not found,
-    in the exception's cause (``__cause__``), recursively.
-    """
-    try:
-        return exception.pgcode
-    except AttributeError:
-        try:
-            exception = exception.__cause__
-        except AttributeError:
-            return None
-        else:
-            return find_pgcode(exception)
-
-
 def get_psycopg2_exception(exception):
     """Find the root PostgreSQL error from an database exception.
 
@@ -212,7 +193,14 @@ def is_serialization_failure(exception):
 
 
 class SerializationFailure(psycopg2.OperationalError):
-    """Explicit serialization failure."""
+    """Explicit serialization failure.
+
+    A real serialization failure, arising out of psycopg2 (and thus signalled
+    from the database) would *NOT* be an instance of this class. However, it
+    is not obvious how to create a `psycopg2.OperationalError` with ``pgcode``
+    set to `SERIALIZATION_FAILURE` without subclassing. I suspect only the C
+    interface can do that.
+    """
 
     pgcode = SERIALIZATION_FAILURE
 

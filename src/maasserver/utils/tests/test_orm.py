@@ -28,7 +28,6 @@ from maasserver.testing.testcase import SerializationFailureTestCase
 from maasserver.utils import orm
 from maasserver.utils.orm import (
     commit_within_atomic_block,
-    find_pgcode,
     get_first,
     get_one,
     get_psycopg2_exception,
@@ -202,21 +201,6 @@ class TestSerializationFailure(SerializationFailureTestCase):
             OperationalError, self.cause_serialization_failure)
         self.assertEqual(
             SERIALIZATION_FAILURE, error.__cause__.pgcode)
-
-
-class TestFindPGCode(SerializationFailureTestCase):
-
-    def test_pgcode_from_wrapped_serialization_failure_detectable(self):
-        error = self.assertRaises(
-            OperationalError, self.cause_serialization_failure)
-        self.assertEqual(SERIALIZATION_FAILURE, find_pgcode(error))
-        self.assertRaises(AttributeError, getattr, error, "pgcode")
-
-    def test_pgcode_from_unwrapped_serialization_failure_detectable(self):
-        error = self.assertRaises(
-            OperationalError, self.cause_serialization_failure)
-        self.assertEqual(SERIALIZATION_FAILURE, find_pgcode(error.__cause__))
-        self.assertRaises(AttributeError, getattr, error, "pgcode")
 
 
 class TestGetPsycopg2Exception(MAASTestCase):
