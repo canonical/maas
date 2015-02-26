@@ -163,9 +163,9 @@ bin/protractor:
 	npm install --cache-min 5184000 --prefix $(prefix) protractor
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
 
-test: test-scripts := $(wildcard bin/test.*)
+test: test-scripts-all = $(wildcard bin/test.*)
 # Don't run bin/test.e2e for now; it breaks.
-test: test-scripts := $(filter-out bin/test.e2e,$(test-scripts))
+test: test-scripts = $(filter-out bin/test.e2e,$(test-scripts-all))
 test: build
 	echo $(test-scripts) | xargs -n1 env
 
