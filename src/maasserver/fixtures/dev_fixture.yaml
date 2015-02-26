@@ -55,6 +55,24 @@
     updated: !!timestamp '2012-01-24 10:53:01.060176'}
   model: maasserver.node
   pk: 19
+- fields: {
+    created: 2015-01-24, hostname: device1, owner: 101, status: 0, nodegroup: 1,
+    system_id: node-33b55e28-4671-11e1-93b8-11225f89f211, installable: False,
+    updated: !!timestamp '2015-01-24 10:53:01.060176'}
+  model: maasserver.node
+  pk: 20
+- fields: {
+    created: 2015-01-24, hostname: device2, owner: 101, status: 0, nodegroup: 1,
+    system_id: node-33b55e28-4671-11e1-93b8-11256f89f211, installable: False,
+    updated: !!timestamp '2012-01-25 10:53:01.060176'}
+  model: maasserver.node
+  pk: 21
+- fields: {
+    created: 2015-01-24, hostname: device3, owner: null, status: 0, nodegroup: 1,
+    system_id: node-33b55e28-4671-11e1-93b8-22225f89f211, installable: False,
+    updated: !!timestamp '2012-01-25 10:53:01.060176'}
+  model: maasserver.node
+  pk: 22
 - fields: {created: 2012-01-24, mac_address: '08:34:2a:b5:8a:45', node: 15, updated: !!timestamp '2012-01-24
       11:00:59.951873'}
   model: maasserver.macaddress
@@ -79,6 +97,23 @@
       11:06:41.632158'}
   model: maasserver.macaddress
   pk: 6
+- fields: {created: 2015-01-24, mac_address: 'cc:34:2a:b5:8a:45', node: 20, updated: !!timestamp '2015-01-24
+      11:00:59.951873'}
+  model: maasserver.macaddress
+  pk: 7
+- fields: {created: 2015-01-24, mac_address: 'fc:33:2a:b5:8a:45', node: 21, updated: !!timestamp '2015-01-24
+      11:00:59.951873'}
+  model: maasserver.macaddress
+  pk: 8
+- fields: {created: 2015-01-24, mac_address: '14:3a:2a:b5:8a:45', node: 22, updated: !!timestamp '2015-01-24
+      11:00:59.951873'}
+  model: maasserver.macaddress
+  pk: 9
+- fields: {created: 2016-01-24, mac_address: '67:aa:2a:b5:8a:45', node: 22, updated: !!timestamp '2015-01-24
+      11:00:59.951873'}
+  model: maasserver.macaddress
+  pk: 10
+
 - fields:
     name: big
     definition: "\"LARGER THAN earth\""
