@@ -13,39 +13,45 @@ __metaclass__ = type
 __all__ = [
     'power_control_msftocs',
     'power_state_msftocs',
+    'probe_and_enlist_msftocs',
     ]
 
 import urllib2
 import urlparse
 
 from lxml.etree import fromstring
+from provisioningserver.utils import (
+    commission_node,
+    create_node,
+    )
+from provisioningserver.utils.twisted import synchronous
 
 
-class MsftocsState(object):
+class MicrosoftOCSState(object):
     ON = "ON"
     OFF = "OFF"
 
 
-class MsftocsException(Exception):
-    """Failure talking to a Msftocs chassis controller. """
+class MicrosoftOCSException(Exception):
+    """Failure talking to a MicrosoftOCS chassis controller. """
 
 
-class MsftocsAPI(object):
+class MicrosoftOCSAPI(object):
     """API to communicate with the Microsoft OCS Chassis Manager."""
 
     def __init__(self, ip, port, username, password):
         """
-        :param ip: The IP address of the Msftocs chassis,
+        :param ip: The IP address of the MicrosoftOCS chassis,
           e.g.: "192.168.0.1"
         :type ip: string
-        :param port: The http port to connect to the Msftocs chassis,
+        :param port: The http port to connect to the MicrosoftOCS chassis,
           e.g.: "8000"
         :type port: string
-        :param username: The username for authentication to the Msftocs chassis
-          e.g.: "admin"
+        :param username: The username for authentication to the MicrosoftOCS
+          chassis, e.g.: "admin"
         :type username: string
-        :param password: The password for authentication to the Msftocs chassis
-          e.g.: "password"
+        :param password: The password for authentication to the MicrosoftOCS
+          chassis, e.g.: "password"
         :type password: string
         """
         self.ip = ip
@@ -112,36 +118,67 @@ class MsftocsAPI(object):
         return self.extract_from_response(
             self.get('SetNextBoot', params), 'nextBoot')
 
+    def get_blades(self):
+        """Gets available Blades.
+
+        Returns dictionary of blade numbers and their corresponding
+        MAC Addresses.
+        """
+        blades = {}
+        root = fromstring(self.get('GetChassisInfo'))
+        namespace = {'ns': root.nsmap[None]}
+        blade_collections = root.find(
+            './/ns:bladeCollections', namespaces=namespace)
+        # Iterate over all BladeInfo Elements
+        for blade_info in blade_collections:
+            blade_mac_address = blade_info.find(
+                './/ns:bladeMacAddress', namespaces=namespace)
+            macs = []
+            # Iterate over all NicInfo Elements and add MAC Addresses
+            for nic_info in blade_mac_address:
+                macs.append(
+                    nic_info.findtext(
+                        './/ns:macAddress', namespaces=namespace))
+            macs = filter(None, macs)
+            if macs:
+                # Retrive Blade id number
+                bladeid = blade_info.findtext(
+                    './/ns:bladeNumber', namespaces=namespace)
+                # Add MAC Addresses for Blade
+                blades[bladeid] = macs
+
+        return blades
+
 
 def power_state_msftocs(ip, port, username, password, blade_id):
     """Return the power state for the given Blade."""
 
-    port = int(port) or 8000  # Default Port for Msftocs Chassis is 8000
-    api = MsftocsAPI(ip, port, username, password)
+    port = int(port) or 8000  # Default Port for MicrosoftOCS Chassis is 8000
+    api = MicrosoftOCSAPI(ip, port, username, password)
 
     try:
         power_state = api.get_blade_power_state(blade_id)
     except Exception as e:
-        raise MsftocsException(
+        raise MicrosoftOCSException(
             "Failed to retrieve power state: %s" % e)
 
-    if power_state == MsftocsState.OFF:
+    if power_state == MicrosoftOCSState.OFF:
         return 'off'
-    elif power_state == MsftocsState.ON:
+    elif power_state == MicrosoftOCSState.ON:
         return 'on'
-    raise MsftocsException('Unknown power state: %s' % power_state)
+    raise MicrosoftOCSException('Unknown power state: %s' % power_state)
 
 
-def power_control_msftocs(ip, port, username, password,
-                          blade_id, power_change):
+def power_control_msftocs(
+        ip, port, username, password, blade_id, power_change):
     """Control the power state for the given Blade."""
 
-    port = int(port) or 8000  # Default Port for Msftocs Chassis is 8000
-    api = MsftocsAPI(ip, port, username, password)
+    port = int(port) or 8000  # Default Port for MicrosoftOCS Chassis is 8000
+    api = MicrosoftOCSAPI(ip, port, username, password)
 
     if power_change == 'on':
         power_state = api.get_blade_power_state(blade_id)
-        if power_state == MsftocsState.ON:
+        if power_state == MicrosoftOCSState.ON:
             api.set_power_off_blade(blade_id)
         # Set default (persistent) boot to HDD
         api.set_next_boot_device(blade_id, persistent=True)
@@ -151,4 +188,42 @@ def power_control_msftocs(ip, port, username, password,
     elif power_change == 'off':
         api.set_power_off_blade(blade_id)
     else:
-        raise MsftocsException("Unexpected maas power mode %s" % power_change)
+        raise MicrosoftOCSException(
+            "Unexpected MAAS power mode: %s" % power_change)
+
+
+@synchronous
+def probe_and_enlist_msftocs(
+        user, ip, port, username, password, accept_all=False):
+    """ Extracts all of nodes from msftocs, sets all of them to boot via
+    HDD by, default, sets them to bootonce via PXE, and then enlists them
+    into MAAS.
+    """
+    port = int(port) or 8000  # Default Port for MicrosoftOCS Chassis is 8000
+    api = MicrosoftOCSAPI(ip, port, username, password)
+
+    try:
+        # if get_blades works, we have access to the system
+        blades = api.get_blades()
+    except:
+        raise MicrosoftOCSException(
+            "Failed to probe nodes for Microsoft OCS with ip=%s "
+            "port=%d, username=%s, password=%s"
+            % (ip, port, username, password))
+
+    for blade_id, macs in blades.iteritems():
+        # Set default (persistent) boot to HDD
+        api.set_next_boot_device(blade_id, persistent=True)
+        # Set next boot to PXE
+        api.set_next_boot_device(blade_id, pxe=True)
+        params = {
+            'power_address': ip,
+            'power_port': port,
+            'power_user': username,
+            'power_pass': password,
+            'blade_id': blade_id,
+        }
+        system_id = create_node(macs, 'amd64', 'msftocs', params).wait(30)
+
+        if accept_all:
+            commission_node(system_id, user).wait(30)

@@ -495,6 +495,23 @@ class EnlistNodesFromUCSM(amp.Command):
     errors = {}
 
 
+class EnlistNodesFromMicrosoftOCS(amp.Command):
+    """Probe for and enlist msftocs machines attached to the cluster.
+
+    :since: 1.8
+    """
+    arguments = [
+        (b"user", amp.Unicode()),
+        (b"ip", amp.Unicode()),
+        (b"port", amp.Unicode()),
+        (b"username", amp.Unicode()),
+        (b"password", amp.Unicode()),
+        (b"accept_all", amp.Boolean(optional=True)),
+    ]
+    response = []
+    errors = {}
+
+
 class IsImportBootImagesRunning(amp.Command):
     """Check if the import boot images task is running on the cluster.
 

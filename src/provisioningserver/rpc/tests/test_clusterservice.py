@@ -2246,3 +2246,62 @@ class TestClusterProtocol_EnlistNodesFromUCSM(MAASTestCase):
             MockAnyCall(
                 "Failed to probe and enlist %s nodes: %s",
                 "UCS", fake_error))
+
+
+class TestClusterProtocol_EnlistNodesFromMicrosoftOCS(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.EnlistNodesFromMicrosoftOCS.commandName)
+        self.assertIsNotNone(responder)
+
+    def test__defers_probe_and_enlist_msftocs_to_thread(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+
+        user = factory.make_name('user')
+        ip = factory.make_ipv4_address()
+        port = '%d' % randint(2000, 4000)
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromMicrosoftOCS, {
+            "user": user,
+            "ip": ip,
+            "port": port,
+            "username": username,
+            "password": password,
+            "accept_all": True,
+        })
+
+        self.assertThat(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_and_enlist_msftocs,
+                user, ip, port, username, password, True))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        user = factory.make_name('user')
+        ip = factory.make_ipv4_address()
+        port = '%d' % randint(2000, 4000)
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        call_responder(Cluster(), cluster.EnlistNodesFromMicrosoftOCS, {
+            "user": user,
+            "ip": ip,
+            "port": port,
+            "username": username,
+            "password": password,
+            "accept_all": True,
+        })
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "MicrosoftOCS", fake_error))

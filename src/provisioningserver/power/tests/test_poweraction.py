@@ -265,6 +265,18 @@ class TestPowerAction(MAASTestCase):
         script = action.render_template(action.get_template(), context)
         self.assertIn('power_control_apc', script)
 
+    def test_msftocs_renders_template(self):
+        context = {
+            'power_address': 'foo', 'power_port': 'foz', 'power_user': 'bar',
+            'power_pass': 'baz', 'blade_id': '%d' % randint(1, 24),
+            'power_change': 'on',
+        }
+        action = PowerAction('msftocs')
+        action.update_context(context)
+        context['escape_py_literal'] = Mock()
+        script = action.render_template(action.get_template(), context)
+        self.assertIn('power_control_msftocs', script)
+
 
 class TestTemplateContext(MAASTestCase):
 

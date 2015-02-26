@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from random import randint
 from urlparse import urlparse
 
 from apiclient.creds import convert_string_to_tuple
@@ -55,6 +56,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
@@ -757,6 +759,63 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.enlist_nodes_from_ucsm,
             user, url, username, password, True)
+
+    def test_enlist_nodes_from_msftocs_end_to_end(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, EnlistNodesFromMicrosoftOCS)
+        protocol.EnlistNodesFromMicrosoftOCS.return_value = defer.succeed({})
+
+        user = factory.make_name('user')
+        ip = factory.make_ipv4_address()
+        port = '%d' % randint(2000, 4000)
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        nodegroup.enlist_nodes_from_msftocs(
+            user, ip, port, username, password, True).wait(10)
+
+        self.expectThat(
+            protocol.EnlistNodesFromMicrosoftOCS,
+            MockCalledOnceWith(
+                ANY, user=user, ip=ip, port=port,
+                username=username, password=password, accept_all=True))
+
+    def test_enlist_nodes_from_msftocs_calls_client_with_res_endpoint(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        ip = factory.make_ipv4_address()
+        port = randint(2000, 4000)
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+        nodegroup.enlist_nodes_from_msftocs(
+            user, ip, port, username, password, True).wait(10)
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                EnlistNodesFromMicrosoftOCS, user=user, ip=ip, port=port,
+                username=username, password=password, accept_all=True))
+
+    def test_enlist_nodes_from_msftocs_raises_if_no_conn_to_cluster(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        ip = factory.make_ipv4_address()
+        port = randint(2000, 4000)
+        username = factory.make_name('user')
+        password = factory.make_name('password')
+
+        self.assertRaises(
+            NoConnectionsAvailable, nodegroup.enlist_nodes_from_msftocs,
+            user, ip, port, username, password, True)
 
     def test_api_credentials(self):
         nodegroup = factory.make_NodeGroup()

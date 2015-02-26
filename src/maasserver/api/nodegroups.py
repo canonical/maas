@@ -444,6 +444,8 @@ class NodeGroupHandler(OperationsHandler):
             self.do_probe_and_enlist_ucsm(nodegroup, request, user)
         elif model == 'mcsm':
             self.do_probe_and_enlist_mscm(nodegroup, request, user)
+        elif model == 'msftocs':
+            self.do_probe_and_enlist_msftocs(nodegroup, request, user)
         elif model == 'esxi':
             poweraddr = get_mandatory_param(request.data, 'address')
             username = get_mandatory_param(request.data, 'username')
@@ -536,3 +538,14 @@ class NodeGroupHandler(OperationsHandler):
         self.do_probe_and_enlist_mscm(nodegroup, request, user)
 
         return HttpResponse(status=httplib.OK)
+
+    def do_probe_and_enlist_msftocs(self, nodegroup, request, user):
+        """Probe and enlist Microsoft OCS."""
+        ip = get_mandatory_param(request.data, 'ip')
+        port = get_mandatory_param(request.data, 'port')
+        username = get_mandatory_param(request.data, 'username')
+        password = get_mandatory_param(request.data, 'password')
+        accept_all = self.accept_all_nodes(
+            get_optional_param(request.data, 'accept_all'))
+        nodegroup.enlist_nodes_from_msftocs(
+            user, ip, port, username, password, accept_all)

@@ -52,6 +52,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
@@ -440,4 +441,30 @@ class NodeGroup(TimestampedModel):
         else:
             return client(
                 EnlistNodesFromMSCM, user=user, host=host,
+                username=username, password=password, accept_all=accept_all)
+
+    def enlist_nodes_from_msftocs(
+            self, user, ip, port, username, password, accept_all=False):
+        """Add the servers from a Microsoft OCS Chassis Manager.
+
+        :param user: MAAS user for the nodes.
+        :param ip: IP address for the MicrosoftOCS.
+        :param port: Port for the MicrosoftOCS.
+        :param username: username for MicrosoftOCS.
+        :param password: password for MicrosoftOCS.
+        :param accept_all: commission enlisted nodes.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
+        """
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                EnlistNodesFromMicrosoftOCS, user=user, ip=ip, port=port,
                 username=username, password=password, accept_all=accept_all)

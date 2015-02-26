@@ -60,6 +60,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
     ImportBootImages,
@@ -441,6 +442,44 @@ class TestNodeGroupAPI(APITestCase):
             MockCalledOnceWith(
                 AddESXi, user=user.username, poweraddr=poweraddr,
                 password=password, prefix_filter=prefix_filter,
+                accept_all=True))
+
+    def test_probe_and_enlist_hardware_adds_msftocs(self):
+        self.become_admin()
+        user = self.logged_in_user
+        nodegroup = factory.make_NodeGroup()
+        model = 'msftocs'
+        ip = factory.make_ipv4_address()
+        port = '%d ' % random.randint(2000, 4000)
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        accept_all = 'True'
+
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        rpc_client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_hardware',
+                'model': model,
+                'ip': ip,
+                'port': port,
+                'username': username,
+                'password': password,
+                'accept_all': accept_all,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        self.expectThat(
+            rpc_client,
+            MockCalledOnceWith(
+                EnlistNodesFromMicrosoftOCS, user=user.username, ip=ip,
+                port=port, username=username, password=password,
                 accept_all=True))
 
 

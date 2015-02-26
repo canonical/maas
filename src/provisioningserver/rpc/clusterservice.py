@@ -36,6 +36,9 @@ from provisioningserver.drivers import (
     )
 from provisioningserver.drivers.hardware.esxi import probe_esxi_and_enlist
 from provisioningserver.drivers.hardware.mscm import probe_and_enlist_mscm
+from provisioningserver.drivers.hardware.msftocs import (
+    probe_and_enlist_msftocs,
+    )
 from provisioningserver.drivers.hardware.seamicro import (
     probe_seamicro15k_and_enlist,
     )
@@ -421,6 +424,21 @@ class Cluster(RPCProtocol):
             probe_and_enlist_ucsm,
             user, url, username, password, accept_all)
         d.addErrback(partial(catch_probe_and_enlist_error, "UCS"))
+        return {}
+
+    @cluster.EnlistNodesFromMicrosoftOCS.responder
+    def enlist_nodes_from_msftocs(self, user, ip, port, username,
+                                  password, accept_all):
+        """enlist_nodes_from_msftocs()
+
+        Implemention of
+        :py:class:
+          `~provisioningserver.rpc.cluster.EnlistNodesFromMicrosoftOCS`.
+        """
+        d = deferToThread(
+            probe_and_enlist_msftocs,
+            user, ip, port, username, password, accept_all)
+        d.addErrback(partial(catch_probe_and_enlist_error, "MicrosoftOCS"))
         return {}
 
 
