@@ -34,11 +34,6 @@ from fixtures import (
     EnvironmentVariableFixture,
     Fixture,
     )
-from selenium.webdriver.chrome.service import Service as ChromeService
-from sst.actions import (
-    start,
-    stop,
-    )
 
 
 class LoggerSilencerFixture(Fixture):
@@ -126,6 +121,8 @@ class SSTFixture(Fixture):
 
     def setUp(self):
         super(SSTFixture, self).setUp()
+        # Import late to avoid hard dependency.
+        from sst.actions import start, stop
         start(self.browser_name)
         self.useFixture(LoggerSilencerFixture(self.logger_names))
         self.addCleanup(stop)
@@ -168,6 +165,8 @@ class ChromiumWebDriverFixture(Fixture):
 
     def setUp(self):
         super(ChromiumWebDriverFixture, self).setUp()
+        # Import late to avoid hard dependency.
+        from selenium.webdriver.chrome.service import Service as ChromeService
         service = ChromeService(
             "/usr/lib/chromium-browser/chromedriver", 4444)
 

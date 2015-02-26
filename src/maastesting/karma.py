@@ -15,15 +15,13 @@ __metaclass__ = type
 __all__ = [
     ]
 
-import os
 from subprocess import (
     CalledProcessError,
     check_output,
-    PIPE,
     Popen,
-    STDOUT,
     )
-import sys
+
+from maastesting.fixtures import DisplayFixture
 
 
 BROWSERS = (
@@ -56,21 +54,12 @@ def get_available_list_of_browsers():
 
 def run_karma():
     """Start Karma with the MAAS JS testing configuration."""
-    xvfb = Popen(
-        ("Xvfb", ":99", "-ac", "-screen", "0", "1024x768x16"),
-        stdout=PIPE, stderr=STDOUT)
-    try:
-        environ = os.environ.copy()
-        environ["DISPLAY"] = ":99"
+    with DisplayFixture():
         karma = Popen((
             'bin/karma', 'start',
             '--single-run',
             '--no-colors',
             '--browsers', ','.join(get_available_list_of_browsers()),
             'src/maastesting/karma.conf.js',
-            ), env=environ)
-        karma_exit = karma.wait()
-    finally:
-        xvfb.kill()
-        xvfb.wait()
-    sys.exit(karma_exit)
+        ))
+        raise SystemExit(karma.wait())
