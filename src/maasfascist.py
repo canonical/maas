@@ -58,7 +58,9 @@ class FascistFinder:
         "maas": {
             "apiclient",
             "maascli",
+            "maasserver",
             "maastesting",
+            "metadataserver",
             "provisioningserver",
         },
         "maasserver": {
