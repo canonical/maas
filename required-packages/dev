@@ -1,4 +1,5 @@
 build-essential
+chromium-browser
 chromium-chromedriver
 curl
 firefox
