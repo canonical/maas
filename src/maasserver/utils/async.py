@@ -13,16 +13,27 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'DeferredHooks',
     "gather",
 ]
 
+from collections import deque
 from itertools import count
 from Queue import Queue
+import threading
 
 from crochet import wait_for_reactor
 from maasserver.exceptions import IteratorReusedError
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    synchronous,
+    )
 from twisted.internet import reactor
-from twisted.internet.defer import maybeDeferred
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    maybeDeferred,
+    )
 from twisted.python import log
 
 
@@ -131,3 +142,78 @@ def gather(calls, timeout=10.0):
     # Return an iterator to the invoking thread that will stop at the
     # first sign of the `done` sentinel.
     return UseOnceIterator(queue.get, done)
+
+
+def suppress(failure, *exceptions):
+    """Used as a errback, suppress the given exceptions."""
+    failure.trap(*exceptions)
+
+
+class DeferredHooks(threading.local):
+    """A utility class for managing hooks that are specified as Deferreds.
+
+    This is meant to be used by non-Twisted code to register hooks that need
+    to be run at some later time *in Twisted*. This is a common pattern in
+    MAAS, where the web-application needs to arrange post-commit actions that
+    mutate remote state, via RPC for example.
+    """
+
+    def __init__(self):
+        super(DeferredHooks, self).__init__()
+        self.hooks = deque()
+
+    @synchronous
+    def add(self, d):
+        assert isinstance(d, Deferred)
+        d.addErrback(suppress, CancelledError)
+        self.hooks.append(d)
+
+    @synchronous
+    def fire(self):
+        """Fire all hooks in sequence, in the reactor.
+
+        If a hook fails, the subsequent hooks will be cancelled (by calling
+        ``.cancel()``), and the exception will propagate out of this method.
+        """
+        try:
+            while len(self.hooks) > 0:
+                hook = self.hooks.popleft()
+                self._fire_in_reactor(hook).wait()
+        finally:
+            # Ensure that any remaining hooks are cancelled.
+            self.reset()
+
+    @synchronous
+    def reset(self):
+        """Cancel all hooks in sequence, in the reactor.
+
+        This calls each hook's ``.cancel()`` method. If any of these raise an
+        exception, it will be logged; it will not prevent cancellation of
+        other hooks.
+        """
+        try:
+            while len(self.hooks) > 0:
+                hook = self.hooks.popleft()
+                self._cancel_in_reactor(hook).wait()
+        finally:
+            # Belt-n-braces.
+            self.hooks.clear()
+
+    @staticmethod
+    @asynchronous
+    def _fire_in_reactor(hook):
+        hook.callback(None)
+        return hook
+
+    @staticmethod
+    @asynchronous
+    def _cancel_in_reactor(hook):
+        hook.addErrback(log.err)
+        try:
+            hook.cancel()
+        except:
+            # The canceller has failed. We take a hint from DeferredList here,
+            # by logging the exception and moving on.
+            log.err(_why="Failure when cancelling hook.")
+        else:
+            return hook
