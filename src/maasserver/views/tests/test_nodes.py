@@ -25,6 +25,7 @@ from random import (
     )
 from textwrap import dedent
 import time
+from unittest import SkipTest
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -1275,6 +1276,12 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
 
 class TestJSNodeView(SeleniumTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
 
     # JS Script that will load a new NodeView, placing the
     # object on the global window.
