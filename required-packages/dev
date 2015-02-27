@@ -5,12 +5,15 @@ curl
 firefox
 gjs
 ipython
+libjs-jquery
+libjs-jquery-hotkeys
 libjs-yui3-full
 make
 nodejs-legacy
 npm
 pep8
 pyflakes
+python-coverage
 python-extras
 python-fixtures
 python-flake8

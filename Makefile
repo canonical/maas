@@ -166,8 +166,24 @@ bin/protractor:
 test: test-scripts-all = $(wildcard bin/test.*)
 # Don't run bin/test.e2e for now; it breaks.
 test: test-scripts = $(filter-out bin/test.e2e,$(test-scripts-all))
+test: export NOSE_WITH_COVERAGE = 1
 test: build
-	echo $(test-scripts) | xargs -n1 env
+	@$(RM) coverage.data
+	@echo $(test-scripts) | xargs --verbose -n1 env
+
+coverage-report: coverage/index.html
+	sensible-browser $< > /dev/null 2>&1 &
+
+coverage.xml: coverage.data
+	python-coverage xml --include 'src/*' -o $@
+
+coverage/index.html: coverage.data
+	@$(RM) -r $(@D)
+	python-coverage html --include 'src/*' -d $(@D)
+
+coverage.data:
+	@$(error Use `$(MAKE) test` to generate coverage data, or invoke a \
+            test script using the `--with-coverage` flag)
 
 lint: lint-py lint-js lint-doc
 
@@ -246,6 +262,8 @@ clean:
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build
 	$(RM) -r man/.doctrees
+	$(RM) coverage.data coverage.xml
+	$(RM) -r coverage
 
 distclean: clean stop
 	$(RM) -r bin include lib local
@@ -277,6 +295,7 @@ define phony_targets
   build
   check
   clean
+  coverage-report
   dbharness
   distclean
   doc

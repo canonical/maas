@@ -1,7 +1,6 @@
 *.egg
 *.egg-info
 *.log
-./.coverage
 ./.db.lock
 ./.installed.cfg
 ./.noseids
@@ -12,6 +11,9 @@
 ./acceptance/source
 ./bin
 ./build
+./coverage
+./coverage.data
+./coverage.xml
 ./db
 ./develop-eggs
 ./dist
