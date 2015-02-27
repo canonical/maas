@@ -371,17 +371,27 @@ class NodeGroupHandler(OperationsHandler):
     def probe_and_enlist_hardware(self, request, uuid):
         """Add special hardware types.
 
-        :param model: The type of special hardware, 'seamicro15k' and
-            'virsh' is supported.
+        :param model: The type of hardware. 'seamicro15k', 'virsh',
+            'esxi', 'powerkvm', 'mscm', 'msftocs' and 'ucsm' are supported.
+
+            seamicro15k is the model for the Seamicro 1500 Chassis.
+            virsh is the model for Virtual Machines managed by Virsh.
+            esxi is the model for Virtual Machines managed by ESXi.
+            powerkvm is the model for Virtual Machines on Power KVM,
+            managed by Virsh.
+            mscm is the model for the Moonshot Chassis Manager.
+            msftocs is the model for the Microsoft OCS Chassis Manager.
+            ucsm is the model for the Cisco UCS Manager.
+
         :type model: unicode
 
-        The following are optional:
+        The following are optional for all models:
 
         :param accept_all: If true, all enlisted nodes will be
             commissioned.
         :type accept_all: unicode
 
-        The following are only required if you are probing a seamicro15k:
+        The following are required if you are probing seamicro15k:
 
         :param mac: The MAC of the seamicro15k chassis.
         :type mac: unicode
@@ -390,24 +400,67 @@ class NodeGroupHandler(OperationsHandler):
         :param password: The password for the chassis.
         :type password: unicode
 
-        The following are optional if you are probing a seamicro15k:
+        The following are optional if you are probing seamicro15k:
 
         :param power_control: The power_control to use, either ipmi (default)
             or restapi.
         :type power_control: unicode
 
-        The following are only required if you are probing a virsh:
+        The following are required if you are probing virsh:
 
         :param power_address: The connection string to virsh.
         :type power_address: unicode
 
-        The following are optional if you are probing a virsh:
+        The following are optional if you are probing virsh:
 
         :param power_pass: The password to use, when qemu+ssh is given as a
             connection string and ssh key authentication is not being used.
         :type power_pass: unicode
-        :param prefix_filter: Only import nodes based on supplied prefix.
+        :param prefix_filter: Filter nodes with supplied prefix.
         :type prefix_filter: unicode
+
+        The following are required if you are probing esxi:
+
+        :param address: The IP address of the esxi machine.
+        :type address: unicode
+        :param username: esxi username.
+        :type username: unicode
+        :param password: esxi password.
+        :type password: unicode
+
+        The following are optional if you are probing esxi:
+
+        :param prefix_filter: Filter nodes with supplied prefix.
+        :type prefix_filter: unicode
+
+        The following are required if you are probing mscm:
+
+        :param host: IP Address for the Moonshot Chassis Manager.
+        :type host: unicode
+        :param username: The username for the Moonshot Chassis Manager.
+        :type username: unicode
+        :param password: The password for the Moonshot Chassis Manager.
+        :type password: unicode
+
+        The followeing are required if you are probing msftocs:
+
+        :param ip: IP Address for the Microsoft OCS Chassis.
+        :type ip: unicode
+        :param port: Port for the Microsoft OCS Chassis.
+        :type port: unicode
+        :param username: The username for the Microsoft OCS Chassis.
+        :type username: unicode
+        :param password: The password for the Microsoft OCS Chassis.
+        :type password: unicode
+
+        The followeing are required if you are probing a ucsm:
+
+        :param url: The URL of the UCS Manager API.
+        :type url: unicode
+        :param username: The username for the UCS Manager API.
+        :type username: unicode
+        :param password: The password for the UCS Manager API.
+        :type password: unicode
 
         Returns 404 if the nodegroup (cluster) is not found.
         Returns 403 if the user does not have access to the nodegroup.
