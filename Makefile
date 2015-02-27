@@ -99,7 +99,7 @@ bin/maas: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install cli
 	@touch --no-create $@
 
-bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py
+bin/test.cli: bin/buildout buildout.cfg versions.cfg setup.py bin/maas
 	$(buildout) install cli-test
 	@touch --no-create $@
 

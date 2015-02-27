@@ -49,10 +49,13 @@ class ProfileConfig:
 
     def __getitem__(self, name):
         with self.cursor() as cursor:
-            [data] = cursor.execute(
+            data = cursor.execute(
                 "SELECT data FROM profiles"
                 " WHERE name = ?", (name,)).fetchone()
-        return json.loads(data)
+        if data is None:
+            raise KeyError(name)
+        else:
+            return json.loads(data[0])
 
     def __setitem__(self, name, data):
         with self.cursor() as cursor:

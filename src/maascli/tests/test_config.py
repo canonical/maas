@@ -65,6 +65,11 @@ class TestProfileConfig(MAASTestCase):
         config["alice"] = {"abc": 123}
         self.assertEqual({"abc": 123}, config["alice"])
 
+    def test_getting_non_existent_profile(self):
+        database = sqlite3.connect(":memory:")
+        config = api.ProfileConfig(database)
+        self.assertRaises(KeyError, lambda: config["alice"])
+
     def test_removing_profile(self):
         database = sqlite3.connect(":memory:")
         config = api.ProfileConfig(database)
