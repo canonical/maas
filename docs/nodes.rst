@@ -79,7 +79,7 @@ Add a login shell for the maas user::
 
 Become the maas user and generate a SSH keypair::
 
-    # sudo su - maas
+    $ sudo su - maas
     $ ssh-keygen
 
 Then add the public key to ``/ubuntu/.ssh/authorized_keys`` on the vm server
