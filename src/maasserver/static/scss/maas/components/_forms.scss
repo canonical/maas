@@ -86,6 +86,11 @@
         border-color: #B2B2B2;
         outline: none;
     }
+
+    &.invalid,
+    &.ng-invalid {
+        border-color: #d90000;
+    }
 }
 
 form {

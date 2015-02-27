@@ -87,6 +87,20 @@ describe("NodesManager", function() {
         });
     });
 
+    describe("create", function() {
+
+        it("calls node.create with node", function(done) {
+            var node = makeNode();
+            webSocket.returnData.push(makeFakeResponse(node));
+            NodesManager.create(node).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.create");
+                expect(sentObject.params).toEqual(node);
+                done();
+            });
+        });
+    });
+
     describe("performAction", function() {
 
         it("calls node.action with system_id and action", function(done) {

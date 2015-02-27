@@ -35,6 +35,11 @@ angular.module('MAAS').factory(
             this.autoReconnect = true;
             this.retryTimeout = 5000;
 
+            // Defer used for defaultConnect. If defaultConnect is called
+            // quickly only the first one will start the connection. The
+            // remaining will recieve this defer.
+            this.defaultConnectDefer = null;
+
             // List of functions to call when a WebSocket event occurs. Each
             // function will get the WebSocket event passed to it.
             this.handlers = {
@@ -177,27 +182,42 @@ angular.module('MAAS').factory(
 
         // Opens the default websocket connection.
         RegionConnection.prototype.defaultConnect = function() {
-            var defer = $q.defer();
+            // Already been called but the connection has not been completed.
+            if(angular.isObject(this.defaultConnectDefer)) {
+                return this.defaultConnectDefer.promise;
+            }
+
+            // Already connected.
+            var defer;
             if(this.isConnected()) {
+                // Create a new defer as the defaultConnectDefer would
+                // have already been resolved.
+                defer = $q.defer();
+
                 // Cannot resolve the defer inline as it hasn't been given
                 // back to the caller. It will be called in the next loop.
                 $timeout(defer.resolve);
-            } else {
-                var self = this, opened, errored;
-                opened = function(evt) {
-                    self.unregisterHandler("open", opened);
-                    self.unregisterHandler("error", errored);
-                    $rootScope.$apply(defer.resolve(evt));
-                };
-                errored = function(evt) {
-                    self.unregisterHandler("open", opened);
-                    self.unregisterHandler("error", errored);
-                    $rootScope.$apply(defer.reject(evt));
-                };
-                this.registerHandler("open", opened);
-                this.registerHandler("error", errored);
-                this.connect(this._buildUrl());
+                return defer.promise;
             }
+
+            // Start the connection.
+            var self = this, opened, errored;
+            defer = this.defaultConnectDefer = $q.defer();
+            opened = function(evt) {
+                this.defaultConnectDefer = null;
+                self.unregisterHandler("open", opened);
+                self.unregisterHandler("error", errored);
+                $rootScope.$apply(defer.resolve(evt));
+            };
+            errored = function(evt) {
+                this.defaultConnectDefer = null;
+                self.unregisterHandler("open", opened);
+                self.unregisterHandler("error", errored);
+                $rootScope.$apply(defer.reject(evt));
+            };
+            this.registerHandler("open", opened);
+            this.registerHandler("error", errored);
+            this.connect(this._buildUrl());
             return defer.promise;
         };
 

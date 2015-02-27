@@ -30,6 +30,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.takeActionOptions = [];
         $scope.actionError = false;
 
+        // This will hold the AddHardwareController once it is initialized.
+        // The controller will set this variable as it's always a child or
+        // this scope.
+        $scope.addHardwareScope = null;
+
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked() {
             // Not checked when the filtered nodes are empty.
@@ -158,6 +163,11 @@ angular.module('MAAS').controller('NodesListController', [
                         console.log(error);
                     });
             });
+        };
+
+        // Called to show the add hardware view.
+        $scope.showAddHardware = function() {
+            $scope.addHardwareScope.show();
         };
 
         // Make sure connected to region then load all the nodes.

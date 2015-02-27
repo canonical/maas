@@ -10,7 +10,7 @@
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div class="page-header__actions">
             <div class="page-header__cta" data-ng-hide="selectedNodes.length">
-                <a href="" class="link-cta-ubuntu">Add Hardware</a>
+                <a href="" class="link-cta-ubuntu" data-ng-click="showAddHardware()">Add Hardware</a>
             </div>
             <div class="page-header__cta ng-hide" data-ng-show="selectedNodes.length">
                 <span class="page-header__cta-feedback left">
@@ -40,227 +40,10 @@
                 </select>
             -->
                 <div class="right">
-                    <a href="#" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
                     <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
                 </div>
             </form>
-
-
-            <!-- <ul class="add-machine__list twelve-col">
-                <li class="add-machine__details twelve-col">
-                    <div class="name two-col">
-                        <h4>pocahontas</h4>
-                    </div>
-                    <div class="cluster two-col">
-                        <p>Cluster master</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>amd64/generic</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>68:a8:6d:53:42:d4</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>Intel AMT</p>
-                    </div>
-                    <div class="add-machine__details-form twelve-col">
-                        <form action="post" class="twelve-col">
-                            <fieldset class="six-col">
-                                <div class="inline">
-                                    <label for="cluser">Cluster</label>
-                                    <select name="cluster" id="cluster" placeholder="Choose a cluster">
-                                        <option value="test cluster">Choose a cluster</option>
-                                        <option value="test cluster">Test cluster</option>
-                                    </select>
-                                </div>
-                                <div class="inline">
-                                    <label for="machine-name">Machine name</label>
-                                    <input type="text" id="machine-name" placeholder="Choose a machine name">
-                                </div>
-                                <div class="inline">
-                                    <label for="architecture">Architecture</label>
-                                    <select name="architecture" id="architecture" placeholder="Choose an architecture">
-                                        <option value="Choose cluster">Choose architecture</option>
-                                        <option value="test cluster">Test cluster</option>
-                                    </select>
-                                </div>
-                                <div class="inline">
-                                    <label for="mac-address">MAC Address</label>
-                                    <input type="text" id="mac-address" placeholder="00:00:00:00:00:00">
-                                    <a href="#" class="link-cta-ubuntu secondary right">+ Add MAC Address</a>
-                                </div>
-                                <div class="inline">
-                                    <label for="zone">Zone</label>
-                                    <select name="zone" id="zone" placeholder="Choose a zone">
-                                        <option value="test zone">Choose a zone</option>
-                                        <option value="test zone">Test zone</option>
-                                    </select>
-                                </div>
-                            </fieldset>
-                            <fieldset class="six-col last-col">
-                                <div class="inline">
-                                    <label for="power-type">Power type</label>
-                                    <select name="power-type" id="power-type">
-                                        <option value="choose">Choose power type</option>
-                                        <option value="test">Test power type</option>
-                                    </select>
-                                </div>
-                                <div class="inline">
-                                    <label for="power-mac">Power MAC</label>
-                                    <input type="text" name="power-mac" id="power-mac" placeholder="Choose power MAC">
-                                </div>
-                                <div class="inline">
-                                    <label for="username">Username</label>
-                                    <input type="text" name="username" id="username" placeholder="Choose a username">
-                                </div>
-                                <div class="inline">
-                                    <label for="password">Password</label>
-                                    <input type="text" name="password" id="password" placeholder="Choose a password">
-                                </div>
-                                <div class="inline">
-                                    <label for="ip-address">IP Address</label>
-                                    <input type="text" name="ip-address" id="ip-address" placeholder="Choose a IP Address">
-                                </div>
-                            </fieldset>
-                        </form>
-                    </div>
-                </li>
-                <li class="add-machine__details twelve-col">
-                    <div class="name two-col">
-                        <h4>leia</h4>
-                    </div>
-                    <div class="cluster two-col">
-                        <p>Cluster master</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>amd64/generic</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>68:a8:6d:53:42:d4</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>Intel AMT</p>
-                    </div>
-                </li>
-                <li class="add-machine__details twelve-col">
-                    <div class="name two-col">
-                        <h4>carla</h4>
-                    </div>
-                    <div class="cluster two-col">
-                        <p>Cluster master</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>amd64/generic</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>68:a8:6d:53:42:d4</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>Intel AMT</p>
-                    </div>
-                </li>
-                <li class="add-machine__details twelve-col">
-                    <div class="name two-col">
-                        <h4>cinderella</h4>
-                    </div>
-                    <div class="cluster two-col">
-                        <p>Cluster master</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>amd64/generic</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>68:a8:6d:53:42:d4</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>Intel AMT</p>
-                    </div>
-                </li>
-                <li class="add-machine__details twelve-col">
-                    <div class="name two-col">
-                        <h4>belle</h4>
-                    </div>
-                    <div class="cluster two-col">
-                        <p>Cluster master</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>amd64/generic</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>68:a8:6d:53:42:d4</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>Intel AMT</p>
-                    </div>
-                </li>
-            </ul>
-            <form action="post" class="twelve-col">
-                <fieldset class="six-col">
-                    <div class="inline">
-                        <label for="cluser">Cluster</label>
-                        <select name="cluster" id="cluster" placeholder="Choose a cluster">
-                            <option value="test cluster">Choose a cluster</option>
-                            <option value="test cluster">Test cluster</option>
-                        </select>
-                    </div>
-                    <div class="inline">
-                        <label for="machine-name">Machine name</label>
-                        <input type="text" id="machine-name" placeholder="Choose a machine name">
-                    </div>
-                    <div class="inline">
-                        <label for="architecture">Architecture</label>
-                        <select name="architecture" id="architecture" placeholder="Choose an architecture">
-                            <option value="Choose cluster">Choose architecture</option>
-                            <option value="test cluster">Test cluster</option>
-                        </select>
-                    </div>
-                    <div class="inline">
-                        <label for="mac-address">MAC Address</label>
-                        <input type="text" id="mac-address" placeholder="00:00:00:00:00:00">
-                        <a href="#" class="link-cta-ubuntu secondary right">+ Add MAC Address</a>
-                    </div>
-                    <div class="inline">
-                        <label for="zone">Zone</label>
-                        <select name="zone" id="zone" placeholder="Choose a zone">
-                            <option value="test zone">Choose a zone</option>
-                            <option value="test zone">Test zone</option>
-                        </select>
-                    </div>
-                </fieldset>
-                <fieldset class="six-col last-col">
-                    <div class="inline">
-                        <label for="power-type">Power type</label>
-                        <select name="power-type" id="power-type">
-                            <option value="choose">Choose power type</option>
-                            <option value="test">Test power type</option>
-                        </select>
-                    </div>
-                    <div class="inline">
-                        <label for="power-mac">Power MAC</label>
-                        <input type="text" name="power-mac" id="power-mac" placeholder="Choose power MAC">
-                    </div>
-                    <div class="inline">
-                        <label for="username">Username</label>
-                        <input type="text" name="username" id="username" placeholder="Choose a username">
-                    </div>
-                    <div class="inline">
-                        <label for="password">Password</label>
-                        <input type="text" name="password" id="password" placeholder="Choose a password">
-                    </div>
-                    <div class="inline">
-                        <label for="ip-address">IP Address</label>
-                        <input type="text" name="ip-address" id="ip-address" placeholder="Choose a IP Address">
-                    </div>
-                </fieldset>
-                <div class="twelve-col border-top padding-top">
-                    <a href="#" class="link-cta-ubuntu secondary">+ Add another machine</a>
-                    <div class="right align-right">
-                        <a href="#" class="margin-right">Cancel</a>
-                        <button class="cta-ubuntu secondary">Add this machine</button>
-                    </div>
-                </div>
-            </form> -->
-
 
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
             <div class="page-header__feedback ng-hide" data-ng-show="actionError">
@@ -270,6 +53,93 @@
                     <span data-ng-pluralize count="selectedNodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                     cannot be {$ actionOption.sentence $}. To proceed, update your selection.
                 </p>
+            </div>
+        </div>
+        <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
+            <div class="page-header__feedback" data-ng-hide="architectures.length">
+                <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
+                <p class="page-header__feedback-message info">
+                    Cannot add hardware until boot images have been imported. To fix, visit the <a href="images">images page</a>.
+                </p>
+            </div>
+            <ul class="add-machine__list twelve-col ng-hide" data-ng-show="architectures.length">
+                <li class="add-machine__details twelve-col"
+                    data-ng-repeat="machine in machines"
+                    data-ng-class="{ active: machine === currentMachine, error: hasError(machine) }"
+                    data-ng-click="setCurrentMachine(machine)">
+                    <div class="name two-col">
+                        <h4>{$ machine.name $}</h4>
+                    </div>
+                    <div class="cluster two-col">
+                        <p>Cluster {$ machine.cluster.cluster_name $}</p>
+                    </div>
+                    <div class="architecture two-col">
+                        <p>{$ machine.architecture $}</p>
+                    </div>
+                    <div class="mac two-col">
+                        <p>{$ getDisplayMac(machine) $}</p>
+                    </div>
+                    <div class="power-type four-col last-col">
+                        <p>{$ getDisplayPower(machine) $}</p>
+                    </div>
+                    <div class="add-machine__details-form twelve-col">
+                        <form action="post" class="twelve-col">
+                            <fieldset class="six-col">
+                                <div class="inline">
+                                    <label for="cluser">Cluster</label>
+                                    <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                                        data-ng-model="machine.cluster"
+                                        data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
+                                    </select>
+                                </div>
+                                <div class="inline">
+                                    <label for="machine-name">Machine name</label>
+                                    <input type="text" id="machine-name" placeholder="Choose a machine name"
+                                        data-ng-model="machine.name">
+                                </div>
+                                <div class="inline">
+                                    <label for="architecture">Architecture</label>
+                                    <select name="architecture" id="architecture" placeholder="Choose an architecture"
+                                        data-ng-model="machine.architecture"
+                                        data-ng-options="arch for arch in architectures">
+                                    </select>
+                                </div>
+                                <div class="inline" data-ng-repeat="mac in machine.macs">
+                                    {$ mac $}
+                                    <label for="mac-address"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
+                                    <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
+                                           data-ng-class="{ invalid: mac.error }"
+                                           data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
+                                </div>
+                                <div class="inline">
+                                    <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
+                                </div>
+                                <div class="inline">
+                                    <label for="zone">Zone</label>
+                                    <select name="zone" id="zone" placeholder="Choose a zone"
+                                        data-ng-model="machine.zone"
+                                        data-ng-options="zone as zone.name for zone in zones">
+                                    </select>
+                                </div>
+                            </fieldset>
+                            <fieldset class="six-col last-col"
+                                data-maas-power-parameters="machine.cluster.power_types"
+                                data-ng-model="machine.power">
+                            </fieldset>
+                        </form>
+                    </div>
+                </li>
+            </ul>
+            <div class="twelve-col ng-hide" data-ng-show="architectures.length">
+                <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
+                <div class="right align-right">
+                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                    <button class="cta-ubuntu"
+                        data-ng-class="{ secondary: hasErrors() }"
+                        data-ng-click="actionAdd()">
+                        Add <span data-ng-pluralize count="machines.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

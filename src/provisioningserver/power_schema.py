@@ -203,11 +203,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('power_address', "IP address"),
             make_json_field('power_user', "Power user"),
             make_json_field('power_pass', "Power password"),
-            make_json_field(
-                'mac_address',
-                "Use ARP on this MAC address to discover the BMC's IP "
-                "address if its IP is likely to change, e.g. if it's "
-                "assigned via DHCP.")
+            make_json_field('mac_address', "Power MAC")
         ],
     },
     {
@@ -240,11 +236,7 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field(
                 'mac_address', "MAC Address", field_type='mac_address'),
             make_json_field('power_pass', "Power password"),
-            make_json_field(
-                'power_address',
-                "Use ARP on this MAC address to discover the AMT IP "
-                "address if its IP is likely to change, e.g. if it's "
-                "assigned via DHCP.")
+            make_json_field('power_address', "Power MAC")
         ],
     },
     {

@@ -49,6 +49,14 @@ angular.module('MAAS').factory(
             });
         };
 
+        // Create a node.
+        NodesManager.prototype.create = function(node) {
+            // We don't add the item to the list because a NOTIFY event will
+            // add the node to the list. Adding it here will cause angular to
+            // complain because the same object exist in the list.
+            return RegionConnection.callMethod("node.create", node);
+        };
+
         // Perform the action on the node.
         NodesManager.prototype.performAction = function(node, action) {
             return RegionConnection.callMethod("node.action", {
