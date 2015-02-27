@@ -47,6 +47,10 @@ class HandlerDoesNotExistError(HandlerError):
     """Raised when an object by its `pk` doesn't exist."""
 
 
+class HandlerPermissionError(HandlerError):
+    """Raised when permission is denied for the user of a given action."""
+
+
 class HandlerOptions(object):
     """Configuraton class for `Handler`.
 

@@ -16,6 +16,9 @@ __all__ = [
     "ClusterHandler",
     ]
 
+from maasserver.clusterrpc.power_parameters import (
+    get_all_power_types_from_clusters,
+    )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
@@ -42,4 +45,9 @@ class ClusterHandler(TimestampedModelHandler):
         """Add extra fields to `data`."""
         data["connected"] = obj.is_connected()
         data["state"] = obj.get_state()
+        data["power_types"] = self.dehydrate_power_types(obj)
         return data
+
+    def dehydrate_power_types(self, obj):
+        """Return all the power types."""
+        return get_all_power_types_from_clusters(nodegroups=[obj])

@@ -18,10 +18,21 @@ from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.websockets.handlers import general
 from maasserver.websockets.handlers.general import GeneralHandler
 
 
 class TestGeneralHandler(MAASServerTestCase):
+
+    def test_architectures(self):
+        arches = [
+            "%s/%s" % (factory.make_name("arch"), factory.make_name("subarch"))
+            for _ in range(3)
+            ]
+        for arch in arches:
+            factory.make_usable_boot_resource(architecture=arch)
+        handler = GeneralHandler(factory.make_User())
+        self.assertEquals(sorted(arches), handler.architectures({}))
 
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User())
@@ -47,3 +58,21 @@ class TestGeneralHandler(MAASServerTestCase):
             for name, action in ACTIONS_DICT.items()
             ]
         self.assertItemsEqual(actions_expected, handler.actions({}))
+
+    def test_random_hostname_checks_hostname_existence(self):
+        existing_node = factory.make_Node(hostname="hostname")
+        hostnames = [existing_node.hostname, "new-hostname"]
+        self.patch(
+            general, "gen_candidate_names",
+            lambda: iter(hostnames))
+        handler = GeneralHandler(factory.make_User())
+        self.assertEqual("new-hostname", handler.random_hostname({}))
+
+    def test_random_hostname_returns_empty_string_if_all_used(self):
+        existing_node = factory.make_Node(hostname='hostname')
+        hostnames = [existing_node.hostname]
+        self.patch(
+            general, "gen_candidate_names",
+            lambda: iter(hostnames))
+        handler = GeneralHandler(factory.make_User())
+        self.assertEqual("", handler.random_hostname({}))

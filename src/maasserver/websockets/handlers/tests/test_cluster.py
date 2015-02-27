@@ -14,6 +14,9 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maasserver.clusterrpc.power_parameters import (
+    get_all_power_types_from_clusters,
+    )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.handlers.cluster import ClusterHandler
@@ -31,6 +34,8 @@ class TestClusterHandler(MAASServerTestCase):
             "default_disable_ipv4": cluster.default_disable_ipv4,
             "connected": cluster.is_connected(),
             "state": cluster.get_state(),
+            "power_types": get_all_power_types_from_clusters(
+                nodegroups=[cluster]),
             "updated": "%s" % cluster.updated,
             "created": "%s" % cluster.created,
             }

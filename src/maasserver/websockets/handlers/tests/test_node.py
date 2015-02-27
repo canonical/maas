@@ -14,17 +14,26 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import re
+
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
 from maasserver.node_action import compile_node_actions
+from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import human_readable_bytes
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.websockets.base import (
+    HandlerDoesNotExistError,
+    HandlerPermissionError,
+    HandlerValidationError,
+    )
 from maasserver.websockets.handlers.node import NodeHandler
 from maastesting.djangotestcase import count_queries
+from testtools import ExpectedException
+from testtools.matchers import Equals
 
 
 class TestNodeHandler(MAASServerTestCase):
@@ -51,6 +60,8 @@ class TestNodeHandler(MAASServerTestCase):
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         physicalblockdevices = list(
             node.physicalblockdevice_set.all().order_by('name'))
+        power_parameters = (
+            None if node.power_parameters == "" else node.power_parameters)
         data = {
             "actions": compile_node_actions(node, user).keys(),
             "architecture": node.architecture,
@@ -72,14 +83,19 @@ class TestNodeHandler(MAASServerTestCase):
             "ip_addresses": list(node.ip_addresses()),
             "license_key": node.license_key,
             "memory": node.memory,
-            "nodegroup": node.nodegroup.name,
+            "nodegroup": {
+                "id": node.nodegroup.id,
+                "uuid": node.nodegroup.uuid,
+                "name": node.nodegroup.name,
+                "cluster_name": node.nodegroup.cluster_name,
+                },
             "osystem": node.osystem,
             "owner": "" if node.owner is None else node.owner.username,
             "physical_disks": [
                 self.dehydrate_physicalblockdevice(blockdevice)
                 for blockdevice in physicalblockdevices
                 ],
-            "power_parameters": node.power_parameters,
+            "power_parameters": power_parameters,
             "power_state": node.power_state,
             "power_type": node.power_type,
             "pxe_mac": "" if pxe_mac is None else "%s" % pxe_mac.mac_address,
@@ -225,6 +241,87 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertRaises(
             HandlerDoesNotExistError,
             handler.get_object, {"system_id": node.system_id})
+
+    def test_create_raise_permissions_error_for_non_admin(self):
+        user = factory.make_User()
+        handler = NodeHandler(user)
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.create, {})
+
+    def test_create_raises_validation_error_for_missing_pxe_mac(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        nodegroup = factory.make_NodeGroup()
+        zone = factory.make_Zone()
+        params = {
+            "architecture": make_usable_architecture(self),
+            "zone": {
+                "name": zone.name,
+                },
+            "nodegroup": {
+                "uuid": nodegroup.uuid,
+                },
+            }
+        with ExpectedException(
+                HandlerValidationError,
+                re.escape("{u'mac_addresses': [u'This field is required.']}")):
+            handler.create(params)
+
+    def test_create_raises_validation_error_for_missing_architecture(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        nodegroup = factory.make_NodeGroup()
+        zone = factory.make_Zone()
+        params = {
+            "pxe_mac": factory.make_mac_address(),
+            "zone": {
+                "name": zone.name,
+                },
+            "nodegroup": {
+                "uuid": nodegroup.uuid,
+                },
+            }
+        with ExpectedException(
+                HandlerValidationError,
+                re.escape(
+                    "{u'architecture': [u'Architecture must be "
+                    "defined for installable nodes.']}")):
+            handler.create(params)
+
+    def test_create_creates_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        nodegroup = factory.make_NodeGroup()
+        zone = factory.make_Zone()
+        mac = factory.make_mac_address()
+        hostname = factory.make_name("hostname")
+        architecture = make_usable_architecture(self)
+        created_node = handler.create({
+            "hostname": hostname,
+            "pxe_mac": mac,
+            "architecture": architecture,
+            "zone": {
+                "name": zone.name,
+                },
+            "nodegroup": {
+                "uuid": nodegroup.uuid,
+                },
+            "power_type": "ether_wake",
+            "power_parameters": {
+                "mac_address": mac,
+                },
+            })
+        self.expectThat(created_node["hostname"], Equals(hostname))
+        self.expectThat(created_node["pxe_mac"], Equals(mac))
+        self.expectThat(created_node["extra_macs"], Equals([]))
+        self.expectThat(created_node["architecture"], Equals(architecture))
+        self.expectThat(created_node["zone"]["id"], Equals(zone.id))
+        self.expectThat(created_node["nodegroup"]["id"], Equals(nodegroup.id))
+        self.expectThat(created_node["power_type"], Equals("ether_wake"))
+        self.expectThat(created_node["power_parameters"], Equals({
+            "mac_address": mac,
+            }))
 
     def test_missing_action_raises_error(self):
         user = factory.make_User()

@@ -19,10 +19,14 @@ __all__ = [
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
+from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.node import Node
 from maasserver.node_action import compile_node_actions
 from maasserver.utils.converters import human_readable_bytes
-from maasserver.websockets.base import HandlerDoesNotExistError
+from maasserver.websockets.base import (
+    HandlerDoesNotExistError,
+    HandlerPermissionError,
+    )
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
     )
@@ -40,7 +44,8 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get', 'action']
+        allowed_methods = ['list', 'get', 'create', 'action']
+        form = AdminNodeWithMACAddressesForm
         exclude = [
             "id",
             "installable",
@@ -90,7 +95,12 @@ class NodeHandler(TimestampedModelHandler):
         if nodegroup is None:
             return None
         else:
-            return nodegroup.name
+            return {
+                "id": nodegroup.id,
+                "uuid": nodegroup.uuid,
+                "name": nodegroup.name,
+                "cluster_name": nodegroup.cluster_name,
+                }
 
     def dehydrate_routers(self, routers):
         """Return list of routers."""
@@ -100,6 +110,13 @@ class NodeHandler(TimestampedModelHandler):
             "%s" % router
             for router in routers
             ]
+
+    def dehydrate_power_parameters(self, power_parameters):
+        """Return power_parameters None if empty."""
+        if power_parameters == '':
+            return None
+        else:
+            return power_parameters
 
     def dehydrate(self, obj, data, for_list=False):
         """Add extra fields to `data`."""
@@ -176,6 +193,53 @@ class NodeHandler(TimestampedModelHandler):
         if obj.owner is None or obj.owner == self.user:
             return obj
         raise HandlerDoesNotExistError(params[self._meta.pk])
+
+    def get_mac_addresses(self, data):
+        """Convert the given `data` into a list of mac addresses.
+
+        This is used by the create method and the hydrate method. The `pxe_mac`
+        will always be the first entry in the list.
+        """
+        macs = data.get("extra_macs", [])
+        if "pxe_mac" in data:
+            macs.insert(0, data["pxe_mac"])
+        return macs
+
+    def preprocess_form(self, action, params):
+        """Process the `params` to before passing the data to the form."""
+        new_params = {}
+        if action == "create":
+            # Only copy the allowed fields into `new_params` to be passed into
+            # the form.
+            new_params["mac_addresses"] = self.get_mac_addresses(params)
+            new_params["hostname"] = params.get("hostname")
+            new_params["architecture"] = params.get("architecture")
+            new_params["power_type"] = params.get("power_type")
+            if "zone" in params:
+                new_params["zone"] = params["zone"]["name"]
+            if "nodegroup" in params:
+                new_params["nodegroup"] = params["nodegroup"]["uuid"]
+
+            # Cleanup any fields that have a None value.
+            for key, value in new_params.items():
+                if value is None:
+                    del new_params[key]
+
+        return super(NodeHandler, self).preprocess_form(action, new_params)
+
+    def create(self, params):
+        """Create the object from params."""
+        # Only admin users can perform create.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        # Create the object, then save the power parameters because the
+        # form will not save this information.
+        data = super(NodeHandler, self).create(params)
+        node_obj = Node.objects.get(system_id=data['system_id'])
+        node_obj.power_parameters = params.get("power_parameters", {})
+        node_obj.save()
+        return self.full_dehydrate(node_obj)
 
     def action(self, params):
         """Perform the action on the object."""
