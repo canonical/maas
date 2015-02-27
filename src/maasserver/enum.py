@@ -47,7 +47,7 @@ class COMPONENT:
 
 class NODE_STATUS:
     """The vocabulary of a `Node`'s possible statuses."""
-    # A node starts out as READY.
+    #: A node starts out as NEW (DEFAULT is an alias for NEW).
     DEFAULT = 0
 
     #: The node has been created and has a system ID assigned to it.
