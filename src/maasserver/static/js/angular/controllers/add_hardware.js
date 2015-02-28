@@ -5,8 +5,8 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$timeout', 'ClustersManager', 'ZonesManager',
-    'NodesManager', 'RegionConnection', function($scope, $timeout,
+    '$scope', '$timeout', '$http', 'ClustersManager', 'ZonesManager',
+    'NodesManager', 'RegionConnection', function($scope, $timeout, $http,
         ClustersManager, ZonesManager, NodesManager, RegionConnection) {
 
         // Set the addHardwareScope in the parent, so it can call functions
@@ -16,6 +16,7 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Set initial values.
         $scope.viewable = false;
+        $scope.model = 'hardware';
         $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
         $scope.architectures = [];
@@ -24,6 +25,189 @@ angular.module('MAAS').controller('AddHardwareController', [
         // Input values.
         $scope.machines = [];
         $scope.currentMachine = null;
+        $scope.chassis = null;
+
+        // Hard coded chassis types. This is because there is no method in
+        // MAAS to get a full list of supported chassis. This needs to be
+        // fixed ASAP.
+        var virshFields = [
+            {
+                name: 'power_address',
+                label: 'Address',
+                field_type: 'string',
+                "default": '',  // Using "default" to make lint happy.
+                choices: [],
+                required: true
+            },
+            {
+                name: 'power_pass',
+                label: 'Password',
+                field_type: 'string',
+                "default": '',
+                choices: [],
+                required: true
+            },
+            {
+                name: 'prefix_filter',
+                label: 'Prefix filter',
+                field_type: 'string',
+                "default": '',
+                choices: [],
+                required: false
+            }
+        ];
+        $scope.chassisPowerTypes = [
+            {
+                name: 'mscm',
+                description: 'Moonshot Chassis Manager',
+                fields: [
+                    {
+                        name: 'host',
+                        label: 'Host',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'username',
+                        label: 'Username',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'password',
+                        label: 'Password',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    }
+                ]
+            },
+            {
+                name: 'powerkvm',
+                description: 'PowerKVM',
+                fields: virshFields
+            },
+            {
+                name: 'seamicro15k',
+                description: 'SeaMicro 15000',
+                fields: [
+                    {
+                        name: 'mac',
+                        label: 'MAC',
+                        field_type: 'mac_address',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'username',
+                        label: 'Username',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'password',
+                        label: 'Password',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'power_control',
+                        label: 'Power Control',
+                        field_type: 'choice',
+                        "default": 'restapi2',
+                        choices: [
+                            ['restapi2', 'REST API V2.0'],
+                            ['restapi', 'REST API V0.9'],
+                            ['ipmi', 'IPMI']
+                        ],
+                        required: true
+                    }
+                ]
+            },
+            {
+                name: 'ucsm',
+                description: 'UCS Chassis Manager',
+                fields: [
+                    {
+                        name: 'url',
+                        label: 'URL',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'username',
+                        label: 'Username',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'password',
+                        label: 'Password',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    }
+                ]
+            },
+            {
+                name: 'virsh',
+                description: 'Virsh (virtual systems)',
+                fields: virshFields
+            },
+            {
+                name: 'esxi',
+                description: 'VMWare ESXi (virtual systems)',
+                fields: [
+                    {
+                        name: 'address',
+                        label: 'Address',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'username',
+                        label: 'Username',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'password',
+                        label: 'Password',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: true
+                    },
+                    {
+                        name: 'prefix_filter',
+                        label: 'Prefix filter',
+                        field_type: 'string',
+                        "default": '',
+                        choices: [],
+                        required: false
+                    }
+                ]
+            }
+        ];
 
         // Get the master cluster from the loaded clusters.
         function masterCluster() {
@@ -100,6 +284,17 @@ angular.module('MAAS').controller('AddHardwareController', [
             };
         }
 
+        // Return a new chassis object.
+        function newChassis() {
+            return {
+                cluster: masterCluster(),
+                power: {
+                    type: null,
+                    parameters: {}
+                }
+            };
+        }
+
         // Set the machine a random hostname.
         function setRandomHostname(machine) {
             return RegionConnection.callMethod(
@@ -110,10 +305,12 @@ angular.module('MAAS').controller('AddHardwareController', [
         }
 
         // Called each time the clusters have loaded and the zones have loaded.
-        // Only once both have loaded will this method add the first machine.
-        function initMachine() {
+        // Only once both have loaded will this method add the first machine
+        // and the chassis.
+        function initMachineAndChassis() {
             if(ClustersManager.isLoaded() && ZonesManager.isLoaded()) {
                 $scope.addMachine();
+                $scope.chassis = newChassis();
             }
         }
 
@@ -195,8 +392,39 @@ angular.module('MAAS').controller('AddHardwareController', [
             };
         }
 
+        // Validate that all the parameters are there for the given power type.
+        function powerParametersHasError(power_type, parameters) {
+            var i;
+            for(i = 0; i < power_type.fields.length; i++) {
+                var field = power_type.fields[i];
+                var value = parameters[field.name];
+                if(field.required) {
+                    if(angular.isUndefined(value) || value === '') {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
         // Called by the parent scope when this controller is viewable.
-        $scope.show = function() {
+        $scope.show = function(mode) {
+            // Change the mode.
+            if($scope.mode !== mode) {
+                if($scope.mode === "hardware") {
+                    $scope.machines = [];
+                    $scope.currentMachine = null;
+                    $scope.addMachine();
+                } else if($scope.mode === "chassis") {
+                    $scope.chassis = newChassis();
+                }
+                $scope.mode = mode;
+            }
+
+            // Exit early if alreayd viewable.
+            if($scope.viewable) {
+                return;
+            }
             $scope.viewable = true;
 
             // Start the loading of architectures.
@@ -214,6 +442,22 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Stop the loading of architectures.
             cancelLoadArchitectures();
+        };
+
+        // Return True when architectures loaded and in hardware mode.
+        $scope.showMachines = function() {
+            if($scope.architectures.length === 0) {
+                return false;
+            }
+            return $scope.mode === "hardware";
+        };
+
+        // Return True when architectures loaded and in chassis mode.
+        $scope.showChassis = function() {
+            if($scope.architectures.length === 0) {
+                return false;
+            }
+            return $scope.mode === "chassis";
         };
 
         // Add a new MAC address to the current machine.
@@ -245,7 +489,7 @@ angular.module('MAAS').controller('AddHardwareController', [
 
         // Return true when the machine is missing information or invalid
         // information.
-        $scope.hasError = function(machine) {
+        $scope.machineHasError = function(machine) {
             // Early-out for errors.
             in_error = (
                 machine.cluster === null ||
@@ -272,13 +516,26 @@ angular.module('MAAS').controller('AddHardwareController', [
         };
 
         // Return true if any of the machines have errors.
-        $scope.hasErrors = function() {
+        $scope.machinesHaveErrors = function() {
             for(i = 0; i < $scope.machines.length; i++) {
-                if($scope.hasError($scope.machines[i])) {
+                if($scope.machineHasError($scope.machines[i])) {
                     return true;
                 }
             }
             return false;
+        };
+
+        // Return true if the chassis has errors.
+        $scope.chassisHasErrors = function() {
+            // Early-out for errors.
+            in_error = (
+                $scope.chassis.cluster === null ||
+                $scope.chassis.power.type === null);
+            if(in_error) {
+                return in_error;
+            }
+            return powerParametersHasError(
+                $scope.chassis.power.type, $scope.chassis.power.parameters);
         };
 
         // Get the MAC address that is displayed in the machines header.
@@ -303,15 +560,16 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.currentMachine = null;
             $scope.machines = [];
             $scope.addMachine();
+            $scope.chassis = newChassis();
 
             // Hide the controller.
             $scope.hide();
         };
 
         // Called to perform the adding of machines.
-        $scope.actionAdd = function() {
+        $scope.actionAddMachines = function() {
             // Does nothing if any error exists.
-            if($scope.hasErrors()) {
+            if($scope.machinesHaveErrors()) {
                 return;
             }
 
@@ -335,12 +593,46 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.hide();
         };
 
+        // Called to perform the adding of a chassis.
+        $scope.actionAddChassis = function() {
+            // Does nothing if error exists.
+            if($scope.chassisHasErrors()) {
+                return;
+            }
+
+            // Get the current chassis and clear the current info.
+            var chassis = $scope.chassis;
+            $scope.chassis = newChassis();
+
+            // Create the parameters.
+            var params = angular.copy(chassis.power.parameters);
+            params.model = chassis.power.type.name;
+
+            // Add the chassis. For now we use the API as the websocket doesn't
+            // support probe and enlist.
+            $http({
+                method: 'POST',
+                url: 'api/1.0/nodegroups/' +
+                    chassis.cluster.uuid +
+                    '/?op=probe_and_enlist_hardware',
+                data: $.param(params),
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+            }).then(null, function(error) {
+                // This needs to be improved to show a correct error
+                // message on the machines line.
+                console.log(error);
+            });
+
+            // Hide the controller.
+            $scope.hide();
+        };
+
         // Make sure connected to region then load all the clusters and zones.
         RegionConnection.defaultConnect().then(function() {
             if(!ClustersManager.isLoaded()) {
                 // Load the initial clusters.
                 ClustersManager.loadItems().then(function() {
-                    initMachine();
+                    initMachineAndChassis();
                 }, function(error) {
                     // Report error loading. This is simple handlng for now
                     // but this should show a nice error dialog or something.
@@ -352,7 +644,7 @@ angular.module('MAAS').controller('AddHardwareController', [
             if(!ZonesManager.isLoaded()) {
                 // Load the initial zones.
                 ZonesManager.loadItems().then(function() {
-                    initMachine();
+                    initMachineAndChassis();
                 }, function(error) {
                     // Report error loading. This is simple handlng for now
                     // but this should show a nice error dialog or something.

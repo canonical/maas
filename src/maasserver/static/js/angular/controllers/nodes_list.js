@@ -30,6 +30,19 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.takeActionOptions = [];
         $scope.actionError = false;
 
+        // Options for add hardware dropdown.
+        $scope.addHardwareOption = {
+            name: "hardware",
+            title: "Add Hardware"
+        };
+        $scope.addHardwareOptions = [
+            $scope.addHardwareOption,
+            {
+                name: "chassis",
+                title: "Add Chassis"
+            }
+        ];
+
         // This will hold the AddHardwareController once it is initialized.
         // The controller will set this variable as it's always a child or
         // this scope.
@@ -139,6 +152,11 @@ angular.module('MAAS').controller('NodesListController', [
                 }
             }
             $scope.search = "in:selected";
+
+            // Hide the add hardware section.
+            if(angular.isObject($scope.addHardwareScope)) {
+                $scope.addHardwareScope.hide();
+            }
         };
 
         // Called when the current action is cancelled.
@@ -167,7 +185,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Called to show the add hardware view.
         $scope.showAddHardware = function() {
-            $scope.addHardwareScope.show();
+            $scope.addHardwareScope.show($scope.addHardwareOption.name);
         };
 
         // Make sure connected to region then load all the nodes.

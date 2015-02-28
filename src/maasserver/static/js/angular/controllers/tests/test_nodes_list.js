@@ -86,6 +86,21 @@ describe("NodesListController", function() {
         expect($scope.actionOption).toBeNull();
         expect($scope.takeActionOptions).toEqual([]);
         expect($scope.actionError).toBe(false);
+        expect($scope.addHardwareOption).toEqual({
+            name: "hardware",
+            title: "Add Hardware"
+        });
+        expect($scope.addHardwareOptions).toEqual([
+            {
+                name: "hardware",
+                title: "Add Hardware"
+            },
+            {
+                name: "chassis",
+                title: "Add Chassis"
+            }
+        ]);
+        expect($scope.addHardwareScope).toBeNull();
     });
 
     it("calls loadItems for nodes if not loaded", function(done) {
@@ -345,6 +360,15 @@ describe("NodesListController", function() {
             $scope.actionOptionSelected();
             expect($scope.search).toBe("in:selected");
         });
+
+        it("calls hide on addHardwareScope", function() {
+            var controller = makeController();
+            $scope.addHardwareScope = {
+                hide: jasmine.createSpy("hide")
+            };
+            $scope.actionOptionSelected();
+            expect($scope.addHardwareScope.hide).toHaveBeenCalled();
+        });
     });
 
     describe("actionCancel", function() {
@@ -460,6 +484,22 @@ describe("NodesListController", function() {
             defer.resolve();
             $scope.$digest();
             expect($scope.actionOption).toBeNull();
+        });
+    });
+
+    describe("showAddHardware", function() {
+
+        it("calls show in addHardwareScope", function() {
+            var controller = makeController();
+            $scope.addHardwareScope = {
+                show: jasmine.createSpy("show")
+            };
+            $scope.addHardwareOption = {
+                name: "hardware"
+            };
+            $scope.showAddHardware();
+            expect($scope.addHardwareScope.show).toHaveBeenCalledWith(
+                "hardware");
         });
     });
 });

@@ -10,13 +10,17 @@
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div class="page-header__actions">
             <div class="page-header__cta" data-ng-hide="selectedNodes.length">
-                <a href="" class="link-cta-ubuntu" data-ng-click="showAddHardware()">Add Hardware</a>
+                <div data-maas-cta="addHardwareOptions"
+                    data-ng-model="addHardwareOption" data-keep-orange="true"
+                    data-ng-click="showAddHardware()"></div>
             </div>
             <div class="page-header__cta ng-hide" data-ng-show="selectedNodes.length">
                 <span class="page-header__cta-feedback left">
                     {$ selectedNodes.length $} Selected
                 </span>
-                <div class="left" data-maas-cta="takeActionOptions" data-ng-model="actionOption" data-ng-change="actionOptionSelected()"></div>
+                <div class="left" data-maas-cta="takeActionOptions"
+                    data-ng-model="actionOption"
+                    data-ng-change="actionOptionSelected()"></div>
             </div>
         </div>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
@@ -59,13 +63,13 @@
             <div class="page-header__feedback" data-ng-hide="architectures.length">
                 <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
                 <p class="page-header__feedback-message info">
-                    Cannot add hardware until boot images have been imported. To fix, visit the <a href="images">images page</a>.
+                    Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="images">images page</a>.
                 </p>
             </div>
-            <ul class="add-machine__list twelve-col ng-hide" data-ng-show="architectures.length">
+            <ul class="add-machine__list twelve-col ng-hide" data-ng-show="showMachines()">
                 <li class="add-machine__details twelve-col"
                     data-ng-repeat="machine in machines"
-                    data-ng-class="{ active: machine === currentMachine, error: hasError(machine) }"
+                    data-ng-class="{ active: machine === currentMachine, error: machineHasError(machine) }"
                     data-ng-click="setCurrentMachine(machine)">
                     <div class="name two-col">
                         <h4>{$ machine.name $}</h4>
@@ -130,14 +134,39 @@
                     </div>
                 </li>
             </ul>
-            <div class="twelve-col ng-hide" data-ng-show="architectures.length">
+            <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
+                <fieldset class="six-col">
+                    <div class="inline">
+                        <label for="cluser">Cluster</label>
+                        <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                            data-ng-model="chassis.cluster"
+                            data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
+                        </select>
+                    </div>
+                </fieldset>
+                <fieldset class="six-col last-col"
+                    data-maas-power-parameters="chassisPowerTypes"
+                    data-ng-model="chassis.power">
+                </fieldset>
+            </form>
+            <div class="twelve-col ng-hide" data-ng-show="showMachines()">
                 <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
                 <div class="right align-right">
                     <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
                     <button class="cta-ubuntu"
-                        data-ng-class="{ secondary: hasErrors() }"
-                        data-ng-click="actionAdd()">
+                        data-ng-class="{ secondary: machinesHaveErrors() }"
+                        data-ng-click="actionAddMachines()">
                         Add <span data-ng-pluralize count="machines.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                    </button>
+                </div>
+            </div>
+            <div class="twelve-col ng-hide" data-ng-show="showChassis()">
+                <div class="right align-right">
+                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                    <button class="cta-ubuntu"
+                        data-ng-class="{ secondary: chassisHasErrors() }"
+                        data-ng-click="actionAddChassis()">
+                        Add chassis</span>
                     </button>
                 </div>
             </div>

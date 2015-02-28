@@ -30,11 +30,18 @@ describe("maasCta", function() {
     }));
 
     // Return the compiled directive with the items from the scope.
-    function compileDirective(maas_cta, ng_model, ng_change) {
+    function compileDirective(
+        maas_cta, ng_model, ng_change, ng_click, keep_orange, log) {
+        if(angular.isUndefined(keep_orange)) {
+            keep_orange = false;
+        }
+
         var directive;
-        var html = '<div data-maas-cta="' + maas_cta + '" ' +
+        var html = '<div><div data-maas-cta="' + maas_cta + '" ' +
             'data-ng-model="' + ng_model + '" ' +
-            'data-ng-change="' + ng_change + '"></div>';
+            'data-ng-change="' + ng_change + '" ' +
+            'data-ng-click="' + ng_click + '" ' +
+            'data-keep-orange="' + keep_orange + '"></div></div>';
 
         // Compile the directive.
         inject(function($compile) {
@@ -43,7 +50,7 @@ describe("maasCta", function() {
 
         // Perform the digest cycle to finish the compile.
         $scope.$digest();
-        return directive;
+        return directive.find("div");
     }
 
     it("default shown is false", function() {
@@ -150,6 +157,14 @@ describe("maasCta", function() {
         expect(directive.isolateScope().secondary).toBe(true);
     });
 
+    it("dropdown select doesnt set secondary if keep-orange", function() {
+        var directive = compileDirective("items", "active", null, null, true);
+        var links = directive.find("li.cta-group__item > a");
+
+        angular.element(links[0]).click();
+        expect(directive.isolateScope().secondary).toBe(false);
+    });
+
     it("clicking body will set shown to false", function() {
         var directive = compileDirective("items", "active");
         var links = directive.find("li.cta-group__item > a");
@@ -166,5 +181,25 @@ describe("maasCta", function() {
         angular.element($document.find('body')).click();
 
         expect(directive.isolateScope().shown).toBe(false);
+    });
+
+    it("clicking button will fire ng-click", function() {
+        $scope.clicked = jasmine.createSpy("clicked");
+        var directive = compileDirective("items", "active", null, "clicked()");
+        var links = directive.find("li.cta-group__item > a");
+
+        // Open the dropdown.
+        directive.find("a.cta-group__link").click();
+        expect($scope.clicked).toHaveBeenCalled();
+    });
+
+    it("clicking toggle wont fire ng-click", function() {
+        $scope.clicked = jasmine.createSpy("clicked");
+        var directive = compileDirective("items", "active", null, "clicked()");
+        var links = directive.find("li.cta-group__item > a");
+
+        // Open the dropdown.
+        directive.find("a.cta-group__link--toggle").click();
+        expect($scope.clicked).not.toHaveBeenCalled();
     });
 });
