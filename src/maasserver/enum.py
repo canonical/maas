@@ -215,13 +215,12 @@ class IPADDRESS_TYPE:
     # Pre-assigned and permanent until removed.
     STICKY = 1
 
-    # Not associated to hardware managed by MAAS.
-    UNMANAGED = 2
-
-    # Additional IP requested by a user for a node.
+    # Additional (unmanaged) IP requested by a user for a node.
+    # May or may not be within a cluster interface range.
     EXTRA = 3
 
-    # Reserved by a user, no DHCP map required in MAAS.
+    # Reserved by a user (but not for a MAAS-managed object);
+    # no DHCP map required in MAAS.
     USER_RESERVED = 4
 
 

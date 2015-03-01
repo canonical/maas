@@ -169,6 +169,12 @@ class Factory:
         random_address_index = random.randint(0, network.size - 1)
         return unicode(IPAddress(network[random_address_index]))
 
+    def make_ip_address(self):
+        if random.randint(0, 1):
+            return self.make_ipv6_address()
+        else:
+            return self.make_ipv4_address()
+
     def make_UUID(self):
         return unicode(uuid1())
 
