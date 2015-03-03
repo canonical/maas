@@ -26,7 +26,10 @@ from random import (
     )
 from textwrap import dedent
 import time
-from unittest import skip
+from unittest import (
+    skip,
+    SkipTest,
+    )
 from urlparse import (
     parse_qsl,
     urlparse,
@@ -2085,6 +2088,12 @@ class NodeResultsDisplayTest(MAASServerTestCase):
 
 class NodeListingJSReloader(SeleniumTestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
+
     # JS Script that will load a new NodeTableReloader view, placing the
     # object on the window.
     RELOADER_SCRIPT = dedent("""\
@@ -2172,6 +2181,12 @@ class NodeListingJSReloader(SeleniumTestCase):
 
 
 class TestJSNodeView(SeleniumTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
 
     # JS Script that will load a new NodeView, placing the
     # object on the global window.
@@ -2280,6 +2295,12 @@ class TestJSNodeView(SeleniumTestCase):
 
 class NodeListingSelectionJSControls(SeleniumTestCase):
 
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
+
     @skip(
         "XXX: blake_r 2014-10-02 bug=1376977: Causes intermittent failures")
     def test_node_list_js_control_select_all(self):
@@ -2316,6 +2337,12 @@ class NodeListingSelectionJSControls(SeleniumTestCase):
 class NodeListingBulkActionSelectionTest(SeleniumTestCase):
     """Tests for JS event handling on the "bulk action" selection widget."""
 
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
+
     def select_action(self, action_name):
         """Select the given node action."""
         action_dropdown = self.selenium.find_element_by_id('id_action')
@@ -2344,6 +2371,12 @@ class NodeListingBulkActionSelectionTest(SeleniumTestCase):
 
 
 class NodeProbedDetailsExpanderTest(SeleniumTestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        raise SkipTest(
+            "XXX: Gavin Panella 2015-02-26 bug=1426010: "
+            "All tests using Selenium are breaking.")
 
     def make_node_with_lldp_output(self):
         node = factory.make_Node()
