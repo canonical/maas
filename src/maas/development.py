@@ -140,6 +140,11 @@ PASSWORD_HASHERS = (
     'django.contrib.auth.hashers.MD5PasswordHasher',
 )
 
+# This tells django-nose to load the given Nose plugins.
+NOSE_PLUGINS = [
+    "maastesting.noseplug.Select",
+]
+
 # Allow the user to override settings in maas_local_settings.
 import_local_settings()
 
