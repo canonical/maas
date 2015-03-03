@@ -45,8 +45,10 @@ def gen_available_browsers():
     # PhantomJS is always enabled.
     yield "PhantomJS", {}
 
-    if is_browser_available("firefox"):
-        yield "Firefox", {}
+    # XXX: allenap bug=1427492 2015-03-03: Firefox has been very unreliable
+    # both with Karma and with Selenium. Disabling it.
+    # if is_browser_available("firefox"):
+    #     yield "Firefox", {}
 
     # Prefer Chrome, but fall-back to Chromium.
     if is_browser_available("google-chrome"):
