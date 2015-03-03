@@ -45,7 +45,7 @@ from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import get_one
-from maastesting.djangotestcase import TransactionTestCase
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from mock import Mock
 from netaddr import IPAddress
 from testtools.matchers import (
@@ -455,7 +455,7 @@ class MAASAPITest(APITestCase):
             (response.status_code, json.loads(response.content)))
 
 
-class APIErrorsTest(TransactionTestCase):
+class APIErrorsTest(DjangoTransactionTestCase):
 
     def test_internal_error_generates_proper_api_response(self):
         error_message = factory.make_string()

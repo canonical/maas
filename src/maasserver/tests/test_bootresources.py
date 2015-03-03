@@ -59,7 +59,7 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import absolute_reverse
 from maasserver.utils.orm import get_one
-from maastesting.djangotestcase import TransactionTestCase
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -437,7 +437,7 @@ class TestSimpleStreamsHandler(MAASServerTestCase):
         self.assertIsInstance(response, StreamingHttpResponse)
 
 
-class TestConnectionWrapper(TransactionTestCase):
+class TestConnectionWrapper(DjangoTransactionTestCase):
     """Tests the use of StreamingHttpResponse(ConnectionWrapper(stream)).
 
     We do not run this inside of `MAASServerTestCase` as that wraps a
@@ -820,11 +820,11 @@ class TestBootResourceStore(MAASServerTestCase):
         self.expectThat(mock_resource_set_cleaner, MockCalledOnceWith())
 
 
-class TestBootResourceTransactional(TransactionTestCase):
+class TestBootResourceTransactional(DjangoTransactionTestCase):
     """Test methods on `BootResourceStore` that manage their own transactions.
 
-    This is done using TransactionTestCase so the database is flushed after
-    each test run.
+    This is done using `DjangoTransactionTestCase` so the database is
+    flushed after each test run.
     """
 
     def test_insert_does_nothing_if_file_already_exists(self):

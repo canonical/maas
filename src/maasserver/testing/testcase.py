@@ -42,7 +42,7 @@ from maasserver.testing.factory import factory
 from maasserver.utils.orm import is_serialization_failure
 from maastesting.djangotestcase import (
     DjangoTestCase,
-    TransactionTestCase,
+    DjangoTransactionTestCase,
     )
 from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
@@ -70,10 +70,13 @@ class MAASServerTestCase(DjangoTestCase):
 
     @classmethod
     def setUpClass(cls):
+        super(MAASServerTestCase, cls).setUpClass()
         register_mac_type(connection.cursor())
 
     def setUp(self):
         super(MAASServerTestCase, self).setUp()
+
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         # This patch prevents communication with a non-existent cluster
         # controller when fetching power types.
         static_params = (
@@ -81,11 +84,14 @@ class MAASServerTestCase(DjangoTestCase):
         self.patch(
             power_parameters,
             'get_all_power_types_from_clusters').return_value = static_params
+
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         # Disconnect the monitor cancellation as it's triggered by a signal.
         # Avoid circular imports.
         from maasserver import monitor_connect
         self.patch(monitor_connect, 'MONITOR_CANCEL_CONNECT', False)
 
+        # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         # Disconnect the status transition event to speed up tests.
         # Avoid circular imports.
         from maasserver import event_connect
@@ -155,7 +161,7 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-class SeleniumTestCase(TransactionTestCase, LiveServerTestCase):
+class SeleniumTestCase(DjangoTransactionTestCase, LiveServerTestCase):
     """Selenium-enabled test case.
 
     Two users are pre-created: "user" for a regular user account, or "admin"
@@ -248,7 +254,7 @@ class TestWithoutCrochetMixin:
             self.assertFalse(crochet.reactor.running)
 
 
-class SerializationFailureTestCase(TransactionTestCase):
+class SerializationFailureTestCase(DjangoTransactionTestCase):
 
     def create_stest_table(self):
         with closing(connection.cursor()) as cursor:

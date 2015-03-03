@@ -25,7 +25,7 @@ from maasserver.models.eventtype import (
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
-from maastesting.djangotestcase import TransactionTestCase
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from testtools.matchers import (
     AfterPreprocessing,
     AllMatch,
@@ -65,7 +65,7 @@ class EventTypeTest(MAASServerTestCase):
             name=name, description=desc, level=level))
 
 
-class EventTypeConcurrencyTest(TransactionTestCase):
+class EventTypeConcurrencyTest(DjangoTransactionTestCase):
 
     def test_register_is_safe_with_concurrency(self):
         name = factory.make_name("name")

@@ -44,7 +44,7 @@ from maasserver.utils.orm import (
     retry_on_serialization_failure,
     validate_in_transaction,
     )
-from maastesting.djangotestcase import TransactionTestCase
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
     HasLength,
@@ -408,7 +408,7 @@ class TestPostCommit(MAASTestCase):
         self.assertRaises(AssertionError, post_commit, sentinel.hook)
 
 
-class TestTransactional(TransactionTestCase):
+class TestTransactional(DjangoTransactionTestCase):
 
     def test__calls_function_within_transaction_then_closes_connections(self):
         close_old_connections = self.patch(orm, "close_old_connections")
@@ -559,7 +559,7 @@ class TestCommitWithinAtomicBlock(MAASTestCase):
             context_manager.__exit__, MockCalledOnceWith(None, None, None))
 
 
-class TestValidateInTransaction(TransactionTestCase):
+class TestValidateInTransaction(DjangoTransactionTestCase):
     """Tests for `validate_in_transaction`."""
 
     def test__does_nothing_within_atomic_block(self):

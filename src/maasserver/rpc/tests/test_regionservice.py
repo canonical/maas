@@ -71,7 +71,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.orm import transactional
-from maastesting.djangotestcase import TransactionTestCase
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -215,7 +215,7 @@ class TestRegionProtocol_Authenticate(MAASServerTestCase):
         self.assertThat(salt, HasLength(16))
 
 
-class TestRegionProtocol_Register(TransactionTestCase):
+class TestRegionProtocol_Register(DjangoTransactionTestCase):
 
     def test__is_registered(self):
         protocol = Region()
@@ -375,7 +375,7 @@ class TestRegionProtocol_ReportBootImages(MAASTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_UpdateLeases(TransactionTestCase):
+class TestRegionProtocol_UpdateLeases(DjangoTransactionTestCase):
 
     def test_update_leases_is_registered(self):
         protocol = Region()
@@ -428,7 +428,7 @@ class TestRegionProtocol_UpdateLeases(TransactionTestCase):
         return assert_fails_with(d, NoSuchCluster)
 
 
-class TestRegionProtocol_GetBootSources(TransactionTestCase):
+class TestRegionProtocol_GetBootSources(DjangoTransactionTestCase):
 
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
@@ -449,7 +449,7 @@ class TestRegionProtocol_GetBootSources(TransactionTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
+class TestRegionProtocol_GetBootSourcesV2(DjangoTransactionTestCase):
 
     def test_get_boot_sources_v2_is_registered(self):
         protocol = Region()
@@ -470,7 +470,7 @@ class TestRegionProtocol_GetBootSourcesV2(TransactionTestCase):
         return d.addCallback(check)
 
 
-class TestRegionProtocol_GetArchiveMirrors(TransactionTestCase):
+class TestRegionProtocol_GetArchiveMirrors(DjangoTransactionTestCase):
 
     def test_get_archive_mirrors_is_registered(self):
         protocol = Region()
@@ -526,7 +526,7 @@ class TestRegionProtocol_GetArchiveMirrors(TransactionTestCase):
             response)
 
 
-class TestRegionProtocol_GetProxies(TransactionTestCase):
+class TestRegionProtocol_GetProxies(DjangoTransactionTestCase):
 
     def test_get_proxies_is_registered(self):
         protocol = Region()
@@ -561,7 +561,7 @@ class TestRegionProtocol_GetProxies(TransactionTestCase):
             response)
 
 
-class TestRegionProtocol_GetClusterStatus(TransactionTestCase):
+class TestRegionProtocol_GetClusterStatus(DjangoTransactionTestCase):
 
     def test_get_boot_sources_is_registered(self):
         protocol = Region()
@@ -592,7 +592,7 @@ class TestRegionProtocol_GetClusterStatus(TransactionTestCase):
         self.assertEqual({b"status": status}, response)
 
 
-class TestRegionProtocol_MarkNodeFailed(TransactionTestCase):
+class TestRegionProtocol_MarkNodeFailed(DjangoTransactionTestCase):
 
     def test_mark_failed_is_registered(self):
         protocol = Region()
@@ -652,7 +652,7 @@ class TestRegionProtocol_MarkNodeFailed(TransactionTestCase):
         return d.addErrback(check)
 
 
-class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
+class TestRegionProtocol_ListNodePowerParameters(DjangoTransactionTestCase):
 
     @transactional
     def create_nodegroup(self, **kwargs):
@@ -712,7 +712,7 @@ class TestRegionProtocol_ListNodePowerParameters(TransactionTestCase):
         return assert_fails_with(d, NoSuchCluster)
 
 
-class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
+class TestRegionProtocol_UpdateNodePowerState(DjangoTransactionTestCase):
 
     @transactional
     def create_node(self, power_state):
@@ -762,7 +762,7 @@ class TestRegionProtocol_UpdateNodePowerState(TransactionTestCase):
         return d.addErrback(check)
 
 
-class TestRegionProtocol_RegisterEventType(TransactionTestCase):
+class TestRegionProtocol_RegisterEventType(DjangoTransactionTestCase):
 
     def test_register_event_type_is_registered(self):
         protocol = Region()
@@ -812,7 +812,7 @@ class TestRegionProtocol_RegisterEventType(TransactionTestCase):
         self.assertEqual({}, response)
 
 
-class TestRegionProtocol_SendEvent(TransactionTestCase):
+class TestRegionProtocol_SendEvent(DjangoTransactionTestCase):
 
     def test_send_event_is_registered(self):
         protocol = Region()
@@ -913,7 +913,7 @@ class TestRegionProtocol_SendEvent(TransactionTestCase):
         yield d.addCallback(check)
 
 
-class TestRegionProtocol_SendEventMACAddress(TransactionTestCase):
+class TestRegionProtocol_SendEventMACAddress(DjangoTransactionTestCase):
 
     def test_send_event_mac_address_is_registered(self):
         protocol = Region()
@@ -1911,7 +1911,7 @@ class TestRegionAdvertisingService(MAASTestCase):
         self.assertItemsEqual([], service._get_addresses())
 
 
-class TestRegionProtocol_ReportForeignDHCPServer(TransactionTestCase):
+class TestRegionProtocol_ReportForeignDHCPServer(DjangoTransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -1967,7 +1967,7 @@ class TestRegionProtocol_ReportForeignDHCPServer(TransactionTestCase):
         self.assertThat(configure_dhcp, MockNotCalled())
 
 
-class TestRegionProtocol_GetClusterInterfaces(TransactionTestCase):
+class TestRegionProtocol_GetClusterInterfaces(DjangoTransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -2004,7 +2004,7 @@ class TestRegionProtocol_GetClusterInterfaces(TransactionTestCase):
             expected_interfaces, response["interfaces"])
 
 
-class TestRegionProtocol_CreateNode(TransactionTestCase):
+class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
 
     def test_create_node_is_registered(self):
         protocol = Region()
@@ -2046,7 +2046,7 @@ class TestRegionProtocol_CreateNode(TransactionTestCase):
             response['system_id'])
 
 
-class TestRegionProtocol_CommissionNode(TransactionTestCase):
+class TestRegionProtocol_CommissionNode(DjangoTransactionTestCase):
 
     def test_commission_node_is_registered(self):
         protocol = Region()
@@ -2102,7 +2102,8 @@ class TestRegionProtocol_TimerExpired(MAASTestCase):
             MockCalledOnceWith(params['id'], params['context']))
 
 
-class TestRegionProtocol_RequestNodeInforByMACAddress(TransactionTestCase):
+class TestRegionProtocol_RequestNodeInforByMACAddress(
+        DjangoTransactionTestCase):
 
     def test_request_node_info_by_mac_address_is_registered(self):
         protocol = Region()

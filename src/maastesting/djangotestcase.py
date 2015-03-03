@@ -15,8 +15,8 @@ __metaclass__ = type
 __all__ = [
     'count_queries',
     'DjangoTestCase',
+    'DjangoTransactionTestCase',
     'TestModelMixin',
-    'TransactionTestCase',
     ]
 
 from contextlib import closing
@@ -77,10 +77,11 @@ def count_queries(func, *args, **kwargs):
     return counter.num_queries, result
 
 
-class DjangoTestCase(MAASTestCase, django.test.TestCase):
-    """`TestCase` with Django support.
+class DjangoTestCase(
+        MAASTestCase, django.test.TestCase):
+    """A Django `TestCase` for MAAS.
 
-    Supports test resources and fixtures.
+    Supports test resources and (non-Django) fixtures.
     """
 
     def __get_connection_txid(self):
@@ -117,10 +118,11 @@ class DjangoTestCase(MAASTestCase, django.test.TestCase):
                 django.test.TransactionTestCase._fixture_teardown(self)
 
 
-class TransactionTestCase(MAASTestCase, django.test.TransactionTestCase):
-    """`TransactionTestCase` for MAAS.
+class DjangoTransactionTestCase(
+        MAASTestCase, django.test.TransactionTestCase):
+    """A Django `TransactionTestCase` for MAAS.
 
-    A version of MAASTestCase that supports transactions.
+    A version of `MAASTestCase` that supports transactions.
 
     The basic Django TestCase class uses transactions to speed up tests
     so this class should only be used when tests involve transactions.

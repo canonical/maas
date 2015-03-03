@@ -21,8 +21,8 @@ from maasserver.models.timestampedmodel import now
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.tests.models import TimestampedModelTestModel
 from maastesting.djangotestcase import (
+    DjangoTransactionTestCase,
     TestModelMixin,
-    TransactionTestCase,
     )
 
 
@@ -54,7 +54,8 @@ class TimestampedModelTest(TestModelMixin, MAASServerTestCase):
         self.assertEqual(old_created, obj.created)
 
 
-class TimestampedModelTransactionalTest(TestModelMixin, TransactionTestCase):
+class TimestampedModelTransactionalTest(
+        TestModelMixin, DjangoTransactionTestCase):
 
     app = 'maasserver.tests'
 
@@ -86,7 +87,7 @@ class UtilitiesTest(MAASServerTestCase):
         self.assertEqual(date_now, now())
 
 
-class UtilitiesTransactionalTest(TransactionTestCase):
+class UtilitiesTransactionalTest(DjangoTransactionTestCase):
 
     def test_now_returns_transaction_time(self):
         date_now = now()

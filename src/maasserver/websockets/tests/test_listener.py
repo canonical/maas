@@ -20,16 +20,14 @@ from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.zone import Zone
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import (
-    MAASServerTestCase,
-    TransactionTestCase,
-    )
+from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.triggers import register_all_triggers
 from maasserver.utils.orm import transactional
 from maasserver.websockets.listener import (
     PostgresListener,
     PostgresListenerNotifyError,
     )
+from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCalledWith,
@@ -164,7 +162,7 @@ class TestPostgresListener(MAASServerTestCase):
             listener.convertChannel, "node_unknown")
 
 
-class TestNodeListener(TransactionTestCase):
+class TestNodeListener(DjangoTransactionTestCase):
     """End-to-end test of both the listeners code and the triggers code."""
 
     scenarios = (
@@ -248,7 +246,7 @@ class TestNodeListener(TransactionTestCase):
             yield listener.stop()
 
 
-class TestClusterListener(TransactionTestCase):
+class TestClusterListener(DjangoTransactionTestCase):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
 
@@ -322,7 +320,7 @@ class TestClusterListener(TransactionTestCase):
             yield listener.stop()
 
 
-class TestZoneListener(TransactionTestCase):
+class TestZoneListener(DjangoTransactionTestCase):
     """End-to-end test of both the listeners code and the zone
     triggers code."""
 
