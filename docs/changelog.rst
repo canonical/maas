@@ -2,6 +2,18 @@
 Changelog
 =========
 
+1.7.2
+=====
+
+Bug Fix Update
+--------------
+
+#1331214    Support AMT Version > 8
+#1397567    Fix call to amttool when restarting a node to not fail disk erasing.
+#1415538    Do not generate the 'option routers' stanza if router IP is None.
+#1403909    Do not deallocate StaticIPAddress before node has powered off.
+#1405998    Remove all OOPS reporting.
+
 1.7.1
 =====
 
