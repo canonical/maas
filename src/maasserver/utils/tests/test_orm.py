@@ -37,6 +37,8 @@ from maasserver.utils.orm import (
     macs_do_not_contain,
     make_serialization_failure,
     outside_atomic_block,
+    post_commit,
+    post_commit_hooks,
     psql_array,
     request_transaction_retry,
     retry_on_serialization_failure,
@@ -45,19 +47,31 @@ from maasserver.utils.orm import (
 from maastesting.djangotestcase import TransactionTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
+    HasLength,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
     )
 from maastesting.testcase import MAASTestCase
 from mock import (
+    ANY,
     call,
     Mock,
     sentinel,
     )
+from provisioningserver.utils.twisted import DeferredValue
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
-from testtools.matchers import MatchesPredicate
+from testtools.deferredruntest import extract_result
+from testtools.matchers import (
+    IsInstance,
+    MatchesPredicate,
+    )
+from twisted.internet.defer import (
+    CancelledError,
+    Deferred,
+    )
+from twisted.python.failure import Failure
 
 
 class FakeModel:
@@ -276,7 +290,7 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
         function = Mock(__name__=function_name.encode("ascii"))
         return function
 
-    def test_retries_twice_on_serialization_failure(self):
+    def test_retries_on_serialization_failure(self):
         function = self.make_mock_function()
         function.side_effect = self.cause_serialization_failure
         function_wrapped = retry_on_serialization_failure(function)
@@ -300,6 +314,26 @@ class TestRetryOnSerializationFailure(SerializationFailureTestCase):
             (sentinel.a, sentinel.b),
             function_wrapped(sentinel.a, b=sentinel.b))
 
+    def test_calls_reset_between_retries(self):
+        reset = Mock()
+        function = self.make_mock_function()
+        function.side_effect = self.cause_serialization_failure
+        function_wrapped = retry_on_serialization_failure(function, reset)
+        self.assertRaises(OperationalError, function_wrapped)
+        expected_function_calls = [call()] * 10
+        self.expectThat(function, MockCallsMatch(*expected_function_calls))
+        # There's one fewer reset than calls to the function.
+        expected_reset_calls = expected_function_calls[:-1]
+        self.expectThat(reset, MockCallsMatch(*expected_reset_calls))
+
+    def test_does_not_call_reset_before_first_attempt(self):
+        reset = Mock()
+        function = self.make_mock_function()
+        function.return_value = sentinel.all_is_okay
+        function_wrapped = retry_on_serialization_failure(function, reset)
+        function_wrapped()
+        self.assertThat(reset, MockNotCalled())
+
 
 class TestMakeSerializationFailure(MAASTestCase):
     """Tests for `make_serialization_failure`."""
@@ -318,6 +352,60 @@ class TestRequestTransactionRetry(MAASTestCase):
             OperationalError, request_transaction_retry)
         self.assertThat(exception, MatchesPredicate(
             is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestPostCommit(MAASTestCase):
+    """Tests for the `post_commit` function."""
+
+    def test__adds_Deferred_as_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = Deferred()
+        post_commit(hook)
+        self.assertEqual([hook], list(post_commit_hooks.hooks))
+
+    def test__adds_callable_as_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = lambda arg: None
+        post_commit(hook)
+        self.assertThat(post_commit_hooks.hooks, HasLength(1))
+
+    def test__fire_calls_back_with_None_to_Deferred_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = Deferred()
+        spy = DeferredValue()
+        spy.observe(hook)
+        post_commit(hook)
+        post_commit_hooks.fire()
+        self.assertIsNone(extract_result(spy.get()))
+
+    def test__reset_cancels_Deferred_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = Deferred()
+        spy = DeferredValue()
+        spy.observe(hook)
+        post_commit(hook)
+        post_commit_hooks.reset()
+        self.assertRaises(CancelledError, extract_result, spy.get())
+
+    def test__fire_passes_None_to_callable_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = Mock()
+        post_commit(hook)
+        post_commit_hooks.fire()
+        self.assertThat(hook, MockCalledOnceWith(None))
+
+    def test__reset_passes_Failure_to_callable_hook(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hook = Mock()
+        post_commit(hook)
+        post_commit_hooks.reset()
+        self.assertThat(hook, MockCalledOnceWith(ANY))
+        arg = hook.call_args[0][0]
+        self.assertThat(arg, IsInstance(Failure))
+        self.assertThat(arg.value, IsInstance(CancelledError))
+
+    def test__rejects_other_hook_types(self):
+        self.assertRaises(AssertionError, post_commit, sentinel.hook)
 
 
 class TestTransactional(TransactionTestCase):
@@ -372,6 +460,20 @@ class TestTransactional(TransactionTestCase):
         # Old connections have been closed only once.
         self.assertThat(close_old_connections, MockCalledOnceWith())
 
+    def test__fires_post_commit_hooks_when_done(self):
+        fire = self.patch(orm.post_commit_hooks, "fire")
+        function = lambda: sentinel.something
+        decorated_function = orm.transactional(function)
+        self.assertIs(sentinel.something, decorated_function())
+        self.assertThat(fire, MockCalledOnceWith())
+
+    def test__crashes_if_hooks_exist_before_entering_transaction(self):
+        post_commit(lambda failure: None)
+        decorated_function = orm.transactional(lambda: None)
+        self.assertRaises(TransactionManagementError, decorated_function)
+        # The hook list is cleared so that the exception is raised only once.
+        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+
 
 class TestTransactionalRetries(SerializationFailureTestCase):
 
@@ -387,6 +489,20 @@ class TestTransactionalRetries(SerializationFailureTestCase):
         self.assertRaises(OperationalError, decorated_function)
         expected_calls = [call()] * 10
         self.assertThat(function, MockCallsMatch(*expected_calls))
+
+    def test__resets_post_commit_hooks_when_retrying(self):
+        reset = self.patch(orm.post_commit_hooks, "reset")
+
+        function = Mock()
+        function.__name__ = self.getUniqueString()
+        function.side_effect = self.cause_serialization_failure
+        decorated_function = orm.transactional(function)
+
+        self.assertRaises(OperationalError, decorated_function)
+        # reset() is called 9 times by retry_on_serialization_failure() then
+        # once more by transactional().
+        expected_reset_calls = [call()] * 10
+        self.assertThat(reset, MockCallsMatch(*expected_reset_calls))
 
 
 class TestOutsideAtomicBlock(MAASTestCase):

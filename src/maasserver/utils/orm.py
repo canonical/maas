@@ -22,6 +22,7 @@ __all__ = [
     'macs_do_not_contain',
     'make_serialization_failure',
     'outside_atomic_block',
+    'post_commit',
     'psql_array',
     'request_transaction_retry',
     'retry_on_serialization_failure',
@@ -41,8 +42,10 @@ from django.db import (
     )
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
+from maasserver.utils.async import DeferredHooks
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
+from twisted.internet.defer import Deferred
 
 
 def get_exception_class(items):
@@ -233,7 +236,11 @@ def request_transaction_retry():
     raise make_serialization_failure()
 
 
-def retry_on_serialization_failure(func):
+def noop():
+    """Do nothing."""
+
+
+def retry_on_serialization_failure(func, reset=noop):
     """Retry the wrapped function when it raises a serialization failure.
 
     It will call `func` a maximum of ten times, and will only retry if a
@@ -246,6 +253,11 @@ def retry_on_serialization_failure(func):
     because we want a new transaction to be started on the way in, and rolled
     back on the way out before this function attempts to retry.
 
+    :param reset: An optional callable that will be called between attempts.
+        It is *not* called before the first attempt. If the last attempt fails
+        with a serialization failure it will *not* be called. If an attempt
+        fails with a non-serialization failure, it will *not* be called.
+
     """
     @wraps(func)
     def retrier(*args, **kwargs):
@@ -253,11 +265,32 @@ def retry_on_serialization_failure(func):
             try:
                 return func(*args, **kwargs)
             except OperationalError as error:
-                if not is_serialization_failure(error):
+                if is_serialization_failure(error):
+                    reset()
+                else:
                     raise
         else:
             return func(*args, **kwargs)
     return retrier
+
+
+post_commit_hooks = DeferredHooks()
+
+
+def post_commit(hook):
+    """Add a post-commit hook, specific to this thread.
+
+    :param hook: Either a `Deferred` or a callable. In the former case, see
+        `DeferredHooks` for behaviour. In the latter case, the callable is
+        passed exactly one argument: a `Failure`, or `None`.
+    """
+    if isinstance(hook, Deferred):
+        post_commit_hooks.add(hook)
+    elif callable(hook):
+        post_commit_hooks.add(Deferred().addBoth(hook))
+    else:
+        raise AssertionError(
+            "Not a Deferred or callable: %r" % (hook,))
 
 
 def transactional(func):
@@ -270,20 +303,34 @@ def transactional(func):
     this will retry if it fails with a serialization failure.
     """
     func_within_txn = transaction.atomic(func)  # For savepoints.
-    func_outside_txn = retry_on_serialization_failure(func_within_txn)
+    func_outside_txn = retry_on_serialization_failure(
+        func_within_txn, reset=post_commit_hooks.reset)
 
     @wraps(func)
     def call_within_transaction(*args, **kwargs):
-        try:
+        if connection.in_atomic_block:
             # Don't use the retry-capable function if we're already in a
             # transaction; retrying is pointless when the txn is broken.
-            if connection.in_atomic_block:
-                return func_within_txn(*args, **kwargs)
+            return func_within_txn(*args, **kwargs)
+        elif len(post_commit_hooks.hooks) > 0:
+            # Crash if there are any orphaned post-commit hooks. These will
+            # probably only turn up in testing, where transactions are managed
+            # by the test framework instead of this decorator. We need to fail
+            # hard -- not just warn about it -- to ensure it gets fixed.
+            post_commit_hooks.reset()
+            raise TransactionManagementError(
+                "Orphaned post-commit hooks found.")
+        else:
+            # Use the retry-capable function, firing post-transaction hooks.
+            try:
+                result = func_outside_txn(*args, **kwargs)
+            except:
+                post_commit_hooks.reset()
+                raise  # Re-raise.
             else:
-                return func_outside_txn(*args, **kwargs)
-        finally:
-            # Close connections if we've left the outer-most atomic block.
-            if not connection.in_atomic_block:
+                post_commit_hooks.fire()
+                return result
+            finally:
                 close_old_connections()
 
     return call_within_transaction
