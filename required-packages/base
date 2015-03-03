@@ -13,6 +13,7 @@ libjs-yui3-min
 libjs-angularjs
 libpq-dev
 postgresql
+python-apt
 python-bson
 python-bzrlib
 python-convoy

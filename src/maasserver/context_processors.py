@@ -23,6 +23,10 @@ from maasserver.clusterrpc.power_parameters import get_power_type_parameters
 from maasserver.components import get_persistent_errors
 from maasserver.forms import get_node_edit_form
 from maasserver.models import Config
+from maasserver.utils.version import (
+    get_maas_doc_version,
+    get_maas_version,
+    )
 
 
 def yui(context):
@@ -86,4 +90,6 @@ def global_options(context):
             'site_name': Config.objects.get_config('maas_name'),
         },
         'debug': settings.DEBUG,
+        'version': get_maas_version(),
+        'doc_version': get_maas_doc_version(),
     }
