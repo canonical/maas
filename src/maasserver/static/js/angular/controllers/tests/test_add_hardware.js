@@ -808,6 +808,12 @@ describe("AddHardwareController", function() {
 
     describe("chassisHasErrors", function() {
 
+        it("returns true if chassis is null", function() {
+            var controller = makeController();
+            $scope.chassis = null;
+            expect($scope.chassisHasErrors()).toBe(true);
+        });
+
         it("returns true if cluster is null", function() {
             var controller = makeController();
             $scope.chassis = {

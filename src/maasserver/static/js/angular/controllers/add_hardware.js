@@ -529,6 +529,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.chassisHasErrors = function() {
             // Early-out for errors.
             in_error = (
+                $scope.chassis === null ||
                 $scope.chassis.cluster === null ||
                 $scope.chassis.power.type === null);
             if(in_error) {
