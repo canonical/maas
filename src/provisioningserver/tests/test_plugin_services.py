@@ -14,20 +14,14 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-import os
 import signal
 import sys
 
-from maastesting.factory import factory
 from maastesting.testcase import (
     MAASTestCase,
     MAASTwistedRunTest,
     )
-from oops_twisted import OOPSObserver
-from provisioningserver.plugin import (
-    LogService,
-    OOPSService,
-    )
+from provisioningserver.plugin import LogService
 from testtools.content import content_from_file
 from twisted.application.service import MultiService
 from twisted.python.log import (
@@ -91,33 +85,3 @@ class TestLogService(TestServicesBase, MAASTestCase):
         self.assertEqual(
             signal.getsignal(signal.SIGUSR1),
             log_service._signal_handler)
-
-
-class TestOOPSService(TestServicesBase, MAASTestCase):
-    """Tests for `provisioningserver.services.OOPSService`."""
-
-    def setUp(self):
-        super(TestOOPSService, self).setUp()
-        # OOPSService relies upon LogService.
-        self.tempdir = self.make_dir()
-        self.log_filename = factory.make_file(
-            location=self.tempdir, name="test.log")
-        self.log_service = LogService(self.log_filename)
-        self.log_service.setServiceParent(self.services)
-
-    def test_minimal(self):
-        oops_service = OOPSService(self.log_service, None, None)
-        oops_service.setServiceParent(self.services)
-        observer = oops_service.observer
-        self.assertIsInstance(observer, OOPSObserver)
-        self.assertEqual([], observer.config.publishers)
-        self.assertEqual({}, observer.config.template)
-
-    def test_with_all_params(self):
-        oops_dir = os.path.join(self.tempdir, "oops")
-        oops_service = OOPSService(self.log_service, oops_dir, "Sidebottom")
-        oops_service.setServiceParent(self.services)
-        observer = oops_service.observer
-        self.assertIsInstance(observer, OOPSObserver)
-        self.assertEqual(1, len(observer.config.publishers))
-        self.assertEqual({"reporter": "Sidebottom"}, observer.config.template)
