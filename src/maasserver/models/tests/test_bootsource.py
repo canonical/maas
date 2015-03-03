@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 import os
+from unittest import skip
 
 from django.core.exceptions import ValidationError
 from maasserver.bootsources import cache_boot_sources
@@ -98,6 +99,9 @@ class TestBootSource(MAASServerTestCase):
             [],
             boot_source_dict['selections'])
 
+    # XXX: GavinPanella 2015-03-03 bug=1376317: This test is fragile, possibly
+    # due to isolation issues.
+    @skip("Possible isolation issues")
     def test_calls_cache_boot_sources_on_create(self):
         mock_callLater = self.patch(reactor, 'callLater')
         BootSource.objects.create(
