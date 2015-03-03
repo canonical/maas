@@ -657,6 +657,8 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
                         serial=serial, sata=sata)
         if cdrom:
             output += "E: ID_CDROM=1"
+        else:
+            output += "E: ID_ATA_ROTATION_RATE_RPM=5400"
         return output
 
     def call_gather_physical_block_devices(
@@ -761,6 +763,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices(byidroot))
 
     def test__returns_block_device_without_id_path(self):
@@ -796,6 +799,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices(byidroot))
 
     def test__returns_block_device_readonly(self):
@@ -822,6 +826,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices())
 
     def test__returns_block_device_ssd(self):
@@ -848,6 +853,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices())
 
     def test__returns_block_device_not_sata(self):
@@ -874,6 +880,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices())
 
     def test__returns_block_device_removable(self):
@@ -900,6 +907,7 @@ class TestGatherPhysicalBlockDevices(MAASServerTestCase):
             "SERIAL": serial,
             "SIZE": "%s" % size,
             "BLOCK_SIZE": "%s" % block_size,
+            "RPM": "5400",
             }], self.call_gather_physical_block_devices())
 
     def test__returns_multiple_block_devices_in_order(self):
@@ -930,7 +938,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
 
     def make_block_device(
             self, name=None, path=None, id_path=None, size=None,
-            block_size=None, model=None, serial=None, rotary=True,
+            block_size=None, model=None, serial=None, rotary=True, rpm=None,
             removable=False, sata=False):
         if name is None:
             name = factory.make_name('name')
@@ -946,6 +954,8 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             model = factory.make_name('model')
         if serial is None:
             serial = factory.make_name('serial')
+        if rpm is None:
+            rpm = random.choice(('4800', '5400', '10000', '15000'))
         return {
             "NAME": name,
             "PATH": path,
@@ -958,6 +968,7 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
             "RM": "1" if removable else "0",
             "ROTA": "1" if rotary else "0",
             "SATA": "1" if sata else "0",
+            "RPM": "0" if not rotary else rpm
             }
 
     def test__does_nothing_when_exit_status_is_not_zero(self):
@@ -1038,6 +1049,18 @@ class TestUpdateNodePhysicalBlockDevices(MAASServerTestCase):
         self.expectThat(
             PhysicalBlockDevice.objects.filter(node=node).first().tags,
             Not(Contains('ssd')))
+
+    def test__creates_physical_block_device_with_rotary_and_rpm_tags(self):
+        device = self.make_block_device(rotary=True, rpm=5400)
+        node = factory.make_Node()
+        json_output = json.dumps([device]).encode('utf-8')
+        update_node_physical_block_devices(node, json_output, 0)
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Contains('rotary'))
+        self.expectThat(
+            PhysicalBlockDevice.objects.filter(node=node).first().tags,
+            Contains('5400rpm'))
 
     def test__creates_physical_block_device_with_ssd_tag(self):
         device = self.make_block_device(rotary=False)

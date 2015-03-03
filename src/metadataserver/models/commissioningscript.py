@@ -349,8 +349,8 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
                 holders. Gets the name, read-only, removable, model, and
                 if rotary.
 
-    udevadm     Grabs the device path, serial number, and if connected over
-                SATA.
+    udevadm     Grabs the device path, serial number, if connected over
+                SATA and rotational speed.
 
     blockdev    Grabs the block size and size of the disk in bytes.
 
@@ -386,6 +386,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         "DEVNAME": "PATH",
         "ID_SERIAL_SHORT": "SERIAL",
         "ID_ATA_SATA": "SATA",
+        "ID_ATA_ROTATION_RATE_RPM": "RPM"
         }
     del_blocks = []
     for block_info in blockdevs:
@@ -416,7 +417,7 @@ def gather_physical_block_devices(dev_disk_byid='/dev/disk/by-id/'):
         if block_info["NAME"] not in del_blocks
         ]
 
-    # Grab the size of the device and block size.
+    # Grab the size of the device, block size and id-path.
     for block_info in blockdevs:
         block_path = block_info["PATH"]
         id_path = _path_to_idpath(block_path)
@@ -453,6 +454,8 @@ def get_tags_from_block_info(block_info):
         tags.append("removable")
     if "SATA" in block_info and block_info["SATA"] == "1":
         tags.append("sata")
+    if "RPM" in block_info and block_info["RPM"] != "0":
+        tags.append("%srpm" % block_info["RPM"])
     return tags
 
 

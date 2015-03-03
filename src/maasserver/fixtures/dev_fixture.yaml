@@ -336,7 +336,23 @@
   model: maasserver.blockdevice
   pk: 2
 - fields:
+    created: 2015-01-09
+    updated: 2015-01-09
+    node: 15
+    name: sdc
+    path: /dev/sdc
+    size: 500059350016
+    block_size: 4096
+    tags: ['sata', 'rotary', '5400rpm']
+  model: maasserver.blockdevice
+  pk: 3
+- fields:
     blockdevice_ptr: 2
     model: Samsung_SSD_850_EVO_500GB
     serial: S21NNSAFC38076L
+  model: maasserver.physicalblockdevice
+- fields:
+    blockdevice_ptr: 3
+    model: Samsung_SSD_850_EVO_500GB
+    serial: S21NNSAFC38077L
   model: maasserver.physicalblockdevice
