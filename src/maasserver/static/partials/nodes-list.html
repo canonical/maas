@@ -10,16 +10,16 @@
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div data-ng-show="currentpage === 'nodes'">
             <div class="page-header__actions">
-                <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedNodes.length">
+                <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedItems.length">
                     <div data-maas-cta="addHardwareOptions"
                         data-ng-model="addHardwareOption" data-keep-orange="true"
                         data-ng-click="showAddHardware()"></div>
                 </div>
-                <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedNodes.length">
+                <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedItems.length">
                     <span class="page-header__cta-feedback left">
-                        {$ tabs.nodes.selectedNodes.length $} Selected
+                        {$ tabs.nodes.selectedItems.length $} Selected
                     </span>
-                    <div class="left" data-maas-cta="takeActionOptions"
+                    <div class="left" data-maas-cta="tabs.nodes.takeActionOptions"
                         data-ng-model="tabs.nodes.actionOption"
                         data-ng-change="actionOptionSelected('nodes')"></div>
                 </div>
@@ -54,8 +54,8 @@
                 <div class="page-header__feedback ng-hide" data-ng-show="tabs.nodes.actionError">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <p class="page-header__feedback-message info">
-                        {$ tabs.nodes.selectedNodes.length $}
-                        <span data-ng-pluralize count="tabs.nodes.selectedNodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                        {$ tabs.nodes.selectedItems.length $}
+                        <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         cannot be {$ tabs.nodes.actionOption.sentence $}. To proceed, update your selection.
                     </p>
                 </div>
@@ -290,7 +290,7 @@
             <tbody>
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
-                    data-ng-repeat="node in tabs.nodes.filtered_nodes = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
+                    data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
                     data-ng-class="{ error: !supportsAction(node, 'nodes') }">
                     <td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
