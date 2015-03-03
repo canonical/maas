@@ -46,7 +46,6 @@ class DeviceHandler(TimestampedModelHandler):
             "cpu_count",
             "memory",
             "power_state",
-            "pxe_mac",
             "routers",
             "architecture",
             "boot_type",
@@ -66,6 +65,7 @@ class DeviceHandler(TimestampedModelHandler):
             "owner",
             "zone",
             "parent",
+            "pxe_mac",
             ]
         listen_channels = [
             "device",
@@ -104,6 +104,13 @@ class DeviceHandler(TimestampedModelHandler):
         data["url"] = reverse('node-view', args=[obj.system_id])
         data["fqdn"] = obj.fqdn
 
+        # get_pxe_mac returns the first MAC if self.pxe_mac isn't set.
+        pxe_mac = obj.get_pxe_mac()
+        if pxe_mac is not None:
+            data["pxe_mac"] = "%s" % pxe_mac
+            data["pxe_mac_vendor"] = obj.get_pxe_mac_vendor()
+        else:
+            data["pxe_mac"] = data["pxe_mac_vendor"] = ""
         data["extra_macs"] = [
             "%s" % mac_address.mac_address
             for mac_address in obj.get_extra_macs()

@@ -24,6 +24,8 @@ from maastesting.djangotestcase import count_queries
 class TestDeviceHandler(MAASServerTestCase):
 
     def dehydrate_device(self, node, for_list=False):
+        pxe_mac = node.get_pxe_mac()
+        pxe_mac_vendor = node.get_pxe_mac_vendor()
         data = {
             "created": "%s" % node.created,
             "extra_macs": [
@@ -32,6 +34,8 @@ class TestDeviceHandler(MAASServerTestCase):
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
+            "pxe_mac": "" if pxe_mac is None else "%s" % pxe_mac.mac_address,
+            "pxe_mac_vendor": "" if pxe_mac_vendor is None else pxe_mac_vendor,
             "parent": (
                 node.parent.system_id if node.parent is not None else None),
             "ip_addresses": list(node.ip_addresses()),
@@ -57,6 +61,8 @@ class TestDeviceHandler(MAASServerTestCase):
                 "status",
                 "extra_macs",
                 "tags",
+                "pxe_mac",
+                "pxe_mac_vendor",
                 ]
             for key in data.keys():
                 if key not in allowed_fields:

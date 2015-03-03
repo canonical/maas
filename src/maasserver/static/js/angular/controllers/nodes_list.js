@@ -15,20 +15,51 @@ angular.module('MAAS').controller('NodesListController', [
         $rootScope.page = "nodes";
 
         // Set initial values.
-        $scope.search = "";
-        $scope.searchValid = true;
         $scope.nodes = NodesManager.getItems();
         $scope.devices = DevicesManager.getItems();
-        $scope.selectedNodes = NodesManager.getSelectedItems();
-        $scope.filtered_nodes = [];
-        $scope.predicate = 'fqdn';
-        $scope.allViewableChecked = false;
-        $scope.metadata = NodesManager.getMetadata();
-        $scope.filters = SearchService.emptyFilter;
-        $scope.column = 'fqdn';
-        $scope.actionOption = null;
-        $scope.takeActionOptions = [];
-        $scope.actionError = false;
+        $scope.currentpage = "nodes";
+
+        $scope.tabs = {};
+        // Nodes tab.
+        $scope.tabs.nodes = {};
+        $scope.tabs.nodes.pagetitle = "Nodes";
+        $scope.tabs.nodes.currentpage = "nodes";
+        $scope.tabs.nodes.manager = NodesManager;
+        $scope.tabs.nodes.search = "";
+        $scope.tabs.nodes.searchValid = true;
+        $scope.tabs.nodes.selectedItems = NodesManager.getSelectedItems();
+        $scope.tabs.nodes.filtered_items = [];
+        $scope.tabs.nodes.predicate = 'fqdn';
+        $scope.tabs.nodes.allViewableChecked = false;
+        $scope.tabs.nodes.metadata = NodesManager.getMetadata();
+        $scope.tabs.nodes.filters = SearchService.emptyFilter;
+        $scope.tabs.nodes.column = 'fqdn';
+        $scope.tabs.nodes.actionOption = null;
+        $scope.tabs.nodes.takeActionOptions = [];
+        $scope.tabs.nodes.actionError = false;
+
+        // Device tab.
+        $scope.tabs.devices = {};
+        $scope.tabs.devices.pagetitle = "Devices";
+        $scope.tabs.devices.currentpage = "devices";
+        $scope.tabs.devices.manager = DevicesManager;
+        $scope.tabs.devices.search = "";
+        $scope.tabs.devices.searchValid = true;
+        $scope.tabs.devices.selectedItems = DevicesManager.getSelectedItems();
+        $scope.tabs.devices.filtered_items = [];
+        $scope.tabs.devices.predicate = 'fqdn';
+        $scope.tabs.devices.allViewableChecked = false;
+        $scope.tabs.devices.metadata = DevicesManager.getMetadata();
+        $scope.tabs.devices.filters = SearchService.emptyFilter;
+        $scope.tabs.devices.column = 'fqdn';
+        $scope.tabs.devices.actionOption = null;
+        $scope.tabs.devices.takeActionOptions = [];
+        $scope.tabs.devices.actionError = false;
+
+        $scope.toggleTab = function(tab) {
+            $rootScope.title = $scope.tabs[tab].pagetitle;
+            $scope.currentpage = tab;
+        };
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = {
@@ -49,131 +80,143 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.addHardwareScope = null;
 
         // Called to update `allViewableChecked`.
-        function updateAllViewableChecked() {
+        function updateAllViewableChecked(tab) {
             // Not checked when the filtered nodes are empty.
-            if($scope.filtered_nodes.length === 0) {
-                $scope.allViewableChecked = false;
+            if($scope.tabs[tab].filtered_items.length === 0) {
+                $scope.tabs[tab].allViewableChecked = false;
                 return;
             }
 
-            // Loop through all filtered nodes an see if all checked.
+            // Loop through all filtered nodes and see if all are checked.
             var i;
-            for(i = 0; i < $scope.filtered_nodes.length; i++) {
-                if(!$scope.filtered_nodes[i].$selected) {
-                    $scope.allViewableChecked = false;
+            for(i = 0; i < $scope.tabs[tab].filtered_items.length; i++) {
+                if(!$scope.tabs[tab].filtered_items[i].$selected) {
+                    $scope.tabs[tab].allViewableChecked = false;
                     return;
                 }
             }
-            $scope.allViewableChecked = true;
+            $scope.tabs[tab].allViewableChecked = true;
         }
 
         // Clear the action if required.
-        function shouldClearAction() {
-            if($scope.selectedNodes.length === 0) {
-                if($scope.search === "in:selected") {
-                    $scope.search = "";
+        function shouldClearAction(tab) {
+            if($scope.tabs[tab].selectedItems.length === 0) {
+                if($scope.tabs[tab].search === "in:selected") {
+                    $scope.tabs[tab].search = "";
                 }
-                $scope.actionOption = null;
+                $scope.tabs[tab].actionOption = null;
             }
         }
 
         // Mark a node as selected or unselected.
-        $scope.toggleChecked = function(node) {
-            if(NodesManager.isSelected(node.system_id)) {
-                NodesManager.unselectItem(node.system_id);
+        $scope.toggleChecked = function(node, tab) {
+            if($scope.tabs[tab].manager.isSelected(node.system_id)) {
+                $scope.tabs[tab].manager.unselectItem(node.system_id);
             } else {
-                NodesManager.selectItem(node.system_id);
+                $scope.tabs[tab].manager.selectItem(node.system_id);
             }
-            updateAllViewableChecked();
-            shouldClearAction();
+            updateAllViewableChecked(tab);
+            shouldClearAction(tab);
         };
 
         // Select all viewable nodes or deselect all viewable nodes.
-        $scope.toggleCheckAll = function() {
-            if($scope.allViewableChecked) {
-                angular.forEach($scope.filtered_nodes, function(node) {
-                    NodesManager.unselectItem(node.system_id);
+        $scope.toggleCheckAll = function(tab) {
+            if($scope.tabs[tab].allViewableChecked) {
+                angular.forEach(
+                    $scope.tabs[tab].filtered_items, function(node) {
+                        $scope.tabs[tab].manager.unselectItem(node.system_id);
                 });
             } else {
-                angular.forEach($scope.filtered_nodes, function(node) {
-                    NodesManager.selectItem(node.system_id);
+                angular.forEach(
+                    $scope.tabs[tab].filtered_items, function(node) {
+                        $scope.tabs[tab].manager.selectItem(node.system_id);
                 });
             }
-            updateAllViewableChecked();
-            shouldClearAction();
+            updateAllViewableChecked(tab);
+            shouldClearAction(tab);
         };
 
-        // When the filtered nodes change update if the all check button
+        // When the filtered nodes change update if all check buttons
         // should be checked or not.
-        $scope.$watchCollection("filtered_nodes", function() {
-            updateAllViewableChecked();
+        $scope.$watchCollection("tabs.nodes.filtered_items", function() {
+            updateAllViewableChecked("nodes");
+        });
+        $scope.$watchCollection("tabs.devices.filtered_items", function() {
+            updateAllViewableChecked("devices");
         });
 
-        // Adds or removes a filter the search.
-        $scope.toggleFilter = function(type, value) {
-            $scope.filters = SearchService.toggleFilter(
-                $scope.filters, type, value);
-            $scope.search = SearchService.filtersToString($scope.filters);
+        // Adds or removes a filter to the search.
+        $scope.toggleFilter = function(type, value, tab) {
+            $scope.tabs[tab].filters = SearchService.toggleFilter(
+                $scope.tabs[tab].filters, type, value);
+            $scope.tabs[tab].search = SearchService.filtersToString(
+                $scope.tabs[tab].filters);
         };
 
         // Return True if the filter is active.
-        $scope.isFilterActive = function(type, value) {
-            return SearchService.isFilterActive($scope.filters, type, value);
+        $scope.isFilterActive = function(type, value, tab) {
+            return SearchService.isFilterActive(
+                $scope.tabs[tab].filters, type, value);
         };
 
         // Update the filters object when the search bar is updated.
-        $scope.updateFilters = function() {
-            var filters = SearchService.getCurrentFilters($scope.search);
+        $scope.updateFilters = function(tab) {
+            var filters = SearchService.getCurrentFilters(
+                $scope.tabs[tab].search);
             if(filters === null) {
-                $scope.filters = SearchService.emptyFilter;
-                $scope.searchValid = false;
+                $scope.tabs[tab].filters = SearchService.emptyFilter;
+                $scope.tabs[tab].searchValid = false;
             } else {
-                $scope.filters = filters;
-                $scope.searchValid = true;
+                $scope.tabs[tab].filters = filters;
+                $scope.tabs[tab].searchValid = true;
             }
         };
 
         // Return True if the node supports the action.
-        $scope.supportsAction = function(node) {
-            if(!$scope.actionOption) {
+        $scope.supportsAction = function(node, tab) {
+            if(!$scope.tabs[tab].actionOption) {
                 return true;
             }
-            return node.actions.indexOf($scope.actionOption.name) >= 0;
+            return node.actions.indexOf(
+                $scope.tabs[tab].actionOption.name) >= 0;
         };
 
         // Called when the action option gets changed.
-        $scope.actionOptionSelected = function() {
+        $scope.actionOptionSelected = function(tab) {
             var i;
-            $scope.actionError = false;
-            for(i = 0; i < $scope.selectedNodes.length; i++) {
-                if(!$scope.supportsAction($scope.selectedNodes[i])) {
-                    $scope.actionError = true;
+            $scope.tabs[tab].actionError = false;
+            for(i = 0; i < $scope.tabs[tab].selectedItems.length; i++) {
+                if(!$scope.supportsAction(
+                    $scope.tabs[tab].selectedItems[i], tab)) {
+                    $scope.tabs[tab].actionError = true;
                     break;
                 }
             }
-            $scope.search = "in:selected";
+            $scope.tabs[tab].search = "in:selected";
 
             // Hide the add hardware section.
-            if(angular.isObject($scope.addHardwareScope)) {
-                $scope.addHardwareScope.hide();
+            if (tab === 'nodes') {
+                if(angular.isObject($scope.addHardwareScope)) {
+                    $scope.addHardwareScope.hide();
+                }
             }
         };
 
         // Called when the current action is cancelled.
-        $scope.actionCancel = function() {
-            if($scope.search === "in:selected") {
-                $scope.search = "";
+        $scope.actionCancel = function(tab) {
+            if($scope.tabs[tab].search === "in:selected") {
+                $scope.tabs[tab].search = "";
             }
-            $scope.actionOption = null;
+            $scope.tabs[tab].actionOption = null;
         };
 
         // Perform the action on all nodes.
-        $scope.actionGo = function() {
-            angular.forEach($scope.selectedNodes, function(node) {
-                NodesManager.performAction(
-                    node, $scope.actionOption.name).then(function() {
-                        NodesManager.unselectItem(node.system_id);
-                        shouldClearAction();
+        $scope.actionGo = function(tab) {
+            angular.forEach($scope.tabs[tab].selectedItems, function(node) {
+                $scope.tabs[tab].manager.performAction(
+                    node, $scope.tabs[tab].actionOption.name).then(function() {
+                        $scope.tabs[tab].manager.unselectItem(node.system_id);
+                        shouldClearAction(tab);
                     }, function(error) {
                         // Report error loading. This is simple handlng for
                         // now but this should show a nice error dialog or
@@ -185,35 +228,32 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Called to show the add hardware view.
         $scope.showAddHardware = function() {
-            $scope.addHardwareScope.show($scope.addHardwareOption.name);
+            $scope.addHardwareScope.show(
+                $scope.addHardwareOption.name);
         };
 
         // Make sure connected to region then load all the nodes.
         RegionConnection.defaultConnect().then(function() {
-            if(!NodesManager.isLoaded()) {
-                // Load the initial nodes.
-                NodesManager.loadItems().then(null, function(error) {
-                    // Report error loading. This is simple handlng for now
-                    // but this should show a nice error dialog or something.
-                    console.log(error);
-                });
-            }
-            NodesManager.enableAutoReload();
+            angular.forEach($scope.tabs, function(tab) {
+                var manager = tab.manager;
+                if(!manager.isLoaded()) {
+                    // Load the initial nodes.
+                    manager.loadItems().then(null, function(error) {
+                        // Report error loading. This is simple handlng for now
+                        // but this should show a nice error dialog or
+                        // something.
+                        console.log(error);
+                    });
+                }
+                manager.enableAutoReload();
 
-            if(!DevicesManager.isLoaded()) {
-                // Load the initial nodes.
-                DevicesManager.loadItems().then(null, function(error) {
-                    // Report error loading. This is simple handlng for now
-                    // but this should show a nice error dialog or something.
-                    console.log(error);
-                });
-            }
-            DevicesManager.enableAutoReload();
+                // Load all of the available actions.
+                RegionConnection.callMethod("general.actions", {}).then(
+                    function(actions) {
+                        tab.takeActionOptions = actions;
+                    });
 
-            // Load all of the available actions.
-            RegionConnection.callMethod("general.actions", {}).then(
-                function(actions) {
-                    $scope.takeActionOptions = actions;
-                });
+            });
+
         });
     }]);

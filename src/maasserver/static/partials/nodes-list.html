@@ -3,176 +3,179 @@
         <h1 class="page-header__title">{$ $parent.site $} MAAS
             <span class="page-header__title--identicator" id="bulk-actions">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <a href="" data-ng-class="{ active: page === 'nodes' }">{$ nodes.length $} Nodes</a>
-                <a href="">{$ devices.length $} Devices</a>
+                <a href="" data-ng-class="{ active: currentpage === 'nodes' }" data-ng-click="toggleTab('nodes')">{$ nodes.length $} Nodes</a>
+                <a href="" data-ng-class="{ active: currentpage === 'devices' }" data-ng-click="toggleTab('devices')">{$ devices.length $} Devices</a>
             </span>
         </h1>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-        <div class="page-header__actions">
-            <div class="page-header__cta" data-ng-hide="selectedNodes.length">
-                <div data-maas-cta="addHardwareOptions"
-                    data-ng-model="addHardwareOption" data-keep-orange="true"
-                    data-ng-click="showAddHardware()"></div>
-            </div>
-            <div class="page-header__cta ng-hide" data-ng-show="selectedNodes.length">
-                <span class="page-header__cta-feedback left">
-                    {$ selectedNodes.length $} Selected
-                </span>
-                <div class="left" data-maas-cta="takeActionOptions"
-                    data-ng-model="actionOption"
-                    data-ng-change="actionOptionSelected()"></div>
-            </div>
-        </div>
-        <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-        <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
-            <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <form class="form-inline" data-ng-hide="actionError">
-            <!--
-                XXX blake_r - TODO: Add options to actions.
-                <label for="iamge">Choose your image</label>
-                <select name="os" id="os">
-                    <option value="Ubuntu">Ubuntu</option>
-                    <option value="Windows">Windows</option>
-                    <option value="OSX">OSX</option>
-                    <option value="Red Hat">Red Hat</option>
-                </select>
-                <select name="version" id="version">
-                    <option value="14.10">14.10</option>
-                    <option value="14.04.1 LTS">14.01.1 LTS</option>
-                    <option value="14.04 LTS">14.01 LTS</option>
-                    <option value="12.04.5 LTS">12.04.5 LTS</option>
-                </select>
-            -->
-                <div class="right">
-                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
-                    <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
+        <div data-ng-show="currentpage === 'nodes'">
+            <div class="page-header__actions">
+                <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedNodes.length">
+                    <div data-maas-cta="addHardwareOptions"
+                        data-ng-model="addHardwareOption" data-keep-orange="true"
+                        data-ng-click="showAddHardware()"></div>
                 </div>
-            </form>
-
+                <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedNodes.length">
+                    <span class="page-header__cta-feedback left">
+                        {$ tabs.nodes.selectedNodes.length $} Selected
+                    </span>
+                    <div class="left" data-maas-cta="takeActionOptions"
+                        data-ng-model="tabs.nodes.actionOption"
+                        data-ng-change="actionOptionSelected('nodes')"></div>
+                </div>
+            </div>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <div class="page-header__feedback ng-hide" data-ng-show="actionError">
+            <div class="page-header__dropdown ng-hide" data-ng-show="tabs.nodes.actionOption">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <p class="page-header__feedback-message info">
-                    {$ selectedNodes.length $}
-                    <span data-ng-pluralize count="selectedNodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
-                    cannot be {$ actionOption.sentence $}. To proceed, update your selection.
-                </p>
-            </div>
-        </div>
-        <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
-            <div class="page-header__feedback" data-ng-hide="architectures.length">
-                <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
-                <p class="page-header__feedback-message info">
-                    Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="images">images page</a>.
-                </p>
-            </div>
-            <ul class="add-machine__list twelve-col ng-hide" data-ng-show="showMachines()">
-                <li class="add-machine__details twelve-col"
-                    data-ng-repeat="machine in machines"
-                    data-ng-class="{ active: machine === currentMachine, error: machineHasError(machine) }"
-                    data-ng-click="setCurrentMachine(machine)">
-                    <div class="name two-col">
-                        <h4>{$ machine.name $}</h4>
+                <form class="form-inline" data-ng-hide="tabs.nodes.actionError">
+                <!--
+                    XXX blake_r - TODO: Add options to actions.
+                    <label for="iamge">Choose your image</label>
+                    <select name="os" id="os">
+                        <option value="Ubuntu">Ubuntu</option>
+                        <option value="Windows">Windows</option>
+                        <option value="OSX">OSX</option>
+                        <option value="Red Hat">Red Hat</option>
+                    </select>
+                    <select name="version" id="version">
+                        <option value="14.10">14.10</option>
+                        <option value="14.04.1 LTS">14.01.1 LTS</option>
+                        <option value="14.04 LTS">14.01 LTS</option>
+                        <option value="12.04.5 LTS">12.04.5 LTS</option>
+                    </select>
+                -->
+                    <div class="right">
+                        <a href="" class="margin-right" data-ng-click="actionCancel('nodes')">Cancel</a>
+                        <button class="cta-ubuntu" data-ng-click="actionGo('nodes')">Go</button>
                     </div>
-                    <div class="cluster two-col">
-                        <p>Cluster {$ machine.cluster.cluster_name $}</p>
-                    </div>
-                    <div class="architecture two-col">
-                        <p>{$ machine.architecture $}</p>
-                    </div>
-                    <div class="mac two-col">
-                        <p>{$ getDisplayMac(machine) $}</p>
-                    </div>
-                    <div class="power-type four-col last-col">
-                        <p>{$ getDisplayPower(machine) $}</p>
-                    </div>
-                    <div class="add-machine__details-form twelve-col">
-                        <form action="post" class="twelve-col">
-                            <fieldset class="six-col">
-                                <div class="inline">
-                                    <label for="cluser">Cluster</label>
-                                    <select name="cluster" id="cluster" placeholder="Choose a cluster"
-                                        data-ng-model="machine.cluster"
-                                        data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
-                                    </select>
-                                </div>
-                                <div class="inline">
-                                    <label for="machine-name">Machine name</label>
-                                    <input type="text" id="machine-name" placeholder="Choose a machine name"
-                                        data-ng-model="machine.name">
-                                </div>
-                                <div class="inline">
-                                    <label for="architecture">Architecture</label>
-                                    <select name="architecture" id="architecture" placeholder="Choose an architecture"
-                                        data-ng-model="machine.architecture"
-                                        data-ng-options="arch for arch in architectures">
-                                    </select>
-                                </div>
-                                <div class="inline" data-ng-repeat="mac in machine.macs">
-                                    {$ mac $}
-                                    <label for="mac-address"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
-                                    <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
-                                           data-ng-class="{ invalid: mac.error }"
-                                           data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
-                                </div>
-                                <div class="inline">
-                                    <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
-                                </div>
-                                <div class="inline">
-                                    <label for="zone">Zone</label>
-                                    <select name="zone" id="zone" placeholder="Choose a zone"
-                                        data-ng-model="machine.zone"
-                                        data-ng-options="zone as zone.name for zone in zones">
-                                    </select>
-                                </div>
-                            </fieldset>
-                            <fieldset class="six-col last-col"
-                                data-maas-power-parameters="machine.cluster.power_types"
-                                data-ng-model="machine.power">
-                            </fieldset>
-                        </form>
-                    </div>
-                </li>
-            </ul>
-            <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
-                <fieldset class="six-col">
-                    <div class="inline">
-                        <label for="cluser">Cluster</label>
-                        <select name="cluster" id="cluster" placeholder="Choose a cluster"
-                            data-ng-model="chassis.cluster"
-                            data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
-                        </select>
-                    </div>
-                </fieldset>
-                <fieldset class="six-col last-col"
-                    data-maas-power-parameters="chassisPowerTypes"
-                    data-ng-model="chassis.power">
-                </fieldset>
-            </form>
-            <div class="twelve-col ng-hide" data-ng-show="showMachines()">
-                <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
-                <div class="right align-right">
-                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
-                    <button class="cta-ubuntu"
-                        data-ng-class="{ secondary: machinesHaveErrors() }"
-                        data-ng-click="actionAddMachines()">
-                        Add <span data-ng-pluralize count="machines.length" when="{'one': 'machine', 'other': 'machines'}"></span>
-                    </button>
+                </form>
+
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide" data-ng-show="tabs.nodes.actionError">
+                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                    <p class="page-header__feedback-message info">
+                        {$ tabs.nodes.selectedNodes.length $}
+                        <span data-ng-pluralize count="tabs.nodes.selectedNodes.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                        cannot be {$ tabs.nodes.actionOption.sentence $}. To proceed, update your selection.
+                    </p>
                 </div>
             </div>
-            <div class="twelve-col ng-hide" data-ng-show="showChassis()">
-                <div class="right align-right">
-                    <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
-                    <button class="cta-ubuntu"
-                        data-ng-class="{ secondary: chassisHasErrors() }"
-                        data-ng-click="actionAddChassis()">
-                        Add chassis</span>
-                    </button>
+            <div class="page-header__dropdown ng-hide" data-ng-show="addHardwareScope.viewable" data-ng-controller="AddHardwareController">
+                <div class="page-header__feedback" data-ng-hide="architectures.length">
+                    <!-- XXX blake_r 2015-02-24 - Need to add e2e test. -->
+                    <p class="page-header__feedback-message info">
+                        Cannot add {$ mode $} until boot images have been imported. To fix, visit the <a href="images">images page</a>.
+                    </p>
+                </div>
+                <ul class="add-machine__list twelve-col ng-hide" data-ng-show="showMachines()">
+                    <li class="add-machine__details twelve-col"
+                        data-ng-repeat="machine in machines"
+                        data-ng-class="{ active: machine === currentMachine, error: machineHasError(machine) }"
+                        data-ng-click="setCurrentMachine(machine)">
+                        <div class="name two-col">
+                            <h4>{$ machine.name $}</h4>
+                        </div>
+                        <div class="cluster two-col">
+                            <p>Cluster {$ machine.cluster.cluster_name $}</p>
+                        </div>
+                        <div class="architecture two-col">
+                            <p>{$ machine.architecture $}</p>
+                        </div>
+                        <div class="mac two-col">
+                            <p>{$ getDisplayMac(machine) $}</p>
+                        </div>
+                        <div class="power-type four-col last-col">
+                            <p>{$ getDisplayPower(machine) $}</p>
+                        </div>
+                        <div class="add-machine__details-form twelve-col">
+                            <form action="post" class="twelve-col">
+                                <fieldset class="six-col">
+                                    <div class="inline">
+                                        <label for="cluser">Cluster</label>
+                                        <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                                            data-ng-model="machine.cluster"
+                                            data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
+                                        </select>
+                                    </div>
+                                    <div class="inline">
+                                        <label for="machine-name">Machine name</label>
+                                        <input type="text" id="machine-name" placeholder="Choose a machine name"
+                                            data-ng-model="machine.name">
+                                    </div>
+                                    <div class="inline">
+                                        <label for="architecture">Architecture</label>
+                                        <select name="architecture" id="architecture" placeholder="Choose an architecture"
+                                            data-ng-model="machine.architecture"
+                                            data-ng-options="arch for arch in architectures">
+                                        </select>
+                                    </div>
+                                    <div class="inline" data-ng-repeat="mac in machine.macs">
+                                        {$ mac $}
+                                        <label for="mac-address"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
+                                        <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
+                                               data-ng-class="{ invalid: mac.error }"
+                                               data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
+                                    </div>
+                                    <div class="inline">
+                                        <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
+                                    </div>
+                                    <div class="inline">
+                                        <label for="zone">Zone</label>
+                                        <select name="zone" id="zone" placeholder="Choose a zone"
+                                            data-ng-model="machine.zone"
+                                            data-ng-options="zone as zone.name for zone in zones">
+                                        </select>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="six-col last-col"
+                                    data-maas-power-parameters="machine.cluster.power_types"
+                                    data-ng-model="machine.power">
+                                </fieldset>
+                            </form>
+                        </div>
+                    </li>
+                </ul>
+                <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
+                    <fieldset class="six-col">
+                        <div class="inline">
+                            <label for="cluser">Cluster</label>
+                            <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                                data-ng-model="chassis.cluster"
+                                data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
+                            </select>
+                        </div>
+                    </fieldset>
+                    <fieldset class="six-col last-col"
+                        data-maas-power-parameters="chassisPowerTypes"
+                        data-ng-model="chassis.power">
+                    </fieldset>
+                </form>
+                <div class="twelve-col ng-hide" data-ng-show="showMachines()">
+                    <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
+                    <div class="right align-right">
+                        <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                        <button class="cta-ubuntu"
+                            data-ng-class="{ secondary: machinesHaveErrors() }"
+                            data-ng-click="actionAddMachines()">
+                            Add <span data-ng-pluralize count="machines.length" when="{'one': 'machine', 'other': 'machines'}"></span>
+                        </button>
+                    </div>
+                </div>
+                <div class="twelve-col ng-hide" data-ng-show="showChassis()">
+                    <div class="right align-right">
+                        <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                        <button class="cta-ubuntu"
+                            data-ng-class="{ secondary: chassisHasErrors() }"
+                            data-ng-click="actionAddChassis()">
+                            Add chassis</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </header>
+
 <div class="inner-wrapper">
     <!-- <ul id="flash-messages"  class="flash-messages hidden">
         {% for persistent_error in persistent_errors %}
@@ -184,41 +187,57 @@
             {% endfor %}
         {% endif %}
     </ul> -->
-    <aside id="sidebar">
+    <aside id="sidebar" data-ng-show="currentpage === 'nodes'">
         <div class="accordion three-col">
             <h3 class="accordion__title">Filter by</h3>
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-            <div class="ng-hide accordion__tab" data-ng-show="metadata.status.length">
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.status.length">
                 <h4 class="accordion__tab-title active">Status</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <li class="accordion__tab-item" data-ng-repeat="status in metadata.status | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('status', status.name) }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('status', status.name)">{$ status.name $} ({$ status.count $})</a>
+                        <li class="accordion__tab-item" data-ng-repeat="status in tabs.nodes.metadata.status | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('status', status.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('status', status.name, 'nodes')">{$ status.name $} ({$ status.count $})</a>
                         </li>
                     </ul>
                 </div>
 
             </div>
-            <div class="ng-hide accordion__tab" data-ng-show="metadata.owner.length">
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.owner.length">
                 <h4 class="accordion__tab-title active">Owner</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
-                        <li class="accordion__tab-item" data-ng-repeat="owner in metadata.owner | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('owner', owner.name) }">
-                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('owner', owner.name)">{$ owner.name $} ({$ owner.count $})</a>
+                        <li class="accordion__tab-item" data-ng-repeat="owner in tabs.nodes.metadata.owner | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('owner', owner.name, 'nodes') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('owner', owner.name, 'nodes')">{$ owner.name $} ({$ owner.count $})</a>
                         </li>
                     </ul>
                 </div>
             </div>
         </div>
     </aside>
-    <div class="nine-col last-col">
+    <aside id="sidebar" class="ng-hide" data-ng-show="currentpage === 'devices'">
+        <div class="accordion three-col">
+            <h3 class="accordion__title">Filter by</h3>
+            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+            <div class="ng-hide accordion__tab" data-ng-show="tabs.devices.metadata.owner.length">
+                <h4 class="accordion__tab-title active">Owner</h4>
+                <div class="accordion__tab-content">
+                    <ul class="accordion__tab-list">
+                        <li class="accordion__tab-item" data-ng-repeat="owner in tabs.devices.metadata.owner | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('owner', owner.name, 'devices') }">
+                            <a class="accordion__tab-link" href="" data-ng-click="toggleFilter('owner', owner.name, 'devices')">{$ owner.name $} ({$ owner.count $})</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </aside>    
+    <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
         <div id="search-bar" class="node-search">
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
             <input
                 type="search" placeholder="Search nodes" class="node-search__input"
-                data-ng-model="search" data-ng-change="updateFilters()"
-                data-ng-class="{ error: !searchValid }" />
+                data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
+                data-ng-class="{ error: !tabs.nodes.searchValid }" />
             <input type="submit" class="node-search__submit" />
         </div>
         <table class="table-listing" id="nodes-listing">
@@ -226,63 +245,63 @@
                 <tr class="table-listing__row">
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll()" data-ng-model="allViewableChecked" />
+                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="allViewableChecked" />
                     </th>
                     <th colspan="2" claas="table-listing__cell-fixed">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='fqdn'; reverse=!reverse; column='fqdn'">
+                        <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
                             <acronym title="Fully Qualified Domain Name">FQDN</acronym>
                         </a> /
-                        <a href="" data-ng-click="predicate='pxe_mac'; reverse=!reverse; column='pxe_mac'">
+                        <a href="" data-ng-click="predicate='pxe_mac'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='pxe_mac'">
                             <acronym title="Media Access Control addresses">MAC</acronym>
                         </a>
                     </th>
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" class="align-center" data-ng-click="predicate='power_state'; reverse=!reverse">Power</a>
+                        <a href="" class="align-center" data-ng-click="tabs.nodes.predicate='power_state'; tabs.nodes.reverse=!tabs.nodes.reverse">Power</a>
                     </th>
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='status'; reverse=!reverse">Status</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='status'; tabs.nodes.reverse=!tabs.nodes.reverse">Status</a>
                     </th>
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='owner'; reverse=!reverse">Owner</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='owner'; tabs.nodes.reverse=!tabs.nodes.reverse">Owner</a>
                     </th>
 
                     <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='cpu_count'; reverse=!reverse">Cores</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='cpu_count'; tabs.nodes.reverse=!tabs.nodes.reverse">Cores</a>
                     </th>
                     <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='memory'; reverse=!reverse">RAM (GB)</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='memory'; tabs.nodes.reverse=!tabs.nodes.reverse">RAM (GB)</a>
                     </th>
                     <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='disks'; reverse=!reverse">Disks</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='disks'; tabs.nodes.reverse=!tabs.nodes.reverse">Disks</a>
                     </th>
                     <th class="align-right">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='storage'; reverse=!reverse">Storage (GB)</a>
+                        <a href="" data-ng-click="tabs.nodes.predicate='storage'; tabs.nodes.reverse=!tabs.nodes.reverse">Storage (GB)</a>
                     </th>
                 </tr>
             </thead>
             <tbody>
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
-                    data-ng-repeat="node in filtered_nodes = (nodes | nodesFilter:search | orderBy:predicate:reverse) track by node.system_id"
-                    data-ng-class="{ error: !supportsAction(node) }">
+                    data-ng-repeat="node in tabs.nodes.filtered_nodes = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
+                    data-ng-class="{ error: !supportsAction(node, 'nodes') }">
                     <td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleChecked(node)" data-ng-model="node.$selected" />
+                        <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" />
                     </td>
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="node-column table-listing__cell fixed" data-ng-show="$parent.column === 'fqdn'" colspan="2">
+                    <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
                         <a href="{$ node.url $}">{$ node.fqdn $}</a>
                     </td>
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="ng-hide table-listing__cell fixed" data-ng-show="$parent.column === 'pxe_mac'" colspan="2">
+                    <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
                         <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
                         <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
                     </td>
@@ -295,6 +314,62 @@
                     <td class="align-right">{$ node.memory $}</td>
                     <td class="align-right">{$ node.disks $}</td>
                     <td class="align-right">{$ node.storage $}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="nine-col last-col" class="ng-hide" data-ng-show="currentpage === 'devices'">
+        <div id="search-bar" class="node-search">
+            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+            <input
+                type="search" placeholder="Search devices" class="node-search__input"
+                data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
+                data-ng-class="{ error: !tabs.devices.searchValid }" />
+            <input type="submit" class="node-search__submit" />
+        </div>
+        <table class="table-listing" id="nodes-listing">
+            <thead>
+                <tr class="table-listing__row">
+                    <th>
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" />
+                    </th>
+                    <th colspan="4" class="table-listing__cell-fixed">
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
+                            <acronym title="Fully Qualified Domain Name">FQDN</acronym>
+                        </a>
+                    </th>
+                    <th class="">
+                        <a href="" data-ng-click="tabs.devices.predicate='pxe_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
+                            <acronym title="Media Access Control addresses">MAC</acronym>
+                        </a>
+                    </th>
+                    <th>
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                <tr class="table-listing__row"
+                    data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
+                    data-ng-class="{ error: !supportsAction(device, 'devices') }">
+                    <td colspan="4" >
+                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                        <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" />
+                    </td>
+                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                    <td class="table-listing__cell fixed">
+                        <a href="{$ device.url $}">{$ device.fqdn $}</a>
+                    </td>
+                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                    <td>
+                        {$ device.pxe_mac $}
+                        <span data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
+                    </td>
+                    <td>{$ device.owner $}</td>
                 </tr>
             </tbody>
         </table>
