@@ -26,7 +26,8 @@ js_enums := src/maasserver/static/js/enums.js
 # the others, so is treated specially in the target definitions.
 scss_inputs := \
     src/maasserver/static/scss/maas-styles.scss \
-    $(wildcard src/maasserver/static/scss/**/*.scss)
+    $(wildcard src/maasserver/static/scss/*/*.scss) \
+    $(wildcard src/maasserver/static/scss/*/*/*.scss)
 scss_output := src/maasserver/static/css/maas-styles.css
 
 # Prefix commands with this when they need access to the database.
@@ -58,8 +59,7 @@ build: \
     bin/test.region \
     bin/test.testing \
     bin/py bin/ipy \
-    $(js_enums) \
-    $(scss_output)
+    $(js_enums)
 
 all: build doc
 
@@ -86,12 +86,12 @@ bin/database: bin/buildout buildout.cfg versions.cfg setup.py
 	@touch --no-create $@
 
 bin/maas-region-admin bin/twistd.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) $(scss_output)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region
 	@touch --no-create $@
 
 bin/test.region: \
-    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums) $(scss_output)
+    bin/buildout buildout.cfg versions.cfg setup.py $(js_enums)
 	$(buildout) install region-test
 	@touch --no-create $@
 
@@ -111,7 +111,8 @@ bin/test.e2e: bin/protractor bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install e2e-test
 	@touch --no-create $@
 
-bin/test.testing: bin/buildout buildout.cfg versions.cfg setup.py
+bin/test.testing: \
+	bin/buildout bin/sass buildout.cfg versions.cfg setup.py
 	$(buildout) install testing-test
 	@touch --no-create $@
 
@@ -162,6 +163,12 @@ bin/protractor:
 	@mkdir -p $(@D) $(prefix)
 	npm install --cache-min 5184000 --prefix $(prefix) protractor
 	@ln -srf $(prefix)/node_modules/protractor/bin/protractor $@
+
+bin/sass: prefix = include/nodejs
+bin/sass:
+	@mkdir -p $(@D) $(prefix)
+	npm install --cache-min 5184000 --prefix $(prefix) node-sass
+	@ln -srf $(prefix)/node_modules/node-sass/bin/node-sass $@
 
 test: test-scripts-all = $(wildcard bin/test.*)
 # Don't run bin/test.e2e for now; it breaks.
@@ -245,10 +252,10 @@ enums: $(js_enums)
 $(js_enums): bin/py src/maasserver/utils/jsenums.py $(py_enums)
 	 bin/py -m src/maasserver/utils/jsenums $(py_enums) > $@
 
-styles: $(scss_output)
+styles: bin/sass $(scss_output)
 
 $(scss_output): $(scss_inputs)
-	pyscss $< -o $@ --no-compress --load-path=src/maasserver/static/scss
+	bin/sass --include-path=src/maasserver/static/scss --output-style compressed $< -o $(dir $@)
 
 clean:
 	$(MAKE) -C acceptance $@
@@ -257,7 +264,6 @@ clean:
 	find . -type f -name dropin.cache -print0 | xargs -r0 $(RM)
 	$(RM) -r media/demo/* media/development
 	$(RM) $(js_enums)
-	$(RM) $(scss_output)
 	$(RM) *.log
 	$(RM) docs/api.rst
 	$(RM) -r docs/_autosummary docs/_build

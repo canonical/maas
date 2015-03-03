@@ -31,7 +31,6 @@
 ./parts
 ./run/*
 ./services/*/supervise
-./src/maasserver/static/css/maas-styles.css
 ./src/maasserver/static/js/enums.js
 ./TAGS
 ./tags

@@ -22,7 +22,6 @@ python-mock
 python-nose
 python-pip
 python-pocket-lint
-python-pyscss
 python-subunit
 python-testresources
 python-testscenarios
