@@ -209,18 +209,23 @@ NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT = (
 
 class IPADDRESS_TYPE:
     """The vocabulary of possible types of `StaticIPAddress`."""
-    # Automatically assigned.
+    # Automatically assigned IP address for a node or device.
+    # MUST be within a cluster interface range.
+    # MUST NOT be assigned to a MAC address with a STICKY address of
+    # the same address family.
     AUTO = 0
 
-    # Pre-assigned and permanent until removed.
+    # User-specified static IP address for a node or device.
+    # Permanent until removed by the user, or the node or device is deleted.
     STICKY = 1
 
-    # Additional (unmanaged) IP requested by a user for a node.
-    # May or may not be within a cluster interface range.
-    EXTRA = 3
-
-    # Reserved by a user (but not for a MAAS-managed object);
-    # no DHCP map required in MAAS.
+    # User-specified static IP address.
+    # Specifying a MAC address is optional. If the MAC address is not present,
+    # it is created in the database (thus creating a MAC address not linked
+    # to a node or a device).
+    # USER_RESERVED IP addresses that correspond to a MAC address,
+    # and reside within a cluster interface range, will be added to the DHCP
+    # leases file.
     USER_RESERVED = 4
 
 
