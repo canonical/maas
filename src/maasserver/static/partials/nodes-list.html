@@ -3,8 +3,14 @@
         <h1 class="page-header__title">{$ $parent.site $} MAAS
             <span class="page-header__title--identicator" id="bulk-actions">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <a href="" data-ng-class="{ active: currentpage === 'nodes' }" data-ng-click="toggleTab('nodes')">{$ nodes.length $} Nodes</a>
-                <a href="" data-ng-class="{ active: currentpage === 'devices' }" data-ng-click="toggleTab('devices')">{$ devices.length $} Devices</a>
+                <a href=""
+                    data-ng-class="{ active: currentpage === 'nodes' }"
+                    data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Node', 'other': 'Nodes'}"></ng-pluralize>
+                </a>
+                <a href=""
+                    data-ng-class="{ active: currentpage === 'devices' }"
+                    data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
+                </a>
             </span>
         </h1>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
