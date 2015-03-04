@@ -181,14 +181,14 @@ class TestGetMAASDocVersion(MAASTestCase):
     def test__returns_doc_version_with_greater_than_1_decimals(self):
         mock_version = self.patch(version, "get_maas_main_version")
         mock_version.return_value = "1.8.0"
-        self.assertEquals("doc1.8", version.get_maas_doc_version())
+        self.assertEquals("docs1.8", version.get_maas_doc_version())
 
     def test__returns_doc_version_with_equal_to_1_decimals(self):
         mock_version = self.patch(version, "get_maas_main_version")
         mock_version.return_value = "1.8"
-        self.assertEquals("doc1.8", version.get_maas_doc_version())
+        self.assertEquals("docs1.8", version.get_maas_doc_version())
 
     def test__returns_just_doc_if_version_is_empty(self):
         mock_version = self.patch(version, "get_maas_main_version")
         mock_version.return_value = ""
-        self.assertEquals("doc", version.get_maas_doc_version())
+        self.assertEquals("docs", version.get_maas_doc_version())

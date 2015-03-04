@@ -13,6 +13,8 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    "get_maas_doc_version",
+    "get_maas_version",
     ]
 
 import apt_pkg
@@ -70,7 +72,7 @@ def get_maas_region_package_version():
     global MAAS_VERSION
     if MAAS_VERSION is None:
         MAAS_VERSION = get_version_from_apt(REGION_PACKAGE_NAME)
-        # Possible this returned an empty string, meaning its not installed
+        # Possibly this returned an empty string, meaning it's not installed
         # and no need to call again.
         if MAAS_VERSION:
             # It is a valid version so set the correct format.
@@ -121,9 +123,8 @@ def get_maas_main_version():
 def get_maas_doc_version():
     """Return the doc version for the running MAAS region."""
     main_version = get_maas_main_version()
+    doc_prefix = 'docs'
     if not main_version:
-        return "doc"
-    if main_version.count('.') > 1:
-        return "doc%s" % '.'.join(main_version.split('.')[:2])
+        return doc_prefix
     else:
-        return "doc%s" % main_version
+        return doc_prefix + '.'.join(main_version.split('.')[:2])
