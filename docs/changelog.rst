@@ -8,6 +8,8 @@ Changelog
 Bug Fix Update
 --------------
 
+For full details see https://launchpad.net/maas/+milestone/1.7.2
+
 #1331214    Support AMT Version > 8
 #1397567    Fix call to amttool when restarting a node to not fail disk erasing.
 #1415538    Do not generate the 'option routers' stanza if router IP is None.
