@@ -225,8 +225,13 @@ class WebSocketProtocol(Protocol):
             return None
         handler = handler_class(self.user)
 
-        # Defer the execution to a thread.
-        d = deferToThread(handler.execute, method, message.get("params", {}))
+        # Wrap the handler.execute method in transactional. This will insure
+        # the retry logic is performed and that any post_commit will be
+        # performed. The execution of this method is defered to a thread
+        # because it interacts with the database which is blocking.
+        transactional_execute = transactional(handler.execute)
+        d = deferToThread(
+            transactional_execute, method, message.get("params", {}))
         d.addCallbacks(
             partial(self.sendResult, request_id),
             partial(self.sendError, request_id, handler, method))

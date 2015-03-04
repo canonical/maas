@@ -381,6 +381,28 @@ class TestWebSocketProtocol(MAASServerTestCase):
                 STATUSES.PROTOCOL_ERROR,
                 "Handler unknown does not exist."))
 
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_handleRequest_calls_execute_with_transactional_func(self):
+        protocol, factory = self.make_protocol()
+        protocol.user = MagicMock()
+        message = {
+            "type": MSG_TYPE.REQUEST,
+            "request_id": 1,
+            "method": "node.get",
+            "params": {}
+            }
+
+        expected_result = maas_factory.make_name("result")
+
+        def fake_wrapper(*args, **kwargs):
+            return expected_result
+
+        mock_transactional = self.patch(protocol_module, "transactional")
+        mock_transactional.return_value = fake_wrapper
+        observed_result = yield protocol.handleRequest(message)
+        self.assertEquals(expected_result, observed_result)
+
     @synchronous
     @transactional
     def make_node(self):
