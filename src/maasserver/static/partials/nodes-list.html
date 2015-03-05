@@ -194,11 +194,11 @@
         {% endif %}
     </ul> -->
     <aside id="sidebar" data-ng-show="currentpage === 'nodes'">
-        <div class="accordion three-col">
+        <div class="accordion three-col maas-accordion">
             <h3 class="accordion__title">Filter by</h3>
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
             <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.status.length">
-                <h4 class="accordion__tab-title active">Status</h4>
+                <h4 class="accordion__tab-title maas-accordion-tab active">Status</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
@@ -207,10 +207,9 @@
                         </li>
                     </ul>
                 </div>
-
             </div>
             <div class="ng-hide accordion__tab" data-ng-show="tabs.nodes.metadata.owner.length">
-                <h4 class="accordion__tab-title active">Owner</h4>
+                <h4 class="accordion__tab-title maas-accordion-tab">Owner</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
                         <li class="accordion__tab-item" data-ng-repeat="owner in tabs.nodes.metadata.owner | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('owner', owner.name, 'nodes') }">
@@ -222,11 +221,11 @@
         </div>
     </aside>
     <aside id="sidebar" class="ng-hide" data-ng-show="currentpage === 'devices'">
-        <div class="accordion three-col">
+        <div class="accordion three-col maas-accordion">
             <h3 class="accordion__title">Filter by</h3>
             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
             <div class="ng-hide accordion__tab" data-ng-show="tabs.devices.metadata.owner.length">
-                <h4 class="accordion__tab-title active">Owner</h4>
+                <h4 class="accordion__tab-title maas-accordion-tab active">Owner</h4>
                 <div class="accordion__tab-content">
                     <ul class="accordion__tab-list">
                         <li class="accordion__tab-item" data-ng-repeat="owner in tabs.devices.metadata.owner | orderBy:['-count', 'name']" data-ng-class="{ active: isFilterActive('owner', owner.name, 'devices') }">
@@ -236,7 +235,7 @@
                 </div>
             </div>
         </div>
-    </aside>    
+    </aside>
     <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
         <div id="search-bar" class="node-search">
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
