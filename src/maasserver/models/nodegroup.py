@@ -52,6 +52,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    AddVsphere,
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
@@ -366,6 +367,33 @@ class NodeGroup(TimestampedModel):
         else:
             return client(
                 AddVirsh, user=user, poweraddr=poweraddr, password=password,
+                prefix_filter=prefix_filter, accept_all=accept_all)
+
+    def add_vsphere(self, user, host, username, password, protocol=None,
+                    port=None, prefix_filter=None, accept_all=False):
+        """ Add virtual machines managed by vSphere, ESX, or ESXi.
+
+        :param user: MAAS user (for commissioning)
+        :param host: vSphere, ESX, or ESXi hostname.
+        :param username: VMware API username.
+        :param password: VMware API password.
+        :param prefix_filter: imports VMs with names filtered by this prefix.
+        :param accept_all: commission enlisted nodes.
+
+        :raises NoConnectionsAvailable: If no connections to the cluster
+            are available.
+        """
+        try:
+            client = getClientFor(self.uuid, timeout=1)
+        except NoConnectionsAvailable:
+            # No connection to the cluster so we can't do anything. We
+            # let the caller handle the error, since we don't want to
+            # just drop it.
+            raise
+        else:
+            return client(
+                AddVsphere, user=user, host=host, username=username,
+                password=password, protocol=protocol, port=port,
                 prefix_filter=prefix_filter, accept_all=accept_all)
 
     def add_esxi(self, user, poweraddr, password,

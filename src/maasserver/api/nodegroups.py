@@ -371,7 +371,7 @@ class NodeGroupHandler(OperationsHandler):
     def probe_and_enlist_hardware(self, request, uuid):
         """Add special hardware types.
 
-        :param model: The type of hardware. 'seamicro15k', 'virsh',
+        :param model: The type of hardware. 'seamicro15k', 'virsh', 'vsphere',
             'esxi', 'powerkvm', 'mscm', 'msftocs' and 'ucsm' are supported.
 
             seamicro15k is the model for the Seamicro 1500 Chassis.
@@ -499,6 +499,21 @@ class NodeGroupHandler(OperationsHandler):
             self.do_probe_and_enlist_mscm(nodegroup, request, user)
         elif model == 'msftocs':
             self.do_probe_and_enlist_msftocs(nodegroup, request, user)
+        elif model == 'vsphere':
+            host = get_mandatory_param(request.data, 'host')
+            username = get_mandatory_param(request.data, 'username')
+            password = get_mandatory_param(request.data, 'password')
+            protocol = get_optional_param(
+                request.data, 'protocol', default=None)
+            port = get_optional_param(
+                request.data, 'port', default=None)
+            prefix_filter = get_optional_param(
+                request.data, 'prefix_filter', default=None)
+
+            nodegroup.add_vsphere(
+                user, host, username, password, port=port,
+                protocol=protocol, prefix_filter=prefix_filter,
+                accept_all=accept_all)
         elif model == 'esxi':
             poweraddr = get_mandatory_param(request.data, 'address')
             username = get_mandatory_param(request.data, 'username')

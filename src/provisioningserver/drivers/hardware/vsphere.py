@@ -295,28 +295,35 @@ def get_vsphere_servers(
 
 @synchronous
 def probe_vsphere_and_enlist(
-        user, host, username, password, accept_all=False):
+        user, host, username, password, port=None,
+        protocol=None, prefix_filter=None, accept_all=False):
 
-    maaslog.info(
-        "Probing for vSphere nodes with arguments "
-        "host=%s, username=%s, password=%s",
-        host, username, password)
+    # Both '' and None mean the same thing, so normalize it.
+    if prefix_filter is None:
+        prefix_filter = ''
 
-    servers = get_vsphere_servers(host, username, password)
+    servers = get_vsphere_servers(host, username, password, port=port,
+                                  protocol=protocol)
 
-    maaslog.info("Found {count} vSphere servers".format(count=len(servers)))
+    maaslog.info("Found %d vSphere servers", len(servers))
 
-    for system_id in servers:
-        properties = servers[system_id]
+    for system_name in servers:
+        if not system_name.startswith(prefix_filter):
+            maaslog.info(
+                "Skipping node named '%s'; does not match prefix filter '%s'",
+                system_name, prefix_filter)
+            continue
+        properties = servers[system_name]
         params = {
+            'power_uuid': properties['uuid'],
             'power_address': host,
+            'power_port': port,
+            'power_protocol': protocol,
             'power_user': username,
             'power_pass': password,
-            'power_uuid': properties['uuid'],
         }
         maaslog.info(
-            "Found vSphere node with macs %s; adding to MAAS with "
-            "params : %s", properties['macs'], params)
+            "Creating vSphere node with MACs: %s", properties['macs'])
 
         system_id = create_node(properties['macs'], properties['architecture'],
                                 'vsphere', params).wait(30)

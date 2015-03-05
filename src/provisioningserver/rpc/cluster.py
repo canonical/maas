@@ -463,6 +463,25 @@ class AddSeaMicro15k(amp.Command):
     }
 
 
+class AddVsphere(amp.Command):
+    """Probe for and enlist VMware vSphere VMs (ESX, ESXi, or vCenter).
+
+    :since: 1.8
+    """
+    arguments = [
+        (b"user", amp.Unicode()),
+        (b"host", amp.Unicode()),
+        (b"username", amp.Unicode()),
+        (b"password", amp.Unicode()),
+        (b"port", amp.Integer(optional=True)),
+        (b"protocol", amp.Unicode(optional=True)),
+        (b"prefix_filter", amp.Unicode(optional=True)),
+        (b"accept_all", amp.Boolean(optional=True)),
+    ]
+    response = []
+    errors = {}
+
+
 class EnlistNodesFromMSCM(amp.Command):
     """Probe for and enlist mscm machines attached to the cluster.
 

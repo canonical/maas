@@ -62,7 +62,15 @@ from twisted.python import log
 # This is meant to be temporary until all the power types support
 # querying the power state of a node.
 QUERY_POWER_TYPES = [
-    'amt', 'esxi', 'ipmi', 'mscm', 'msftocs', 'sm15k', 'ucsm', 'virsh'
+    'amt',
+    'esxi',
+    'ipmi',
+    'mscm',
+    'msftocs',
+    'sm15k',
+    'ucsm',
+    'virsh',
+    'vsphere',
 ]
 
 

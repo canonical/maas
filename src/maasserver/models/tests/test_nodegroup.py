@@ -56,6 +56,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    AddVsphere,
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
@@ -542,6 +543,68 @@ class TestNodeGroup(MAASServerTestCase):
         self.assertRaises(
             NoConnectionsAvailable, nodegroup.add_virsh, user,
             poweraddr, password, True)
+
+    def test_add_vsphere_end_to_end(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+
+        self.useFixture(RegionEventLoopFixture("rpc"))
+        self.useFixture(RunningEventLoopFixture())
+        fixture = self.useFixture(MockLiveRegionToClusterRPCFixture())
+        protocol = fixture.makeCluster(nodegroup, AddVsphere)
+        protocol.AddVsphere.return_value = defer.succeed(
+            {'system_id': factory.make_name('system-id')})
+
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_username()
+        password = factory.make_name('password')
+
+        nodegroup.add_vsphere(
+            user, host, username, password, protocol=None, port=None,
+            prefix_filter=None, accept_all=True).wait(10)
+
+        self.expectThat(
+            protocol.AddVsphere,
+            MockCalledOnceWith(
+                ANY, user=user, host=host, username=username,
+                password=password, protocol=None, port=None,
+                prefix_filter=None, accept_all=True))
+
+    def test_add_vsphere_calls_client_with_resource_endpoint(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_username()
+        password = factory.make_name('password')
+
+        nodegroup.add_vsphere(
+            user, host, username, password, protocol=None, port=None,
+            prefix_filter=None, accept_all=True).wait(10)
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddVsphere, user=user, host=host, username=username,
+                password=password, protocol=None, port=None,
+                prefix_filter=None, accept_all=True))
+
+    def test_add_vsphere_raises_if_no_connection_to_cluster(self):
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        getClientFor.side_effect = NoConnectionsAvailable()
+        nodegroup = factory.make_NodeGroup()
+
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_username()
+        password = factory.make_name('password')
+
+        self.assertRaises(
+            NoConnectionsAvailable, nodegroup.add_vsphere, user, host,
+            username, password, protocol=None, port=None,
+            prefix_filter=None, accept_all=True)
 
     def test_add_esxi_end_to_end(self):
         nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)

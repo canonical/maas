@@ -44,6 +44,9 @@ from provisioningserver.drivers.hardware.seamicro import (
     )
 from provisioningserver.drivers.hardware.ucsm import probe_and_enlist_ucsm
 from provisioningserver.drivers.hardware.virsh import probe_virsh_and_enlist
+from provisioningserver.drivers.hardware.vsphere import (
+    probe_vsphere_and_enlist,
+    )
 from provisioningserver.logger.log import get_maas_logger
 from provisioningserver.network import discover_networks
 from provisioningserver.rpc import (
@@ -396,6 +399,23 @@ class Cluster(RPCProtocol):
             message = "Couldn't find IP address for MAC %s" % mac
             maaslog.warning(message)
             raise exceptions.NoIPFoundForMACAddress(message)
+        return {}
+
+    @cluster.AddVsphere.responder
+    def add_vsphere(self, user, host, username, password, port, protocol,
+                    prefix_filter, accept_all):
+        """add_vsphere()
+
+        Implementation of
+        :py:class:`~provisioningserver.rpc.cluster.AddVsphere`.
+        """
+        d = deferToThread(
+            probe_vsphere_and_enlist,
+            user, host, username, password,
+            port=port, protocol=protocol, prefix_filter=prefix_filter,
+            accept_all=accept_all)
+        d.addErrback(
+            partial(catch_probe_and_enlist_error, "vSphere"))
         return {}
 
     @cluster.EnlistNodesFromMSCM.responder

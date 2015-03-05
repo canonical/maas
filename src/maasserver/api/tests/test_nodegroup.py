@@ -60,6 +60,7 @@ from provisioningserver.rpc.cluster import (
     AddESXi,
     AddSeaMicro15k,
     AddVirsh,
+    AddVsphere,
     EnlistNodesFromMicrosoftOCS,
     EnlistNodesFromMSCM,
     EnlistNodesFromUCSM,
@@ -405,6 +406,45 @@ class TestNodeGroupAPI(APITestCase):
             MockCalledOnceWith(
                 AddVirsh, user=user.username, poweraddr=poweraddr,
                 password=password, prefix_filter=prefix_filter,
+                accept_all=True))
+
+    def test_probe_and_enlist_hardware_adds_vsphere(self):
+        self.become_admin()
+        user = self.logged_in_user
+        nodegroup = factory.make_NodeGroup()
+        model = 'vsphere'
+        host = factory.make_ipv4_address()
+        username = factory.make_username()
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('filter')
+        accept_all = 'True'
+
+        getClientFor = self.patch(nodegroup_module, 'getClientFor')
+        client = getClientFor.return_value
+        nodegroup = factory.make_NodeGroup()
+
+        response = self.client.post(
+            reverse('nodegroup_handler', args=[nodegroup.uuid]),
+            {
+                'op': 'probe_and_enlist_hardware',
+                'model': model,
+                'host': host,
+                'username': username,
+                'password': password,
+                'prefix_filter': prefix_filter,
+                'accept_all': accept_all,
+            })
+
+        self.assertEqual(
+            httplib.OK, response.status_code,
+            explain_unexpected_response(httplib.OK, response))
+
+        self.expectThat(
+            client,
+            MockCalledOnceWith(
+                AddVsphere, user=user.username, host=host,
+                username=username, password=password, protocol=None,
+                port=None, prefix_filter=prefix_filter,
                 accept_all=True))
 
     def test_probe_and_enlist_hardware_adds_esxi(self):

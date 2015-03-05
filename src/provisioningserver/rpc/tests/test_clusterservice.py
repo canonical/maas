@@ -1969,6 +1969,121 @@ class TestClusterProtocol_AddVirsh(MAASTestCase):
                 "virsh", fake_error))
 
 
+class TestClusterProtocol_AddVsphere(MAASTestCase):
+
+    def test__is_registered(self):
+        protocol = Cluster()
+        responder = protocol.locateResponder(
+            cluster.AddVsphere.commandName)
+        self.assertIsNotNone(responder)
+
+    def test__calls_deferToThread_with_probe_vsphere_and_enlist(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        port = random.choice([80, 443, 8080, 8443])
+        protocol = random.choice(["http", "https"])
+        prefix_filter = factory.make_name('prefix_filter')
+
+        call_responder(Cluster(), cluster.AddVsphere, {
+            "user": user,
+            "host": host,
+            "username": username,
+            "password": password,
+            "port": port,
+            "protocol": protocol,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
+            })
+        self.assertThat(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_vsphere_and_enlist,
+                user, host, username, password, port=port,
+                protocol=protocol, prefix_filter=prefix_filter,
+                accept_all=True))
+
+    def test__port_and_protocol_are_optional(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('prefix_filter')
+
+        call_responder(Cluster(), cluster.AddVsphere, {
+            "user": user,
+            "host": host,
+            "username": username,
+            "password": password,
+            "port": None,
+            "protocol": None,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
+            })
+        self.assertThat(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_vsphere_and_enlist,
+                user, host, username, password, port=None,
+                protocol=None, prefix_filter=prefix_filter,
+                accept_all=True))
+
+    def test__can_be_called_without_port_or_protocol_key(self):
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('prefix_filter')
+
+        call_responder(Cluster(), cluster.AddVsphere, {
+            "user": user,
+            "host": host,
+            "username": username,
+            "password": password,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
+            })
+        self.assertThat(
+            mock_deferToThread, MockCalledOnceWith(
+                clusterservice.probe_vsphere_and_enlist,
+                user, host, username, password, port=None,
+                protocol=None, prefix_filter=prefix_filter,
+                accept_all=True))
+
+    def test__logs_error_to_maaslog(self):
+        fake_error = factory.make_name('error')
+        self.patch(clusterservice, 'maaslog')
+        mock_deferToThread = self.patch_autospec(
+            clusterservice, 'deferToThread')
+        mock_deferToThread.return_value = fail(Exception(fake_error))
+        user = factory.make_name('user')
+        host = factory.make_ip_address()
+        username = factory.make_name('username')
+        password = factory.make_name('password')
+        prefix_filter = factory.make_name('prefix_filter')
+
+        call_responder(Cluster(), cluster.AddVsphere, {
+            "user": user,
+            "host": host,
+            "username": username,
+            "password": password,
+            "prefix_filter": prefix_filter,
+            "accept_all": True,
+            })
+
+        self.assertThat(
+            clusterservice.maaslog.error,
+            MockAnyCall(
+                "Failed to probe and enlist %s nodes: %s",
+                "vSphere", fake_error))
+
+
 class TestClusterProtocol_AddESXi(MAASTestCase):
 
     def test__is_registered(self):
