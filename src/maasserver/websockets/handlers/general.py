@@ -16,6 +16,7 @@ __all__ = [
     "GeneralHandler",
     ]
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.models.bootresource import BootResource
 from maasserver.models.candidatename import gen_candidate_names
 from maasserver.models.node import Node
@@ -50,13 +51,23 @@ class GeneralHandler(Handler):
 
     def actions(self, params):
         """Return all possible actions."""
+        if self.user.is_superuser:
+            actions = ACTIONS_DICT
+        else:
+            # Standard users will not be able to use any admin actions. Hide
+            # them as they will never be actionable on any node.
+            actions = {
+                name: action
+                for name, action in ACTIONS_DICT.items()
+                if action.permission != NODE_PERMISSION.ADMIN
+                }
         return [
             {
                 "name": name,
                 "title": action.display,
                 "sentence": action.display_sentence,
             }
-            for name, action in ACTIONS_DICT.items()
+            for name, action in actions.items()
             ]
 
     def random_hostname(self, params):

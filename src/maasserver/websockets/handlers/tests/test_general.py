@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from maasserver.enum import NODE_PERMISSION
 from maasserver.node_action import ACTIONS_DICT
 from maasserver.testing.factory import factory
 from maasserver.testing.osystems import make_osystem_with_releases
@@ -47,7 +48,19 @@ class TestGeneralHandler(MAASServerTestCase):
             }
         self.assertItemsEqual(osinfo_expected, handler.osinfo({}))
 
-    def test_actions(self):
+    def test_actions_for_admin(self):
+        handler = GeneralHandler(factory.make_admin())
+        actions_expected = [
+            {
+                "name": name,
+                "title": action.display,
+                "sentence": action.display_sentence,
+            }
+            for name, action in ACTIONS_DICT.items()
+            ]
+        self.assertItemsEqual(actions_expected, handler.actions({}))
+
+    def test_actions_for_non_admin(self):
         handler = GeneralHandler(factory.make_User())
         actions_expected = [
             {
@@ -56,6 +69,7 @@ class TestGeneralHandler(MAASServerTestCase):
                 "sentence": action.display_sentence,
             }
             for name, action in ACTIONS_DICT.items()
+            if action.permission != NODE_PERMISSION.ADMIN
             ]
         self.assertItemsEqual(actions_expected, handler.actions({}))
 
