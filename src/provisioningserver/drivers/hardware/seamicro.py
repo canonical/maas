@@ -292,9 +292,7 @@ def probe_seamicro15k_and_enlist(user, ip, username, password,
             'power_control': power_control,
             'system_id': system_id
         }
-        maaslog.info(
-            "Found seamicro15k node with macs %s; adding to MAAS with "
-            "params : %s", macs, params)
+        maaslog.info("Creating seamicro15k node with MACs: %s", macs)
         system_id = create_node(macs, 'amd64', 'sm15k', params).wait(30)
 
         if accept_all:
