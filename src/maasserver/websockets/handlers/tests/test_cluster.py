@@ -25,6 +25,7 @@ from maasserver.websockets.handlers.cluster import ClusterHandler
 class TestClusterHandler(MAASServerTestCase):
 
     def dehydrate_cluster(self, cluster):
+        power_types = get_all_power_types_from_clusters(nodegroups=[cluster])
         data = {
             "id": cluster.id,
             "cluster_name": cluster.cluster_name,
@@ -34,8 +35,7 @@ class TestClusterHandler(MAASServerTestCase):
             "default_disable_ipv4": cluster.default_disable_ipv4,
             "connected": cluster.is_connected(),
             "state": cluster.get_state(),
-            "power_types": get_all_power_types_from_clusters(
-                nodegroups=[cluster]),
+            "power_types": power_types,
             "updated": "%s" % cluster.updated,
             "created": "%s" % cluster.created,
             }

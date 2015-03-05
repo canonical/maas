@@ -34,6 +34,7 @@ __all__ = [
     'get_power_type_parameters',
     ]
 
+from operator import itemgetter
 
 from django import forms
 from jsonschema import validate
@@ -193,4 +194,4 @@ def get_all_power_types_from_clusters(nodegroups=None, ignore_errors=True):
             fields = power_type['fields']
             description = power_type['description']
             add_power_type_parameters(name, description, fields, merged_types)
-    return merged_types
+    return sorted(merged_types, key=itemgetter("description"))
