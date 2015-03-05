@@ -124,6 +124,7 @@ class NodeHandler(TimestampedModelHandler):
         data["fqdn"] = obj.fqdn
         data["status"] = obj.display_status()
         data["actions"] = compile_node_actions(obj, self.user).keys()
+        data["memory"] = obj.display_memory()
 
         data["extra_macs"] = [
             "%s" % mac_address.mac_address

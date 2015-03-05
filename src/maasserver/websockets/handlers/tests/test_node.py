@@ -82,7 +82,7 @@ class TestNodeHandler(MAASServerTestCase):
             "hostname": node.hostname,
             "ip_addresses": list(node.ip_addresses()),
             "license_key": node.license_key,
-            "memory": node.memory,
+            "memory": node.display_memory(),
             "nodegroup": {
                 "id": node.nodegroup.id,
                 "uuid": node.nodegroup.uuid,
