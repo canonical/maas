@@ -33,7 +33,7 @@ apt_pkg.init()
 MAAS_VERSION = None
 
 # Name of maas package to get version from.
-REGION_PACKAGE_NAME = "maas-region-controller"
+REGION_PACKAGE_NAME = "maas-region-controller-min"
 
 
 def get_version_from_apt(package):
