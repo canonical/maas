@@ -280,11 +280,11 @@ class Deploy(InstallableNodeAction):
         return is_actionable and len(self.user.sshkey_set.all()) > 0
 
 
-class Start(InstallableNodeAction):
-    """Start a node."""
-    name = "start"
-    display = "Start"
-    display_sentence = "started"
+class PowerOn(InstallableNodeAction):
+    """Power on a node."""
+    name = "on"
+    display = "Power on"
+    display_sentence = "powered on"
     actionable_statuses = (NODE_STATUS.DEPLOYING, NODE_STATUS.DEPLOYED)
     permission = NODE_PERMISSION.EDIT
 
@@ -302,7 +302,7 @@ class Start(InstallableNodeAction):
             return "This node has been asked to start up."
 
     def is_actionable(self):
-        is_actionable = super(Start, self).is_actionable()
+        is_actionable = super(PowerOn, self).is_actionable()
         return is_actionable and self.node.owner is not None
 
 
@@ -312,11 +312,11 @@ FAILED_STATUSES = [
 ]
 
 
-class Stop(InstallableNodeAction):
-    """Stop a node."""
-    name = "stop"
-    display = "Stop"
-    display_sentence = "stopped"
+class PowerOff(InstallableNodeAction):
+    """Power off a node."""
+    name = "off"
+    display = "Power off"
+    display_sentence = "powered off"
     actionable_statuses = (
         [NODE_STATUS.DEPLOYED, NODE_STATUS.READY] +
         # Also let a user ask a failed node to shutdown: this
@@ -393,8 +393,8 @@ ACTION_CLASSES = (
     Commission,
     Acquire,
     Deploy,
-    Start,
-    Stop,
+    PowerOn,
+    PowerOff,
     Release,
     Abort,
     MarkBroken,

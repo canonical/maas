@@ -44,10 +44,10 @@ from maasserver.node_action import (
     MarkBroken,
     MarkFixed,
     NodeAction,
+    PowerOff,
+    PowerOn,
     Release,
     RPC_EXCEPTIONS,
-    Start,
-    Stop,
     )
 from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
@@ -349,41 +349,41 @@ class TestDeployAction(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.ALLOCATED, node.status)
 
 
-class TestStartAction(MAASServerTestCase):
+class TestPowerOnAction(MAASServerTestCase):
 
-    def test_Start_starts_node(self):
+    def test_PowerOn_starts_node(self):
         user = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.ALLOCATED,
             power_type='ether_wake', owner=user)
         node_start = self.patch(node, 'start')
-        Start(node, user).execute()
+        PowerOn(node, user).execute()
         self.assertThat(
             node_start, MockCalledOnceWith(user))
 
-    def test_Start_requires_edit_permission(self):
+    def test_PowerOn_requires_edit_permission(self):
         user = factory.make_User()
         node = factory.make_Node()
         self.assertFalse(
             user.has_perm(NODE_PERMISSION.EDIT, node))
-        self.assertFalse(Start(node, user).is_permitted())
+        self.assertFalse(PowerOn(node, user).is_permitted())
 
-    def test_Start_is_not_actionable_if_node_doesnt_have_an_owner(self):
+    def test_PowerOn_is_not_actionable_if_node_doesnt_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ether_wake')
-        self.assertFalse(Start(node, owner).is_actionable())
+        self.assertFalse(PowerOn(node, owner).is_actionable())
 
-    def test_Start_is_actionable_if_node_does_have_an_owner(self):
+    def test_PowerOn_is_actionable_if_node_does_have_an_owner(self):
         owner = factory.make_User()
         node = factory.make_Node(
             mac=True, status=NODE_STATUS.DEPLOYED,
             power_type='ether_wake', owner=owner)
-        self.assertTrue(Start(node, owner).is_actionable())
+        self.assertTrue(PowerOn(node, owner).is_actionable())
 
 
-class TestStopAction(MAASServerTestCase):
+class TestPowerOffAction(MAASServerTestCase):
 
     def test__stops_deployed_node(self):
         user = factory.make_User()
@@ -398,7 +398,7 @@ class TestStopAction(MAASServerTestCase):
         self.patch(node, 'start_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
 
-        Stop(node, user).execute()
+        PowerOff(node, user).execute()
 
         self.assertThat(node_stop, MockCalledOnceWith(user))
 
@@ -413,7 +413,7 @@ class TestStopAction(MAASServerTestCase):
             power_type='ipmi', power_parameters=params)
         node_stop = self.patch_autospec(node, 'stop')
 
-        Stop(node, admin).execute()
+        PowerOff(node, admin).execute()
 
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
@@ -421,8 +421,8 @@ class TestStopAction(MAASServerTestCase):
         status = random.choice(FAILED_STATUSES)
         node = factory.make_Node(status=status, power_type='ipmi')
         actions = compile_node_actions(
-            node, factory.make_admin(), classes=[Stop])
-        self.assertItemsEqual([Stop.name], actions)
+            node, factory.make_admin(), classes=[PowerOff])
+        self.assertItemsEqual([PowerOff.name], actions)
 
 
 ACTIONABLE_STATUSES = [
@@ -564,8 +564,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 action.node.stop.side_effect),
             unicode(exception))
 
-    def test_Start_handles_rpc_errors(self):
-        action = self.make_action(Start, NODE_STATUS.READY)
+    def test_PowerOn_handles_rpc_errors(self):
+        action = self.make_action(PowerOn, NODE_STATUS.READY)
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
@@ -573,8 +573,8 @@ class TestActionsErrorHandling(MAASServerTestCase):
                 action.node.start.side_effect),
             unicode(exception))
 
-    def test_Stop_handles_rpc_errors(self):
-        action = self.make_action(Stop, NODE_STATUS.DEPLOYED)
+    def test_PowerOff_handles_rpc_errors(self):
+        action = self.make_action(PowerOff, NODE_STATUS.DEPLOYED)
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)
         self.assertEqual(
