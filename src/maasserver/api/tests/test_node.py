@@ -23,6 +23,7 @@ import sys
 import bson
 from django.core.urlresolvers import reverse
 from maasserver import forms
+from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -1055,6 +1056,8 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
         [existing_ip] = node.get_primary_mac().claim_static_ips(
             alloc_type=IPADDRESS_TYPE.STICKY)
         response = self.client.post(
@@ -1083,6 +1086,8 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_claims_sticky_ip_address_non_admin(self):
         node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             owner=self.logged_in_user)
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -1106,6 +1111,8 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -1117,12 +1124,39 @@ class TestStickyIP(APITestCase):
             (returned_ip, given_ip.alloc_type),
         )
 
+    def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
+        self.become_admin()
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        dns_update_zones = self.patch(api_nodes, 'dns_update_zones')
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+
+        self.assertItemsEqual(
+            [node.get_primary_mac()],
+            node.mac_addresses_on_managed_interfaces())
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                node.nodegroup: {
+                    ip_address.ip: mac.mac_address
+                    for ip_address in mac.ip_addresses.all()
+                }
+                for mac in node.mac_addresses_on_managed_interfaces()
+            }))
+        # DNS has been updated.
+        self.assertThat(
+            dns_update_zones, MockCalledOnceWith([node.nodegroup]))
+
     def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
         self.become_admin()
         node = factory.make_node_with_mac_attached_to_nodegroupinterface()
         ngi = factory.make_NodeGroupInterface(nodegroup=node.nodegroup)
         second_mac = factory.make_MACAddress(node=node, cluster_interface=ngi)
-
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node),
             {
@@ -1157,6 +1191,8 @@ class TestStickyIP(APITestCase):
         ngi = node.get_primary_mac().cluster_interface
         requested_address = ngi.static_ip_range_low
 
+        # Silence 'update_host_maps'.
+        self.patch(node_module, "update_host_maps")
         response = self.client.post(
             self.get_node_uri(node),
             {
