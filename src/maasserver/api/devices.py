@@ -15,16 +15,12 @@ __all__ = [
     "DevicesHandler",
     ]
 
-from django.shortcuts import get_object_or_404
 from maasserver.api.logger import maaslog
 from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api.utils import (
-    get_mandatory_param,
-    get_optional_list,
-    )
+from maasserver.api.utils import get_optional_list
 from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -42,8 +38,6 @@ from maasserver.forms import (
 from maasserver.models import (
     MACAddress,
     Node,
-    NodeGroup,
-    NodeGroupInterface,
     )
 from maasserver.models.node import Device
 from piston.utils import rc
@@ -185,41 +179,6 @@ class DeviceHandler(OperationsHandler):
             "%s: Sticky IP address(es) allocated: %s", device.hostname,
             ', '.join(allocation.ip for allocation in sticky_ips))
         return device
-
-    @operation(idempotent=False)
-    def connect_mac_to_cluster_interface(self, request, system_id):
-        """Connect the given MAC Address to a cluster interface.
-
-        :param mac_address: MAC address to connect.
-        :param cluster_uuid: The UUID of the cluster the MAC address should
-            be connected to.
-        :param cluster_interface_name: The name of the cluster interface the
-            MAC address should be connected to.
-
-        Returns 404 if the device is not found.
-        Returns 400 if the mac_address is not found on the device.
-        """
-        device = Node.devices.get_node_or_404(
-            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
-        mac_address = get_mandatory_param(request.data, 'mac_address')
-        cluster_uuid = get_mandatory_param(request.data, 'cluster_uuid')
-        cluster_interface_name = get_mandatory_param(
-            request.data, 'cluster_interface')
-        cluster = get_object_or_404(NodeGroup, uuid=cluster_uuid)
-        nodegroupinterface = get_object_or_404(
-            NodeGroupInterface, nodegroup=cluster,
-            name=cluster_interface_name)
-        try:
-            mac = MACAddress.objects.get(
-                mac_address=mac_address, node=device)
-        except MACAddress.DoesNotExist:
-            raise MAASAPIBadRequest(
-                "mac_address %s not found on the device" % mac_address)
-        mac.cluster_interface = nodegroupinterface
-        mac.save()
-        maaslog.info(
-            "%s %s linked to cluster interface %s",
-            device.hostname, mac_address, nodegroupinterface.name)
 
 
 class DevicesHandler(OperationsHandler):
