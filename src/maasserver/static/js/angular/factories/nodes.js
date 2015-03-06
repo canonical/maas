@@ -58,10 +58,14 @@ angular.module('MAAS').factory(
         };
 
         // Perform the action on the node.
-        NodesManager.prototype.performAction = function(node, action) {
+        NodesManager.prototype.performAction = function(node, action, extra) {
+            if(!angular.isObject(extra)) {
+                extra = {};
+            }
             return RegionConnection.callMethod("node.action", {
                 "system_id": node.system_id,
-                "action": action
+                "action": action,
+                "extra": extra
                 });
         };
 

@@ -10,10 +10,11 @@ describe("NodesListController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $scope, $q;
+    var $controller, $rootScope, $timeout, $scope, $q;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
+        $timeout = $injector.get("$timeout");
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
     }));
@@ -34,10 +35,22 @@ describe("NodesListController", function() {
     }));
 
     // Makes the NodesListController
-    function makeController() {
+    function makeController(defer) {
+        var defaultConnect = spyOn(RegionConnection, "defaultConnect");
+        if(angular.isObject(defer)) {
+            defaultConnect.and.returnValue(defer.promise);
+        } else {
+            defaultConnect.and.returnValue($q.defer().promise);
+        }
+
+        // Start the connection so a valid websocket is created in the
+        // RegionConnection.
+        RegionConnection.connect("");
+
         return $controller("NodesListController", {
             $scope: $scope,
             $rootScope: $rootScope,
+            $timeout: $timeout,
             NodesManager: NodesManager,
             DevicesManager: DevicesManager,
             RegionConnection: RegionConnection,
@@ -77,6 +90,7 @@ describe("NodesListController", function() {
         var controller = makeController();
         expect($scope.nodes).toBe(NodesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
+        expect($scope.osinfo).toBeNull();
         expect($scope.addHardwareOption).toEqual({
             name: "hardware",
             title: "Add Hardware"
@@ -94,17 +108,167 @@ describe("NodesListController", function() {
         expect($scope.addHardwareScope).toBeNull();
     });
 
+    it("loads initial osinfo", function() {
+        spyOn(NodesManager, "isLoaded").and.returnValue(true);
+        spyOn(NodesManager, "enableAutoReload");
+        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
+        spyOn(DevicesManager, "enableAutoReload");
+
+        // Mock the RegionConnection.callMethod to catch all calls.
+        var defers = [
+            $q.defer(),
+            $q.defer()
+            ];
+        var i = 0;
+        spyOn(RegionConnection, "callMethod").and.callFake(
+            function(method) {
+                return defers[i++].promise;
+            });
+
+        var osinfo = {
+            "osystems": [makeName("os")]
+        };
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        // Resolve defaultConnect to start the calls.
+        defer.resolve();
+        $scope.$digest();
+
+        // Resolve the general.actions call.
+        defers[0].resolve([]);
+        $scope.$digest();
+
+        // Resolve the general.osinfo call to get the osinfo.
+        defers[1].resolve(osinfo);
+        $scope.$digest();
+        expect($scope.osinfo).toBe(osinfo);
+    });
+
+    it("doesnt reload osinfo", function() {
+        spyOn(NodesManager, "isLoaded").and.returnValue(true);
+        spyOn(NodesManager, "enableAutoReload");
+        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
+        spyOn(DevicesManager, "enableAutoReload");
+
+        // Mock the RegionConnection.callMethod to catch all calls.
+        var defers = [
+            $q.defer(),
+            $q.defer(),
+            $q.defer()
+            ];
+        var i = 0;
+        spyOn(RegionConnection, "callMethod").and.callFake(
+            function(method) {
+                return defers[i++].promise;
+            });
+
+        var osinfo = {
+            "osystems": [makeName("os")]
+        };
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        // Resolve defaultConnect to start the calls.
+        defer.resolve();
+        $scope.$digest();
+
+        // Resolve the general.actions call.
+        defers[0].resolve([]);
+        $scope.$digest();
+
+        // Resolve the general.osinfo call to get the osinfo.
+        defers[1].resolve(osinfo);
+        $scope.$digest();
+
+        // Skip 10 seconds, a second osinfo call would occur if reload=true.
+        // It should not occur, so call count should only be 2.
+        $timeout.flush(10000);
+        expect(RegionConnection.callMethod.calls.count()).toBe(2);
+    });
+
+    it("reload osinfo after 3 secs on error", function() {
+        spyOn(NodesManager, "isLoaded").and.returnValue(true);
+        spyOn(NodesManager, "enableAutoReload");
+        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
+        spyOn(DevicesManager, "enableAutoReload");
+
+        // Mock the RegionConnection.callMethod to catch all calls.
+        var defers = [
+            $q.defer(),
+            $q.defer(),
+            $q.defer()
+            ];
+        var i = 0;
+        spyOn(RegionConnection, "callMethod").and.callFake(
+            function(method) {
+                return defers[i++].promise;
+            });
+
+        var osinfo = {
+            "osystems": [makeName("os")]
+        };
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        // Resolve defaultConnect to start the calls.
+        defer.resolve();
+        $scope.$digest();
+
+        // Resolve the general.actions call.
+        defers[0].resolve([]);
+        $scope.$digest();
+
+        // Reject the general.osinfo call to get it to be called again
+        // in 3 seconds.
+        spyOn(console, "log");
+        defers[1].reject("error");
+        $scope.$digest();
+
+        // Skip 3 seconds, a second osinfo should occur.
+        $timeout.flush(3000);
+        defers[2].resolve(osinfo);
+        $scope.$digest();
+        expect($scope.osinfo).toBe(osinfo);
+    });
+
+    describe("toggleTab", function() {
+
+        it("sets $rootScope.title", function() {
+            var controller = makeController();
+            $scope.toggleTab('devices');
+            expect($rootScope.title).toBe($scope.tabs.devices.pagetitle);
+            $scope.toggleTab('nodes');
+            expect($rootScope.title).toBe($scope.tabs.nodes.pagetitle);
+        });
+
+        it("sets currentpage", function() {
+            var controller = makeController();
+            $scope.toggleTab('devices');
+            expect($scope.currentpage).toBe('devices');
+            $scope.toggleTab('nodes');
+            expect($scope.currentpage).toBe('nodes');
+        });
+    });
+
     angular.forEach(["nodes", "devices"], function(tab) {
 
         describe("tab(" + tab + ")", function() {
 
-            var tabScope, controller;
+            var manager;
             beforeEach(function() {
-                var controller = makeController();
-                tabScope = $scope.tabs[tab];
+                if(tab === "nodes") {
+                    manager = NodesManager;
+                } else if(tab === "devices") {
+                    manager = DevicesManager;
+                } else {
+                    throw new Error("Unknown manager for tab: " + tab);
+                }
             });
 
             it("sets initial values on $scope", function() {
+                var controller = makeController();
+                var tabScope = $scope.tabs[tab];
                 expect(tabScope.search).toBe("");
                 expect(tabScope.searchValid).toBe(true);
                 expect(tabScope.filtered_items).toEqual([]);
@@ -117,25 +281,38 @@ describe("NodesListController", function() {
                 expect(tabScope.column).toBe("fqdn");
                 expect(tabScope.actionOption).toBeNull();
                 expect(tabScope.takeActionOptions).toEqual([]);
-                expect(tabScope.actionError).toBe(false);
+                expect(tabScope.actionErrorCount).toBe(0);
+
+                // Only the nodes tab uses the osSelection field.
+                if(tab === "nodes") {
+                    expect(tabScope.osSelection).toEqual({
+                        osystem: "",
+                        release: ""
+                    });
+                }
             });
 
-            it("calls DevicesManager.loadItems for nodes if not loaded",
+            it("calls tab manager loadItems if not loaded",
                 function(done) {
-                spyOn(tabScope.manager, "loadItems").and.callFake(function() {
+                spyOn(manager, "loadItems").and.callFake(function() {
                     done();
                     return $q.defer().promise;
                 });
-                var controller = makeController();
+                var defer = $q.defer();
+                var controller = makeController(defer);
+                defer.resolve();
+                $scope.$digest();
             });
 
-            it("doesnt call loadItems for nodes if loaded", function() {
-                spyOn(tabScope.manager, "isLoaded").and.returnValue("true");
-                spyOn(
-                    tabScope.manager, "loadItems").and.returnValue(
-                        $q.defer().promise);
-                var controller = makeController();
-                expect(tabScope.manager.loadItems).not.toHaveBeenCalled();
+            it("doesnt call loadItems if loaded", function() {
+                spyOn(manager, "isLoaded").and.returnValue("true");
+                spyOn(manager, "loadItems").and.returnValue(
+                    $q.defer().promise);
+                var defer = $q.defer();
+                var controller = makeController(defer);
+                defer.resolve();
+                $scope.$digest();
+                expect(manager.loadItems).not.toHaveBeenCalled();
             });
 
         });
@@ -207,7 +384,17 @@ describe("NodesListController", function() {
                     expect(tabObj.search).toBe("other");
                 });
 
+                it("updates actionErrorCount", function() {
+                    object.actions = [];
+                    tabObj.actionOption = {
+                        "name": "deploy"
+                    };
+                    $scope.toggleChecked(object, tab);
+                    expect(tabObj.actionErrorCount).toBe(1);
+                });
+
                 it("clears action option when none selected", function() {
+                    object.actions = [];
                     tabObj.actionOption = {};
                     $scope.toggleChecked(object, tab);
                     $scope.toggleChecked(object, tab);
@@ -254,6 +441,16 @@ describe("NodesListController", function() {
                     $scope.toggleCheckAll(tab);
                     $scope.toggleCheckAll(tab);
                     expect(tabObj.search).toBe("other");
+                });
+
+                it("updates actionErrorCount", function() {
+                    object1.actions = [];
+                    object2.actions = [];
+                    tabObj.actionOption = {
+                        "name": "deploy"
+                    };
+                    $scope.toggleCheckAll(tab);
+                    expect(tabObj.actionErrorCount).toBe(2);
                 });
 
                 it("clears action option when none selected", function() {
@@ -382,14 +579,14 @@ describe("NodesListController", function() {
 
             describe("actionOptionSelected", function() {
 
-                it("sets actionError to false", function() {
+                it("sets actionErrorCount to zero", function() {
                     var controller = makeController();
-                    $scope.tabs[tab].actionError = true;
+                    $scope.tabs[tab].actionErrorCount = 1;
                     $scope.actionOptionSelected(tab);
-                    expect($scope.tabs[tab].actionError).toBe(false);
+                    expect($scope.tabs[tab].actionErrorCount).toBe(0);
                 });
 
-                it("sets actionError to true when selected object doesn't " +
+                it("sets actionErrorCount to 1 when selected object doesn't " +
                     "support action",
                     function() {
                         var controller = makeController();
@@ -398,7 +595,7 @@ describe("NodesListController", function() {
                         $scope.tabs[tab].actionOption = { name: 'deploy' };
                         $scope.tabs[tab].selectedItems = [object];
                         $scope.actionOptionSelected(tab);
-                        expect($scope.tabs[tab].actionError).toBe(true);
+                        expect($scope.tabs[tab].actionErrorCount).toBe(1);
                     });
 
                 it("sets search to in:selected", function() {
@@ -406,6 +603,111 @@ describe("NodesListController", function() {
                     $scope.actionOptionSelected(tab);
                     expect($scope.tabs[tab].search).toBe("in:selected");
                 });
+
+                it("action deploy reloads osinfo", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = {
+                        "name": "deploy"
+                    };
+
+                    var osinfo = {
+                        osystems: [makeName("os")]
+                    };
+
+                    var loadDefer = $q.defer();
+                    spyOn(RegionConnection, "callMethod").and.returnValue(
+                        loadDefer.promise);
+
+                    $scope.actionOptionSelected(tab);
+                    loadDefer.resolve(osinfo);
+                    $scope.$digest();
+                    expect($scope.osinfo).toBe(osinfo);
+                });
+
+                it("action deploy reloads osinfo every 10 secs", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = {
+                        "name": "deploy"
+                    };
+
+                    var osinfo1 = {
+                        osystems: [makeName("os")]
+                    };
+                    var osinfo2 = {
+                        osystems: [makeName("os")]
+                    };
+
+                    var defers = [
+                        $q.defer(),
+                        $q.defer()
+                        ];
+                    var i = 0;
+                    spyOn(RegionConnection, "callMethod").and.callFake(
+                        function(method) {
+                            return defers[i++].promise;
+                        });
+
+                    $scope.actionOptionSelected(tab);
+
+                    // First call.
+                    defers[0].resolve(osinfo1);
+                    $scope.$digest();
+                    expect($scope.osinfo).toBe(osinfo1);
+
+                    // Second call 10 seconds later.
+                    $timeout.flush(10000);
+                    defers[1].resolve(osinfo2);
+                    $scope.$digest();
+                    expect($scope.osinfo).toBe(osinfo2);
+                });
+
+                it("changing away from deploy stops osinfo reloads",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            "name": "deploy"
+                        };
+
+                        var osinfo1 = {
+                            osystems: [makeName("os")]
+                        };
+                        var osinfo2 = {
+                            osystems: [makeName("os")]
+                        };
+
+                        var defers = [
+                            $q.defer(),
+                            $q.defer()
+                            ];
+                        var i = 0;
+                        spyOn(RegionConnection, "callMethod").and.callFake(
+                            function(method) {
+                                return defers[i++].promise;
+                            });
+
+                        $scope.actionOptionSelected(tab);
+
+                        // First call.
+                        defers[0].resolve(osinfo1);
+                        $scope.$digest();
+                        expect($scope.osinfo).toBe(osinfo1);
+
+                        // Change action away from deploy, which should stop
+                        // all calls.
+                        $scope.tabs[tab].actionOption = {
+                            "name": "acquire"
+                        };
+                        $scope.actionOptionSelected(tab);
+
+                        // Second call would have occured 10 seconds later.
+                        $timeout.flush(10000);
+                        defers[1].resolve(osinfo2);
+                        $scope.$digest();
+
+                        // Should have not changed as the second call never
+                        // happened.
+                        expect($scope.osinfo).toBe(osinfo1);
+                    });
 
                 it("calls hide on addHardwareScope", function() {
                     if (tab === 'nodes') {
@@ -419,6 +721,80 @@ describe("NodesListController", function() {
                     }
                 });
 
+            });
+
+            describe("isActionError", function() {
+
+                it("returns true if actionErrorCount > 0", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionErrorCount = 2;
+                    expect($scope.isActionError(tab)).toBe(true);
+                });
+
+                it("returns false if actionErrorCount === 0", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionErrorCount = 0;
+                    expect($scope.isActionError(tab)).toBe(false);
+                });
+
+                it("returns true if deploy action missing osinfo", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = {
+                        name: "deploy"
+                    };
+                    $scope.tabs[tab].actionErrorCount = 0;
+                    $scope.osinfo = {
+                        osystems: []
+                    };
+                    expect($scope.isActionError(tab)).toBe(true);
+                });
+
+                it("returns false if deploy action not missing osinfo",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            name: "deploy"
+                        };
+                        $scope.tabs[tab].actionErrorCount = 0;
+                        $scope.osinfo = {
+                            osystems: [makeName("os")]
+                        };
+                        expect($scope.isActionError(tab)).toBe(false);
+                    });
+            });
+
+            describe("isDeployError", function() {
+
+                it("returns false if actionErrorCount > 0", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionErrorCount = 2;
+                    expect($scope.isDeployError(tab)).toBe(false);
+                });
+
+                it("returns true if deploy action missing osinfo", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = {
+                        name: "deploy"
+                    };
+                    $scope.tabs[tab].actionErrorCount = 0;
+                    $scope.osinfo = {
+                        osystems: []
+                    };
+                    expect($scope.isDeployError(tab)).toBe(true);
+                });
+
+                it("returns false if deploy action not missing osinfo",
+                    function() {
+                        var controller = makeController();
+                        $scope.tabs[tab].actionOption = {
+                            name: "deploy"
+                        };
+                        $scope.tabs[tab].actionErrorCount = 0;
+                        $scope.osinfo = {
+                            osystems: [makeName("os")]
+                        };
+                        expect($scope.isDeployError(tab)).toBe(false);
+                    });
             });
 
             describe("actionCancel", function() {
@@ -463,7 +839,27 @@ describe("NodesListController", function() {
                     $scope.tabs[tab].selectedItems = [object];
                     $scope.actionGo(tab);
                     expect(NodesManager.performAction).toHaveBeenCalledWith(
-                        object, "start");
+                        object, "start", {});
+                });
+
+                it("calls performAction with osystem and distro_series",
+                    function() {
+                        spyOn(NodesManager, "performAction").and.returnValue(
+                            $q.defer().promise);
+                        var controller = makeController();
+                        var object = makeObject(tab);
+                        $scope.tabs[tab].actionOption = { name: "deploy" };
+                        $scope.tabs[tab].selectedItems = [object];
+                        $scope.tabs[tab].osSelection = {
+                            osystem: "ubuntu",
+                            release: "ubuntu/trusty"
+                        };
+                        $scope.actionGo(tab);
+                        expect(NodesManager.performAction).toHaveBeenCalledWith(
+                            object, "deploy", {
+                                osystem: "ubuntu",
+                                distro_series: "trusty"
+                            });
                 });
 
                 it("calls unselectItem after complete", function() {
@@ -545,26 +941,41 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].actionOption).toBeNull();
                 });
 
-                describe("showAddHardware", function() {
-
-                    it("calls show in addHardwareScope", function() {
-                        var controller = makeController();
-                        $scope.addHardwareScope = {
-                            show: jasmine.createSpy("show")
-                        };
-                        $scope.addHardwareOption = {
-                            name: "hardware"
-                        };
-                        $scope.showAddHardware();
-                        expect(
-                            $scope.addHardwareScope.show).toHaveBeenCalledWith(
-                                "hardware");
-                    });
+                it("clears selected os and release when complete", function() {
+                    var defer = $q.defer();
+                    spyOn(NodesManager, "performAction").and.returnValue(
+                        defer.promise);
+                    var object = makeObject(tab);
+                    NodesManager._items = [object];
+                    NodesManager._selectedItems = [object];
+                    var controller = makeController();
+                    $scope.tabs[tab].actionOption = { name: "deploy" };
+                    $scope.tabs[tab].osSelection = {
+                        osystem: "ubuntu",
+                        release: "ubuntu/trusty"
+                    };
+                    $scope.actionGo(tab);
+                    defer.resolve();
+                    $scope.$digest();
+                    expect($scope.tabs[tab].osSelection.osystem).toBe("");
+                    expect($scope.tabs[tab].osSelection.release).toBe("");
                 });
 
+                it("calls show in addHardwareScope", function() {
+                    var controller = makeController();
+                    $scope.addHardwareScope = {
+                        show: jasmine.createSpy("show")
+                    };
+                    $scope.addHardwareOption = {
+                        name: "hardware"
+                    };
+                    $scope.showAddHardware();
+                    expect(
+                        $scope.addHardwareScope.show).toHaveBeenCalledWith(
+                            "hardware");
+                });
             });
 
         });
     });
-
 });

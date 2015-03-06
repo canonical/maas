@@ -111,6 +111,23 @@ describe("NodesManager", function() {
                 expect(sentObject.method).toBe("node.action");
                 expect(sentObject.params.system_id).toBe(node.system_id);
                 expect(sentObject.params.action).toBe("delete");
+                expect(sentObject.params.extra).toEqual({});
+                done();
+            });
+        });
+
+        it("calls node.action with extra", function(done) {
+            var node = makeNode();
+            var extra = {
+                osystem: makeName("os")
+            };
+            webSocket.returnData.push(makeFakeResponse("deployed"));
+            NodesManager.performAction(node, "deploy", extra).then(function() {
+                var sentObject = angular.fromJson(webSocket.sentData[0]);
+                expect(sentObject.method).toBe("node.action");
+                expect(sentObject.params.system_id).toBe(node.system_id);
+                expect(sentObject.params.action).toBe("deploy");
+                expect(sentObject.params.extra).toEqual(extra);
                 done();
             });
         });

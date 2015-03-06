@@ -96,8 +96,26 @@ describe("DevicesManager", function() {
                 expect(sentObject.method).toBe("device.action");
                 expect(sentObject.params.system_id).toBe(device.system_id);
                 expect(sentObject.params.action).toBe("delete");
+                expect(sentObject.params.extra).toEqual({});
                 done();
             });
+        });
+
+        it("calls device.action with extra", function(done) {
+            var device = makeDevice();
+            var extra = {
+                osystem: makeName("os")
+            };
+            webSocket.returnData.push(makeFakeResponse("deployed"));
+            DevicesManager.performAction(device, "deploy", extra).then(
+                function() {
+                    var sentObject = angular.fromJson(webSocket.sentData[0]);
+                    expect(sentObject.method).toBe("device.action");
+                    expect(sentObject.params.system_id).toBe(device.system_id);
+                    expect(sentObject.params.action).toBe("deploy");
+                    expect(sentObject.params.extra).toEqual(extra);
+                    done();
+                });
         });
     });
 });

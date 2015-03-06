@@ -5,10 +5,9 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', 'NodesManager', 'DevicesManager',
-    'RegionConnection', 'SearchService', function($scope,
-        $rootScope, NodesManager, DevicesManager, RegionConnection,
-        SearchService) {
+    '$scope', '$rootScope', '$timeout', 'NodesManager', 'DevicesManager',
+    'RegionConnection', 'SearchService', function($scope, $rootScope, $timeout,
+        NodesManager, DevicesManager, RegionConnection, SearchService) {
 
         // Set title and page.
         $rootScope.title = "Nodes";
@@ -18,6 +17,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.nodes = NodesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.currentpage = "nodes";
+        $scope.osinfo = null;
 
         $scope.tabs = {};
         // Nodes tab.
@@ -36,7 +36,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
         $scope.tabs.nodes.takeActionOptions = [];
-        $scope.tabs.nodes.actionError = false;
+        $scope.tabs.nodes.actionErrorCount = 0;
+        $scope.tabs.nodes.osSelection = {
+            osystem: "",
+            release: ""
+        };
 
         // Device tab.
         $scope.tabs.devices = {};
@@ -54,12 +58,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.column = 'fqdn';
         $scope.tabs.devices.actionOption = null;
         $scope.tabs.devices.takeActionOptions = [];
-        $scope.tabs.devices.actionError = false;
-
-        $scope.toggleTab = function(tab) {
-            $rootScope.title = $scope.tabs[tab].pagetitle;
-            $scope.currentpage = tab;
-        };
+        $scope.tabs.devices.actionErrorCount = 0;
 
         // Options for add hardware dropdown.
         $scope.addHardwareOption = {
@@ -105,8 +104,65 @@ angular.module('MAAS').controller('NodesListController', [
                     $scope.tabs[tab].search = "";
                 }
                 $scope.tabs[tab].actionOption = null;
+                if(tab === "nodes") {
+                    $scope.tabs[tab].osSelection.osystem = "";
+                    $scope.tabs[tab].osSelection.release = "";
+                }
             }
         }
+
+        // Update the number of selected items which have an error based on the
+        // current selected action.
+        function updateActionErrorCount(tab) {
+            var i;
+            $scope.tabs[tab].actionErrorCount = 0;
+            for(i = 0; i < $scope.tabs[tab].selectedItems.length; i++) {
+                var supported = $scope.supportsAction(
+                    $scope.tabs[tab].selectedItems[i], tab);
+                if(!supported) {
+                    $scope.tabs[tab].actionErrorCount += 1;
+                }
+            }
+        }
+
+        // Load the support operating systems and releases.
+        var loadOSReleasesPromise;
+        function loadOSReleases(reload) {
+            var callAgain = function() {
+                loadOSReleases(reload);
+            };
+
+            RegionConnection.callMethod("general.osinfo", {}).then(
+                function(osinfo) {
+                    $scope.osinfo = osinfo;
+                    if(osinfo.osystems.length === 0) {
+                        // No operating systems, so no clusters have imported
+                        // images. Update every 3 seconds.
+                        loadOSReleasesPromise = $timeout(callAgain, 3000);
+                    } else if(reload) {
+                        // Reload enabled, update every 10 seconds.
+                        loadOSReleasesPromise = $timeout(callAgain, 10000);
+                    }
+                }, function(error) {
+                    // Failed to load the osinfo, try again in 3 sconds.
+                    console.log("Failed to load os info: " + error);
+                    loadOSReleasesPromise = $timeout(callAgain, 3000);
+                });
+        }
+
+        // Cancel the loading of operating systems and releases.
+        function cancelLoadOSReleases() {
+            if(angular.isObject(loadOSReleasesPromise)) {
+                $timeout.cancel(loadOSReleasesPromise);
+                loadOSReleasesPromise = null;
+            }
+        }
+
+        // Toggles between the current tab.
+        $scope.toggleTab = function(tab) {
+            $rootScope.title = $scope.tabs[tab].pagetitle;
+            $scope.currentpage = tab;
+        };
 
         // Mark a node as selected or unselected.
         $scope.toggleChecked = function(node, tab) {
@@ -116,6 +172,7 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].manager.selectItem(node.system_id);
             }
             updateAllViewableChecked(tab);
+            updateActionErrorCount(tab);
             shouldClearAction(tab);
         };
 
@@ -133,6 +190,7 @@ angular.module('MAAS').controller('NodesListController', [
                 });
             }
             updateAllViewableChecked(tab);
+            updateActionErrorCount(tab);
             shouldClearAction(tab);
         };
 
@@ -183,16 +241,16 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Called when the action option gets changed.
         $scope.actionOptionSelected = function(tab) {
-            var i;
-            $scope.tabs[tab].actionError = false;
-            for(i = 0; i < $scope.tabs[tab].selectedItems.length; i++) {
-                if(!$scope.supportsAction(
-                    $scope.tabs[tab].selectedItems[i], tab)) {
-                    $scope.tabs[tab].actionError = true;
-                    break;
-                }
-            }
+            updateActionErrorCount(tab);
             $scope.tabs[tab].search = "in:selected";
+
+            var actionOption = $scope.tabs[tab].actionOption;
+            if(angular.isObject(actionOption) &&
+                actionOption.name === "deploy") {
+                loadOSReleases(true);
+            } else {
+                cancelLoadOSReleases();
+            }
 
             // Hide the add hardware section.
             if (tab === 'nodes') {
@@ -202,19 +260,63 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
+        // Return True if there is an action error.
+        $scope.isActionError = function(tab) {
+            if(angular.isObject($scope.tabs[tab].actionOption) &&
+                $scope.tabs[tab].actionOption.name === "deploy" &&
+                $scope.osinfo.osystems.length === 0 &&
+                $scope.tabs[tab].actionErrorCount === 0) {
+                return true;
+            }
+            return $scope.tabs[tab].actionErrorCount !== 0;
+        };
+
+        // Return True if unable to deploy because of missing images.
+        $scope.isDeployError = function(tab) {
+            if($scope.tabs[tab].actionErrorCount !== 0) {
+                return false;
+            }
+            if(angular.isObject($scope.tabs[tab].actionOption) &&
+                $scope.tabs[tab].actionOption.name === "deploy" &&
+                $scope.osinfo.osystems.length === 0) {
+                return true;
+            }
+            return false;
+        };
+
         // Called when the current action is cancelled.
         $scope.actionCancel = function(tab) {
             if($scope.tabs[tab].search === "in:selected") {
                 $scope.tabs[tab].search = "";
             }
             $scope.tabs[tab].actionOption = null;
+            cancelLoadOSReleases();
         };
 
         // Perform the action on all nodes.
         $scope.actionGo = function(tab) {
+            var extra = {};
+
+            // Set deploy parameters if a deploy action.
+            if($scope.tabs[tab].actionOption.name === "deploy" &&
+                angular.isString($scope.tabs[tab].osSelection.osystem) &&
+                angular.isString($scope.tabs[tab].osSelection.release)) {
+
+                // Set extra. UI side the release is structured os/release, but
+                // when it is sent over the websocket only the "release" is
+                // sent.
+                extra.osystem = $scope.tabs[tab].osSelection.osystem;
+                var release = $scope.tabs[tab].osSelection.release;
+                release = release.split("/");
+                release = release[release.length-1];
+                extra.distro_series = release;
+            }
+
+            // Perform the action on all selected items.
             angular.forEach($scope.tabs[tab].selectedItems, function(node) {
                 $scope.tabs[tab].manager.performAction(
-                    node, $scope.tabs[tab].actionOption.name).then(function() {
+                    node, $scope.tabs[tab].actionOption.name,
+                    extra).then(function() {
                         $scope.tabs[tab].manager.unselectItem(node.system_id);
                         shouldClearAction(tab);
                     }, function(error) {
@@ -246,14 +348,17 @@ angular.module('MAAS').controller('NodesListController', [
                     });
                 }
                 manager.enableAutoReload();
-
-                // Load all of the available actions.
-                RegionConnection.callMethod("general.actions", {}).then(
-                    function(actions) {
-                        tab.takeActionOptions = actions;
-                    });
-
             });
 
+            // Load all of the available actions.
+            RegionConnection.callMethod("general.actions", {}).then(
+                function(actions) {
+                    angular.forEach($scope.tabs, function(tab) {
+                        tab.takeActionOptions = actions;
+                    });
+                });
+
+            // Initially load osinfo, but don't keep reloading.
+            loadOSReleases(false);
         });
     }]);

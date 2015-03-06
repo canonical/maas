@@ -33,23 +33,11 @@
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
             <div class="page-header__dropdown ng-hide" data-ng-show="tabs.nodes.actionOption">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <form class="form-inline" data-ng-hide="tabs.nodes.actionError">
-                <!--
-                    XXX blake_r - TODO: Add options to actions.
-                    <label for="iamge">Choose your image</label>
-                    <select name="os" id="os">
-                        <option value="Ubuntu">Ubuntu</option>
-                        <option value="Windows">Windows</option>
-                        <option value="OSX">OSX</option>
-                        <option value="Red Hat">Red Hat</option>
-                    </select>
-                    <select name="version" id="version">
-                        <option value="14.10">14.10</option>
-                        <option value="14.04.1 LTS">14.01.1 LTS</option>
-                        <option value="14.04 LTS">14.01 LTS</option>
-                        <option value="12.04.5 LTS">12.04.5 LTS</option>
-                    </select>
-                -->
+                <form class="form-inline" data-ng-hide="isActionError('nodes')">
+                    <span class="ng-hide" data-ng-show="tabs.nodes.actionOption.name === 'deploy'">
+                        <label for="image">Choose your image</label>
+                        <span data-maas-os-select="osinfo" data-ng-model="tabs.nodes.osSelection"></span>
+                    </span>
                     <div class="right">
                         <a href="" class="margin-right" data-ng-click="actionCancel('nodes')">Cancel</a>
                         <button class="cta-ubuntu" data-ng-click="actionGo('nodes')">Go</button>
@@ -57,12 +45,18 @@
                 </form>
 
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                <div class="page-header__feedback ng-hide" data-ng-show="tabs.nodes.actionError">
+                <div class="page-header__feedback ng-hide" data-ng-show="isActionError('nodes')">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <p class="page-header__feedback-message info">
-                        {$ tabs.nodes.selectedItems.length $}
+                    <p class="page-header__feedback-message info" data-ng-hide="isDeployError('nodes')">
+                        {$ tabs.nodes.actionErrorCount $}
                         <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
                         cannot be {$ tabs.nodes.actionOption.sentence $}. To proceed, update your selection.
+                    </p>
+                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                    <p class="page-header__feedback-message info ng-hide" data-ng-show="isDeployError('nodes')">
+                        {$ tabs.nodes.selectedItems.length $}
+                        <span data-ng-pluralize count="tabs.nodes.selectedItems.length" when="{'one': 'node', 'other': 'nodes'}"></span>
+                        cannot be {$ tabs.nodes.actionOption.sentence $}, because the required boot images have not been imported. To import boot images, visit the <a href="images/">images page</a>.
                     </p>
                 </div>
             </div>

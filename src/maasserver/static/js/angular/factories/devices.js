@@ -49,10 +49,16 @@ angular.module('MAAS').factory(
         };
 
         // Perform the action on the device.
-        DevicesManager.prototype.performAction = function(device, action) {
+        DevicesManager.prototype.performAction = function(
+            device, action, extra) {
+
+            if(!angular.isObject(extra)) {
+                extra = {};
+            }
             return RegionConnection.callMethod("device.action", {
                 "system_id": device.system_id,
-                "action": action
+                "action": action,
+                "extra": extra
                 });
         };
 
