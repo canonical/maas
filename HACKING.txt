@@ -390,8 +390,8 @@ always start with the appropriate template from the ``templates``
 directory.
 
 
-Database schema changes
-=======================
+Database information
+====================
 
 MAAS uses South_ to manage changes to the database schema.
 
@@ -452,6 +452,31 @@ add that file to the project::
 Once the methods have been written, apply that migration with::
 
     $ make syncdb
+
+
+Examining the database manually
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to get an interactive ``psql`` prompt, you can use `dbshell`_::
+
+    $ bin/maas-region-admin dbshell
+
+.. _dbshell: https://docs.djangoproject.com/en/dev/ref/django-admin/#dbshell
+
+If you need to do the same thing with a version of MAAS you have installed
+from the package, you can use::
+
+    $ sudo maas-region-admin dbshell --installed
+
+You can use the ``\dt`` command to list the tables in the MAAS database. You
+can also execute arbitrary SQL. For example:::
+
+    maasdb=# select system_id, hostname from maasserver_node;
+                     system_id                 |      hostname
+    -------------------------------------------+--------------------
+     node-709703ec-c304-11e4-804c-00163e32e5b5 | gross-debt.local
+     node-7069401a-c304-11e4-a64e-00163e32e5b5 | round-attack.local
+    (2 rows)
 
 
 Documentation
