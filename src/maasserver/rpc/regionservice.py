@@ -324,7 +324,7 @@ class Region(RPCProtocol):
 
     @region.CreateNode.responder
     def create_node(self, cluster_uuid, architecture, power_type,
-                    power_parameters, mac_addresses):
+                    power_parameters, mac_addresses, hostname=None):
         """create_node()
 
         Implementation of
@@ -332,7 +332,7 @@ class Region(RPCProtocol):
         """
         d = deferToThread(
             create_node, cluster_uuid, architecture,
-            power_type, power_parameters, mac_addresses)
+            power_type, power_parameters, mac_addresses, hostname=hostname)
         d.addCallback(lambda node: {'system_id': node.system_id})
         return d
 

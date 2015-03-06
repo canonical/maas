@@ -386,6 +386,7 @@ class CreateNode(amp.Command):
         (b'power_type', amp.Unicode()),
         (b'power_parameters', amp.Unicode()),
         (b'mac_addresses', amp.ListOf(amp.Unicode())),
+        (b'hostname', amp.Unicode(optional=True)),
     ]
     response = [
         (b'system_id', amp.Unicode()),

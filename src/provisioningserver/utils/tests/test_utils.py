@@ -428,6 +428,8 @@ class TestCreateNode(PservTestCase):
         uuid = 'node-' + factory.make_UUID()
         macs = sorted(factory.make_mac_address() for _ in range(3))
         arch = factory.make_name('architecture')
+        hostname = factory.make_hostname()
+
         power_type = factory.make_name('power_type')
         power_parameters = {
             'power_address': factory.make_ipv4_address(),
@@ -439,13 +441,14 @@ class TestCreateNode(PservTestCase):
         get_cluster_uuid = self.patch(
             provisioningserver.utils, 'get_cluster_uuid')
         get_cluster_uuid.return_value = 'cluster-' + factory.make_UUID()
-        yield create_node(macs, arch, power_type, power_parameters)
+        yield create_node(
+            macs, arch, power_type, power_parameters, hostname=hostname)
         self.assertThat(
             protocol.CreateNode, MockCalledOnceWith(
                 protocol, cluster_uuid=get_cluster_uuid.return_value,
                 architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs))
+                mac_addresses=macs, hostname=hostname))
 
     @defer.inlineCallbacks
     def test_returns_system_id_of_new_node(self):
@@ -506,7 +509,7 @@ class TestCreateNode(PservTestCase):
                 protocol, cluster_uuid=get_cluster_uuid.return_value,
                 architecture=arch, power_type=power_type,
                 power_parameters=json.dumps(power_parameters),
-                mac_addresses=macs))
+                mac_addresses=macs, hostname=None))
 
     @defer.inlineCallbacks
     def test_logs_error_on_duplicate_macs(self):

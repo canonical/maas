@@ -302,8 +302,8 @@ def probe_vsphere_and_enlist(
     if prefix_filter is None:
         prefix_filter = ''
 
-    servers = get_vsphere_servers(host, username, password, port=port,
-                                  protocol=protocol)
+    servers = get_vsphere_servers(
+        host, username, password, port=port, protocol=protocol)
 
     maaslog.info("Found %d vSphere servers", len(servers))
 
@@ -325,8 +325,9 @@ def probe_vsphere_and_enlist(
         maaslog.info(
             "Creating vSphere node with MACs: %s", properties['macs'])
 
-        system_id = create_node(properties['macs'], properties['architecture'],
-                                'vsphere', params).wait(30)
+        system_id = create_node(
+            properties['macs'], properties['architecture'],
+            'vsphere', params, hostname=system_name).wait(30)
 
         if accept_all and system_id is not None:
             commission_node(system_id, user).wait(30)

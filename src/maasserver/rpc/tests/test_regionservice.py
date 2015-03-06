@@ -2029,6 +2029,7 @@ class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
             'power_type': factory.make_name("power_type"),
             'power_parameters': dumps({}),
             'mac_addresses': [factory.make_mac_address()],
+            'hostname': None,
         }
 
         response = yield call_responder(
@@ -2040,7 +2041,7 @@ class TestRegionProtocol_CreateNode(DjangoTransactionTestCase):
             MockCalledOnceWith(
                 params['cluster_uuid'], params['architecture'],
                 params['power_type'], params['power_parameters'],
-                params['mac_addresses']))
+                params['mac_addresses'], hostname=params['hostname']))
         self.assertEqual(
             create_node_function.return_value.system_id,
             response['system_id'])

@@ -300,7 +300,8 @@ class TestVspherePyvmomi(MAASTestCase):
         self.configure_vmomi_api(servers=num_servers)
         mock_create_node = self.patch(vsphere, 'create_node')
         system_id = factory.make_name('system_id')
-        mock_create_node.side_effect = asynchronous(lambda *args: system_id)
+        mock_create_node.side_effect = asynchronous(
+            lambda *args, **kwargs: system_id)
         mock_commission_node = self.patch(vsphere, 'commission_node')
 
         host = factory.make_hostname()

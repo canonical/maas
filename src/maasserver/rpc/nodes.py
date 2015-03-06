@@ -106,7 +106,7 @@ def update_node_power_state(system_id, power_state):
 @synchronous
 @transactional
 def create_node(cluster_uuid, architecture, power_type,
-                power_parameters, mac_addresses):
+                power_parameters, mac_addresses, hostname=None):
     """Create a new `Node` and return it.
 
     :param cluster_uuid: The UUID of the cluster upon which the node
@@ -117,6 +117,7 @@ def create_node(cluster_uuid, architecture, power_type,
         for the new node.
     :param mac_addresses: An iterable of MAC addresses that belong to
         the node.
+    :param hostname: the desired hostname for the new node
     """
     # Check that there isn't already a node with one of our MAC
     # addresses, and bail out early if there is.
@@ -139,6 +140,10 @@ def create_node(cluster_uuid, architecture, power_type,
         'nodegroup': cluster,
         'mac_addresses': mac_addresses,
     }
+
+    if hostname is not None:
+        data['hostname'] = hostname.strip()
+
     data_query_dict = get_overridden_query_dict(
         {}, data, AdminNodeWithMACAddressesForm.Meta.fields)
     form = AdminNodeWithMACAddressesForm(data_query_dict)

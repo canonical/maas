@@ -87,7 +87,7 @@ def node_exists(macs, url, client):
 
 @asynchronous
 @inlineCallbacks
-def create_node(macs, arch, power_type, power_parameters):
+def create_node(macs, arch, power_type, power_parameters, hostname=None):
     """Create a Node on the region and return its system_id.
 
     :param macs: A list of MAC addresses belonging to the node.
@@ -120,7 +120,8 @@ def create_node(macs, arch, power_type, power_parameters):
             architecture=arch,
             power_type=power_type,
             power_parameters=json.dumps(power_parameters),
-            mac_addresses=macs)
+            mac_addresses=macs,
+            hostname=hostname)
     except NodeAlreadyExists:
         # The node already exists on the region, so we log the error and
         # give up.

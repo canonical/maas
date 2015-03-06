@@ -47,9 +47,11 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.rpc.testing import always_succeed_with
 from simplejson import dumps
+from testtools import ExpectedException
 from testtools.matchers import (
     Contains,
     Equals,
+    Is,
     Not,
     )
 
@@ -95,10 +97,72 @@ class TestCreateNode(MAASServerTestCase):
                 node.power_type,
                 node.power_parameters
             ))
+
+        # Node should have an auto-generated name containing '-'
+        self.expectThat(node.hostname, Contains("-"))
+        self.expectThat(node.id, Not(Is(None)))
+
         self.expectThat(
             mac_addresses,
             Equals(
                 [mac.mac_address for mac in node.macaddress_set.all()]))
+
+    def test__creates_node_with_explicit_hostname(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        hostname = factory.make_hostname()
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        node = create_node(
+            cluster.uuid, architecture, power_type, power_parameters,
+            mac_addresses, hostname=hostname)
+
+        self.assertEqual(
+            (
+                cluster,
+                architecture,
+                power_type,
+                {},
+                hostname
+            ),
+            (
+                node.nodegroup,
+                node.architecture,
+                node.power_type,
+                node.power_parameters,
+                node.hostname
+            ))
+        self.expectThat(node.id, Not(Is(None)))
+        self.expectThat(
+            mac_addresses,
+            Equals(
+                [mac.mac_address for mac in node.macaddress_set.all()]))
+
+    def test__create_node_fails_with_invalid_hostname(self):
+        cluster = factory.make_NodeGroup()
+        cluster.accept()
+        self.prepare_cluster_rpc(cluster)
+
+        mac_addresses = [
+            factory.make_mac_address() for _ in range(3)]
+        architecture = make_usable_architecture(self)
+        hostname = random.choice([
+            "---",
+            "Microsoft Windows",
+            ])
+        power_type = random.choice(self.power_types)['name']
+        power_parameters = dumps({})
+
+        with ExpectedException(ValidationError):
+            create_node(
+                cluster.uuid, architecture, power_type, power_parameters,
+                mac_addresses, hostname=hostname)
 
     def test__raises_validation_errors_for_invalid_data(self):
         cluster = factory.make_NodeGroup()
