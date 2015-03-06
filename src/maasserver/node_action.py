@@ -258,11 +258,17 @@ class Deploy(InstallableNodeAction):
                 """)
         return None
 
-    def execute(self, allow_redirect=True):
+    def execute(self, allow_redirect=True, osystem=None, distro_series=None):
         """See `NodeAction.execute`."""
         if self.node.owner is None:
             with locks.node_acquire:
                 self.node.acquire(self.user, token=None)
+
+        # Set the osystem in distro_series if provided and not empty.
+        if osystem and distro_series:
+            self.node.osystem = osystem
+            self.node.distro_series = distro_series
+            self.node.save()
 
         try:
             self.node.start(self.user)

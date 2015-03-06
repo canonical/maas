@@ -251,4 +251,5 @@ class NodeHandler(TimestampedModelHandler):
         if action is None:
             raise NodeActionError(
                 "%s action is not available for this node." % action_name)
-        return action.execute(allow_redirect=False)
+        extra_params = params.get("extra", {})
+        return action.execute(allow_redirect=False, **extra_params)

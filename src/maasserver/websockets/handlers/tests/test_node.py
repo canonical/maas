@@ -23,6 +23,8 @@ from maasserver.exceptions import NodeActionError
 from maasserver.node_action import compile_node_actions
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
+from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils.converters import human_readable_bytes
 from maasserver.websockets.base import (
@@ -355,3 +357,23 @@ class TestNodeHandler(MAASServerTestCase):
         self.assertEquals(
             handler.action({"system_id": node.system_id, "action": "deploy"}),
             "This node has been asked to deploy.")
+
+    def test_action_performs_action_passing_extra(self):
+        user = factory.make_User()
+        factory.make_SSHKey(user)
+        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        osystem = make_osystem_with_releases(self)
+        handler = NodeHandler(user)
+        self.expectThat(
+            handler.action({
+                "system_id": node.system_id,
+                "action": "deploy",
+                "extra": {
+                    "osystem": osystem["name"],
+                    "distro_series": osystem["releases"][0]["name"],
+                }}),
+            Equals("This node has been asked to deploy."))
+        node = reload_object(node)
+        self.expectThat(node.osystem, Equals(osystem["name"]))
+        self.expectThat(
+            node.distro_series, Equals(osystem["releases"][0]["name"]))

@@ -52,6 +52,7 @@ from maasserver.node_action import (
 from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
+from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
@@ -317,6 +318,50 @@ class TestDeployAction(MAASServerTestCase):
         Deploy(node, user).execute()
         self.assertThat(
             node_start, MockCalledOnceWith(user))
+
+    def test_Deploy_sets_osystem_and_series(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
+        self.patch(node, 'start')
+        osystem = make_osystem_with_releases(self)
+        extra = {
+            "osystem": osystem["name"],
+            "distro_series": osystem["releases"][0]["name"],
+        }
+        Deploy(node, user).execute(**extra)
+        self.expectThat(node.osystem, Equals(osystem["name"]))
+        self.expectThat(
+            node.distro_series, Equals(osystem["releases"][0]["name"]))
+
+    def test_Deploy_doesnt_set_osystem_and_series_if_os_missing(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
+        self.patch(node, 'start')
+        osystem = make_osystem_with_releases(self)
+        extra = {
+            "distro_series": osystem["releases"][0]["name"],
+        }
+        Deploy(node, user).execute(**extra)
+        self.expectThat(node.osystem, Equals(""))
+        self.expectThat(node.distro_series, Equals(""))
+
+    def test_Deploy_doesnt_set_osystem_and_series_if_series_missing(self):
+        user = factory.make_User()
+        node = factory.make_Node(
+            mac=True, status=NODE_STATUS.ALLOCATED,
+            power_type='ether_wake', owner=user)
+        self.patch(node, 'start')
+        osystem = make_osystem_with_releases(self)
+        extra = {
+            "osystem": osystem["name"],
+        }
+        Deploy(node, user).execute(**extra)
+        self.expectThat(node.osystem, Equals(""))
+        self.expectThat(node.distro_series, Equals(""))
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
