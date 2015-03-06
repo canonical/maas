@@ -29,6 +29,7 @@ from maasserver.enum import (
 from maasserver.models import (
     Node,
     node as node_module,
+    NodeGroup,
     StaticIPAddress,
     )
 from maasserver.testing.api import APITestCase
@@ -44,7 +45,6 @@ class TestDevicesAPI(APITestCase):
             '/api/1.0/devices/', reverse('devices_handler'))
 
     def test_new_creates_device(self):
-        cluster = factory.make_NodeGroup()
         hostname = factory.make_name('host')
         macs = {
             factory.make_mac_address()
@@ -54,7 +54,6 @@ class TestDevicesAPI(APITestCase):
             reverse('devices_handler'),
             {
                 'op': 'new',
-                'nodegroup': cluster.id,
                 'hostname': hostname,
                 'mac_addresses': macs,
             })
@@ -63,18 +62,17 @@ class TestDevicesAPI(APITestCase):
         device = Node.devices.get(system_id=system_id)
         self.assertEquals(hostname, device.hostname)
         self.assertFalse(device.installable)
+        self.assertEquals(NodeGroup.objects.ensure_master(), device.nodegroup)
         self.assertEquals(self.logged_in_user, device.owner)
         self.assertEquals(
             macs,
             {mac.mac_address for mac in device.macaddress_set.all()})
 
     def test_POST_returns_limited_fields(self):
-        cluster = factory.make_NodeGroup()
         response = self.client.post(
             reverse('devices_handler'),
             {
                 'op': 'new',
-                'nodegroup': cluster.id,
                 'hostname': factory.make_string(),
                 'mac_addresses': ['aa:bb:cc:dd:ee:ff'],
             })

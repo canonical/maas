@@ -638,7 +638,6 @@ class DeviceForm(MAASModelForm):
         model = Device
 
         fields = (
-            'nodegroup',
             'hostname',
             'parent',
         )
@@ -648,22 +647,18 @@ class DeviceForm(MAASModelForm):
         self.request = request
 
         instance = kwargs.get('instance')
-        # Are we creating a new node object?
-        self.new_node = (instance is None)
-        if self.new_node:
-            # Offer choice of nodegroup.
-            self.fields['nodegroup'] = NodeGroupFormField(
-                required=False, empty_label="Default (master)")
+        # Are we creating a new device object?
+        self.new_device = (instance is None)
 
     def save(self, commit=True):
-        node = super(DeviceForm, self).save(commit=False)
-        node.installable = False
-        if self.new_node:
-            # Set the owner: non-installable nodes are owned by their
-            # creator.
-            node.owner = self.request.user
-        node.save()
-        return node
+        device = super(DeviceForm, self).save(commit=False)
+        device.installable = False
+        if self.new_device:
+            # Set the owner: devices are owned by their creator.
+            device.owner = self.request.user
+            device.nodegroup = NodeGroup.objects.ensure_master()
+        device.save()
+        return device
 
 
 CLUSTER_NOT_AVAILABLE = mark_safe(
