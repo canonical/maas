@@ -23,8 +23,10 @@ from maasserver.enum import (
     )
 from maasserver.models import DHCPLease
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
+from netaddr import IPRange
 
 
 def get_leases(nodegroup):
@@ -164,6 +166,22 @@ class TestDHCPLeaseManager(MAASServerTestCase):
                 new_ip: mac1,
             },
             map_leases(nodegroup))
+
+    def test_update_leases_updates_macs_cluster_interfaces(self):
+        cluster = factory.make_NodeGroup()
+        mac_address = factory.make_MACAddress_with_Node()
+        interface = factory.make_NodeGroupInterface(nodegroup=cluster)
+        ip_range = IPRange(
+            interface.static_ip_range_low, interface.static_ip_range_high)
+        ip = unicode(random.choice(ip_range))
+
+        leases = {
+            factory.make_ipv4_address(): factory.make_mac_address(),
+            ip: mac_address.mac_address,
+        }
+        DHCPLease.objects.update_leases(cluster, leases)
+        self.assertEquals(
+            interface, reload_object(mac_address).cluster_interface)
 
     def test_update_leases_does_not_update_dns_zone_if_nothing_added(self):
         self.patch(dns, 'dns_update_zones')

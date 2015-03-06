@@ -32,7 +32,10 @@ from maasserver.fields import (
     MACAddressField,
     )
 from maasserver.models.cleansave import CleanSave
-from maasserver.models.macaddress import MACAddress
+from maasserver.models.macaddress import (
+    MACAddress,
+    update_macs_cluster_interfaces,
+    )
 from maasserver.utils import strip_domain
 
 
@@ -97,6 +100,8 @@ class DHCPLeaseManager(Manager):
 
         This deletes entries that are no longer current, adds new ones,
         and updates or replaces ones that have changed.
+        This method also updates the MAC address objects to link them to
+        their respective cluster interface.
 
         :param nodegroup: The node group that these updates are for.
         :param leases: A dict describing all current IP/MAC mappings as
@@ -108,6 +113,7 @@ class DHCPLeaseManager(Manager):
         """
         self._delete_obsolete_leases(nodegroup, leases)
         new_leases = self._add_missing_leases(nodegroup, leases)
+        update_macs_cluster_interfaces(leases, nodegroup)
         return new_leases
 
     def get_hostname_ip_mapping(self, nodegroup):

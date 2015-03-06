@@ -67,12 +67,15 @@ def find_cluster_interface_responsible_for_ip(cluster_interfaces, ip_address):
 
 def update_mac_cluster_interfaces(ip, mac, cluster):
     """Calculate and store which interface a MAC is attached to."""
-    try:
-        mac_address = MACAddress.objects.get(mac_address=mac)
-    except MACAddress.DoesNotExist:
-        # Silently ignore MAC addresses that we don't know about.
-        return
+    # Create a `leases` dict with only one lease: this is so we can re-use
+    # update_macs_cluster_interfaces() which is designed to deal with multiple
+    # leases.
+    leases = {ip: mac}
+    update_macs_cluster_interfaces(leases, cluster)
 
+
+def update_macs_cluster_interfaces(leases, cluster):
+    """Calculate and store which interface a set of MACs are attached to."""
     interface_ranges = {}
     # Only consider configured interfaces.
     interfaces = (
@@ -92,15 +95,25 @@ def update_mac_cluster_interfaces(ip, mac, cluster):
             static_range = []
         interface_ranges[interface] = (ip_range, static_range)
 
-    # Look through the interface ranges to see if any match the passed
-    # IP address.
-    for interface, (ip_range, static_range) in interface_ranges.items():
-        ipaddress = IPAddress(ip)
-        # Set the cluster interface only if it's new/changed.
-        # This is only an optimisation to prevent repeated logging.
-        changed = mac_address.cluster_interface != interface
-        in_range = ipaddress in ip_range or ipaddress in static_range
-        if in_range and changed:
+    for ip, mac in leases.viewitems():
+        # Look through the interface ranges to see if any match the passed
+        # IP address.
+        try:
+            mac_address = MACAddress.objects.get(mac_address=mac)
+        except MACAddress.DoesNotExist:
+            # Silently ignore MAC addresses that we don't know about.
+            continue
+
+        for interface, (ip_range, static_range) in interface_ranges.items():
+            ipaddress = IPAddress(ip)
+            # Set the cluster interface only if it's new/changed.
+            # This is only an optimisation to prevent repeated logging.
+            changed = mac_address.cluster_interface != interface
+            if not changed:
+                continue
+            in_range = ipaddress in ip_range or ipaddress in static_range
+            if not in_range:
+                continue
             mac_address.cluster_interface = interface
             mac_address.save()
             maaslog.info(
@@ -112,9 +125,10 @@ def update_mac_cluster_interfaces(ip, mac, cluster):
             if ipnetwork is not None:
                 try:
                     network = Network.objects.get(ip=ipnetwork.ip.format())
-                    network.macaddress_set.add(mac_address)
                 except Network.DoesNotExist:
                     pass
+                else:
+                    network.macaddress_set.add(mac_address)
 
 
 class MACAddress(CleanSave, TimestampedModel):
