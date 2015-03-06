@@ -22,6 +22,7 @@ from maasserver.models import Node
 from maasserver.node_status import QUERY_TRANSITIONS
 from maasserver.rpc import getClientFor
 from maasserver.signals import connect_to_field_change
+from maasserver.utils.orm import transactional
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -42,6 +43,7 @@ WAIT_TO_QUERY = timedelta(seconds=20)
 
 
 @synchronous
+@transactional
 def update_power_state_of_node(system_id):
     """Update the power state of the given node."""
     try:
