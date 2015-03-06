@@ -24,6 +24,8 @@ from maasserver.node_action import ACTIONS_DICT
 from maasserver.utils.osystems import (
     list_all_usable_osystems,
     list_all_usable_releases,
+    list_osystem_choices,
+    list_release_choices,
     )
 from maasserver.websockets.base import Handler
 
@@ -45,9 +47,12 @@ class GeneralHandler(Handler):
 
     def osinfo(self, params):
         """Return all available operating systems and releases information."""
+        osystems = list_all_usable_osystems()
+        releases = list_all_usable_releases(osystems)
         return {
-            "osystems": list_all_usable_releases(list_all_usable_osystems())
-            }
+            "osystems": list_osystem_choices(osystems),
+            "releases": list_release_choices(releases),
+        }
 
     def actions(self, params):
         """Return all possible actions."""

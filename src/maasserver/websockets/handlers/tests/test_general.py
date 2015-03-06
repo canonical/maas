@@ -37,16 +37,20 @@ class TestGeneralHandler(MAASServerTestCase):
 
     def test_osinfo(self):
         handler = GeneralHandler(factory.make_User())
-        info = make_osystem_with_releases(self)
-        osinfo_expected = {
-            "osystems": {
-                info['name']: [
-                    "%s/%s" % (info['name'], release['name'])
-                    for release in info['releases']
-                    ],
-                },
+        osystem = make_osystem_with_releases(self)
+        releases = [("", "Default OS Release")]
+        for release in osystem["releases"]:
+            releases.append((
+                "%s/%s" % (osystem["name"], release["name"]),
+                release["title"]))
+        expected_osinfo = {
+            "osystems": [
+                ("", "Default OS"),
+                (osystem["name"], osystem["title"]),
+                ],
+            "releases": releases,
             }
-        self.assertItemsEqual(osinfo_expected, handler.osinfo({}))
+        self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
 
     def test_actions_for_admin(self):
         handler = GeneralHandler(factory.make_admin())
