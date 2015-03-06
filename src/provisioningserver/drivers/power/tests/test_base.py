@@ -1,4 +1,4 @@
-# Copyright 2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
 """Tests for `provisioningserver.drivers.power`."""
@@ -15,10 +15,15 @@ __metaclass__ = type
 __all__ = []
 
 from maastesting.factory import factory
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.drivers import (
     make_setting_field,
+    power,
     validate_settings,
     )
 from provisioningserver.drivers.power import (
@@ -26,13 +31,20 @@ from provisioningserver.drivers.power import (
     PowerActionError,
     PowerAuthError,
     PowerConnError,
+    PowerDriver,
     PowerDriverBase,
     PowerDriverRegistry,
     PowerError,
+    PowerFatalError,
     PowerSettingError,
     PowerToolError,
     )
 from provisioningserver.utils.testing import RegistryFixture
+from testtools.deferredruntest import AsynchronousDeferredRunTest
+from testtools.matchers import Equals
+from testtools.testcase import ExpectedException
+from twisted.internet import reactor
+from twisted.internet.defer import inlineCallbacks
 
 
 class FakePowerDriverBase(PowerDriverBase):
@@ -218,3 +230,186 @@ class TestGetErrorMessage(MAASTestCase):
 
     def test_return_msg(self):
         self.assertEqual(self.message, get_error_message(self.exception))
+
+
+class FakePowerDriver(PowerDriver):
+
+    name = ""
+    description = ""
+    settings = []
+
+    def __init__(self, name, description, settings, wait_time=None,
+                 clock=reactor):
+        self.name = name
+        self.description = description
+        self.settings = settings
+        if wait_time is not None:
+            self.wait_time = wait_time
+        super(FakePowerDriver, self).__init__(clock)
+
+    def power_on(self, system_id, **kwargs):
+        raise NotImplementedError
+
+    def power_off(self, system_id, **kwargs):
+        raise NotImplementedError
+
+    def power_query(self, system_id, **kwargs):
+        raise NotImplementedError
+
+
+def make_power_driver(name=None, description=None, settings=None,
+                      wait_time=None, clock=reactor):
+    if name is None:
+        name = factory.make_name('diskless')
+    if description is None:
+        description = factory.make_name('description')
+    if settings is None:
+        settings = []
+    return FakePowerDriver(
+        name, description, settings, wait_time=wait_time, clock=clock)
+
+
+class TestPowerDriverPowerAction(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    scenarios = [
+        ('on', dict(
+            action='on', action_func='power_on', bad_state='off')),
+        ('off', dict(
+            action='off', action_func='power_off', bad_state='on')),
+        ]
+
+    def make_error_message(self):
+        error = factory.make_name('msg')
+        self.patch(power, 'get_error_message').return_value = error
+        return error
+
+    @inlineCallbacks
+    def test_success(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0])
+        self.patch(driver, self.action_func)
+        self.patch(driver, 'power_query').return_value = self.action
+        method = getattr(driver, self.action)
+        result = yield method(system_id)
+        self.assertEqual(result, None)
+
+    @inlineCallbacks
+    def test_handles_fatal_error_on_first_call(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0, 0])
+        mock_on = self.patch(driver, self.action_func)
+        mock_on.side_effect = [PowerFatalError(), None]
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.return_value = self.action
+        method = getattr(driver, self.action)
+        with ExpectedException(PowerFatalError):
+            yield method(system_id)
+        self.expectThat(
+            mock_query,
+            Equals(MockNotCalled()))
+
+    @inlineCallbacks
+    def test_handles_non_fatal_error_on_first_call(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0, 0])
+        mock_on = self.patch(driver, self.action_func)
+        mock_on.side_effect = [PowerError(), None]
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.return_value = self.action
+        method = getattr(driver, self.action)
+        result = yield method(system_id)
+        self.expectThat(
+            mock_query,
+            Equals(MockCalledOnceWith(system_id)))
+        self.expectThat(result, Equals(None))
+
+    @inlineCallbacks
+    def test_handles_non_fatal_error_and_holds_error(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0])
+        error_msg = factory.make_name('error')
+        self.patch(driver, self.action_func)
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.side_effect = PowerError(error_msg)
+        method = getattr(driver, self.action)
+        with ExpectedException(PowerError):
+            yield method(system_id)
+        self.expectThat(
+            mock_query,
+            Equals(MockCalledOnceWith(system_id)))
+
+    @inlineCallbacks
+    def test_handles_non_fatal_error(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0])
+        mock_on = self.patch(driver, self.action_func)
+        mock_on.side_effect = PowerError()
+        method = getattr(driver, self.action)
+        with ExpectedException(PowerError):
+            yield method(system_id)
+
+    @inlineCallbacks
+    def test_handles_non_fatal_error_calls_find_error(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0])
+        mock_on = self.patch(driver, self.action_func)
+        mock_on.side_effect = PowerError()
+        mock_find_error = self.patch(driver, 'find_error')
+        mock_find_error.side_effect = PowerError()
+        method = getattr(driver, self.action)
+        with ExpectedException(PowerError):
+            yield method(system_id)
+        self.expectThat(
+            mock_find_error,
+            Equals(MockCalledOnceWith(system_id)))
+
+    @inlineCallbacks
+    def test_handles_fails_to_complete_power_action_in_time(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver(wait_time=[0])
+        self.patch(driver, self.action_func)
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.return_value = self.bad_state
+        method = getattr(driver, self.action)
+        with ExpectedException(PowerError):
+            yield method(system_id)
+
+
+class TestPowerDriverQuery(MAASTestCase):
+
+    run_tests_with = AsynchronousDeferredRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test_returns_state(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver()
+        state = factory.make_name('state')
+        self.patch(driver, 'power_query').return_value = state
+        output = yield driver.query(system_id)
+        self.assertEqual(state, output)
+
+    @inlineCallbacks
+    def test_calls_find_error(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver()
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.side_effect = PowerError()
+        mock_find_error = self.patch(driver, 'find_error')
+        mock_find_error.side_effect = PowerConnError()
+        with ExpectedException(PowerConnError):
+            yield driver.query(system_id)
+
+    @inlineCallbacks
+    def test_handles_not_implemented_find_error(self):
+        system_id = factory.make_name('system_id')
+        driver = make_power_driver()
+        mock_query = self.patch(driver, 'power_query')
+        mock_query.side_effect = PowerError()
+        mock_find_error = self.patch(driver, 'find_error')
+        mock_find_error.side_effect = NotImplementedError
+        # Since NotImplementedError passes, this should raise
+        # a PowerError Exception.
+        with ExpectedException(PowerError):
+            yield driver.query(system_id)
