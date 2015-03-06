@@ -162,19 +162,8 @@ class TestPostgresListener(MAASServerTestCase):
             listener.convertChannel, "node_unknown")
 
 
-class TestNodeListener(DjangoTransactionTestCase):
-    """End-to-end test of both the listeners code and the triggers code."""
-
-    scenarios = (
-        ('node', {
-            'params': {'installable': True},
-            'listener': 'node',
-            }),
-        ('device', {
-            'params': {'installable': False},
-            'listener': 'device',
-            }),
-    )
+class TransactionalHelpersMixin:
+    """Helpers performing actions in transactions."""
 
     @transactional
     def create_node(self, params=None):
@@ -193,6 +182,79 @@ class TestNodeListener(DjangoTransactionTestCase):
     def delete_node(self, system_id):
         node = Node.objects.get(system_id=system_id)
         node.delete()
+
+    @transactional
+    def create_nodegroup(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_NodeGroup(**params)
+
+    @transactional
+    def update_nodegroup(self, id, params):
+        nodegroup = NodeGroup.objects.get(id=id)
+        for key, value in params.items():
+            setattr(nodegroup, key, value)
+        return nodegroup.save()
+
+    @transactional
+    def delete_nodegroup(self, id):
+        nodegroup = NodeGroup.objects.get(id=id)
+        nodegroup.delete()
+
+    @transactional
+    def create_zone(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Zone(**params)
+
+    @transactional
+    def update_zone(self, id, params):
+        zone = Zone.objects.get(id=id)
+        for key, value in params.items():
+            setattr(zone, key, value)
+        return zone.save()
+
+    @transactional
+    def delete_zone(self, id):
+        zone = Zone.objects.get(id=id)
+        zone.delete()
+
+    @transactional
+    def create_tag(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_Tag(**params)
+
+    @transactional
+    def add_node_to_tag(self, node, tag):
+        node.tags.add(tag)
+        node.save()
+
+    @transactional
+    def remove_node_from_tag(self, node, tag):
+        node.tags.remove(tag)
+        node.save()
+
+    @transactional
+    def update_tag(self, tag, new_name):
+        tag.name = new_name
+        tag.save()
+        return tag
+
+
+class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers code."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
 
     @wait_for_reactor
     @inlineCallbacks
@@ -246,27 +308,10 @@ class TestNodeListener(DjangoTransactionTestCase):
             yield listener.stop()
 
 
-class TestClusterListener(DjangoTransactionTestCase):
+class TestClusterListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the cluster
     triggers code."""
-
-    @transactional
-    def create_nodegroup(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_NodeGroup(**params)
-
-    @transactional
-    def update_nodegroup(self, id, params):
-        nodegroup = NodeGroup.objects.get(id=id)
-        for key, value in params.items():
-            setattr(nodegroup, key, value)
-        return nodegroup.save()
-
-    @transactional
-    def delete_nodegroup(self, id):
-        nodegroup = NodeGroup.objects.get(id=id)
-        nodegroup.delete()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -320,27 +365,9 @@ class TestClusterListener(DjangoTransactionTestCase):
             yield listener.stop()
 
 
-class TestZoneListener(DjangoTransactionTestCase):
+class TestZoneListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
     """End-to-end test of both the listeners code and the zone
     triggers code."""
-
-    @transactional
-    def create_zone(self, params=None):
-        if params is None:
-            params = {}
-        return factory.make_Zone(**params)
-
-    @transactional
-    def update_zone(self, id, params):
-        zone = Zone.objects.get(id=id)
-        for key, value in params.items():
-            setattr(zone, key, value)
-        return zone.save()
-
-    @transactional
-    def delete_zone(self, id):
-        zone = Zone.objects.get(id=id)
-        zone.delete()
 
     @wait_for_reactor
     @inlineCallbacks
@@ -390,5 +417,78 @@ class TestZoneListener(DjangoTransactionTestCase):
             yield deferToThread(self.delete_zone, zone.id)
             yield dv.get(timeout=2)
             self.assertEqual(('delete', '%s' % zone.id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestNodeTagListener(
+        DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the triggers on
+    maasserver_node_tags table."""
+
+    scenarios = (
+        ('node', {
+            'params': {'installable': True},
+            'listener': 'node',
+            }),
+        ('device', {
+            'params': {'installable': False},
+            'listener': 'device',
+            }),
+    )
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_create(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        tag = yield deferToThread(self.create_tag)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.add_node_to_tag, node, tag)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_with_update_on_delete(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        tag = yield deferToThread(self.create_tag)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            yield deferToThread(self.remove_node_from_tag, node, tag)
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_node_handler_with_update_on_tag_rename(self):
+        yield deferToThread(register_all_triggers)
+        node = yield deferToThread(self.create_node, self.params)
+        tag = yield deferToThread(self.create_tag)
+        yield deferToThread(self.add_node_to_tag, node, tag)
+
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register(self.listener, lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            tag = yield deferToThread(
+                self.update_tag, tag, factory.make_name("tag"))
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % node.system_id), dv.value)
         finally:
             yield listener.stop()

@@ -73,6 +73,9 @@ class TestTriggers(MAASServerTestCase):
             "maasserver_zone_zone_create_notify",
             "maasserver_zone_zone_update_notify",
             "maasserver_zone_zone_delete_notify",
+            "maasserver_node_tags_node_device_tag_link_notify",
+            "maasserver_node_tags_node_device_tag_unlink_notify",
+            "maasserver_tag_tag_update_node_device_notify",
             ]
         sql, args = psql_array(triggers, sql_type="text")
         with closing(connection.cursor()) as cursor:
