@@ -28,7 +28,6 @@ from subprocess import CalledProcessError
 import threading
 import time
 
-from django.core.urlresolvers import reverse
 from django.db import (
     close_old_connections,
     connections,
@@ -63,7 +62,10 @@ from maasserver.models import (
     LargeFile,
     NodeGroup,
     )
-from maasserver.utils import absolute_reverse
+from maasserver.utils import (
+    absolute_reverse,
+    absolute_url_reverse,
+    )
 from maasserver.utils.orm import (
     get_one,
     transactional,
@@ -1022,6 +1024,7 @@ class ImportResourcesProgressService(TimerService, object):
             # If the cluster is on the same machine as the region, it's
             # possible that the cluster has images and the region does not. We
             # can provide a better message to the user in this case.
+            images_link = absolute_url_reverse('images')
             boot_images_locally = list_boot_images()
             if len(boot_images_locally) > 0:
                 warning = (
@@ -1029,11 +1032,11 @@ class ImportResourcesProgressService(TimerService, object):
                     "does not. Nodes will not be able to provision until you "
                     "import boot images into the region. Visit the "
                     "<a href=\"%s\">boot images</a> page to start the "
-                    "import." % reverse('images'))
+                    "import." % images_link)
             else:
                 warning = (
                     "Boot image import process not started. Nodes will not "
                     "be able to provision without boot images. Visit the "
                     "<a href=\"%s\">boot images</a> page to start the "
-                    "import." % reverse('images'))
+                    "import." % images_link)
             register_persistent_error(COMPONENT.IMPORT_PXE_FILES, warning)

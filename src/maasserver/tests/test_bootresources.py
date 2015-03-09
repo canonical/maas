@@ -30,7 +30,10 @@ from django.db import (
 from django.http import StreamingHttpResponse
 from django.test.client import Client
 from fixtures import Fixture
-from maasserver import bootresources
+from maasserver import (
+    bootresources,
+    utils as utils_module,
+    )
 from maasserver.bootresources import (
     BootResourceStore,
     download_all_boot_resources,
@@ -1260,6 +1263,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         self.expectThat(kwargs, Equals({}))
 
     def test__adds_warning_if_boot_images_exists_on_cluster_not_region(self):
+        abs_path = "/%s/%s/" % (factory.make_string(), factory.make_string())
+        self.patch(
+            utils_module.settings, 'DEFAULT_MAAS_URL', 'http://%s' % abs_path)
         list_boot_images = self.patch(bootresources, "list_boot_images")
         list_boot_images.return_value = [make_rpc_boot_image()]
 
@@ -1273,11 +1279,16 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         the region. Visit the <a href="%s">boot images</a> page to start the
         import.
         """
+        images_link = abs_path + 'images/'
         self.assertEqual(
-            normalise_whitespace(error_expected % reverse('images')),
+            normalise_whitespace(error_expected % images_link),
             error_observed)
 
     def test__adds_warning_if_boot_image_import_not_started(self):
+        abs_path = "/%s/%s/" % (factory.make_string(), factory.make_string())
+        self.patch(
+            utils_module.settings, 'DEFAULT_MAAS_URL', 'http://%s' % abs_path)
+
         list_boot_images = self.patch(bootresources, "list_boot_images")
         list_boot_images.return_value = []
 
@@ -1290,8 +1301,9 @@ class TestImportResourcesProgressService(MAASServerTestCase):
         provision without boot images. Visit the <a href="%s">boot images</a>
         page to start the import.
         """
+        images_link = abs_path + 'images/'
         self.assertEqual(
-            normalise_whitespace(error_expected % reverse('images')),
+            normalise_whitespace(error_expected % images_link),
             error_observed)
 
     def test__removes_warning_if_boot_image_process_started(self):

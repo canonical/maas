@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'absolute_reverse',
+    'absolute_reverse_url',
     'build_absolute_uri',
     'find_nodegroup',
     'get_db_state',
@@ -28,7 +29,10 @@ import errno
 from functools import wraps
 import re
 from urllib import urlencode
-from urlparse import urljoin
+from urlparse import (
+    urljoin,
+    urlparse,
+    )
 
 from django.conf import settings
 from django.core.urlresolvers import reverse
@@ -81,6 +85,38 @@ def absolute_reverse(view_name, query=None, base_url=None, *args, **kwargs):
     if not base_url:
         base_url = settings.DEFAULT_MAAS_URL
     url = urljoin(base_url, reverse(view_name, *args, **kwargs))
+    if query is not None:
+        url += '?%s' % urlencode(query, doseq=True)
+    return url
+
+
+def absolute_url_reverse(view_name, query=None, *args, **kwargs):
+    """Returns the absolute path (i.e. starting with '/') for the given view.
+
+    This utility is meant to be used by methods that need to compute URLs but
+    run outside of Django and thus don't have the 'script prefix' transparently
+    added the the URL.
+
+    :param view_name: Django's view function name/reference or URL pattern
+        name for which to compute the absolute URL.
+    :param query: Optional query argument which will be passed down to
+        urllib.urlencode.  The result of that call will be appended to the
+        resulting url.
+    :param args: Positional arguments for Django's 'reverse' method.
+    :param kwargs: Named arguments for Django's 'reverse' method.
+    """
+    abs_path = urlparse(settings.DEFAULT_MAAS_URL).path
+    if not abs_path.endswith('/'):
+        # Add trailing '/' to get urljoin to behave.
+        abs_path = abs_path + '/'
+    # Force prefix to be '' so that Django doesn't use the 'script prefix' (
+    # which might be there or not depending on whether or not the thread local
+    # variable has been initialized).
+    reverse_link = reverse(view_name, prefix='', *args, **kwargs)
+    if reverse_link.startswith('/'):
+        # Drop the leading '/'.
+        reverse_link = reverse_link[1:]
+    url = urljoin(abs_path, reverse_link)
     if query is not None:
         url += '?%s' % urlencode(query, doseq=True)
     return url

@@ -32,6 +32,7 @@ from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import (
     absolute_reverse,
+    absolute_url_reverse,
     build_absolute_uri,
     find_nodegroup,
     get_db_state,
@@ -80,6 +81,35 @@ class TestAbsoluteReverse(MAASServerTestCase):
         self.patch(settings, 'DEFAULT_MAAS_URL', '')
         absolute_url = absolute_reverse('node-view', args=[node.system_id])
         expected_url = reverse('node-view', args=[node.system_id])
+        self.assertEqual(expected_url, absolute_url)
+
+
+class TestAbsoluteUrlReverse(MAASServerTestCase):
+
+    def test_absolute_url_reverse_uses_path_from_DEFAULT_MAAS_URL(self):
+        path = "/%s/%s" % (factory.make_string(), factory.make_string())
+        maas_url = 'http://%s%s' % (factory.make_string(), path)
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        absolute_url = absolute_url_reverse('settings')
+        expected_url = path + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_url_reverse_copes_with_trailing_slash(self):
+        path = "/%s/%s/" % (factory.make_string(), factory.make_string())
+        maas_url = 'http://%s%s' % (factory.make_string(), path)
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        absolute_url = absolute_url_reverse('settings')
+        expected_url = path[:-1] + reverse('settings')
+        self.assertEqual(expected_url, absolute_url)
+
+    def test_absolute_url_reverse_uses_query_string(self):
+        path = "/%s/%s" % (factory.make_string(), factory.make_string())
+        maas_url = 'http://%s%s' % (factory.make_string(), path)
+        self.patch(settings, 'DEFAULT_MAAS_URL', maas_url)
+        parameters = {factory.make_string(): factory.make_string()}
+        absolute_url = absolute_url_reverse('settings', query=parameters)
+        expected_url = path + "%s?%s" % (
+            reverse('settings'), urlencode(parameters))
         self.assertEqual(expected_url, absolute_url)
 
 
