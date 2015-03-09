@@ -1383,6 +1383,23 @@ class Node(CleanSave, TimestampedModel):
         # because it's all-or-nothing (hence the atomic context).
         return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
+    def update_host_maps(self, claims):
+        """Update host maps for the given MAC->IP mappings."""
+        static_mappings = defaultdict(dict)
+        static_mappings[self.nodegroup].update(claims)
+        update_host_maps_failures = list(
+            update_host_maps(static_mappings))
+        if len(update_host_maps_failures) != 0:
+            # We've hit an error, so release any IPs we've claimed
+            # and then raise the error for the call site to
+            # handle.
+            StaticIPAddress.objects.deallocate_by_node(self)
+            # We know there's only one error because we only
+            # sent one mapping to update_host_maps(), so we
+            # extract the exception from the Failure and raise
+            # it.
+            raise update_host_maps_failures[0].raiseException()
+
     def deallocate_static_ip_addresses(self):
         """Release the `StaticIPAddress` that is assigned to this node and
         remove the host mapping on the cluster.
@@ -1498,24 +1515,11 @@ class Node(CleanSave, TimestampedModel):
 
         # Claim static IP addresses for the node if it's ALLOCATED.
         if self.status == NODE_STATUS.ALLOCATED:
-            static_mappings = defaultdict(dict)
             claims = self.claim_static_ip_addresses()
             # If the PXE mac is on a managed interface then we can ask
             # the cluster to generate the DHCP host map(s).
             if self.is_pxe_mac_on_managed_interface():
-                static_mappings[self.nodegroup].update(claims)
-                update_host_maps_failures = list(
-                    update_host_maps(static_mappings))
-                if len(update_host_maps_failures) != 0:
-                    # We've hit an error, so release any IPs we've claimed
-                    # and then raise the error for the call site to
-                    # handle.
-                    StaticIPAddress.objects.deallocate_by_node(self)
-                    # We know there's only one error because we only
-                    # sent one mapping to update_host_maps(), so we
-                    # extract the exception from the Failure and raise
-                    # it.
-                    raise update_host_maps_failures[0].raiseException()
+                self.update_host_maps(claims)
 
         if self.status == NODE_STATUS.ALLOCATED:
             self.start_deployment()
