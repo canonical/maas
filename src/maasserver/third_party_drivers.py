@@ -108,7 +108,7 @@ class ConfigDriver(Schema):
     repository = String()
 
 
-class DriversConfig(ConfigBase):
+class DriversConfig(ConfigBase, Schema):
     """Configuration for third party drivers."""
 
     class __metaclass__(ConfigMeta):

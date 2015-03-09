@@ -45,7 +45,7 @@ from testtools.matchers import (
 import yaml
 
 
-class ExampleConfig(ConfigBase):
+class ExampleConfig(ConfigBase, formencode.Schema):
     """An example configuration schema.
 
     It derives from :class:`ConfigBase` and has a metaclass derived from

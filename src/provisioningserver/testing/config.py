@@ -26,7 +26,10 @@ from fixtures import (
     Fixture,
     )
 from maastesting.fixtures import TempDirectory
-from provisioningserver.config import Config
+from provisioningserver.config import (
+    BootSources,
+    Config,
+    )
 import yaml
 
 
@@ -42,7 +45,7 @@ class ConfigFixtureBase(Fixture):
 
     schema = None  # Customise this in subclasses.
 
-    def __init__(self, config=None, name='pserv.yaml'):
+    def __init__(self, config=None, name="config.yaml"):
         super(ConfigFixtureBase, self).__init__()
         self.config = {} if config is None else config
         self.name = name
@@ -68,8 +71,11 @@ class ConfigFixture(ConfigFixtureBase):
 
     schema = Config
 
+    def __init__(self, config=None, name='pserv.yaml'):
+        super(ConfigFixture, self).__init__(config=config, name=name)
 
-class BootSourcesFixture(Fixture):
+
+class BootSourcesFixture(ConfigFixtureBase):
     """Fixture to substitute for :class:`BootSources` in tests.
 
     :ivar sources: A list of dicts defining boot sources.
@@ -78,17 +84,10 @@ class BootSourcesFixture(Fixture):
     :ivar filename: Full path to the YAML file.
     """
 
-    def __init__(self, sources, name='sources.yaml'):
-        super(BootSourcesFixture, self).__init__()
-        self.sources = sources
-        self.name = name
+    schema = BootSources
 
-    def setUp(self):
-        super(BootSourcesFixture, self).setUp()
-        self.dir = self.useFixture(TempDirectory()).path
-        self.filename = path.join(self.dir, self.name)
-        with open(self.filename, 'wb') as stream:
-            yaml.safe_dump(self.sources, stream=stream)
+    def __init__(self, sources=None, name='sources.yaml'):
+        super(BootSourcesFixture, self).__init__(config=sources, name=name)
 
 
 def set_tftp_root(tftproot):

@@ -200,7 +200,7 @@ class BootSource(Schema):
         if_missing=[BootSourceSelection.to_python({})])
 
 
-class ConfigBase(Schema):
+class ConfigBase:
     """Base configuration validator."""
 
     @classmethod
@@ -319,7 +319,7 @@ class ConfigMeta(DeclarativeMeta):
             "`cls.envvar` in the environment."))
 
 
-class Config(ConfigBase):
+class Config(ConfigBase, Schema):
     """Configuration for the provisioning server."""
 
     class __metaclass__(ConfigMeta):
@@ -336,24 +336,11 @@ class Config(ConfigBase):
     boot = ConfigLegacyBoot
 
 
-class BootSources:
-    """Validator for a list of boot-source entries."""
+class BootSources(ConfigBase, ForEach):
+    """Configuration for boot sources."""
 
-    # Validator for a list of BootSource definitions.  We can't make our own
-    # class for this.  ForEach (which is how you construct a validator for a
-    # list of items) and our own ConfigBase each have their own metaclass,
-    # ruling out a combined inheritance pattern.  So instead we duplicate
-    # small bits of ConfigBase code here, and make __getitem__ forward to the
-    # list validator.
-    sources = ForEach(BootSource())
+    class __metaclass__(ConfigMeta):
+        envvar = "MAAS_BOOT_SOURCES_SETTINGS"
+        default = "sources.yaml"
 
-    @classmethod
-    def parse(cls, stream):
-        """Load sources spec from `stream`, as YAML, and validate."""
-        return cls.sources.to_python(yaml.safe_load(stream))
-
-    @classmethod
-    def load(cls, filename):
-        """Load sources spec from `filename`, as YAML, and validate."""
-        with open(filename, "rb") as stream:
-            return cls.parse(stream)
+    validators = [BootSource]
