@@ -21,14 +21,30 @@ from fixtures import EnvironmentVariableFixture
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
 import provisioningserver.path
-from provisioningserver.path import get_path
+from provisioningserver.path import (
+    get_path,
+    get_tentative_path,
+    )
 from testtools.matchers import (
     DirExists,
+    Not,
     StartsWith,
     )
 
 
-class TestGetPath(MAASTestCase):
+class TestGetPathFunctions(MAASTestCase):
+    """Tests for `get_path` and `get_tentative_path`."""
+
+    scenarios = (
+        ("get_path", {
+            "get_path_function": get_path,
+            "ensures_directory": True,
+        }),
+        ("get_tentative_path", {
+            "get_path_function": get_tentative_path,
+            "ensures_directory": False,
+        }),
+    )
 
     def set_root(self, root_path=None):
         """For the duration of this test, set the `MAAS_ROOT` variable`."""
@@ -37,7 +53,7 @@ class TestGetPath(MAASTestCase):
     def test__defaults_to_root(self):
         self.set_root()
         self.patch(provisioningserver.path, 'ensure_dir')
-        self.assertEqual('/', get_path())
+        self.assertEqual('/', self.get_path_function())
 
     def test__appends_path_elements(self):
         self.set_root('/')
@@ -46,20 +62,22 @@ class TestGetPath(MAASTestCase):
         part2 = factory.make_name('file')
         self.assertEqual(
             os.path.join('/', part1, part2),
-            get_path(part1, part2))
+            self.get_path_function(part1, part2))
 
     def test__obeys_MAAS_ROOT_variable(self):
         root = factory.make_name('/root')
         self.set_root(root)
         self.patch(provisioningserver.path, 'ensure_dir')
         path = factory.make_name('path')
-        self.assertEqual(os.path.join(root, path), get_path(path))
+        self.assertEqual(
+            os.path.join(root, path),
+            self.get_path_function(path))
 
     def test__returns_absolute_path(self):
         self.set_root('.')
         self.patch(provisioningserver.path, 'ensure_dir')
-        self.assertThat(get_path(), StartsWith('/'))
-        self.assertEqual(getcwdu(), get_path())
+        self.assertThat(self.get_path_function(), StartsWith('/'))
+        self.assertEqual(getcwdu(), self.get_path_function())
 
     def test__concatenates_despite_leading_slash(self):
         root = self.make_dir()
@@ -68,16 +86,18 @@ class TestGetPath(MAASTestCase):
         filename = factory.make_name('file')
         self.assertEqual(
             os.path.join(root, filename),
-            get_path('/' + filename))
+            self.get_path_function('/' + filename))
 
     def test__normalises(self):
         self.set_root()
         self.patch(provisioningserver.path, 'ensure_dir')
-        self.assertEqual('/foo/bar', get_path('foo///szut//..///bar//'))
+        self.assertEqual(
+            '/foo/bar',
+            self.get_path_function('foo///szut//..///bar//'))
 
-    def test__creates_dirpath_if_not_exists(self):
+    def test__maybe_creates_dirpath_if_not_exists(self):
         root_path = self.make_dir()
         self.set_root(root_path)
         self.assertThat(
-            os.path.dirname(get_path('/foo/bar')),
-            DirExists())
+            os.path.dirname(self.get_path_function('/foo/bar')),
+            DirExists() if self.ensures_directory else Not(DirExists()))
