@@ -20,6 +20,7 @@ from time import time
 
 from django.test.client import Client
 from maasserver.models.user import get_auth_tokens
+from maasserver.utils.orm import transactional
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,
@@ -78,6 +79,7 @@ class OAuthAuthenticatedClient(Client):
         environ = self._base_environ()
         return '%s://%s' % (environ['wsgi.url_scheme'], path)
 
+    @transactional
     def request(self, **kwargs):
         url = self._compose_url(kwargs['PATH_INFO'])
         kwargs.update(self._compose_auth_header(url))

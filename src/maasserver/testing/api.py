@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'APITestCase',
+    'APITransactionTestCase',
     'explain_unexpected_response',
     'log_in_as_normal_user',
     'make_worker_client',
@@ -28,7 +29,10 @@ from abc import (
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
+from maastesting.djangotestcase import DjangoTransactionTestCase
+from maastesting.testcase import MAASTestCase
 
 
 class MultipleUsersScenarios:
@@ -70,7 +74,7 @@ class MultipleUsersScenarios:
                 username=self.logged_in_user.username, password=password)
 
 
-class APITestCase(MAASServerTestCase):
+class APITestCaseBase(MAASTestCase):
     """Base class for logged-in API tests.
 
     :ivar logged_in_user: A user who is currently logged in and can access
@@ -79,12 +83,14 @@ class APITestCase(MAASServerTestCase):
         `logged_in_user`).
     """
 
+    @transactional
     def setUp(self):
-        super(APITestCase, self).setUp()
+        super(APITestCaseBase, self).setUp()
         self.logged_in_user = factory.make_User(
             username='test', password='test')
         self.client = OAuthAuthenticatedClient(self.logged_in_user)
 
+    @transactional
     def become_admin(self):
         """Promote the logged-in user to admin."""
         self.logged_in_user.is_superuser = True
@@ -94,6 +100,14 @@ class APITestCase(MAASServerTestCase):
         if response.status_code != expected_code:
             self.fail("Expected %s response, got %s:\n%s" % (
                 expected_code, response.status_code, response.content))
+
+
+class APITestCase(APITestCaseBase, MAASServerTestCase):
+    """Class for logged-in API tests within a single transaction."""
+
+
+class APITransactionTestCase(DjangoTransactionTestCase):
+    """Class for logged-in API tests with the ability to use transactions."""
 
 
 def log_in_as_normal_user(client):
