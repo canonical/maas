@@ -22,6 +22,7 @@ from time import time
 import crochet
 from crochet import wait_for_reactor
 from maasserver.exceptions import IteratorReusedError
+from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.utils import async
 from maasserver.utils.async import DeferredHooks
 from maastesting.factory import factory
@@ -135,7 +136,7 @@ class TestUseOnceIterator(MAASTestCase):
         self.assertRaises(IteratorReusedError, iterator.next)
 
 
-class TestDeferredHooks(MAASTestCase):
+class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
 
     def test__is_thread_local(self):
         dhooks = DeferredHooks()

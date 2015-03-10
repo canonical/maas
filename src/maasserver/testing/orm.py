@@ -13,11 +13,17 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'PostCommitHooksTestMixin',
     'reload_object',
     'reload_objects',
     ]
 
-from maasserver.utils.orm import get_one
+from maasserver.utils.orm import (
+    get_one,
+    post_commit_hooks,
+    )
+import testtools
+from testtools.matchers import HasLength
 
 
 def reload_object(model_object):
@@ -56,3 +62,38 @@ def reload_objects(model_class, model_objects):
     assert all(isinstance(obj, model_class) for obj in model_objects)
     return model_class.objects.filter(
         id__in=[obj.id for obj in model_objects])
+
+
+class PostCommitHooksTestMixin(testtools.TestCase):
+    """Reset all post-commit hooks.
+
+    This also adds an expectation to `test` that there aren't any leaking
+    post-commit hooks. The test will still run, but will be marked as failed.
+    The learnings: tests should not be allowing post-commit hooks to escape.
+    """
+
+    def setUp(self):
+        try:
+            super(PostCommitHooksTestMixin, self).setUp()
+            self.expectThat(
+                post_commit_hooks.hooks, HasLength(0),
+                "One or more post-commit tasks were "
+                "present before commencing this test.")
+        finally:
+            # By this point we will have reported the leaked post-commit
+            # tasks, so always reset them; we don't want to report them again,
+            # and we don't want to execute them.
+            post_commit_hooks.reset()
+
+    def tearDown(self):
+        try:
+            self.expectThat(
+                post_commit_hooks.hooks, HasLength(0),
+                "One or more post-commit tasks were "
+                "present at the end of this test.")
+            super(PostCommitHooksTestMixin, self).tearDown()
+        finally:
+            # By this point we will have reported the leaked post-commit
+            # tasks, so always reset them; we don't want to report them again,
+            # and we don't want to execute them.
+            post_commit_hooks.reset()

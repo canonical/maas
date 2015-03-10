@@ -39,6 +39,7 @@ from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
+from maasserver.testing.orm import PostCommitHooksTestMixin
 from maasserver.utils.orm import is_serialization_failure
 from maastesting.djangotestcase import (
     DjangoTestCase,
@@ -54,7 +55,7 @@ MIME_BOUNDARY = 'BoUnDaRyStRiNg'
 MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 
-class MAASServerTestCase(DjangoTestCase):
+class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
     """:class:`TestCase` variant with the basics for maasserver testing.
 
     :ivar client: Django http test client.
@@ -161,7 +162,9 @@ class LogSilencerFixture(Fixture):
         wsgiref.handlers.BaseHandler.log_exception = self.old_log_exception
 
 
-class SeleniumTestCase(DjangoTransactionTestCase, LiveServerTestCase):
+class SeleniumTestCase(
+        DjangoTransactionTestCase, LiveServerTestCase,
+        PostCommitHooksTestMixin):
     """Selenium-enabled test case.
 
     Two users are pre-created: "user" for a regular user account, or "admin"
@@ -254,7 +257,8 @@ class TestWithoutCrochetMixin:
             self.assertFalse(crochet.reactor.running)
 
 
-class SerializationFailureTestCase(DjangoTransactionTestCase):
+class SerializationFailureTestCase(
+        DjangoTransactionTestCase, PostCommitHooksTestMixin):
 
     def create_stest_table(self):
         with closing(connection.cursor()) as cursor:
