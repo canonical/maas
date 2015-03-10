@@ -14,12 +14,16 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import contextlib
 from copy import deepcopy
 import errno
 from functools import partial
 from getpass import getuser
 from io import BytesIO
 import os
+import os.path
+import re
+import sqlite3
 from textwrap import dedent
 
 from fixtures import EnvironmentVariableFixture
@@ -28,13 +32,22 @@ import formencode.validators
 from maastesting import root
 from maastesting.factory import factory
 from maastesting.testcase import MAASTestCase
+from mock import sentinel
 from provisioningserver.config import (
     BootSources,
+    ClusterConfiguration,
     Config,
     ConfigBase,
     ConfigMeta,
+    Configuration,
+    ConfigurationDatabase,
+    ConfigurationMeta,
+    ConfigurationOption,
+    Directory,
     )
+from provisioningserver.path import get_path
 from provisioningserver.testing.config import ConfigFixtureBase
+from testtools import ExpectedException
 from testtools.matchers import (
     DirExists,
     FileContains,
@@ -42,7 +55,29 @@ from testtools.matchers import (
     MatchesException,
     Raises,
     )
+from twisted.python.filepath import FilePath
 import yaml
+
+
+class TestDirectory(MAASTestCase):
+    """Tests for `Directory`."""
+
+    def test__validation_succeeds_when_directory_exists(self):
+        directory = self.make_dir()
+        validator = Directory(accept_python=False)
+        self.assertEqual(directory, validator.from_python(directory))
+        self.assertEqual(directory, validator.to_python(directory))
+
+    def test__validation_fails_when_directory_does_not_exist(self):
+        directory = os.path.join(self.make_dir(), "not-here")
+        validator = Directory(accept_python=False)
+        expected_exception = ExpectedException(
+            formencode.validators.Invalid, "^%s$" % re.escape(
+                "%r does not exist or is not a directory" % directory))
+        with expected_exception:
+            validator.from_python(directory)
+        with expected_exception:
+            validator.to_python(directory)
 
 
 class ExampleConfig(ConfigBase, formencode.Schema):
@@ -481,3 +516,272 @@ class TestBootSources(MAASTestCase):
         self.assertEqual(
             sources,
             BootSources.load(self.make_file(contents=yaml.safe_dump(sources))))
+
+
+###############################################################################
+# New configuration API follows.
+###############################################################################
+
+
+class ExampleConfiguration(Configuration):
+    """An example configuration object.
+
+    It derives from :class:`ConfigurationBase` and has a metaclass derived
+    from :class:`ConfigurationMeta`, just as a "real" configuration object
+    must.
+    """
+
+    class __metaclass__(ConfigurationMeta):
+        envvar = "MAAS_TESTING_SETTINGS"
+        default = get_path("example.db")
+
+    something = ConfigurationOption(
+        "something", "Something alright, don't know what, just something.",
+        formencode.validators.IPAddress(if_missing=sentinel.missing))
+
+
+class TestConfigurationMeta(MAASTestCase):
+    """Tests for `ConfigurationMeta`."""
+
+    def setUp(self):
+        super(TestConfigurationMeta, self).setUp()
+        self.useFixture(EnvironmentVariableFixture(
+            "MAAS_ROOT", self.make_dir()))
+
+    def set_envvar(self, filepath=None):
+        """Set the env. variable named by `ExampleConfiguration.envvar"."""
+        self.useFixture(EnvironmentVariableFixture(
+            ExampleConfiguration.envvar, filepath))
+
+    def test_gets_filename_from_environment(self):
+        dummy_filename = factory.make_name("config")
+        self.set_envvar(dummy_filename)
+        self.assertEqual(dummy_filename, ExampleConfiguration.DEFAULT_FILENAME)
+
+    def test_falls_back_to_default(self):
+        self.set_envvar(None)
+        self.assertEqual(
+            get_path(ExampleConfiguration.default),
+            ExampleConfiguration.DEFAULT_FILENAME)
+
+    def test_set(self):
+        dummy_filename = factory.make_name("config")
+        ExampleConfiguration.DEFAULT_FILENAME = dummy_filename
+        self.assertEqual(dummy_filename, ExampleConfiguration.DEFAULT_FILENAME)
+
+    def test_delete(self):
+        self.set_envvar(None)
+        ExampleConfiguration.DEFAULT_FILENAME = factory.make_name("config")
+        del ExampleConfiguration.DEFAULT_FILENAME
+        self.assertEqual(
+            get_path(ExampleConfiguration.default),
+            ExampleConfiguration.DEFAULT_FILENAME)
+        # The delete does not fail when called multiple times.
+        del ExampleConfiguration.DEFAULT_FILENAME
+
+
+class TestConfiguration(MAASTestCase):
+    """Tests for `Configuration`.
+
+    The most interesting tests that exercise `Configuration` are actually in
+    `TestConfigurationOption`.
+    """
+
+    def test_create(self):
+        config = Configuration({})
+        self.assertEqual({}, config.configdb)
+
+    def test_cannot_set_attributes(self):
+        config = Configuration({})
+        expected_exception = ExpectedException(
+            AttributeError, "^'Configuration' object has no attribute 'foo'$")
+        with expected_exception:
+            config.foo = "bar"
+
+
+class TestConfigurationOption(MAASTestCase):
+    """Tests for `ConfigurationOption`."""
+
+    def make_config(self):
+        database = sqlite3.connect(":memory:")
+        self.addCleanup(database.close)
+        configdb = ConfigurationDatabase(database)
+        return ExampleConfiguration(configdb)
+
+    def test_getting_something(self):
+        config = self.make_config()
+        self.assertIs(sentinel.missing, config.something)
+
+    def test_getting_something_is_not_validated(self):
+        # The value in the database is trusted.
+        config = self.make_config()
+        example_value = factory.make_name('not-an-ip-address')
+        config.configdb[config.__class__.something.name] = example_value
+        self.assertEqual(example_value, config.something)
+
+    def test_setting_something(self):
+        config = self.make_config()
+        example_value = factory.make_ipv4_address()
+        config.something = example_value
+        self.assertEqual(example_value, config.something)
+
+    def test_setting_something_is_validated(self):
+        config = self.make_config()
+        with ExpectedException(formencode.validators.Invalid):
+            config.something = factory.make_name("not-an-ip-address")
+
+    def test_deleting_something(self):
+        config = self.make_config()
+        config.something = factory.make_ipv4_address()
+        del config.something
+        self.assertIs(sentinel.missing, config.something)
+
+
+class TestConfigurationDatabase(MAASTestCase):
+    """Tests for `ConfigurationDatabase`."""
+
+    def test_init(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        with config.cursor() as cursor:
+            # The "configuration" table has been created.
+            self.assertEqual(
+                cursor.execute(
+                    "SELECT COUNT(*) FROM sqlite_master"
+                    " WHERE type = 'table'"
+                    "   AND name = 'configuration'").fetchone(),
+                (1,))
+
+    def test_configuration_pristine(self):
+        # A pristine configuration has no entries.
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        self.assertSetEqual(set(), set(config))
+
+    def test_adding_configuration_option(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        config["alice"] = {"abc": 123}
+        self.assertEqual({"alice"}, set(config))
+        self.assertEqual({"abc": 123}, config["alice"])
+
+    def test_replacing_configuration_option(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        config["alice"] = {"abc": 123}
+        config["alice"] = {"def": 456}
+        self.assertEqual({"alice"}, set(config))
+        self.assertEqual({"def": 456}, config["alice"])
+
+    def test_getting_configuration_option(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        config["alice"] = {"abc": 123}
+        self.assertEqual({"abc": 123}, config["alice"])
+
+    def test_getting_non_existent_configuration_option(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        self.assertRaises(KeyError, lambda: config["alice"])
+
+    def test_removing_configuration_option(self):
+        database = sqlite3.connect(":memory:")
+        config = ConfigurationDatabase(database)
+        config["alice"] = {"abc": 123}
+        del config["alice"]
+        self.assertEqual(set(), set(config))
+
+    def test_open_and_close(self):
+        # ConfigurationDatabase.open() returns a context manager that closes
+        # the database on exit.
+        config_file = os.path.join(self.make_dir(), "config")
+        config = ConfigurationDatabase.open(config_file)
+        self.assertIsInstance(config, contextlib.GeneratorContextManager)
+        with config as config:
+            self.assertIsInstance(config, ConfigurationDatabase)
+            with config.cursor() as cursor:
+                self.assertEqual(
+                    (1,), cursor.execute("SELECT 1").fetchone())
+        self.assertRaises(sqlite3.ProgrammingError, config.cursor)
+
+    def test_open_permissions_new_database(self):
+        # ConfigurationDatabase.open() applies restrictive file permissions to
+        # newly created configuration databases.
+        config_file = os.path.join(self.make_dir(), "config")
+        with ConfigurationDatabase.open(config_file):
+            perms = FilePath(config_file).getPermissions()
+            self.assertEqual("rw-------", perms.shorthand())
+
+    def test_open_permissions_existing_database(self):
+        # ConfigurationDatabase.open() leaves the file permissions of existing
+        # configuration databases.
+        config_file = os.path.join(self.make_dir(), "config")
+        open(config_file, "wb").close()  # touch.
+        os.chmod(config_file, 0644)  # u=rw,go=r
+        with ConfigurationDatabase.open(config_file):
+            perms = FilePath(config_file).getPermissions()
+            self.assertEqual("rw-r--r--", perms.shorthand())
+
+    def test_opened_database_commits_on_exit(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        config_value = factory.make_name("value")
+        with ConfigurationDatabase.open(config_file) as config:
+            config[config_key] = config_value
+        with ConfigurationDatabase.open(config_file) as config:
+            self.assertEqual(config_value, config[config_key])
+
+    def test_opened_database_rolls_back_on_unclean_exit(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        config_value = factory.make_name("value")
+        exception_type = factory.make_exception_type()
+        # Set a configuration option, then crash.
+        with ExpectedException(exception_type):
+            with ConfigurationDatabase.open(config_file) as config:
+                config[config_key] = config_value
+                raise exception_type()
+        # No value has been saved for `config_key`.
+        with ConfigurationDatabase.open(config_file) as config:
+            self.assertRaises(KeyError, lambda: config[config_key])
+
+
+class TestClusterConfiguration(MAASTestCase):
+    """Tests for `ClusterConfiguration`."""
+
+    def test_default_maas_url(self):
+        config = ClusterConfiguration({})
+        self.assertEqual("http://localhost:5240/MAAS", config.maas_url)
+
+    def test_set_and_get_maas_url(self):
+        config = ClusterConfiguration({})
+        example_url = factory.make_simple_http_url()
+        config.maas_url = example_url
+        self.assertEqual(example_url, config.maas_url)
+        # It's also stored in the configuration database.
+        self.assertEqual({"maas_url": example_url}, config.configdb)
+
+    def test_default_tftp_port(self):
+        config = ClusterConfiguration({})
+        self.assertEqual(69, config.tftp_port)
+
+    def test_set_and_get_tftp_port(self):
+        config = ClusterConfiguration({})
+        example_port = factory.pick_port()
+        config.tftp_port = example_port
+        self.assertEqual(example_port, config.tftp_port)
+        # It's also stored in the configuration database.
+        self.assertEqual({"tftp_port": example_port}, config.configdb)
+
+    def test_default_tftp_root(self):
+        config = ClusterConfiguration({})
+        self.assertEqual(
+            "/var/lib/maas/boot-resources/current", config.tftp_root)
+
+    def test_set_and_get_tftp_root(self):
+        config = ClusterConfiguration({})
+        example_dir = self.make_dir()
+        config.tftp_root = example_dir
+        self.assertEqual(example_dir, config.tftp_root)
+        # It's also stored in the configuration database.
+        self.assertEqual({"tftp_root": example_dir}, config.configdb)

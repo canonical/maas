@@ -59,31 +59,65 @@ __all__ = [
     "ConfigMeta",
     ]
 
+from contextlib import (
+    closing,
+    contextmanager,
+    )
 from copy import deepcopy
 from getpass import getuser
+import json
+import os
 from os import environ
 import os.path
 from shutil import copyfile
+import sqlite3
 from threading import RLock
 
 from formencode import (
     ForEach,
     Schema,
     )
+from formencode.api import NoDefault
 from formencode.declarative import DeclarativeMeta
 from formencode.validators import (
     Int,
+    Invalid,
+    is_validator,
+    Number,
     RequireIfPresent,
     Set,
     String,
+    UnicodeString,
+    URL,
     )
-from provisioningserver.utils.fs import atomic_write
+from provisioningserver.path import get_tentative_path
+from provisioningserver.utils.fs import (
+    atomic_write,
+    ensure_dir,
+    )
 import yaml
 
 # Path to the directory on the cluster controller where boot resources are
 # stored.  This used to be configurable in bootresources.yaml, and may become
 # configurable again in the future.
 BOOT_RESOURCES_STORAGE = '/var/lib/maas/boot-resources/'
+
+
+class Directory(UnicodeString):
+    """A validator for a directory on the local filesystem.
+
+    The directory must exist.
+    """
+
+    messages = dict(notDir="%(value)r does not exist or is not a directory")
+
+    def validate_python(self, value, state=None):
+        if os.path.isdir(value):
+            return value
+        else:
+            raise Invalid(
+                self.message("notDir", state, value=value),
+                value, state)
 
 
 class ConfigOops(Schema):
@@ -344,3 +378,226 @@ class BootSources(ConfigBase, ForEach):
         default = "sources.yaml"
 
     validators = [BootSource]
+
+
+###############################################################################
+# New configuration API follows.
+###############################################################################
+
+
+class ConfigurationDatabase:
+    """Store configuration in an sqlite3 database."""
+
+    def __init__(self, database):
+        self.database = database
+        with self.cursor() as cursor:
+            cursor.execute(
+                "CREATE TABLE IF NOT EXISTS configuration "
+                "(id INTEGER PRIMARY KEY,"
+                " name TEXT NOT NULL UNIQUE,"
+                " data BLOB)")
+
+    def cursor(self):
+        return closing(self.database.cursor())
+
+    def __iter__(self):
+        with self.cursor() as cursor:
+            results = cursor.execute(
+                "SELECT name FROM configuration").fetchall()
+        return (name for (name,) in results)
+
+    def __getitem__(self, name):
+        with self.cursor() as cursor:
+            data = cursor.execute(
+                "SELECT data FROM configuration"
+                " WHERE name = ?", (name,)).fetchone()
+        if data is None:
+            raise KeyError(name)
+        else:
+            return json.loads(data[0])
+
+    def __setitem__(self, name, data):
+        with self.cursor() as cursor:
+            cursor.execute(
+                "INSERT OR REPLACE INTO configuration (name, data) "
+                "VALUES (?, ?)", (name, json.dumps(data)))
+
+    def __delitem__(self, name):
+        with self.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM configuration"
+                " WHERE name = ?", (name,))
+
+    @classmethod
+    @contextmanager
+    def open(cls, dbpath):
+        """Load a configuration database.
+
+        **Note** that this returns a context manager which will close the
+        database on exit, saving if the exit is clean.
+        """
+        # Initialise filename with restrictive permissions...
+        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0600))
+        # before opening it with sqlite.
+        database = sqlite3.connect(dbpath)
+        try:
+            yield cls(database)
+        except:
+            raise
+        else:
+            database.commit()
+        finally:
+            database.close()
+
+
+class ConfigurationMeta(type):
+    """Metaclass for configuration objects."""
+
+    envvar = None  # Set this in subtypes.
+    default = None  # Set this in subtypes.
+
+    def _get_default_filename(cls):
+        # Get the configuration filename from the environment. Failing that,
+        # look for the configuration in its default locations.
+        filename = environ.get(cls.envvar)
+        if filename is None or len(filename) == 0:
+            return get_tentative_path(cls.default)
+        else:
+            return filename
+
+    def _set_default_filename(cls, filename):
+        # Set the configuration filename in the environment.
+        environ[cls.envvar] = filename
+
+    def _delete_default_filename(cls):
+        # Remove any setting of the configuration filename from the
+        # environment.
+        environ.pop(cls.envvar, None)
+
+    DEFAULT_FILENAME = property(
+        _get_default_filename, _set_default_filename,
+        _delete_default_filename, doc=(
+            "The default configuration file to load. Refers to "
+            "`cls.envvar` in the environment."))
+
+
+class Configuration:
+    """An object that holds configuration options.
+
+    Configuration options should be defined by creating properties using
+    `ConfigurationOption`. For example::
+
+        class ApplicationConfiguration(Configuration):
+
+            application_name = ConfigurationOption(
+                "application_name", "The name for this app, used in the UI.",
+                validator=UnicodeString())
+
+    This can then be used like so::
+
+        config = ApplicationConfiguration(database)  # database is dict-like.
+        config.application_name = "Metal On A Plate"
+        print(config.application_name)
+
+    """
+
+    # Define this class variable in sub-classes. Using `ConfigurationMeta` as
+    # a metaclass is a good way to achieve this.
+    DEFAULT_FILENAME = None
+
+    def __init__(self, configdb):
+        """Initialise a new `Configuration` object.
+
+        :param configdb: A dict-like object.
+        """
+        super(Configuration, self).__init__()
+        # Use the super-class's __setattr__() because it's redefined later on
+        # to prevent accidentally setting attributes that are not options.
+        super(Configuration, self).__setattr__("configdb", configdb)
+
+    def __setattr__(self, name, value):
+        """Prevent setting unrecognised options.
+
+        Only options that have been declared on the class, using the
+        `ConfigurationOption` descriptor for example, can be set.
+
+        This is as much about preventing typos as anything else.
+        """
+        if hasattr(self.__class__, name):
+            super(Configuration, self).__setattr__(name, value)
+        else:
+            raise AttributeError(
+                "%r object has no attribute %r" % (
+                    self.__class__.__name__, name))
+
+    @classmethod
+    @contextmanager
+    def open(cls, filepath=None):
+        if filepath is None:
+            filepath = cls.DEFAULT_FILENAME
+        ensure_dir(os.path.dirname(filepath))
+        with ConfigurationDatabase.open(filepath) as configdb:
+            yield cls(configdb)
+
+
+class ConfigurationOption:
+    """Define a configuration option.
+
+    This is for use with `Configuration` and its subclasses.
+    """
+
+    def __init__(self, name, doc, validator):
+        """Initialise a new `ConfigurationOption`.
+
+        :param name: The name for this option. This is the name as which this
+            option will be stored in the underlying `Configuration` object.
+        :param doc: A description of the option. This is mandatory.
+        :param validator: A `formencode.validators.Validator`.
+        """
+        super(ConfigurationOption, self).__init__()
+
+        assert isinstance(name, unicode)
+        assert isinstance(doc, unicode)
+        assert is_validator(validator)
+        assert validator.if_missing is not NoDefault
+
+        self.name = name
+        self.__doc__ = doc
+        self.validator = validator
+
+    def __get__(self, obj, type=None):
+        if obj is None:
+            return self
+        else:
+            try:
+                value = obj.configdb[self.name]
+            except KeyError:
+                return self.validator.if_missing
+            else:
+                return self.validator.from_python(value)
+
+    def __set__(self, obj, value):
+        obj.configdb[self.name] = self.validator.to_python(value)
+
+    def __delete__(self, obj):
+        del obj.configdb[self.name]
+
+
+class ClusterConfiguration(Configuration):
+    """Local configuration for the MAAS cluster."""
+
+    class __metaclass__(ConfigurationMeta):
+        envvar = "MAAS_CLUSTER_CONFIG"
+        default = "/var/lib/maas/cluster.db"
+
+    maas_url = ConfigurationOption(
+        "maas_url", "The HTTP URL for the MAAS region.",
+        URL(require_tld=False, if_missing="http://localhost:5240/MAAS"))
+
+    # TFTP options.
+    tftp_port = ConfigurationOption(
+        "tftp_port", "The UDP port on which to listen for TFTP requests.",
+        Number(min=0, max=(2 ** 16) - 1, if_missing=69))
+    tftp_root = ConfigurationOption(
+        "tftp_root", "The root directory for TFTP resources.",
+        Directory(if_missing="/var/lib/maas/boot-resources/current"))
