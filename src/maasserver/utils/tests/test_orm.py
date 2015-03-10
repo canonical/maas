@@ -38,6 +38,7 @@ from maasserver.utils.orm import (
     make_serialization_failure,
     outside_atomic_block,
     post_commit,
+    post_commit_do,
     post_commit_hooks,
     psql_array,
     request_transaction_retry,
@@ -357,20 +358,21 @@ class TestRequestTransactionRetry(MAASTestCase):
 class TestPostCommit(MAASTestCase):
     """Tests for the `post_commit` function."""
 
-    def test__adds_Deferred_as_hook(self):
+    def setUp(self):
+        super(TestPostCommit, self).setUp()
         self.addCleanup(post_commit_hooks.reset)
+
+    def test__adds_Deferred_as_hook(self):
         hook = Deferred()
         post_commit(hook)
         self.assertEqual([hook], list(post_commit_hooks.hooks))
 
     def test__adds_callable_as_hook(self):
-        self.addCleanup(post_commit_hooks.reset)
         hook = lambda arg: None
         post_commit(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
 
     def test__fire_calls_back_with_None_to_Deferred_hook(self):
-        self.addCleanup(post_commit_hooks.reset)
         hook = Deferred()
         spy = DeferredValue()
         spy.observe(hook)
@@ -379,7 +381,6 @@ class TestPostCommit(MAASTestCase):
         self.assertIsNone(extract_result(spy.get()))
 
     def test__reset_cancels_Deferred_hook(self):
-        self.addCleanup(post_commit_hooks.reset)
         hook = Deferred()
         spy = DeferredValue()
         spy.observe(hook)
@@ -388,14 +389,12 @@ class TestPostCommit(MAASTestCase):
         self.assertRaises(CancelledError, extract_result, spy.get())
 
     def test__fire_passes_None_to_callable_hook(self):
-        self.addCleanup(post_commit_hooks.reset)
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.fire()
         self.assertThat(hook, MockCalledOnceWith(None))
 
     def test__reset_passes_Failure_to_callable_hook(self):
-        self.addCleanup(post_commit_hooks.reset)
         hook = Mock()
         post_commit(hook)
         post_commit_hooks.reset()
@@ -406,6 +405,35 @@ class TestPostCommit(MAASTestCase):
 
     def test__rejects_other_hook_types(self):
         self.assertRaises(AssertionError, post_commit, sentinel.hook)
+
+
+class TestPostCommitDo(MAASTestCase):
+    """Tests for the `post_commit_do` function."""
+
+    def setUp(self):
+        super(TestPostCommitDo, self).setUp()
+        self.addCleanup(post_commit_hooks.reset)
+
+    def test__adds_callable_as_hook(self):
+        hook = lambda arg: None
+        post_commit_do(hook)
+        self.assertThat(post_commit_hooks.hooks, HasLength(1))
+
+    def test__fire_passes_only_args_to_hook(self):
+        hook = Mock()
+        post_commit_do(hook, sentinel.arg, foo=sentinel.bar)
+        post_commit_hooks.fire()
+        self.assertThat(
+            hook, MockCalledOnceWith(sentinel.arg, foo=sentinel.bar))
+
+    def test__reset_does_not_call_hook(self):
+        hook = Mock()
+        post_commit_do(hook)
+        post_commit_hooks.reset()
+        self.assertThat(hook, MockNotCalled())
+
+    def test__rejects_other_hook_types(self):
+        self.assertRaises(AssertionError, post_commit_do, sentinel.hook)
 
 
 class TestTransactional(DjangoTransactionTestCase):

@@ -23,6 +23,7 @@ __all__ = [
     'make_serialization_failure',
     'outside_atomic_block',
     'post_commit',
+    'post_commit_do',
     'psql_array',
     'request_transaction_retry',
     'retry_on_serialization_failure',
@@ -291,6 +292,23 @@ def post_commit(hook):
     else:
         raise AssertionError(
             "Not a Deferred or callable: %r" % (hook,))
+
+
+def post_commit_do(func, *args, **kwargs):
+    """Call a function after a successful commit.
+
+    This will arrange for the given `func` to be called with the given
+    arguments after a successful commit. If there's an error committing the
+    transaction, `func` will *not* be called. If there's an error in an
+    earlier post-commit task, `func` will *not* be called.
+
+    If `func` returns a `Deferred` it will be waited for.
+    """
+    if callable(func):
+        hook = lambda _: func(*args, **kwargs)
+        post_commit_hooks.add(Deferred().addCallback(hook))
+    else:
+        raise AssertionError("Not callable: %r" % (func,))
 
 
 def transactional(func):
