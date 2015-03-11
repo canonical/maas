@@ -106,7 +106,9 @@ DISPLAYED_NODE_FIELDS = (
     'routers',
     'zone',
     'disable_ipv4',
+    'constraint_map',
     ('physicalblockdevice_set', (
+        'id',
         'name',
         'path',
         'id_path',
@@ -1072,12 +1074,12 @@ class NodesHandler(OperationsHandler):
         with locks.node_acquire:
             nodes = Node.nodes.get_available_nodes_for_acquisition(
                 request.user)
-            nodes = form.filter_nodes(nodes)
+            nodes, constraint_map = form.filter_nodes(nodes)
             node = get_first(nodes)
             if node is None:
                 constraints = form.describe_constraints()
                 if constraints == '':
-                    # No constraints.  That means no nodes at all were
+                    # No constraints. That means no nodes at all were
                     # available.
                     message = "No node available."
                 else:
@@ -1089,6 +1091,7 @@ class NodesHandler(OperationsHandler):
             node.acquire(
                 request.user, get_oauth_token(request),
                 agent_name=agent_name)
+            node.constraint_map = constraint_map.get(node.id, {})
             return node
 
     @admin_method

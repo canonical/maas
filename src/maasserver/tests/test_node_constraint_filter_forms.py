@@ -135,14 +135,15 @@ class TestUtils(MAASServerTestCase):
     def test_get_storage_constraints_from_string_None_for_empty_tags(self):
         self.assertEquals(
             [None, None, None],
-            [tags for _, tags in get_storage_constraints_from_string("0,0,0")])
+            [tags for _, _, tags
+             in get_storage_constraints_from_string("0,0,0")])
 
     def test_get_storage_constraints_from_string_returns_size_in_bytes(self):
         self.assertEquals(
             [int(1.5 * (1000 ** 3)), 3 * (1000 ** 3), int(6.75 * (1000 ** 3))],
             [
                 size
-                for size, _ in get_storage_constraints_from_string(
+                for _, size, _ in get_storage_constraints_from_string(
                     "1.5,3,6.75")
             ])
 
@@ -153,7 +154,7 @@ class TestUtils(MAASServerTestCase):
              [u'ssd']],
             [
                 tags
-                for _, tags in get_storage_constraints_from_string(
+                for _, _, tags in get_storage_constraints_from_string(
                     "0(ssd),0(ssd,sata),0(ssd),0(ssd,sata,removable)")
             ])
 
@@ -216,7 +217,8 @@ class TestAcquireNodeForm(MAASServerTestCase):
     def assertConstrainedNodes(self, nodes, data):
         form = AcquireNodeForm(data=data)
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertItemsEqual(nodes, form.filter_nodes(Node.objects.all()))
+        filtered_nodes, _ = form.filter_nodes(Node.objects.all())
+        self.assertItemsEqual(nodes, filtered_nodes)
 
     def test_no_constraints(self):
         nodes = [factory.make_Node() for _ in range(3)]
@@ -655,8 +657,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEquals(
             (False, {
                 'storage':
-                ["Malformed storage contraint, size must be numeric. "
-                 "Recieved 'ssd' instead."]}),
+                ['Malformed storage constraint, "10(ssd,20".']}),
             (form.is_valid(), form.errors))
 
     def test_storage_invalid_size_constraint(self):
@@ -664,8 +665,7 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertEquals(
             (False, {
                 'storage':
-                ["Malformed storage contraint, size must be numeric. "
-                 "Recieved 'abc' instead."]}),
+                ['Malformed storage constraint, "abc".']}),
             (form.is_valid(), form.errors))
 
     def test_storage_single_contraint_only_matches_physical_devices(self):
@@ -807,6 +807,25 @@ class TestAcquireNodeForm(MAASServerTestCase):
         self.assertConstrainedNodes(
             [node1], {'storage': '0,0,0,0,0,0,0,0,0,0'})
 
+    def test_storage_with_named_constraints(self):
+        node1 = factory.make_Node()
+        factory.make_PhysicalBlockDevice(node=node1, size=11 * (1000 ** 3),
+                                         tags=['ssd'])
+        factory.make_PhysicalBlockDevice(node=node1, size=6 * (1000 ** 3),
+                                         tags=['rotary', '5400rpm'])
+        factory.make_PhysicalBlockDevice(node=node1, size=21 * (1000 ** 3))
+        form = AcquireNodeForm({u'storage':
+                                u'root:10(ssd),data:5(rotary,5400rpm),20'})
+        self.assertTrue(form.is_valid(), form.errors)
+        filtered_nodes, constraint_map = form.filter_nodes(Node.objects.all())
+        node = filtered_nodes[0]
+        disk0 = node.physicalblockdevice_set.get(
+            id=constraint_map[node.id].keys()[0])  # 1st constraint with name
+        self.assertGreaterEqual(disk0.size, 10 * 1000 ** 3)
+        disk1 = node.physicalblockdevice_set.get(
+            id=constraint_map[node.id].keys()[1])  # 2nd constraint with name
+        self.assertGreaterEqual(disk1.size, 5 * 1000 ** 3)
+
     def test_combined_constraints(self):
         tag_big = factory.make_Tag(name='big')
         arch = '%s/generic' % factory.make_name('arch')
@@ -932,6 +951,7 @@ class TestAcquireNodeFormOrdersResults(MAASServerTestCase):
         # in here is the ordering.
         form = AcquireNodeForm(data={'cpu_count': 4})
         self.assertTrue(form.is_valid(), form.errors)
+        filtered_nodes, _ = form.filter_nodes(Node.objects.all())
         self.assertEqual(
             sorted_nodes,
-            list(form.filter_nodes(Node.objects.all())))
+            list(filtered_nodes))

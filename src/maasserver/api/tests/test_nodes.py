@@ -884,6 +884,22 @@ class TestNodesAPI(APITestCase):
         response_json = json.loads(response.content)
         self.assertItemsEqual(node_tag_names, response_json['tag_names'])
 
+    def test_POST_acquire_allocates_node_by_storage(self):
+        """Storage label is returned alongside node data"""
+        node = factory.make_Node(status=NODE_STATUS.READY)
+        factory.make_PhysicalBlockDevice(node=node,
+                                         size=11 * (1000 ** 3),
+                                         tags=['ssd'])
+        response = self.client.post(reverse('nodes_handler'), {
+            'op': 'acquire',
+            'storage': 'needed:10(ssd)',
+        })
+        self.assertResponseCode(httplib.OK, response)
+        response_json = json.loads(response.content)
+        device_id = response_json['physicalblockdevice_set'][0]['id'].__str__()
+        constraint_name = response_json['constraint_map'][device_id]
+        self.assertItemsEqual(constraint_name, 'needed')
+
     def test_POST_acquire_fails_without_all_tags(self):
         # Asking for particular tags does not acquire if no node has all tags.
         node1 = factory.make_Node(status=NODE_STATUS.READY)

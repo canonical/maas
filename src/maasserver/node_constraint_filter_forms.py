@@ -43,35 +43,53 @@ from maasserver.utils.orm import (
     macs_do_not_contain,
     )
 
-# Matches the storage contraint from Juju. Format is size followed by an
+# Matches the storage constraint from Juju. Format is an optional label,
+# followed by an optional colon, then size (which is mandatory) followed by an
 # optional comma seperated list of tags in parentheses.
-# Example:
+#
+# Examples:
+#
 #     200(ssd,removable),400(ssd),300
-#      - 200gb disk with ssd and removable tag
-#      - 400gb disk with ssd tag
-#      - 300gb disk
+#      - 200GB disk with ssd and removable tag
+#      - 400GB disk with ssd tag
+#      - 300GB disk
+#
+#     root:80(ssd),data:400
+#      - 80+GB disk with ssd tag, name the constraint "root"
+#      - 400+GB disk, name the consrtaint "data"
 STORAGE_REGEX = re.compile(
-    r"(?P<size>\b[^(,]+\b)(?:\((?P<tags>[^)]+)\))?",
+    r"(?:(?P<label>[a-zA-Z0-9]+)\:)?"  # Optional label
+    "(?P<size>[0-9.]+)"                # Mandatory size
+    "(?:\((?P<tags>[^)]+)\))?",        # Optional tag list between parentheses
     re.VERBOSE)
 
 
 def storage_validator(value):
-    """Validate the storage contraint.
+    """Validate the storage constraint.
 
-    Check value against STORAGE_REGEX to make sure the result is valid.
+    Check whether value is accurately parsed.
+
+    Validation is done by parsing the storage constraint string and
+    reassembling it from the parsed data. Due to the rules employed, the only
+    way the original and the generated can differ is if the original has extra
+    elements that could not be parsed and is, therefore, invalid.
     """
     if value is None or value == "":
         return
     groups = STORAGE_REGEX.findall(value)
     if not groups:
-        raise ValidationError("Malformed storage constraint.")
-    for size, tags in groups:
-        try:
-            float(size)
-        except ValueError:
-            raise ValidationError(
-                "Malformed storage contraint, size must be numeric. "
-                "Recieved '%s' instead." % size)
+        raise ValidationError('Malformed storage constraint, "%s".' % value)
+    rendered_groups = []
+    for name, size, tags in groups:  # For each parsed constraint
+        group = ""
+        if name != "":
+            group = name + ":"       # start with the constraint name
+        group += size                # add the size part
+        if tags != "":
+            group += "(%s)" % tags   # add the tags, if present
+        rendered_groups.append(group)
+    if ','.join(rendered_groups) != value:
+        raise ValidationError('Malformed storage constraint, "%s".' % value)
 
 
 def generate_architecture_wildcards(arches):
@@ -212,35 +230,47 @@ def get_storage_constraints_from_string(storage):
     if not groups:
         return None
 
-    # Sort contraints so the disk with the largest number of tags come
+    # Sort constraints so the disk with the largest number of tags come
     # first. This is so the most specific disk is selected before the others.
     constraints = [
         (
+            label,
             int(float(size) * (1000 ** 3)),
             tags.split(',') if tags != '' else None,
         )
-        for (size, tags) in groups
+        for (label, size, tags) in groups
         ]
-    count_tags = lambda (size, tags): 0 if tags is None else len(tags)
+    count_tags = lambda (label, size, tags): 0 if tags is None else len(tags)
     head, tail = constraints[:1], constraints[1:]
     tail.sort(key=count_tags, reverse=True)
     return head + tail
 
 
 def nodes_by_storage(storage):
-    """
-    Return list of `Node.id` that match the given storage constraints.
+    """Return list of dicts describing matching nodes and matched block devices
+
+    For a constraint string like "root:30(ssd),data:1000(rotary,5400rpm)", we'd
+    return a dictionary like:
+
+    {123: {12345: "root", 12346: "data"},
+     124: {...}.
+     ...
+    }
+
+    Where the "123" and "124" keys are node_ids and the inner dict keys (12345,
+    12346) contain the name of the constraint that matched the device
 
     The first constraint always refers to the block device that has the lowest
     id. The remaining constraints can match any device of that node
+
     """
     constraints = get_storage_constraints_from_string(storage)
     # Return early if no constraints were given
     if constraints is None:
         return None
-    matches = defaultdict(list)
+    matches = defaultdict(dict)
     root_device = True  # The 1st constraint refers to the node's 1st device
-    for size, tags in constraints:
+    for constraint_name, size, tags in constraints:
         if root_device:
             # Sort the `PhysicalBlockDevice`s by id because we consider the
             # first device as the root device.
@@ -262,7 +292,7 @@ def nodes_by_storage(storage):
                 found_nodes.add(device['node_id'])
 
             # Remove the devices that are not of correct size and the devices
-            # that are missing the correct tags.
+            # that are missing the correct tags or label.
             devices = [
                 device
                 for device in devices
@@ -278,14 +308,16 @@ def nodes_by_storage(storage):
             matched_devices = devices
         else:
             # Query for the `PhysicalBlockDevice`s that have the closest size
-            # and the given tags.
+            # and, if specified, the given tags.
             if tags is None:
                 matched_devices = PhysicalBlockDevice.objects.filter(
                     size__gte=size).order_by('size')
             else:
                 matched_devices = PhysicalBlockDevice.objects.filter_by_tags(
-                    tags).filter(size__gte=size).order_by('size')
-            matched_devices = matched_devices.values('id', 'node_id')
+                    tags).filter(size__gte=size)
+            matched_devices = matched_devices.order_by('size')
+            matched_devices = matched_devices.values(
+                'id', 'node_id', 'size', 'tags')
 
         # Loop through all the returned devices. Insert only the first
         # device from each node into `matches`.
@@ -293,19 +325,25 @@ def nodes_by_storage(storage):
         for device in matched_devices:
             device_id = device['id']
             device_node_id = device['node_id']
+
             if device_node_id in matched_in_loop:
                 continue
             if device_id in matches[device_node_id]:
                 continue
-            matches[device_node_id].append(device_id)
+            matches[device_node_id][device_id] = constraint_name
             matched_in_loop.append(device_node_id)
 
-    # Return only the `Node.id` that have the correct number of disks.
-    return [
-        node_id
+    # Return only the nodes that have the correct number of disks.
+    nodes = {
+        node_id: {
+            disk_id: name
+            for disk_id, name in disks.items()
+            if name != ''  # Map only those w/ named constraints
+        }
         for node_id, disks in matches.items()
         if len(disks) == len(constraints)
-        ]
+    }
+    return nodes
 
 
 class AcquireNodeForm(RenamableFieldsForm):
@@ -606,10 +644,12 @@ class AcquireNodeForm(RenamableFieldsForm):
                 where=[where], params=params)
 
         # Filter by storage.
+        compatible_nodes = {}  # Maps node/storage to named storage constraints
         storage = self.cleaned_data.get(
             self.get_field_name('storage'))
         if storage:
-            node_ids = nodes_by_storage(storage)
+            compatible_nodes = nodes_by_storage(storage)
+            node_ids = compatible_nodes.keys()
             if node_ids is not None:
                 filtered_nodes = filtered_nodes.filter(id__in=node_ids)
 
@@ -621,4 +661,4 @@ class AcquireNodeForm(RenamableFieldsForm):
         # constraints.
         filtered_nodes = filtered_nodes.distinct().extra(
             select={'cost': "cpu_count + memory / 1024"})
-        return filtered_nodes.order_by("cost")
+        return filtered_nodes.order_by("cost"), compatible_nodes
