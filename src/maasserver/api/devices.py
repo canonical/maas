@@ -192,6 +192,7 @@ class DevicesHandler(OperationsHandler):
 
         :param mac_addresses: One or more MAC addresses for the device.
         :param hostname: A hostname. If not given, one will be generated.
+        :param parent: The system id of the parent.  Optional.
         """
         form = DeviceWithMACsForm(data=request.data, request=request)
         if form.is_valid():

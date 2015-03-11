@@ -60,12 +60,35 @@ class TestDevicesAPI(APITestCase):
         system_id = json.loads(response.content)['system_id']
         device = Node.devices.get(system_id=system_id)
         self.assertEquals(hostname, device.hostname)
+        self.assertIsNone(device.parent)
         self.assertFalse(device.installable)
         self.assertEquals(NodeGroup.objects.ensure_master(), device.nodegroup)
         self.assertEquals(self.logged_in_user, device.owner)
         self.assertEquals(
             macs,
             {mac.mac_address for mac in device.macaddress_set.all()})
+
+    def test_new_creates_device_with_parent(self):
+        parent = factory.make_Node()
+        hostname = factory.make_name('host')
+        macs = {
+            factory.make_mac_address()
+            for _ in range(random.randint(1, 2))
+            }
+        response = self.client.post(
+            reverse('devices_handler'),
+            {
+                'op': 'new',
+                'hostname': hostname,
+                'mac_addresses': macs,
+                'parent': parent.system_id,
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        system_id = json.loads(response.content)['system_id']
+        device = Node.devices.get(system_id=system_id)
+        self.assertEquals(hostname, device.hostname)
+        self.assertEquals(parent, device.parent)
+        self.assertFalse(device.installable)
 
     def test_POST_returns_limited_fields(self):
         response = self.client.post(
