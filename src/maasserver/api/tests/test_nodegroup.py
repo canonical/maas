@@ -128,7 +128,7 @@ class TestNodeGroupAPI(APITestCase):
 
     def test_PUT_reserved_to_admin_users(self):
         nodegroup = factory.make_NodeGroup()
-        response = self.client_put(
+        response = self.client.put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': factory.make_name("new-name")})
 
@@ -144,7 +144,7 @@ class TestNodeGroupAPI(APITestCase):
         new_cluster_name = factory.make_name("new-cluster-name")
         new_status = factory.pick_choice(
             NODEGROUP_STATUS_CHOICES, but_not=[nodegroup.status])
-        response = self.client_put(
+        response = self.client.put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {
                 'name': new_name,
@@ -164,7 +164,7 @@ class TestNodeGroupAPI(APITestCase):
         nodegroup, _ = factory.make_unrenamable_NodeGroup_with_Node()
         self.become_admin()
         new_name = factory.make_name("new-name")
-        response = self.client_put(
+        response = self.client.put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': new_name})
 
@@ -179,7 +179,7 @@ class TestNodeGroupAPI(APITestCase):
         old_value = factory.pick_bool()
         nodegroup = factory.make_NodeGroup(default_disable_ipv4=old_value)
         self.become_admin()
-        response = self.client_put(
+        response = self.client.put(
             reverse('nodegroup_handler', args=[nodegroup.uuid]),
             {'name': nodegroup.name})
         self.assertEqual(httplib.OK, response.status_code, response.content)

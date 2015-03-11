@@ -61,7 +61,7 @@ class TestZoneAPI(APITestCase):
         zone = factory.make_Zone()
         new_description = factory.make_string()
 
-        response = self.client_put(
+        response = self.client.put(
             get_zone_uri(zone),
             {'description': new_description})
         self.assertEqual(httplib.OK, response.status_code)
@@ -71,7 +71,7 @@ class TestZoneAPI(APITestCase):
 
     def test_PUT_requires_admin(self):
         zone = factory.make_Zone()
-        response = self.client_put(
+        response = self.client.put(
             get_zone_uri(zone),
             {'description': factory.make_string()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -81,7 +81,7 @@ class TestZoneAPI(APITestCase):
         zone = factory.make_Zone()
         new_name = factory.make_name('zone-new')
 
-        response = self.client_put(get_zone_uri(zone), {'name': new_name})
+        response = self.client.put(get_zone_uri(zone), {'name': new_name})
         self.assertEqual(httplib.OK, response.status_code)
 
         zone = reload_object(zone)
@@ -91,7 +91,7 @@ class TestZoneAPI(APITestCase):
         self.become_admin()
         zone = Zone.objects.get_default_zone()
 
-        response = self.client_put(
+        response = self.client.put(
             get_zone_uri(zone),
             {'name': factory.make_name('zone')})
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)
@@ -103,7 +103,7 @@ class TestZoneAPI(APITestCase):
         zone = factory.make_Zone()
         node = factory.make_Node(zone=zone)
 
-        response = self.client_put(
+        response = self.client.put(
             get_zone_uri(zone),
             {'name': factory.make_name('new')})
         self.assertEqual(httplib.OK, response.status_code)

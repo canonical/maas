@@ -87,7 +87,7 @@ class TestNetwork(APITestCase):
             'dns_servers': factory.make_ipv4_address(),
             }
 
-        response = self.client_put(self.get_url(network.name), new_values)
+        response = self.client.put(self.get_url(network.name), new_values)
         self.assertEqual(httplib.OK, response.status_code)
 
         network = reload_object(network)
@@ -96,7 +96,7 @@ class TestNetwork(APITestCase):
     def test_PUT_requires_admin(self):
         description = "Original description"
         network = factory.make_Network(description=description)
-        response = self.client_put(
+        response = self.client.put(
             self.get_url(network.name), {'description': "Changed description"})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertEqual(description, reload_object(network).description)
@@ -105,7 +105,7 @@ class TestNetwork(APITestCase):
         self.become_admin()
         self.assertEqual(
             httplib.NOT_FOUND,
-            self.client_put(self.get_url('nonesuch')).status_code)
+            self.client.put(self.get_url('nonesuch')).status_code)
 
     def test_DELETE_deletes_network(self):
         self.become_admin()

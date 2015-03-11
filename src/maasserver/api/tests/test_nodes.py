@@ -1518,7 +1518,7 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         node = factory.make_Node(
             owner=self.logged_in_user, status=self.status,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
         parsed_result = json.loads(response.content)
 
@@ -1553,7 +1553,7 @@ class TestBackwardCompatiblityFixNodesAPI(APITestCase):
         node = factory.make_Node(
             owner=self.logged_in_user, status=self.status,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': factory.make_name('host')})
         parsed_result = json.loads(response.content)
 

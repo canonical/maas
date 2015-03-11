@@ -34,7 +34,6 @@ from django.db import (
     transaction,
     )
 from django.db.utils import OperationalError
-from django.test.client import encode_multipart
 from fixtures import Fixture
 from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
@@ -49,10 +48,6 @@ from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
 from mock import Mock
 import provisioningserver
-
-
-MIME_BOUNDARY = 'BoUnDaRyStRiNg'
-MULTIPART_CONTENT = 'multipart/form-data; boundary=%s' % MIME_BOUNDARY
 
 
 class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
@@ -110,24 +105,6 @@ class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
             user = factory.make_User(password=password)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
-
-    def client_put(self, path, data=None):
-        """Perform an HTTP PUT on the Django test client.
-
-        This wraps `self.client.put` in a way that's both convenient and
-        compatible across Django versions.  It accepts a dict of data to
-        be sent as part of the request body, in MIME multipart encoding.
-        """
-        # Since Django 1.5, client.put() requires data in the form of a
-        # string.  The application (that's us) should take care of MIME
-        # encoding.
-        # The details of that MIME encoding were ripped off from the Django
-        # test client code.
-        if data is None:
-            return self.client.put(path)
-        else:
-            return self.client.put(
-                path, encode_multipart(MIME_BOUNDARY, data), MULTIPART_CONTENT)
 
 
 # Django supports Selenium tests only since version 1.4.

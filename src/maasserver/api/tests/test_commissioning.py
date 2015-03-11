@@ -208,7 +208,7 @@ class AdminCommissioningScriptAPITest(MAASServerTestCase):
         script = factory.make_CommissioningScript(content=old_content)
         new_content = b'new:%s' % factory.make_string().encode('ascii')
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_url(script.name),
             {'content': factory.make_file_upload(content=new_content)})
         self.assertEqual(httplib.OK, response.status_code)
@@ -239,13 +239,13 @@ class CommissioningScriptAPITest(APITestCase):
 
     def test_PUT_is_forbidden(self):
         script = factory.make_CommissioningScript()
-        response = self.client_put(
+        response = self.client.put(
             self.get_url(script.name), {'content': factory.make_string()})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
     def test_DELETE_is_forbidden(self):
         script = factory.make_CommissioningScript()
-        response = self.client_put(self.get_url(script.name))
+        response = self.client.put(self.get_url(script.name))
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
 

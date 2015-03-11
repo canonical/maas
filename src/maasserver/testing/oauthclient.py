@@ -18,9 +18,9 @@ __all__ = [
 
 from time import time
 
-from django.test.client import Client
 from maasserver.models.user import get_auth_tokens
 from maasserver.utils.orm import transactional
+from maastesting.djangoclient import SensibleClient
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,
@@ -30,9 +30,8 @@ from oauth.oauth import (
     )
 
 
-class OAuthAuthenticatedClient(Client):
-    """OAuth-authenticated client for Piston API testing.
-    """
+class OAuthAuthenticatedClient(SensibleClient):
+    """OAuth-authenticated client for Piston API testing."""
 
     def __init__(self, user, token=None):
         """Initialize an oauth-authenticated test client.

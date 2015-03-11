@@ -95,7 +95,7 @@ class TestBootSourceAPI(APITestCase):
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_uri(boot_source), new_values)
         self.assertEqual(httplib.OK, response.status_code)
         boot_source = reload_object(boot_source)
@@ -107,7 +107,7 @@ class TestBootSourceAPI(APITestCase):
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_uri(boot_source), new_values)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -181,7 +181,7 @@ class TestBootSourceBackwardAPI(APITestCase):
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_backward_uri(boot_source), new_values)
         self.assertEqual(httplib.OK, response.status_code)
         boot_source = reload_object(boot_source)
@@ -193,7 +193,7 @@ class TestBootSourceBackwardAPI(APITestCase):
             'url': 'http://example.com/',
             'keyring_filename': factory.make_name('filename'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_backward_uri(boot_source), new_values)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 

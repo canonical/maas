@@ -97,7 +97,7 @@ class TestTagAPI(APITestCase):
 
     def test_PUT_refuses_non_superuser(self):
         tag = factory.make_Tag()
-        response = self.client_put(
+        response = self.client.put(
             self.get_tag_uri(tag), {'comment': 'A special comment'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -105,7 +105,7 @@ class TestTagAPI(APITestCase):
         self.become_admin()
         tag = factory.make_Tag()
         # Note that 'definition' is not being sent
-        response = self.client_put(
+        response = self.client.put(
             self.get_tag_uri(tag),
             {'name': 'new-tag-name', 'comment': 'A random comment'})
 
@@ -122,7 +122,7 @@ class TestTagAPI(APITestCase):
         tag = factory.make_Tag(definition='//node/foo')
         self.expectThat(populate_tags, MockCalledOnceWith(tag))
         self.become_admin()
-        response = self.client_put(
+        response = self.client.put(
             self.get_tag_uri(tag),
             {'definition': '//node/bar'})
         self.assertEqual(httplib.OK, response.status_code)
@@ -178,7 +178,7 @@ class TestTagAPI(APITestCase):
         tag = factory.make_Tag(definition='//child')
         node.tags.add(tag)
         self.assertItemsEqual([tag.name], node.tag_names())
-        response = self.client_put(
+        response = self.client.put(
             self.get_tag_uri(tag), {'definition': 'invalid::tag'})
 
         self.assertEqual(httplib.BAD_REQUEST, response.status_code)

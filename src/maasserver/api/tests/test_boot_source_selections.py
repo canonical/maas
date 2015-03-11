@@ -128,7 +128,7 @@ class TestBootSourceSelectionAPI(APITestCase):
                 boot_source_caches[0].subarch, boot_source_caches[1].subarch],
             'labels': [boot_source_caches[0].label],
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_selection_uri(boot_source_selection), new_values)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         boot_source_selection = reload_object(boot_source_selection)
@@ -139,7 +139,7 @@ class TestBootSourceSelectionAPI(APITestCase):
         new_values = {
             'release': factory.make_name('release'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_selection_uri(boot_source_selection), new_values)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -229,7 +229,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
                 boot_source_caches[0].subarch, boot_source_caches[1].subarch],
             'labels': [boot_source_caches[0].label],
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_selection_backward_uri(
                 boot_source_selection), new_values)
         self.assertEqual(httplib.OK, response.status_code)
@@ -241,7 +241,7 @@ class TestBootSourceSelectionBackwardAPI(APITestCase):
         new_values = {
             'release': factory.make_name('release'),
         }
-        response = self.client_put(
+        response = self.client.put(
             get_boot_source_selection_backward_uri(
                 boot_source_selection), new_values)
         self.assertEqual(httplib.FORBIDDEN, response.status_code)

@@ -33,6 +33,7 @@ from django.db import (
 from django.db.models import loading
 from django.db.utils import DatabaseError
 import django.test
+from maastesting.djangoclient import SensibleClient
 from maastesting.testcase import MAASTestCase
 
 
@@ -84,6 +85,8 @@ class DjangoTestCase(
     Supports test resources and (non-Django) fixtures.
     """
 
+    client_class = SensibleClient
+
     def __get_connection_txid(self):
         """Get PostgreSQL's current transaction ID."""
         with closing(connection.cursor()) as cursor:
@@ -127,6 +130,8 @@ class DjangoTransactionTestCase(
     The basic Django TestCase class uses transactions to speed up tests
     so this class should only be used when tests involve transactions.
     """
+
+    client_class = SensibleClient
 
 
 class TestModelMixin:

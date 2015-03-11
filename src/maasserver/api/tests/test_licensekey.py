@@ -104,7 +104,7 @@ class TestLicenseKey(APITestCase):
             'license_key': new_key,
             }
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_url(
                 license_key.osystem, license_key.distro_series),
             new_values)
@@ -115,7 +115,7 @@ class TestLicenseKey(APITestCase):
     def test_PUT_requires_admin(self):
         key = factory.make_name('key')
         license_key = self.make_license_key_with_os(license_key=key)
-        response = self.client_put(
+        response = self.client.put(
             self.get_url(license_key.osystem, license_key.distro_series),
             {'license_key': factory.make_name('key')})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
@@ -125,7 +125,7 @@ class TestLicenseKey(APITestCase):
         self.become_admin()
         self.assertEqual(
             httplib.NOT_FOUND,
-            self.client_put(
+            self.client.put(
                 self.get_url(
                     'noneos', 'noneseries')).status_code)
 

@@ -206,7 +206,7 @@ class TestDeviceAPI(APITestCase):
             installable=False, owner=self.logged_in_user)
         new_hostname = factory.make_name('hostname')
 
-        response = self.client_put(
+        response = self.client.put(
             get_device_uri(device), {'hostname': new_hostname})
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
@@ -219,7 +219,7 @@ class TestDeviceAPI(APITestCase):
             installable=False, owner=self.logged_in_user, parent=parent)
         new_parent = factory.make_Node()
 
-        response = self.client_put(
+        response = self.client.put(
             get_device_uri(device), {'parent': new_parent.system_id})
         self.assertEqual(httplib.OK, response.status_code, response.content)
 
@@ -231,7 +231,7 @@ class TestDeviceAPI(APITestCase):
             installable=False, owner=factory.make_User())
         old_hostname = device.hostname
 
-        response = self.client_put(
+        response = self.client.put(
             get_device_uri(device),
             {'hostname': factory.make_name('hostname')})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)

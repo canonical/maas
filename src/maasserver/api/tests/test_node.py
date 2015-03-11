@@ -588,7 +588,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
@@ -602,7 +602,7 @@ class TestNodeAPI(APITestCase):
         arch = make_usable_architecture(self)
         node = factory.make_Node(
             hostname=hostname, owner=self.logged_in_user, architecture=arch)
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'architecture': arch})
         self.assertEqual(httplib.OK, response.status_code, response.content)
@@ -620,7 +620,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
         field = factory.make_string()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {field: factory.make_string()}
             )
@@ -635,7 +635,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=original_power_type,
             architecture=make_usable_architecture(self))
-        self.client_put(
+        self.client.put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
             )
@@ -648,7 +648,7 @@ class TestNodeAPI(APITestCase):
         new_power_type = factory.pick_power_type(but_not=original_power_type)
         node = factory.make_Node(
             owner=self.logged_in_user, power_type=original_power_type)
-        self.client_put(
+        self.client.put(
             self.get_node_uri(node),
             {'power_type': new_power_type}
             )
@@ -662,7 +662,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': 'francis'})
         parsed_result = json.loads(response.content)
 
@@ -676,7 +676,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             hostname='diane', owner=self.logged_in_user,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': '.'})
         parsed_result = json.loads(response.content)
 
@@ -691,7 +691,7 @@ class TestNodeAPI(APITestCase):
         other_node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=factory.make_User())
 
-        response = self.client_put(self.get_node_uri(other_node))
+        response = self.client.put(self.get_node_uri(other_node))
 
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
 
@@ -699,7 +699,7 @@ class TestNodeAPI(APITestCase):
         # When updating a Node, the api returns a 'Not Found' (404) error
         # if no node is found.
         url = reverse('node_handler', args=['invalid-uuid'])
-        response = self.client_put(url)
+        response = self.client.put(url)
 
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
@@ -712,7 +712,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         # Create a power_parameter valid for the selected power_type.
         new_power_address = factory.make_mac_address()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
 
@@ -727,7 +727,7 @@ class TestNodeAPI(APITestCase):
             owner=self.logged_in_user,
             power_type=factory.pick_power_type(),
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'cpu_count': 1, 'memory': 1024})
         self.assertEqual(httplib.OK, response.status_code)
@@ -744,7 +744,7 @@ class TestNodeAPI(APITestCase):
         # Create an invalid power_parameter for WoL (not a valid
         # MAC address).
         new_power_address = factory.make_string()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': new_power_address})
         error_msg = MAC_ERROR_MSG % {'value': new_power_address}
@@ -763,7 +763,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'power_parameters_unknown_param': factory.make_string()})
 
@@ -786,7 +786,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'power_type': ''})
 
@@ -805,7 +805,7 @@ class TestNodeAPI(APITestCase):
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {
                 'power_type': '',
@@ -834,7 +834,7 @@ class TestNodeAPI(APITestCase):
             power_parameters=power_parameters,
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {
                 'power_type': '',
@@ -856,7 +856,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         new_param = factory.make_string()
         new_value = factory.make_string()
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {
                 'power_parameters_%s' % new_param: new_value,
@@ -874,7 +874,7 @@ class TestNodeAPI(APITestCase):
             power_type='ether_wake',
             power_parameters=factory.make_string(),
             architecture=make_usable_architecture(self))
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'power_parameters_mac_address': ''})
 
@@ -888,7 +888,7 @@ class TestNodeAPI(APITestCase):
         new_zone = factory.make_Zone()
         node = factory.make_Node(architecture=make_usable_architecture(self))
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'zone': new_zone.name})
 
         self.assertEqual(httplib.OK, response.status_code)
@@ -901,25 +901,22 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(architecture=make_usable_architecture(self))
         old_zone = node.zone
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'hostname': new_name})
 
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
         self.assertEqual((old_zone, new_name), (node.zone, node.hostname))
 
-    #@skip(
-    #    "XXX: JeroenVermeulen 2013-12-11 bug=1259872: Clearing the zone "
-    #    "field does not work..")
     def test_PUT_clears_zone(self):
-        # The @skip above breaks some 150 tests, with a strange error.
-        # Figuring this out is taking too long; I'm disabling the test in a
-        # simpler way.
-        return
+        self.skip(
+            "XXX: JeroenVermeulen 2013-12-11 bug=1259872: Clearing the "
+            "zone field does not work...")
+
         self.become_admin()
         node = factory.make_Node(zone=factory.make_Zone())
 
-        response = self.client_put(self.get_node_uri(node), {'zone': ''})
+        response = self.client.put(self.get_node_uri(node), {'zone': ''})
 
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
@@ -931,7 +928,7 @@ class TestNodeAPI(APITestCase):
         node = factory.make_Node(
             zone=zone, architecture=make_usable_architecture(self))
 
-        response = self.client_put(self.get_node_uri(node), {})
+        response = self.client.put(self.get_node_uri(node), {})
 
         self.assertEqual(httplib.OK, response.status_code)
         node = reload_object(node)
@@ -944,7 +941,7 @@ class TestNodeAPI(APITestCase):
             architecture=make_usable_architecture(self))
         old_zone = node.zone
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node),
             {'zone': new_zone.name})
 
@@ -963,7 +960,7 @@ class TestNodeAPI(APITestCase):
             disable_ipv4=original_setting)
         new_setting = not original_setting
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'disable_ipv4': new_setting})
         self.assertEqual(httplib.OK, response.status_code)
 
@@ -978,7 +975,7 @@ class TestNodeAPI(APITestCase):
             disable_ipv4=original_setting)
         self.assertEqual(original_setting, node.disable_ipv4)
 
-        response = self.client_put(
+        response = self.client.put(
             self.get_node_uri(node), {'zone': factory.make_Zone()})
         self.assertEqual(httplib.OK, response.status_code)
 

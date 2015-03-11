@@ -603,7 +603,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
         interface = factory.make_NodeGroupInterface(
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         log_in_as_normal_user(self.client)
-        response = self.client_put(
+        response = self.client.put(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]),
@@ -617,7 +617,7 @@ class TestNodeGroupInterfaceAPIAccessPermissions(APITestCase):
             nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         self.client = make_worker_client(nodegroup)
         new_ip_range_high = IPAddress(interface.ip_range_high) - 1
-        response = self.client_put(
+        response = self.client.put(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]),
@@ -669,7 +669,7 @@ class TestNodeGroupInterfaceAPI(APITestCase):
         interface = factory.make_NodeGroupInterface(nodegroup)
         new_ip_range_high = unicode(
             IPAddress(interface.ip_range_high) - 1)
-        response = self.client_put(
+        response = self.client.put(
             reverse(
                 'nodegroupinterface_handler',
                 args=[nodegroup.uuid, interface.name]),
