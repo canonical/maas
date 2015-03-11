@@ -8,7 +8,6 @@ dnsutils
 freeipmi-tools
 isc-dhcp-common
 libjs-jquery
-libjs-raphael
 libjs-yui3-min
 libjs-angularjs
 libpq-dev
