@@ -1,7 +1,7 @@
-# Copyright 2005-2014 Canonical Ltd.  This software is licensed under the
+# Copyright 2005-2015 Canonical Ltd.  This software is licensed under the
 # GNU Affero General Public License version 3 (see the file LICENSE).
 
-"""Tests for the psmaas TAP."""
+"""Fixtures for working with local configuration in the cluster."""
 
 from __future__ import (
     absolute_import,
@@ -14,8 +14,10 @@ str = None
 __metaclass__ = type
 __all__ = [
     "BootSourcesFixture",
+    "ClusterConfigurationFixture",
     "ConfigFixture",
     "ConfigFixtureBase",
+    "ConfigurationFixtureBase",
     "set_tftp_root",
     ]
 
@@ -28,6 +30,7 @@ from fixtures import (
 from maastesting.fixtures import TempDirectory
 from provisioningserver.config import (
     BootSources,
+    ClusterConfiguration,
     Config,
     )
 import yaml
@@ -96,3 +99,43 @@ def set_tftp_root(tftproot):
     Add the resulting fixture to your test using `self.useFixture`.
     """
     return ConfigFixture({'tftp': {'resource_root': tftproot}})
+
+
+class ConfigurationFixtureBase(Fixture):
+    """Base class for new-style configuration testing fixtures.
+
+    Subclass this to create a fixture class that'll help with testing
+    new-style configuration objects.
+
+    :cvar configuration: A subclass of
+        :class:`provisioningserver.config.Configuration`.
+    """
+
+    configuration = None  # Customise this in subclasses.
+
+    def __init__(self, **options):
+        super(ConfigurationFixtureBase, self).__init__()
+        self.options = options
+
+    def setUp(self):
+        super(ConfigurationFixtureBase, self).setUp()
+        # Create a real configuration file, and populate it.
+        self.path = path.join(
+            self.useFixture(TempDirectory()).path,
+            path.basename(self.configuration.DEFAULT_FILENAME))
+        with self.configuration.open(self.path) as config:
+            for key, value in self.options.viewitems():
+                setattr(config, key, value)
+        # Export this filename to the environment, so that subprocesses will
+        # pick up this configuration. Define the new environment as an
+        # instance variable so that users of this fixture can use this to
+        # extend custom subprocess environments.
+        self.environ = {self.configuration.envvar: self.path}
+        for name, value in self.environ.items():
+            self.useFixture(EnvironmentVariableFixture(name, value))
+
+
+class ClusterConfigurationFixture(ConfigurationFixtureBase):
+    """Fixture to configure local cluster settings in tests."""
+
+    configuration = ClusterConfiguration
