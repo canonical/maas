@@ -46,7 +46,7 @@ describe("DevicesManager", function() {
         expect(DevicesManager._activeDevice).toBeNull();
         expect(DevicesManager._pk).toBe("system_id");
         expect(DevicesManager._handler).toBe("device");
-        expect(DevicesManager._metadataAttributes).toEqual(["owner"]);
+        expect(DevicesManager._metadataAttributes).toEqual(["owner", "tags"]);
     });
 
     describe("getActiveDevice", function() {

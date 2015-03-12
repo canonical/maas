@@ -47,7 +47,8 @@ describe("NodesManager", function() {
         expect(NodesManager._activeNode).toBeNull();
         expect(NodesManager._pk).toBe("system_id");
         expect(NodesManager._handler).toBe("node");
-        expect(NodesManager._metadataAttributes).toEqual(["status", "owner"]);
+        expect(NodesManager._metadataAttributes).toEqual(
+            ["status", "owner", "tags"]);
     });
 
     describe("getActiveNode", function() {

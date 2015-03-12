@@ -399,43 +399,100 @@ angular.module('MAAS').service(
             return null;
         };
 
+        // Add new value to metadatas if it doesnt exists or increment the
+        // count if it already does.
+        Manager.prototype._addMetadataValue = function(metadatas, value) {
+            var metadata = this._getMetadataValue(metadatas, value);
+            if(metadata) {
+                metadata.count += 1;
+            } else {
+                metadata = {
+                    name: value,
+                    count: 1
+                };
+                metadatas.push(metadata);
+            }
+        };
+
+        // Remove value from metadatas.
+        Manager.prototype._removeMetadataValue = function(metadatas, value) {
+            var metadata = this._getMetadataValue(metadatas, value);
+            if(metadata) {
+                metadata.count -= 1;
+                if(metadata.count <= 0) {
+                    metadatas.splice(metadatas.indexOf(metadata), 1);
+                }
+            }
+        };
+
+        // Update the metadata entry in `metadatas` for the array item with
+        // field and based on the action.
+        Manager.prototype._updateMetadataArrayEntry = function(
+                metadatas, item, field, action, oldItem) {
+            var self = this;
+
+            if(action === METADATA_ACTIONS.CREATE) {
+                angular.forEach(item[field], function(value) {
+                    // On create ignore empty values.
+                    if(value === '') {
+                        return;
+                    }
+                    self._addMetadataValue(metadatas, value);
+                });
+            } else if(action === METADATA_ACTIONS.DELETE) {
+                angular.forEach(item[field], function(value) {
+                    self._removeMetadataValue(metadatas, value);
+                });
+            } else if(action === METADATA_ACTIONS.UPDATE &&
+                angular.isDefined(oldItem)) {
+                // Any values in added are new on the item, and any values left
+                // in oldArray have been removed.
+                var added = [];
+                var oldArray = angular.copy(oldItem[field]);
+                angular.forEach(item[field], function(value) {
+                    var idx = oldArray.indexOf(value);
+                    if(idx === -1) {
+                        // Value not in oldArray so it has been added.
+                        added.push(value);
+                    } else {
+                        // Value already in oldArray so its already tracked.
+                        oldArray.splice(idx, 1);
+                    }
+                });
+
+                // Add the new values.
+                angular.forEach(added, function(value) {
+                    self._addMetadataValue(metadatas, value);
+                });
+
+                // Remove the old values.
+                angular.forEach(oldArray, function(value) {
+                    self._removeMetadataValue(metadatas, value);
+                });
+            }
+        };
+
         // Update the metadata entry in `metadatas` for the item with field and
         // based on the action.
-        Manager.prototype._updateMetadataEntry = function(
+        Manager.prototype._updateMetadataValueEntry = function(
                 metadatas, item, field, action, oldItem) {
             var value = item[field];
-            var metadata = this._getMetadataValue(metadatas, value);
             if(action === METADATA_ACTIONS.CREATE) {
                 // On create ignore empty values.
                 if(value === '') {
                     return;
                 }
-
-                if(!metadata) {
-                    metadata = {
-                        name: value,
-                        count: 1
-                    };
-                    metadatas.push(metadata);
-                } else {
-                    metadata.count += 1;
-                }
-            } else if(action === METADATA_ACTIONS.DELETE && metadata) {
-                metadata.count -= 1;
-                if(metadata.count <= 0) {
-                    metadatas.splice(metadatas.indexOf(metadata), 1);
-                }
+                this._addMetadataValue(metadatas, value);
+            } else if(action === METADATA_ACTIONS.DELETE) {
+                this._removeMetadataValue(metadatas, value);
             } else if(action === METADATA_ACTIONS.UPDATE) {
+                // Possible to receive and update before a create if the
+                // message is received out of order. So we allow the oldItem
+                // not to exist.
                 if(angular.isDefined(oldItem) && oldItem[field] !== value) {
                     if(oldItem[field] !== "") {
                         // Decrement the old value
-                        var oldValue = this._getMetadataValue(
-                            metadatas, oldItem[field]);
-                        oldValue.count -= 1;
-                        if(oldValue.count <= 0) {
-                            metadatas.splice(
-                                metadatas.indexOf(oldValue), 1);
-                        }
+                        this._removeMetadataValue(metadatas, oldItem[field]);
                     }
 
                     // Increment the new value with the "create"
@@ -444,6 +501,19 @@ angular.module('MAAS').service(
                         metadatas, item, field,
                         METADATA_ACTIONS.CREATE, oldItem);
                 }
+            }
+        };
+
+        // Update the metadata entry in `metadatas` for the item with field and
+        // based on the action.
+        Manager.prototype._updateMetadataEntry = function(
+                metadatas, item, field, action, oldItem) {
+            if(angular.isArray(item[field])) {
+                this._updateMetadataArrayEntry(
+                    metadatas, item, field, action, oldItem);
+            } else {
+                this._updateMetadataValueEntry(
+                    metadatas, item, field, action, oldItem);
             }
         };
 

@@ -21,7 +21,8 @@ angular.module('MAAS').factory(
             this._pk = "system_id";
             this._handler = "device";
             this._metadataAttributes = [
-                "owner"
+                "owner",
+                "tags"
             ];
 
             // Listen for notify events for the device object.

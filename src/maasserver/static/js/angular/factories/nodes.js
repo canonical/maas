@@ -22,7 +22,8 @@ angular.module('MAAS').factory(
             this._handler = "node";
             this._metadataAttributes = [
                 "status",
-                "owner"
+                "owner",
+                "tags"
             ];
 
             // Listen for notify events for the node object.

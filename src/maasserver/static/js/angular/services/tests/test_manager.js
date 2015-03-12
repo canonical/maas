@@ -22,7 +22,8 @@ describe("Manager", function() {
             this._handler = "node";
             this._metadataAttributes = [
                 "status",
-                "owner"
+                "owner",
+                "tags"
             ];
 
             // Listen for notify events for the node object.
@@ -83,7 +84,11 @@ describe("Manager", function() {
             system_id: makeName("system_id"),
             name: makeName("name"),
             status: makeName("status"),
-            owner: makeName("owner")
+            owner: makeName("owner"),
+            tags: [
+                makeName("tag"),
+                makeName("tag")
+            ]
         };
         if(angular.isDefined(selected)) {
             node.$selected = selected;
@@ -257,6 +262,23 @@ describe("Manager", function() {
             NodesManager.loadItems().then(function(nodes) {
                 expect(NodesManager._metadata.owner).toEqual([{
                     name: node.owner,
+                    count: 1
+                }]);
+                done();
+            });
+        });
+
+        it("updates the node tags", function(done) {
+            var node = makeNode();
+            webSocket.returnData.push(makeFakeResponse([node]));
+            NodesManager.loadItems().then(function(nodes) {
+                expect(NodesManager._metadata.tags).toEqual([
+                {
+                    name: node.tags[0],
+                    count: 1
+                },
+                {
+                    name: node.tags[1],
                     count: 1
                 }]);
                 done();
@@ -858,6 +880,170 @@ describe("Manager", function() {
                 expect(NodesManager._metadata[scenario]).toEqual([]);
             });
         });
+    });
 
+    describe("_updateMetadata:tags", function() {
+
+        it("adds items in array", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: node.tags[0],
+                count: 1
+            },
+            {
+                name: node.tags[1],
+                count: 1
+            }]);
+        });
+
+        it("increments count for items in array", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: node.tags[0],
+                count: 1
+            },
+            {
+                name: node.tags[1],
+                count: 1
+            }]);
+            NodesManager._updateMetadata(node, "create");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: node.tags[0],
+                count: 2
+            },
+            {
+                name: node.tags[1],
+                count: 2
+            }]);
+            NodesManager._updateMetadata(node, "create");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: node.tags[0],
+                count: 3
+            },
+            {
+                name: node.tags[1],
+                count: 3
+            }]);
+        });
+
+        it("decrements count for an item in the array", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._updateMetadata(node, "delete");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: node.tags[0],
+                count: 1
+            },
+            {
+                name: node.tags[1],
+                count: 1
+            }]);
+        });
+
+        it("removes items in array when count is 0", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._updateMetadata(node, "delete");
+            expect(NodesManager._metadata.tags).toEqual([]);
+        });
+
+        it("update doesn't add value if node missing", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "update");
+            expect(NodesManager._metadata.tags).toEqual([]);
+        });
+
+        it("update decrements values then increments new values", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._items.push(node);
+            var oldTag = node.tags[1];
+            var updatedNode = angular.copy(node);
+            updatedNode.tags[1] = makeName("tag");
+            NodesManager._updateMetadata(updatedNode, "update");
+            expect(NodesManager._metadata.tags).toEqual([
+                {
+                    name: node.tags[0],
+                    count: 2
+                },
+                {
+                    name: oldTag,
+                    count: 1
+                },
+                {
+                    name: updatedNode.tags[1],
+                    count: 1
+                }]);
+        });
+
+        it("update removes old values then adds new values", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._items.push(node);
+            var oldTags = angular.copy(node.tags);
+            var updatedNode = angular.copy(node);
+            updatedNode.tags = [
+                makeName("tag"),
+                makeName("tag")
+                ];
+            NodesManager._updateMetadata(updatedNode, "update");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: updatedNode.tags[0],
+                count: 1
+            },
+            {
+                name: updatedNode.tags[1],
+                count: 1
+            }]);
+        });
+
+        it("ignores empty arrays", function() {
+            var node = makeNode();
+            node.tags = [];
+            NodesManager._updateMetadata(node, "create");
+            expect(NodesManager._metadata.tags).toEqual([]);
+        });
+
+        it("update handlers empty old values", function() {
+            var node = makeNode();
+            node.tags = [];
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._items.push(node);
+            var updatedNode = angular.copy(node);
+            updatedNode.tags = [
+                makeName("tag"),
+                makeName("tag")
+                ];
+            NodesManager._updateMetadata(updatedNode, "update");
+            expect(NodesManager._metadata.tags).toEqual([
+            {
+                name: updatedNode.tags[0],
+                count: 1
+            },
+            {
+                name: updatedNode.tags[1],
+                count: 1
+            }]);
+        });
+
+        it("update handlers empty new values", function() {
+            var node = makeNode();
+            NodesManager._updateMetadata(node, "create");
+            NodesManager._items.push(node);
+            var updatedNode = angular.copy(node);
+            updatedNode.tags = [];
+            NodesManager._updateMetadata(updatedNode, "update");
+            expect(NodesManager._metadata.tags).toEqual([]);
+        });
     });
 });
