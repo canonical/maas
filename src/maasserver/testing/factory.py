@@ -29,6 +29,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    FILESYSTEM_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
     NODEGROUP_STATUS,
@@ -53,6 +54,7 @@ from maasserver.models import (
     Event,
     EventType,
     FileStorage,
+    Filesystem,
     LargeFile,
     LicenseKey,
     MACAddress,
@@ -1106,6 +1108,21 @@ class Factory(maastesting.factory.Factory):
         return Partition.objects.create(
             partition_table=partition_table, uuid=uuid,
             start_offset=start_offset, size=size, bootable=bootable)
+
+    def make_Filesystem(
+            self, uuid=None, fstype=None, partition=None, block_device=None,
+            create_params=None, mount_point=None, mount_params=None):
+        if fstype is None:
+            fstype = self.pick_enum(FILESYSTEM_TYPE)
+        if partition is None and block_device is None:
+            if self.pick_bool():
+                partition = self.make_Partition()
+            else:
+                block_device = self.make_PhysicalBlockDevice()
+        return Filesystem.objects.create(
+            uuid=uuid, fstype=fstype, partition=partition,
+            block_device=block_device, create_params=create_params,
+            mount_point=mount_point, mount_params=mount_params)
 
 
 # Create factory singleton.

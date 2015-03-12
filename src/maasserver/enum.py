@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     'COMPONENT',
+    'FILESYSTEM_TYPE',
+    'FILESYSTEM_TYPE_CHOICES',
     'IPADDRESS_TYPE',
     'NODEGROUP_STATUS',
     'NODEGROUP_STATUS_CHOICES',
@@ -340,4 +342,25 @@ class PARTITION_TABLE_TYPE:
 PARTITION_TABLE_TYPE_CHOICES = (
     (PARTITION_TABLE_TYPE.MBR, "Master boot record"),
     (PARTITION_TABLE_TYPE.GPT, "GUID parition table"),
+    )
+
+
+class FILESYSTEM_TYPE:
+    """The vocabulary of possible partition types for `Filesystem`."""
+    #: Third extended filesystem.
+    EXT3 = 'ext3'
+
+    #: Fourth extended filesystem.
+    EXT4 = 'ext4'
+
+    #: LVM Physical Volume.
+    LVM_PV = 'lvm-pv'
+
+
+# Django choices for FILESYSTEM_TYPE: sequence of tuples (key, UI
+# representation).
+FILESYSTEM_TYPE_CHOICES = (
+    (FILESYSTEM_TYPE.EXT3, "ext3"),
+    (FILESYSTEM_TYPE.EXT4, "ext4"),
+    (FILESYSTEM_TYPE.LVM_PV, "lvm"),
     )
