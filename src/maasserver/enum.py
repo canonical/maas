@@ -14,6 +14,8 @@ str = None
 __metaclass__ = type
 __all__ = [
     'COMPONENT',
+    'FILESYSTEM_GROUP_TYPE',
+    'FILESYSTEM_GROUP_TYPE_CHOICES',
     'FILESYSTEM_TYPE',
     'FILESYSTEM_TYPE_CHOICES',
     'IPADDRESS_TYPE',
@@ -363,4 +365,17 @@ FILESYSTEM_TYPE_CHOICES = (
     (FILESYSTEM_TYPE.EXT3, "ext3"),
     (FILESYSTEM_TYPE.EXT4, "ext4"),
     (FILESYSTEM_TYPE.LVM_PV, "lvm"),
+    )
+
+
+class FILESYSTEM_GROUP_TYPE:
+    """The vocabulary of possible partition types for `FilesystemGroup`."""
+    #: LVM volume group.
+    LVM_VG = 'lvm-vg'
+
+
+# Django choices for FILESYSTEM_GROUP_TYPE: sequence of tuples (key, UI
+# representation).
+FILESYSTEM_GROUP_TYPE_CHOICES = (
+    (FILESYSTEM_GROUP_TYPE.LVM_VG, "LVM VG"),
     )

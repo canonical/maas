@@ -29,6 +29,7 @@ from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.enum import (
     BOOT_RESOURCE_FILE_TYPE,
     BOOT_RESOURCE_TYPE,
+    FILESYSTEM_GROUP_TYPE,
     FILESYSTEM_TYPE,
     IPADDRESS_TYPE,
     NODE_STATUS,
@@ -55,6 +56,7 @@ from maasserver.models import (
     EventType,
     FileStorage,
     Filesystem,
+    FilesystemGroup,
     LargeFile,
     LicenseKey,
     MACAddress,
@@ -1111,7 +1113,8 @@ class Factory(maastesting.factory.Factory):
 
     def make_Filesystem(
             self, uuid=None, fstype=None, partition=None, block_device=None,
-            create_params=None, mount_point=None, mount_params=None):
+            filesystem_group=None, create_params=None, mount_point=None,
+            mount_params=None):
         if fstype is None:
             fstype = self.pick_enum(FILESYSTEM_TYPE)
         if partition is None and block_device is None:
@@ -1121,8 +1124,37 @@ class Factory(maastesting.factory.Factory):
                 block_device = self.make_PhysicalBlockDevice()
         return Filesystem.objects.create(
             uuid=uuid, fstype=fstype, partition=partition,
-            block_device=block_device, create_params=create_params,
-            mount_point=mount_point, mount_params=mount_params)
+            block_device=block_device, filesystem_group=filesystem_group,
+            create_params=create_params, mount_point=mount_point,
+            mount_params=mount_params)
+
+    def make_FilesystemGroup(
+            self, uuid=None, group_type=None, name=None, create_params=None,
+            filesystems=None):
+        if group_type is None:
+            group_type = self.pick_enum(FILESYSTEM_GROUP_TYPE)
+        if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
+            fstype = FILESYSTEM_TYPE.LVM_PV
+        if name is None:
+            if group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
+                name = self.make_name("vg")
+        group = FilesystemGroup(
+            uuid=uuid, group_type=group_type, name=name,
+            create_params=create_params)
+        group.save()
+        if filesystems is None:
+            node = self.make_Node()
+            for _ in range(3):
+                block_device = self.make_PhysicalBlockDevice(node)
+                filesystem = self.make_Filesystem(
+                    fstype=fstype, block_device=block_device)
+                group.filesystems.add(filesystem)
+        else:
+            for filesystem in filesystems:
+                group.filesystems.add(filesystem)
+        # Save again to make sure that the added filesystems are correct.
+        group.save()
+        return group
 
 
 # Create factory singleton.

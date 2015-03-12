@@ -28,6 +28,7 @@ __all__ = [
     'Event',
     'FileStorage',
     'Filesystem',
+    'FilesystemGroup',
     'LargeFile',
     'LicenseKey',
     'logger',
@@ -72,6 +73,7 @@ from maasserver.models.event import Event
 from maasserver.models.eventtype import EventType
 from maasserver.models.filestorage import FileStorage
 from maasserver.models.filesystem import Filesystem
+from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.largefile import LargeFile
 from maasserver.models.licensekey import LicenseKey
 from maasserver.models.macaddress import MACAddress
@@ -101,8 +103,8 @@ from piston.doc import HandlerDocumentation
 ignore_unused(
     BootResource, BootResourceFile, BootResourceSet, CandidateName,
     ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
-    FileStorage, Filesystem, LargeFile, LicenseKey, StaticIPAddress,
-    MACAddress, MACStaticIPAddressLink, Network, NodeGroup,
+    FileStorage, Filesystem, FilesystemGroup, LargeFile, LicenseKey,
+    StaticIPAddress, MACAddress, MACStaticIPAddressLink, Network, NodeGroup,
     NodeGroupInterface, Partition, PartitionTable, SSHKey, Tag, UserProfile,
     Zone, logger)
 

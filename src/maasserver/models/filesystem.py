@@ -31,6 +31,7 @@ from maasserver.enum import (
     )
 from maasserver.models.blockdevice import BlockDevice
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.filesystemgroup import FilesystemGroup
 from maasserver.models.partition import Partition
 from maasserver.models.timestampedmodel import TimestampedModel
 
@@ -69,6 +70,9 @@ class Filesystem(CleanSave, TimestampedModel):
 
     block_device = ForeignKey(
         BlockDevice, null=True, blank=True)
+
+    filesystem_group = ForeignKey(
+        FilesystemGroup, null=True, blank=True, related_name='filesystems')
 
     create_params = CharField(
         max_length=255, null=True, blank=True)
