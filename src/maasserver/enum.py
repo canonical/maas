@@ -25,6 +25,8 @@ __all__ = [
     'NODE_STATUS',
     'NODE_STATUS_CHOICES',
     'NODE_STATUS_CHOICES_DICT',
+    'PARTITION_TABLE_TYPE',
+    'PARTITION_TABLE_TYPE_CHOICES',
     'PRESEED_TYPE',
     'USERDATA_TYPE',
     ]
@@ -321,4 +323,21 @@ BOOT_RESOURCE_FILE_TYPE_CHOICES = (
     (BOOT_RESOURCE_FILE_TYPE.DI_KERNEL, "Linux DI Kernel"),
     (BOOT_RESOURCE_FILE_TYPE.DI_INITRD, "Initial DI Ramdisk"),
     (BOOT_RESOURCE_FILE_TYPE.DI_DTB, "DI Device Tree Blob"),
+    )
+
+
+class PARTITION_TABLE_TYPE:
+    """The vocabulary of possible partition types for `PartitionTable`."""
+    #: GUID partition table.
+    GPT = 'GPT'
+
+    #: Master boot record..
+    MBR = 'MBR'
+
+
+# Django choices for PARTITION_TABLE_TYPE: sequence of tuples (key, UI
+# representation).
+PARTITION_TABLE_TYPE_CHOICES = (
+    (PARTITION_TABLE_TYPE.MBR, "Master boot record"),
+    (PARTITION_TABLE_TYPE.GPT, "GUID parition table"),
     )

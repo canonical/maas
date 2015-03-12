@@ -33,6 +33,7 @@ from maasserver.enum import (
     NODE_STATUS,
     NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
+    PARTITION_TABLE_TYPE,
     POWER_STATE,
     )
 from maasserver.fields import (
@@ -60,6 +61,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    PartitionTable,
     PhysicalBlockDevice,
     SSHKey,
     SSLKey,
@@ -1080,6 +1082,14 @@ class Factory(maastesting.factory.Factory):
         return PhysicalBlockDevice.objects.create(
             node=node, name=name, path=path, size=size, block_size=block_size,
             tags=tags, model=model, serial=serial)
+
+    def make_PartitionTable(self, table_type=None, block_device=None):
+        if table_type is None:
+            table_type = self.pick_enum(PARTITION_TABLE_TYPE)
+        if block_device is None:
+            block_device = self.make_PhysicalBlockDevice()
+        return PartitionTable.objects.create(
+            table_type=table_type, block_device=block_device)
 
 
 # Create factory singleton.
