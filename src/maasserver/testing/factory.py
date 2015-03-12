@@ -72,6 +72,7 @@ from maasserver.models import (
     SSLKey,
     StaticIPAddress,
     Tag,
+    VirtualBlockDevice,
     Zone,
     )
 from maasserver.models.bootresourceset import (
@@ -1155,6 +1156,26 @@ class Factory(maastesting.factory.Factory):
         # Save again to make sure that the added filesystems are correct.
         group.save()
         return group
+
+    def make_VirtualBlockDevice(
+            self, name=None, path=None, size=None, block_size=None,
+            tags=None, uuid=None, filesystem_group=None):
+        if tags is None:
+            tags = [self.make_name("tag") for _ in range(3)]
+        if filesystem_group is None:
+            filesystem_group = self.make_FilesystemGroup()
+        if name is None:
+            if filesystem_group.group_type == FILESYSTEM_GROUP_TYPE.LVM_VG:
+                name = self.make_name("lv")
+        if path is None:
+            path = "/dev/mapper/%s-%s" % (filesystem_group.name, name)
+        if size is None:
+            size = random.randint(1, filesystem_group.get_size())
+        if block_size is None:
+            block_size = random.choice([512, 1024, 4096])
+        return VirtualBlockDevice.objects.create(
+            name=name, path=path, size=size, block_size=block_size,
+            tags=tags, uuid=uuid, filesystem_group=filesystem_group)
 
 
 # Create factory singleton.

@@ -44,6 +44,7 @@ __all__ = [
     'SSLKey',
     'Tag',
     'UserProfile',
+    'VirtualBlockDevice',
     'Zone',
     ]
 
@@ -94,6 +95,7 @@ from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.tag import Tag
 from maasserver.models.user import create_user
 from maasserver.models.userprofile import UserProfile
+from maasserver.models.virtualblockdevice import VirtualBlockDevice
 from maasserver.models.zone import Zone
 from maasserver.utils import ignore_unused
 from piston.doc import HandlerDocumentation
@@ -106,7 +108,7 @@ ignore_unused(
     FileStorage, Filesystem, FilesystemGroup, LargeFile, LicenseKey,
     StaticIPAddress, MACAddress, MACStaticIPAddressLink, Network, NodeGroup,
     NodeGroupInterface, Partition, PartitionTable, SSHKey, Tag, UserProfile,
-    Zone, logger)
+    VirtualBlockDevice, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
