@@ -61,6 +61,7 @@ from maasserver.models import (
     Node,
     NodeGroup,
     NodeGroupInterface,
+    Partition,
     PartitionTable,
     PhysicalBlockDevice,
     SSHKey,
@@ -1090,6 +1091,21 @@ class Factory(maastesting.factory.Factory):
             block_device = self.make_PhysicalBlockDevice()
         return PartitionTable.objects.create(
             table_type=table_type, block_device=block_device)
+
+    def make_Partition(
+            self, partition_table=None, uuid=None, start_offset=None,
+            size=None, bootable=None):
+        if partition_table is None:
+            partition_table = self.make_PartitionTable()
+        if start_offset is None:
+            start_offset = random.randint(0, partition_table.get_size() - 2)
+        if size is None:
+            size = random.randint(1, partition_table.get_size() - start_offset)
+        if bootable is None:
+            bootable = random.choice([True, False])
+        return Partition.objects.create(
+            partition_table=partition_table, uuid=uuid,
+            start_offset=start_offset, size=size, bootable=bootable)
 
 
 # Create factory singleton.

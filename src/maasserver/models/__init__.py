@@ -35,6 +35,7 @@ __all__ = [
     'Node',
     'NodeGroup',
     'NodeGroupInterface',
+    'Partition',
     'PartitionTable',
     'PhysicalBlockDevice',
     'SSHKey',
@@ -80,6 +81,7 @@ from maasserver.models.node import (
     )
 from maasserver.models.nodegroup import NodeGroup
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.partition import Partition
 from maasserver.models.partitiontable import PartitionTable
 from maasserver.models.physicalblockdevice import PhysicalBlockDevice
 from maasserver.models.sshkey import SSHKey
@@ -99,7 +101,7 @@ ignore_unused(
     ComponentError, Config, DHCPLease, DownloadProgress, Event, EventType,
     FileStorage, LargeFile, LicenseKey, StaticIPAddress, MACAddress,
     MACStaticIPAddressLink, Network, NodeGroup, NodeGroupInterface,
-    PartitionTable, SSHKey, Tag, UserProfile, Zone, logger)
+    Partition, PartitionTable, SSHKey, Tag, UserProfile, Zone, logger)
 
 
 # Connect the 'create_user' method to the post save signal of User.
