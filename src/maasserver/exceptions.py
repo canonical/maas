@@ -168,6 +168,18 @@ class StaticIPAlreadyExistsForMACAddress(MAASAPIException):
     api_error = httplib.CONFLICT
 
 
+class StaticIPAddressConflict(MAASAPIException):
+    """Raised when trying to allocate a static IP that doesn't belong to
+    the network the MAC address is connected to."""
+    api_error = httplib.CONFLICT
+
+
+class StaticIPAddressForbidden(MAASAPIException):
+    """Raised when trying to allocate a static IP that belongs to a
+    dynamic range."""
+    api_error = httplib.CONFLICT
+
+
 class NodeActionError(MAASException):
     """Raised when there is an error performing a NodeAction."""
 

@@ -20,9 +20,15 @@ import random
 from django.core.exceptions import ValidationError
 from maasserver.enum import (
     IPADDRESS_TYPE,
+    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     )
-from maasserver.exceptions import StaticIPAddressTypeClash
+from maasserver.exceptions import (
+    StaticIPAddressConflict,
+    StaticIPAddressForbidden,
+    StaticIPAddressTypeClash,
+    StaticIPAddressUnavailable,
+    )
 from maasserver.forms import create_Network_from_NodeGroupInterface
 from maasserver.models import (
     NodeGroupInterface,
@@ -43,6 +49,7 @@ from netaddr import (
     IPNetwork,
     IPRange,
     )
+from testtools import ExpectedException
 from testtools.matchers import (
     Equals,
     HasLength,
@@ -865,3 +872,112 @@ class TestUpdateMacsClusterInterfaces(MAASServerTestCase):
             [reload_object(mac).cluster_interface
              for mac, _ in mac_addresses.items()])
         self.assertEquals(interfaces, linked_interfaces)
+
+
+class TestSetStaticIP(MAASServerTestCase):
+    """Tests for `MACAddress.set_static_ip`."""
+
+    def test_sets_unknown_sticky_ip(self):
+        mac = factory.make_MACAddress_with_Node()
+        user = factory.make_User()
+        ip_address = factory.make_ip_address()
+        static_ip = mac.set_static_ip(ip_address, user)
+
+        matcher = MatchesStructure(
+            id=Not(Is(None)),  # IP persisted in the DB.
+            ip=Equals(ip_address),
+            user=Equals(user),
+            alloc_type=Equals(IPADDRESS_TYPE.STICKY),
+        )
+        self.assertThat(static_ip, matcher)
+
+    def test_sets_sticky_ip_from_connected_static_range(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        node = factory.make_Node(mac=True, nodegroup=nodegroup)
+        mac = node.macaddress_set.all()[0]
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac.cluster_interface = ngi
+        mac.save()
+
+        user = factory.make_User()
+        # Pick an address from the static range.
+        static_range = IPRange(
+            ngi.static_ip_range_low, ngi.static_ip_range_high)
+        ip_address = factory.pick_ip_in_network(static_range)
+        static_ip = mac.set_static_ip(ip_address, user)
+
+        matcher = MatchesStructure(
+            id=Not(Is(None)),  # IP persisted in the DB.
+            ip=Equals(ip_address),
+            user=Equals(user),
+            alloc_type=Equals(IPADDRESS_TYPE.STICKY),
+        )
+        self.assertThat(static_ip, matcher)
+
+    def test_rejects_ip_from_dynamic_range(self):
+        node = factory.make_Node(mac=True)
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup=nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+
+        user = factory.make_User()
+        mac = node.macaddress_set.all()[0]
+        # Pick an address from the dynamic range.
+        dynamic_range = IPRange(ngi.ip_range_low, ngi.ip_range_high)
+        ip_address = factory.pick_ip_in_network(dynamic_range)
+        with ExpectedException(StaticIPAddressForbidden):
+            mac.set_static_ip(ip_address, user)
+
+    def test_rejects_ip_if_ip_not_part_of_connected_network(self):
+        node = factory.make_Node(mac=True)
+        mac = node.macaddress_set.all()[0]
+        network = factory.make_ipv4_network()
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED, network=network)
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup=nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac.cluster_interface = ngi
+        mac.save()
+
+        user = factory.make_User()
+        # Pick an address from a different network.
+        other_network = factory.make_ipv4_network(disjoint_from=[network])
+        ip_address = factory.pick_ip_in_network(other_network)
+        with ExpectedException(StaticIPAddressConflict):
+            mac.set_static_ip(ip_address, user)
+
+    def test_returns_existing_allocation_if_it_exists(self):
+        mac = factory.make_MACAddress_with_Node()
+        user = factory.make_User()
+        ip_address = factory.make_ip_address()
+        static_ip = mac.set_static_ip(ip_address, user)
+
+        static_ip2 = mac.set_static_ip(ip_address, user)
+
+        self.assertEquals(static_ip.id, static_ip2.id)
+
+    def test_rejects_ip_if_other_sticky_allocation_already_exists(self):
+        other_mac = factory.make_MACAddress_with_Node()
+        user = factory.make_User()
+        ip_address = factory.make_ip_address()
+        other_mac.set_static_ip(ip_address, user)
+
+        mac = factory.make_MACAddress_with_Node()
+        with ExpectedException(StaticIPAddressUnavailable):
+            mac.set_static_ip(ip_address, user)
+
+    def test_rejects_ip_if_allocation_with_other_type_already_exists(self):
+        nodegroup = factory.make_NodeGroup(status=NODEGROUP_STATUS.ACCEPTED)
+        user = factory.make_User()
+        node = factory.make_Node(mac=True, nodegroup=nodegroup)
+        mac = node.macaddress_set.all()[0]
+        ngi = factory.make_NodeGroupInterface(
+            nodegroup, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        mac.cluster_interface = ngi
+        mac.save()
+        # Create an AUTO IP allocation.
+        static_ip = mac.claim_static_ips()[0]
+
+        with ExpectedException(StaticIPAddressUnavailable):
+            mac.set_static_ip(static_ip.ip, user)

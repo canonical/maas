@@ -28,17 +28,22 @@ from django.db.models import (
 from maasserver import DefaultMeta
 from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
+    StaticIPAddressConflict,
+    StaticIPAddressForbidden,
     StaticIPAddressOutOfRange,
     StaticIPAddressTypeClash,
+    StaticIPAddressUnavailable,
     )
 from maasserver.fields import (
     MAC,
     MACAddressField,
     )
 from maasserver.models.cleansave import CleanSave
+from maasserver.models.macipaddresslink import MACStaticIPAddressLink
 from maasserver.models.managers import BulkManager
 from maasserver.models.network import Network
 from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.models.staticipaddress import StaticIPAddress
 from maasserver.models.timestampedmodel import TimestampedModel
 from netaddr import (
     IPAddress,
@@ -301,7 +306,7 @@ class MACAddress(CleanSave, TimestampedModel):
             else:
                 hostname_string = ""
             maaslog.error(
-                "%sTried to allocate an IP to MAC %s but its cluster "
+                "%s tried to allocate an IP to MAC %s but its cluster "
                 "interface is not known", hostname_string, self)
             return []
         cluster_interfaces = [
@@ -354,3 +359,73 @@ class MACAddress(CleanSave, TimestampedModel):
             for sip in allocations.values()
             if sip.alloc_type == alloc_type
             ]
+
+    def set_static_ip(self, requested_address, user):
+        """Assign a static (sticky) IP address to this MAC.
+
+        This is meant to be called on a device's MAC address: the IP address
+        can be anything.  Only if the MAC is linked to a network will this
+        method enforce that the IP address if part of the referenced network.
+
+        It is the caller's responsibility to update the DHCP server.
+
+        :param requested_address: IP address to claim.  Must not be in
+            the dynamic range of any cluster interface.
+        :param user: User who will be given ownership of the created
+            `StaticIPAddress`.
+        :return: A :class:`StaticIPAddress`. If an IP address was
+            already allocated, the function will return it rather than allocate
+            a new one.
+        :raises: StaticIPAddressForbidden if the requested_address is in a
+            dynamic range.
+        :raises: StaticIPAddressConflict if the MAC is connected to a cluster
+            interface and the requested_address is not in the cluster's
+            network.
+        :raises: StaticIPAddressUnavailable if the requested_address is already
+            allocated.
+        """
+        # If this MAC is linked to a cluster interface, make sure the
+        # requested_address is part of the cluster interface's network.
+        cluster_interface = self.get_cluster_interface()
+        if cluster_interface is not None:
+            if IPAddress(requested_address) not in cluster_interface.network:
+                raise StaticIPAddressConflict(
+                    "Requested IP address %s is not in the network of the "
+                    "related cluster interface." %
+                    requested_address)
+
+        # Raise a StaticIPAddressForbidden exception if the requested_address
+        # is in a dynamic range.
+        requested_address_ip = IPAddress(requested_address)
+        for interface in NodeGroupInterface.objects.all():
+            if interface.is_managed:
+                dynamic_range = interface.get_dynamic_ip_range()
+                if requested_address_ip in dynamic_range:
+                    raise StaticIPAddressForbidden(
+                        "Requested IP address %s is in a dynamic range." %
+                        requested_address)
+
+        # Allocate IP if it isn't allocated already.
+        static_ip, created = StaticIPAddress.objects.get_or_create(
+            ip=requested_address,
+            defaults={
+                'alloc_type': IPADDRESS_TYPE.STICKY,
+                'user': user,
+            })
+        if created:
+            MACStaticIPAddressLink(
+                mac_address=self, ip_address=static_ip).save()
+        else:
+            if static_ip.alloc_type != IPADDRESS_TYPE.STICKY:
+                raise StaticIPAddressUnavailable(
+                    "Requested IP address %s is already allocated "
+                    "(with a different type)." %
+                    requested_address)
+            try:
+                static_ip.macaddress_set.get(mac_address=self.mac_address)
+            except MACAddress.DoesNotExist:
+                raise StaticIPAddressUnavailable(
+                    "Requested IP address %s is already allocated "
+                    "to a different MAC address." %
+                    requested_address)
+        return static_ip
