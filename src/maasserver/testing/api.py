@@ -28,10 +28,12 @@ from abc import (
 
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+    )
 from maasserver.utils.orm import transactional
 from maasserver.worker_user import get_worker_user
-from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.testcase import MAASTestCase
 
 
@@ -106,7 +108,7 @@ class APITestCase(APITestCaseBase, MAASServerTestCase):
     """Class for logged-in API tests within a single transaction."""
 
 
-class APITransactionTestCase(DjangoTransactionTestCase):
+class APITransactionTestCase(APITestCaseBase, MAASTransactionServerTestCase):
     """Class for logged-in API tests with the ability to use transactions."""
 
 

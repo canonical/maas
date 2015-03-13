@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'MAASServerTestCase',
+    'MAASTransactionServerTestCase',
     'SeleniumTestCase',
     'SerializationFailureTestCase',
     'TestWithoutCrochetMixin',
@@ -35,7 +36,6 @@ from django.db import (
     )
 from django.db.utils import OperationalError
 from fixtures import Fixture
-from maasserver.clusterrpc import power_parameters
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import PostCommitHooksTestMixin
@@ -47,13 +47,12 @@ from maastesting.djangotestcase import (
 from maastesting.fixtures import DisplayFixture
 from maastesting.utils import run_isolated
 from mock import Mock
-import provisioningserver
 
 
-class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
-    """:class:`TestCase` variant with the basics for maasserver testing.
+class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
+    """Base test case for testing the region.
 
-    :ivar client: Django http test client.
+    See sub-classes for the real deal though.
     """
 
     # For each piece of default data introduced via migrations we need
@@ -66,20 +65,15 @@ class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
 
     @classmethod
     def setUpClass(cls):
-        super(MAASServerTestCase, cls).setUpClass()
+        super(MAASRegionTestCaseBase, cls).setUpClass()
         register_mac_type(connection.cursor())
 
     def setUp(self):
-        super(MAASServerTestCase, self).setUp()
+        super(MAASRegionTestCaseBase, self).setUp()
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
-        # This patch prevents communication with a non-existent cluster
-        # controller when fetching power types.
-        static_params = (
-            provisioningserver.power_schema.JSON_POWER_TYPE_PARAMETERS)
-        self.patch(
-            power_parameters,
-            'get_all_power_types_from_clusters').return_value = static_params
+        from maasserver.clusterrpc.testing import power_parameters
+        self.useFixture(power_parameters.StaticPowerTypesFixture())
 
         # XXX: allenap bug=1427628 2015-03-03: This should not be here.
         # Disconnect the monitor cancellation as it's triggered by a signal.
@@ -105,6 +99,16 @@ class MAASServerTestCase(DjangoTestCase, PostCommitHooksTestMixin):
             user = factory.make_User(password=password)
         self.client.login(username=user.username, password=password)
         self.logged_in_user = user
+
+
+class MAASServerTestCase(
+        MAASRegionTestCaseBase, DjangoTestCase):
+    """:class:`TestCase` variant for region testing."""
+
+
+class MAASTransactionServerTestCase(
+        MAASRegionTestCaseBase, DjangoTransactionTestCase):
+    """:class:`TestCase` variant for *transaction* region testing."""
 
 
 # Django supports Selenium tests only since version 1.4.
