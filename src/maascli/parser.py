@@ -50,19 +50,6 @@ class ArgumentParser(argparse.ArgumentParser):
             return self.__subparsers
 
 
-def get_profile_option(argv):
-    """Parse the `--profile` option in `argv`; ignore the rest."""
-    # Create a specialized parser just to extract this one option.
-    # If we call parse_known_args on the real arguments parser, the
-    # --help option will do its work and cause the process to exit
-    # before we can even add the sub-parsers that the user may be asking
-    # for help about.
-    specialized_parser = ArgumentParser(add_help=False)
-    specialized_parser.add_argument('--profile', metavar='PROFILE')
-    provisional_options = specialized_parser.parse_known_args(argv)[0]
-    return provisional_options.profile
-
-
 def prepare_parser(argv):
     """Create and populate an arguments parser for the maascli command."""
     help_title, help_body = parse_docstring(api)

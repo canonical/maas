@@ -14,11 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from maascli.parser import (
-    ArgumentParser,
-    get_profile_option,
-    )
-from maastesting.factory import factory
+from maascli.parser import ArgumentParser
 from maastesting.testcase import MAASTestCase
 
 
@@ -43,29 +39,3 @@ class TestArgumentParser(MAASTestCase):
         # The subparsers property, once populated, always returns the same
         # object.
         self.assertIs(subparsers, parser.subparsers)
-
-
-class TestGetProfileOption(MAASTestCase):
-    """Tests for `get_profile_option`."""
-
-    def test_parses_profile_option(self):
-        profile = factory.make_name('profile')
-        self.assertEqual(profile, get_profile_option(['--profile', profile]))
-
-    def test_ignores_other_options(self):
-        profile = factory.make_name('profile')
-        self.assertEqual(
-            profile,
-            get_profile_option([
-                '--unrelated', 'option',
-                '--profile', profile,
-                factory.make_string(),
-                ]))
-
-    def test_ignores_help_option(self):
-        # This is a bit iffy: the most likely symptom if this fails is
-        # actually that the test process exits!
-        profile = factory.make_name('profile')
-        self.assertEqual(
-            profile,
-            get_profile_option(['--help', '--profile', profile]))
