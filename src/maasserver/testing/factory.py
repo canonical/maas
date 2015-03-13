@@ -491,10 +491,11 @@ class Factory(maastesting.factory.Factory):
 
     def make_node_with_mac_attached_to_nodegroupinterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-            network=None, disable_ipv4=False, **kwargs):
+            mac_count=1, network=None, disable_ipv4=False, **kwargs):
         """Create a Node that has a MACAddress which has a
         NodeGroupInterface.
 
+        :param mac_count: count of MAC addresses to add
         :param **kwargs: Additional parameters to pass to make_node.
         """
         nodegroup = kwargs.pop("nodegroup", None)
@@ -507,6 +508,10 @@ class Factory(maastesting.factory.Factory):
         mac = node.get_primary_mac()
         mac.cluster_interface = ngi
         mac.save()
+        for _ in range(1, mac_count):
+            mac = self.make_MACAddress(node=node)
+            mac.cluster_interface = ngi
+            mac.save()
         return node
 
     def make_StaticIPAddress(self, ip=None, alloc_type=IPADDRESS_TYPE.AUTO,

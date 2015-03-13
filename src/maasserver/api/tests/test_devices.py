@@ -26,6 +26,7 @@ from maasserver.enum import (
     NODEGROUPINTERFACE_MANAGEMENT,
     )
 from maasserver.models import (
+    MACAddress,
     Node,
     node as node_module,
     NodeGroup,
@@ -35,6 +36,10 @@ from maasserver.testing.api import APITestCase
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maastesting.matchers import MockCalledOnceWith
+from testtools.matchers import (
+    HasLength,
+    Not,
+    )
 
 
 class TestDevicesAPI(APITestCase):
@@ -309,3 +314,84 @@ class TestDeviceAPI(APITestCase):
             get_device_uri(device), {'op': 'claim_sticky_ip_address'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
         self.assertItemsEqual([], StaticIPAddress.objects.all())
+
+    def test_release_sticky_ip_address_releases_ip_address(self):
+        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        device = factory.make_Node(
+            installable=False, parent=parent, mac=True, disable_ipv4=False,
+            owner=self.logged_in_user)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        response = self.client.post(
+            get_device_uri(device), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.expectThat(parsed_device["ip_addresses"], Not(HasLength(0)))
+
+        response = self.client.post(
+            get_device_uri(device), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.expectThat(parsed_device["ip_addresses"], HasLength(0))
+
+    def test_release_sticky_ip_address_releases_all_ip_addresses(self):
+        network = factory._make_random_network(slash=24)
+        device = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            installable=False, mac_count=5, network=network,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        self.assertThat(MACAddress.objects.all(), HasLength(5))
+        for mac in MACAddress.objects.all():
+            allocated = device.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            self.expectThat(allocated, HasLength(1))
+        response = self.client.post(
+            get_device_uri(device), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.expectThat(parsed_device["ip_addresses"], HasLength(0))
+
+    def test_release_sticky_ip_address_releases_specific_address(self):
+        network = factory._make_random_network(slash=24)
+        device = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            installable=False, mac_count=2, network=network,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        self.assertThat(MACAddress.objects.all(), HasLength(2))
+        ips = []
+        for mac in MACAddress.objects.all():
+            allocated = device.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            self.expectThat(allocated, HasLength(1))
+            # Note: 'allocated' is a list of (ip,mac) tuples
+            ips.append(allocated[0][0])
+        response = self.client.post(
+            get_device_uri(device),
+            {
+                'op': 'release_sticky_ip_address',
+                'address': ips[0]
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_device = json.loads(response.content)
+        self.expectThat(parsed_device["ip_addresses"], HasLength(1))
+
+    def test_release_ip_address_rejected_if_not_permitted(self):
+        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        device = factory.make_Node(
+            installable=False, parent=parent, mac=True, disable_ipv4=False,
+            owner=factory.make_User())
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        device.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
+        self.assertThat(StaticIPAddress.objects.all(), HasLength(1))
+        response = self.client.post(
+            get_device_uri(device), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertThat(StaticIPAddress.objects.all(), HasLength(1))

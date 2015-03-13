@@ -180,6 +180,36 @@ class DeviceHandler(OperationsHandler):
             ', '.join(allocation.ip for allocation in sticky_ips))
         return device
 
+    @operation(idempotent=False)
+    def release_sticky_ip_address(self, request, system_id):
+        """Release a "sticky" IP address from a device's MAC.
+
+        :param address: Optional IP address to release. If left unspecified,
+            will release every "sticky" IP address associated with the device.
+
+        Returns 400 if the specified addresses could not be deallocated
+        Returns 404 if the device is not found.
+        """
+        device = Node.devices.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        address = request.POST.get('address', None)
+
+        # Note: this call handles deleting the host maps, and updating the DNS
+        # zones (unlike the claim_static_ips() call in mac_address used above)
+        deallocated_ips = device.deallocate_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
+
+        if len(deallocated_ips) == 0 and address is not None:
+                raise MAASAPIBadRequest(
+                    "%s: could not deallocate sticky IP address: %s",
+                    device.hostname, address)
+        else:
+            maaslog.info(
+                "%s: Sticky IP address(es) deallocated: %s", device.hostname,
+                ', '.join(unicode(ip) for ip in deallocated_ips))
+
+        return device
+
 
 class DevicesHandler(OperationsHandler):
     """Manage the collection of all the devices in the MAAS."""
