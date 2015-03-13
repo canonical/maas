@@ -7,7 +7,7 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
@@ -25,12 +25,18 @@ from maasserver.models import (
     )
 from maasserver.testing.eventloop import RegionEventLoopFixture
 from maasserver.testing.testcase import MAASServerTestCase
+from maastesting.factory import factory
 from maastesting.fakemethod import FakeMethod
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockCallsMatch,
+    )
+from mock import call
 from testtools.matchers import HasLength
 
 
 class LockChecker:
+
     """Callable.  Records calls, and whether the startup lock was held."""
 
     def __init__(self, lock_file=None):
@@ -43,6 +49,7 @@ class LockChecker:
 
 
 class TestStartUp(MAASServerTestCase):
+
     """Tests for the `start_up` function.
 
     The actual work happens in `inner_start_up` and `test_start_up`; the tests
@@ -66,8 +73,25 @@ class TestStartUp(MAASServerTestCase):
         self.assertEqual(1, lock_checker.call_count)
         self.assertEqual(True, lock_checker.lock_was_held)
 
+    def test_start_up_retries_with_wait_on_exception(self):
+        inner_start_up = self.patch(start_up, 'inner_start_up')
+        inner_start_up.side_effect = [
+            factory.make_exception("Boom!"),
+            None,  # Success.
+        ]
+        # We don't want to really sleep.
+        sleep = self.patch(start_up, "sleep")
+        # start_up() returns without error.
+        start_up.start_up()
+        # However, it did call inner_start_up() twice; the first call resulted
+        # in the "Boom!" exception so it tried again.
+        self.expectThat(inner_start_up, MockCallsMatch(call(), call()))
+        # It also slept once, for 10 seconds, between those attempts.
+        self.expectThat(sleep, MockCalledOnceWith(10.0))
+
 
 class TestInnerStartUp(MAASServerTestCase):
+
     """Tests for the actual work done in `inner_start_up`."""
 
     def setUp(self):

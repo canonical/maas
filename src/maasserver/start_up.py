@@ -7,19 +7,23 @@ from __future__ import (
     absolute_import,
     print_function,
     unicode_literals,
-    )
+)
 
 str = None
 
 __metaclass__ = type
 __all__ = [
     'start_up'
-    ]
+]
+
+import logging
+from time import sleep
 
 from django.db import (
     connection,
     transaction,
     )
+from django.db.utils import DatabaseError
 from maasserver import (
     locks,
     security,
@@ -29,7 +33,13 @@ from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import NodeGroup
 from maasserver.triggers import register_all_triggers
+from maasserver.utils.orm import get_psycopg2_exception
+from provisioningserver.logger import get_maas_logger
 from provisioningserver.upgrade_cluster import create_gnupg_home
+
+
+maaslog = get_maas_logger("start-up")
+logger = logging.getLogger(__name__)
 
 
 def start_up():
@@ -43,14 +53,44 @@ def start_up():
     but this method uses database locking to ensure that the methods it calls
     internally are not run concurrently.
     """
-    # Get the shared secret from Tidmouth sheds which was generated when Sir
-    # Topham Hatt graduated Sodor Academy. (Ensure we have a shared-secret so
-    # that clusters on the same host can use it to authenticate.)
-    security.get_shared_secret()
 
-    with transaction.atomic():
-        with locks.startup:
-            inner_start_up()
+    while True:
+        try:
+            # Get the shared secret from Tidmouth sheds which was generated
+            # when Sir Topham Hatt graduated Sodor Academy. (Ensure we have a
+            # shared-secret so that a cluster on the same host as this region
+            # can authenticate.)
+            security.get_shared_secret()
+            # Execute other start-up tasks that must not run concurrently with
+            # other invocations of themselves, across the whole of this MAAS
+            # installation.
+            with transaction.atomic():
+                with locks.startup:
+                    inner_start_up()
+
+        except SystemExit:
+            raise
+        except KeyboardInterrupt:
+            raise
+        except DatabaseError as e:
+            psycopg2_exception = get_psycopg2_exception(e)
+            if psycopg2_exception is None:
+                maaslog.warn(
+                    "Database error during start-up; "
+                    "pausing for 10 seconds.")
+            else:
+                maaslog.warn(
+                    "Database error during start-up (PostgreSQL error %s); "
+                    "pausing for 10 seconds.", psycopg2_exception.pgcode)
+
+            logger.error("Database error during start-up", exc_info=True)
+            sleep(10.0)  # Wait 10 seconds before having another go.
+        except:
+            maaslog.warn(
+                "Unknown Failure during start-up; pausing for 10 seconds.")
+            sleep(10.0)  # Wait 10 seconds before having another go.
+        else:
+            break
 
 
 def inner_start_up():
