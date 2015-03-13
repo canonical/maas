@@ -20,6 +20,7 @@ from random import (
     random,
     )
 import re
+import threading
 import time
 
 from crochet import EventualResult
@@ -41,6 +42,7 @@ from provisioningserver.utils import twisted as twisted_module
 from provisioningserver.utils.twisted import (
     asynchronous,
     callOut,
+    callOutToThread,
     DeferredValue,
     deferWithTimeout,
     FOREVER,
@@ -609,22 +611,61 @@ class TestCallOut(MAASTestCase):
 
     def test__without_arguments(self):
         func = Mock()
-        func_callout = callOut(func)
         # The result is passed through untouched.
-        self.assertThat(func_callout(sentinel.result), Is(sentinel.result))
+        d = callOut(sentinel.result, func)
+        self.assertThat(extract_result(d), Is(sentinel.result))
         self.assertThat(func, MockCalledOnceWith())
 
     def test__with_arguments(self):
         func = Mock()
-        func_callout = callOut(func, sentinel.a, sentinel.b, c=sentinel.c)
         # The result is passed through untouched.
-        self.assertThat(func_callout(sentinel.result), Is(sentinel.result))
+        d = callOut(sentinel.r, func, sentinel.a, sentinel.b, c=sentinel.c)
+        self.assertThat(extract_result(d), Is(sentinel.r))
         self.assertThat(func, MockCalledOnceWith(
             sentinel.a, sentinel.b, c=sentinel.c))
 
     def test__does_not_suppress_errors(self):
-        func_callout = callOut(operator.div, 0, 0)
-        self.assertRaises(ZeroDivisionError, func_callout, sentinel.result)
+        d = callOut(sentinel.result, operator.div, 0, 0)
+        self.assertRaises(ZeroDivisionError, extract_result, d)
+
+
+class TestCallOutToThread(MAASTestCase):
+    """Tests for `callOutToThread`."""
+
+    run_tests_with = MAASTwistedRunTest.make_factory(timeout=5)
+
+    @inlineCallbacks
+    def test__without_arguments(self):
+        func = Mock()
+        # The result is passed through untouched.
+        result = yield callOutToThread(sentinel.result, func)
+        self.assertThat(result, Is(sentinel.result))
+        self.assertThat(func, MockCalledOnceWith())
+
+    @inlineCallbacks
+    def test__with_arguments(self):
+        func = Mock()
+        # The result is passed through untouched.
+        result = yield callOutToThread(
+            sentinel.r, func, sentinel.a, sentinel.b, c=sentinel.c)
+        self.assertThat(result, Is(sentinel.r))
+        self.assertThat(func, MockCalledOnceWith(
+            sentinel.a, sentinel.b, c=sentinel.c))
+
+    @inlineCallbacks
+    def test__does_not_suppress_errors(self):
+        with ExpectedException(ZeroDivisionError):
+            yield callOutToThread(sentinel.result, operator.div, 0, 0)
+
+    @inlineCallbacks
+    def test__defers_to_thread(self):
+        threads = {threading.currentThread()}
+
+        def captureThread():
+            threads.add(threading.currentThread())
+
+        yield callOutToThread(None, captureThread)
+        self.expectThat(threads, HasLength(2))
 
 
 class TestDeferredValue(MAASTestCase):

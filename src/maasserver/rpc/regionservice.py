@@ -497,7 +497,7 @@ class RegionService(service.Service, object):
         if len(conns) == 0:
             waiters = self.waiters[ident]
             d = deferWithTimeout(timeout)
-            d.addBoth(callOut(waiters.discard, d))
+            d.addBoth(callOut, waiters.discard, d)
             waiters.add(d)
             return d
         else:

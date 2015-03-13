@@ -211,7 +211,7 @@ class MockClusterToRegionRPCFixtureBase(fixtures.Fixture):
             self.stopping = defer.maybeDeferred(
                 self.rpc_service.disownServiceParent)
         # Ensure the cluster's services will be left in a consistent state.
-        self.stopping.addCallback(callOut(self.checkServicesClean))
+        self.stopping.addCallback(callOut, self.checkServicesClean)
 
     @asynchronous(timeout=15)
     def setUp(self):

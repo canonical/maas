@@ -42,6 +42,7 @@ from twisted.internet.defer import (
     maybeDeferred,
     succeed,
     )
+from twisted.internet.threads import deferToThread
 from twisted.python import threadable
 from twisted.python.failure import Failure
 from twisted.python.threadable import isInIOThread
@@ -278,29 +279,44 @@ def deferWithTimeout(timeout, func=None, *args, **kwargs):
     return d.addBoth(done)
 
 
-def callOut(func, *args, **kwargs):
-    """Wrap a function call so it can be used as a transparent callback.
+def callOut(thing, func, *args, **kwargs):
+    """Call out to the given `func`, but return `thing`.
 
     For example::
 
       d = client.fetchSomethingReallyImportant()
-      d.addCallback(callOut(updateStats))
+      d.addCallback(callOut, putKettleOn))
       d.addCallback(doSomethingWithReallyImportantThing)
 
-    Use this where you need a side-effect as a :py:class:`~Deferred` is fired,
-    but you don't want to clobber the result being propagated with the return
-    value from the call to the given function.
-
-    Not that the result being passed through is *not* passed to the function.
+    Use this where you need a side-effect when a :py:class:`~Deferred` is
+    fired, but you don't want to clobber the result. Note that the result
+    being passed through is *not* passed to the function.
 
     Note also that if the call-out raises an exception, this will be
     propagated; nothing is done to suppress the exception or preserve the
     result in this case.
     """
-    def callCallOut(thing):
-        func(*args, **kwargs)
-        return thing
-    return callCallOut
+    return maybeDeferred(func, *args, **kwargs).addCallback(lambda _: thing)
+
+
+def callOutToThread(thing, func, *args, **kwargs):
+    """Call out to the given `func` in another thread, but return `thing`.
+
+    For example::
+
+      d = client.fetchSomethingReallyImportant()
+      d.addCallback(callOutToThread, watchTheKettleBoil))
+      d.addCallback(doSomethingWithReallyImportantThing)
+
+    Use this where you need a side-effect when a :py:class:`~Deferred` is
+    fired, but you don't want to clobber the result. Note that the result
+    being passed through is *not* passed to the function.
+
+    Note also that if the call-out raises an exception, this will be
+    propagated; nothing is done to suppress the exception or preserve the
+    result in this case.
+    """
+    return deferToThread(func, *args, **kwargs).addCallback(lambda _: thing)
 
 
 class DeferredValue:
