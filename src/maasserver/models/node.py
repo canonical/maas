@@ -64,6 +64,7 @@ from maasserver.clusterrpc.power import (
     power_on_node,
     )
 from maasserver.enum import (
+    IPADDRESS_TYPE,
     NODE_BOOT,
     NODE_BOOT_CHOICES,
     NODE_PERMISSION,
@@ -1460,19 +1461,34 @@ class Node(CleanSave, TimestampedModel):
             self.deallocate_static_ip_addresses()
         self.save()
 
-    def claim_static_ip_addresses(self):
-        """Assign static IPs to the node's PXE MAC.
+    def claim_static_ip_addresses(
+            self, mac=None, alloc_type=IPADDRESS_TYPE.AUTO,
+            requested_address=None):
+        """Assign static IPs to a node's MAC.
+        If no MAC is specified, defaults to its PXE MAC.
+
+        By default, assigns IP addresses of type AUTO. If a different type
+        is desired (such as STICKY), the optional alloc_type parameter can
+        be used to override it.
+
+        By default, any address inside the cluster's static range can be
+        used. If the optional requested_address parameter is specified,
+        will attempt to obtain it.
 
         :return: A list of ``(ip-address, mac-address)`` tuples.
         :raises: `StaticIPAddressExhaustion` if there are not enough IPs left.
+        :raises: `StaticIPAddressUnavailable` if the supplied
+        requested_address is already in use.
         """
-        mac = self.get_pxe_mac()
 
         if mac is None:
-            return []
+            mac = self.get_pxe_mac()
+            if mac is None:
+                return []
 
         try:
-            static_ips = mac.claim_static_ips()
+            static_ips = mac.claim_static_ips(
+                alloc_type=alloc_type, requested_address=requested_address)
         except StaticIPAddressTypeClash:
             # There's already a non-AUTO IP.
             return []
@@ -1498,16 +1514,26 @@ class Node(CleanSave, TimestampedModel):
             # it.
             raise update_host_maps_failures[0].raiseException()
 
-    def deallocate_static_ip_addresses(self):
+    def deallocate_static_ip_addresses(
+            self, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
         """Release the `StaticIPAddress` that is assigned to this node and
         remove the host mapping on the cluster.
 
         This should only be done when the node is in an unused state.
+
+        If an address is supplied, only deallocate the specified address.
+
+        :param:address: string
         """
-        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(self)
-        self.delete_host_maps(deallocated_ips)
-        from maasserver.dns.config import dns_update_zones
-        dns_update_zones([self.nodegroup])
+        deallocated_ips = StaticIPAddress.objects.deallocate_by_node(
+            self, alloc_type=alloc_type, ip=ip)
+
+        if len(deallocated_ips) > 0:
+            self.delete_host_maps(deallocated_ips)
+            from maasserver.dns.config import dns_update_zones
+            dns_update_zones([self.nodegroup])
+
+        return deallocated_ips
 
     def get_boot_purpose(self):
         """

@@ -199,19 +199,24 @@ class StaticIPAddressManager(Manager):
                     "No more IPs available in range %s-%s" % (
                         range_low.format(), range_high.format()))
 
-    def _deallocate(self, filter):
+    @classmethod
+    def _deallocate(cls, queryset):
         """Helper func to deallocate the records in the supplied queryset
         filter and return a list of IPs deleted."""
-        deallocated_ips = {record.ip.format() for record in filter}
-        filter.delete()
+        deallocated_ips = {record.ip.format() for record in queryset}
+        queryset.delete()
         return deallocated_ips
 
-    def deallocate_by_node(self, node):
-        """Given a node, deallocate all of its AUTO StaticIPAddresses."""
-        qs = self.filter(
-            alloc_type=IPADDRESS_TYPE.AUTO).filter(
-            macaddress__node=node)
-        return self._deallocate(qs)
+    def deallocate_by_node(
+            self, node, alloc_type=IPADDRESS_TYPE.AUTO, ip=None):
+        """Given a node, deallocate all of its StaticIPAddresses of the
+        specified type. Optionally, only deallocate the specified address."""
+        queryset = self
+        if ip is not None:
+            queryset = queryset.filter(ip=ip)
+        queryset = queryset.filter(
+            alloc_type=alloc_type, macaddress__node=node)
+        return self._deallocate(queryset)
 
     def delete_by_node(self, node):
         """Given a node, delete ALL of its StaticIPAddresses.

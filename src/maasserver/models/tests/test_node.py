@@ -42,6 +42,7 @@ from maasserver.enum import (
 from maasserver.exceptions import (
     NodeStateViolation,
     StaticIPAddressTypeClash,
+    StaticIPAddressUnavailable,
     )
 from maasserver.fields import MAC
 from maasserver.models import (
@@ -97,6 +98,7 @@ from mock import (
     Mock,
     sentinel,
     )
+from netaddr import IPAddress
 from provisioningserver.power.poweraction import UnknownPowerType
 from provisioningserver.power_schema import JSON_POWER_TYPE_PARAMETERS
 from provisioningserver.rpc import cluster as cluster_module
@@ -105,8 +107,11 @@ from provisioningserver.rpc.exceptions import NoConnectionsAvailable
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.rpc.testing import always_succeed_with
 from provisioningserver.utils.enum import map_enum
+from testtools import ExpectedException
 from testtools.matchers import (
+    Contains,
     Equals,
+    HasLength,
     Is,
     IsInstance,
     MatchesStructure,
@@ -142,7 +147,7 @@ class TestHostnameValidator(MAASServerTestCase):
         # to be built up from multiple labels.
         ten_chars = ('a' * 9) + '.'
         hostname = ten_chars * 25 + ('b' * 5)
-        self.assertEqual(255, len(hostname))
+        self.assertThat(hostname, HasLength(255))
         return hostname
 
     def assertAccepts(self, hostname):
@@ -238,7 +243,7 @@ class NodeTest(MAASServerTestCase):
     def test_system_id(self):
         # The generated system_id looks good.
         node = factory.make_Node()
-        self.assertEqual(len(node.system_id), 41)
+        self.assertThat(node.system_id, HasLength(41))
         self.assertTrue(node.system_id.startswith('node-'))
 
     def test_empty_architecture_rejected_for_installable_nodes(self):
@@ -1238,13 +1243,16 @@ class NodeTest(MAASServerTestCase):
                 {node.nodegroup: expected}))
 
     def test_deallocate_static_ip_updates_dns(self):
+        # silence remove_host_maps
+        self.patch_autospec(node_module, "remove_host_maps")
         dns_update_zones = self.patch(dns_config, 'dns_update_zones')
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ACCEPTED)
-        node = factory.make_Node(
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             owner=factory.make_User(), power_type='ether_wake')
+        node.get_primary_mac().claim_static_ips()
         node.release()
         self.assertThat(dns_update_zones, MockCalledOnceWith([node.nodegroup]))
 
@@ -2311,7 +2319,8 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
 
 
 class TestClaimStaticIPAddresses(MAASServerTestCase):
-    """Tests for `Node.claim_static_ip_addresses`."""
+    """Tests for `Node.claim_static_ip_addresses` and
+    deallocate_static_ip_addresses"""
 
     def test__returns_empty_list_if_no_iface(self):
         node = factory.make_Node()
@@ -2353,6 +2362,106 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             StaticIPAddressTypeClash, mac_address.claim_static_ips)
         static_mappings = node.claim_static_ip_addresses()
         self.assertEqual([], static_mappings)
+
+    def test__claims_and_releases_sticky_ip_address(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
+        user = factory.make_User()
+        network = factory.make_ipv4_network(slash=24)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
+
+        ngi = node.get_pxe_mac().cluster_interface
+        static_range = ngi.get_static_ip_range()
+
+        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY)[0]
+
+        self.expectThat(static_range, Contains(IPAddress(pxe_ip)))
+
+        mac = MACAddress.objects.get(mac_address=pxe_mac)
+        ip = mac.ip_addresses.first()
+        self.expectThat(ip.ip, Equals(pxe_ip))
+        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
+
+        deallocated = node.deallocate_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
+
+        self.expectThat(deallocated, HasLength(1))
+        self.expectThat(deallocated, Equals(set([pxe_ip])))
+        self.expectThat(remove_host_maps.call_count, Equals(1))
+
+    def test__claims_specific_sticky_ip_address(self):
+        user = factory.make_User()
+        network = factory.make_ipv4_network(slash=24)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
+        ngi = node.get_pxe_mac().cluster_interface
+        first_ip = ngi.get_static_ip_range()[0]
+
+        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)[0]
+        mac = MACAddress.objects.get(mac_address=pxe_mac)
+        ip = mac.ip_addresses.first()
+        self.expectThat(IPAddress(ip.ip), Equals(first_ip))
+        self.expectThat(ip.ip, Equals(pxe_ip))
+        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
+
+    def test__claim_specific_sticky_ip_address_twice_fails(self):
+        user = factory.make_User()
+        network = factory.make_ipv4_network(slash=24)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
+        node2 = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
+        ngi = node.get_pxe_mac().cluster_interface
+        first_ip = ngi.get_static_ip_range()[0]
+
+        node.claim_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)
+        with ExpectedException(StaticIPAddressUnavailable):
+            node2.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, requested_address=first_ip)
+
+    def test__claims_and_deallocates_multiple_sticky_ip_addresses(self):
+        remove_host_maps = self.patch_autospec(
+            node_module, "remove_host_maps")
+        user = factory.make_User()
+        network = factory.make_ipv4_network(slash=24)
+        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+            owner=user, status=NODE_STATUS.ALLOCATED, network=network)
+        cluster_if = node.get_primary_mac().cluster_interface
+
+        macs = []
+        for _ in range(3):
+            mac = factory.make_MACAddress(
+                node=node, cluster_interface=cluster_if)
+            macs.append(mac)
+
+        pxe_ip, pxe_mac = node.claim_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY)[0]
+
+        mac = MACAddress.objects.get(mac_address=pxe_mac)
+        ip = mac.ip_addresses.all()[0]
+        self.expectThat(ip.ip, Equals(pxe_ip))
+        self.expectThat(ip.alloc_type, Equals(IPADDRESS_TYPE.STICKY))
+
+        sips = []
+        for mac in macs:
+            sips.append(node.claim_static_ip_addresses(
+                mac=mac, alloc_type=IPADDRESS_TYPE.STICKY)[0])
+
+        # try removing just the IP on the PXE MAC first
+        deallocated = node.deallocate_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=pxe_ip)
+
+        self.expectThat(deallocated, HasLength(1))
+
+        # try removing the remaining IP addresses now
+        deallocated = node.deallocate_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY)
+        self.expectThat(deallocated, HasLength(len(macs)))
+        self.expectThat(remove_host_maps.call_count, Equals(2))
 
 
 class TestDeploymentStatus(MAASServerTestCase):
