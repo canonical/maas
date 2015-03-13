@@ -111,6 +111,7 @@ class TestNodeHandler(MAASServerTestCase):
                 blockdevice.size
                 for blockdevice in physicalblockdevices
                 ]), include_suffix=False),
+            "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
                 tag.name

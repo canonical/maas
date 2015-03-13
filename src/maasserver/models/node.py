@@ -40,6 +40,7 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.db.models import (
+    BigIntegerField,
     BooleanField,
     CASCADE,
     CharField,
@@ -498,6 +499,8 @@ class Node(CleanSave, TimestampedModel):
     # as a basic optimisation over querying the lshw output.
     cpu_count = IntegerField(default=0)
     memory = IntegerField(default=0)
+
+    swap_size = BigIntegerField(null=True, blank=True, default=None)
 
     # For strings, Django insists on abusing the empty string ("blank")
     # to mean "none."

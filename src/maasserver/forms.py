@@ -515,6 +515,26 @@ class NodeForm(MAASModelForm):
             self.cleaned_data['disable_ipv4'] = False
         return self.cleaned_data['disable_ipv4']
 
+    def clean_swap_size(self):
+        """Validates the swap size field and parses integers suffixed with K,
+        M, G and T
+        """
+        swap_size = self.cleaned_data.get('swap_size')
+        if swap_size == '':
+            return None
+        elif swap_size.endswith('K'):
+            return int(swap_size[:-1]) * 1000
+        elif swap_size.endswith('M'):
+            return int(swap_size[:-1]) * 1000000
+        elif swap_size.endswith('G'):
+            return int(swap_size[:-1]) * 1000000000
+        elif swap_size.endswith('T'):
+            return int(swap_size[:-1]) * 1000000000000
+        try:
+            return int(swap_size)
+        except ValueError:
+            raise ValidationError('Invalid size for swap: %s' % swap_size)
+
     def clean(self):
         cleaned_data = super(NodeForm, self).clean()
         if self.new_node and self.data.get('disable_ipv4') is None:
@@ -614,11 +634,18 @@ class NodeForm(MAASModelForm):
             "does not manage DNS, then the host name as entered will be the "
             "FQDN."))
 
+    swap_size = forms.CharField(
+        label="Swap size", required=False, help_text=(
+            "The size of the swap file in bytes. The field also accepts K, M, "
+            "G and T meaning kilobytes, megabytes, gigabytes and terabytes."))
+
     class Meta:
         model = Node
 
         # Fields that the form should generate automatically from the
         # model:
+        # Note: fields have to be added here even if they were defined manually
+        # elsewhere in the form
         fields = (
             'hostname',
             'architecture',
@@ -626,6 +653,7 @@ class NodeForm(MAASModelForm):
             'distro_series',
             'license_key',
             'disable_ipv4',
+            'swap_size',
             )
 
 

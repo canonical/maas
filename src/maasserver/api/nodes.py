@@ -93,6 +93,7 @@ DISPLAYED_NODE_FIELDS = (
     'architecture',
     'cpu_count',
     'memory',
+    'swap_size',
     'storage',
     'status',
     'substatus',
@@ -245,6 +246,10 @@ class NodeHandler(OperationsHandler):
         :type power_parameters_skip_check: unicode
         :param zone: Name of a valid physical zone in which to place this node
         :type zone: unicode
+        :param swap_size: Specifies the size of the swap file, in bytes. Field
+            accept K, M, G and T suffixes for values expressed respectively in
+            kilobytes, megabytes, gigabytes and terabytes.
+        :type swap_size: unicode
 
         Returns 404 if the node is node found.
         Returns 403 if the user does not have permission to update the node.

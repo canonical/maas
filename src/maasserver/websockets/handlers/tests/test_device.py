@@ -41,6 +41,7 @@ class TestDeviceHandler(MAASServerTestCase):
             "ip_addresses": list(node.ip_addresses()),
             "nodegroup": node.nodegroup.name,
             "owner": "" if node.owner is None else node.owner.username,
+            "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
                 tag.name

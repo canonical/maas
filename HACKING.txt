@@ -429,6 +429,14 @@ To apply that migration, run::
 
     $ make syncdb
 
+.. Note::
+
+   In order to create or run a migration, you'll need to have the
+   database server running. To do that, either run ``make start``,
+   which will start all of the MAAS components or ``make
+   services/database/@start``, which will start only the database
+   server.
+
 
 Performing data migration
 ^^^^^^^^^^^^^^^^^^^^^^^^^

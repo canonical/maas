@@ -68,7 +68,8 @@ class TestNodeForm(MAASServerTestCase):
                 'distro_series',
                 'license_key',
                 'disable_ipv4',
-                'nodegroup'
+                'swap_size',
+                'nodegroup',
             ], list(form.fields))
 
     def test_changes_node(self):
@@ -483,6 +484,7 @@ class TestAdminNodeForm(MAASServerTestCase):
                 'distro_series',
                 'license_key',
                 'disable_ipv4',
+                'swap_size',
                 'power_type',
                 'power_parameters',
                 'cpu_count',
