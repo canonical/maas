@@ -41,6 +41,14 @@ class RegionServiceMaker:
         # Get something going with the logs.
         from provisioningserver import logger
         logger.basicConfig()
+        # Some region services use the ORM at class-load time: force Django to
+        # load the models first.
+        try:
+            from django import setup as django_setup
+        except ImportError:
+            pass  # Django < 1.7
+        else:
+            django_setup()
         # Prevent other libraries from starting the reactor via crochet.
         # In other words, this makes crochet.setup() a no-op.
         import crochet
