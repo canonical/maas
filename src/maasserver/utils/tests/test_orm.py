@@ -49,6 +49,7 @@ from maastesting.djangotestcase import DjangoTransactionTestCase
 from maastesting.factory import factory
 from maastesting.matchers import (
     HasLength,
+    IsFiredDeferred,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -63,6 +64,7 @@ from mock import (
 from provisioningserver.utils.twisted import DeferredValue
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
+from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
     IsInstance,
@@ -353,6 +355,43 @@ class TestRequestTransactionRetry(MAASTestCase):
             OperationalError, request_transaction_retry)
         self.assertThat(exception, MatchesPredicate(
             is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestPostCommitHooks(MAASTestCase):
+    """Tests for the `post_commit_hooks` singleton."""
+
+    def test__crashes_on_enter_if_hooks_exist(self):
+        hook = Deferred()
+        post_commit_hooks.add(hook)
+        with ExpectedException(TransactionManagementError):
+            with post_commit_hooks:
+                pass
+        # The hook has been cancelled, but CancelledError is suppressed in
+        # hooks, so we don't see it here.
+        self.assertThat(hook, IsFiredDeferred())
+        # The hook list is cleared so that the exception is raised only once.
+        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+
+    def test__fires_hooks_on_exit_if_no_exception(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hooks_fire = self.patch_autospec(post_commit_hooks, "fire")
+        with post_commit_hooks:
+            post_commit_hooks.add(Deferred())
+        # Hooks are fired.
+        self.assertThat(hooks_fire, MockCalledOnceWith())
+
+    def test__resets_hooks_on_exit_if_exception(self):
+        self.addCleanup(post_commit_hooks.reset)
+        hooks_fire = self.patch_autospec(post_commit_hooks, "fire")
+        hooks_reset = self.patch_autospec(post_commit_hooks, "reset")
+        exception_type = factory.make_exception_type()
+        with ExpectedException(exception_type):
+            with post_commit_hooks:
+                post_commit_hooks.add(Deferred())
+                raise exception_type()
+        # No hooks were fired; they were reset immediately.
+        self.assertThat(hooks_fire, MockNotCalled())
+        self.assertThat(hooks_reset, MockCalledOnceWith())
 
 
 class TestPostCommit(MAASTestCase):

@@ -275,7 +275,31 @@ def retry_on_serialization_failure(func, reset=noop):
     return retrier
 
 
-post_commit_hooks = DeferredHooks()
+class PostCommitHooks(DeferredHooks):
+    """A specialised set of `DeferredHooks` for post-commit tasks.
+
+    Can be used as a context manager, to check for orphaned post-commit hooks
+    on the way in, and to run newly added hooks on the way out.
+    """
+
+    def __enter__(self):
+        if len(self.hooks) > 0:
+            # Crash when there are orphaned post-commit hooks. These might
+            # only turn up in testing, where transactions are managed by the
+            # test framework instead of this decorator. We need to fail hard
+            # -- not just warn about it -- to ensure it gets fixed.
+            self.reset()
+            raise TransactionManagementError(
+                "Orphaned post-commit hooks found.")
+
+    def __exit__(self, exc_type, exc_value, exc_tb):
+        if exc_value is None:
+            self.fire()
+        else:
+            self.reset()
+
+
+post_commit_hooks = PostCommitHooks()
 
 
 def post_commit(hook):
@@ -330,24 +354,11 @@ def transactional(func):
             # Don't use the retry-capable function if we're already in a
             # transaction; retrying is pointless when the txn is broken.
             return func_within_txn(*args, **kwargs)
-        elif len(post_commit_hooks.hooks) > 0:
-            # Crash if there are any orphaned post-commit hooks. These will
-            # probably only turn up in testing, where transactions are managed
-            # by the test framework instead of this decorator. We need to fail
-            # hard -- not just warn about it -- to ensure it gets fixed.
-            post_commit_hooks.reset()
-            raise TransactionManagementError(
-                "Orphaned post-commit hooks found.")
         else:
             # Use the retry-capable function, firing post-transaction hooks.
             try:
-                result = func_outside_txn(*args, **kwargs)
-            except:
-                post_commit_hooks.reset()
-                raise  # Re-raise.
-            else:
-                post_commit_hooks.fire()
-                return result
+                with post_commit_hooks:
+                    return func_outside_txn(*args, **kwargs)
             finally:
                 close_old_connections()
 
