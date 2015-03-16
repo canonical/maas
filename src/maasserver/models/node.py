@@ -1500,10 +1500,18 @@ class Node(CleanSave, TimestampedModel):
         # because it's all-or-nothing (hence the atomic context).
         return [(static_ip.ip, unicode(mac)) for static_ip in static_ips]
 
-    def update_host_maps(self, claims):
-        """Update host maps for the given MAC->IP mappings."""
+    def update_host_maps(self, claims, nodegroups=None):
+        """Update host maps for the given MAC->IP mappings.
+
+        If a nodegroup list is given, update all of them.  If not, only
+        update the nodegroup of the node.
+        """
         static_mappings = defaultdict(dict)
-        static_mappings[self.nodegroup].update(claims)
+        if nodegroups is None:
+            static_mappings[self.nodegroup].update(claims)
+        else:
+            for nodegroup in nodegroups:
+                static_mappings[nodegroup].update(claims)
         update_host_maps_failures = list(
             update_host_maps(static_mappings))
         if len(update_host_maps_failures) != 0:

@@ -20,7 +20,10 @@ from maasserver.api.support import (
     operation,
     OperationsHandler,
     )
-from maasserver.api.utils import get_optional_list
+from maasserver.api.utils import (
+    get_mandatory_param,
+    get_optional_list,
+    )
 from maasserver.dns.config import dns_update_zones
 from maasserver.enum import (
     IPADDRESS_TYPE,
@@ -38,6 +41,7 @@ from maasserver.forms import (
 from maasserver.models import (
     MACAddress,
     Node,
+    NodeGroup,
     )
 from maasserver.models.node import Device
 from piston.utils import rc
@@ -144,15 +148,19 @@ class DeviceHandler(OperationsHandler):
         :param mac_address: Optional MAC address on the device on which to
             assign the sticky IP address.  If not passed, defaults to the
             primary MAC for the device.
-        :param requested_address: Optional IP address to claim.  Must be in
-            the range defined on a cluster interface to which the context
-            MAC is related, or 403 Forbidden is returned.  If the requested
-            address is unavailable for use, 404 Not Found is returned.
+        :param requested_address: Optional IP address to claim.  If this
+            isn't passed, this method will draw an IP address from the static
+            range of the cluster interface this MAC is related to.
+            If passed, this method lets you associate any IP address
+            with a MAC address if the MAC isn't related to a cluster interface.
 
         Returns 404 if the device is not found.
         Returns 400 if the mac_address is not found on the device.
         Returns 503 if there are not enough IPs left on the cluster interface
         to which the mac_address is linked.
+        Returns 503 if the requested_address falls in a dynamic range.
+        Returns 503 if the requested_address falls in a dynamic range.
+        Returns 503 if the requested_address is already allocated.
         """
         device = Node.devices.get_node_or_404(
             system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
@@ -167,17 +175,75 @@ class DeviceHandler(OperationsHandler):
                 raise MAASAPIBadRequest(
                     "mac_address %s not found on the device" % raw_mac)
         requested_address = request.POST.get('requested_address', None)
-        sticky_ips = mac_address.claim_static_ips(
-            alloc_type=IPADDRESS_TYPE.STICKY,
-            requested_address=requested_address)
-        claims = [
-            (static_ip.ip, mac_address.mac_address.get_raw())
-            for static_ip in sticky_ips]
-        device.update_host_maps(claims)
-        dns_update_zones([device.nodegroup])
+        if requested_address is None:
+            sticky_ips = mac_address.claim_static_ips(
+                alloc_type=IPADDRESS_TYPE.STICKY,
+                requested_address=requested_address)
+            claims = [
+                (static_ip.ip, mac_address.mac_address.get_raw())
+                for static_ip in sticky_ips]
+            device.update_host_maps(claims)
+        else:
+            sticky_ip = mac_address.set_static_ip(
+                requested_address, request.user)
+            dhcp_managed_clusters = [
+                cluster.manages_dhcp() for cluster in NodeGroup.objects.all()]
+            device.update_host_maps(
+                [(sticky_ip.ip, mac_address.mac_address.get_raw())],
+                dhcp_managed_clusters)
+        # Use the master cluster DNS zone for devices.
+        # This is a temporary measure until we support setting a specific
+        # zone for each MAC.
+        dns_update_zones([NodeGroup.objects.ensure_master()])
         maaslog.info(
             "%s: Sticky IP address(es) allocated: %s", device.hostname,
             ', '.join(allocation.ip for allocation in sticky_ips))
+        return device
+
+    @operation(idempotent=False)
+    def set_sticky_ip_address(self, request, system_id):
+        """Set a "sticky" IP address to a device's MAC.
+
+        This method differs from the 'claim_sticky_ip_address' operation
+        because it doesn't rely on an established link between a MAC address
+        and a cluster interface: this method lets you associate any IP address
+        with a MAC address if the MAC isn't related to a cluster interface.
+
+        :param mac_address: Optional MAC address on the device on which to
+            assign the sticky IP address.  If not passed, defaults to the
+            primary MAC for the device.
+        :param requested_address: IP address to claim.
+
+        Returns 404 if the device is not found.
+        Returns 400 if the mac_address is not found on the device.
+        Returns 503 if the requested_address falls in a dynamic range.
+        Returns 503 if the requested_address falls in a dynamic range.
+        Returns 503 if the requested_address is already allocated.
+        """
+        device = Node.devices.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        raw_mac = request.POST.get('mac_address', None)
+        if raw_mac is None:
+            mac_address = device.get_primary_mac()
+        else:
+            try:
+                mac_address = MACAddress.objects.get(
+                    mac_address=raw_mac, node=device)
+            except MACAddress.DoesNotExist:
+                raise MAASAPIBadRequest(
+                    "mac_address %s not found on the device" % raw_mac)
+        requested_address = get_mandatory_param(
+            request.POST, 'requested_address')
+        sticky_ip = mac_address.set_static_ip(requested_address, request.user)
+        dhcp_managed_clusters = [
+            cluster.manages_dhcp() for cluster in NodeGroup.objects.all()]
+        device.update_host_maps(
+            [(sticky_ip.ip, mac_address.mac_address.get_raw())],
+            dhcp_managed_clusters)
+        # Use the master cluster DNS zone for devices.
+        # This is a temporary measure until we support setting a specific
+        # zone for each MAC.
+        dns_update_zones([NodeGroup.objects.ensure_master()])
         return device
 
     @operation(idempotent=False)

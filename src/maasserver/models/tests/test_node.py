@@ -93,6 +93,7 @@ from metadataserver.user_data import (
     commissioning,
     disk_erasing,
     )
+import mock
 from mock import (
     ANY,
     Mock,
@@ -2758,6 +2759,27 @@ class TestNode_Start(MAASServerTestCase):
 
         self.assertRaises(exception_type, node.start, user)
         self.assertThat(deallocate_ips, MockCalledOnceWith(node))
+
+    def test_update_host_maps_updates_given_nodegroup_list(self):
+        user = factory.make_User()
+        node = self.make_acquired_node_with_mac(user)
+
+        update_host_maps = self.patch(node_module, "update_host_maps")
+        update_host_maps.return_value = []  # No failures.
+
+        claims = {mock.sentinel.ip: mock.sentinel.mac}
+        # Create a bunch of nodegroups
+        all_nodegroups = [factory.make_NodeGroup() for _ in range(5)]
+        # Select some nodegroups.
+        nodegroups = all_nodegroups[2:]
+        node.update_host_maps(claims, nodegroups)
+
+        # Host maps are updated.
+        self.assertThat(
+            update_host_maps, MockCalledOnceWith({
+                nodegroup: claims
+                for nodegroup in nodegroups
+            }))
 
 
 class TestNode_Stop(MAASServerTestCase):

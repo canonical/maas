@@ -244,6 +244,21 @@ class NodeGroup(TimestampedModel):
                 return True
         return False
 
+    def manages_dhcp(self):
+        """Does this `NodeGroup` manages a DHCP server?
+
+        This returns `True` when the `NodeGroup` is accepted, and has a
+        `NodeGroupInterface` that's set to manage DHCP.
+        """
+        if self.status != NODEGROUP_STATUS.ACCEPTED:
+            return False
+        # Filter in python instead of in SQL.  This will use the cached
+        # version of self.nodegroupinterface_set if present.
+        for itf in self.nodegroupinterface_set.all():
+            if itf.management != NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED:
+                return True
+        return False
+
     def ensure_dhcp_key(self):
         """Ensure that this nodegroup has a dhcp key.
 

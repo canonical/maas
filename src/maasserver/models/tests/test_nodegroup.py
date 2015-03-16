@@ -308,6 +308,53 @@ class TestNodeGroup(MAASServerTestCase):
         nodegroup.nodegroupinterface_set.all().delete()
         self.assertFalse(nodegroup.manages_dns())
 
+    def test_manages_dhcp_returns_True_if_managing_DHCP(self):
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
+        self.assertTrue(nodegroup.manages_dhcp())
+
+    def test_manages_dhcp_returns_True_if_managing_DHCP_and_DNS(self):
+        nodegroup = factory.make_NodeGroup(
+            status=NODEGROUP_STATUS.ACCEPTED,
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+        self.assertTrue(nodegroup.manages_dhcp())
+
+    def test_manages_dhcp_returns_False_if_not_accepted(self):
+        nodegroups = [
+            factory.make_NodeGroup(
+                status=status,
+                management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
+            for status in map_enum(NODEGROUP_STATUS).values()
+            ]
+        self.assertEqual(
+            {
+                NODEGROUP_STATUS.PENDING: False,
+                NODEGROUP_STATUS.ACCEPTED: True,
+                NODEGROUP_STATUS.REJECTED: False,
+            },
+            {
+                nodegroup.status: nodegroup.manages_dhcp()
+                for nodegroup in nodegroups
+            })
+
+    def test_manages_dhcp_returns_False_if_no_interface_manages_DHCP(self):
+        nodegroups = {
+            management: factory.make_NodeGroup(
+                status=NODEGROUP_STATUS.ACCEPTED, management=management)
+            for management in map_enum(NODEGROUPINTERFACE_MANAGEMENT).values()
+            }
+        self.assertEqual(
+            {
+                NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED: False,
+                NODEGROUPINTERFACE_MANAGEMENT.DHCP: True,
+                NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS: True,
+            },
+            {
+                management: nodegroup.manages_dhcp()
+                for management, nodegroup in nodegroups.items()
+            })
+
     def test_get_managed_interfaces_returns_list(self):
         nodegroup = factory.make_NodeGroup()
         self.assertIsInstance(nodegroup.get_managed_interfaces(), list)
