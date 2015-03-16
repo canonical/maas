@@ -8,12 +8,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the cta.html into the template cache.
     $templateCache.put('directive/templates/cta.html', [
         '<div class="cta-group" data-ng-class="{ secondary: secondary }">',
-            '<a class="cta-group__link" data-ng-click="buttonClick()">',
+            '<a class="cta-group__link" data-ng-click="shown=!shown">',
                 '{$ getTitle() $}',
-            '</a>',
-            '<a class="cta-group__link--toggle" ',
-                'aria-expanded="false" data-ng-click="shown=!shown">',
-                '<span class="chevron"></span>',
             '</a>',
             '<ul class="cta-group__dropdown ng-hide" ',
                 'role="menu" data-ng-show="shown">',
@@ -35,26 +31,17 @@ angular.module('MAAS').directive('maasCta', function() {
         require: "ngModel",
         scope: {
             maasCta: '=',
-            keepOrange: '@',
             ngModel: '='
         },
         templateUrl: 'directive/templates/cta.html',
         link : function(scope, element, attrs, ngModelCtrl) {
             // Use the link function to grab the ngModel controller.
 
-            // keepOrange will stop the secondary class from being applied.
-            function keepOrange() {
-                if(angular.isUndefined(scope.keepOrange)) {
-                    return false;
-                }
-                if(angular.isString(scope.keepOrange)) {
-                    if(scope.keepOrange === "true") {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
-                return scope.keepOrange;
+            // Title of the button when not active.
+            var defaultTitle = "Take action";
+            if(angular.isString(attrs.defaultTitle) &&
+                attrs.defaultTitle !== "") {
+                defaultTitle = attrs.defaultTitle;
             }
 
             // When an item is selected in the list set the title, hide the
@@ -67,27 +54,11 @@ angular.module('MAAS').directive('maasCta', function() {
             // Return the title of the dropdown button.
             scope.getTitle = function() {
                 if(angular.isObject(ngModelCtrl.$modelValue)) {
-                    if(keepOrange()) {
-                        scope.secondary = false;
-                    } else {
-                        scope.secondary = true;
-                    }
+                    scope.secondary = true;
                     return ngModelCtrl.$modelValue.title;
                 } else {
                     scope.secondary = false;
-                    return "Take action";
-                }
-            };
-
-            // Called only when the button is clicked not the toggle.
-            scope.buttonClick = function() {
-                if(!angular.isObject(ngModelCtrl.$modelValue)) {
-                    // Show the dropdown if no option is currently selected.
-                    scope.shown = !scope.shown;
-                } else if(scope.shown) {
-                    // Now that option is selected and its show, clicking it
-                    // again will hide it.
-                    scope.shown = false;
+                    return defaultTitle;
                 }
             };
 
@@ -108,13 +79,6 @@ angular.module('MAAS').directive('maasCta', function() {
             $element.bind('click', function (evt) {
                 evt.stopPropagation();
             });
-
-            // Don't propagate the click of the toggle. This stops the ngClick
-            // from firing on the toggle button.
-            $element.find('a.cta-group__link--toggle').bind('click',
-                function(evt) {
-                    evt.stopPropagation();
-                });
 
             // If a click makes it to the body element then hide the dropdown.
             $document.find('body').bind('click', function () {

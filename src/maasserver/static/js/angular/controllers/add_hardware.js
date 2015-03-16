@@ -480,6 +480,9 @@ angular.module('MAAS').controller('AddHardwareController', [
 
             // Stop the loading of architectures.
             cancelLoadArchitectures();
+
+            // Emit the hidden event.
+            $scope.$emit('addHardwareHidden');
         };
 
         // Return True when architectures loaded and in hardware mode.

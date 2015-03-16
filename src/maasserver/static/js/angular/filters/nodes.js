@@ -91,9 +91,11 @@ angular.module('MAAS').filter('nodesFilter', ['$filter', 'SearchService',
                     angular.forEach(terms, function(term) {
                         var matched = [];
                         angular.forEach(filtered, function(node) {
-                            if(node.$selected && term === "selected") {
+                            if(node.$selected &&
+                                term.toLowerCase() === "selected") {
                                 matched.push(node);
-                            } else if(!node.$selected && term === "!selected") {
+                            } else if(!node.$selected &&
+                                term.toLowerCase() === "!selected") {
                                 matched.push(node);
                             }
                         });

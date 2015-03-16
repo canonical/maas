@@ -547,6 +547,14 @@ describe("AddHardwareController", function() {
             $timeout.flush(3000);
             expect(RegionConnection.callMethod.calls.count()).toBe(3);
         });
+
+        it("emits addHardwareHidden event", function(done) {
+            var controller = makeController();
+            $scope.$on("addHardwareHidden", function() {
+                done();
+            });
+            $scope.hide();
+        });
     });
 
     describe("addMac", function() {

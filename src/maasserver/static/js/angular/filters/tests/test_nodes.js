@@ -37,6 +37,28 @@ describe("nodesFilter", function() {
         expect(nodesFilter(nodes, "in:selected")).toEqual([matchingNode]);
     });
 
+    it("matches selected uppercase", function() {
+        var matchingNode = {
+            $selected: true
+        };
+        var otherNode = {
+            $selected: false
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "in:Selected")).toEqual([matchingNode]);
+    });
+
+    it("matches selected uppercase in brackets", function() {
+        var matchingNode = {
+            $selected: true
+        };
+        var otherNode = {
+            $selected: false
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "in:(Selected)")).toEqual([matchingNode]);
+    });
+
     it("matches non-selected", function() {
         var matchingNode = {
             $selected: false
@@ -46,6 +68,28 @@ describe("nodesFilter", function() {
         };
         var nodes = [matchingNode, otherNode];
         expect(nodesFilter(nodes, "in:!selected")).toEqual([matchingNode]);
+    });
+
+    it("matches non-selected uppercase", function() {
+        var matchingNode = {
+            $selected: false
+        };
+        var otherNode = {
+            $selected: true
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "in:!Selected")).toEqual([matchingNode]);
+    });
+
+    it("matches non-selected uppercase in brackets", function() {
+        var matchingNode = {
+            $selected: false
+        };
+        var otherNode = {
+            $selected: true
+        };
+        var nodes = [matchingNode, otherNode];
+        expect(nodesFilter(nodes, "in:(!Selected)")).toEqual([matchingNode]);
     });
 
     it("matches on attribute", function() {

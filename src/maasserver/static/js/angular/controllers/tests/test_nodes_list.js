@@ -91,14 +91,11 @@ describe("NodesListController", function() {
         expect($scope.nodes).toBe(NodesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
         expect($scope.osinfo).toBeNull();
-        expect($scope.addHardwareOption).toEqual({
-            name: "hardware",
-            title: "Add Hardware"
-        });
+        expect($scope.addHardwareOption).toBeNull();
         expect($scope.addHardwareOptions).toEqual([
             {
                 name: "hardware",
-                title: "Add Hardware"
+                title: "Add Nodes"
             },
             {
                 name: "chassis",
@@ -370,7 +367,7 @@ describe("NodesListController", function() {
 
                 it("resets search when in:selected and none selected",
                     function() {
-                    tabObj.search = "in:selected";
+                    tabObj.search = "in:(Selected)";
                     $scope.toggleChecked(object, tab);
                     $scope.toggleChecked(object, tab);
                     expect(tabObj.search).toBe("");
@@ -429,7 +426,7 @@ describe("NodesListController", function() {
 
                 it("resets search when in:selected and none selected",
                     function() {
-                    tabObj.search = "in:selected";
+                    tabObj.search = "in:(Selected)";
                     $scope.toggleCheckAll(tab);
                     $scope.toggleCheckAll(tab);
                     expect(tabObj.search).toBe("");
@@ -461,7 +458,38 @@ describe("NodesListController", function() {
                 });
             });
 
+            describe("showSelected", function() {
+
+                it("sets search to in:selected", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].selectedItems.push(makeObject(tab));
+                    $scope.tabs[tab].actionOption = {};
+                    $scope.showSelected(tab);
+                    expect($scope.tabs[tab].search).toBe("in:(Selected)");
+                });
+
+                it("updateFilters with the new search", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].selectedItems.push(makeObject(tab));
+                    $scope.tabs[tab].actionOption = {};
+                    $scope.showSelected(tab);
+                    expect($scope.tabs[tab].filters["in"]).toEqual(
+                        ["Selected"]);
+                });
+            });
+
             describe("toggleFilter", function() {
+
+                it("resets search if in:selected", function() {
+                    var controller = makeController();
+                    $scope.tabs[tab].search = "in:(Selected)";
+                    $scope.tabs[tab].filters = { _: [], "in": ["Selected"] };
+                    $scope.toggleFilter("hostname", "test", tab);
+                    expect($scope.tabs[tab].filters).toEqual({
+                        _: [],
+                        hostname: ["test"]
+                    });
+                });
 
                 it("calls SearchService.toggleFilter", function() {
                     var controller = makeController();
@@ -601,7 +629,7 @@ describe("NodesListController", function() {
                 it("sets search to in:selected", function() {
                     var controller = makeController();
                     $scope.actionOptionSelected(tab);
-                    expect($scope.tabs[tab].search).toBe("in:selected");
+                    expect($scope.tabs[tab].search).toBe("in:(Selected)");
                 });
 
                 it("action deploy reloads osinfo", function() {
@@ -801,19 +829,19 @@ describe("NodesListController", function() {
 
                 it("clears search if in:selected", function() {
                     var controller = makeController();
-                    $scope.tabs[tab].search = "in:selected";
+                    $scope.tabs[tab].search = "in:(Selected)";
                     $scope.actionCancel(tab);
                     expect($scope.tabs[tab].search).toBe("");
                 });
 
                 it("clears search if in:selected (device)", function() {
                     var controller = makeController();
-                    $scope.tabs.devices.search = "in:selected";
+                    $scope.tabs.devices.search = "in:(Selected)";
                     $scope.actionCancel('devices');
                     expect($scope.tabs.devices.search).toBe("");
                 });
 
-                it("doesnt clear search if not in:selected", function() {
+                it("doesnt clear search if not in:Selected", function() {
                     var controller = makeController();
                     $scope.tabs[tab].search = "other";
                     $scope.actionCancel(tab);
@@ -901,7 +929,7 @@ describe("NodesListController", function() {
                     NodesManager._items = [object];
                     NodesManager._selectedItems = [object];
                     var controller = makeController();
-                    $scope.tabs[tab].search = "in:selected";
+                    $scope.tabs[tab].search = "in:(Selected)";
                     $scope.tabs[tab].actionOption = { name: "start" };
                     $scope.actionGo(tab);
                     defer.resolve();
@@ -960,6 +988,9 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].osSelection.osystem).toBe("");
                     expect($scope.tabs[tab].osSelection.release).toBe("");
                 });
+            });
+
+            describe("addHardwareOptionChanged", function() {
 
                 it("calls show in addHardwareScope", function() {
                     var controller = makeController();
@@ -969,13 +1000,12 @@ describe("NodesListController", function() {
                     $scope.addHardwareOption = {
                         name: "hardware"
                     };
-                    $scope.showAddHardware();
+                    $scope.addHardwareOptionChanged();
                     expect(
                         $scope.addHardwareScope.show).toHaveBeenCalledWith(
                             "hardware");
                 });
             });
-
         });
     });
 });

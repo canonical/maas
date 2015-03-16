@@ -19,13 +19,13 @@
                 <div class="page-header__cta two-col no-margin-bottom last-col" data-ng-hide="tabs.nodes.selectedItems.length">
                     <div class="two-col no-margin-bottom last-col">
                         <div data-maas-cta="addHardwareOptions"
-                            data-ng-model="addHardwareOption" data-keep-orange="true"
-                            data-ng-click="showAddHardware()">
+                            data-ng-model="addHardwareOption"
+                            data-ng-change="addHardwareOptionChanged()" data-default-title="Add Hardware">
                         </div>
                     </div>
                 </div>
                 <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.nodes.selectedItems.length">
-                    <span class="page-header__cta-feedback two-col no-margin-bottom">
+                    <span class="page-header__cta-feedback two-col no-margin-bottom" data-ng-click="showSelected('nodes')">
                         {$ tabs.nodes.selectedItems.length $} Selected
                     </span>
                     <div class="two-col no-margin-bottom last-col">
@@ -270,7 +270,7 @@
                 <tr class="table-listing__row">
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="allViewableChecked" id="check-all" />
+                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
                         <label for="check-all"></label>
                     </th>
                     <th colspan="2" class="table-listing__cell fixed">
@@ -384,7 +384,7 @@
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                    data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: device.$selected }">
+                    data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
                     <td colspan="4" >
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                         <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>

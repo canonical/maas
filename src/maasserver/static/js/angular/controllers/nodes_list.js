@@ -61,12 +61,12 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.actionErrorCount = 0;
 
         // Options for add hardware dropdown.
-        $scope.addHardwareOption = {
-            name: "hardware",
-            title: "Add Hardware"
-        };
+        $scope.addHardwareOption = null;
         $scope.addHardwareOptions = [
-            $scope.addHardwareOption,
+            {
+                name: "hardware",
+                title: "Add Nodes"
+            },
             {
                 name: "chassis",
                 title: "Add Chassis"
@@ -77,6 +77,31 @@ angular.module('MAAS').controller('NodesListController', [
         // The controller will set this variable as it's always a child or
         // this scope.
         $scope.addHardwareScope = null;
+
+        // When the addHardwareScope is hidden it will emit this event. We
+        // clear the call to action button, so it can be used again.
+        $scope.$on("addHardwareHidden", function() {
+            $scope.addHardwareOption = null;
+        });
+
+        // Return true if the tab is in viewing selected mode.
+        function isViewingSelected(tab) {
+            var search = $scope.tabs[tab].search.toLowerCase();
+            return search === "in:(selected)" || search === "in:selected";
+        }
+
+        // Sets the search bar to only show selected.
+        function enterViewSelected(tab) {
+            $scope.tabs[tab].search = "in:(Selected)";
+        }
+
+        // Clear search bar from viewing selected.
+        function leaveViewSelected(tab) {
+            if(isViewingSelected(tab)) {
+                $scope.tabs[tab].search = "";
+                delete $scope.tabs[tab].filters["in"];
+            }
+        }
 
         // Called to update `allViewableChecked`.
         function updateAllViewableChecked(tab) {
@@ -100,14 +125,15 @@ angular.module('MAAS').controller('NodesListController', [
         // Clear the action if required.
         function shouldClearAction(tab) {
             if($scope.tabs[tab].selectedItems.length === 0) {
-                if($scope.tabs[tab].search === "in:selected") {
-                    $scope.tabs[tab].search = "";
-                }
+                leaveViewSelected(tab);
                 $scope.tabs[tab].actionOption = null;
                 if(tab === "nodes") {
                     $scope.tabs[tab].osSelection.osystem = "";
                     $scope.tabs[tab].osSelection.release = "";
                 }
+            }
+            if($scope.tabs[tab].actionOption && !isViewingSelected(tab)) {
+                $scope.tabs[tab].actionOption = null;
             }
         }
 
@@ -203,12 +229,20 @@ angular.module('MAAS').controller('NodesListController', [
             updateAllViewableChecked("devices");
         });
 
+        // Shows the current selection.
+        $scope.showSelected = function(tab) {
+            enterViewSelected(tab);
+            $scope.updateFilters(tab);
+        };
+
         // Adds or removes a filter to the search.
         $scope.toggleFilter = function(type, value, tab) {
+            leaveViewSelected(tab);
             $scope.tabs[tab].filters = SearchService.toggleFilter(
                 $scope.tabs[tab].filters, type, value);
             $scope.tabs[tab].search = SearchService.filtersToString(
                 $scope.tabs[tab].filters);
+            shouldClearAction(tab);
         };
 
         // Return True if the filter is active.
@@ -228,6 +262,7 @@ angular.module('MAAS').controller('NodesListController', [
                 $scope.tabs[tab].filters = filters;
                 $scope.tabs[tab].searchValid = true;
             }
+            shouldClearAction(tab);
         };
 
         // Return True if the node supports the action.
@@ -242,7 +277,7 @@ angular.module('MAAS').controller('NodesListController', [
         // Called when the action option gets changed.
         $scope.actionOptionSelected = function(tab) {
             updateActionErrorCount(tab);
-            $scope.tabs[tab].search = "in:selected";
+            enterViewSelected(tab);
 
             var actionOption = $scope.tabs[tab].actionOption;
             if(angular.isObject(actionOption) &&
@@ -286,9 +321,7 @@ angular.module('MAAS').controller('NodesListController', [
 
         // Called when the current action is cancelled.
         $scope.actionCancel = function(tab) {
-            if($scope.tabs[tab].search === "in:selected") {
-                $scope.tabs[tab].search = "";
-            }
+            leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
             cancelLoadOSReleases();
         };
@@ -328,10 +361,12 @@ angular.module('MAAS').controller('NodesListController', [
             });
         };
 
-        // Called to show the add hardware view.
-        $scope.showAddHardware = function() {
-            $scope.addHardwareScope.show(
-                $scope.addHardwareOption.name);
+        // Called to when the addHardwareOption has changed.
+        $scope.addHardwareOptionChanged = function() {
+            if($scope.addHardwareOption) {
+                $scope.addHardwareScope.show(
+                    $scope.addHardwareOption.name);
+            }
         };
 
         // Make sure connected to region then load all the nodes.
