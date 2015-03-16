@@ -43,47 +43,9 @@ describe("DevicesManager", function() {
     }
 
     it("set requires attributes", function() {
-        expect(DevicesManager._activeDevice).toBeNull();
         expect(DevicesManager._pk).toBe("system_id");
         expect(DevicesManager._handler).toBe("device");
         expect(DevicesManager._metadataAttributes).toEqual(["owner", "tags"]);
-    });
-
-    describe("getActiveDevice", function() {
-
-        it("returns active device", function() {
-            var device = makeDevice();
-            DevicesManager._activeDevice = device;
-            expect(DevicesManager.getActiveDevice()).toBe(device);
-        });
-    });
-
-    describe("setActiveDevice", function() {
-
-        it("calls device.get and updates _activeDevice", function(done) {
-            var otherDevice = makeDevice();
-            var device = makeDevice();
-            DevicesManager._activeDevice = otherDevice;
-            webSocket.returnData.push(makeFakeResponse(device));
-            DevicesManager.setActiveDevice(device).then(function(device) {
-                expect(
-                    angular.fromJson(
-                        webSocket.sentData[0]).method).toBe("device.get");
-                expect(DevicesManager._activeDevice).toEqual(device);
-                done();
-            });
-        });
-
-        it("clears activeDevice", function(done) {
-            var otherDevice = makeDevice();
-            var device = makeDevice();
-            DevicesManager._activeDevice = otherDevice;
-            webSocket.returnData.push(makeFakeResponse("error", true));
-            DevicesManager.setActiveDevice(device).then(null, function(device) {
-                expect(DevicesManager._activeDevice).toBeNull();
-                done();
-            });
-        });
     });
 
     describe("performAction", function() {

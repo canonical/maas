@@ -44,48 +44,10 @@ describe("NodesManager", function() {
     }
 
     it("set requires attributes", function() {
-        expect(NodesManager._activeNode).toBeNull();
         expect(NodesManager._pk).toBe("system_id");
         expect(NodesManager._handler).toBe("node");
         expect(NodesManager._metadataAttributes).toEqual(
             ["status", "owner", "tags"]);
-    });
-
-    describe("getActiveNode", function() {
-
-        it("returns active node", function() {
-            var node = makeNode();
-            NodesManager._activeNode = node;
-            expect(NodesManager.getActiveNode()).toBe(node);
-        });
-    });
-
-    describe("setActiveNode", function() {
-
-        it("calls node.get and updates activeNode", function(done) {
-            var otherNode = makeNode();
-            var node = makeNode();
-            NodesManager._activeNode = otherNode;
-            webSocket.returnData.push(makeFakeResponse(node));
-            NodesManager.setActiveNode(node).then(function(node) {
-                expect(
-                    angular.fromJson(
-                        webSocket.sentData[0]).method).toBe("node.get");
-                expect(NodesManager._activeNode).toEqual(node);
-                done();
-            });
-        });
-
-        it("clears activeNode", function(done) {
-            var otherNode = makeNode();
-            var node = makeNode();
-            NodesManager._activeNode = otherNode;
-            webSocket.returnData.push(makeFakeResponse("error", true));
-            NodesManager.setActiveNode(node).then(null, function(node) {
-                expect(NodesManager._activeNode).toBeNull();
-                done();
-            });
-        });
     });
 
     describe("create", function() {

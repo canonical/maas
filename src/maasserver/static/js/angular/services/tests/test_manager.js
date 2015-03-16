@@ -576,6 +576,50 @@ describe("Manager", function() {
         });
     });
 
+    describe("getActiveItem", function() {
+
+        it("returns active item", function() {
+            var node = makeNode();
+            NodesManager._activeItem = node;
+            expect(NodesManager.getActiveItem()).toBe(node);
+        });
+    });
+
+    describe("setActiveItem", function() {
+
+        it("raises error if not loaded", function() {
+            expect(NodesManager.setActiveItem).toThrow(
+                new Error(
+                    "Cannot set active item unless the manager is loaded."));
+        });
+
+        it("sets _activeItem to null if doesn't exist", function() {
+            NodesManager._loaded = true;
+            NodesManager._activeItem = {};
+            expect(
+                NodesManager.setActiveItem(makeName("system_id"))).toBeNull();
+            expect(NodesManager._activeItem).toBeNull();
+        });
+
+        it("sets _activeItem to item", function() {
+            NodesManager._loaded = true;
+            var node = makeNode();
+            NodesManager._items.push(node);
+            expect(NodesManager.setActiveItem(node.system_id)).toBe(node);
+            expect(NodesManager._activeItem).toBe(node);
+        });
+    });
+
+    describe("clearActiveItem", function() {
+
+        it("clears activeNode", function() {
+            var node = makeNode();
+            NodesManager._activeItem = node;
+            NodesManager.clearActiveItem();
+            expect(NodesManager._activeItem).toBeNull();
+        });
+    });
+
     describe("onNotify", function() {
 
         it("adds notify to queue", function() {
@@ -645,6 +689,25 @@ describe("Manager", function() {
             NodesManager.processActions();
             expect(NodesManager._selectedItems).toEqual(
                 [addSelected(updatedNode, true)]);
+        });
+
+        it("updates _activeItem on update action", function() {
+            var fakeNode = makeNode(true);
+            var updatedNode = stripSelected(fakeNode);
+            updatedNode.name = makeName("name");
+            NodesManager._items.push(fakeNode);
+            NodesManager._selectedItems.push(fakeNode);
+            NodesManager._activeItem = fakeNode;
+            NodesManager._actionQueue.push({
+                action: "update",
+                data: updatedNode
+            });
+            NodesManager.processActions();
+            expect(NodesManager._activeItem).toEqual(
+                addSelected(updatedNode, true));
+
+            // The _activeItem object should still be the same object.
+            expect(NodesManager._activeItem).toBe(fakeNode);
         });
 
         it("deletes node in items list on delete action", function() {

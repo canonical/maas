@@ -17,7 +17,6 @@ angular.module('MAAS').factory(
         function DevicesManager() {
             Manager.call(this);
 
-            this._activeDevice = null;
             this._pk = "system_id";
             this._handler = "device";
             this._metadataAttributes = [
@@ -33,21 +32,6 @@ angular.module('MAAS').factory(
         }
 
         DevicesManager.prototype = new Manager();
-
-        // Return the active device.
-        DevicesManager.prototype.getActiveDevice = function() {
-            return this._activeDevice;
-        };
-
-        // Set the active device.
-        DevicesManager.prototype.setActiveDevice = function(device) {
-            var self = this;
-            this._activeDevice = null;
-            return this.getItem(device.system_id).then(function(device) {
-                self._activeDevice = device;
-                return device;
-            });
-        };
 
         // Perform the action on the device.
         DevicesManager.prototype.performAction = function(

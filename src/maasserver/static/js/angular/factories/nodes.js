@@ -17,7 +17,6 @@ angular.module('MAAS').factory(
         function NodesManager() {
             Manager.call(this);
 
-            this._activeNode = null;
             this._pk = "system_id";
             this._handler = "node";
             this._metadataAttributes = [
@@ -34,21 +33,6 @@ angular.module('MAAS').factory(
         }
 
         NodesManager.prototype = new Manager();
-
-        // Return the active node.
-        NodesManager.prototype.getActiveNode = function() {
-            return this._activeNode;
-        };
-
-        // Set the active node.
-        NodesManager.prototype.setActiveNode = function(node) {
-            var self = this;
-            this._activeNode = null;
-            return this.getItem(node.system_id).then(function(node) {
-                self._activeNode = node;
-                return node;
-            });
-        };
 
         // Create a node.
         NodesManager.prototype.create = function(node) {

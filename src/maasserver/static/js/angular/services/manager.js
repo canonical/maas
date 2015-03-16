@@ -55,6 +55,12 @@ angular.module('MAAS').service(
             // to the region.
             this._autoReload = false;
 
+            // Holds the item that is currenly being viewed. This object will
+            // be updated if any notify events are recieved for it. This allows
+            // the ability of not having to keep pulling the item out of the
+            // items list.
+            this._activeItem = null;
+
             // Holds metadata information that is used to helper filtering.
             this._metadata = {};
 
@@ -244,6 +250,14 @@ angular.module('MAAS').service(
             this._updateMetadata(item, METADATA_ACTIONS.UPDATE);
             this._replaceItemInArray(this._items, item);
             this._replaceItemInArray(this._selectedItems, item);
+
+            // Update the active item if updated item has the same primary key.
+            if(angular.isObject(this._activeItem) &&
+                this._activeItem[this._pk] === item[this._pk]) {
+                // Copy the item into the activeItem. This keeps the reference
+                // the same, not requiring another call to getActiveItem.
+                angular.copy(item, this._activeItem);
+            }
         };
 
         // Remove item in the items and selectedItems list.
@@ -292,6 +306,31 @@ angular.module('MAAS').service(
                 method, params).then(function() {
                     self._removeItem(item[self._pk]);
                 });
+        };
+
+        // Return the active item.
+        Manager.prototype.getActiveItem = function() {
+            return this._activeItem;
+        };
+
+        // Set the active item.
+        Manager.prototype.setActiveItem = function(pk_value) {
+            if(!this._loaded) {
+                throw new Error(
+                    "Cannot set active item unless the manager is loaded.");
+            }
+            var idx = this._getIndexOfItem(this._items, pk_value);
+            if(idx === -1) {
+                this._activeItem = null;
+            } else {
+                this._activeItem = this._items[idx];
+            }
+            return this._activeItem;
+        };
+
+        // Clears the active item.
+        Manager.prototype.clearActiveItem = function() {
+            this._activeItem = null;
         };
 
         // True when the item list is stable and not being loaded or reloaded.
