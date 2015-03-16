@@ -39,6 +39,7 @@ from fixtures import Fixture
 from maasserver.fields import register_mac_type
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import PostCommitHooksTestMixin
+from maasserver.testing.testclient import MAASSensibleClient
 from maasserver.utils.orm import is_serialization_failure
 from maastesting.djangotestcase import (
     DjangoTestCase,
@@ -54,6 +55,8 @@ class MAASRegionTestCaseBase(PostCommitHooksTestMixin):
 
     See sub-classes for the real deal though.
     """
+
+    client_class = MAASSensibleClient
 
     # For each piece of default data introduced via migrations we need
     # to also include a data fixture. This needs to be representative,

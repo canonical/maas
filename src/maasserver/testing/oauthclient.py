@@ -19,8 +19,7 @@ __all__ = [
 from time import time
 
 from maasserver.models.user import get_auth_tokens
-from maasserver.utils.orm import transactional
-from maastesting.djangoclient import SensibleClient
+from maasserver.testing.testclient import MAASSensibleClient
 from oauth.oauth import (
     generate_nonce,
     OAuthConsumer,
@@ -30,7 +29,7 @@ from oauth.oauth import (
     )
 
 
-class OAuthAuthenticatedClient(SensibleClient):
+class OAuthAuthenticatedClient(MAASSensibleClient):
     """OAuth-authenticated client for Piston API testing."""
 
     def __init__(self, user, token=None):
@@ -78,7 +77,6 @@ class OAuthAuthenticatedClient(SensibleClient):
         environ = self._base_environ()
         return '%s://%s' % (environ['wsgi.url_scheme'], path)
 
-    @transactional
     def request(self, **kwargs):
         url = self._compose_url(kwargs['PATH_INFO'])
         kwargs.update(self._compose_auth_header(url))
