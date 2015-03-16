@@ -365,7 +365,7 @@ class TestDeployAction(MAASServerTestCase):
 
     def test_Deploy_returns_error_when_no_more_static_IPs(self):
         user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             status=NODE_STATUS.ALLOCATED, power_type='ether_wake', owner=user,
             power_state=POWER_STATE.OFF)
         ngi = node.get_primary_mac().cluster_interface

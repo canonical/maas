@@ -680,7 +680,7 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
 
     def test__lists_known_gateways(self):
         network = factory.make_ipv4_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network)
         gateway = factory.pick_ip_in_network(network)
         mac = node.get_primary_mac()
@@ -698,7 +698,7 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
         # just query MACAddress.cluster_interface.
         ipv4_network = factory.make_ipv4_network()
         ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=ipv4_network)
         ipv4_gateway = factory.pick_ip_in_network(ipv4_network)
         mac = node.get_primary_mac()
@@ -716,14 +716,14 @@ class TestListGatewaysAndMACs(MAASServerTestCase):
             list_gateways_and_macs(node))
 
     def test__skips_unknown_cluster_interfaces(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
         mac.cluster_interface = None
         mac.save()
         self.assertEqual(set(), list_gateways_and_macs(node))
 
     def test__skips_unknown_routers(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
         mac.cluster_interface.router_ip = None
         mac.cluster_interface.management = (
@@ -826,7 +826,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__includes_static_IPv6_addresses(self):
         network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         ip = factory.pick_ip_in_network(network)
@@ -838,7 +838,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__ignores_static_IPv4_addresses(self):
         network = factory.make_ipv4_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         ip = factory.pick_ip_in_network(network)
@@ -851,7 +851,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
     def test__includes_IPv6_gateway_addresses(self):
         network = factory.make_ipv6_network()
         gateway = factory.pick_ip_in_network(network)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         mac.cluster_interface.router_ip = gateway
@@ -863,7 +863,7 @@ class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__ignores_IPv4_gateway_addresses(self):
         network = factory.make_ipv4_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network, osystem='ubuntu')
         mac = node.get_primary_mac()
         gateway = factory.pick_ip_in_network(network)

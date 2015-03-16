@@ -489,7 +489,7 @@ class Factory(maastesting.factory.Factory):
         return self.make_MACAddress(
             node=node, address=address, networks=networks, **kwargs)
 
-    def make_node_with_mac_attached_to_nodegroupinterface(
+    def make_Node_with_MACAddress_and_NodeGroupInterface(
             self, management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
             mac_count=1, network=None, disable_ipv4=False, **kwargs):
         """Create a Node that has a MACAddress which has a

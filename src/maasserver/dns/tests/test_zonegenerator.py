@@ -196,7 +196,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         lease = factory.make_DHCPLease(
             nodegroup=nodegroup, mac=mac.mac_address)
         # Create static mapping for an allocated node.
-        node2 = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node2 = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup)
         staticip = factory.make_StaticIPAddress(mac=node2.get_primary_mac())
 
@@ -227,7 +227,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
         # A node can have static IP addresses for IPv4 and IPv6 both.
         # (It can't have DHCP leases for IPv6, since we don't parse or use
         # those.)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             status=NODE_STATUS.ALLOCATED, disable_ipv4=False)
         mac = node.get_primary_mac()
         ipv4 = factory.make_ipv4_address()
@@ -240,7 +240,7 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
             get_hostname_ip_mapping(node.nodegroup)[node.hostname])
 
     def test_get_hostname_ip_mapping_excludes_IPv4_if_disabled_on_node(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             status=NODE_STATUS.ALLOCATED, disable_ipv4=True)
         mac = node.get_primary_mac()
         ipv4 = factory.make_ipv4_address()
@@ -255,11 +255,11 @@ class TestGetHostnameIPMapping(MAASServerTestCase):
     def test_get_hostname_ip_mapping_disables_IPv4_per_individual_node(self):
         nodegroup = factory.make_NodeGroup()
         node_with_ipv4 = (
-            factory.make_node_with_mac_attached_to_nodegroupinterface(
+            factory.make_Node_with_MACAddress_and_NodeGroupInterface(
                 nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
                 disable_ipv4=False))
         node_without_ipv4 = (
-            factory.make_node_with_mac_attached_to_nodegroupinterface(
+            factory.make_Node_with_MACAddress_and_NodeGroupInterface(
                 nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
                 disable_ipv4=True))
         ipv4 = factory.make_ipv4_address()

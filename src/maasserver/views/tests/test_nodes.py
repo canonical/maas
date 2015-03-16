@@ -290,7 +290,7 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_warns_about_unconfigured_IPv6_addresses(self):
         self.client_log_in()
         ipv6_network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=self.logged_in_user, network=ipv6_network,
             osystem='windows')
         factory.make_StaticIPAddress(
@@ -305,7 +305,7 @@ class NodeViewsTest(MAASServerTestCase):
 
     def test_view_node_does_not_warn_if_no_unconfigured_IPv6_addresses(self):
         self.client_log_in()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=self.logged_in_user)
         factory.make_StaticIPAddress(mac=node.get_primary_mac())
         node_link = reverse('node-view', args=[node.system_id])
@@ -841,7 +841,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.client_log_in()
         factory.make_SSHKey(self.logged_in_user)
         self.set_up_oauth_token()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             status=NODE_STATUS.ALLOCATED, power_type='ether_wake',
             owner=self.logged_in_user)
         node_link = reverse('node-view', args=[node.system_id])
@@ -981,7 +981,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
     def test__warns_for_IPv6_address_on_non_ubuntu_OS(self):
         network = factory.make_ipv6_network()
         osystem = choice(['windows', 'centos', 'suse'])
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem=osystem, network=network)
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
@@ -989,7 +989,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
 
     def test__warns_for_IPv6_address_on_debian_installer(self):
         network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem='ubuntu', network=network, boot_type=NODE_BOOT.DEBIAN)
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
@@ -997,7 +997,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
 
     def test__does_not_warn_for_ubuntu_fast_installer(self):
         network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem='ubuntu', network=network, boot_type=NODE_BOOT.FASTPATH)
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
@@ -1005,7 +1005,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
 
     def test__does_not_warn_for_default_ubuntu_with_fast_installer(self):
         network = factory.make_ipv6_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem='ubuntu', network=network, boot_type=NODE_BOOT.FASTPATH)
         node.osystem = ''
         node.save()
@@ -1016,7 +1016,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
     def test__does_not_warn_for_just_IPv4_address(self):
         network = factory.make_ipv4_network()
         osystem = choice(['windows', 'centos', 'suse'])
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem=osystem, network=network)
         factory.make_StaticIPAddress(
             ip=factory.pick_ip_in_network(network), mac=node.get_primary_mac())
@@ -1024,7 +1024,7 @@ class TestWarnUnconfiguredIPAddresses(MAASServerTestCase):
 
     def test__does_not_warn_without_static_address(self):
         osystem = choice(['windows', 'centos', 'suse'])
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             osystem=osystem)
         self.assertFalse(NodeView().warn_unconfigured_ip_addresses(node))
 

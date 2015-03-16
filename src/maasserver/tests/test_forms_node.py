@@ -419,7 +419,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_shows_disable_ipv4_if_IPv6_revealed_and_configured(self):
         self.patch(forms_module, 'REVEAL_IPv6', True)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         factory.make_NodeGroupInterface(
             node.nodegroup, network=factory.make_ipv6_network(),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -431,7 +431,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_hides_disable_ipv4_if_IPv6_not_revealed(self):
         self.patch(forms_module, 'REVEAL_IPv6', False)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         factory.make_NodeGroupInterface(
             node.nodegroup, network=factory.make_ipv6_network(),
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
@@ -442,7 +442,7 @@ class TestNodeForm(MAASServerTestCase):
 
     def test_hides_disable_ipv4_if_IPv6_not_configured(self):
         self.patch(forms_module, 'REVEAL_IPv6', True)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         factory.make_NodeGroupInterface(
             node.nodegroup, network=factory.make_ipv6_network(),
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)

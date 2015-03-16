@@ -745,7 +745,7 @@ class TestMapGateways(MAASServerTestCase):
 class TestGetMACForAutomaticInterfaces(MAASServerTestCase):
 
     def test__uses_pxe_mac(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.get_primary_mac()
         node.pxe_mac = mac
         result = get_mac_for_automatic_interfaces(node)
@@ -757,7 +757,7 @@ class TestMapNetmasks(MAASServerTestCase):
     def test__maps_ipv4_netmask(self):
         network = factory.make_ipv4_network()
         netmask = unicode(IPNetwork(network).netmask)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network)
         mac = node.get_primary_mac()
         ip = factory.pick_ip_in_network(network)
@@ -767,7 +767,7 @@ class TestMapNetmasks(MAASServerTestCase):
     def test__maps_ipv6_netmask_as_prefix_bits(self):
         network = factory.make_ipv6_network(slash=randint(16, 127))
         netmask = '%d' % IPNetwork(network).prefixlen
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         [ipv4_interface] = node.nodegroup.nodegroupinterface_set.all()
         factory.make_NodeGroupInterface(
             node.nodegroup, network=network,
@@ -779,7 +779,7 @@ class TestMapNetmasks(MAASServerTestCase):
 
     def test__ignores_network_interface_without_cluster_interface(self):
         network = factory.make_ipv4_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network)
         mac = node.get_primary_mac()
         mac.cluster_interface = None
@@ -790,7 +790,7 @@ class TestMapNetmasks(MAASServerTestCase):
 
     def test__ignores_network_interface_without_static_IP(self):
         network = factory.make_ipv4_network()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             network=network)
         self.assertEqual({}, map_netmasks(node))
 

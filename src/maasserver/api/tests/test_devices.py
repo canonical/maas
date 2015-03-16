@@ -258,7 +258,7 @@ class TestDeviceAPI(APITestCase):
         self.assertEquals(device, reload_object(device))
 
     def test_claim_ip_address_claims_ip_address(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
@@ -276,7 +276,7 @@ class TestDeviceAPI(APITestCase):
             )
 
     def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS)
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
@@ -305,7 +305,7 @@ class TestDeviceAPI(APITestCase):
             dns_update_zones, MockCalledOnceWith([device.nodegroup]))
 
     def test_claim_ip_address_rejected_if_not_permitted(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=factory.make_User())
@@ -316,7 +316,7 @@ class TestDeviceAPI(APITestCase):
         self.assertItemsEqual([], StaticIPAddress.objects.all())
 
     def test_release_sticky_ip_address_releases_ip_address(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=self.logged_in_user)
@@ -337,7 +337,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_release_sticky_ip_address_releases_all_ip_addresses(self):
         network = factory._make_random_network(slash=24)
-        device = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        device = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             installable=False, mac_count=5, network=network,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
@@ -356,7 +356,7 @@ class TestDeviceAPI(APITestCase):
 
     def test_release_sticky_ip_address_releases_specific_address(self):
         network = factory._make_random_network(slash=24)
-        device = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        device = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             installable=False, mac_count=2, network=network,
             disable_ipv4=False, owner=self.logged_in_user)
         # Silence 'update_host_maps' and 'remove_host_maps'
@@ -381,7 +381,7 @@ class TestDeviceAPI(APITestCase):
         self.expectThat(parsed_device["ip_addresses"], HasLength(1))
 
     def test_release_ip_address_rejected_if_not_permitted(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         device = factory.make_Node(
             installable=False, parent=parent, mac=True, disable_ipv4=False,
             owner=factory.make_User())

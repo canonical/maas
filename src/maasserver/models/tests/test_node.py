@@ -390,7 +390,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual(license_key, node.get_effective_license_key())
 
     def test_delete_node_deletes_managed_node_when_changed_to_unmanaged(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         factory.make_DHCPLease(
             nodegroup=node.nodegroup,
             mac=node.macaddress_set.all().first().mac_address)
@@ -416,7 +416,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_delete_node_also_deletes_related_static_IPs(self):
         self.patch_autospec(node_module, "remove_host_maps")
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         primary_mac = node.get_primary_mac()
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE, but_not=[IPADDRESS_TYPE.USER_RESERVED])
@@ -427,7 +427,7 @@ class NodeTest(MAASServerTestCase):
     def test_delete_node_also_deletes_static_dhcp_maps(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         primary_mac = node.get_primary_mac()
         static_ip_addresses = set(
             static_ip_address.ip for static_ip_address in
@@ -440,7 +440,7 @@ class NodeTest(MAASServerTestCase):
     def test_delete_node_also_deletes_dhcp_host_map(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         lease = factory.make_DHCPLease(
             nodegroup=node.nodegroup,
             mac=node.macaddress_set.all().first().mac_address)
@@ -452,7 +452,7 @@ class NodeTest(MAASServerTestCase):
     def test_delete_node_removes_multiple_host_maps(self):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac = node.add_mac_address('AA:BB:CC:DD:EE:FF')
         mac.cluster_interface = (
             node.nodegroup.nodegroupinterface_set.all().first())
@@ -1194,7 +1194,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_deallocates_static_ip_when_node_is_off(self):
         user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.OFF)
         deallocate_static_ip_addresses = self.patch_autospec(
@@ -1206,7 +1206,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_deallocates_static_ip_when_node_cannot_be_queried(self):
         user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='ether_wake')
         deallocate_static_ip_addresses = self.patch_autospec(
@@ -1218,7 +1218,7 @@ class NodeTest(MAASServerTestCase):
 
     def test_release_doesnt_deallocate_static_ip_when_node_releasing(self):
         user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED,
             power_state=POWER_STATE.ON, power_type='virsh')
         deallocate_static_ip_addresses = self.patch_autospec(
@@ -1233,7 +1233,7 @@ class NodeTest(MAASServerTestCase):
         remove_host_maps = self.patch_autospec(
             node_module, "remove_host_maps")
         user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED)
         sips = node.get_primary_mac().claim_static_ips()
         node.release()
@@ -1249,7 +1249,7 @@ class NodeTest(MAASServerTestCase):
         nodegroup = factory.make_NodeGroup(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
             status=NODEGROUP_STATUS.ACCEPTED)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.ALLOCATED,
             owner=factory.make_User(), power_type='ether_wake')
         node.get_primary_mac().claim_static_ips()
@@ -1618,7 +1618,7 @@ class NodeTest(MAASServerTestCase):
         self.assertEqual((main_arch, sub_arch), node.split_arch())
 
     def test_mac_addresses_on_managed_interfaces_returns_only_managed(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         mac_with_interface = node.get_primary_mac()
 
@@ -1639,7 +1639,7 @@ class NodeTest(MAASServerTestCase):
         self.assertItemsEqual([], observed)
 
     def test_mac_addresses_on_m_i_uses_parent_for_noninstallable_nodes(self):
-        parent = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        parent = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.DHCP)
         node = factory.make_Node(mac=True, installable=False, parent=parent)
         mac_with_interface = node.get_primary_mac()
@@ -1931,7 +1931,7 @@ class NodeTest(MAASServerTestCase):
 class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
 
     def test__returns_true_if_managed(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         self.assertTrue(node.is_pxe_mac_on_managed_interface())
 
     def test__returns_false_if_no_pxe_mac(self):
@@ -1945,7 +1945,7 @@ class TestNode_pxe_mac_on_managed_interface(MAASServerTestCase):
         self.assertFalse(node.is_pxe_mac_on_managed_interface())
 
     def test__returns_false_if_cluster_interface_unmanaged(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             management=NODEGROUPINTERFACE_MANAGEMENT.UNMANAGED)
         self.assertFalse(node.is_pxe_mac_on_managed_interface())
 
@@ -2332,7 +2332,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
         self.assertEqual([], node.claim_static_ip_addresses())
 
     def test__returns_mapping_for_iface_on_managed_network(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         static_mappings = node.claim_static_ip_addresses()
         [static_ip] = node.static_ip_addresses()
         [mac_address] = node.macaddress_set.all()
@@ -2341,7 +2341,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             static_mappings)
 
     def test__returns_mapping_for_pxe_mac_interface(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         node.pxe_mac = factory.make_MACAddress(node=node)
         node.save()
         [managed_interface] = node.nodegroup.get_managed_interfaces()
@@ -2355,7 +2355,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             static_mappings)
 
     def test__ignores_mac_address_with_non_auto_addresses(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         mac_address = node.macaddress_set.first()
         mac_address.claim_static_ips(IPADDRESS_TYPE.STICKY)
         self.assertRaises(
@@ -2368,7 +2368,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             node_module, "remove_host_maps")
         user = factory.make_User()
         network = factory.make_ipv4_network(slash=24)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED, network=network)
 
         ngi = node.get_pxe_mac().cluster_interface
@@ -2394,7 +2394,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
     def test__claims_specific_sticky_ip_address(self):
         user = factory.make_User()
         network = factory.make_ipv4_network(slash=24)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED, network=network)
         ngi = node.get_pxe_mac().cluster_interface
         first_ip = ngi.get_static_ip_range()[0]
@@ -2410,9 +2410,9 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
     def test__claim_specific_sticky_ip_address_twice_fails(self):
         user = factory.make_User()
         network = factory.make_ipv4_network(slash=24)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED, network=network)
-        node2 = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node2 = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED, network=network)
         ngi = node.get_pxe_mac().cluster_interface
         first_ip = ngi.get_static_ip_range()[0]
@@ -2428,7 +2428,7 @@ class TestClaimStaticIPAddresses(MAASServerTestCase):
             node_module, "remove_host_maps")
         user = factory.make_User()
         network = factory.make_ipv4_network(slash=24)
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=user, status=NODE_STATUS.ALLOCATED, network=network)
         cluster_if = node.get_primary_mac().cluster_interface
 
@@ -2509,7 +2509,7 @@ class TestNode_Start(MAASServerTestCase):
         return protocol
 
     def make_acquired_node_with_mac(self, user, nodegroup=None):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.READY)
         self.prepare_rpc_to_cluster(node.nodegroup)
         node.acquire(user)
@@ -2764,7 +2764,7 @@ class TestNode_Stop(MAASServerTestCase):
     """Tests for Node.stop()."""
 
     def make_node_with_mac(self, user, nodegroup=None, power_type="virsh"):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             nodegroup=nodegroup, status=NODE_STATUS.READY,
             power_type=power_type)
         node.acquire(user)

@@ -436,7 +436,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(user_data, NodeUserData.objects.get_user_data(node))
 
     def test_POST_start_returns_error_when_static_ips_exhausted(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=self.logged_in_user, status=NODE_STATUS.ALLOCATED)
         ngi = node.get_primary_mac().cluster_interface
 
@@ -1052,7 +1052,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_returns_existing_if_already_exists(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         # Silence 'update_host_maps'.
         self.patch(node_module, "update_host_maps")
         [existing_ip] = node.get_primary_mac().claim_static_ips(
@@ -1069,7 +1069,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_rtns_error_if_clashing_type_exists(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         random_alloc_type = factory.pick_enum(
             IPADDRESS_TYPE,
             but_not=[IPADDRESS_TYPE.STICKY, IPADDRESS_TYPE.USER_RESERVED])
@@ -1081,7 +1081,7 @@ class TestStickyIP(APITestCase):
             response.content)
 
     def test_claim_sticky_ip_address_claims_sticky_ip_address_non_admin(self):
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=self.logged_in_user)
         # Silence 'update_host_maps'.
         self.patch(node_module, "update_host_maps")
@@ -1098,7 +1098,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_checks_edit_permission(self):
         other_user = factory.make_User()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface(
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
             owner=other_user)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
@@ -1107,7 +1107,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_claims_sticky_ip_address(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         # Silence 'update_host_maps'.
         self.patch(node_module, "update_host_maps")
         response = self.client.post(
@@ -1123,7 +1123,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_ip_address_creates_host_DHCP_and_DNS_mappings(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         dns_update_zones = self.patch(api_nodes, 'dns_update_zones')
         update_host_maps = self.patch(node_module, "update_host_maps")
         update_host_maps.return_value = []  # No failures.
@@ -1149,7 +1149,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_allows_macaddress_parameter(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         ngi = factory.make_NodeGroupInterface(nodegroup=node.nodegroup)
         second_mac = factory.make_MACAddress(node=node, cluster_interface=ngi)
         # Silence 'update_host_maps'.
@@ -1167,7 +1167,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_catches_bad_mac_address_parameter(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         random_mac = factory.make_mac_address()
 
         response = self.client.post(
@@ -1184,7 +1184,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_allows_requested_ip(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         ngi = node.get_primary_mac().cluster_interface
         requested_address = ngi.static_ip_range_low
 
@@ -1202,7 +1202,7 @@ class TestStickyIP(APITestCase):
 
     def test_claim_sticky_ip_address_detects_out_of_range_requested_ip(self):
         self.become_admin()
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         ngi = node.get_primary_mac().cluster_interface
         requested_address = IPAddress(ngi.static_ip_range_low) - 1
 
@@ -1218,7 +1218,7 @@ class TestStickyIP(APITestCase):
     def test_claim_sticky_ip_address_detects_unavailable_requested_ip(self):
         self.become_admin()
         # Create 2 nodes on the same nodegroup and interface.
-        node = factory.make_node_with_mac_attached_to_nodegroupinterface()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
         ngi = node.get_primary_mac().cluster_interface
         other_node = factory.make_Node(mac=True, nodegroup=ngi.nodegroup)
         other_mac = other_node.get_primary_mac()
