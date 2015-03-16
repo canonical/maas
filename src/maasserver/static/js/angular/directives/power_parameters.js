@@ -8,8 +8,8 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     // Inject the power-parameters.html into the template cache.
     $templateCache.put('directive/templates/power-parameters.html', [
         '<div class="inline">',
-            '<label for="power-type">Power type</label>',
-            '<select name="power-type" id="power-type" ',
+            '<label for="power-type" class="two-col">Power type</label>',
+            '<select name="power-type" id="power-type" class="three-col" ',
                 'placeholder="Choose a power type" ',
                 'data-ng-model="ngModel.type" ',
                 'data-ng-options="',
@@ -20,7 +20,9 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '</select>',
         '</div>',
         '<div class="inline" data-ng-repeat="field in ngModel.type.fields">',
-            '<label for="{$ field.name $}">{$ field.label $}</label>',
+            '<label for="{$ field.name $}" class="two-col">',
+                '{$ field.label $}',
+            '</label>',
             '<maas-power-input field="field" ',
                 'data-ng-model="ngModel.parameters[field.name]">',
         '</div>'
@@ -43,7 +45,8 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                 if(type === "string" || type === "mac_address") {
                     // Build an input element with the correct attributes.
                     html =
-                        '<input type="text" name="' + scope.field.name + '" ' +
+                        '<input type="text" class="three-col" ' +
+                        'name="' + scope.field.name + '" ' +
                         req + 'data-ng-model="' + attrs.ngModel + '" ';
 
                     // Add mac address validation.
@@ -65,7 +68,7 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                         req + 'data-ng-model="' + attrs.ngModel + '" ' +
                         'data-ng-options="' +
                         'choice as choice[1] for choice in field.choices' +
-                        '">';
+                        '" class="three-col">';
                     html += '</select>';
 
                     // Set the default choice on the model.

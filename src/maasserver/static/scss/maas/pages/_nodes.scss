@@ -210,6 +210,11 @@
         outline: none;
         padding: 0;
         border: none;
+
+        &.close {
+            background-image: url('../img/icons/filter-remove.svg');
+            background-size: 20px 20px;
+        }
     }
 }
 
@@ -250,6 +255,7 @@
     list-style: none;
     background:#FFF;
     box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    margin-bottom: 40px;
 
     /**
      * accordion main sidebar title
@@ -305,25 +311,31 @@
                     margin-bottom: 0.15em;
 
                     .accordion__tab-link {
+                        @include box-sizing();
                         color: #333;
                         width: 100%;
                         display: inline-block;
+                        padding-right: 20px;
+
+                        &:hover {
+                            color: $ubuntu-orange;
+                            text-decoration: none;
+                        }
                     }
 
                     &.active {
-                        color: #D2D2D2;
-                        background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
+                        font-weight: 400;
 
                         .accordion__tab-link {
-                            color: #D2D2D2;
+                            background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
                         }
 
                         &:hover {
-                            background-image: url('../img/icons/filter-remove-hover.svg');
-                            color: #888;
+                            color: $ubuntu-orange;
 
                             .accordion__tab-link {
-                                color: #888;
+                                color: $ubuntu-orange;
+                                background-image: url('../img/icons/remove-orange.svg');
                             }
                         }
                     }

@@ -93,6 +93,10 @@
     }
 }
 
+label {
+    position: relative;
+}
+
 form {
 
     li {
@@ -108,7 +112,7 @@ form {
     }
 
     label span {
-        color: #888;
+        color: #333;
     }
 
     input {
@@ -123,19 +127,19 @@ form {
             padding: 7px 10px;
 
             &::-webkit-input-placeholder {
-               color: #333;
+               color: #888;
             }
 
             &:-moz-placeholder { /* Firefox 18- */
-               color: #333;
+               color: #888;
             }
 
             &::-moz-placeholder {  /* Firefox 19+ */
-               color: #333;
+               color: #888;
             }
 
             &:-ms-input-placeholder {
-               color: #333;
+               color: #888;
             }
         }
 
@@ -198,11 +202,44 @@ form {
             color: transparent;
             text-shadow: 0 0 0 #000;
         }
+
+        &[disabled] {
+            color: #888;
+        }
     }
 
     fieldset {
         background: none;
         margin-left: 0;
+    }
+}
+
+input[type="checkbox"] {
+    visibility: hidden;
+    width: 0;
+    height: 0;
+
+    & + label {
+        padding-left: 20px;
+        position: relative;
+
+        &:before {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: url('../img/checkbox.svg') no-repeat;
+            background-size: 13px 13px;
+            background-position: 0px 3px;
+        }
+    }
+
+    &:checked + label:before {
+        background: url('../img/checkbox-checked.svg') no-repeat;
+        background-position: 0px 3px;
     }
 }
 
@@ -233,13 +270,13 @@ form {
 
     label {
         display: inline-block;
-        max-width: calc(100% / 3);
-        width: 100%;
+        float: none;
 
         /**
          * Required to fix the inline block invisible margin
          */
         font-size: 16px;
+        margin: 0;
     }
 
     input[type='submit'],
@@ -251,9 +288,9 @@ form {
     input[type='checkbox'],
     select {
         display: inline-block;
-        max-width: calc(100% / 3 * 2);
-        width: 100%;
         clear: none;
+        margin: 0;
+        float: none;
 
         /**
          * Required to fix the inline block invisible margin

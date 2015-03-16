@@ -1,6 +1,6 @@
 <header class="page-header">
     <div class="inner-wrapper">
-        <h1 class="page-header__title">{$ $parent.site $} MAAS
+        <h1 class="page-header__title eight-col">{$ $parent.site $} MAAS
             <span class="page-header__title--identicator" id="bulk-actions">
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <a href=""
@@ -15,19 +15,25 @@
         </h1>
         <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
         <div data-ng-show="currentpage === 'nodes'">
-            <div class="page-header__actions">
-                <div class="page-header__cta" data-ng-hide="tabs.nodes.selectedItems.length">
-                    <div data-maas-cta="addHardwareOptions"
-                        data-ng-model="addHardwareOption" data-keep-orange="true"
-                        data-ng-click="showAddHardware()"></div>
+            <div class="page-header__actions four-col last-col">
+                <div class="page-header__cta two-col no-margin-bottom last-col" data-ng-hide="tabs.nodes.selectedItems.length">
+                    <div class="two-col no-margin-bottom last-col">
+                        <div data-maas-cta="addHardwareOptions"
+                            data-ng-model="addHardwareOption" data-keep-orange="true"
+                            data-ng-click="showAddHardware()">
+                        </div>
+                    </div>
                 </div>
-                <div class="page-header__cta ng-hide" data-ng-show="tabs.nodes.selectedItems.length">
-                    <span class="page-header__cta-feedback left">
+                <div class="page-header__cta ng-hide four-col no-margin-bottom" data-ng-show="tabs.nodes.selectedItems.length">
+                    <span class="page-header__cta-feedback two-col no-margin-bottom">
                         {$ tabs.nodes.selectedItems.length $} Selected
                     </span>
-                    <div class="left" data-maas-cta="tabs.nodes.takeActionOptions"
-                        data-ng-model="tabs.nodes.actionOption"
-                        data-ng-change="actionOptionSelected('nodes')"></div>
+                    <div class="two-col no-margin-bottom last-col">
+                        <div data-maas-cta="tabs.nodes.takeActionOptions"
+                            data-ng-model="tabs.nodes.actionOption"
+                            data-ng-change="actionOptionSelected('nodes')">
+                        </div>
+                    </div>
                 </div>
             </div>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
@@ -89,45 +95,45 @@
                         </div>
                         <div class="add-machine__details-form twelve-col">
                             <form action="post" class="twelve-col">
-                                <fieldset class="six-col">
+                                <fieldset class="six-col no-padding">
                                     <div class="inline">
-                                        <label for="cluser">Cluster</label>
-                                        <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                                        <label for="cluser" class="two-col">Cluster</label>
+                                        <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
                                             data-ng-model="machine.cluster"
                                             data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
                                         </select>
                                     </div>
                                     <div class="inline">
-                                        <label for="machine-name">Machine name</label>
-                                        <input type="text" id="machine-name" placeholder="Choose a machine name"
+                                        <label for="machine-name" class="two-col">Machine name</label>
+                                        <input type="text" id="machine-name" class="three-col" placeholder="Choose a machine name"
                                             data-ng-model="machine.name">
                                     </div>
                                     <div class="inline">
-                                        <label for="architecture">Architecture</label>
-                                        <select name="architecture" id="architecture" placeholder="Choose an architecture"
+                                        <label for="architecture" class="two-col">Architecture</label>
+                                        <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
                                             data-ng-model="machine.architecture"
                                             data-ng-options="arch for arch in architectures">
                                         </select>
                                     </div>
                                     <div class="inline" data-ng-repeat="mac in machine.macs">
                                         {$ mac $}
-                                        <label for="mac-address"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
-                                        <input type="text" id="mac-address" placeholder="00:00:00:00:00:00"
+                                        <label for="mac-address" class="two-col"><span data-ng-hide="mac !== machine.macs[0]">MAC Address</span></label>
+                                        <input type="text" id="mac-address" class="three-col" placeholder="00:00:00:00:00:00"
                                                data-ng-class="{ invalid: mac.error }"
                                                data-ng-model="mac.mac" data-ng-change="validateMac(mac)">
                                     </div>
-                                    <div class="inline">
+                                    <div class="inline five-col">
                                         <a href="" class="link-cta-ubuntu secondary right" data-ng-click="addMac()">+ Add MAC Address</a>
                                     </div>
                                     <div class="inline">
-                                        <label for="zone">Zone</label>
-                                        <select name="zone" id="zone" placeholder="Choose a zone"
+                                        <label for="zone" class="two-col">Zone</label>
+                                        <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
                                             data-ng-model="machine.zone"
                                             data-ng-options="zone as zone.name for zone in zones">
                                         </select>
                                     </div>
                                 </fieldset>
-                                <fieldset class="six-col last-col"
+                                <fieldset class="six-col last-col no-padding"
                                     data-maas-power-parameters="machine.cluster.power_types"
                                     data-ng-model="machine.power">
                                 </fieldset>
@@ -153,7 +159,7 @@
                 <div class="twelve-col ng-hide" data-ng-show="showMachines()">
                     <a href="" class="link-cta-ubuntu secondary" data-ng-click="addMachine()">+ Add another machine</a>
                     <div class="right align-right">
-                        <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                        <a href="" class="margin-right alt" data-ng-click="actionCancel()">Cancel</a>
                         <button class="cta-ubuntu"
                             data-ng-class="{ secondary: machinesHaveErrors() }"
                             data-ng-click="actionAddMachines()">
@@ -163,7 +169,7 @@
                 </div>
                 <div class="twelve-col ng-hide" data-ng-show="showChassis()">
                     <div class="right align-right">
-                        <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                        <a href="" class="margin-right alt" data-ng-click="actionCancel()">Cancel</a>
                         <button class="cta-ubuntu"
                             data-ng-class="{ secondary: chassisHasErrors() }"
                             data-ng-click="actionAddChassis()">
@@ -187,7 +193,7 @@
             {% endfor %}
         {% endif %}
     </ul> -->
-    <aside id="sidebar" data-ng-show="currentpage === 'nodes'">
+    <aside id="sidebar" class="sidebar" data-ng-show="currentpage === 'nodes'">
         <div class="accordion three-col maas-accordion">
             <h3 class="accordion__title">Filter by</h3>
             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
@@ -259,18 +265,19 @@
                 data-ng-class="{ error: !tabs.nodes.searchValid }" />
             <input type="submit" class="node-search__submit" />
         </div>
-        <table class="table-listing" id="nodes-listing">
+        <table class="table-listing nodes-listing" id="nodes-listing">
             <thead>
                 <tr class="table-listing__row">
                     <th>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="allViewableChecked" />
+                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="allViewableChecked" id="check-all" />
+                        <label for="check-all"></label>
                     </th>
-                    <th colspan="2" claas="table-listing__cell-fixed">
+                    <th colspan="2" class="table-listing__cell fixed">
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
                             <acronym title="Fully Qualified Domain Name">FQDN</acronym>
-                        </a> /
+                        </a> |
                         <a href="" data-ng-click="predicate='pxe_mac'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='pxe_mac'">
                             <acronym title="Media Access Control addresses">MAC</acronym>
                         </a>
@@ -308,12 +315,14 @@
             </thead>
             <tbody>
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
-                <tr class="table-listing__row"
+                <tr class="table-listing__row table-listing-row"
                     data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
-                    data-ng-class="{ error: !supportsAction(node, 'nodes') }">
+                    data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }"
+                    data-ng-click="toggleChecked(node, 'nodes')">
                     <td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" />
+                        <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
+                        <label for="{$ node.fqdn $}"></label>
                     </td>
                     <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                     <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
@@ -351,9 +360,10 @@
                 <tr class="table-listing__row">
                     <th>
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" />
+                        <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
+                        <label for="check-all-devices"></label>
                     </th>
-                    <th colspan="4" class="table-listing__cell-fixed">
+                    <th colspan="4" class="table-listing__cell fixed">
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                         <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
                             <acronym title="Fully Qualified Domain Name">FQDN</acronym>
@@ -374,10 +384,11 @@
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
                 <tr class="table-listing__row"
                     data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                    data-ng-class="{ error: !supportsAction(device, 'devices') }">
+                    data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: device.$selected }">
                     <td colspan="4" >
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" />
+                        <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
+                        <label for="{$ device.fqdn $}"></label>
                     </td>
                     <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                     <td class="table-listing__cell fixed">

@@ -9,9 +9,27 @@
  *
  */
 
+.wrapper {
+    min-height: 100%;
+    padding-top: 48px;
+    margin: -48px auto -112px; /* the bottom margin is the negative value of the footer's height */
+    overflow: visible;
+    position: relative;
+    background-color: rgba(255, 255, 255, .6);
+}
+
 .inner-wrapper {
     max-width: 1480px;
     padding: -0px 20px;
+}
+
+.push,
+.footer-wrapper {
+    height: 112px;
+}
+
+.footer-wrapper {
+    margin-top: -48px;
 }
 
 .row {

@@ -42,7 +42,7 @@
     &:hover {
         cursor: pointer;
         text-decoration: none;
-        background: darken($ubuntu-orange, 6.2%);
+        background-color: darken($ubuntu-orange, 6.2%);
     }
 
     &.disabled {
@@ -58,10 +58,10 @@
 %secondary-cta {
     color: #333;
     border: 1px solid #b2b2b2;
-    background: #eee;
+    background-color: #eee;
 
     &:hover {
-        background: #fff;
+        background-color: #fff;
     }
 
     &.disabled {
@@ -138,33 +138,21 @@ a.link-cta-ubuntu {
 .cta-group {
     position: relative;
     display: inline-block;
+    width: 100%;
 
     /**
      * cta link style and dropdown toggle
      */
     .cta-group__link {
         @extend %cta-link;
+        @include rounded-corners(3px);
         float: left;
         max-height: 36px;
-
-        /**
-         * Toggle caret button
-         */
-        &--toggle {
-            @extend %cta-link;
-            @include rounded-corners(0px 3px 3px 0px);
-            float: left;
-            height: 36px;
-            width: 34px;
-            padding: 0;
-
-            .chevron {
-                width: 100%;
-                height: 100%;
-                display: block;
-                background: transparent url('../img/chevron-white.svg') no-repeat center center;
-            }
-        }
+        padding-right: 34px;
+        background-image: url('../img/chevron-white.svg');
+        background-repeat: no-repeat;
+        background-position: top 17px right 15px;
+        width: 100%;
     }
 
     /**
@@ -184,14 +172,18 @@ a.link-cta-ubuntu {
         z-index: 20;
 
         .cta-group__item {
-            font-size: 0.775em;
+            float: left;
+            width: 100%;
 
             a {
                 color: #333;
                 cursor: pointer;
+                width: 100%;
+                float: left;
 
                 &:hover {
                     color: $ubuntu-orange;
+                    text-decoration: none;
                 }
             }
         }
@@ -204,16 +196,14 @@ a.link-cta-ubuntu {
 
         .cta-group__link {
             @extend %secondary-cta;
-            border-right: none;
-
-            &--toggle {
-                @extend %secondary-cta;
-                border-left: none;
-
-                .chevron {
-                    background-image: url('../img/icons/accordion-open.svg');
-                }
-            }
+            background-image: url('../img/icons/accordion-open.svg');
+            background-repeat: no-repeat;
+            float: left;
+            max-height: 36px;
+            padding-right: 34px;
+            background-repeat: no-repeat;
+            background-position: top 17px right 15px;
+            width: 100%;
         }
     }
 }

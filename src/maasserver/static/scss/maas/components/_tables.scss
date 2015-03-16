@@ -12,6 +12,7 @@
 table {
     text-align: left;
     width: 100%;
+    margin-bottom: 40px;
 
     th,
     td {
@@ -38,11 +39,11 @@ table {
                 }
 
                 &.sort-asc {
-                    background-image: url('../img/sort_ascending.png');
+                    background-image: url('../img/sort_ascending.svg');
                 }
 
                 &.sort-desc {
-                    background-image: url('../img/sort_descending.png');
+                    background-image: url('../img/sort_descending.svg');
                 }
             }
         }
@@ -86,6 +87,10 @@ table {
         &.progress {
             background-color: rgba(25, 182, 238, 0.10);
         }
+
+        &.selected {
+            background-color: #FFF;
+        }
     }
 
     .table-listing__header {
@@ -98,6 +103,11 @@ table {
             max-width: 200px;
             min-width: 200px;
             width: 200px;
+            padding-left: 0;
+
+            th & {
+                padding-left: 0;
+            }
         }
     }
 }

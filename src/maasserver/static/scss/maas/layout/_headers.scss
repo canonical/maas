@@ -281,6 +281,7 @@ header.banner {
     .page-header__actions {
         float: right;
         padding: 34px 0;
+        margin-bottom: 0;
 
         .page-header__cta {
             float: right;
@@ -296,8 +297,8 @@ header.banner {
                 display: inline-block;
                 position: relative;
                 line-height: 36px;
-                margin-right: 20px;
                 float: left;
+                text-align: right;
                 color: $ubuntu-orange;
             }
         }
@@ -327,8 +328,8 @@ header.banner {
                 padding-left: 25px;
 
                 &.info {
-                    background-image: url('../img/icons/info.png');
-                    background-image: url('../img/icons/info.svg'), none;
+                    background-image: url('../img/icons/error.png');
+                    background-image: url('../img/icons/error.svg'), none;
                 }
             }
         }

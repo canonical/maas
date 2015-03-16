@@ -29,10 +29,10 @@ html {
 }
 
 body {
-    background-color: rgba(255, 255, 255, .6);
-    min-height: 100%;
-    font-size: 1.000em;
-    font-family: 'Ubuntu' , Arial, 'libra sans', sans-serif;
+    height: 100%;
+    font-size: 1.0em;
+    font-family: 'Ubuntu', Arial, 'libra sans', sans-serif;
+    font-weight: 300;
 }
 
 hr {
@@ -49,6 +49,19 @@ hr {
 ul,
 ol {
     margin-left: 0;
+}
+
+a.alt {
+    color: #333;
+
+    &:hover {
+        color: $ubuntu-orange;
+    }
+}
+
+a:active,
+a:focus {
+    outline: none;
 }
 
 ::selection {

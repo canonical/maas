@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 16.0.4, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" id="Layer_1" xmlns:sketch="http://www.bohemiancoding.com/sketch/ns"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" width="11px" height="11px"
+	 viewBox="0 0 11 11" enable-background="new 0 0 11 11" xml:space="preserve">
+<title>filter-remove-hover</title>
+<desc>Created with Sketch.</desc>
+<g id="filter-panel" sketch:type="MSPage">
+	<g id="filter-remove-hover" sketch:type="MSArtboardGroup">
+		<path id="remove-icon" sketch:type="MSShapeGroup" fill="#DD4814" d="M9.746,0L5.5,4.247L1.252,0L0,1.252L4.247,5.5L0,9.748
+			L1.252,11L5.5,6.753L9.746,11L11,9.748L6.752,5.5c0,0,1.102-1.102,1.653-1.653C9.27,2.982,11,1.252,11,1.252L9.746,0z"/>
+	</g>
+</g>
+</svg>
