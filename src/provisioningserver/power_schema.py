@@ -298,4 +298,15 @@ JSON_POWER_TYPE_PARAMETERS = [
             make_json_field('blade_id', "Blade ID (Typically 1-24)"),
         ],
     },
+    {
+        'name': 'apc',
+        'description': "American Power Conversion (APC) PDU",
+        'fields': [
+            make_json_field('power_address', "IP for APC PDU"),
+            make_json_field('power_user', "APC PDU username"),
+            make_json_field('power_pass', "APC PDU password"),
+            make_json_field(
+                'node_outlet', "APC PDU node outlet number (1-16)"),
+        ],
+    },
 ]
