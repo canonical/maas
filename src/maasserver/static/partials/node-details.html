@@ -1,0 +1,504 @@
+<header class="page-header">
+    <div class="inner-wrapper">
+        <h1 class="page-header__title eight-col">node.name
+            <span class="page-header__title--identicator" id="bulk-actions">
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <span class="power-status">Deployed</span>
+                <span class="power-status--power checking"><span class="loader"></span>Checking power</span>
+            </span>
+        </h1>
+        <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+        <div>
+            <div class="page-header__actions four-col last-col">
+                 <div class="page-header__cta two-col no-margin-bottom last-col">
+                    <div class="two-col no-margin-bottom last-col">
+                        <div class="cta-group">
+                            <a class="cta-group__link">Take action</a>
+                            <a class="cta-group__link--toggle">
+                                <span class="chevron"></span>
+                            </a>
+                            <ul class="cta-group__dropdown ng-hide" role="menu">
+                                <li class="cta-group__item">
+                                    <a href="#">Option</a>
+                                </li>
+                                <li class="cta-group__item">
+                                    <a href="#">Option</a>
+                                </li>
+                                <li class="cta-group__item">
+                                    <a href="#">Option</a>
+                                </li>
+                                <li class="cta-group__item">
+                                    <a href="#">Option</a>
+                                </li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+            <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+            <div class="page-header__dropdown ng-hide" data-ng-show="tabs.nodes.actionOption">
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <form class="form-inline">
+                    <div class="right">
+                        <a href="" class="margin-right alt">Cancel</a>
+                        <button class="cta-ubuntu">Go</button>
+                    </div>
+                </form>
+
+                <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                <div class="page-header__feedback ng-hide">
+                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                    <p class="page-header__feedback-message info">
+                        Feedback message
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+<div class="row">
+    <div class="inner-wrapper">
+        <form>
+            <div class="twelve-col">
+                <h3 class="title">Machine summary</h3>
+            </div>
+            <fieldset class="six-col">
+                <div class="inline">
+                    <label for="cluser" class="two-col">Cluster</label>
+                    <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster">
+                        <option value="0" disabled="disabled" selected="selected">Choose a cluster</option>
+                        <option value="1">Test cluster</option>
+                    </select>
+                </div>
+                <div class="inline">
+                    <label for="architecture" class="two-col">Architecture</label>
+                    <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture">
+                        <option value="0" selected="selected">amd64/generic</option>
+                        <option value="1">amd64/hwe-p</option>
+                        <option value="2">amd64/hwe-q</option>
+                        <option value="3">amd64/hwe-r</option>
+                        <option value="4">amd64/hwe-s</option>
+                        <option value="5">amd64/hwe-t</option>
+                    </select>
+                </div>
+                <div class="inline">
+                    <label for="owner" class="two-col">Owner</label>
+                    <select name="owner" id="owner" class="three-col">
+                        <option value="0" selected="selected">Admin</option>
+                        <option value="1">Admin</option>
+                    </select>
+                </div>
+                <div class="inline">
+                    <label for="zone" class="two-col">Zone</label>
+                    <select name="zone" id="zone" class="three-col" placeholder="Choose a zone">
+                        <option value="0" selected="selected">default</option>
+                        <option value="1">zone-a</option>
+                        <option value="2">zone-b</option>
+                    </select>
+                </div>
+                <div class="inline">
+                    <label for="tags" class="two-col">Tags</label>
+                    <input type="text" class="three-col" placeholder="Tags">
+                </div>
+            </fieldset>
+            <div class="six-col last-col">
+                <dl>
+                    <dt class="two-col">CPU</dt>
+                        <dd class="four-col last-col">3Ghz over 4 cores</dd>
+                    <dt class="two-col">Ram</dt>
+                        <dd class="four-col last-col">120GB</dd>
+                    <dt class="two-col">Storage</dt>
+                        <dd class="four-col last-col">750GB over 2 disks</dd>
+                    <dt class="two-col">Operating System</dt>
+                        <dd class="four-col last-col">Ubuntu 14.10</dd>
+                </dl>
+            </div>
+            <div class="controls">
+                <a href="#" class="link-cta-ubuntu clear">Cancel</a>
+                <button class="cta-ubuntu">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row">
+    <div class="inner-wrapper">
+        <form class="disabled">
+            <div class="twelve-col">
+                <h3 class="title">Power <span>10 other machines under this power controller</span></h3>
+            </div>
+            <fieldset class="six-col">
+                <div class="inline">
+                    <label for="powertype" class="two-col">Powertype</label>
+                    <input type="text" id="powertype" class="three-col" disabled="disabled" placeholder="Power type">
+                </div>
+                <div class="inline">
+                    <label for="pxe-mac" class="two-col">PXE MAC</label>
+                    <input type="text" id="pxe-mac" class="three-col" disabled="disabled" placeholder="PXE MAC">
+                </div>
+                <div class="inline">
+                    <label for="amt-ip" class="two-col">AMT IP Address</label>
+                    <input type="text" id="amt-ip" class="three-col" disabled="disabled" placeholder="AMT IP Address">
+                </div>
+                <div class="inline">
+                    <label for="amt-password" class="two-col">AMT Password</label>
+                    <input type="text" id="amt-password" class="three-col" disabled="disabled" placeholder="AMT Password">
+                </div>
+            </fieldset>
+            <div class="controls">
+                <a href="#" class="link-cta-ubuntu secondary">Edit</a>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row">
+    <div class="inner-wrapper">
+        <form>
+            <div class="twelve-col">
+                <h3 class="title">Network</h3>
+            </div>
+            <table class="table-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th>
+                            <input type="checkbox" id="network-check-all" />
+                            <label for="network-check-all"></label>
+                        </th>
+                        <th>Interface</th>
+                        <th>MAC</th>
+                        <th>IP</th>
+                        <th>Subnet</th>
+                        <th>DNS Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="eth0" id="eth0">
+                            <label for="eth0"></label>
+                        </td>
+                        <td>eth0</td>
+                        <td>ec:a8:6b:fa:6e:32</td>
+                        <td>10.20.67.10</td>
+                        <td>10.20.67.0/1</td>
+                        <td>maas-eth0</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="eth0" id="eth0">
+                            <label for="eth0"></label>
+                        </td>
+                        <td>eth0</td>
+                        <td>ec:a8:6b:fa:6e:32</td>
+                        <td>10.20.67.10</td>
+                        <td>10.20.67.0/1</td>
+                        <td>maas-eth0</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="eth0" id="eth0">
+                            <label for="eth0"></label>
+                        </td>
+                        <td>eth0</td>
+                        <td>ec:a8:6b:fa:6e:32</td>
+                        <td>10.20.67.10</td>
+                        <td>10.20.67.0/1</td>
+                        <td>maas-eth0</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="eth0" id="eth0">
+                            <label for="eth0"></label>
+                        </td>
+                        <td>eth0</td>
+                        <td>ec:a8:6b:fa:6e:32</td>
+                        <td>10.20.67.10</td>
+                        <td>10.20.67.0/1</td>
+                        <td>maas-eth0</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="controls">
+                <div class="cta-group">
+                    <a class="cta-group__link">Configure</a>
+                    <a class="cta-group__link--toggle">
+                        <span class="chevron"></span>
+                    </a>
+                    <ul class="cta-group__dropdown ng-hide" role="menu">
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row">
+    <div class="inner-wrapper">
+        <form>
+            <div class="twelve-col">
+                <h3 class="title">Storage</h3>
+            </div>
+            <table class="table-listing">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="storage-check-all" />
+                            <label for="storage-check-all"></label>
+                        </th>
+                        <th>Name</th>
+                        <th>Path</th>
+                        <th>Size (GB)</th>
+                        <th>Model</th>
+                        <th>Serial</th>
+                        <th>Tags</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="sda" id="sda">
+                            <label for="sda"></label>
+                        </td>
+                        <td>sda</td>
+                        <td>/dev/sda</td>
+                        <td>250.1</td>
+                        <td>Samsung_SSD_850_EVO_250GB</td>
+                        <td>S21NNSAFC38075L</td>
+                        <td>sda, sata</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="sda" id="sda">
+                            <label for="sda"></label>
+                        </td>
+                        <td>sda</td>
+                        <td>/dev/sda</td>
+                        <td>250.1</td>
+                        <td>Samsung_SSD_850_EVO_250GB</td>
+                        <td>S21NNSAFC38075L</td>
+                        <td>sda, sata</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="sda" id="sda">
+                            <label for="sda"></label>
+                        </td>
+                        <td>sda</td>
+                        <td>/dev/sda</td>
+                        <td>250.1</td>
+                        <td>Samsung_SSD_850_EVO_250GB</td>
+                        <td>S21NNSAFC38075L</td>
+                        <td>sda, sata</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <input type="checkbox" name="sda" id="sda">
+                            <label for="sda"></label>
+                        </td>
+                        <td>sda</td>
+                        <td>/dev/sda</td>
+                        <td>250.1</td>
+                        <td>Samsung_SSD_850_EVO_250GB</td>
+                        <td>S21NNSAFC38075L</td>
+                        <td>sda, sata</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="controls">
+                <div class="cta-group">
+                    <a class="cta-group__link">Configure</a>
+                    <a class="cta-group__link--toggle">
+                        <span class="chevron"></span>
+                    </a>
+                    <ul class="cta-group__dropdown ng-hide" role="menu">
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+<div class="row">
+    <div class="inner-wrapper">
+        <div class="twelve-col">
+            <h3 class="title">Latest machine events <span>23102 total events</span></h3>
+        </div>
+        <table class="table-listing">
+            <thead>
+                <tr class="table-listing__row">
+                    <th>Event</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+                <tr class="table-listing__row">
+                    <td>Node powered on</td>
+                    <td>
+                        <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        <div class="controls">
+            <a href="#" class="link-cta-ubuntu clear">Download</a>
+            <a href="#" class="link-cta-ubuntu secondary external">View all</a>
+        </div>
+        <p><a href="#">Load next 10 events</a></p>
+    </div>
+</div>
+<div class="row">
+    <div class="inner-wrapper">
+        <div class="twelve-col">
+            <h3 class="title">Machine output
+                <span class="title__indicator">
+                    <a href="#" class="active">YML</a>
+                    <a href="#">XML</a>
+                </span>
+            </h3>
+        </div>
+        <div class="twelve-col yml">
+            <pre>
+                <code>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Eum sapiente vel rem, ex eaque voluptate optio suscipit hic? Et sint quae totam sunt nemo rem dolore beatae, assumenda in, cum sapiente, architecto numquam iusto deserunt dicta inventore, esse nisi repellendus!</code>
+            </pre>
+        </div>
+        <div class="twelve-col">
+            <table class="table-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th></th>
+                        <th>Filename</th>
+                        <th>Time</th>
+                        <th>Output</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row">
+                        <td>
+                            <span class="icon tick"></span>
+                        </td>
+                        <td><a href="#">99-maas-02-capture-lldp.out</a></td>
+                        <td>
+                            <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                        </td>
+                        <td>Output 3 lines</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <span class="icon tick"></span>
+                        </td>
+                        <td><a href="#">99-maas-02-capture-lldp.out</a></td>
+                        <td>
+                            <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                        </td>
+                        <td>Output 3 lines</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <span class="icon tick"></span>
+                        </td>
+                        <td><a href="#">99-maas-02-capture-lldp.out</a></td>
+                        <td>
+                            <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                        </td>
+                        <td>Output 3 lines</td>
+                    </tr>
+                    <tr class="table-listing__row">
+                        <td>
+                            <span class="icon tick"></span>
+                        </td>
+                        <td><a href="#">99-maas-02-capture-lldp.out</a></td>
+                        <td>
+                            <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
+                        </td>
+                        <td>Output 3 lines</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="controls four-col last-col">
+            <div class="two-col no-margin-bottom last-col">
+                <a href="#" class="link-cta-ubuntu clear right">Download</a>
+            </div>
+            <div class="two-col no-margin-bottom last-col">
+                <div class="cta-group">
+                    <a class="cta-group__link">Commissioning summary</a>
+                    <a class="cta-group__link--toggle">
+                        <span class="chevron"></span>
+                    </a>
+                    <ul class="cta-group__dropdown ng-hide" role="menu">
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                        <li class="cta-group__item">
+                            <a href="#">Option</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

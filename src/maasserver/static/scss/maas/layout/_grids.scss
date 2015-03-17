@@ -34,4 +34,9 @@
 
 .row {
     background-color: transparent;
+    border-bottom: 1px dotted #CCC;
+}
+
+.row:last-child {
+    border-bottom: none;
 }

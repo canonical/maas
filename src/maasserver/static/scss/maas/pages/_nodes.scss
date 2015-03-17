@@ -344,3 +344,75 @@
         }
     }
 }
+
+/* 5. NODE STATUS ----------------------------------------------------
+--------------------------------------------------------------------*/
+
+.power-status {
+    display: inline-block;
+    font-size: 100%;
+
+    &--power {
+        display: inline-block;
+        margin-left: 20px;
+        position: relative;
+        font-size: 100%;
+
+        &.checking {
+            color: #2AB7EC;
+            background: url('../img/status_in_progress.svg');
+            padding-left: 20px;
+        }
+
+        &.on {
+            padding-left: 20px;
+            color: #38B44A;
+            background: transparent url('../img/icons/power-on.svg') left top 4px no-repeat;
+        }
+
+        &.off {
+            padding-left: 20px;
+            color: #D2D2D2;
+            background: transparent url('../img/icons/power-off.svg') left top 4px no-repeat;
+        }
+
+        &.error {
+            padding-left: 20px;
+            color: #DB3832;
+            background: transparent url('../img/icons/power-error.svg') left top 4px no-repeat;
+        }
+    }
+}
+
+.loader {
+  width: 16px;
+  height: 16px;
+  position: absolute;
+  top: 4px;
+  left: 0;
+  border-radius: 50%;
+  //overflow: hidden;
+
+  &:before {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: linear-gradient(#2AB7EC, white 100%);
+    -webkit-animation: spin .5s infinite linear;
+    -moz-animation: spin .5s infinite linear;
+    animation: spin .5s infinite linear;
+  }
+
+  &:after {
+    content: "";
+    position: absolute;
+    width: 90%;
+    height: 90%;
+    top: 5%;
+    left: 5%;
+    background-color: #FFF;
+    border-radius: 50%;
+  }
+}

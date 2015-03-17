@@ -1,0 +1,26 @@
+/**
+ * MAAS list styles
+ *
+ * @project     MAAS
+ * @author      Web Team at Canonical Ltd
+ * @copyright   2015 Canonical Ltd
+ *
+ */
+
+ dl {
+
+    dt {
+        clear: left;
+    }
+
+    dd {
+        color: #888;
+        margin-left: 0;
+    }
+
+    dt,
+    dd {
+        display: inline-block;
+        float: left;
+    }
+ }

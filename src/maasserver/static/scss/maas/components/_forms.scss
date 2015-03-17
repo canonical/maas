@@ -55,46 +55,24 @@
         border-color: #B2B2B2;
         outline: none;
     }
-}
-
-/* 2. FORM -----------------------------------------------------------
---------------------------------------------------------------------*/
-
-%input--styles {
-    @include rounded-corners(2px);
-    @include box-sizing();
-    -webkit-appearance: none;
-    background: #FFF;
-    color: #333;
-    border: 1px solid #D2D2D2;
-    display: block;
-    font-family: Ubuntu,Arial,"libra sans",sans-serif;
-    font-size: 1em;
-    font-weight: 300;
-    padding: 0px 13px;
-
-    &:hover {
-
-    }
-
-    &:active {
-        border-color: #B2B2B2;
-        outline: none;
-    }
-
-    &:focus {
-        border-color: #B2B2B2;
-        outline: none;
-    }
 
     &.invalid,
     &.ng-invalid {
         border-color: #d90000;
     }
+
+    &[disabled="disabled"] {
+        border-color: #D2D2D2;
+        background-color: transparent;
+    }
 }
 
 label {
     position: relative;
+
+    .disabled & {
+        cursor: default;
+    }
 }
 
 form {
@@ -211,6 +189,7 @@ form {
     fieldset {
         background: none;
         margin-left: 0;
+        padding: 0;
     }
 }
 
@@ -341,4 +320,10 @@ input[type="checkbox"] {
     select {
         margin-left: 10px;
     }
+}
+
+.controls {
+    position: absolute;
+    top: 0;
+    right: 20px;
 }
