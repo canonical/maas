@@ -2,6 +2,7 @@
 *.egg-info
 *.log
 ./.db.lock
+./.idea
 ./.installed.cfg
 ./.noseids
 ./acceptance/*.build
@@ -35,4 +36,3 @@
 ./TAGS
 ./tags
 dropin.cache
-.idea
