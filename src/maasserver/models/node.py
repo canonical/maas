@@ -114,6 +114,8 @@ from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
     commit_within_atomic_block,
     get_one,
+    post_commit_do,
+    transactional,
     )
 from metadataserver.enum import RESULT_TYPE
 from netaddr import IPAddress
@@ -126,27 +128,11 @@ from provisioningserver.rpc.cluster import (
     )
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.twisted import asynchronous
+from provisioningserver.utils.twisted import callOutToThread
 from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("node")
-
-
-# XXX 2014-12-12 gmb:
-#     Note that this is now essentially a no-op in the places it is
-#     used, and it should be removed.
-@asynchronous(timeout=30)
-def wait_for_power_command(d):
-    """Wait for a  power command deferred to return or fail.
-
-    :param d: A the deferred for which to wait.
-    :raises: Any exception that caused the deferred to fail.
-    """
-    # asynchronous() will raise any exception that caused the deferred
-    # to fail. All we have to do is return the deferred to make sure
-    # that asynchronous() blocks until it's finished.
-    return d
 
 
 def generate_node_system_id():
@@ -1684,28 +1670,27 @@ class Node(CleanSave, TimestampedModel):
             # this is not an error state.
             return
 
-        # Commit before starting the node.
-        commit_within_atomic_block()
+        @transactional
+        def pc_start_transition_monitor(timeout):
+            self.start_transition_monitor(timeout)
 
-        try:
-            # Send the power on command to the node and wait for it to
-            # return. Pass the deferred to
-            # wait_for_power_command() so as to ensure that errors get
-            # caught and reported.
-            d = power_on_node(
-                self.system_id, self.hostname, self.nodegroup.uuid,
-                power_info)
-            wait_for_power_command(d)
-        except:
-            # If we encounter any failure here, we deallocate the static
-            # IPs we claimed earlier. We don't try to handle the error;
-            # that's the job of the call site.
+        @transactional
+        def pc_deallocate_by_node():
+            # Deallocate the static IPs we claimed earlier.
             StaticIPAddress.objects.deallocate_by_node(self)
-            commit_within_atomic_block()
-            raise
-        else:
+
+        def pc_power_on_node(system_id, hostname, nodegroup_uuid, power_info):
+            d = power_on_node(system_id, hostname, nodegroup_uuid, power_info)
             if transition_timeout is not None:
-                self.start_transition_monitor(transition_timeout)
+                d.addCallback(
+                    callOutToThread, pc_start_transition_monitor,
+                    transition_timeout)
+            d.addErrback(callOutToThread, pc_deallocate_by_node)
+            return d
+
+        post_commit_do(
+            pc_power_on_node, self.system_id, self.hostname,
+            self.nodegroup.uuid, power_info)
 
     def stop(self, by_user, stop_mode='hard'):
         """Request that the node be powered down.
@@ -1735,14 +1720,11 @@ class Node(CleanSave, TimestampedModel):
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode
 
-        # Request that the node be powered off and wait for the command
-        # to return or fail. Pass the deferred to
-        # wait_for_power_command() so as to ensure that errors get
-        # caught and reported.
-        d = power_off_node(
-            self.system_id, self.hostname, self.nodegroup.uuid,
-            power_info)
-        wait_for_power_command(d)
+        # Request that the node be powered off post-commit.
+        post_commit_do(
+            power_off_node, self.system_id, self.hostname,
+            self.nodegroup.uuid, power_info)
+
         return True
 
 

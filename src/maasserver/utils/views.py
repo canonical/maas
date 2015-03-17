@@ -23,7 +23,10 @@ from django.core import signals
 from django.core.handlers.wsgi import WSGIHandler
 from django.core.urlresolvers import get_resolver
 from django.db import transaction
-from maasserver.utils.orm import is_serialization_failure
+from maasserver.utils.orm import (
+    is_serialization_failure,
+    post_commit_hooks,
+    )
 from provisioningserver.logger.log import get_maas_logger
 
 
@@ -90,8 +93,9 @@ class WebApplicationHandler(WSGIHandler):
             # transaction may fail because of a serialization conflict, so
             # pass errors to handle_uncaught_exception().
             try:
-                with transaction.atomic():
-                    return django_get_response(request)
+                with post_commit_hooks:
+                    with transaction.atomic():
+                        return django_get_response(request)
             except SystemExit:
                 # Allow sys.exit() to actually exit, reproducing behaviour
                 # found in Django's BaseHandler.

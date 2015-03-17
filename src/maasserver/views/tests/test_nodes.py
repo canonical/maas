@@ -34,6 +34,7 @@ from django.utils import html
 from lxml.html import fromstring
 from maasserver import preseed as preseed_module
 import maasserver.api
+from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
 from maasserver.enum import (
     NODE_BOOT,
@@ -833,10 +834,11 @@ class NodeViewsTest(MAASServerTestCase):
     def test_view_node_POST_performs_action(self):
         # Don't start the monitoring thread.
         self.patch(node_module, "getClientFor")
+        # Don't call through to the cluster to turn the power on.
+        self.patch(power_module, "getClientFor")
 
         # Stub-out real-world RPC calls.
         self.patch(node_module, "update_host_maps").return_value = []
-        self.patch(node_module, "wait_for_power_commands")
 
         self.client_log_in()
         factory.make_SSHKey(self.logged_in_user)
