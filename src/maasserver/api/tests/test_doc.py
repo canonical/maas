@@ -292,6 +292,8 @@ class TestDescribingAPI(MAASServerTestCase):
             "PUT update op=None restful=True",
             "POST claim_sticky_ip_address op=claim_sticky_ip_address "
             "restful=False",
+            "POST release_sticky_ip_address op=release_sticky_ip_address "
+            "restful=False",
             'POST mark_fixed op=mark_fixed restful=False',
             'POST mark_broken op=mark_broken restful=False',
             'POST abort_operation op=abort_operation restful=False',

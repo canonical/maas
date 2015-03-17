@@ -8,6 +8,11 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from testtools.matchers import (
+    HasLength,
+    Not,
+    )
+
 
 str = None
 
@@ -37,8 +42,7 @@ from maasserver.fields import (
 from maasserver.models import (
     Node,
     node as node_module,
-    StaticIPAddress,
-    )
+    StaticIPAddress, MACAddress)
 from maasserver.models.node import RELEASABLE_STATUSES
 from maasserver.testing.api import APITestCase
 from maasserver.testing.architecture import make_usable_architecture
@@ -1032,7 +1036,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(httplib.NOT_FOUND, response.status_code)
 
 
-class TestStickyIP(APITestCase):
+class TestClaimStickyIpAddressAPI(APITestCase):
     """Tests for /api/1.0/nodes/<node>/?op=claim_sticky_ip_address"""
 
     def get_node_uri(self, node):
@@ -1240,6 +1244,92 @@ class TestStickyIP(APITestCase):
             })
         self.assertEqual(
             httplib.NOT_FOUND, response.status_code, response.content)
+
+
+class TestNodeReleaseStickyIpAddressAPI(APITestCase):
+    """Tests for /api/1.0/nodes/?op=release_sticky_ip_address."""
+
+    def get_node_uri(self, node):
+        """Get the API URI for `node`."""
+        return reverse('node_handler', args=[node.system_id])
+
+    def test__releases_ip_address(self):
+        self.become_admin()
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            disable_ipv4=False)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'claim_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        self.expectThat(parsed_node["ip_addresses"], Not(HasLength(0)))
+
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        self.expectThat(parsed_node["ip_addresses"], HasLength(0))
+
+    def test__releases_all_ip_addresses(self):
+        network = factory._make_random_network(slash=24)
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            installable=True, mac_count=5, network=network,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        self.assertThat(MACAddress.objects.all(), HasLength(5))
+        for mac in MACAddress.objects.all():
+            allocated = node.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            self.expectThat(allocated, HasLength(1))
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        self.expectThat(parsed_node["ip_addresses"], HasLength(0))
+
+    def test__releases_specific_address(self):
+        network = factory._make_random_network(slash=24)
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            installable=True, mac_count=2, network=network,
+            disable_ipv4=False, owner=self.logged_in_user)
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        self.assertThat(MACAddress.objects.all(), HasLength(2))
+        ips = []
+        for mac in MACAddress.objects.all():
+            allocated = node.claim_static_ip_addresses(
+                alloc_type=IPADDRESS_TYPE.STICKY, mac=mac)
+            self.expectThat(allocated, HasLength(1))
+            # Note: 'allocated' is a list of (ip,mac) tuples
+            ips.append(allocated[0][0])
+        response = self.client.post(
+            self.get_node_uri(node),
+            {
+                'op': 'release_sticky_ip_address',
+                'address': ips[0]
+            })
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        parsed_node = json.loads(response.content)
+        self.expectThat(parsed_node["ip_addresses"], HasLength(1))
+
+    def test__rejected_if_not_permitted(self):
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface(
+            disable_ipv4=False, owner=factory.make_User())
+        # Silence 'update_host_maps' and 'remove_host_maps'
+        self.patch(node_module, "update_host_maps")
+        self.patch(node_module, "remove_host_maps")
+        node.claim_static_ip_addresses(alloc_type=IPADDRESS_TYPE.STICKY)
+        self.assertThat(StaticIPAddress.objects.all(), HasLength(1))
+        response = self.client.post(
+            self.get_node_uri(node), {'op': 'release_sticky_ip_address'})
+        self.assertEqual(
+            httplib.FORBIDDEN, response.status_code, response.content)
+        self.assertThat(StaticIPAddress.objects.all(), HasLength(1))
 
 
 class TestGetDetails(APITestCase):

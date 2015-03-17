@@ -495,6 +495,37 @@ class NodeHandler(OperationsHandler):
         return node
 
     @operation(idempotent=False)
+    def release_sticky_ip_address(self, request, system_id):
+        """Release a "sticky" IP address from a node's MAC.
+
+        :param address: Optional IP address to release. If left unspecified,
+            will release every "sticky" IP address associated with the node.
+
+        Returns 400 if the specified addresses could not be deallocated
+        Returns 404 if the node is not found.
+        Returns 409 if the node is in an allocated state.
+        """
+        node = Node.nodes.get_node_or_404(
+            system_id=system_id, user=request.user, perm=NODE_PERMISSION.EDIT)
+        address = request.POST.get('address', None)
+
+        # Note: this call handles deleting the host maps, and updating the DNS
+        # zones (unlike the claim_static_ips() call in mac_address used above)
+        deallocated_ips = node.deallocate_static_ip_addresses(
+            alloc_type=IPADDRESS_TYPE.STICKY, ip=address)
+
+        if len(deallocated_ips) == 0 and address is not None:
+                raise MAASAPIBadRequest(
+                    "%s: could not deallocate sticky IP address: %s",
+                    node.hostname, address)
+        else:
+            maaslog.info(
+                "%s: Sticky IP address(es) deallocated: %s", node.hostname,
+                ', '.join(unicode(ip) for ip in deallocated_ips))
+
+        return node
+
+    @operation(idempotent=False)
     def mark_broken(self, request, system_id):
         """Mark a node as 'broken'.
 
