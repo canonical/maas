@@ -28,6 +28,8 @@ from maasserver.utils.orm import (
     post_commit_hooks,
     )
 from provisioningserver.logger.log import get_maas_logger
+from twisted.python import log
+from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger("views")
@@ -74,6 +76,11 @@ class WebApplicationHandler(WSGIHandler):
         exc_type, exc_value, exc_traceback = exc_info
         if is_serialization_failure(exc_value):
             self.__retry.add(response)
+        else:
+            # Log the error to the regiond.log.
+            failure = Failure(
+                exc_value=exc_value, exc_type=exc_type, exc_tb=exc_traceback)
+            log.err(failure, _why="500 Error - %s" % request.path)
         # Return the response regardless. This means that we'll get Django's
         # error page when there's a persistent serialization failure.
         return response

@@ -46,6 +46,7 @@ from testtools.matchers import (
     IsInstance,
     Not,
     )
+from twisted.python import log
 
 
 class TestLogRetry(MAASTestCase):
@@ -138,6 +139,24 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.expectThat(
             handler._WebApplicationHandler__retry,
             Not(Contains(response)))
+
+    def test__handle_uncaught_exception_logs_other_failure(self):
+        handler = views.WebApplicationHandler()
+        request = HttpRequest()
+        request.path = factory.make_name("path")
+        exc_type = factory.make_exception_type()
+        exc_info = exc_type, exc_type(), None
+        mock_err = self.patch(log, "err")
+        handler.handle_uncaught_exception(
+            request=request, resolver=get_resolver(None), exc_info=exc_info)
+        # Cannot use MockCalledOnceWith as the Failure objects will not match
+        # even with them created the same. Must check the contents of the
+        # failure.
+        failure = mock_err.call_args[0][0]
+        _why = mock_err.call_args_list[0][1]['_why']
+        self.expectThat(failure.type, Equals(exc_type))
+        self.expectThat(failure.value, Equals(exc_info[1]))
+        self.expectThat(_why, Equals("500 Error - %s" % request.path))
 
     def test__get_response_catches_serialization_failures(self):
         get_response_original = self.patch(WSGIHandler, "get_response")
