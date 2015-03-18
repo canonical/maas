@@ -165,7 +165,6 @@ class DeferredHooks(threading.local):
     @synchronous
     def add(self, d):
         assert isinstance(d, Deferred)
-        d.addErrback(suppress, CancelledError)
         self.hooks.append(d)
 
     @synchronous
@@ -208,6 +207,7 @@ class DeferredHooks(threading.local):
     @staticmethod
     @asynchronous
     def _cancel_in_reactor(hook):
+        hook.addErrback(suppress, CancelledError)
         hook.addErrback(log.err)
         try:
             hook.cancel()

@@ -156,13 +156,6 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         dhooks.add(Deferred())
         self.assertThat(dhooks.hooks, HasLength(1))
 
-    def test__add_suppresses_cancellation_errors_in_Deferred(self):
-        dhooks = DeferredHooks()
-        d = Deferred()
-        dhooks.add(d)
-        d.cancel()
-        self.assertEqual(None, extract_result(d))
-
     def test__add_cannot_be_called_in_the_reactor(self):
         dhooks = DeferredHooks()
         add_in_reactor = wait_for_reactor(dhooks.add)
@@ -230,6 +223,17 @@ class TestDeferredHooks(MAASTestCase, PostCommitHooksTestMixin):
         dhooks.reset()
         self.assertThat(dhooks.hooks, HasLength(0))
         self.assertThat(d, IsFiredDeferred())
+
+    def test__reset_suppresses_CancelledError(self):
+        logger = self.useFixture(TwistedLoggerFixture())
+
+        dhooks = DeferredHooks()
+        d = Deferred()
+        dhooks.add(d)
+        dhooks.reset()
+        self.assertThat(dhooks.hooks, HasLength(0))
+        self.assertThat(extract_result(d), Is(None))
+        self.assertEqual("", logger.output)
 
     def test__logs_failures_from_cancellers(self):
         logger = self.useFixture(TwistedLoggerFixture())
