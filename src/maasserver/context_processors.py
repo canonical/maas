@@ -61,6 +61,7 @@ def static_resources(context):
             'js/angular/controllers/error.js',
             'js/angular/controllers/nodes_list.js',
             'js/angular/controllers/add_hardware.js',
+            'js/angular/controllers/node_details.js',
         ],
         'JS_LIST': [
             'js/image.js',

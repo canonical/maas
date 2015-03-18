@@ -27,6 +27,10 @@ angular.module('MAAS', ['ngRoute']).config(
                     templateUrl: 'static/partials/nodes-list.html',
                     controller: 'NodesListController'
                 }).
+                when('/node/:system_id', {
+                    templateUrl: 'static/partials/node-details.html',
+                    controller: 'NodeDetailsController'
+                }).
                 when('/error', {
                     templateUrl: 'static/partials/error.html',
                     controller: 'ErrorController'

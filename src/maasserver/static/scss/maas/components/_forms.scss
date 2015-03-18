@@ -134,11 +134,40 @@ form {
             -webkit-appearance: none;
         }
 
-        &[type='checkbox'],
         &[type='radio'],
         &[type='image'] {
             display: inline-block;
             margin-right: 10px;
+        }
+    }
+
+    input[type="checkbox"] {
+        visibility: hidden;
+        width: 0;
+        height: 0;
+        margin-right: 0;
+
+        & + label {
+            padding-left: 20px;
+            position: relative;
+
+            &:before {
+                content: "";
+                display: inline-block;
+                width: 20px;
+                height: 20px;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background: url('../img/checkbox.svg') no-repeat;
+                background-size: 13px 13px;
+                background-position: 0px 3px;
+            }
+        }
+
+        &:checked + label:before {
+            background: url('../img/checkbox-checked.svg') no-repeat;
+            background-position: 0px 3px;
         }
     }
 
@@ -190,35 +219,6 @@ form {
         background: none;
         margin-left: 0;
         padding: 0;
-    }
-}
-
-input[type="checkbox"] {
-    visibility: hidden;
-    width: 0;
-    height: 0;
-
-    & + label {
-        padding-left: 20px;
-        position: relative;
-
-        &:before {
-            content: "";
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            position: absolute;
-            top: 0;
-            left: 0;
-            background: url('../img/checkbox.svg') no-repeat;
-            background-size: 13px 13px;
-            background-position: 0px 3px;
-        }
-    }
-
-    &:checked + label:before {
-        background: url('../img/checkbox-checked.svg') no-repeat;
-        background-position: 0px 3px;
     }
 }
 
@@ -275,6 +275,11 @@ input[type="checkbox"] {
          * Required to fix the inline block invisible margin
          */
         font-size: 16px;
+    }
+
+    div {
+        float: none;
+        margin: 0;
     }
 
     input.cta-ubuntu,
