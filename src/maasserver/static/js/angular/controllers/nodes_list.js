@@ -5,9 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', '$timeout', 'NodesManager', 'DevicesManager',
-    'RegionConnection', 'ManagerHelperService', 'SearchService', function(
-        $scope, $rootScope, $timeout, NodesManager, DevicesManager,
+    '$scope', '$rootScope', 'NodesManager', 'DevicesManager',
+    'GeneralManager', 'RegionConnection', 'ManagerHelperService',
+    'SearchService', function($scope, $rootScope,
+        NodesManager, DevicesManager, GeneralManager,
         RegionConnection, ManagerHelperService, SearchService) {
 
         // Set title and page.
@@ -18,7 +19,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.nodes = NodesManager.getItems();
         $scope.devices = DevicesManager.getItems();
         $scope.currentpage = "nodes";
-        $scope.osinfo = null;
+        $scope.osinfo = GeneralManager.getData("osinfo");
 
         $scope.tabs = {};
         // Nodes tab.
@@ -36,7 +37,8 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.nodes.filters = SearchService.emptyFilter;
         $scope.tabs.nodes.column = 'fqdn';
         $scope.tabs.nodes.actionOption = null;
-        $scope.tabs.nodes.takeActionOptions = [];
+        $scope.tabs.nodes.takeActionOptions = GeneralManager.getData(
+            "actions");
         $scope.tabs.nodes.actionErrorCount = 0;
         $scope.tabs.nodes.osSelection = {
             osystem: "",
@@ -58,7 +60,8 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.tabs.devices.filters = SearchService.emptyFilter;
         $scope.tabs.devices.column = 'fqdn';
         $scope.tabs.devices.actionOption = null;
-        $scope.tabs.devices.takeActionOptions = [];
+        $scope.tabs.devices.takeActionOptions = GeneralManager.getData(
+            "actions");
         $scope.tabs.devices.actionErrorCount = 0;
 
         // Options for add hardware dropdown.
@@ -149,39 +152,6 @@ angular.module('MAAS').controller('NodesListController', [
                 if(!supported) {
                     $scope.tabs[tab].actionErrorCount += 1;
                 }
-            }
-        }
-
-        // Load the support operating systems and releases.
-        var loadOSReleasesPromise;
-        function loadOSReleases(reload) {
-            var callAgain = function() {
-                loadOSReleases(reload);
-            };
-
-            RegionConnection.callMethod("general.osinfo", {}).then(
-                function(osinfo) {
-                    $scope.osinfo = osinfo;
-                    if(osinfo.osystems.length === 0) {
-                        // No operating systems, so no clusters have imported
-                        // images. Update every 3 seconds.
-                        loadOSReleasesPromise = $timeout(callAgain, 3000);
-                    } else if(reload) {
-                        // Reload enabled, update every 10 seconds.
-                        loadOSReleasesPromise = $timeout(callAgain, 10000);
-                    }
-                }, function(error) {
-                    // Failed to load the osinfo, try again in 3 sconds.
-                    console.log("Failed to load os info: " + error);
-                    loadOSReleasesPromise = $timeout(callAgain, 3000);
-                });
-        }
-
-        // Cancel the loading of operating systems and releases.
-        function cancelLoadOSReleases() {
-            if(angular.isObject(loadOSReleasesPromise)) {
-                $timeout.cancel(loadOSReleasesPromise);
-                loadOSReleasesPromise = null;
             }
         }
 
@@ -283,9 +253,9 @@ angular.module('MAAS').controller('NodesListController', [
             var actionOption = $scope.tabs[tab].actionOption;
             if(angular.isObject(actionOption) &&
                 actionOption.name === "deploy") {
-                loadOSReleases(true);
+                GeneralManager.startPolling("osinfo");
             } else {
-                cancelLoadOSReleases();
+                GeneralManager.stopPolling("osinfo");
             }
 
             // Hide the add hardware section.
@@ -324,7 +294,7 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.actionCancel = function(tab) {
             leaveViewSelected(tab);
             $scope.tabs[tab].actionOption = null;
-            cancelLoadOSReleases();
+            GeneralManager.stopPolling("osinfo");
         };
 
         // Perform the action on all nodes.
@@ -370,19 +340,12 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
-        // Load the NodesManager and DevicesManager.
-        ManagerHelperService.loadManagers([NodesManager, DevicesManager]);
+        // Load the NodesManager, DevicesManager and GeneralManager.
+        ManagerHelperService.loadManagers(
+            [NodesManager, DevicesManager, GeneralManager]);
 
-        RegionConnection.defaultConnect().then(function() {
-            // Load all of the available actions.
-            RegionConnection.callMethod("general.actions", {}).then(
-                function(actions) {
-                    angular.forEach($scope.tabs, function(tab) {
-                        tab.takeActionOptions = actions;
-                    });
-                });
-
-            // Initially load osinfo, but don't keep reloading.
-            loadOSReleases(false);
+        // Stop polling when the scope is destroyed.
+        $scope.$on("$destroy", function() {
+            GeneralManager.stopPolling("osinfo");
         });
     }]);

@@ -10,22 +10,22 @@ describe("NodesListController", function() {
     beforeEach(module("MAAS"));
 
     // Grab the needed angular pieces.
-    var $controller, $rootScope, $timeout, $scope, $q;
+    var $controller, $rootScope, $scope, $q;
     beforeEach(inject(function($injector) {
         $controller = $injector.get("$controller");
         $rootScope = $injector.get("$rootScope");
-        $timeout = $injector.get("$timeout");
         $scope = $rootScope.$new();
         $q = $injector.get("$q");
     }));
 
-    // Load the NodesManager, DevicesManager, RegionConnection,
+    // Load the NodesManager, DevicesManager, GeneralManager, RegionConnection,
     // SearchService and mock the websocket connection.
-    var NodesManager, DevicesManager, RegionConnection;
+    var NodesManager, DevicesManager, GeneralManager, RegionConnection;
     var ManagerHelperService, SearchService, webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
         DevicesManager = $injector.get("DevicesManager");
+        GeneralManager = $injector.get("GeneralManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
@@ -58,7 +58,6 @@ describe("NodesListController", function() {
         return $controller("NodesListController", {
             $scope: $scope,
             $rootScope: $rootScope,
-            $timeout: $timeout,
             NodesManager: NodesManager,
             DevicesManager: DevicesManager,
             RegionConnection: RegionConnection,
@@ -99,7 +98,7 @@ describe("NodesListController", function() {
         var controller = makeController();
         expect($scope.nodes).toBe(NodesManager.getItems());
         expect($scope.devices).toBe(DevicesManager.getItems());
-        expect($scope.osinfo).toBeNull();
+        expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
         expect($scope.addHardwareOption).toBeNull();
         expect($scope.addHardwareOptions).toEqual([
             {
@@ -114,121 +113,20 @@ describe("NodesListController", function() {
         expect($scope.addHardwareScope).toBeNull();
     });
 
-   it("calls loadManagers with NodesManager and DevicesManager",
+    it("calls stopPolling when scope destroyed", function() {
+        var controller = makeController();
+        spyOn(GeneralManager, "stopPolling");
+        $scope.$destroy();
+        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+            "osinfo");
+    });
+
+    it("calls loadManagers with NodesManager, DevicesManager, GeneralManager",
         function() {
             var controller = makeController();
             expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
-                [NodesManager, DevicesManager]);
+                [NodesManager, DevicesManager, GeneralManager]);
         });
-
-    it("loads initial osinfo", function() {
-        // Mock the RegionConnection.callMethod to catch all calls.
-        var defers = [
-            $q.defer(),
-            $q.defer()
-            ];
-        var i = 0;
-        spyOn(RegionConnection, "callMethod").and.callFake(
-            function(method) {
-                return defers[i++].promise;
-            });
-
-        var osinfo = {
-            "osystems": [makeName("os")]
-        };
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
-
-        // Resolve defaultConnect to start the calls.
-        defer.resolve();
-        $scope.$digest();
-
-        // Resolve the general.actions call.
-        defers[0].resolve([]);
-        $scope.$digest();
-
-        // Resolve the general.osinfo call to get the osinfo.
-        defers[1].resolve(osinfo);
-        $scope.$digest();
-        expect($scope.osinfo).toBe(osinfo);
-    });
-
-    it("doesnt reload osinfo", function() {
-        // Mock the RegionConnection.callMethod to catch all calls.
-        var defers = [
-            $q.defer(),
-            $q.defer(),
-            $q.defer()
-            ];
-        var i = 0;
-        spyOn(RegionConnection, "callMethod").and.callFake(
-            function(method) {
-                return defers[i++].promise;
-            });
-
-        var osinfo = {
-            "osystems": [makeName("os")]
-        };
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
-
-        // Resolve defaultConnect to start the calls.
-        defer.resolve();
-        $scope.$digest();
-
-        // Resolve the general.actions call.
-        defers[0].resolve([]);
-        $scope.$digest();
-
-        // Resolve the general.osinfo call to get the osinfo.
-        defers[1].resolve(osinfo);
-        $scope.$digest();
-
-        // Skip 10 seconds, a second osinfo call would occur if reload=true.
-        // It should not occur, so call count should only be 2.
-        $timeout.flush(10000);
-        expect(RegionConnection.callMethod.calls.count()).toBe(2);
-    });
-
-    it("reload osinfo after 3 secs on error", function() {
-        // Mock the RegionConnection.callMethod to catch all calls.
-        var defers = [
-            $q.defer(),
-            $q.defer(),
-            $q.defer()
-            ];
-        var i = 0;
-        spyOn(RegionConnection, "callMethod").and.callFake(
-            function(method) {
-                return defers[i++].promise;
-            });
-
-        var osinfo = {
-            "osystems": [makeName("os")]
-        };
-        var defer = $q.defer();
-        var controller = makeController(null, defer);
-
-        // Resolve defaultConnect to start the calls.
-        defer.resolve();
-        $scope.$digest();
-
-        // Resolve the general.actions call.
-        defers[0].resolve([]);
-        $scope.$digest();
-
-        // Reject the general.osinfo call to get it to be called again
-        // in 3 seconds.
-        spyOn(console, "log");
-        defers[1].reject("error");
-        $scope.$digest();
-
-        // Skip 3 seconds, a second osinfo should occur.
-        $timeout.flush(3000);
-        defers[2].resolve(osinfo);
-        $scope.$digest();
-        expect($scope.osinfo).toBe(osinfo);
-    });
 
     describe("toggleTab", function() {
 
@@ -609,109 +507,33 @@ describe("NodesListController", function() {
                     expect($scope.tabs[tab].search).toBe("in:(Selected)");
                 });
 
-                it("action deploy reloads osinfo", function() {
+                it("action deploy calls startPolling for osinfo", function() {
                     var controller = makeController();
                     $scope.tabs[tab].actionOption = {
                         "name": "deploy"
                     };
-
-                    var osinfo = {
-                        osystems: [makeName("os")]
-                    };
-
-                    var loadDefer = $q.defer();
-                    spyOn(RegionConnection, "callMethod").and.returnValue(
-                        loadDefer.promise);
-
+                    spyOn(GeneralManager, "startPolling");
                     $scope.actionOptionSelected(tab);
-                    loadDefer.resolve(osinfo);
-                    $scope.$digest();
-                    expect($scope.osinfo).toBe(osinfo);
+                    expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+                        "osinfo");
                 });
 
-                it("action deploy reloads osinfo every 10 secs", function() {
-                    var controller = makeController();
-                    $scope.tabs[tab].actionOption = {
-                        "name": "deploy"
-                    };
-
-                    var osinfo1 = {
-                        osystems: [makeName("os")]
-                    };
-                    var osinfo2 = {
-                        osystems: [makeName("os")]
-                    };
-
-                    var defers = [
-                        $q.defer(),
-                        $q.defer()
-                        ];
-                    var i = 0;
-                    spyOn(RegionConnection, "callMethod").and.callFake(
-                        function(method) {
-                            return defers[i++].promise;
-                        });
-
-                    $scope.actionOptionSelected(tab);
-
-                    // First call.
-                    defers[0].resolve(osinfo1);
-                    $scope.$digest();
-                    expect($scope.osinfo).toBe(osinfo1);
-
-                    // Second call 10 seconds later.
-                    $timeout.flush(10000);
-                    defers[1].resolve(osinfo2);
-                    $scope.$digest();
-                    expect($scope.osinfo).toBe(osinfo2);
-                });
-
-                it("changing away from deploy stops osinfo reloads",
+                it("changing away from deploy calls startPolling for osinfo",
                     function() {
                         var controller = makeController();
                         $scope.tabs[tab].actionOption = {
                             "name": "deploy"
                         };
-
-                        var osinfo1 = {
-                            osystems: [makeName("os")]
-                        };
-                        var osinfo2 = {
-                            osystems: [makeName("os")]
-                        };
-
-                        var defers = [
-                            $q.defer(),
-                            $q.defer()
-                            ];
-                        var i = 0;
-                        spyOn(RegionConnection, "callMethod").and.callFake(
-                            function(method) {
-                                return defers[i++].promise;
-                            });
-
+                        spyOn(GeneralManager, "startPolling");
+                        spyOn(GeneralManager, "stopPolling");
                         $scope.actionOptionSelected(tab);
 
-                        // First call.
-                        defers[0].resolve(osinfo1);
-                        $scope.$digest();
-                        expect($scope.osinfo).toBe(osinfo1);
-
-                        // Change action away from deploy, which should stop
-                        // all calls.
                         $scope.tabs[tab].actionOption = {
                             "name": "acquire"
                         };
                         $scope.actionOptionSelected(tab);
-
-                        // Second call would have occured 10 seconds later.
-                        $timeout.flush(10000);
-                        defers[1].resolve(osinfo2);
-                        $scope.$digest();
-
-                        // Should have not changed as the second call never
-                        // happened.
-                        expect($scope.osinfo).toBe(osinfo1);
+                        var expected = expect(GeneralManager.stopPolling);
+                        expected.toHaveBeenCalledWith("osinfo");
                     });
 
                 it("calls hide on addHardwareScope", function() {

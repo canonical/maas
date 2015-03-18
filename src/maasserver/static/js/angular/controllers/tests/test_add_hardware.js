@@ -21,12 +21,13 @@ describe("AddHardwareController", function() {
 
     // Load the ClustersManager, ZonesManager, NodesManager, RegionConnection,
     // and mock the websocket connection.
-    var ClustersManager, ZonesManager, NodesManager, RegionConnection;
-    var ManagerHelperService, webSocket;
+    var ClustersManager, ZonesManager, NodesManager, GeneralManager;
+    var RegionConnection, ManagerHelperService, webSocket;
     beforeEach(inject(function($injector) {
         ClustersManager = $injector.get("ClustersManager");
         ZonesManager = $injector.get("ZonesManager");
         NodesManager = $injector.get("NodesManager");
+        GeneralManager = $injector.get("GeneralManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
 
@@ -44,7 +45,7 @@ describe("AddHardwareController", function() {
     });
 
     // Makes the AddHardwareController
-    function makeController(loadManagersDefer, defaultConnectDefer) {
+    function makeController(loadManagersDefer, loadManagerDefer) {
         var loadManagers = spyOn(ManagerHelperService, "loadManagers");
         if(angular.isObject(loadManagersDefer)) {
             loadManagers.and.returnValue(loadManagersDefer.promise);
@@ -52,11 +53,11 @@ describe("AddHardwareController", function() {
             loadManagers.and.returnValue($q.defer().promise);
         }
 
-        var defaultConnect = spyOn(RegionConnection, "defaultConnect");
-        if(angular.isObject(defaultConnectDefer)) {
-            defaultConnect.and.returnValue(defaultConnectDefer.promise);
+        var loadManager = spyOn(ManagerHelperService, "loadManager");
+        if(angular.isObject(loadManagerDefer)) {
+            loadManager.and.returnValue(loadManagerDefer.promise);
         } else {
-            defaultConnect.and.returnValue($q.defer().promise);
+            loadManager.and.returnValue($q.defer().promise);
         }
 
         // Start the connection so a valid websocket is created in the
@@ -70,6 +71,7 @@ describe("AddHardwareController", function() {
             ClustersManager: ClustersManager,
             ZonesManager: ZonesManager,
             NodesManager: NodesManager,
+            GeneralManager: GeneralManager,
             RegionConnection: RegionConnection,
             ManagerHelperService: ManagerHelperService
         });
@@ -98,6 +100,11 @@ describe("AddHardwareController", function() {
             [ClustersManager, ZonesManager]);
     });
 
+    it("calls loadManager with GeneralManager", function() {
+        var controller = makeController();
+        expect(ManagerHelperService.loadManager).toHaveBeenCalledWith(
+            GeneralManager);
+    });
 
     it("intializes first machine once ClustersManager and ZonesManager loaded",
         function() {
@@ -119,123 +126,65 @@ describe("AddHardwareController", function() {
             expect($scope.chassis).not.toBeNull();
         });
 
-    it("loads initial list of architectures",
-        function() {
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
+    it("initializes currentMachine architecture with first arch", function() {
+        var defer = $q.defer();
+        var controller = makeController(null, defer);
+        var arch = makeName("arch");
+        $scope.architectures = [arch];
 
-            var loadDefer = $q.defer();
-            spyOn(RegionConnection, "callMethod").and.returnValue(
-                loadDefer.promise);
+        var machine = {
+            architecture: ''
+        };
+        $scope.machines.push(machine);
+        $scope.currentMachine = machine;
 
-            var arch = makeName("arch");
-            var defer = $q.defer();
-            var controller = makeController(null, defer);
+        defer.resolve();
+        $scope.$digest();
+        expect(machine.architecture).toEqual(arch);
+    });
 
-            // Resolve defaultConnect to get the loadArchitectures function
-            // to be called.
-            defer.resolve();
-            $scope.$digest();
+    it("initializes currentMachine architecture with amd64 arch", function() {
+        var defer = $q.defer();
+        var controller = makeController(null, defer);
+        var arch = makeName("arch");
+        $scope.architectures = [arch, "amd64/generic"];
 
-            // Resolve the call to get the architectures.
-            loadDefer.resolve([arch]);
-            $scope.$digest();
+        var machine = {
+            architecture: ''
+        };
+        $scope.machines.push(machine);
+        $scope.currentMachine = machine;
 
-            expect($scope.architectures).toEqual([arch]);
-        });
+        defer.resolve();
+        $scope.$digest();
+        expect(machine.architecture).toEqual("amd64/generic");
+    });
 
-    it("sets first architecture on load of architectures",
-        function() {
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
+    it("doesnt initializes currentMachine architecture if set", function() {
+        var defer = $q.defer();
+        var controller = makeController(null, defer);
+        var arch = makeName("arch");
+        var newArch = makeName("arch");
+        $scope.architectures = [newArch];
 
-            var loadDefer = $q.defer();
-            spyOn(RegionConnection, "callMethod").and.returnValue(
-                loadDefer.promise);
+        var machine = {
+            architecture: arch
+        };
+        $scope.machines.push(machine);
+        $scope.currentMachine = machine;
 
-            var arch = makeName("arch");
-            var defer = $q.defer();
-            var controller = makeController(null, defer);
+        defer.resolve();
+        $scope.$digest();
+        expect(machine.architecture).toEqual(arch);
+    });
 
-            var machine = {
-                architecture: ''
-            };
-            $scope.machines.push(machine);
-            $scope.currentMachine = machine;
-
-            // Resolve defaultConnect to get the loadArchitectures function
-            // to be called.
-            defer.resolve();
-            $scope.$digest();
-
-            // Resolve the call to get the architectures.
-            loadDefer.resolve([arch]);
-            $scope.$digest();
-
-            expect(machine.architecture).toEqual(arch);
-        });
-
-    it("sets amd64 architecture on load of architectures",
-        function() {
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-
-            var loadDefer = $q.defer();
-            spyOn(RegionConnection, "callMethod").and.returnValue(
-                loadDefer.promise);
-
-            var defer = $q.defer();
-            var controller = makeController(null, defer);
-
-            var machine = {
-                architecture: ''
-            };
-            $scope.machines.push(machine);
-            $scope.currentMachine = machine;
-
-            // Resolve defaultConnect to get the loadArchitectures function
-            // to be called.
-            defer.resolve();
-            $scope.$digest();
-
-            // Resolve the call to get the architectures.
-            loadDefer.resolve(["other", "amd64/generic"]);
-            $scope.$digest();
-
-            expect(machine.architecture).toEqual("amd64/generic");
-        });
-
-    it("doesnt loadArchitectures with reload true",
-        function() {
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-
-            var loadDefer = $q.defer();
-            spyOn(RegionConnection, "callMethod").and.returnValue(
-                loadDefer.promise);
-
-            var arch = makeName("arch");
-            var defer = $q.defer();
-            var controller = makeController(null, defer);
-
-            var machine = {
-                architecture: ''
-            };
-            $scope.machines.push(machine);
-            $scope.currentMachine = machine;
-
-            // Resolve defaultConnect to get the loadArchitectures function
-            // to be called.
-            defer.resolve();
-            $scope.$digest();
-
-            // Resolve the call to get the architectures.
-            loadDefer.resolve([arch]);
-            $scope.$digest();
-
-            $timeout.flush(10000);
-            expect(RegionConnection.callMethod.calls.count()).toBe(1);
-        });
+    it("calls stopPolling when scope destroyed", function() {
+        var controller = makeController();
+        spyOn(GeneralManager, "stopPolling");
+        $scope.$destroy();
+        expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+            "architectures");
+    });
 
     describe("show", function() {
 
@@ -251,8 +200,6 @@ describe("AddHardwareController", function() {
             $scope.currentMachine.name = "";
             var hostname = makeName("hostname");
 
-            // Return empty list for architectures.
-            webSocket.returnData.push(makeFakeResponse([]));
             // Return the hostname.
             webSocket.returnData.push(makeFakeResponse(hostname));
 
@@ -262,172 +209,13 @@ describe("AddHardwareController", function() {
             });
         });
 
-        it("loads the architectures", function(done) {
+        it("calls startPolling for architectures", function() {
             var controller = makeController();
-            $scope.addMachine();
-            var hostname = makeName("hostname");
-            var arch = makeName("arch");
-
-            // Return list of architectures.
-            webSocket.returnData.push(makeFakeResponse([arch]));
-            // Return the hostname.
-            webSocket.returnData.push(makeFakeResponse(hostname));
-
-            $scope.show().then(function() {
-                expect($scope.architectures).toEqual([arch]);
-                done();
-            });
-        });
-
-        it("sets the architectures to load every 10 seconds", function() {
-            // Mock the RegionConnection.callMethod to catch all calls.
-            var defers = [
-                $q.defer(),
-                $q.defer(),
-                $q.defer(),
-                $q.defer()
-                ];
-            var i = 0;
-            spyOn(RegionConnection, "callMethod").and.callFake(
-                function(method) {
-                    return defers[i++].promise;
-                });
-
-            var controller = makeController();
-            $scope.addMachine();
-            var arch1 = makeName("arch");
-            var arch2 = makeName("arch");
+            spyOn(GeneralManager, "startPolling");
             $scope.show();
-
-            // Resolve all previous calls to callMethod.
-            defers[0].resolve(makeName("hostname"));
-            $scope.$digest();
-            defers[1].resolve([arch1]);
-            $scope.$digest();
-            defers[2].resolve(makeName("hostname"));
-            $scope.$digest();
-
-            // Jump ahead 10 seconds to make the 4th call to callMethod.
-            expect($scope.architectures).toEqual([arch1]);
-            $timeout.flush(10000);
-            defers[3].resolve([arch2]);
-            $scope.$digest();
-            expect($scope.architectures).toEqual([arch2]);
+            expect(GeneralManager.startPolling).toHaveBeenCalledWith(
+                "architectures");
         });
-
-        it("sets the architectures to load every 3 seconds on error",
-            function() {
-                // Mock the RegionConnection.callMethod to catch all calls.
-                var defers = [
-                    $q.defer(),
-                    $q.defer(),
-                    $q.defer(),
-                    $q.defer()
-                    ];
-                var i = 0;
-                spyOn(RegionConnection, "callMethod").and.callFake(
-                    function(method) {
-                        return defers[i++].promise;
-                    });
-
-                var controller = makeController();
-                $scope.addMachine();
-                var arch = makeName("arch");
-                $scope.show();
-
-                defers[0].resolve(makeName("hostname"));
-                $scope.$digest();
-
-                // Reject the archtectures call to trigger the 3 second retry.
-                defers[1].reject(makeName("error"));
-                $scope.$digest();
-
-                defers[2].resolve(makeName("hostname"));
-                $scope.$digest();
-
-                // Jump ahead 3 seconds to make the 4th call to callMethod.
-                expect($scope.architectures).toEqual([]);
-                $timeout.flush(3000);
-                defers[3].resolve([arch]);
-                $scope.$digest();
-                expect($scope.architectures).toEqual([arch]);
-            });
-
-        it("sets the architectures to load every 3 seconds when empty list",
-            function() {
-                // Mock the RegionConnection.callMethod to catch all calls.
-                var defers = [
-                    $q.defer(),
-                    $q.defer(),
-                    $q.defer(),
-                    $q.defer()
-                    ];
-                var i = 0;
-                spyOn(RegionConnection, "callMethod").and.callFake(
-                    function(method) {
-                        return defers[i++].promise;
-                    });
-
-                var controller = makeController();
-                $scope.addMachine();
-                var arch = makeName("arch");
-                $scope.show();
-
-                defers[0].resolve(makeName("hostname"));
-                $scope.$digest();
-
-                // Resolve the architectures call, but return empty list.
-                defers[1].resolve([]);
-                $scope.$digest();
-
-                defers[2].resolve(makeName("hostname"));
-                $scope.$digest();
-
-                // Jump ahead 3 seconds to make the 4th call to callMethod.
-                expect($scope.architectures).toEqual([]);
-                $timeout.flush(3000);
-                defers[3].resolve([arch]);
-                $scope.$digest();
-                expect($scope.architectures).toEqual([arch]);
-            });
-
-        it("sets default architecture on currentMachine if doesnt exist",
-            function(done) {
-                var controller = makeController();
-                $scope.addMachine();
-                var hostname = makeName("hostname");
-                var arch = makeName("arch");
-
-                // Return list of architectures.
-                webSocket.returnData.push(makeFakeResponse([arch]));
-                // Return the hostname.
-                webSocket.returnData.push(makeFakeResponse(hostname));
-
-                $scope.show().then(function() {
-                    expect($scope.currentMachine.architecture).toBe(arch);
-                    done();
-                });
-            });
-
-        it("doesnt sets default architecture on currentMachine if exist",
-            function(done) {
-                var controller = makeController();
-                $scope.addMachine();
-                var hostname = makeName("hostname");
-                var arch = makeName("arch");
-                var otherArch = makeName("arch");
-                $scope.currentMachine.architecture = otherArch;
-
-                // Return list of architectures.
-                webSocket.returnData.push(makeFakeResponse([arch]));
-                // Return the hostname.
-                webSocket.returnData.push(makeFakeResponse(hostname));
-
-                $scope.show().then(function() {
-                    expect($scope.currentMachine.architecture).toBe(otherArch);
-                    done();
-                });
-            });
     });
 
     describe("hide", function() {
@@ -439,37 +227,12 @@ describe("AddHardwareController", function() {
             expect($scope.viewable).toBe(false);
         });
 
-        it("cancels the loading of architectures", function() {
-            // Mock the RegionConnection.callMethod to catch all calls.
-            var defers = [
-                $q.defer(),
-                $q.defer(),
-                $q.defer()
-                ];
-            var i = 0;
-            spyOn(RegionConnection, "callMethod").and.callFake(
-                function(method) {
-                    return defers[i++].promise;
-                });
-
+        it("calls stopPolling for architectures", function() {
             var controller = makeController();
-            $scope.addMachine();
-            $scope.show();
-
-            // Resolve all previous calls to callMethod.
-            defers[0].resolve(makeName("hostname"));
-            $scope.$digest();
-            defers[1].resolve([makeName("arch")]);
-            $scope.$digest();
-            defers[2].resolve(makeName("hostname"));
-            $scope.$digest();
-
-            // Hide the controller cancelling the $timeout promise.
+            spyOn(GeneralManager, "stopPolling");
             $scope.hide();
-
-            // Jump ahead 3 seconds were a call should not occur.
-            $timeout.flush(3000);
-            expect(RegionConnection.callMethod.calls.count()).toBe(3);
+            expect(GeneralManager.stopPolling).toHaveBeenCalledWith(
+                "architectures");
         });
 
         it("emits addHardwareHidden event", function(done) {

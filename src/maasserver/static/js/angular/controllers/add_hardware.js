@@ -5,10 +5,11 @@
  */
 
 angular.module('MAAS').controller('AddHardwareController', [
-    '$scope', '$timeout', '$http', 'ClustersManager', 'ZonesManager',
-    'NodesManager', 'RegionConnection', 'ManagerHelperService', function($scope,
-        $timeout, $http, ClustersManager, ZonesManager, NodesManager,
-        RegionConnection, ManagerHelperService) {
+    '$scope', '$http', 'ClustersManager', 'ZonesManager',
+    'NodesManager', 'GeneralManager', 'RegionConnection',
+    'ManagerHelperService', function(
+        $scope, $http, ClustersManager, ZonesManager, NodesManager,
+        GeneralManager, RegionConnection, ManagerHelperService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
         // in this controller.
@@ -20,7 +21,7 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.model = 'hardware';
         $scope.clusters = ClustersManager.getItems();
         $scope.zones = ZonesManager.getItems();
-        $scope.architectures = [];
+        $scope.architectures = GeneralManager.getData("architectures");
         $scope.macPattern = /^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$/;
 
         // Input values.
@@ -343,56 +344,6 @@ angular.module('MAAS').controller('AddHardwareController', [
                     });
         }
 
-        // Load all of the architecture and keep then up-to-date.
-        var loadArchitecturesPromise = null;
-        function loadArchitectures(reload) {
-            RegionConnection.callMethod("general.architectures", {}).then(
-                function(arches) {
-                    $scope.architectures = arches;
-
-                    if(arches.length > 0) {
-                        // If the currentMachine doesn't have an architecture
-                        // set then it was created before all of the
-                        // architectures were loaded. Set the default
-                        // architecture for that machine.
-                        if(angular.isObject($scope.currentMachine) &&
-                            $scope.currentMachine.architecture === '') {
-                            $scope.currentMachine.architecture =
-                                defaultArchitecture();
-                        }
-                    }
-
-                    if(arches.length === 0) {
-                        // No architecture, so no boot images. Update every
-                        // 3 seconds.
-                        loadArchitecturesPromise = $timeout(
-                            function() {
-                                loadArchitectures(reload);
-                            }, 3000);
-                    } else if(reload) {
-                        // Reload enabled, update every 10 seconds.
-                        loadArchitecturesPromise = $timeout(
-                            function() {
-                                loadArchitectures(reload);
-                            }, 10000);
-                    }
-                }, function() {
-                    // Failed to load the architectures, try again in 3 sconds.
-                    loadArchitecturesPromise = $timeout(
-                        function() {
-                            loadArchitectures(reload);
-                        }, 3000);
-                });
-        }
-
-        // Stop keeping the architectures up-to-date.
-        function cancelLoadArchitectures() {
-            if(angular.isObject(loadArchitecturesPromise)) {
-                $timeout.cancel(loadArchitecturesPromise);
-                loadArchitecturesPromise = null;
-            }
-        }
-
         // Converts the machine information from how it is held in the UI to
         // how it is handled over the websocket.
         function convertMachineToProtocol(machine) {
@@ -456,8 +407,8 @@ angular.module('MAAS').controller('AddHardwareController', [
             }
             $scope.viewable = true;
 
-            // Start the loading of architectures.
-            loadArchitectures(true);
+            // Start the polling of architectures.
+            GeneralManager.startPolling("architectures");
 
             // Update the currentMachine's hostname. This is to make sure
             // it is not already a hostname that has been taken. This just
@@ -469,8 +420,8 @@ angular.module('MAAS').controller('AddHardwareController', [
         $scope.hide = function() {
             $scope.viewable = false;
 
-            // Stop the loading of architectures.
-            cancelLoadArchitectures();
+            // Stop the polling of architectures.
+            GeneralManager.stopPolling("architectures");
 
             // Emit the hidden event.
             $scope.$emit('addHardwareHidden');
@@ -669,9 +620,22 @@ angular.module('MAAS').controller('AddHardwareController', [
                 $scope.chassis = newChassis();
             });
 
-        // Make sure connected to region then load all the architectures.
-        RegionConnection.defaultConnect().then(function() {
-            // Load all of the architectures.
-            loadArchitectures(false);
+        // Load the general manager.
+        ManagerHelperService.loadManager(GeneralManager).then(function() {
+            if($scope.architectures.length > 0) {
+                // If the currentMachine doesn't have an architecture
+                // set then it was created before all of the
+                // architectures were loaded. Set the default
+                // architecture for that machine.
+                if(angular.isObject($scope.currentMachine) &&
+                    $scope.currentMachine.architecture === '') {
+                    $scope.currentMachine.architecture = defaultArchitecture();
+                }
+            }
+        });
+
+        // Stop polling when the scope is destroyed.
+        $scope.$on("$destroy", function() {
+            GeneralManager.stopPolling("architectures");
         });
     }]);

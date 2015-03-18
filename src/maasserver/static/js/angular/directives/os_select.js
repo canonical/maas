@@ -32,7 +32,8 @@ angular.module('MAAS').directive('maasOsSelect', function() {
 
             // Return only the selectable releases based on the selected os.
             function getSelectableReleases() {
-                if(angular.isObject($scope.maasOsSelect)) {
+                if(angular.isObject($scope.maasOsSelect) &&
+                    angular.isArray($scope.maasOsSelect.releases)) {
                     var i, allChoices = $scope.maasOsSelect.releases;
                     var choice, choices = [];
                     for(i = 0; i < allChoices.length; i++) {
@@ -59,7 +60,7 @@ angular.module('MAAS').directive('maasOsSelect', function() {
             $scope.releases = getSelectableReleases();
 
             // If the available os change update the available releases.
-            $scope.$watch("maasOsSelect", function() {
+            $scope.$watch("maasOsSelect.releases", function() {
                 $scope.releases = getSelectableReleases();
             });
 
