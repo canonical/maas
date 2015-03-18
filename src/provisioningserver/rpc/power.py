@@ -63,6 +63,7 @@ from twisted.python import log
 # querying the power state of a node.
 QUERY_POWER_TYPES = [
     'amt',
+    'dli',
     'esxi',
     'ipmi',
     'mscm',

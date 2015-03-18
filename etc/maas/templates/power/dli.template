@@ -3,7 +3,46 @@
 #
 # Control a system via the Digital Loggers, Inc. RESTful interface
 #
-{{py: power_mode = 'ON' if power_change == 'on' else 'OFF' }}
 
-wget --auth-no-challenge -O /dev/null \
-    http://{{power_user}}:{{power_pass}}@{{power_address}}/outlet?{{system_id}}={{power_mode}}
+power_change={{power_change}}
+power_user={{power_user}}
+power_pass={{power_pass}}
+power_address={{power_address}}
+system_id={{system_id}}
+
+power() {
+  wget --auth-no-challenge -O /dev/null \
+    http://${power_user}:${power_pass}@${power_address}/outlet?${system_id}=${1}
+}
+
+query_state() {
+  state=$(wget --auth-no-challenge -qO- \
+    http://${power_user}:${power_pass}@${power_address}/index.htm |\
+    grep '<!-- state=' | awk '{print $2}' | cut -f 2 -d '=')
+  shift=$((1 << ($system_id-1)))
+  if [ -z $state ];  then
+    echo "unknown"
+  elif [ $((${state#0} & $shift )) -gt 0 ]; then
+    echo "on"
+  else
+    echo "off" 
+  fi
+}
+
+main() {
+    case "${power_change}" in
+    'on')
+        power "ON" 
+        ;;
+    'off')
+        power "OFF" 
+        ;;
+    'query')
+        query_state
+        ;;
+    *)
+        fail 1 "Unknown power command: '$1'"
+    esac
+}
+
+main "$power_change"
