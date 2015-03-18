@@ -61,18 +61,24 @@ from mock import (
     Mock,
     sentinel,
     )
-from provisioningserver.utils.twisted import DeferredValue
+from provisioningserver.utils.twisted import (
+    callOut,
+    DeferredValue,
+    )
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
+    Equals,
+    Is,
     IsInstance,
     MatchesPredicate,
     )
 from twisted.internet.defer import (
     CancelledError,
     Deferred,
+    passthru,
     )
 from twisted.python.failure import Failure
 
@@ -403,13 +409,20 @@ class TestPostCommit(MAASTestCase):
 
     def test__adds_Deferred_as_hook(self):
         hook = Deferred()
-        post_commit(hook)
+        hook_added = post_commit(hook)
         self.assertEqual([hook], list(post_commit_hooks.hooks))
+        self.assertThat(hook_added, Is(hook))
+
+    def test__adds_new_Deferred_as_hook_when_called_without_args(self):
+        hook_added = post_commit()
+        self.assertEqual([hook_added], list(post_commit_hooks.hooks))
+        self.assertThat(hook_added, IsInstance(Deferred))
 
     def test__adds_callable_as_hook(self):
         hook = lambda arg: None
-        post_commit(hook)
+        hook_added = post_commit(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
+        self.assertThat(hook_added, IsInstance(Deferred))
 
     def test__fire_calls_back_with_None_to_Deferred_hook(self):
         hook = Deferred()
@@ -419,11 +432,25 @@ class TestPostCommit(MAASTestCase):
         post_commit_hooks.fire()
         self.assertIsNone(extract_result(spy.get()))
 
+    def test__fire_calls_back_with_None_to_new_Deferred_hook(self):
+        hook_added = post_commit()
+        spy = DeferredValue()
+        spy.observe(hook_added)
+        post_commit_hooks.fire()
+        self.assertIsNone(extract_result(spy.get()))
+
     def test__reset_cancels_Deferred_hook(self):
         hook = Deferred()
         spy = DeferredValue()
         spy.observe(hook)
         post_commit(hook)
+        post_commit_hooks.reset()
+        self.assertRaises(CancelledError, extract_result, spy.get())
+
+    def test__reset_cancels_new_Deferred_hook(self):
+        hook_added = post_commit()
+        spy = DeferredValue()
+        spy.observe(hook_added)
         post_commit_hooks.reset()
         self.assertRaises(CancelledError, extract_result, spy.get())
 
@@ -457,6 +484,17 @@ class TestPostCommitDo(MAASTestCase):
         hook = lambda arg: None
         post_commit_do(hook)
         self.assertThat(post_commit_hooks.hooks, HasLength(1))
+
+    def test__returns_actual_hook(self):
+        hook = Mock()
+        hook_added = post_commit_do(hook, sentinel.foo, bar=sentinel.bar)
+        self.assertThat(hook_added, IsInstance(Deferred))
+        callback, errback = hook_added.callbacks.pop(0)
+        # Errors are passed through; they're not passed to our hook.
+        self.expectThat(errback, Equals((passthru, None, None)))
+        # Our hook is set to be called via callOut.
+        self.expectThat(callback, Equals(
+            (callOut, (hook, sentinel.foo), {"bar": sentinel.bar})))
 
     def test__fire_passes_only_args_to_hook(self):
         hook = Mock()

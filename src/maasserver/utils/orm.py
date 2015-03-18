@@ -44,6 +44,7 @@ from django.db import (
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
+from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from twisted.internet.defer import Deferred
@@ -302,20 +303,28 @@ class PostCommitHooks(DeferredHooks):
 post_commit_hooks = PostCommitHooks()
 
 
-def post_commit(hook):
+def post_commit(hook=None):
     """Add a post-commit hook, specific to this thread.
 
-    :param hook: Either a `Deferred` or a callable. In the former case, see
-        `DeferredHooks` for behaviour. In the latter case, the callable is
-        passed exactly one argument: a `Failure`, or `None`.
+    :param hook: Optional, but if provided it must be either a `Deferred`
+        instance or a callable. In the former case, see `DeferredHooks` for
+        behaviour. In the latter case, the callable will be passed exactly one
+        argument when fired, a `Failure`, or `None`. If the `hook` argument is
+        not provided (or is None), a new `Deferred` will be created.
+    :return: The `Deferred` that has been registered as a hook.
     """
-    if isinstance(hook, Deferred):
-        post_commit_hooks.add(hook)
+    if hook is None:
+        hook = Deferred()
+    elif isinstance(hook, Deferred):
+        pass  # This is fine as it is.
     elif callable(hook):
-        post_commit_hooks.add(Deferred().addBoth(hook))
+        hook = Deferred().addBoth(hook)
     else:
         raise AssertionError(
             "Not a Deferred or callable: %r" % (hook,))
+
+    post_commit_hooks.add(hook)
+    return hook
 
 
 def post_commit_do(func, *args, **kwargs):
@@ -327,10 +336,11 @@ def post_commit_do(func, *args, **kwargs):
     earlier post-commit task, `func` will *not* be called.
 
     If `func` returns a `Deferred` it will be waited for.
+
+    :return: The `Deferred` that has been registered as a hook.
     """
     if callable(func):
-        hook = lambda _: func(*args, **kwargs)
-        post_commit_hooks.add(Deferred().addCallback(hook))
+        return post_commit().addCallback(callOut, func, *args, **kwargs)
     else:
         raise AssertionError("Not callable: %r" % (func,))
 
