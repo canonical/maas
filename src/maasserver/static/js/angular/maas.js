@@ -27,6 +27,10 @@ angular.module('MAAS', ['ngRoute']).config(
                     templateUrl: 'static/partials/nodes-list.html',
                     controller: 'NodesListController'
                 }).
+                when('/error', {
+                    templateUrl: 'static/partials/error.html',
+                    controller: 'ErrorController'
+                }).
                 otherwise({
                     redirectTo: '/nodes'
                 });
