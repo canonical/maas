@@ -34,7 +34,11 @@ BOOTLOADERS = ['pxelinux.0', 'chain.c32', 'ifcpu64.c32']
 # Possible locations in which to find the bootloader files. Search these
 # in this order for each file.  (This exists because locations differ
 # across Ubuntu releases.)
-BOOTLOADER_DIRS = ['/usr/lib/syslinux', '/usr/lib/syslinux/modules/bios']
+BOOTLOADER_DIRS = [
+    '/usr/lib/PXELINUX',
+    '/usr/lib/syslinux',
+    '/usr/lib/syslinux/modules/bios'
+]
 
 # List of possible directories where to find additioning bootloader files.
 # The first existing directory will be symlinked to /syslinux/ inside
