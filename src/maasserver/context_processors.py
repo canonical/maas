@@ -50,6 +50,7 @@ def static_resources(context):
             'js/angular/factories/zones.js',
             'js/angular/services/search.js',
             'js/angular/services/manager.js',
+            'js/angular/services/managerhelper.js',
             'js/angular/services/error.js',
             'js/angular/directives/call_to_action.js',
             'js/angular/directives/power_parameters.js',

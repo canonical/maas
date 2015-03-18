@@ -22,12 +22,13 @@ describe("AddHardwareController", function() {
     // Load the ClustersManager, ZonesManager, NodesManager, RegionConnection,
     // and mock the websocket connection.
     var ClustersManager, ZonesManager, NodesManager, RegionConnection;
-    var webSocket;
+    var ManagerHelperService, webSocket;
     beforeEach(inject(function($injector) {
         ClustersManager = $injector.get("ClustersManager");
         ZonesManager = $injector.get("ZonesManager");
         NodesManager = $injector.get("NodesManager");
         RegionConnection = $injector.get("RegionConnection");
+        ManagerHelperService = $injector.get("ManagerHelperService");
 
         // Mock buildSocket so an actual connection is not made.
         webSocket = new MockWebSocket();
@@ -43,10 +44,17 @@ describe("AddHardwareController", function() {
     });
 
     // Makes the AddHardwareController
-    function makeController(defer) {
+    function makeController(loadManagersDefer, defaultConnectDefer) {
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+        if(angular.isObject(loadManagersDefer)) {
+            loadManagers.and.returnValue(loadManagersDefer.promise);
+        } else {
+            loadManagers.and.returnValue($q.defer().promise);
+        }
+
         var defaultConnect = spyOn(RegionConnection, "defaultConnect");
-        if(angular.isObject(defer)) {
-            defaultConnect.and.returnValue(defer.promise);
+        if(angular.isObject(defaultConnectDefer)) {
+            defaultConnect.and.returnValue(defaultConnectDefer.promise);
         } else {
             defaultConnect.and.returnValue($q.defer().promise);
         }
@@ -62,7 +70,8 @@ describe("AddHardwareController", function() {
             ClustersManager: ClustersManager,
             ZonesManager: ZonesManager,
             NodesManager: NodesManager,
-            RegionConnection: RegionConnection
+            RegionConnection: RegionConnection,
+            ManagerHelperService: ManagerHelperService
         });
     }
 
@@ -83,115 +92,30 @@ describe("AddHardwareController", function() {
         expect($scope.currentMachine).toBeNull();
     });
 
-    it("doesnt call ClustersManager.loadItems if already loaded", function() {
-        spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-        spyOn(ClustersManager, "loadItems");
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ClustersManager.loadItems).not.toHaveBeenCalled();
+    it("calls loadManagers with ClustersManager and ZonesManager", function() {
+        var controller = makeController();
+        expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+            [ClustersManager, ZonesManager]);
     });
 
-    it("calls ClustersManager.loadItems if not loaded", function() {
-        spyOn(ClustersManager, "loadItems").and.returnValue(
-            $q.defer().promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ClustersManager.loadItems).toHaveBeenCalled();
-    });
-
-    it("calls ClustersManager.enableAutoReload", function() {
-        spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-        spyOn(ClustersManager, "enableAutoReload");
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ClustersManager.enableAutoReload).toHaveBeenCalled();
-    });
-
-    it("doesnt call ZonesManager.loadItems if already loaded", function() {
-        spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-        spyOn(ZonesManager, "loadItems");
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ZonesManager.loadItems).not.toHaveBeenCalled();
-    });
-
-    it("calls ZonesManager.loadItems if not loaded", function() {
-        spyOn(ZonesManager, "loadItems").and.returnValue(
-            $q.defer().promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ZonesManager.loadItems).toHaveBeenCalled();
-    });
-
-    it("calls ZonesManager.enableAutoReload", function() {
-        spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-        spyOn(ZonesManager, "enableAutoReload");
-        var defer = $q.defer();
-        var controller = makeController(defer);
-        defer.resolve();
-        $scope.$digest();
-        expect(ZonesManager.enableAutoReload).toHaveBeenCalled();
-    });
 
     it("intializes first machine once ClustersManager and ZonesManager loaded",
         function() {
-            var clusterDefer = $q.defer();
-            spyOn(ClustersManager, "loadItems").and.returnValue(
-                clusterDefer.promise);
-            var zoneDefer = $q.defer();
-            spyOn(ZonesManager, "loadItems").and.returnValue(
-                zoneDefer.promise);
-
             var defer = $q.defer();
             var controller = makeController(defer);
 
             defer.resolve();
             $scope.$digest();
-
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            clusterDefer.resolve();
-            $scope.$digest();
-
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-            zoneDefer.resolve();
-            $scope.$digest();
-
             expect($scope.machines.length).toBe(1);
         });
 
     it("intializes chassis once ClustersManager and ZonesManager loaded",
         function() {
-            var clusterDefer = $q.defer();
-            spyOn(ClustersManager, "loadItems").and.returnValue(
-                clusterDefer.promise);
-            var zoneDefer = $q.defer();
-            spyOn(ZonesManager, "loadItems").and.returnValue(
-                zoneDefer.promise);
-
             var defer = $q.defer();
             var controller = makeController(defer);
 
             defer.resolve();
             $scope.$digest();
-
-            spyOn(ClustersManager, "isLoaded").and.returnValue(true);
-            clusterDefer.resolve();
-            $scope.$digest();
-
-            spyOn(ZonesManager, "isLoaded").and.returnValue(true);
-            zoneDefer.resolve();
-            $scope.$digest();
-
             expect($scope.chassis).not.toBeNull();
         });
 
@@ -206,7 +130,7 @@ describe("AddHardwareController", function() {
 
             var arch = makeName("arch");
             var defer = $q.defer();
-            var controller = makeController(defer);
+            var controller = makeController(null, defer);
 
             // Resolve defaultConnect to get the loadArchitectures function
             // to be called.
@@ -231,7 +155,7 @@ describe("AddHardwareController", function() {
 
             var arch = makeName("arch");
             var defer = $q.defer();
-            var controller = makeController(defer);
+            var controller = makeController(null, defer);
 
             var machine = {
                 architecture: ''
@@ -261,7 +185,7 @@ describe("AddHardwareController", function() {
                 loadDefer.promise);
 
             var defer = $q.defer();
-            var controller = makeController(defer);
+            var controller = makeController(null, defer);
 
             var machine = {
                 architecture: ''
@@ -292,7 +216,7 @@ describe("AddHardwareController", function() {
 
             var arch = makeName("arch");
             var defer = $q.defer();
-            var controller = makeController(defer);
+            var controller = makeController(null, defer);
 
             var machine = {
                 architecture: ''

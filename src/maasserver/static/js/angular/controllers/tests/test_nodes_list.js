@@ -21,12 +21,13 @@ describe("NodesListController", function() {
 
     // Load the NodesManager, DevicesManager, RegionConnection,
     // SearchService and mock the websocket connection.
-    var NodesManager, DevicesManager, RegionConnection, SearchService;
-    var webSocket;
+    var NodesManager, DevicesManager, RegionConnection;
+    var ManagerHelperService, SearchService, webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
         DevicesManager = $injector.get("DevicesManager");
         RegionConnection = $injector.get("RegionConnection");
+        ManagerHelperService = $injector.get("ManagerHelperService");
         SearchService = $injector.get("SearchService");
 
         // Mock buildSocket so an actual connection is not made.
@@ -35,10 +36,17 @@ describe("NodesListController", function() {
     }));
 
     // Makes the NodesListController
-    function makeController(defer) {
+    function makeController(loadManagersDefer, defaultConnectDefer) {
+        var loadManagers = spyOn(ManagerHelperService, "loadManagers");
+        if(angular.isObject(loadManagersDefer)) {
+            loadManagers.and.returnValue(loadManagersDefer.promise);
+        } else {
+            loadManagers.and.returnValue($q.defer().promise);
+        }
+
         var defaultConnect = spyOn(RegionConnection, "defaultConnect");
-        if(angular.isObject(defer)) {
-            defaultConnect.and.returnValue(defer.promise);
+        if(angular.isObject(defaultConnectDefer)) {
+            defaultConnect.and.returnValue(defaultConnectDefer.promise);
         } else {
             defaultConnect.and.returnValue($q.defer().promise);
         }
@@ -54,6 +62,7 @@ describe("NodesListController", function() {
             NodesManager: NodesManager,
             DevicesManager: DevicesManager,
             RegionConnection: RegionConnection,
+            ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
         });
     }
@@ -105,12 +114,14 @@ describe("NodesListController", function() {
         expect($scope.addHardwareScope).toBeNull();
     });
 
-    it("loads initial osinfo", function() {
-        spyOn(NodesManager, "isLoaded").and.returnValue(true);
-        spyOn(NodesManager, "enableAutoReload");
-        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
-        spyOn(DevicesManager, "enableAutoReload");
+   it("calls loadManagers with NodesManager and DevicesManager",
+        function() {
+            var controller = makeController();
+            expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith(
+                [NodesManager, DevicesManager]);
+        });
 
+    it("loads initial osinfo", function() {
         // Mock the RegionConnection.callMethod to catch all calls.
         var defers = [
             $q.defer(),
@@ -126,7 +137,7 @@ describe("NodesListController", function() {
             "osystems": [makeName("os")]
         };
         var defer = $q.defer();
-        var controller = makeController(defer);
+        var controller = makeController(null, defer);
 
         // Resolve defaultConnect to start the calls.
         defer.resolve();
@@ -143,11 +154,6 @@ describe("NodesListController", function() {
     });
 
     it("doesnt reload osinfo", function() {
-        spyOn(NodesManager, "isLoaded").and.returnValue(true);
-        spyOn(NodesManager, "enableAutoReload");
-        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
-        spyOn(DevicesManager, "enableAutoReload");
-
         // Mock the RegionConnection.callMethod to catch all calls.
         var defers = [
             $q.defer(),
@@ -164,7 +170,7 @@ describe("NodesListController", function() {
             "osystems": [makeName("os")]
         };
         var defer = $q.defer();
-        var controller = makeController(defer);
+        var controller = makeController(null, defer);
 
         // Resolve defaultConnect to start the calls.
         defer.resolve();
@@ -185,11 +191,6 @@ describe("NodesListController", function() {
     });
 
     it("reload osinfo after 3 secs on error", function() {
-        spyOn(NodesManager, "isLoaded").and.returnValue(true);
-        spyOn(NodesManager, "enableAutoReload");
-        spyOn(DevicesManager, "isLoaded").and.returnValue(true);
-        spyOn(DevicesManager, "enableAutoReload");
-
         // Mock the RegionConnection.callMethod to catch all calls.
         var defers = [
             $q.defer(),
@@ -206,7 +207,7 @@ describe("NodesListController", function() {
             "osystems": [makeName("os")]
         };
         var defer = $q.defer();
-        var controller = makeController(defer);
+        var controller = makeController(null, defer);
 
         // Resolve defaultConnect to start the calls.
         defer.resolve();
@@ -288,30 +289,6 @@ describe("NodesListController", function() {
                     });
                 }
             });
-
-            it("calls tab manager loadItems if not loaded",
-                function(done) {
-                spyOn(manager, "loadItems").and.callFake(function() {
-                    done();
-                    return $q.defer().promise;
-                });
-                var defer = $q.defer();
-                var controller = makeController(defer);
-                defer.resolve();
-                $scope.$digest();
-            });
-
-            it("doesnt call loadItems if loaded", function() {
-                spyOn(manager, "isLoaded").and.returnValue("true");
-                spyOn(manager, "loadItems").and.returnValue(
-                    $q.defer().promise);
-                var defer = $q.defer();
-                var controller = makeController(defer);
-                defer.resolve();
-                $scope.$digest();
-                expect(manager.loadItems).not.toHaveBeenCalled();
-            });
-
         });
 
     });

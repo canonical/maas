@@ -6,8 +6,9 @@
 
 angular.module('MAAS').controller('AddHardwareController', [
     '$scope', '$timeout', '$http', 'ClustersManager', 'ZonesManager',
-    'NodesManager', 'RegionConnection', function($scope, $timeout, $http,
-        ClustersManager, ZonesManager, NodesManager, RegionConnection) {
+    'NodesManager', 'RegionConnection', 'ManagerHelperService', function($scope,
+        $timeout, $http, ClustersManager, ZonesManager, NodesManager,
+        RegionConnection, ManagerHelperService) {
 
         // Set the addHardwareScope in the parent, so it can call functions
         // in this controller.
@@ -342,16 +343,6 @@ angular.module('MAAS').controller('AddHardwareController', [
                     });
         }
 
-        // Called each time the clusters have loaded and the zones have loaded.
-        // Only once both have loaded will this method add the first machine
-        // and the chassis.
-        function initMachineAndChassis() {
-            if(ClustersManager.isLoaded() && ZonesManager.isLoaded()) {
-                $scope.addMachine();
-                $scope.chassis = newChassis();
-            }
-        }
-
         // Load all of the architecture and keep then up-to-date.
         var loadArchitecturesPromise = null;
         function loadArchitectures(reload) {
@@ -669,32 +660,17 @@ angular.module('MAAS').controller('AddHardwareController', [
             $scope.hide();
         };
 
-        // Make sure connected to region then load all the clusters and zones.
+        // Load clusters and zones. Once loaded create the first machine and
+        // chassis.
+        ManagerHelperService.loadManagers(
+            [ClustersManager, ZonesManager]).then(function() {
+                // Add the first machine and chassis.
+                $scope.addMachine();
+                $scope.chassis = newChassis();
+            });
+
+        // Make sure connected to region then load all the architectures.
         RegionConnection.defaultConnect().then(function() {
-            if(!ClustersManager.isLoaded()) {
-                // Load the initial clusters.
-                ClustersManager.loadItems().then(function() {
-                    initMachineAndChassis();
-                }, function(error) {
-                    // Report error loading. This is simple handlng for now
-                    // but this should show a nice error dialog or something.
-                    console.log(error);
-                });
-            }
-            ClustersManager.enableAutoReload();
-
-            if(!ZonesManager.isLoaded()) {
-                // Load the initial zones.
-                ZonesManager.loadItems().then(function() {
-                    initMachineAndChassis();
-                }, function(error) {
-                    // Report error loading. This is simple handlng for now
-                    // but this should show a nice error dialog or something.
-                    console.log(error);
-                });
-            }
-            ZonesManager.enableAutoReload();
-
             // Load all of the architectures.
             loadArchitectures(false);
         });

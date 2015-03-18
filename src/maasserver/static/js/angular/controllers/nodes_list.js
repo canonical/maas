@@ -6,8 +6,9 @@
 
 angular.module('MAAS').controller('NodesListController', [
     '$scope', '$rootScope', '$timeout', 'NodesManager', 'DevicesManager',
-    'RegionConnection', 'SearchService', function($scope, $rootScope, $timeout,
-        NodesManager, DevicesManager, RegionConnection, SearchService) {
+    'RegionConnection', 'ManagerHelperService', 'SearchService', function(
+        $scope, $rootScope, $timeout, NodesManager, DevicesManager,
+        RegionConnection, ManagerHelperService, SearchService) {
 
         // Set title and page.
         $rootScope.title = "Nodes";
@@ -369,22 +370,10 @@ angular.module('MAAS').controller('NodesListController', [
             }
         };
 
-        // Make sure connected to region then load all the nodes.
-        RegionConnection.defaultConnect().then(function() {
-            angular.forEach($scope.tabs, function(tab) {
-                var manager = tab.manager;
-                if(!manager.isLoaded()) {
-                    // Load the initial nodes.
-                    manager.loadItems().then(null, function(error) {
-                        // Report error loading. This is simple handlng for now
-                        // but this should show a nice error dialog or
-                        // something.
-                        console.log(error);
-                    });
-                }
-                manager.enableAutoReload();
-            });
+        // Load the NodesManager and DevicesManager.
+        ManagerHelperService.loadManagers([NodesManager, DevicesManager]);
 
+        RegionConnection.defaultConnect().then(function() {
             // Load all of the available actions.
             RegionConnection.callMethod("general.actions", {}).then(
                 function(actions) {
