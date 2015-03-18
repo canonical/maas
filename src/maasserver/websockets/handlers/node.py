@@ -22,7 +22,6 @@ from maasserver.exceptions import NodeActionError
 from maasserver.forms import AdminNodeWithMACAddressesForm
 from maasserver.models.node import Node
 from maasserver.node_action import compile_node_actions
-from maasserver.utils.converters import human_readable_bytes
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerPermissionError,
@@ -140,17 +139,19 @@ class NodeHandler(TimestampedModelHandler):
         physicalblockdevices = self.get_physicalblockdevices_for(obj)
         data["disks"] = len(physicalblockdevices)
         data["disk_tags"] = self.get_all_disk_tags(physicalblockdevices)
-        data["storage"] = human_readable_bytes(
+        data["storage"] = "%3.1f" % (
             sum([
                 blockdevice.size
                 for blockdevice in physicalblockdevices
-                ]), include_suffix=False)
+                ]) / (1000 ** 3))
 
         data["tags"] = [
             tag.name
             for tag in obj.tags.all()
             ]
         if not for_list:
+            data["osystem"] = obj.get_osystem()
+            data["distro_series"] = obj.get_distro_series()
             data["ip_addresses"] = list(
                 obj.ip_addresses())
             data["physical_disks"] = [
@@ -159,13 +160,14 @@ class NodeHandler(TimestampedModelHandler):
                 ]
         return data
 
-    def dehydrate_physicalblockdevice(self, blockdevice,):
+    def dehydrate_physicalblockdevice(self, blockdevice):
         """Return `PhysicalBlockDevice` formatted for JSON encoding."""
         return {
             "name": blockdevice.name,
             "tags": blockdevice.tags,
             "path": blockdevice.path,
             "size": blockdevice.size,
+            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,

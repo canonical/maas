@@ -60,7 +60,6 @@ describe("NodesListController", function() {
             $rootScope: $rootScope,
             NodesManager: NodesManager,
             DevicesManager: DevicesManager,
-            RegionConnection: RegionConnection,
             ManagerHelperService: ManagerHelperService,
             SearchService: SearchService
         });

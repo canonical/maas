@@ -54,11 +54,12 @@ describe("maasPowerParameters", function() {
     describe("maas-power-input", function() {
 
         // Return the compiled directive with the items from the scope.
-        function compileDirective(maas_power_input, ng_model) {
+        function compileDirective(maas_power_input, ng_model, ng_disabled) {
             var directive;
             var html = '<div><maas-power-input field="' +
                 maas_power_input + '" ' +
-                'data-ng-model="' + ng_model + '"></div>';
+                'data-ng-model="' + ng_model + '" ' +
+                'data-ng-disabled="' + ng_disabled + '"></div>';
 
             // Compile the directive.
             inject(function($compile) {
@@ -134,16 +135,34 @@ describe("maasPowerParameters", function() {
             expect(select.attr("name")).toBe("test");
             expect($scope.value).toBe(choice2);
         });
+
+        it("creates input with ng-disabled", function() {
+            $scope.field = makeField("test", "string");
+            $scope.disabled = true;
+            var directive = compileDirective("field", "value", "disabled");
+            var input = directive.find("input");
+            expect(input.attr("data-ng-disabled")).toBe("disabled");
+        });
+
+        it("creates select with ng-disabled", function() {
+            $scope.field = makeField("test", "choice");
+            $scope.disabled = true;
+            var directive = compileDirective("field", "value", "disabled");
+            var select = directive.find("select");
+            expect(select.attr("data-ng-disabled")).toBe("disabled");
+        });
     });
 
     describe("maas-power-parameters", function() {
 
         // Return the compiled directive with the items from the scope.
-        function compileDirective(maas_power_parameters, ng_model) {
+        function compileDirective(
+            maas_power_parameters, ng_model, ng_disabled) {
             var directive;
             var html = '<div><fieldset ' +
                 'data-maas-power-parameters="' + maas_power_parameters + '" ' +
-                'data-ng-model="' + ng_model + '"></fieldset></div>';
+                'data-ng-model="' + ng_model + '" ' +
+                'data-ng-disabled="' + ng_disabled + '"></fieldset></div>';
 
             // Compile the directive.
             inject(function($compile) {
@@ -155,19 +174,22 @@ describe("maasPowerParameters", function() {
             return directive;
         }
 
-        it("creates select with ng-model and ng-options", function() {
-            var fields = [
-                makeField("test1"),
-                makeField("test2")
-                ];
-            var powerType = makePowerType("test", "Test Title", fields);
-            $scope.powerTypes = [powerType];
-            var directive = compileDirective("powerTypes", "value");
-            var select = directive.find("select");
-            expect(select.attr("data-ng-model")).toBe("ngModel.type");
-            expect(select.attr("data-ng-options")).toBe(
-                "type as type.description for type in maasPowerParameters");
-        });
+        it("creates select with ng-model, ng-options and ng-disabled",
+            function() {
+                var fields = [
+                    makeField("test1"),
+                    makeField("test2")
+                    ];
+                var powerType = makePowerType("test", "Test Title", fields);
+                $scope.powerTypes = [powerType];
+                var directive = compileDirective("powerTypes", "value");
+                var select = directive.find("select");
+                expect(select.attr("data-ng-model")).toBe("ngModel.type");
+                expect(select.attr("data-ng-options")).toBe(
+                    "type as type.description for type " +
+                    "in maasPowerParameters");
+                expect(select.attr("data-ng-disabled")).toBe("ngDisabled");
+            });
 
         it("creates option with description", function() {
             var fields = [

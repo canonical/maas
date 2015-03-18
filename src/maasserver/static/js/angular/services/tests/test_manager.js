@@ -9,6 +9,14 @@ describe("Manager", function() {
     // Load the MAAS module.
     beforeEach(module("MAAS"));
 
+    // Grab the needed angular pieces.
+    var $rootScope, $timeout, $q;
+    beforeEach(inject(function($injector) {
+        $rootScope = $injector.get("$rootScope");
+        $timeout = $injector.get("$timeout");
+        $q = $injector.get("$q");
+    }));
+
     // Load the Manager and RegionConnection factory.
     var NodesManager, RegionConnection, webSocket;
     beforeEach(inject(function($injector) {
@@ -444,6 +452,22 @@ describe("Manager", function() {
         });
     });
 
+    describe("getItemFromList", function() {
+
+        it("returns node from _items", function() {
+            var fakeNode = makeNode();
+            NodesManager._items.push(fakeNode);
+            expect(NodesManager.getItemFromList(fakeNode.system_id)).toBe(
+                fakeNode);
+        });
+
+        it("returns null if system_id not in _items", function() {
+            var fakeNode = makeNode();
+            expect(
+                NodesManager.getItemFromList(fakeNode.system_id)).toBeNull();
+        });
+    });
+
     describe("getItem", function() {
 
         it("calls node.get", function(done) {
@@ -593,20 +617,33 @@ describe("Manager", function() {
                     "Cannot set active item unless the manager is loaded."));
         });
 
-        it("sets _activeItem to null if doesn't exist", function() {
+        it("sets _activeItem to null if doesn't exist", function(done) {
             NodesManager._loaded = true;
             NodesManager._activeItem = {};
-            expect(
-                NodesManager.setActiveItem(makeName("system_id"))).toBeNull();
-            expect(NodesManager._activeItem).toBeNull();
+            var system_id = makeName("system_id");
+            NodesManager.setActiveItem(system_id).then(
+                null, function(error) {
+                    expect(error).toBe("No item with pk: " + system_id);
+                    expect(NodesManager._activeItem).toBeNull();
+                    done();
+                });
+            $timeout.flush();
         });
 
-        it("sets _activeItem to item", function() {
+        it("sets _activeItem to item", function(done) {
             NodesManager._loaded = true;
             var node = makeNode();
             NodesManager._items.push(node);
-            expect(NodesManager.setActiveItem(node.system_id)).toBe(node);
-            expect(NodesManager._activeItem).toBe(node);
+            var defer = $q.defer();
+            spyOn(NodesManager, "getItem").and.returnValue(defer.promise);
+            NodesManager.setActiveItem(node.system_id).then(
+                function(activeItem) {
+                    expect(NodesManager._activeItem).toBe(activeItem);
+                    expect(NodesManager._activeItem).toBe(node);
+                    done();
+                });
+            defer.resolve(angular.copy(node));
+            $rootScope.$digest();
         });
     });
 

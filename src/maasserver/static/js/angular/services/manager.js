@@ -10,8 +10,8 @@
 
 angular.module('MAAS').service(
     'Manager',
-    ['$q', '$rootScope', 'RegionConnection', function(
-            $q, $rootScope, RegionConnection) {
+    ['$q', '$rootScope', '$timeout', 'RegionConnection', function(
+            $q, $rootScope, $timeout, RegionConnection) {
 
         // Actions that are used to update the statuses metadata.
         var METADATA_ACTIONS = {
@@ -270,6 +270,17 @@ angular.module('MAAS').service(
             this._removeItemByIdFromArray(this._selectedItems, pk_value);
         };
 
+        // Get the item from the list. Does not make a get request to the
+        // region to load more data.
+        Manager.prototype.getItemFromList = function(pk_value) {
+            var idx = this._getIndexOfItem(this._items, pk_value);
+            if(idx >= 0) {
+                return this._items[idx];
+            } else {
+                return null;
+            }
+        };
+
         // Get the item from the region.
         Manager.prototype.getItem = function(pk_value) {
             var self = this;
@@ -322,10 +333,24 @@ angular.module('MAAS').service(
             var idx = this._getIndexOfItem(this._items, pk_value);
             if(idx === -1) {
                 this._activeItem = null;
+                // Item with pk_value does not exists. Reject the returned
+                // deferred.
+                var defer = $q.defer();
+                $timeout(function() {
+                    defer.reject("No item with pk: " + pk_value);
+                });
+                return defer.promise;
             } else {
                 this._activeItem = this._items[idx];
+                // Data that is loaded from the list call is limited and
+                // doesn't contain all of the needed data for an activeItem.
+                // Perform a get to make sure the node in the manager has
+                // all the required information.
+                var self = this;
+                return this.getItem(pk_value).then(function() {
+                    return self._activeItem;
+                });
             }
-            return this._activeItem;
         };
 
         // Clears the active item.

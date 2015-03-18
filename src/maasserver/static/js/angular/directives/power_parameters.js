@@ -11,6 +11,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '<label for="power-type" class="two-col">Power type</label>',
             '<select name="power-type" id="power-type" class="three-col" ',
                 'placeholder="Choose a power type" ',
+                'data-ng-disabled="ngDisabled" ',
                 'data-ng-model="ngModel.type" ',
                 'data-ng-options="',
                 'type as type.description for type in maasPowerParameters">',
@@ -24,6 +25,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
                 '{$ field.label $}',
             '</label>',
             '<maas-power-input field="field" ',
+                'data-ng-disabled="ngDisabled" ',
                 'data-ng-model="ngModel.parameters[field.name]">',
         '</div>'
     ].join(''));
@@ -47,7 +49,8 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                     html =
                         '<input type="text" class="three-col" ' +
                         'name="' + scope.field.name + '" ' +
-                        req + 'data-ng-model="' + attrs.ngModel + '" ';
+                        req + 'data-ng-model="' + attrs.ngModel + '" ' +
+                        'data-ng-disabled="' + attrs.ngDisabled + '" ';
 
                     // Add mac address validation.
                     if(type === "mac_address") {
@@ -66,6 +69,7 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                     html =
                         '<select name="' + scope.field.name + '"' +
                         req + 'data-ng-model="' + attrs.ngModel + '" ' +
+                        'data-ng-disabled="' + attrs.ngDisabled + '" ' +
                         'data-ng-options="' +
                         'choice as choice[1] for choice in field.choices' +
                         '" class="three-col">';
@@ -101,7 +105,8 @@ angular.module('MAAS').directive('maasPowerParameters', function() {
         require: "ngModel",
         scope: {
             maasPowerParameters: '=',
-            ngModel: '='
+            ngModel: '=',
+            ngDisabled: '='
         },
         templateUrl: 'directive/templates/power-parameters.html'
     };

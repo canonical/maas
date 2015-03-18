@@ -5,11 +5,10 @@
  */
 
 angular.module('MAAS').controller('NodesListController', [
-    '$scope', '$rootScope', 'NodesManager', 'DevicesManager',
-    'GeneralManager', 'RegionConnection', 'ManagerHelperService',
-    'SearchService', function($scope, $rootScope,
-        NodesManager, DevicesManager, GeneralManager,
-        RegionConnection, ManagerHelperService, SearchService) {
+    '$scope', '$rootScope', '$location', 'NodesManager', 'DevicesManager',
+    'GeneralManager', 'ManagerHelperService', 'SearchService', function($scope,
+        $rootScope, $location, NodesManager, DevicesManager, GeneralManager,
+        ManagerHelperService, SearchService) {
 
         // Set title and page.
         $rootScope.title = "Nodes";

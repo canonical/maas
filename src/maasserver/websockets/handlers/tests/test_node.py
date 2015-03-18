@@ -26,7 +26,6 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
-from maasserver.utils.converters import human_readable_bytes
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerPermissionError,
@@ -46,6 +45,7 @@ class TestNodeHandler(MAASServerTestCase):
             "tags": blockdevice.tags,
             "path": blockdevice.path,
             "size": blockdevice.size,
+            "size_gb": "%3.1f" % (blockdevice.size / (1000 ** 3)),
             "block_size": blockdevice.block_size,
             "model": blockdevice.model,
             "serial": blockdevice.serial,
@@ -73,7 +73,7 @@ class TestNodeHandler(MAASServerTestCase):
             "disable_ipv4": node.disable_ipv4,
             "disks": len(physicalblockdevices),
             "disk_tags": self.get_all_disk_tags(physicalblockdevices),
-            "distro_series": node.distro_series,
+            "distro_series": node.get_distro_series(),
             "error": node.error,
             "error_description": node.error_description,
             "extra_macs": [
@@ -91,7 +91,7 @@ class TestNodeHandler(MAASServerTestCase):
                 "name": node.nodegroup.name,
                 "cluster_name": node.nodegroup.cluster_name,
                 },
-            "osystem": node.osystem,
+            "osystem": node.get_osystem(),
             "owner": "" if node.owner is None else node.owner.username,
             "physical_disks": [
                 self.dehydrate_physicalblockdevice(blockdevice)
@@ -107,10 +107,10 @@ class TestNodeHandler(MAASServerTestCase):
                 for router in node.routers
                 ],
             "status": node.display_status(),
-            "storage": human_readable_bytes(sum([
+            "storage": "%3.1f" % (sum([
                 blockdevice.size
                 for blockdevice in physicalblockdevices
-                ]), include_suffix=False),
+                ]) / (1000 ** 3)),
             "swap_size": node.swap_size,
             "system_id": node.system_id,
             "tags": [
