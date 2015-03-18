@@ -90,6 +90,7 @@ from formencode.validators import (
     UnicodeString,
     URL,
     )
+from lockfile import FileLock
 from provisioningserver.path import get_tentative_path
 from provisioningserver.utils.fs import (
     atomic_write,
@@ -385,6 +386,11 @@ class BootSources(ConfigBase, ForEach):
 ###############################################################################
 
 
+def touch(path, mode=0600):
+    """Ensure that `path` exists."""
+    os.close(os.open(path, os.O_CREAT | os.O_APPEND, mode))
+
+
 class ConfigurationDatabase:
     """Store configuration in an sqlite3 database."""
 
@@ -431,13 +437,13 @@ class ConfigurationDatabase:
     @classmethod
     @contextmanager
     def open(cls, dbpath):
-        """Load a configuration database.
+        """Open a configuration database.
 
         **Note** that this returns a context manager which will close the
         database on exit, saving if the exit is clean.
         """
-        # Initialise filename with restrictive permissions...
-        os.close(os.open(dbpath, os.O_CREAT | os.O_APPEND, 0600))
+        # Ensure `dbpath` exists...
+        touch(dbpath)
         # before opening it with sqlite.
         database = sqlite3.connect(dbpath)
         try:
@@ -450,11 +456,112 @@ class ConfigurationDatabase:
             database.close()
 
 
+class ConfigurationFile:
+    """Store configuration as YAML in a file.
+
+    You should almost always prefer the `ConfigurationDatabase` variant above
+    this. It provides things like transactions with optimistic write locking,
+    synchronisation between processes, and all the goodies that come with a
+    mature and battle-tested piece of kit such as SQLite3.
+
+    This, by comparison, will clobber changes made in another thread or
+    process without warning. We could add support for locking, even optimistic
+    locking, but, you know, that's already been done: `ConfigurationDatabase`
+    preceded this. Just use that. Really. Unless, you know, you've absolutely
+    got to use this.
+    """
+
+    def __init__(self, path):
+        super(ConfigurationFile, self).__init__()
+        self.config = {}
+        self.dirty = False
+        self.path = path
+
+    def __iter__(self):
+        return iter(self.config)
+
+    def __getitem__(self, name):
+        return self.config[name]
+
+    def __setitem__(self, name, data):
+        self.config[name] = data
+        self.dirty = True
+
+    def __delitem__(self, name):
+        if name in self.config:
+            del self.config[name]
+            self.dirty = True
+
+    def load(self):
+        """Load the configuration."""
+        with open(self.path, "rb") as fd:
+            config = yaml.safe_load(fd)
+        if config is None:
+            self.config.clear()
+            self.dirty = False
+        elif isinstance(config, dict):
+            self.config = config
+            self.dirty = False
+        else:
+            raise ValueError(
+                "Configuration in %s is not a mapping: %r"
+                % (self.path, config))
+
+    def save(self):
+        """Save the configuration."""
+        atomic_write(yaml.safe_dump(self.config), self.path)
+        self.dirty = False
+
+    @classmethod
+    @contextmanager
+    def open(cls, path):
+        """Open a configuration file.
+
+        Locks are taken so that there can only be *one* reader or writer for a
+        configuration file at a time. Where configuration files can be read by
+        multiple concurrent processes it follows that each process should hold
+        the file open for the shortest time possible.
+
+        **Note** that this returns a context manager which will save changes
+        to the configuration on a clean exit.
+        """
+        # Only one reader or writer at a time.
+        lock = FileLock(path)
+        lock.acquire(timeout=5)
+        try:
+            # Ensure `path` exists...
+            touch(path)
+            # before loading it in.
+            configfile = cls(path)
+            configfile.load()
+            try:
+                yield configfile
+            except:
+                raise
+            else:
+                if configfile.dirty:
+                    configfile.save()
+        finally:
+            lock.release()
+
+
 class ConfigurationMeta(type):
-    """Metaclass for configuration objects."""
+    """Metaclass for configuration objects.
+
+    :cvar envvar: The name of the environment variable which will be used to
+        store the filename of the configuration file. This can be passed in
+        from the caller's environment. Setting `DEFAULT_FILENAME` updates this
+        environment variable so that it's available to sub-processes.
+    :cvar default: If the environment variable named by `envvar` is not set,
+        this is used as the filename.
+    :cvar backend: The class used to load the configuration. This must provide
+        an ``open(filename)`` method that returns a context manager. This
+        context manager must provide an object with a dict-like interface.
+    """
 
     envvar = None  # Set this in subtypes.
     default = None  # Set this in subtypes.
+    backend = None  # Set this in subtypes.
 
     def _get_default_filename(cls):
         # Get the configuration filename from the environment. Failing that,
@@ -505,15 +612,15 @@ class Configuration:
     # a metaclass is a good way to achieve this.
     DEFAULT_FILENAME = None
 
-    def __init__(self, configdb):
+    def __init__(self, store):
         """Initialise a new `Configuration` object.
 
-        :param configdb: A dict-like object.
+        :param store: A dict-like object.
         """
         super(Configuration, self).__init__()
         # Use the super-class's __setattr__() because it's redefined later on
         # to prevent accidentally setting attributes that are not options.
-        super(Configuration, self).__setattr__("configdb", configdb)
+        super(Configuration, self).__setattr__("store", store)
 
     def __setattr__(self, name, value):
         """Prevent setting unrecognised options.
@@ -536,8 +643,8 @@ class Configuration:
         if filepath is None:
             filepath = cls.DEFAULT_FILENAME
         ensure_dir(os.path.dirname(filepath))
-        with ConfigurationDatabase.open(filepath) as configdb:
-            yield cls(configdb)
+        with cls.backend.open(filepath) as store:
+            yield cls(store)
 
 
 class ConfigurationOption:
@@ -570,17 +677,17 @@ class ConfigurationOption:
             return self
         else:
             try:
-                value = obj.configdb[self.name]
+                value = obj.store[self.name]
             except KeyError:
                 return self.validator.if_missing
             else:
                 return self.validator.from_python(value)
 
     def __set__(self, obj, value):
-        obj.configdb[self.name] = self.validator.to_python(value)
+        obj.store[self.name] = self.validator.to_python(value)
 
     def __delete__(self, obj):
-        del obj.configdb[self.name]
+        del obj.store[self.name]
 
 
 class ClusterConfiguration(Configuration):
@@ -588,7 +695,8 @@ class ClusterConfiguration(Configuration):
 
     class __metaclass__(ConfigurationMeta):
         envvar = "MAAS_CLUSTER_CONFIG"
-        default = "/var/lib/maas/cluster.db"
+        default = "/etc/maas/cluster.conf"
+        backend = ConfigurationFile
 
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.",

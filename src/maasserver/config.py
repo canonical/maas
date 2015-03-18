@@ -22,6 +22,7 @@ from formencode.validators import (
     )
 from provisioningserver.config import (
     Configuration,
+    ConfigurationFile,
     ConfigurationMeta,
     ConfigurationOption,
     )
@@ -32,7 +33,8 @@ class RegionConfiguration(Configuration):
 
     class __metaclass__(ConfigurationMeta):
         envvar = "MAAS_REGION_CONFIG"
-        default = "/var/lib/maas/region.db"
+        default = "/etc/maas/region.conf"
+        backend = ConfigurationFile
 
     maas_url = ConfigurationOption(
         "maas_url", "The HTTP URL for the MAAS region.",

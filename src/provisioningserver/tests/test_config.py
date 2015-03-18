@@ -20,6 +20,7 @@ import errno
 from functools import partial
 from getpass import getuser
 from io import BytesIO
+from operator import methodcaller
 import os
 import os.path
 import re
@@ -29,8 +30,13 @@ from textwrap import dedent
 from fixtures import EnvironmentVariableFixture
 import formencode
 import formencode.validators
+import lockfile
 from maastesting import root
 from maastesting.factory import factory
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
 from mock import sentinel
 from provisioningserver.config import (
@@ -41,6 +47,7 @@ from provisioningserver.config import (
     ConfigMeta,
     Configuration,
     ConfigurationDatabase,
+    ConfigurationFile,
     ConfigurationMeta,
     ConfigurationOption,
     Directory,
@@ -52,7 +59,9 @@ from testtools.matchers import (
     DirExists,
     FileContains,
     FileExists,
+    Is,
     MatchesException,
+    MatchesStructure,
     Raises,
     )
 from twisted.python.filepath import FilePath
@@ -534,14 +543,30 @@ class ExampleConfiguration(Configuration):
     class __metaclass__(ConfigurationMeta):
         envvar = "MAAS_TESTING_SETTINGS"
         default = get_path("example.db")
+        backend = None  # Define this in sub-classes.
 
     something = ConfigurationOption(
         "something", "Something alright, don't know what, just something.",
         formencode.validators.IPAddress(if_missing=sentinel.missing))
 
 
+class ExampleConfigurationForDatabase(ExampleConfiguration):
+    """An example configuration object using an SQLite3 database."""
+    backend = ConfigurationDatabase
+
+
+class ExampleConfigurationForFile(ExampleConfiguration):
+    """An example configuration object using a file."""
+    backend = ConfigurationFile
+
+
 class TestConfigurationMeta(MAASTestCase):
     """Tests for `ConfigurationMeta`."""
+
+    scenarios = (
+        ("db", dict(example_configuration=ExampleConfigurationForDatabase)),
+        ("file", dict(example_configuration=ExampleConfigurationForFile)),
+    )
 
     def setUp(self):
         super(TestConfigurationMeta, self).setUp()
@@ -551,33 +576,36 @@ class TestConfigurationMeta(MAASTestCase):
     def set_envvar(self, filepath=None):
         """Set the env. variable named by `ExampleConfiguration.envvar"."""
         self.useFixture(EnvironmentVariableFixture(
-            ExampleConfiguration.envvar, filepath))
+            self.example_configuration.envvar, filepath))
 
     def test_gets_filename_from_environment(self):
         dummy_filename = factory.make_name("config")
         self.set_envvar(dummy_filename)
-        self.assertEqual(dummy_filename, ExampleConfiguration.DEFAULT_FILENAME)
+        self.assertEqual(
+            dummy_filename, self.example_configuration.DEFAULT_FILENAME)
 
     def test_falls_back_to_default(self):
         self.set_envvar(None)
         self.assertEqual(
-            get_path(ExampleConfiguration.default),
-            ExampleConfiguration.DEFAULT_FILENAME)
+            get_path(self.example_configuration.default),
+            self.example_configuration.DEFAULT_FILENAME)
 
     def test_set(self):
         dummy_filename = factory.make_name("config")
-        ExampleConfiguration.DEFAULT_FILENAME = dummy_filename
-        self.assertEqual(dummy_filename, ExampleConfiguration.DEFAULT_FILENAME)
+        self.example_configuration.DEFAULT_FILENAME = dummy_filename
+        self.assertEqual(
+            dummy_filename, self.example_configuration.DEFAULT_FILENAME)
 
     def test_delete(self):
         self.set_envvar(None)
-        ExampleConfiguration.DEFAULT_FILENAME = factory.make_name("config")
-        del ExampleConfiguration.DEFAULT_FILENAME
+        example_file = factory.make_name("config")
+        self.example_configuration.DEFAULT_FILENAME = example_file
+        del self.example_configuration.DEFAULT_FILENAME
         self.assertEqual(
-            get_path(ExampleConfiguration.default),
-            ExampleConfiguration.DEFAULT_FILENAME)
+            get_path(self.example_configuration.default),
+            self.example_configuration.DEFAULT_FILENAME)
         # The delete does not fail when called multiple times.
-        del ExampleConfiguration.DEFAULT_FILENAME
+        del self.example_configuration.DEFAULT_FILENAME
 
 
 class TestConfiguration(MAASTestCase):
@@ -589,7 +617,7 @@ class TestConfiguration(MAASTestCase):
 
     def test_create(self):
         config = Configuration({})
-        self.assertEqual({}, config.configdb)
+        self.assertEqual({}, config.store)
 
     def test_cannot_set_attributes(self):
         config = Configuration({})
@@ -598,15 +626,41 @@ class TestConfiguration(MAASTestCase):
         with expected_exception:
             config.foo = "bar"
 
+    def test_opens_using_backend(self):
+        config_file = self.make_file()
+        backend = self.patch(ExampleConfiguration, "backend")
+        with backend.open(config_file) as config:
+            backend_ctx = backend.open.return_value
+            # The object returned from backend.open() has been used as the
+            # context manager, providing `config`.
+            self.assertThat(config, Is(backend_ctx.__enter__.return_value))
+            # We're within the context, as expected.
+            self.assertThat(backend_ctx.__exit__, MockNotCalled())
+        # The context has been exited.
+        self.assertThat(
+            backend_ctx.__exit__,
+            MockCalledOnceWith(None, None, None))
+
 
 class TestConfigurationOption(MAASTestCase):
     """Tests for `ConfigurationOption`."""
 
-    def make_config(self):
+    scenarios = (
+        ("db", dict(make_store=methodcaller("make_database_store"))),
+        ("file", dict(make_store=methodcaller("make_file_store"))),
+    )
+
+    def make_database_store(self):
         database = sqlite3.connect(":memory:")
         self.addCleanup(database.close)
-        configdb = ConfigurationDatabase(database)
-        return ExampleConfiguration(configdb)
+        return ConfigurationDatabase(database)
+
+    def make_file_store(self):
+        return ConfigurationFile(self.make_file())
+
+    def make_config(self):
+        store = self.make_store(self)
+        return ExampleConfiguration(store)
 
     def test_getting_something(self):
         config = self.make_config()
@@ -616,7 +670,7 @@ class TestConfigurationOption(MAASTestCase):
         # The value in the database is trusted.
         config = self.make_config()
         example_value = factory.make_name('not-an-ip-address')
-        config.configdb[config.__class__.something.name] = example_value
+        config.store[config.__class__.something.name] = example_value
         self.assertEqual(example_value, config.something)
 
     def test_setting_something(self):
@@ -746,6 +800,137 @@ class TestConfigurationDatabase(MAASTestCase):
             self.assertRaises(KeyError, lambda: config[config_key])
 
 
+class TestConfigurationFile(MAASTestCase):
+    """Tests for `ConfigurationFile`."""
+
+    def test_configuration_pristine(self):
+        # A pristine configuration has no entries.
+        config = ConfigurationFile(sentinel.filename)
+        self.assertThat(
+            config, MatchesStructure.byEquality(
+                config={}, dirty=False, path=sentinel.filename))
+
+    def test_adding_configuration_option(self):
+        config = ConfigurationFile(sentinel.filename)
+        config["alice"] = {"abc": 123}
+        self.assertEqual({"alice"}, set(config))
+        self.assertEqual({"abc": 123}, config["alice"])
+        self.assertTrue(config.dirty)
+
+    def test_replacing_configuration_option(self):
+        config = ConfigurationFile(sentinel.filename)
+        config["alice"] = {"abc": 123}
+        config["alice"] = {"def": 456}
+        self.assertEqual({"alice"}, set(config))
+        self.assertEqual({"def": 456}, config["alice"])
+        self.assertTrue(config.dirty)
+
+    def test_getting_configuration_option(self):
+        config = ConfigurationFile(sentinel.filename)
+        config["alice"] = {"abc": 123}
+        self.assertEqual({"abc": 123}, config["alice"])
+
+    def test_getting_non_existent_configuration_option(self):
+        config = ConfigurationFile(sentinel.filename)
+        self.assertRaises(KeyError, lambda: config["alice"])
+
+    def test_removing_configuration_option(self):
+        config = ConfigurationFile(sentinel.filename)
+        config["alice"] = {"abc": 123}
+        del config["alice"]
+        self.assertEqual(set(), set(config))
+        self.assertTrue(config.dirty)
+
+    def test_load_non_existent_file_crashes(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config = ConfigurationFile(config_file)
+        self.assertRaises(IOError, config.load)
+
+    def test_load_empty_file_results_in_empty_config(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        with open(config_file, "wb"):
+            pass  # Write nothing to the file.
+        config = ConfigurationFile(config_file)
+        config.load()
+        self.assertItemsEqual(set(config), set())
+
+    def test_load_file_with_non_mapping_crashes(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        with open(config_file, "wb") as fd:
+            yaml.safe_dump([1, 2, 3], stream=fd)
+        config = ConfigurationFile(config_file)
+        error = self.assertRaises(ValueError, config.load)
+        self.assertDocTestMatches(
+            "Configuration in /.../config is not a mapping: [1, 2, 3]",
+            unicode(error))
+
+    def test_open_and_close(self):
+        # ConfigurationFile.open() returns a context manager.
+        config_file = os.path.join(self.make_dir(), "config")
+        config_ctx = ConfigurationFile.open(config_file)
+        self.assertIsInstance(config_ctx, contextlib.GeneratorContextManager)
+        with config_ctx as config:
+            self.assertIsInstance(config, ConfigurationFile)
+            self.assertThat(config_file, FileExists())
+            self.assertEqual({}, config.config)
+            self.assertFalse(config.dirty)
+        self.assertThat(config_file, FileContains(""))
+
+    def test_open_permissions_new_database(self):
+        # ConfigurationFile.open() applies restrictive file permissions to
+        # newly created configuration databases.
+        config_file = os.path.join(self.make_dir(), "config")
+        with ConfigurationFile.open(config_file):
+            perms = FilePath(config_file).getPermissions()
+            self.assertEqual("rw-------", perms.shorthand())
+
+    def test_open_permissions_existing_database(self):
+        # ConfigurationFile.open() leaves the file permissions of existing
+        # configuration databases.
+        config_file = os.path.join(self.make_dir(), "config")
+        open(config_file, "wb").close()  # touch.
+        os.chmod(config_file, 0644)  # u=rw,go=r
+        with ConfigurationFile.open(config_file):
+            perms = FilePath(config_file).getPermissions()
+            self.assertEqual("rw-r--r--", perms.shorthand())
+
+    def test_opened_configuration_file_saves_on_exit(self):
+        # ConfigurationFile.open() returns a context manager that will save an
+        # updated configuration on a clean exit.
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        config_value = factory.make_name("value")
+        with ConfigurationFile.open(config_file) as config:
+            config[config_key] = config_value
+            self.assertEqual({config_key: config_value}, config.config)
+            self.assertTrue(config.dirty)
+        with ConfigurationFile.open(config_file) as config:
+            self.assertEqual(config_value, config[config_key])
+
+    def test_opened_configuration_file_does_not_save_on_unclean_exit(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_key = factory.make_name("key")
+        config_value = factory.make_name("value")
+        exception_type = factory.make_exception_type()
+        # Set a configuration option, then crash.
+        with ExpectedException(exception_type):
+            with ConfigurationFile.open(config_file) as config:
+                config[config_key] = config_value
+                raise exception_type()
+        # No value has been saved for `config_key`.
+        with ConfigurationFile.open(config_file) as config:
+            self.assertRaises(KeyError, lambda: config[config_key])
+
+    def test_open_takes_exclusive_lock(self):
+        config_file = os.path.join(self.make_dir(), "config")
+        config_lock = lockfile.FileLock(config_file)
+        self.assertFalse(config_lock.is_locked())
+        with ConfigurationFile.open(config_file):
+            self.assertTrue(config_lock.is_locked())
+            self.assertTrue(config_lock.i_am_locking())
+        self.assertFalse(config_lock.is_locked())
+
+
 class TestClusterConfiguration(MAASTestCase):
     """Tests for `ClusterConfiguration`."""
 
@@ -759,7 +944,7 @@ class TestClusterConfiguration(MAASTestCase):
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         # It's also stored in the configuration database.
-        self.assertEqual({"maas_url": example_url}, config.configdb)
+        self.assertEqual({"maas_url": example_url}, config.store)
 
     def test_default_tftp_port(self):
         config = ClusterConfiguration({})
@@ -771,7 +956,7 @@ class TestClusterConfiguration(MAASTestCase):
         config.tftp_port = example_port
         self.assertEqual(example_port, config.tftp_port)
         # It's also stored in the configuration database.
-        self.assertEqual({"tftp_port": example_port}, config.configdb)
+        self.assertEqual({"tftp_port": example_port}, config.store)
 
     def test_default_tftp_root(self):
         config = ClusterConfiguration({})
@@ -784,4 +969,4 @@ class TestClusterConfiguration(MAASTestCase):
         config.tftp_root = example_dir
         self.assertEqual(example_dir, config.tftp_root)
         # It's also stored in the configuration database.
-        self.assertEqual({"tftp_root": example_dir}, config.configdb)
+        self.assertEqual({"tftp_root": example_dir}, config.store)

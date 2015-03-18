@@ -32,7 +32,7 @@ class TestRegionConfiguration(MAASTestCase):
         config.maas_url = example_url
         self.assertEqual(example_url, config.maas_url)
         # It's also stored in the configuration database.
-        self.assertEqual({"maas_url": example_url}, config.configdb)
+        self.assertEqual({"maas_url": example_url}, config.store)
 
 
 class TestRegionConfigurationDatabaseOptions(MAASTestCase):
@@ -60,4 +60,4 @@ class TestRegionConfigurationDatabaseOptions(MAASTestCase):
         setattr(config, self.option, example_value)
         self.assertEqual(example_value, getattr(config, self.option))
         # It's also stored in the configuration database.
-        self.assertEqual({self.option: example_value}, config.configdb)
+        self.assertEqual({self.option: example_value}, config.store)
