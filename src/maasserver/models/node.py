@@ -129,6 +129,8 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import callOutToThread
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 
 
@@ -913,10 +915,10 @@ class Node(CleanSave, TimestampedModel):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
         from metadataserver.user_data.commissioning import generate_user_data
+        from metadataserver.models import NodeResult
 
         commissioning_user_data = generate_user_data(node=self)
-        # Avoid circular imports
-        from metadataserver.models import NodeResult
+        # Clear any existing commissioning results.
         NodeResult.objects.clear_results(self)
         # We need to mark the node as COMMISSIONING now to avoid a race
         # when starting multiple nodes. We hang on to old_status just in
@@ -928,28 +930,56 @@ class Node(CleanSave, TimestampedModel):
         # There's a limit on how long we allow commissioning to take.
         transition_timeout = self.get_commissioning_time()
 
-        # Commit before starting the node (and before logging about it).
-        commit_within_atomic_block()
-        maaslog.info("%s: Starting commissioning", self.hostname)
+        @transactional
+        def start_transition_monitor(hostname):
+            self.start_transition_monitor(transition_timeout)
+            maaslog.info("%s: Commissioning monitor started", hostname)
+
+        @transactional
+        def set_status(status):
+            self.status = status
+            self.save()
+
+        @inlineCallbacks
+        def pc_commissioning_start_okay(_, hostname):
+            yield deferToThread(start_transition_monitor, hostname)
+            maaslog.info("%s: Commissioning started", hostname)
+
+        @inlineCallbacks
+        def pc_commissioning_start_failed(failure, hostname):
+            yield deferToThread(set_status, old_status)
+            maaslog.error(
+                "%s: Could not start node for commissioning: %s",
+                hostname, failure.getErrorMessage())
 
         try:
-            self.start(user, user_data=commissioning_user_data)
+            # Node.start() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            starting = self.start(user, user_data=commissioning_user_data)
         except Exception as ex:
-            # Reverting the status /may/ break if the node's status has been
-            # changed elsewhere during the call to start() and the transition
-            # from that status to `old_status` is not allowed.
-            self.status = old_status
-            self.save()
-            commit_within_atomic_block()
+            set_status(old_status)
             maaslog.error(
-                "%s: Unable to start node: %s", self.hostname,
-                unicode(ex))
+                "%s: Could not start node for commissioning: %s",
+                self.hostname, unicode(ex))
             # Let the exception bubble up, since the UI or API will have to
             # deal with it.
             raise
         else:
-            self.start_transition_monitor(transition_timeout)
-            maaslog.info("%s: Commissioning started", self.hostname)
+            if starting is None:
+                # The node's power control mechanism doesn't support automated
+                # power-on. Nonetheless, start the monitor.
+                post_commit_do(
+                    deferToThread, start_transition_monitor, self.hostname)
+                maaslog.warning(
+                    "%s: Could not start node for commissioning; it "
+                    "must be started manually", self.hostname)
+            else:
+                starting.addCallback(
+                    pc_commissioning_start_okay, self.hostname)
+                starting.addErrback(
+                    pc_commissioning_start_failed, self.hostname)
+                return starting
 
     def abort_commissioning(self, user):
         """Power off a commissioning node and set its status to 'declared'."""
@@ -1622,24 +1652,30 @@ class Node(CleanSave, TimestampedModel):
         :param by_user: Requesting user.
         :type by_user: User_
         :param user_data: Optional blob of user-data to be made available to
-            the node through the metadata service.  If not given, any
-            previous user data is used.
+            the node through the metadata service. If not given, any previous
+            user data is used.
         :type user_data: unicode
 
-        :raises: `StaticIPAddressExhaustion` if there are not enough IP
-            addresses left in the static range for this node toget all
-            the addresses it needs.
+        :raise StaticIPAddressExhaustion: if there are not enough IP addresses
+            left in the static range for this node toget all the addresses it
+            needs.
+        :raise PermissionDenied: If `by_user` does not have permission to
+            start this node.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to start the node. This is already registed as a
+            post-commit hook; it should not be added a second time. If it has
+            not been possible to start the node because the power controller
+            does not support it, `None` will be returned. The node must be
+            powered on manually.
         """
         # Avoid circular imports.
         from metadataserver.models import NodeUserData
         from maasserver.dns.config import dns_update_zones
 
         if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
-            # You can't stop a node you don't own unless you're an
-            # admin, so we return early.  This is consistent with the
-            # behaviour of NodeManager.stop_nodes(); it may be better to
-            # raise an error here.
-            return
+            # You can't start a node you don't own unless you're an admin.
+            raise PermissionDenied()
 
         # Record the user data for the node. Note that we do this
         # whether or not we can actually send power commands to the
@@ -1668,7 +1704,7 @@ class Node(CleanSave, TimestampedModel):
             # The node can't be powered on by MAAS, so return early.
             # Everything we've done up to this point is still valid;
             # this is not an error state.
-            return
+            return None
 
         @transactional
         def pc_start_transition_monitor(timeout):
@@ -1688,7 +1724,7 @@ class Node(CleanSave, TimestampedModel):
             d.addErrback(callOutToThread, pc_deallocate_by_node)
             return d
 
-        post_commit_do(
+        return post_commit_do(
             pc_power_on_node, self.system_id, self.hostname,
             self.nodegroup.uuid, power_info)
 
@@ -1699,33 +1735,35 @@ class Node(CleanSave, TimestampedModel):
         :type by_user: User_
         :param stop_mode: Power off mode - usually 'soft' or 'hard'.
         :type stop_mode: unicode
-        :return: True if the power action was sent to the node; False if
-            it wasn't sent. If the user doesn't have permission to stop
-            the node, return None.
+
+        :raise PermissionDenied: If `by_user` does not have permission to
+            stop this node.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to stop the node. This is already registed as a
+            post-commit hook; it should not be added a second time. If it has
+            not been possible to stop the node because the power controller
+            does not support it, `None` will be returned. The node must be
+            powered off manually.
         """
         if not by_user.has_perm(NODE_PERMISSION.EDIT, self):
-            # You can't stop a node you don't own unless you're an
-            # admin, so we return early.  This is consistent with the
-            # behaviour of NodeManager.stop_nodes(); it may be better to
-            # raise an error here.
-            return
+            # You can't stop a node you don't own unless you're an admin.
+            raise PermissionDenied()
 
         power_info = self.get_effective_power_info()
         if not power_info.can_be_stopped:
             # We can't stop this node, so just return; trying to stop a
             # node we don't know how to stop isn't an error state, but
             # it's a no-op.
-            return False
+            return None
 
         # Smuggle in a hint about how to power-off the self.
         power_info.power_parameters['power_off_mode'] = stop_mode
 
         # Request that the node be powered off post-commit.
-        post_commit_do(
+        return post_commit_do(
             power_off_node, self.system_id, self.hostname,
             self.nodegroup.uuid, power_info)
-
-        return True
 
 
 # Piston serializes objects based on the object class.

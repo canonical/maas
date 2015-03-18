@@ -34,6 +34,7 @@ from maasserver.testing.eventloop import (
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from provisioningserver.drivers import PowerTypeRegistry
 from provisioningserver.rpc.cluster import (
     DescribePowerTypes,
@@ -254,7 +255,8 @@ class TestCommissionNode(MAASServerTestCase):
         user = factory.make_User()
         node = factory.make_Node(nodegroup=cluster, owner=user)
 
-        commission_node(node.system_id, user)
+        with post_commit_hooks:
+            commission_node(node.system_id, user)
 
         self.assertEqual(
             NODE_STATUS.COMMISSIONING, reload_object(node).status)

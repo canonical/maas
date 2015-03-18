@@ -912,6 +912,7 @@ class NodeViewsTest(MAASServerTestCase):
         self.assertDocTestMatches(expected_content, observed_content)
 
     def test_view_node_POST_commission(self):
+        self.patch_autospec(node_module, "getClientFor")
         self.client_log_in(as_admin=True)
         node = factory.make_Node(status=NODE_STATUS.READY)
         node_link = reverse('node-view', args=[node.system_id])

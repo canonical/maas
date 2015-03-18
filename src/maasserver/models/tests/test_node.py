@@ -21,7 +21,10 @@ from datetime import (
 import random
 
 import crochet
-from django.core.exceptions import ValidationError
+from django.core.exceptions import (
+    PermissionDenied,
+    ValidationError,
+    )
 from django.db import transaction
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc import power as power_module
@@ -779,10 +782,9 @@ class TestNode(MAASServerTestCase):
         self.assertThat(node_stop, MockCalledOnceWith(owner))
 
     def test_start_disk_erasing_reverts_to_sane_state_on_error(self):
-        # If start_disk_erasing encounters an error when calling
-        # start_nodes(), it will transition the node to a sane state.
-        # Failures encountered in one call to start_disk_erasing() won't
-        # affect subsequent calls.
+        # If start_disk_erasing encounters an error when calling start(), it
+        # will transition the node to a sane state. Failures encountered in
+        # one call to start_disk_erasing() won't affect subsequent calls.
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         generate_user_data = self.patch(disk_erasing, 'generate_user_data')
@@ -846,10 +848,9 @@ class TestNode(MAASServerTestCase):
         self.assertRaises(NodeStateViolation, node.abort_operation, owner)
 
     def test_abort_disk_erasing_reverts_to_sane_state_on_error(self):
-        # If start_disk_erasing encounters an error when calling
-        # start_nodes(), it will transition the node to a sane state.
-        # Failures encountered in one call to start_disk_erasing() won't
-        # affect subsequent calls.
+        # If abort_disk_erasing encounters an error when calling stop(), it
+        # will transition the node to a sane state. Failures encountered in
+        # one call to start_disk_erasing() won't affect subsequent calls.
         admin = factory.make_admin()
         node = factory.make_Node(
             status=NODE_STATUS.DISK_ERASING, power_type="virsh")
@@ -1313,9 +1314,11 @@ class TestNode(MAASServerTestCase):
         # changes the node's status, and returns the node.
         target_state = NODE_STATUS.COMMISSIONING
 
-        node = factory.make_Node(status=NODE_STATUS.NEW)
+        user = factory.make_User()
+        node = factory.make_Node(status=NODE_STATUS.NEW, owner=user)
         self.patch(node, 'start_transition_monitor')
-        return_value = node.accept_enlistment(factory.make_User())
+        with post_commit_hooks:
+            return_value = node.accept_enlistment(user)
         self.assertEqual((node, target_state), (return_value, node.status))
 
     def test_accept_enlistment_does_nothing_if_already_accepted(self):
@@ -1406,7 +1409,8 @@ class TestNode(MAASServerTestCase):
             random.randint(0, 10),
             RESULT_TYPE.COMMISSIONING,
             Bin(factory.make_bytes()))
-        node.start_commissioning(factory.make_admin())
+        with post_commit_hooks:
+            node.start_commissioning(factory.make_admin())
         self.assertItemsEqual([], node.noderesult_set.all())
 
     def test_start_commissioning_ignores_other_commissioning_results(self):
@@ -1419,7 +1423,8 @@ class TestNode(MAASServerTestCase):
             Bin(data))
         other_node = factory.make_Node(status=NODE_STATUS.NEW)
         self.patch(other_node, 'start_transition_monitor')
-        other_node.start_commissioning(factory.make_admin())
+        with post_commit_hooks:
+            other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
             data, NodeResult.objects.get_data(node, filename))
 
@@ -1460,7 +1465,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "%s: Unable to start node: %s",
+                "%s: Could not start node for commissioning: %s",
                 node.hostname, unicode(exception)))
 
     def test_abort_commissioning_reverts_to_sane_state_on_error(self):
@@ -1493,7 +1498,8 @@ class TestNode(MAASServerTestCase):
         start_transition_monitor = self.patch(
             node, 'start_transition_monitor')
         admin = factory.make_admin()
-        node.start_commissioning(admin)
+        with post_commit_hooks:
+            node.start_commissioning(admin)
         self.assertThat(
             start_transition_monitor, MockCalledOnceWith(monitor_timeout))
 
@@ -2736,7 +2742,7 @@ class TestNode_Start(MAASServerTestCase):
         node = self.make_acquired_node_with_mac(owner)
 
         user = factory.make_User()
-        node.start(user)
+        self.assertRaises(PermissionDenied, node.start, user)
         self.assertThat(power_on_node, MockNotCalled())
 
     def test__allows_admin_to_start_any_node(self):
@@ -2848,7 +2854,7 @@ class TestNode_Stop(MAASServerTestCase):
         node = self.make_node_with_mac(owner)
 
         user = factory.make_User()
-        node.stop(user)
+        self.assertRaises(PermissionDenied, node.stop, user)
         self.assertThat(power_off_node, MockNotCalled())
 
     def test__allows_admin_to_stop_any_node(self):
@@ -2906,17 +2912,17 @@ class TestNode_Stop(MAASServerTestCase):
             with post_commit_hooks:
                 node.stop(user)
 
-    def test__returns_false_if_power_action_not_sent(self):
+    def test__returns_None_if_power_action_not_sent(self):
         user = factory.make_User()
         node = self.make_node_with_mac(user, power_type="")
 
         self.patch_autospec(node_module, "power_off_node")
-        self.assertIs(False, node.stop(user))
+        self.assertThat(node.stop(user), Is(None))
 
-    def test__returns_true_if_power_action_sent(self):
+    def test__returns_Deferred_if_power_action_sent(self):
         user = factory.make_User()
         node = self.make_node_with_mac(user, power_type="virsh")
 
         self.patch_autospec(node_module, "power_off_node")
         with post_commit_hooks:
-            self.assertIs(True, node.stop(user))
+            self.assertThat(node.stop(user), IsInstance(defer.Deferred))

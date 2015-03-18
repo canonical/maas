@@ -260,9 +260,9 @@ class TestNodeAPI(APITestCase):
             httplib.NOT_FOUND, response.status_code, response.content)
 
     def test_POST_stop_returns_nothing_if_node_was_not_stopped(self):
-        # The node may not be stopped by stop_nodes because, for example, its
-        # power type does not support it. In this case the node is not
-        # returned to the caller.
+        # The node may not be stopped because, for example, its power type
+        # does not support it. In this case the node is not returned to the
+        # caller.
         node = factory.make_Node(owner=self.logged_in_user)
         node_stop = self.patch(node_module.Node, 'stop')
         node_stop.return_value = False
@@ -579,6 +579,7 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_commission_commissions_node(self):
+        self.patch_autospec(node_module, "getClientFor")
         node = factory.make_Node(
             status=NODE_STATUS.READY, owner=factory.make_User())
         self.become_admin()

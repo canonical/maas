@@ -24,6 +24,7 @@ from maasserver.forms import (
     get_action_form,
     NodeActionForm,
     )
+import maasserver.models.node
 from maasserver.node_action import (
     Commission,
     Delete,
@@ -32,6 +33,7 @@ from maasserver.node_action import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 
 
 class TestNodeActionForm(MAASServerTestCase):
@@ -70,12 +72,16 @@ class TestNodeActionForm(MAASServerTestCase):
         self.assertItemsEqual({}, form.actions)
 
     def test_save_performs_requested_action(self):
+        # Prevent RPC calls from making real connections.
+        self.patch_autospec(maasserver.models.node, "getClientFor")
+
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(admin)(
             node, {NodeActionForm.input_name: Commission.name})
         self.assertTrue(form.is_valid())
-        form.save()
+        with post_commit_hooks:
+            form.save()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
 
     def test_rejects_disallowed_action(self):
