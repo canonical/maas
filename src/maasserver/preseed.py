@@ -195,6 +195,23 @@ def compose_curtin_network_preseed(node):
     return [yaml.safe_dump(write_files), yaml.safe_dump(configure)]
 
 
+def compose_curtin_swap_preseed(node):
+    """Return the curtin preseed for configuring a node's swap space.
+
+    These can then be appended to the main Curtin configuration.  The preseeds
+    are returned as a list of strings, each holding a YAML section.
+    """
+    if node.swap_size is not None:
+        swap_config = {
+            'swap': {
+                'size': ('%sB' % node.swap_size)
+            },
+        }
+        return [yaml.safe_dump(swap_config)]
+    else:
+        return []
+
+
 def get_curtin_userdata(node):
     """Return the curtin user-data.
 
@@ -206,8 +223,9 @@ def get_curtin_userdata(node):
     main_config = get_curtin_config(node)
     reporter_config = compose_curtin_maas_reporter(node)
     network_config = compose_curtin_network_preseed_for(node)
+    swap_config = compose_curtin_swap_preseed(node)
     return pack_install(
-        configs=[main_config] + reporter_config + network_config,
+        configs=[main_config] + reporter_config + network_config + swap_config,
         args=[installer_url])
 
 

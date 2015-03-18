@@ -39,6 +39,7 @@ from maasserver.models import Config
 from maasserver.preseed import (
     compose_curtin_maas_reporter,
     compose_curtin_network_preseed,
+    compose_curtin_swap_preseed,
     compose_enlistment_preseed_url,
     compose_preseed_url,
     GENERIC_FILENAME,
@@ -772,6 +773,21 @@ class TestComposeCurtinMAASReporter(MAASServerTestCase):
             reporter['reporter']['maas']['token_secret'])
 
 
+class TestComposeCurtinSwapSpace(MAASServerTestCase):
+
+    def test__returns_null_swap_size(self):
+        node = factory.make_Node()
+        self.assertEqual(node.swap_size, None)
+        swap_preseed = compose_curtin_swap_preseed(node)
+        self.assertEqual(swap_preseed, [])
+
+    def test__returns_set_swap_size(self):
+        node = factory.make_Node()
+        node.swap_size = 10 * 1000 ** 3
+        swap_preseed = compose_curtin_swap_preseed(node)
+        self.assertEqual(swap_preseed, ['swap: {size: 10000000000B}\n'])
+
+
 class TestComposeCurtinNetworkPreseed(MAASServerTestCase):
 
     def test__returns_list_of_yaml_strings(self):
@@ -918,6 +934,7 @@ class TestGetCurtinUserDataOS(
         arch, subarch = node.architecture.split('/')
         self.configure_get_boot_images_for_node(node, 'xinstall')
         user_data = get_curtin_userdata(node)
+
         # Just check that the user data looks good.
         self.assertIn("PREFIX='curtin'", user_data)
 
