@@ -257,151 +257,155 @@
         </div>
     </aside>
     <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
-        <div id="search-bar" class="node-search">
-            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-            <input
-                type="search" placeholder="Search nodes" class="node-search__input"
-                data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
-                data-ng-class="{ error: !tabs.nodes.searchValid }" />
-            <input type="submit" class="node-search__submit" />
-        </div>
-        <table class="table-listing nodes-listing" id="nodes-listing">
-            <thead>
-                <tr class="table-listing__row">
-                    <th>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
-                        <label for="check-all"></label>
-                    </th>
-                    <th colspan="2" class="table-listing__cell fixed">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
-                            <acronym title="Fully Qualified Domain Name">FQDN</acronym>
-                        </a> |
-                        <a href="" data-ng-click="predicate='pxe_mac'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='pxe_mac'">
-                            <acronym title="Media Access Control addresses">MAC</acronym>
-                        </a>
-                    </th>
-                    <th>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" class="align-center" data-ng-click="tabs.nodes.predicate='power_state'; tabs.nodes.reverse=!tabs.nodes.reverse">Power</a>
-                    </th>
-                    <th>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='status'; tabs.nodes.reverse=!tabs.nodes.reverse">Status</a>
-                    </th>
-                    <th>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='owner'; tabs.nodes.reverse=!tabs.nodes.reverse">Owner</a>
-                    </th>
+        <form>
+            <div id="search-bar" class="node-search">
+                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                <input
+                    type="search" placeholder="Search nodes" class="node-search__input"
+                    data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
+                    data-ng-class="{ error: !tabs.nodes.searchValid }" />
+                <input type="submit" class="node-search__submit" />
+            </div>
+            <table class="table-listing nodes-listing" id="nodes-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
+                            <label for="check-all"></label>
+                        </th>
+                        <th colspan="2" class="table-listing__cell fixed">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
+                                <acronym title="Fully Qualified Domain Name">FQDN</acronym>
+                            </a> |
+                            <a href="" data-ng-click="predicate='pxe_mac'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='pxe_mac'">
+                                <acronym title="Media Access Control addresses">MAC</acronym>
+                            </a>
+                        </th>
+                        <th>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" class="align-center" data-ng-click="tabs.nodes.predicate='power_state'; tabs.nodes.reverse=!tabs.nodes.reverse">Power</a>
+                        </th>
+                        <th>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='status'; tabs.nodes.reverse=!tabs.nodes.reverse">Status</a>
+                        </th>
+                        <th>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='owner'; tabs.nodes.reverse=!tabs.nodes.reverse">Owner</a>
+                        </th>
 
-                    <th class="align-right">
+                        <th class="align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='cpu_count'; tabs.nodes.reverse=!tabs.nodes.reverse">Cores</a>
+                        </th>
+                        <th class="align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='memory'; tabs.nodes.reverse=!tabs.nodes.reverse">RAM (GB)</a>
+                        </th>
+                        <th class="align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='disks'; tabs.nodes.reverse=!tabs.nodes.reverse">Disks</a>
+                        </th>
+                        <th class="align-right">
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.nodes.predicate='storage'; tabs.nodes.reverse=!tabs.nodes.reverse">Storage (GB)</a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
+                    <tr class="table-listing__row table-listing-row"
+                        data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
+                        data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }"
+                        data-ng-click="toggleChecked(node, 'nodes')">
+                        <td>
+                            <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                            <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
+                            <label for="{$ node.fqdn $}"></label>
+                        </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='cpu_count'; tabs.nodes.reverse=!tabs.nodes.reverse">Cores</a>
-                    </th>
-                    <th class="align-right">
+                        <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
+                            <a href="{$ node.url $}">{$ node.fqdn $}</a>
+                        </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='memory'; tabs.nodes.reverse=!tabs.nodes.reverse">RAM (GB)</a>
-                    </th>
-                    <th class="align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='disks'; tabs.nodes.reverse=!tabs.nodes.reverse">Disks</a>
-                    </th>
-                    <th class="align-right">
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.nodes.predicate='storage'; tabs.nodes.reverse=!tabs.nodes.reverse">Storage (GB)</a>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. This really needs lots of tests. -->
-                <tr class="table-listing__row table-listing-row"
-                    data-ng-repeat="node in tabs.nodes.filtered_items = (nodes | nodesFilter:tabs.nodes.search | orderBy:tabs.nodes.predicate:tabs.nodes.reverse) track by node.system_id"
-                    data-ng-class="{ error: !supportsAction(node, 'nodes'), selected: node.$selected }"
-                    data-ng-click="toggleChecked(node, 'nodes')">
-                    <td>
-                        <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
-                        <label for="{$ node.fqdn $}"></label>
-                    </td>
-                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
-                        <a href="{$ node.url $}">{$ node.fqdn $}</a>
-                    </td>
-                    <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                    <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
-                        <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                        <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
-                    </td>
-                    <td class="powerstate align-center">
-                        <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
-                    </td>
-                    <td class="table-listing__cell status">{$ node.status $}</td>
-                    <td>{$ node.owner $}</td>
-                    <td class="align-right">{$ node.cpu_count $}</td>
-                    <td class="align-right">{$ node.memory $}</td>
-                    <td class="align-right">{$ node.disks $}</td>
-                    <td class="align-right">{$ node.storage $}</td>
-                </tr>
-            </tbody>
-        </table>
+                        <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
+                            <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                            <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                        </td>
+                        <td class="powerstate align-center">
+                            <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>
+                        </td>
+                        <td class="table-listing__cell status">{$ node.status $}</td>
+                        <td>{$ node.owner $}</td>
+                        <td class="align-right">{$ node.cpu_count $}</td>
+                        <td class="align-right">{$ node.memory $}</td>
+                        <td class="align-right">{$ node.disks $}</td>
+                        <td class="align-right">{$ node.storage $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
     </div>
     <div class="nine-col last-col" class="ng-hide" data-ng-show="currentpage === 'devices'">
-        <div id="search-bar" class="node-search">
-            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-            <input
-                type="search" placeholder="Search devices" class="node-search__input"
-                data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
-                data-ng-class="{ error: !tabs.devices.searchValid }" />
-            <input type="submit" class="node-search__submit" />
-        </div>
-        <table class="table-listing" id="nodes-listing">
-            <thead>
-                <tr class="table-listing__row">
-                    <th>
+        <form>
+            <div id="search-bar" class="node-search">
+                <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                <input
+                    type="search" placeholder="Search devices" class="node-search__input"
+                    data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
+                    data-ng-class="{ error: !tabs.devices.searchValid }" />
+                <input type="submit" class="node-search__submit" />
+            </div>
+            <table class="table-listing" id="nodes-listing">
+                <thead>
+                    <tr class="table-listing__row">
+                        <th>
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
+                            <label for="check-all-devices"></label>
+                        </th>
+                        <th colspan="4" class="table-listing__cell fixed">
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
+                                <acronym title="Fully Qualified Domain Name">FQDN</acronym>
+                            </a>
+                        </th>
+                        <th class="">
+                            <a href="" data-ng-click="tabs.devices.predicate='pxe_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
+                                <acronym title="Media Access Control addresses">MAC</acronym>
+                            </a>
+                        </th>
+                        <th>
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
+                    <tr class="table-listing__row"
+                        data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
+                        data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
+                        <td colspan="4" >
+                            <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
+                            <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
+                            <label for="{$ device.fqdn $}"></label>
+                        </td>
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
-                        <label for="check-all-devices"></label>
-                    </th>
-                    <th colspan="4" class="table-listing__cell fixed">
+                        <td class="table-listing__cell fixed">
+                            <a href="{$ device.url $}">{$ device.fqdn $}</a>
+                        </td>
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
-                            <acronym title="Fully Qualified Domain Name">FQDN</acronym>
-                        </a>
-                    </th>
-                    <th class="">
-                        <a href="" data-ng-click="tabs.devices.predicate='pxe_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
-                            <acronym title="Media Access Control addresses">MAC</acronym>
-                        </a>
-                    </th>
-                    <th>
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- XXX rvba 2015-02-25 - Need to add e2e test. This really needs lots of tests. -->
-                <tr class="table-listing__row"
-                    data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
-                    data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
-                    <td colspan="4" >
-                        <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
-                        <label for="{$ device.fqdn $}"></label>
-                    </td>
-                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                    <td class="table-listing__cell fixed">
-                        <a href="{$ device.url $}">{$ device.fqdn $}</a>
-                    </td>
-                    <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                    <td>
-                        {$ device.pxe_mac $}
-                        <span data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
-                    </td>
-                    <td>{$ device.owner $}</td>
-                </tr>
-            </tbody>
-        </table>
+                        <td>
+                            {$ device.pxe_mac $}
+                            <span data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
+                        </td>
+                        <td>{$ device.owner $}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </form>
     </div>
 </div>
