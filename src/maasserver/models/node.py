@@ -23,10 +23,7 @@ from collections import (
     defaultdict,
     namedtuple,
     )
-from datetime import (
-    datetime,
-    timedelta,
-    )
+from datetime import timedelta
 from itertools import chain
 from operator import attrgetter
 import re
@@ -105,7 +102,7 @@ from maasserver.node_status import (
     is_failed_status,
     NODE_TRANSITIONS,
     )
-from maasserver.rpc import getClientFor
+from maasserver.rpc.monitors import TransitionMonitor
 from maasserver.utils import (
     get_db_state,
     strip_domain,
@@ -114,6 +111,7 @@ from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
     commit_within_atomic_block,
     get_one,
+    post_commit,
     post_commit_do,
     transactional,
     )
@@ -122,19 +120,16 @@ from netaddr import IPAddress
 from piston.models import Token
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import UnknownPowerType
-from provisioningserver.rpc.cluster import (
-    CancelMonitor,
-    StartMonitors,
-    )
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
-from provisioningserver.utils.twisted import callOutToThread
-from twisted.internet.defer import (
-    Deferred,
-    inlineCallbacks,
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    callOut,
+    callOutToThread,
+    synchronous,
     )
+from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
-from twisted.protocols import amp
 
 
 maaslog = get_maas_logger("node")
@@ -618,49 +613,34 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.DEPLOYED
         self.save()
 
-    # TODO: Make this asynchronous; this currently must be run in a
-    # transaction in a thread.
+    @synchronous
     def start_transition_monitor(self, timeout):
         """Start cluster-side transition monitor."""
-        context = {
-            'node_status': self.status,
-            'timeout': timeout,
-            }
-        deadline = datetime.now(tz=amp.utc) + timedelta(seconds=timeout)
-        monitors = [{
-            'deadline': deadline,
-            'id': self.system_id,
-            'context': context,
-        }]
-        client = getClientFor(self.nodegroup.uuid)
-        call = client(StartMonitors, monitors=monitors)
+        monitor = (
+            TransitionMonitor.fromNode(self)
+            .within(seconds=timeout)
+            .status_should_be(self.status))
         try:
-            call.wait(5)
+            monitor.start()
         except crochet.TimeoutError as error:
             maaslog.error(
                 "%s: Unable to start transition monitor: %s",
                 self.hostname, error)
         else:
-            maaslog.info(
-                "%s: Starting transition monitor: %s",
-                self.hostname, monitors[0])
+            maaslog.info("%s: Started transition monitor", self.hostname)
 
-    # TODO: Make this asynchronous; this currently must be run in a
-    # transaction in a thread.
+    @synchronous
     def stop_transition_monitor(self):
         """Stop cluster-side transition monitor."""
-        client = getClientFor(self.nodegroup.uuid)
-        call = client(CancelMonitor, id=self.system_id)
+        monitor = TransitionMonitor.fromNode(self)
         try:
-            call.wait(5)
+            monitor.stop()
         except crochet.TimeoutError as error:
             maaslog.error(
                 "%s: Unable to stop transition monitor: %s",
                 self.hostname, error)
         else:
-            maaslog.info(
-                "%s: Stopping transition monitor: %s",
-                self.hostname, self.system_id)
+            maaslog.info("%s: Stopped transition monitor", self.hostname)
 
     def handle_monitor_expired(self, context):
         """Handle a monitor expired event."""
@@ -934,63 +914,91 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.COMMISSIONING
         self.save()
 
-        # There's a limit on how long we allow commissioning to take.
-        transition_timeout = self.get_commissioning_time()
-
-        @transactional
-        def start_transition_monitor(hostname):
-            self.start_transition_monitor(transition_timeout)
-            maaslog.info("%s: Commissioning monitor started", hostname)
-
-        @transactional
-        def set_status(status):
-            self.status = status
-            self.save()
-
-        @inlineCallbacks
-        def pc_commissioning_start_okay(_, hostname):
-            yield deferToThread(start_transition_monitor, hostname)
-            maaslog.info("%s: Commissioning started", hostname)
-
-        @inlineCallbacks
-        def pc_commissioning_start_failed(failure, hostname):
-            yield deferToThread(set_status, old_status)
-            maaslog.error(
-                "%s: Could not start node for commissioning: %s",
-                hostname, failure.getErrorMessage())
+        # Prepare a transition monitor for later.
+        monitor = (
+            TransitionMonitor.fromNode(self)
+            .within(seconds=self.get_commissioning_time())
+            .status_should_be(NODE_STATUS.READY))
 
         try:
             # Node.start() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
             starting = self.start(user, user_data=commissioning_user_data)
-        except Exception as ex:
-            set_status(old_status)
+        except Exception as error:
+            self.status = old_status
+            self.save()
             maaslog.error(
                 "%s: Could not start node for commissioning: %s",
-                self.hostname, unicode(ex))
+                self.hostname, error)
             # Let the exception bubble up, since the UI or API will have to
             # deal with it.
             raise
         else:
+            # Don't permit naive mocking of start(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(starting, Deferred) or starting is None
+
+            post_commit().addCallback(
+                callOut, self._start_transition_monitor_async, monitor,
+                self.hostname)
+
             if starting is None:
-                # The node's power control mechanism doesn't support automated
-                # power-on. Nonetheless, start the monitor.
-                post_commit_do(
-                    deferToThread, start_transition_monitor, self.hostname)
-                maaslog.warning(
-                    "%s: Could not start node for commissioning; it "
-                    "must be started manually", self.hostname)
+                starting = post_commit()
+                # MAAS cannot start the node itself.
+                is_starting = False
             else:
-                # Don't permit naive mocking of start(); it causes too much
-                # confusion when testing. Return a Deferred from side_effect.
-                assert isinstance(starting, Deferred)
-                # The node will be powered on.
-                starting.addCallback(
-                    pc_commissioning_start_okay, self.hostname)
-                starting.addErrback(
-                    pc_commissioning_start_failed, self.hostname)
-                return starting
+                # MAAS can direct the node to start.
+                is_starting = True
+
+            starting.addCallback(
+                callOut, self._start_commissioning_async, is_starting,
+                self.hostname)
+
+            # If there's an error, reset the node's status.
+            starting.addErrback(
+                callOutToThread, self._set_status, old_status,
+                self.system_id)
+
+            def eb_start(failure, hostname):
+                maaslog.error(
+                    "%s: Could not start node for commissioning: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return starting.addErrback(eb_start, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _start_transition_monitor_async(cls, monitor, hostname):
+        """Start the given `monitor`.
+
+        :param monitor: An instance of `TransitionMonitor`.
+        :param hostname: The node's hostname, for logging.
+        """
+        def eb_start(failure, hostname):
+            maaslog.warning(
+                "%s: Could not start transition monitor: %s",
+                hostname, failure.getErrorMessage())
+
+        # Start the transition monitor. Only log failures; don't crash.
+        return monitor.start().addErrback(eb_start, hostname)
+
+    @classmethod
+    @asynchronous
+    def _start_commissioning_async(cls, is_starting, hostname):
+        """Start commissioning, the post-commit bits.
+
+        :param is_starting: A boolean indicating if MAAS is able to start this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        """
+        if is_starting:
+            maaslog.info("%s: Commissioning started", hostname)
+        else:
+            maaslog.warning(
+                "%s: Could not start node for commissioning; it "
+                "must be started manually", hostname)
 
     def abort_commissioning(self, user):
         """Power off a commissioning node and set its status to 'declared'."""
@@ -1000,59 +1008,82 @@ class Node(CleanSave, TimestampedModel):
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
 
-        @transactional
-        def stop_transition_monitor(hostname):
-            self.stop_transition_monitor()
-            maaslog.info("%s: Commissioning monitor stopped", hostname)
-
-        @transactional
-        def set_status(status):
-            self.status = status
-            self.save()
-
-        @inlineCallbacks
-        def pc_abort_okay(_, hostname):
-            yield deferToThread(stop_transition_monitor, hostname)
-            yield deferToThread(set_status, NODE_STATUS.NEW)
-            maaslog.info("%s: Commissioning aborted", hostname)
-
-        @inlineCallbacks
-        def pc_abort_manually(hostname):
-            yield deferToThread(stop_transition_monitor, hostname)
-            yield deferToThread(set_status, NODE_STATUS.NEW)
-            maaslog.warning(
-                "%s: Could not stop node to abort commissioning; it "
-                "must be stopped manually", self.hostname)
-
-        def pc_abort_failed(failure, hostname):
-            maaslog.error(
-                "%s: Error when aborting commissioning: %s", hostname,
-                failure.getErrorMessage())
+        # Prepare a transition monitor for later.
+        monitor = TransitionMonitor.fromNode(self)
 
         try:
             # Node.stop() has synchronous and asynchronous parts, so catch
             # exceptions arising synchronously, and chain callbacks to the
             # Deferred it returns for the asynchronous (post-commit) bits.
             stopping = self.stop(user)
-        except Exception as ex:
+        except Exception as error:
             maaslog.error(
-                "%s: Error when aborting commissioning: %s", self.hostname,
-                unicode(ex))
+                "%s: Error when aborting commissioning: %s",
+                self.hostname, error)
             raise
         else:
-            if stopping is None:
-                # The node's power control mechanism doesn't support automated
-                # power-off. Nonetheless, set the node's status and stop the
-                # monitor.
-                stopping = post_commit_do(pc_abort_manually, self.hostname)
-            else:
-                # Don't permit naive mocking of stop(); it causes too much
-                # confusion when testing. Return a Deferred from side_effect.
-                assert isinstance(stopping, Deferred)
-                # The node will be powered off.
-                stopping.addCallback(pc_abort_okay, self.hostname)
+            # Don't permit naive mocking of stop(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(stopping, Deferred) or stopping is None
 
-            return stopping.addErrback(pc_abort_failed, self.hostname)
+            post_commit().addCallback(
+                callOut, self._stop_transition_monitor_async, monitor,
+                self.hostname)
+
+            if stopping is None:
+                stopping = post_commit()
+                # MAAS cannot stop the node itself.
+                is_stopping = False
+            else:
+                # MAAS can direct the node to stop.
+                is_stopping = True
+
+            stopping.addCallback(
+                callOut, self._abort_commissioning_async, is_stopping,
+                self.hostname, self.system_id)
+
+            def eb_abort(failure, hostname):
+                maaslog.error(
+                    "%s: Error when aborting commissioning: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return stopping.addErrback(eb_abort, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _stop_transition_monitor_async(cls, monitor, hostname):
+        """Stop the given `monitor`.
+
+        :param monitor: An instance of `TransitionMonitor`.
+        :param hostname: The node's hostname, for logging.
+        """
+        def eb_stop(failure, hostname):
+            maaslog.warning(
+                "%s: Could not stop transition monitor: %s",
+                hostname, failure.getErrorMessage())
+
+        # Stop the transition monitor. Only log failures; don't crash.
+        return monitor.stop().addErrback(eb_stop, hostname)
+
+    @classmethod
+    @asynchronous
+    def _abort_commissioning_async(cls, is_stopping, hostname, system_id):
+        """Abort commissioning, the post-commit bits.
+
+        :param is_stopping: A boolean indicating if MAAS is able to stop this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        :param system_id: The system ID for the node.
+        """
+        d = deferToThread(cls._set_status, system_id, NODE_STATUS.NEW)
+        if is_stopping:
+            return d.addCallback(
+                callOut, maaslog.info, "%s: Commissioning aborted", hostname)
+        else:
+            return d.addCallback(
+                callOut, maaslog.warning, "%s: Could not stop node to abort "
+                "commissioning; it must be stopped manually", hostname)
 
     def delete(self):
         """Delete this node."""
@@ -1815,6 +1846,17 @@ class Node(CleanSave, TimestampedModel):
         return post_commit_do(
             power_off_node, self.system_id, self.hostname,
             self.nodegroup.uuid, power_info)
+
+    @classmethod
+    @transactional
+    def _set_status(cls, system_id, status):
+        """Set the status of the node identified by `system_id`.
+
+        This is a convenience for use as a call-back.
+        """
+        node = cls.objects.get(system_id=system_id)
+        node.status = status
+        node.save()
 
 
 # Piston serializes objects based on the object class.

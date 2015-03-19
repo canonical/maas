@@ -24,7 +24,6 @@ from maasserver.forms import (
     get_action_form,
     NodeActionForm,
     )
-import maasserver.models.node
 from maasserver.node_action import (
     Commission,
     Delete,
@@ -72,9 +71,6 @@ class TestNodeActionForm(MAASServerTestCase):
         self.assertItemsEqual({}, form.actions)
 
     def test_save_performs_requested_action(self):
-        # Prevent RPC calls from making real connections.
-        self.patch_autospec(maasserver.models.node, "getClientFor")
-
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
         form = get_action_form(admin)(

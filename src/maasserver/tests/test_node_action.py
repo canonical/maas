@@ -18,6 +18,7 @@ import random
 from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from maasserver import locks
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
@@ -53,7 +54,10 @@ from maasserver.node_status import FAILED_STATUSES
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_osystem_with_releases
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+    )
 from maasserver.utils.orm import (
     post_commit,
     post_commit_hooks,
@@ -235,33 +239,45 @@ class TestCommissionAction(MAASServerTestCase):
             node_start, MockCalledOnceWith(admin, user_data=ANY))
 
 
-class TestAbortAction(MAASServerTestCase):
+class TestAbortAction(MAASTransactionServerTestCase):
 
     def test_Abort_aborts_disk_erasing(self):
-        owner = factory.make_User()
-        node = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=owner)
+        with transaction.atomic():
+            owner = factory.make_User()
+            node = factory.make_Node(
+                status=NODE_STATUS.DISK_ERASING, owner=owner)
+
         node_stop = self.patch_autospec(node, 'stop')
 
-        Abort(node, owner).execute()
+        with post_commit_hooks:
+            with transaction.atomic():
+                Abort(node, owner).execute()
 
-        self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
+        with transaction.atomic():
+            self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
+
         self.assertThat(node_stop, MockCalledOnceWith(owner))
 
     def test_Abort_aborts_commissioning(self):
-        node = factory.make_Node(
-            mac=True, status=NODE_STATUS.COMMISSIONING,
-            power_type='virsh')
+        with transaction.atomic():
+            node = factory.make_Node(
+                mac=True, status=NODE_STATUS.COMMISSIONING,
+                power_type='virsh')
+            admin = factory.make_admin()
+
         self.patch_autospec(node, 'stop_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
-        admin = factory.make_admin()
 
         with post_commit_hooks:
-            Abort(node, admin).execute()
+            with transaction.atomic():
+                Abort(node, admin).execute()
 
-        self.assertEqual(NODE_STATUS.NEW, node.status)
+        with transaction.atomic():
+            node = reload_object(node)
+            self.assertEqual(NODE_STATUS.NEW, node.status)
+
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 
 

@@ -26,6 +26,7 @@ from django.core.exceptions import (
     ValidationError,
     )
 from django.db import transaction
+from fixtures import LoggerFixture
 from maasserver import preseed as preseed_module
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
@@ -67,6 +68,7 @@ from maasserver.node_status import (
     NODE_FAILURE_STATUS_TRANSITIONS,
     NODE_TRANSITIONS,
     )
+from maasserver.rpc import monitors as monitors_module
 from maasserver.rpc.testing.fixtures import (
     MockLiveRegionToClusterRPCFixture,
     RunningClusterRPCFixture,
@@ -103,7 +105,6 @@ from metadataserver.user_data import (
 import mock
 from mock import (
     ANY,
-    Mock,
     sentinel,
     )
 from netaddr import IPAddress
@@ -1383,7 +1384,6 @@ class TestNode(MAASServerTestCase):
         node_start.side_effect = lambda user, user_data: post_commit()
         factory.make_MACAddress(node=node)
         admin = factory.make_admin()
-        self.patch(node, 'start_transition_monitor')
         node.start_commissioning(admin)
         post_commit_hooks.reset()  # Ignore these for now.
         node = reload_object(node)
@@ -1398,7 +1398,6 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, 'start')
         node_start.side_effect = lambda user, user_data: post_commit()
-        self.patch(node, 'start_transition_monitor')
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
             commissioning, 'generate_user_data')
@@ -1411,7 +1410,6 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_clears_node_commissioning_results(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        self.patch(node, 'start_transition_monitor')
         NodeResult.objects.store_data(
             node, factory.make_string(),
             random.randint(0, 10),
@@ -1430,7 +1428,6 @@ class TestNode(MAASServerTestCase):
             node, filename, script_result, RESULT_TYPE.COMMISSIONING,
             Bin(data))
         other_node = factory.make_Node(status=NODE_STATUS.NEW)
-        self.patch(other_node, 'start_transition_monitor')
         with post_commit_hooks:
             other_node.start_commissioning(factory.make_admin())
         self.assertEqual(
@@ -1442,7 +1439,6 @@ class TestNode(MAASServerTestCase):
         # status.
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        self.patch(node, 'start_transition_monitor')
         generate_user_data = self.patch(commissioning, 'generate_user_data')
         node_start = self.patch(node, 'start')
         node_start.side_effect = factory.make_exception()
@@ -1464,7 +1460,6 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_logs_and_raises_errors_in_starting(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        self.patch(node, 'start_transition_monitor')
         maaslog = self.patch(node_module, 'maaslog')
         exception = NoConnectionsAvailable(factory.make_name())
         self.patch(node, 'start').side_effect = exception
@@ -1474,7 +1469,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
                 "%s: Could not start node for commissioning: %s",
-                node.hostname, unicode(exception)))
+                node.hostname, exception))
 
     def test_abort_commissioning_reverts_to_sane_state_on_error(self):
         # If abort commissioning hits an error when trying to stop the
@@ -1483,7 +1478,6 @@ class TestNode(MAASServerTestCase):
         admin = factory.make_admin()
         node = factory.make_Node(
             status=NODE_STATUS.COMMISSIONING, power_type="virsh")
-        self.patch(node, 'stop_transition_monitor')
         node_stop = self.patch(node, 'stop')
         node_stop.side_effect = factory.make_exception()
 
@@ -1500,30 +1494,42 @@ class TestNode(MAASServerTestCase):
 
     def test_start_commissioning_starts_monitor(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
-        monitor_timeout = random.randint(1, 100)
-        self.patch(
-            node, 'get_commissioning_time').return_value = monitor_timeout
-        start_transition_monitor = self.patch(
-            node, 'start_transition_monitor')
         admin = factory.make_admin()
+
+        monitor_timeout = random.randint(1, 100)
+        monitor_start = self.patch_autospec(
+            node_module.TransitionMonitor, "start")
+
+        self.patch(node, 'get_commissioning_time')
+        node.get_commissioning_time.return_value = monitor_timeout
+
         with post_commit_hooks:
             node.start_commissioning(admin)
-        self.assertThat(
-            start_transition_monitor, MockCalledOnceWith(monitor_timeout))
+
+        self.assertThat(monitor_start, MockCalledOnceWith(ANY))
+        [monitor], _ = monitor_start.call_args  # Extract `self`.
+        self.assertAttributes(monitor, {
+            "timeout": timedelta(seconds=monitor_timeout),
+            "status": NODE_STATUS.READY,
+            "system_id": node.system_id,
+        })
 
     def test_abort_commissioning_stops_monitor(self):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
-        stop_transition_monitor = self.patch(node, 'stop_transition_monitor')
         admin = factory.make_admin()
+        monitor_stop = self.patch_autospec(
+            node_module.TransitionMonitor, "stop")
+        self.patch(Node, "_set_status")
         with post_commit_hooks:
             node.abort_commissioning(admin)
-        self.assertThat(stop_transition_monitor, MockCalledOnceWith())
+        self.assertThat(monitor_stop, MockCalledOnceWith(ANY))
+        [monitor], _ = monitor_stop.call_args  # Extract `self`.
+        self.assertAttributes(monitor, {"system_id": node.system_id})
 
     def test_abort_commissioning_logs_and_raises_errors_in_stopping(self):
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         maaslog = self.patch(node_module, 'maaslog')
-        self.patch(node, 'stop_transition_monitor')
         exception_class = factory.make_exception_type()
         exception = exception_class(factory.make_name())
         self.patch(node, 'stop').side_effect = exception
@@ -1533,7 +1539,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
                 "%s: Error when aborting commissioning: %s",
-                node.hostname, unicode(exception)))
+                node.hostname, exception))
 
     def test_abort_commissioning_changes_status_and_stops_node(self):
         node = factory.make_Node(
@@ -1543,13 +1549,14 @@ class TestNode(MAASServerTestCase):
         node_stop = self.patch(node, 'stop')
         # Return a post-commit hook from Node.stop().
         node_stop.side_effect = lambda user: post_commit()
-        self.patch(node, 'stop_transition_monitor')
+        self.patch(Node, "_set_status")
 
         with post_commit_hooks:
             node.abort_commissioning(admin)
-        expected_attrs = {'status': NODE_STATUS.NEW}
-        self.assertAttributes(node, expected_attrs)
+
         self.assertThat(node_stop, MockCalledOnceWith(admin))
+        self.assertThat(node._set_status, MockCalledOnceWith(
+            node.system_id, NODE_STATUS.NEW))
 
     def test_abort_commisssioning_errors_if_node_is_not_commissioning(self):
         unaccepted_statuses = set(map_enum(NODE_STATUS).values())
@@ -2316,7 +2323,7 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
 
     def patch_datetime_now(self, nowish_timestamp):
-        mock_datetime = self.patch(node_module, "datetime")
+        mock_datetime = self.patch(monitors_module, "datetime")
         mock_datetime.now.return_value = nowish_timestamp
 
     def test__start_transition_monitor_starts_monitor(self):
@@ -2343,14 +2350,16 @@ class TestNodeTransitionMonitors(MAASServerTestCase):
         now = datetime.now(tz=amp.utc)
         self.patch_datetime_now(now)
         node = factory.make_Node()
-        mock_client = Mock()
-        mock_client.wait.side_effect = crochet.TimeoutError("error")
-        mock_getClientFor = self.patch(node_module, 'getClientFor')
-        mock_getClientFor.return_value = mock_client
+        monitor_start = self.patch(node_module.TransitionMonitor, "start")
+        monitor_start.side_effect = crochet.TimeoutError("error")
         monitor_timeout = random.randint(1, 100)
-        # The real test is that node.start_transition_monitor doesn't raise
-        # an exception.
-        self.assertIsNone(node.start_transition_monitor(monitor_timeout))
+        logger = self.useFixture(LoggerFixture("maas"))
+        # start_transition_monitor() does not crash.
+        node.start_transition_monitor(monitor_timeout)
+        # However, the problem has been logged.
+        self.assertDocTestMatches(
+            "...: Unable to start transition monitor: ...",
+            logger.output)
 
 
 class TestClaimStaticIPAddresses(MAASServerTestCase):

@@ -579,7 +579,6 @@ class TestNodeAPI(APITestCase):
         self.assertEqual(NODE_STATUS.RELEASING, reload_object(node).status)
 
     def test_POST_commission_commissions_node(self):
-        self.patch_autospec(node_module, "getClientFor")
         node = factory.make_Node(
             status=NODE_STATUS.READY, owner=factory.make_User())
         self.become_admin()
