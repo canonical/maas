@@ -80,6 +80,7 @@ from maasserver.api.nodes import (
     NodeHandler,
     NodesHandler,
     )
+from maasserver.api.physicalblockdevices import PhysicalBlockDeviceHandler
 from maasserver.api.pxeconfig import pxeconfig
 from maasserver.api.results import NodeResultsHandler
 from maasserver.api.ssh_keys import (
@@ -180,6 +181,8 @@ license_key_handler = AdminRestrictedResource(
     LicenseKeyHandler, authentication=api_auth)
 license_keys_handler = AdminRestrictedResource(
     LicenseKeysHandler, authentication=api_auth)
+physicalblockdevice_handler = AdminRestrictedResource(
+    PhysicalBlockDeviceHandler, authentication=api_auth)
 
 
 # API URLs accessible to anonymous users.
@@ -301,4 +304,6 @@ urlpatterns += patterns(
         'selections/(?P<id>[^/]+)/$',
         boot_source_selection_backward_handler,
         name='boot_source_selection_backward_handler'),
+    url(r'^physicalblockdevice/(?P<device_id>[^/]+)/$',
+        physicalblockdevice_handler, name='physicalblockdevice_handler'),
 )
