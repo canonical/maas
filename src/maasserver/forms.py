@@ -48,6 +48,7 @@ __all__ = [
 
 import collections
 from collections import Counter
+from functools import partial
 import json
 import pipes
 from random import randint
@@ -146,7 +147,6 @@ from maasserver.utils.interfaces import (
     )
 from maasserver.utils.orm import (
     get_one,
-    outside_atomic_block,
     transactional,
     )
 from maasserver.utils.osystems import (
@@ -176,6 +176,14 @@ from provisioningserver.utils.network import (
     ip_range_within_network,
     make_network,
     )
+from provisioningserver.utils.twisted import (
+    asynchronous,
+    FOREVER,
+    )
+from twisted.internet.defer import DeferredList
+from twisted.internet.task import coiterate
+from twisted.internet.threads import deferToThread
+from twisted.python.failure import Failure
 
 
 maaslog = get_maas_logger()
@@ -2145,6 +2153,52 @@ class BulkNodeActionForm(forms.Form):
         else:
             return "not_actionable"
 
+    @asynchronous(timeout=FOREVER)
+    def _perform_action_on_nodes(
+            self, system_ids, action_class, concurrency=2):
+        """Perform a node action on the identified nodes.
+
+        This is *asynchronous*.
+
+        :param system_ids: An iterable of `Node.system_id` values.
+        :param action_class: A value from `ACTIONS_DICT`.
+        :param concurrency: The number of actions to run concurrently.
+
+        :return: A `dict` mapping `system_id` to results, where the result can
+            be a string (see `_perform_action_on_node`), or a `Failure` if
+            something went wrong.
+        """
+        # We're going to be making the same call for every specified node, so
+        # bundle up the common bits here to keep the noise down later on.
+        perform = partial(
+            deferToThread, self._perform_action_on_node,
+            action_class=action_class)
+
+        # The results will be a `system_id` -> `result` mapping, where
+        # `result` can be a string like "done" or "not_actionable", or a
+        # Failure instance.
+        results = {}
+
+        # Convenient callback.
+        def record(result, system_id):
+            results[system_id] = result
+
+        # A *lazy* list of tasks to be run. It's very important that each task
+        # is only created at the moment it's needed. Each task records its
+        # outcome via `record`, be that success or failure.
+        tasks = (
+            perform(system_id).addBoth(record, system_id)
+            for system_id in system_ids
+        )
+
+        # Create `concurrency` co-iterators. Each draws work from `tasks`.
+        deferreds = (coiterate(tasks) for _ in xrange(concurrency))
+        # Capture the moment when all the co-iterators have finished.
+        done = DeferredList(deferreds, consumeErrors=True)
+        # Return only the `results` mapping; ignore the result from `done`.
+
+        return done.addCallback(lambda _: results)
+
     def perform_action(self, action_name, system_ids):
         """Perform a node action on the identified nodes.
 
@@ -2153,10 +2207,12 @@ class BulkNodeActionForm(forms.Form):
         :return: A tuple as returned by `save`.
         """
         action_class = ACTIONS_DICT.get(action_name)
-        with outside_atomic_block():
-            stats = Counter(
-                self._perform_action_on_node(system_id, action_class)
-                for system_id in system_ids)
+        results = self._perform_action_on_nodes(system_ids, action_class)
+        # There is a lot of valuable information in `results`, including
+        # failures, but currently we're only interested in basic stats.
+        stats = Counter(
+            result for result in results.viewvalues()
+            if not isinstance(result, Failure))
         return stats["done"], stats["not_actionable"], stats["not_permitted"]
 
     def get_selected_zone(self):
