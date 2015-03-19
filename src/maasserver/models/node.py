@@ -898,6 +898,7 @@ class Node(CleanSave, TimestampedModel):
         self.start_commissioning(user)
         return self
 
+    @transactional
     def start_commissioning(self, user):
         """Install OS and self-test a new node."""
         # Avoid circular imports.
@@ -1000,6 +1001,7 @@ class Node(CleanSave, TimestampedModel):
                 "%s: Could not start node for commissioning; it "
                 "must be started manually", hostname)
 
+    @transactional
     def abort_commissioning(self, user):
         """Power off a commissioning node and set its status to 'declared'."""
         if self.status != NODE_STATUS.COMMISSIONING:
@@ -1728,6 +1730,7 @@ class Node(CleanSave, TimestampedModel):
                 return cluster_interface.is_managed
         return False
 
+    @transactional
     def start(self, by_user, user_data=None):
         """Request on given user's behalf that the node be started up.
 
@@ -1810,6 +1813,7 @@ class Node(CleanSave, TimestampedModel):
             pc_power_on_node, self.system_id, self.hostname,
             self.nodegroup.uuid, power_info)
 
+    @transactional
     def stop(self, by_user, stop_mode='hard'):
         """Request that the node be powered down.
 
