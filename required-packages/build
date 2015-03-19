@@ -1,3 +1,4 @@
 bzr-builddeb
 debhelper
 dh-apport
+dh-systemd
