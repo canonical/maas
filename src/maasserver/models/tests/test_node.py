@@ -80,7 +80,10 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.utils import ignore_unused
-from maasserver.utils.orm import post_commit_hooks
+from maasserver.utils.orm import (
+    post_commit,
+    post_commit_hooks,
+    )
 from maastesting.djangotestcase import count_queries
 from maastesting.matchers import (
     MockAnyCall,
@@ -1376,11 +1379,14 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.NEW, power_type='ether_wake')
         node_start = self.patch(node, 'start')
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
         factory.make_MACAddress(node=node)
         admin = factory.make_admin()
         self.patch(node, 'start_transition_monitor')
         node.start_commissioning(admin)
-
+        post_commit_hooks.reset()  # Ignore these for now.
+        node = reload_object(node)
         expected_attrs = {
             'status': NODE_STATUS.COMMISSIONING,
         }
@@ -1391,6 +1397,7 @@ class TestNode(MAASServerTestCase):
     def test_start_commissioning_sets_user_data(self):
         node = factory.make_Node(status=NODE_STATUS.NEW)
         node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
         self.patch(node, 'start_transition_monitor')
         user_data = factory.make_string().encode('ascii')
         generate_user_data = self.patch(
@@ -1398,6 +1405,7 @@ class TestNode(MAASServerTestCase):
         generate_user_data.return_value = user_data
         admin = factory.make_admin()
         node.start_commissioning(admin)
+        post_commit_hooks.reset()  # Ignore these for now.
         self.assertThat(node_start, MockCalledOnceWith(
             admin, user_data=user_data))
 
@@ -1507,7 +1515,8 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         stop_transition_monitor = self.patch(node, 'stop_transition_monitor')
         admin = factory.make_admin()
-        node.abort_commissioning(admin)
+        with post_commit_hooks:
+            node.abort_commissioning(admin)
         self.assertThat(stop_transition_monitor, MockCalledOnceWith())
 
     def test_abort_commissioning_logs_and_raises_errors_in_stopping(self):
@@ -1523,7 +1532,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "%s: Unable to shut node down: %s",
+                "%s: Error when aborting commissioning: %s",
                 node.hostname, unicode(exception)))
 
     def test_abort_commissioning_changes_status_and_stops_node(self):
@@ -1532,12 +1541,13 @@ class TestNode(MAASServerTestCase):
         admin = factory.make_admin()
 
         node_stop = self.patch(node, 'stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
         self.patch(node, 'stop_transition_monitor')
 
-        node.abort_commissioning(admin)
-        expected_attrs = {
-            'status': NODE_STATUS.NEW,
-        }
+        with post_commit_hooks:
+            node.abort_commissioning(admin)
+        expected_attrs = {'status': NODE_STATUS.NEW}
         self.assertAttributes(node, expected_attrs)
         self.assertThat(node_stop, MockCalledOnceWith(admin))
 

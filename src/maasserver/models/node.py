@@ -129,7 +129,10 @@ from provisioningserver.rpc.cluster import (
 from provisioningserver.rpc.power import QUERY_POWER_TYPES
 from provisioningserver.utils.enum import map_enum_reverse
 from provisioningserver.utils.twisted import callOutToThread
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import (
+    Deferred,
+    inlineCallbacks,
+    )
 from twisted.internet.threads import deferToThread
 from twisted.protocols import amp
 
@@ -615,6 +618,8 @@ class Node(CleanSave, TimestampedModel):
         self.status = NODE_STATUS.DEPLOYED
         self.save()
 
+    # TODO: Make this asynchronous; this currently must be run in a
+    # transaction in a thread.
     def start_transition_monitor(self, timeout):
         """Start cluster-side transition monitor."""
         context = {
@@ -640,6 +645,8 @@ class Node(CleanSave, TimestampedModel):
                 "%s: Starting transition monitor: %s",
                 self.hostname, monitors[0])
 
+    # TODO: Make this asynchronous; this currently must be run in a
+    # transaction in a thread.
     def stop_transition_monitor(self):
         """Stop cluster-side transition monitor."""
         client = getClientFor(self.nodegroup.uuid)
@@ -975,6 +982,10 @@ class Node(CleanSave, TimestampedModel):
                     "%s: Could not start node for commissioning; it "
                     "must be started manually", self.hostname)
             else:
+                # Don't permit naive mocking of start(); it causes too much
+                # confusion when testing. Return a Deferred from side_effect.
+                assert isinstance(starting, Deferred)
+                # The node will be powered on.
                 starting.addCallback(
                     pc_commissioning_start_okay, self.hostname)
                 starting.addErrback(
@@ -988,20 +999,60 @@ class Node(CleanSave, TimestampedModel):
                 "Cannot abort commissioning of a non-commissioning node: "
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
-        maaslog.info(
-            "%s: Aborting commissioning", self.hostname)
-        self.stop_transition_monitor()
+
+        @transactional
+        def stop_transition_monitor(hostname):
+            self.stop_transition_monitor()
+            maaslog.info("%s: Commissioning monitor stopped", hostname)
+
+        @transactional
+        def set_status(status):
+            self.status = status
+            self.save()
+
+        @inlineCallbacks
+        def pc_abort_okay(_, hostname):
+            yield deferToThread(stop_transition_monitor, hostname)
+            yield deferToThread(set_status, NODE_STATUS.NEW)
+            maaslog.info("%s: Commissioning aborted", hostname)
+
+        @inlineCallbacks
+        def pc_abort_manually(hostname):
+            yield deferToThread(stop_transition_monitor, hostname)
+            yield deferToThread(set_status, NODE_STATUS.NEW)
+            maaslog.warning(
+                "%s: Could not stop node to abort commissioning; it "
+                "must be stopped manually", self.hostname)
+
+        def pc_abort_failed(failure, hostname):
+            maaslog.error(
+                "%s: Error when aborting commissioning: %s", hostname,
+                failure.getErrorMessage())
+
         try:
-            self.stop(user)
+            # Node.stop() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            stopping = self.stop(user)
         except Exception as ex:
             maaslog.error(
-                "%s: Unable to shut node down: %s", self.hostname,
+                "%s: Error when aborting commissioning: %s", self.hostname,
                 unicode(ex))
             raise
         else:
-            self.status = NODE_STATUS.NEW
-            self.save()
-            maaslog.info("%s: Commissioning aborted", self.hostname)
+            if stopping is None:
+                # The node's power control mechanism doesn't support automated
+                # power-off. Nonetheless, set the node's status and stop the
+                # monitor.
+                stopping = post_commit_do(pc_abort_manually, self.hostname)
+            else:
+                # Don't permit naive mocking of stop(); it causes too much
+                # confusion when testing. Return a Deferred from side_effect.
+                assert isinstance(stopping, Deferred)
+                # The node will be powered off.
+                stopping.addCallback(pc_abort_okay, self.hostname)
+
+            return stopping.addErrback(pc_abort_failed, self.hostname)
 
     def delete(self):
         """Delete this node."""

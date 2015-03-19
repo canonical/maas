@@ -54,6 +54,10 @@ from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import (
+    post_commit,
+    post_commit_hooks,
+    )
 from maastesting.matchers import MockCalledOnceWith
 from mock import ANY
 from provisioningserver.rpc.exceptions import MultipleFailures
@@ -221,9 +225,11 @@ class TestCommissionAction(MAASServerTestCase):
             power_type='ether_wake')
         self.patch_autospec(node, 'start_transition_monitor')
         node_start = self.patch(node, 'start')
+        node_start.side_effect = lambda user, user_data: post_commit()
         admin = factory.make_admin()
         action = Commission(node, admin)
-        action.execute()
+        with post_commit_hooks:
+            action.execute()
         self.assertEqual(NODE_STATUS.COMMISSIONING, node.status)
         self.assertThat(
             node_start, MockCalledOnceWith(admin, user_data=ANY))
@@ -248,9 +254,12 @@ class TestAbortAction(MAASServerTestCase):
             power_type='virsh')
         self.patch_autospec(node, 'stop_transition_monitor')
         node_stop = self.patch_autospec(node, 'stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
         admin = factory.make_admin()
 
-        Abort(node, admin).execute()
+        with post_commit_hooks:
+            Abort(node, admin).execute()
 
         self.assertEqual(NODE_STATUS.NEW, node.status)
         self.assertThat(node_stop, MockCalledOnceWith(admin))
