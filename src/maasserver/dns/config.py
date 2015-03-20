@@ -14,8 +14,11 @@ str = None
 __metaclass__ = type
 __all__ = [
     'dns_add_zones',
+    'dns_add_zones_now',
     'dns_update_all_zones',
+    'dns_update_all_zones_now',
     'dns_update_zones',
+    'dns_update_zones_now',
     ]
 
 from django.conf import settings
@@ -31,6 +34,10 @@ from maasserver.sequence import (
     Sequence,
     )
 from maasserver.utils import synchronised
+from maasserver.utils.orm import (
+    post_commit,
+    transactional,
+    )
 from provisioningserver.dns.actions import (
     bind_reconfigure,
     bind_reload,
@@ -41,6 +48,7 @@ from provisioningserver.dns.actions import (
     bind_write_zones,
     )
 from provisioningserver.logger import get_maas_logger
+from provisioningserver.utils.twisted import callOutToThread
 
 
 maaslog = get_maas_logger("dns")
@@ -70,8 +78,14 @@ def is_dns_enabled():
     return settings.DNS_CONNECT
 
 
+# Whether to defer DNS changes to a post-commit hook or not. In normal use we
+# want to defer all DNS changes until after a commit, but for testing it can
+# be useful to have immediate feedback.
+DNS_DEFER_UPDATES = True
+
+
 @synchronised(locks.dns)
-def dns_add_zones(clusters):
+def dns_add_zones_now(clusters):
     """Add zone files for the given cluster(s), and serve them.
 
     Serving these new zone files means updating BIND's configuration to
@@ -95,8 +109,23 @@ def dns_add_zones(clusters):
     bind_reconfigure()
 
 
+def dns_add_zones(clusters):
+    """Arrange for `dns_add_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        if DNS_DEFER_UPDATES:
+            return post_commit().addCallback(
+                callOutToThread, transactional(dns_add_zones_now), clusters)
+        else:
+            return dns_add_zones_now(clusters)
+    else:
+        return None
+
+
 @synchronised(locks.dns)
-def dns_update_zones(clusters):
+def dns_update_zones_now(clusters):
     """Update the zone files for the given cluster(s).
 
     Once the new zone files have been written, BIND is asked to reload them.
@@ -115,8 +144,23 @@ def dns_update_zones(clusters):
         bind_reload_zone(zone.zone_name)
 
 
+def dns_update_zones(clusters):
+    """Arrange for `dns_update_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        if DNS_DEFER_UPDATES:
+            return post_commit().addCallback(
+                callOutToThread, transactional(dns_update_zones_now), clusters)
+        else:
+            return dns_update_zones_now(clusters)
+    else:
+        return None
+
+
 @synchronised(locks.dns)
-def dns_update_all_zones(reload_retry=False, force=False):
+def dns_update_all_zones_now(reload_retry=False, force=False):
     """Update all zone files for the given cluster(s), and serve them.
 
     Serving these zone files means updating BIND's configuration to include
@@ -140,9 +184,9 @@ def dns_update_all_zones(reload_retry=False, force=False):
 
     # We should not be calling bind_write_options() here; call-sites should be
     # making a separate call. It's a historical legacy, where many sites now
-    # expect this side-effect from calling dns_update_all_zones(), and some
-    # that call it for this side-effect alone. At present all it does is set
-    # the upstream DNS servers, nothing to do with serving zones at all!
+    # expect this side-effect from calling dns_update_all_zones_now(), and
+    # some that call it for this side-effect alone. At present all it does is
+    # set the upstream DNS servers, nothing to do with serving zones at all!
     bind_write_options(upstream_dns=get_upstream_dns())
 
     # Nor should we be rewriting ACLs that are related only to allowing
@@ -159,6 +203,23 @@ def dns_update_all_zones(reload_retry=False, force=False):
         bind_reload_with_retries()
     else:
         bind_reload()
+
+
+def dns_update_all_zones(reload_retry=False, force=False):
+    """Arrange for `dns_update_all_zones_now` to be called post-commit.
+
+    :return: The post-commit `Deferred`.
+    """
+    if is_dns_enabled():
+        if DNS_DEFER_UPDATES:
+            return post_commit().addCallback(
+                callOutToThread, transactional(dns_update_all_zones_now),
+                reload_retry=reload_retry, force=force)
+        else:
+            return dns_update_all_zones_now(
+                reload_retry=reload_retry, force=force)
+    else:
+        return None
 
 
 def get_upstream_dns():

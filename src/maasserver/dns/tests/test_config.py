@@ -24,8 +24,11 @@ from maasserver import locks
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
     dns_add_zones,
+    dns_add_zones_now,
     dns_update_all_zones,
+    dns_update_all_zones_now,
     dns_update_zones,
+    dns_update_zones_now,
     get_trusted_networks,
     get_upstream_dns,
     is_dns_enabled,
@@ -44,6 +47,7 @@ from maasserver.models import (
     )
 from maasserver.testing.factory import factory
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.fakemethod import FakeMethod
 from maastesting.matchers import (
     MockCalledOnceWith,
@@ -72,8 +76,12 @@ from provisioningserver.testing.tests.test_bindfixture import dig_call
 from testtools.matchers import (
     Contains,
     FileContains,
+    HasLength,
+    Is,
+    IsInstance,
     MatchesStructure,
     )
+from twisted.internet.defer import Deferred
 
 
 class TestDNSUtilities(MAASServerTestCase):
@@ -95,6 +103,70 @@ class TestDNSUtilities(MAASServerTestCase):
             [next_zone_serial() for _ in range(initial, initial + 10)])
 
 
+class TestDeferringChangesPostCommit(MAASServerTestCase):
+    """
+    Tests for several functions that, by default, defer work until after a
+    successful commit.
+    """
+
+    scenarios = (
+        ("dns_add_zones", {
+            "now_function": dns_add_zones_now,
+            "calling_function": dns_add_zones,
+            "args": [sentinel.cluster],
+            "kwargs": {},
+        }),
+        ("dns_update_zones", {
+            "now_function": dns_update_zones_now,
+            "calling_function": dns_update_zones,
+            "args": [sentinel.cluster],
+            "kwargs": {},
+        }),
+        ("dns_update_all_zones", {
+            "now_function": dns_update_all_zones_now,
+            "calling_function": dns_update_all_zones,
+            "args": [],
+            "kwargs": {
+                "reload_retry": sentinel.reload_retry,
+                "force": sentinel.force,
+            },
+        }),
+    )
+
+    def patch_now_function(self):
+        func = self.patch(dns_config_module, self.now_function.__name__)
+        func.__name__ = self.now_function.__name__
+        return func
+
+    def test__defers_by_default(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        func = self.patch_now_function()
+        result = self.calling_function(*self.args, **self.kwargs)
+        self.assertThat(result, IsInstance(Deferred))
+        self.assertThat(func, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(func, MockCalledOnceWith(*self.args, **self.kwargs))
+
+    def test__does_nothing_if_DNS_CONNECT_is_False(self):
+        self.patch(settings, "DNS_CONNECT", False)
+        func = self.patch_now_function()
+        result = self.calling_function(*self.args, **self.kwargs)
+        self.assertThat(result, Is(None))
+        self.assertThat(func, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(func, MockNotCalled())
+
+    def test__calls_immediately_if_defer_is_False(self):
+        self.patch(settings, "DNS_CONNECT", True)
+        self.patch(dns_config_module, "DNS_DEFER_UPDATES", False)
+        func = self.patch_now_function()
+        func.return_value = sentinel.okay_now
+        result = self.calling_function(*self.args, **self.kwargs)
+        self.assertThat(result, Is(sentinel.okay_now))
+        self.assertThat(func, MockCalledOnceWith(*self.args, **self.kwargs))
+        self.assertThat(post_commit_hooks.hooks, HasLength(0))
+
+
 class TestDNSServer(MAASServerTestCase):
     """A base class to perform real-world DNS-related tests.
 
@@ -107,6 +179,9 @@ class TestDNSServer(MAASServerTestCase):
 
     def setUp(self):
         super(TestDNSServer, self).setUp()
+        # Immediately make DNS changes as they're needed.
+        self.patch(dns_config_module, "DNS_DEFER_UPDATES", False)
+        # Create a DNS server.
         self.bind = self.useFixture(BINDServer())
         patch_dns_config_path(self, self.bind.config.homedir)
         # Use a random port for rndc.
@@ -141,7 +216,7 @@ class TestDNSServer(MAASServerTestCase):
             interface.static_ip_range_low, interface.static_ip_range_high)
         static_ip = unicode(islice(ips, lease_number, lease_number + 1).next())
         staticaddress = factory.make_StaticIPAddress(ip=static_ip, mac=mac)
-        dns_update_zones([nodegroup])
+        dns_update_zones_now(nodegroup)
         return nodegroup, node, staticaddress
 
     def dig_resolve(self, fqdn, version=4):
@@ -184,57 +259,57 @@ class TestDNSModificationUsesLocks(TestDNSServer):
         def check_dns_is_locked():
             self.assertTrue(
                 locks.dns.is_locked(), "locks.dns isn't locked")
-            return False  # Prevent dns_update_zones from continuing.
+            return False  # Prevent dns_update_zones_now from continuing.
 
         is_dns_enabled = self.patch_autospec(
             dns_config_module, 'is_dns_enabled')
         is_dns_enabled.side_effect = check_dns_is_locked
         return is_dns_enabled
 
-    def test_dns_update_zones_uses_lock(self):
+    def test_dns_update_zones_now_uses_lock(self):
         is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_update_zones(sentinel.nodegroup)
+        dns_config_module.dns_update_zones_now(sentinel.nodegroup)
         self.assertThat(is_dns_enabled, MockCalledOnceWith())
 
-    def test_dns_add_zones_uses_lock(self):
+    def test_dns_add_zones_now_uses_lock(self):
         is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_add_zones(sentinel.nodegroup)
+        dns_config_module.dns_add_zones_now(sentinel.nodegroup)
         self.assertThat(is_dns_enabled, MockCalledOnceWith())
 
-    def test_dns_update_all_zones_config_uses_lock(self):
+    def test_dns_update_all_zones_now_config_uses_lock(self):
         is_dns_enabled = self.patch_is_dns_enabled()
-        dns_config_module.dns_update_all_zones()
+        dns_config_module.dns_update_all_zones_now()
         self.assertThat(is_dns_enabled, MockCalledOnceWith())
 
 
 class TestDNSConfigModifications(TestDNSServer):
 
-    def test_dns_add_zones_loads_dns_zone(self):
+    def test_dns_add_zones_now_loads_dns_zone(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_add_zones(nodegroup)
+        dns_add_zones_now(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
-    def test_dns_add_zones_preserves_trusted_networks(self):
+    def test_dns_add_zones_now_preserves_trusted_networks(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
         get_trusted_networks_patch.return_value = [trusted_network]
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_add_zones(nodegroup)
+        dns_add_zones_now(nodegroup)
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
 
-    def test_dns_update_zones_changes_dns_zone(self):
+    def test_dns_update_zones_now_changes_dns_zone(self):
         nodegroup, _, _ = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         nodegroup, new_node, new_static = (
             self.create_nodegroup_with_static_ip(
                 nodegroup=nodegroup, lease_number=2))
-        dns_update_zones(nodegroup)
+        dns_update_zones_now(nodegroup)
         self.assertDNSMatches(new_node.hostname, nodegroup.name, new_static.ip)
 
     def test_is_dns_enabled_return_false_if_DNS_CONNECT_False(self):
@@ -252,49 +327,49 @@ class TestDNSConfigModifications(TestDNSServer):
         self.create_managed_nodegroup()
         self.assertTrue(is_dns_in_use())
 
-    def test_dns_update_all_zones_loads_full_dns_config(self):
+    def test_dns_update_all_zones_now_loads_full_dns_config(self):
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         self.assertDNSMatches(node.hostname, nodegroup.name, static.ip)
 
-    def test_dns_update_all_zones_passes_reload_retry_parameter(self):
+    def test_dns_update_all_zones_now_passes_reload_retry_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
         bind_reload_with_retries = self.patch_autospec(
             dns_config_module, "bind_reload_with_retries")
-        dns_update_all_zones(reload_retry=True)
+        dns_update_all_zones_now(reload_retry=True)
         self.assertThat(bind_reload_with_retries, MockCalledOnceWith())
 
-    def test_dns_update_all_zones_passes_upstream_dns_parameter(self):
+    def test_dns_update_all_zones_now_passes_upstream_dns_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
         random_ip = factory.make_ipv4_address()
         Config.objects.set_config("upstream_dns", random_ip)
         bind_write_options = self.patch_autospec(
             dns_config_module, "bind_write_options")
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         self.assertThat(
             bind_write_options,
             MockCalledOnceWith(upstream_dns=[random_ip]))
 
-    def test_dns_update_all_zones_writes_trusted_networks_parameter(self):
+    def test_dns_update_all_zones_now_writes_trusted_networks_parameter(self):
         self.patch(settings, 'DNS_CONNECT', True)
         self.create_managed_nodegroup()
         trusted_network = factory.make_ipv4_address()
         get_trusted_networks_patch = self.patch(
             dns_config_module, 'get_trusted_networks')
         get_trusted_networks_patch.return_value = [trusted_network]
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         self.assertThat(
             compose_config_path(DNSConfig.target_file_name),
             FileContains(matcher=Contains(trusted_network)))
 
-    def test_dns_update_all_zones_does_nada_if_no_interface_configured(self):
+    def test_dns_update_all_zones_now_does_nada_if_no_iface_configured(self):
         self.patch(settings, 'DNS_CONNECT', True)
         bind_write_configuration = self.patch_autospec(
             dns_config_module, "bind_write_configuration")
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         self.assertThat(bind_write_configuration, MockNotCalled())
 
     def test_dns_config_has_NS_record(self):
@@ -302,7 +377,7 @@ class TestDNSConfigModifications(TestDNSServer):
         self.patch(settings, 'DEFAULT_MAAS_URL', 'http://%s/' % ip)
         nodegroup, node, static = self.create_nodegroup_with_static_ip()
         self.patch(settings, 'DNS_CONNECT', True)
-        dns_update_all_zones()
+        dns_update_all_zones_now()
         # Get the NS record for the zone 'nodegroup.name'.
         ns_record = dig_call(
             port=self.bind.config.port,
@@ -416,7 +491,7 @@ class TestDNSBackwardCompat(TestDNSServer):
         ip = "%s" % random.choice(ip_range)
         lease = factory.make_DHCPLease(
             nodegroup=nodegroup, mac=mac.mac_address, ip=ip)
-        dns_update_zones([nodegroup])
+        dns_update_zones_now(nodegroup)
         self.assertDNSMatches(node.hostname, nodegroup.name, lease.ip)
 
 

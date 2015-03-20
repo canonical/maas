@@ -22,7 +22,6 @@ import sys
 
 import bson
 from django.core.urlresolvers import reverse
-from django.db import transaction
 from maasserver import forms
 from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
@@ -1497,9 +1496,8 @@ class TestAbortOperation(APITransactionTestCase):
         return reverse('node_handler', args=[node.system_id])
 
     def test_abort_operation_changes_state(self):
-        with transaction.atomic():
-            node = factory.make_Node(
-                status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
+        node = factory.make_Node(
+            status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
         node_stop = self.patch(node, "stop")
         node_stop.side_effect = lambda user: post_commit()
 
@@ -1511,8 +1509,7 @@ class TestAbortOperation(APITransactionTestCase):
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
 
     def test_abort_operation_fails_for_unsupported_operation(self):
-        with transaction.atomic():
-            node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
