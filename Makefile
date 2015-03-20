@@ -138,6 +138,10 @@ bin/flake8: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install flake8
 	@touch --no-create $@
 
+bin/rst-lint: bin/buildout buildout.cfg versions.cfg setup.py
+	$(buildout) install rst-lint
+	@touch --no-create $@
+
 bin/sphinx bin/sphinx-build: bin/buildout buildout.cfg versions.cfg setup.py
 	$(buildout) install sphinx
 	@touch --no-create $@
@@ -197,7 +201,7 @@ coverage.data:
 	@$(error Use `$(MAKE) test` to generate coverage data, or invoke a \
             test script using the `--with-coverage` flag)
 
-lint: lint-py lint-js lint-doc
+lint: lint-py lint-js lint-doc lint-rst
 
 pocketlint = $(call available,pocketlint,python-pocket-lint)
 
@@ -216,10 +220,20 @@ lint-py: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities
 lint-py: bin/flake8
 	@find $(sources) -name '*.py' ! -path '*/migrations/*' -print0 \
 	    | xargs -r0 -n50 -P4 bin/flake8 --ignore=E123 --config=/dev/null
-	@./utilities/check-maaslog-exception
+	@utilities/check-maaslog-exception
 
 lint-doc:
-	@./utilities/doc-lint
+	@utilities/doc-lint
+
+# lint-rst 0.11.1 shouldn't be used on our documentation because it
+# doesn't understand Sphinx's extensions, and doesn't grok linking
+# between documents, hence complaints about broken links. However,
+# Sphinx itself warns about lint when building the docs.
+lint-rst: sources = README schema/README.rst
+lint-rst: bin/rst-lint
+	@find $(sources) -type f \
+	    -printf 'Linting %p...\n' \
+	    -exec bin/rst-lint --encoding=utf8 {} \;
 
 # JavaScript lint is checked in parallel for speed.  The -n20 -P4 seetting
 # worked well on a multicore SSD machine with the files cached, roughly
@@ -231,7 +245,7 @@ lint-js:
 # Apply automated formatting to all Python files.
 format: sources = $(wildcard *.py contrib/*.py) src templates twisted utilities etc
 format:
-	@find $(sources) -name '*.py' -print0 | xargs -r0 ./utilities/format-imports
+	@find $(sources) -name '*.py' -print0 | xargs -r0 utilities/format-imports
 
 check: clean test
 
