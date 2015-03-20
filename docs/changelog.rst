@@ -14,6 +14,7 @@ Bug Fix Update
 #1403909    Do not deallocate StaticIPAddress before node has powered off.
 #1405998    Remove all OOPS reporting.
 #1423931    Update the nodes host maps when a sticky ip address is claimed over the API.
+#1433697    Look for bootloaders in /usr/lib/EXTLINUX
 
 
 1.7.1
