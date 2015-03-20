@@ -19,10 +19,7 @@ __all__ = [
 import logging
 from time import sleep
 
-from django.db import (
-    connection,
-    transaction,
-    )
+from django.db import connection
 from django.db.utils import DatabaseError
 from maasserver import (
     locks,
@@ -33,7 +30,11 @@ from maasserver.dns.config import dns_update_all_zones
 from maasserver.fields import register_mac_type
 from maasserver.models import NodeGroup
 from maasserver.triggers import register_all_triggers
-from maasserver.utils.orm import get_psycopg2_exception
+from maasserver.utils import synchronised
+from maasserver.utils.orm import (
+    get_psycopg2_exception,
+    transactional,
+    )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.upgrade_cluster import create_gnupg_home
 
@@ -53,7 +54,6 @@ def start_up():
     but this method uses database locking to ensure that the methods it calls
     internally are not run concurrently.
     """
-
     while True:
         try:
             # Get the shared secret from Tidmouth sheds which was generated
@@ -64,10 +64,7 @@ def start_up():
             # Execute other start-up tasks that must not run concurrently with
             # other invocations of themselves, across the whole of this MAAS
             # installation.
-            with transaction.atomic():
-                with locks.startup:
-                    inner_start_up()
-
+            inner_start_up()
         except SystemExit:
             raise
         except KeyboardInterrupt:
@@ -93,6 +90,8 @@ def start_up():
             break
 
 
+@transactional
+@synchronised(locks.startup)
 def inner_start_up():
     """Startup jobs that must run serialized w.r.t. other starting servers."""
     # Register our MAC data type with psycopg.

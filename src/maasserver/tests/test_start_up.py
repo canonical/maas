@@ -43,7 +43,7 @@ class LockChecker:
         self.call_count = 0
         self.lock_was_held = None
 
-    def __call__(self):
+    def __call__(self, *args, **kwargs):
         self.call_count += 1
         self.lock_was_held = locks.startup.is_locked()
 
@@ -66,10 +66,10 @@ class TestStartUp(MAASServerTestCase):
         # start_up starts the Twisted event loop, so we need to stop it.
         eventloop.reset().wait(5)
 
-    def test_start_up_runs_in_exclusion(self):
+    def test_inner_start_up_runs_in_exclusion(self):
         lock_checker = LockChecker()
-        self.patch(start_up, 'inner_start_up', lock_checker)
-        start_up.start_up()
+        self.patch(start_up, 'dns_update_all_zones', lock_checker)
+        start_up.inner_start_up()
         self.assertEqual(1, lock_checker.call_count)
         self.assertEqual(True, lock_checker.lock_was_held)
 
