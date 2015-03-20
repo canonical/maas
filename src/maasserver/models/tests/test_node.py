@@ -782,11 +782,21 @@ class TestNode(MAASServerTestCase):
             status=NODE_STATUS.DISK_ERASING, owner=owner,
             agent_name=agent_name)
         node_stop = self.patch(node, 'stop')
-        node.abort_disk_erasing(owner)
-        self.assertEqual(
-            (owner, NODE_STATUS.FAILED_DISK_ERASING, agent_name),
-            (node.owner, node.status, node.agent_name))
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
+        self.patch(Node, "_set_status")
+
+        with post_commit_hooks:
+            node.abort_disk_erasing(owner)
+
         self.assertThat(node_stop, MockCalledOnceWith(owner))
+        self.assertThat(node._set_status, MockCalledOnceWith(
+            node.system_id, NODE_STATUS.FAILED_DISK_ERASING))
+
+        # Neither the owner nor the agent has been changed.
+        node = reload_object(node)
+        self.expectThat(node.owner, Equals(owner))
+        self.expectThat(node.agent_name, Equals(agent_name))
 
     def test_start_disk_erasing_reverts_to_sane_state_on_error(self):
         # If start_disk_erasing encounters an error when calling start(), it
@@ -887,8 +897,8 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DISK_ERASING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "%s: Unable to shut node down: %s",
-                node.hostname, unicode(exception)))
+                "%s: Error when aborting disk erasure: %s",
+                node.hostname, exception))
 
     def test_release_node_that_has_power_on_and_controlled_power_type(self):
         agent_name = factory.make_name('agent-name')

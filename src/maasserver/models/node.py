@@ -1414,7 +1414,7 @@ class Node(CleanSave, TimestampedModel):
     @classmethod
     @asynchronous
     def _start_disk_erasing_async(cls, is_starting, hostname):
-        """Start disk erasing, the post-commit bits.
+        """Start disk erasing, some of the post-commit bits.
 
         :param is_starting: A boolean indicating if MAAS is able to start this
             node itself, or if manual intervention is needed.
@@ -1428,27 +1428,72 @@ class Node(CleanSave, TimestampedModel):
                 "must be started manually", hostname)
 
     def abort_disk_erasing(self, user):
-        """
-        Power off disk erasing node and set its status to 'failed disk
-        erasing'.
+        """Power off disk erasing node and set a failed status.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to stop the node. This is already registered as a
+            post-commit hook; it should not be added a second time.
         """
         if self.status != NODE_STATUS.DISK_ERASING:
             raise NodeStateViolation(
                 "Cannot abort disk erasing of a non disk erasing node: "
                 "node %s is in state %s."
                 % (self.system_id, NODE_STATUS_CHOICES_DICT[self.status]))
-        maaslog.info(
-            "%s: Aborting disk erasing", self.hostname)
+
         try:
-            self.stop(user)
-        except Exception as ex:
+            # Node.stop() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            stopping = self.stop(user)
+        except Exception as error:
             maaslog.error(
-                "%s: Unable to shut node down: %s", self.hostname,
-                unicode(ex))
+                "%s: Error when aborting disk erasure: %s",
+                self.hostname, error)
             raise
         else:
-            self.status = NODE_STATUS.FAILED_DISK_ERASING
-            self.save()
+            # Don't permit naive mocking of stop(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(stopping, Deferred) or stopping is None
+
+            if stopping is None:
+                stopping = post_commit()
+                # MAAS cannot stop the node itself.
+                is_stopping = False
+            else:
+                # MAAS can direct the node to stop.
+                is_stopping = True
+
+            stopping.addCallback(
+                callOut, self._abort_disk_erasing_async, is_stopping,
+                self.hostname, self.system_id)
+
+            def eb_abort(failure, hostname):
+                maaslog.error(
+                    "%s: Error when aborting disk erasure: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return stopping.addErrback(eb_abort, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _abort_disk_erasing_async(cls, is_stopping, hostname, system_id):
+        """Abort disk erasing, some of the post-commit bits.
+
+        :param is_stopping: A boolean indicating if MAAS is able to stop this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        :param system_id: The system ID for the node.
+        """
+        d = deferToThread(
+            cls._set_status, system_id, NODE_STATUS.FAILED_DISK_ERASING)
+        if is_stopping:
+            return d.addCallback(
+                callOut, maaslog.info, "%s: Disk erasing aborted", hostname)
+        else:
+            return d.addCallback(
+                callOut, maaslog.warning, "%s: Could not stop node to abort "
+                "disk erasure; it must be stopped manually", hostname)
 
     def abort_operation(self, user):
         """Abort the current operation.

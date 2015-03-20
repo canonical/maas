@@ -248,12 +248,15 @@ class TestAbortAction(MAASTransactionServerTestCase):
                 status=NODE_STATUS.DISK_ERASING, owner=owner)
 
         node_stop = self.patch_autospec(node, 'stop')
+        # Return a post-commit hook from Node.stop().
+        node_stop.side_effect = lambda user: post_commit()
 
         with post_commit_hooks:
             with transaction.atomic():
                 Abort(node, owner).execute()
 
         with transaction.atomic():
+            node = reload_object(node)
             self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
         self.assertThat(node_stop, MockCalledOnceWith(owner))

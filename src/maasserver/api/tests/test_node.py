@@ -8,11 +8,6 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
-from testtools.matchers import (
-    HasLength,
-    Not,
-    )
-
 
 str = None
 
@@ -27,6 +22,7 @@ import sys
 
 import bson
 from django.core.urlresolvers import reverse
+from django.db import transaction
 from maasserver import forms
 from maasserver.api import nodes as api_nodes
 from maasserver.enum import (
@@ -40,11 +36,16 @@ from maasserver.fields import (
     MAC_ERROR_MSG,
     )
 from maasserver.models import (
+    MACAddress,
     Node,
     node as node_module,
-    StaticIPAddress, MACAddress)
+    StaticIPAddress,
+    )
 from maasserver.models.node import RELEASABLE_STATUSES
-from maasserver.testing.api import APITestCase
+from maasserver.testing.api import (
+    APITestCase,
+    APITransactionTestCase,
+    )
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.oauthclient import OAuthAuthenticatedClient
@@ -54,6 +55,7 @@ from maasserver.testing.orm import (
     )
 from maasserver.testing.osystems import make_usable_osystem
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.orm import post_commit
 from maastesting.matchers import (
     Equals,
     MockCalledOnceWith,
@@ -69,6 +71,10 @@ from mock import ANY
 from netaddr import IPAddress
 from provisioningserver.rpc.exceptions import PowerActionAlreadyInProgress
 from provisioningserver.utils.enum import map_enum
+from testtools.matchers import (
+    HasLength,
+    Not,
+    )
 
 
 class NodeAnonAPITest(MAASServerTestCase):
@@ -1483,7 +1489,7 @@ class TestPowerParameters(APITestCase):
             httplib.FORBIDDEN, response.status_code, response.content)
 
 
-class TestAbortOperation(APITestCase):
+class TestAbortOperation(APITransactionTestCase):
     """Tests for /api/1.0/nodes/<node>/?op=abort_operation"""
 
     def get_node_uri(self, node):
@@ -1491,17 +1497,22 @@ class TestAbortOperation(APITestCase):
         return reverse('node_handler', args=[node.system_id])
 
     def test_abort_operation_changes_state(self):
-        node = factory.make_Node(
-            status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
-        self.patch_autospec(node_module.Node, "stop")
+        with transaction.atomic():
+            node = factory.make_Node(
+                status=NODE_STATUS.DISK_ERASING, owner=self.logged_in_user)
+        node_stop = self.patch(node, "stop")
+        node_stop.side_effect = lambda user: post_commit()
+
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
+
         self.assertEqual(httplib.OK, response.status_code)
         self.assertEqual(
             NODE_STATUS.FAILED_DISK_ERASING, reload_object(node).status)
 
     def test_abort_operation_fails_for_unsupported_operation(self):
-        node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
+        with transaction.atomic():
+            node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         response = self.client.post(
             self.get_node_uri(node), {'op': 'abort_operation'})
         self.assertEqual(httplib.FORBIDDEN, response.status_code)
