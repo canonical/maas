@@ -109,7 +109,6 @@ from maasserver.utils import (
     )
 from maasserver.utils.mac import get_vendor_for_mac
 from maasserver.utils.orm import (
-    commit_within_atomic_block,
     get_one,
     post_commit,
     post_commit_do,
@@ -900,7 +899,13 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def start_commissioning(self, user):
-        """Install OS and self-test a new node."""
+        """Install OS and self-test a new node.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to start and commission the node. This is already
+            registered as a post-commit hook; it should not be added a second
+            time.
+        """
         # Avoid circular imports.
         from metadataserver.user_data.commissioning import generate_user_data
         from metadataserver.models import NodeResult
@@ -1003,7 +1008,12 @@ class Node(CleanSave, TimestampedModel):
 
     @transactional
     def abort_commissioning(self, user):
-        """Power off a commissioning node and set its status to 'declared'."""
+        """Power off a commissioning node and set its status to NEW.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to stop the node. This is already registered as a
+            post-commit hook; it should not be added a second time.
+        """
         if self.status != NODE_STATUS.COMMISSIONING:
             raise NodeStateViolation(
                 "Cannot abort commissioning of a non-commissioning node: "
@@ -1337,7 +1347,13 @@ class Node(CleanSave, TimestampedModel):
         maaslog.info("%s allocated to user %s", self.hostname, user.username)
 
     def start_disk_erasing(self, user):
-        """Erase the disks on a node."""
+        """Erase the disks on a node.
+
+        :return: a `Deferred` which contains the post-commit tasks that are
+            required to run to start and erase the node. This is already
+            registered as a post-commit hook; it should not be added a second
+            time.
+        """
         # Avoid circular imports.
         from metadataserver.user_data.disk_erasing import generate_user_data
 
@@ -1346,28 +1362,70 @@ class Node(CleanSave, TimestampedModel):
         # nodes in bulk.
         self.status = NODE_STATUS.DISK_ERASING
         self.save()
-        # Commit before starting the node.
-        commit_within_atomic_block()
-        maaslog.info("%s: Starting disk erasure", self.hostname)
+
         try:
-            self.start(user, user_data=disk_erase_user_data)
-        except Exception as ex:
+            # Node.start() has synchronous and asynchronous parts, so catch
+            # exceptions arising synchronously, and chain callbacks to the
+            # Deferred it returns for the asynchronous (post-commit) bits.
+            starting = self.start(user, user_data=disk_erase_user_data)
+        except Exception as error:
             # We always mark the node as failed here, although we could
             # potentially move it back to the state it was in previously. For
             # now, though, this is safer, since it marks the node as needing
-            # attention. Reverting the status /may/ break if the node's status
-            # has been changed elsewhere during the call to start() and the
-            # transition from that status to this is not allowed.
+            # attention.
             self.status = NODE_STATUS.FAILED_DISK_ERASING
             self.save()
-            commit_within_atomic_block()
             maaslog.error(
-                "%s: Unable to start node: %s", self.hostname,
-                unicode(ex))
+                "%s: Could not start node for disk erasure: %s",
+                self.hostname, error)
+            # Let the exception bubble up, since the UI or API will have to
+            # deal with it.
             raise
         else:
-            maaslog.info(
-                "%s: Disk erasure started.", self.hostname)
+            # Don't permit naive mocking of start(); it causes too much
+            # confusion when testing. Return a Deferred from side_effect.
+            assert isinstance(starting, Deferred) or starting is None
+
+            if starting is None:
+                starting = post_commit()
+                # MAAS cannot start the node itself.
+                is_starting = False
+            else:
+                # MAAS can direct the node to start.
+                is_starting = True
+
+            starting.addCallback(
+                callOut, self._start_disk_erasing_async, is_starting,
+                self.hostname)
+
+            # If there's an error, reset the node's status.
+            starting.addErrback(
+                callOutToThread, self._set_status,
+                NODE_STATUS.FAILED_DISK_ERASING, self.system_id)
+
+            def eb_start(failure, hostname):
+                maaslog.error(
+                    "%s: Could not start node for disk erasure: %s",
+                    hostname, failure.getErrorMessage())
+                return failure  # Propagate.
+
+            return starting.addErrback(eb_start, self.hostname)
+
+    @classmethod
+    @asynchronous
+    def _start_disk_erasing_async(cls, is_starting, hostname):
+        """Start disk erasing, the post-commit bits.
+
+        :param is_starting: A boolean indicating if MAAS is able to start this
+            node itself, or if manual intervention is needed.
+        :param hostname: The node's hostname, for logging.
+        """
+        if is_starting:
+            maaslog.info("%s: Disk erasure started", hostname)
+        else:
+            maaslog.warning(
+                "%s: Could not start node for disk erasure; it "
+                "must be started manually", hostname)
 
     def abort_disk_erasing(self, user):
         """

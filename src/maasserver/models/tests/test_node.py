@@ -765,7 +765,10 @@ class TestNode(MAASServerTestCase):
         node = factory.make_Node(
             status=NODE_STATUS.ALLOCATED, owner=owner, agent_name=agent_name)
         node_start = self.patch(node, 'start')
-        node.start_disk_erasing(owner)
+        # Return a post-commit hook from Node.start().
+        node_start.side_effect = lambda user, user_data: post_commit()
+        with post_commit_hooks:
+            node.start_disk_erasing(owner)
         self.expectThat(node.owner, Equals(owner))
         self.expectThat(node.status, Equals(NODE_STATUS.DISK_ERASING))
         self.expectThat(node.agent_name, Equals(agent_name))
@@ -820,8 +823,8 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
         self.assertThat(
             maaslog.error, MockCalledOnceWith(
-                "%s: Unable to start node: %s",
-                node.hostname, unicode(exception)))
+                "%s: Could not start node for disk erasure: %s",
+                node.hostname, exception))
 
     def test_abort_operation_aborts_commissioning(self):
         agent_name = factory.make_name('agent-name')
