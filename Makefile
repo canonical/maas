@@ -229,7 +229,7 @@ lint-doc:
 # doesn't understand Sphinx's extensions, and doesn't grok linking
 # between documents, hence complaints about broken links. However,
 # Sphinx itself warns about lint when building the docs.
-lint-rst: sources = README schema/README.rst
+lint-rst: sources = README HACKING.txt schema/README.rst
 lint-rst: bin/rst-lint
 	@find $(sources) -type f \
 	    -printf 'Linting %p...\n' \
