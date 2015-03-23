@@ -53,6 +53,13 @@
             </div>
         </div>
     </header>
+    <div class="inner-wrapper">
+        <ul class="flash-messages">
+            <li class="flash-messages__item error ng-hide"
+                data-ng-repeat="(error_type, error) in errors"
+                data-ng-show="error.viewable">{$ error.message $}</li>
+        </ul>
+    </div>
     <div class="row">
         <div class="inner-wrapper">
             <form>
@@ -83,7 +90,8 @@
                         <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
                             data-ng-disabled="!summary.editing"
                             data-ng-model="summary.architecture.selected"
-                            data-ng-options="arch for arch in summary.architecture.options">
+                            data-ng-options="arch for arch in summary.architecture.options"
+                            data-ng-class="{ invalid: invalidArchitecture() }">
                             <option value="" disabled="disabled">Choose an architecture</option>
                         </select>
                     </div>
@@ -118,6 +126,7 @@
                 </div>
                 <div class="controls two-col last-col" data-ng-hide="summary.editing">
                     <a href="" class="link-cta-ubuntu secondary full"
+                        data-ng-show="canEdit()"
                         data-ng-click="editSummary()">Edit</a>
                 </div>
                 <div class="controls four-col last-col ng-hide" data-ng-show="summary.editing">
@@ -127,6 +136,7 @@
                     </div>
                     <div class="two-col last-col right no-margin-bottom">
                         <button class="cta-ubuntu full"
+                            data-ng-class="{ secondary: invalidArchitecture() }"
                             data-ng-click="saveEditSummary()">Save changes</button>
                     </div>
                 </div>
@@ -146,16 +156,18 @@
                 </fieldset>
                 <div class="controls two-col last-col" data-ng-hide="power.editing">
                     <a href="" class="link-cta-ubuntu secondary full"
+                        data-ng-show="canEdit()"
                         data-ng-click="editPower()">Edit</a>
                 </div>
                 <div class="controls four-col last-col ng-hide" data-ng-show="power.editing">
                     <div class="two-col no-margin-bottom">
                         <a href="" class="link-cta-ubuntu clear right"
-                        data-ng-click="cancelEditPower()">Cancel</a>
+                            data-ng-click="cancelEditPower()">Cancel</a>
                     </div>
                     <div class="two-col last-col no-margin-bottom">
                         <button class="cta-ubuntu full"
-                        data-ng-click="saveEditPower()">Save changes</button>
+                            data-ng-class="{ secondary: invalidPowerType() }"
+                            data-ng-click="saveEditPower()">Save changes</button>
                     </div>
                 </div>
             </form>

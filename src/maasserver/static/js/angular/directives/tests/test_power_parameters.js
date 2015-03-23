@@ -111,7 +111,7 @@ describe("maasPowerParameters", function() {
             expect(select.attr("name")).toBe("test");
             expect(select.attr("data-ng-model")).toBe("value");
             expect(select.attr("data-ng-options")).toBe(
-                "choice as choice[1] for choice in field.choices");
+                "choice[0] as choice[1] for choice in field.choices");
         });
 
         it("creates select with required", function() {

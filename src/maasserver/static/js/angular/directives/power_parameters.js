@@ -12,6 +12,7 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
             '<select name="power-type" id="power-type" class="three-col" ',
                 'placeholder="Choose a power type" ',
                 'data-ng-disabled="ngDisabled" ',
+                'data-ng-class="{ invalid: !ngModel.type }" ',
                 'data-ng-model="ngModel.type" ',
                 'data-ng-options="',
                 'type as type.description for type in maasPowerParameters">',
@@ -61,7 +62,7 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                     html += '>';
 
                     // Set the default value for the input on the model.
-                    if(!angular.isObject(scope.ngModel)) {
+                    if(angular.isUndefined(scope.ngModel)) {
                         scope.ngModel = scope.field["default"];
                     }
                 } else if(type === "choice") {
@@ -71,12 +72,12 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                         req + 'data-ng-model="' + attrs.ngModel + '" ' +
                         'data-ng-disabled="' + attrs.ngDisabled + '" ' +
                         'data-ng-options="' +
-                        'choice as choice[1] for choice in field.choices' +
+                        'choice[0] as choice[1] for choice in field.choices' +
                         '" class="three-col">';
                     html += '</select>';
 
                     // Set the default choice on the model.
-                    if(!angular.isObject(scope.ngModel)) {
+                    if(angular.isUndefined(scope.ngModel)) {
                         var i;
                         for(i = 0; i < scope.field.choices.length; i++) {
                             var choice = scope.field.choices[i];

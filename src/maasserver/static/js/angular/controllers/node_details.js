@@ -24,6 +24,27 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.availableActionOptions = [];
         $scope.osinfo = GeneralManager.getData("osinfo");
 
+        // Holds errors that are displayed on the details page.
+        $scope.errors = {
+            cluster_disconnected: {
+                viewable: false,
+                message: "The cluster this node belongs to is disconnected. " +
+                    "No changes can be made to this node until the cluster " +
+                    "is reconnected"
+            },
+            invalid_arch: {
+                viewable: false,
+                message: "This node has an invalid architecture. Update the " +
+                    "architecture for this node in the summary section below."
+            },
+            missing_power: {
+                viewable: false,
+                message: "This node does not have a power type set and " +
+                    "MAAS will be unable to control it. Update the power " +
+                    "information in the power section below."
+            }
+        };
+
         // Summary section.
         $scope.summary = {
             editing: false,
@@ -48,6 +69,59 @@ angular.module('MAAS').controller('NodeDetailsController', [
             parameters: {}
         };
 
+        // Show given error.
+        function showError(name) {
+            $scope.errors[name].viewable = true;
+        }
+
+        // Hide given error.
+        function hideError(name) {
+            $scope.errors[name].viewable = false;
+        }
+
+        // Return true if the error is viewable.
+        function isErrorViewable(name) {
+            return $scope.errors[name].viewable;
+        }
+
+        // Return true if the architecture for the given node is invalid.
+        function hasInvalidArchitecture(node) {
+            return (
+                node.architecture === "" ||
+                $scope.summary.architecture.options.indexOf(
+                    node.architecture) === -1);
+        }
+
+        // Update the shown errors based on the status of the node.
+        function updateErrors() {
+            // Check if the nodes power type is null, if so then show the
+            // missing_power error.
+            if($scope.node.power_type === "") {
+                showError("missing_power");
+            } else {
+                hideError("missing_power");
+            }
+
+            // Show architecture error if the node doesn't have an architecture
+            // or if the current architecture is not in the available
+            // architectures.
+            if(hasInvalidArchitecture($scope.node)) {
+                showError("invalid_arch");
+            } else {
+                hideError("invalid_arch");
+            }
+
+            // Show the cluster disconnected error if the cluster is not
+            // connected.
+            var cluster = ClustersManager.getItemFromList(
+                $scope.node.nodegroup.id);
+            if(!cluster.connected) {
+                showError("cluster_disconnected");
+            } else {
+                hideError("cluster_disconnected");
+            }
+        }
+
         // Updates the page title.
         function updateTitle() {
             if($scope.node && $scope.node.fqdn) {
@@ -71,18 +145,23 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Updates the currently selected items in the power section.
         function updatePower() {
-            // Do not update the selected items, when editing this would
-            // cause the users selection to change.
-            if($scope.power.editing) {
-                return;
-            }
+            // Update the viewable errors.
+            updateErrors();
 
+            // Always keep the available power types up-to-date even in
+            // editing mode.
             var cluster = ClustersManager.getItemFromList(
                 $scope.node.nodegroup.id);
             if(angular.isObject(cluster)) {
                 $scope.power.types = cluster.power_types;
             } else {
                 $scope.power.types = [];
+            }
+
+            // Do not update the selected items, when editing this would
+            // cause the users selection to change.
+            if($scope.power.editing) {
+                return;
             }
 
             var i;
@@ -93,15 +172,26 @@ angular.module('MAAS').controller('NodeDetailsController', [
                     break;
                 }
             }
+
             $scope.power.parameters = angular.copy(
                 $scope.node.power_parameters);
             if(!angular.isObject($scope.power.parameters)) {
                 $scope.power.parameters = {};
             }
+
+            // Force editing mode on, if the power_type is missing. This is
+            // placed at the bottom because we wanted the selected items to
+            // be filled in atleast once.
+            if($scope.canEdit() && $scope.node.power_type === "") {
+                $scope.power.editing = true;
+            }
         }
 
         // Updates the currently selected items in the summary section.
         function updateSummary() {
+            // Update the viewable errors.
+            updateErrors();
+
             // Do not update the selected items, when editing this would
             // cause the users selection to change.
             if($scope.summary.editing) {
@@ -113,6 +203,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             $scope.summary.zone.selected = ZonesManager.getItemFromList(
                 $scope.node.zone.id);
             $scope.summary.architecture.selected = $scope.node.architecture;
+
+            // Force editing mode on, if the architecture is invalid. This is
+            // placed at the bottom because we wanted the selected items to
+            // be filled in atleast once.
+            if($scope.canEdit() && hasInvalidArchitecture($scope.node)) {
+                $scope.summary.editing = true;
+            }
 
             // Since the summary contains the selected cluster and the
             // power type is derived for that selection. Update the power
@@ -150,6 +247,53 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // are updated.
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
+        }
+
+        // Return true if the given error is because of RPC.
+        function isDisconnectedClusterError(error) {
+            // Contains disconnected cluster if error contains this content.
+            var errorString = "Unable to get RPC connection for cluster";
+            return error.indexOf(errorString) >= 0;
+        }
+
+        // Process the given error when saving the node.
+        function handleSaveError(error) {
+            // If it errored because the cluster was disconnected update
+            // the cluster information, because this is not pushed over
+            // the websocket. If it didn't error for that reason then
+            // the cluster is connected.
+            var cluster = ClustersManager.getItemFromList(
+                $scope.node.nodegroup.id);
+            if(isDisconnectedClusterError(error)) {
+                if(angular.isObject(cluster)) {
+                    cluster.connected = false;
+                }
+            } else {
+                if(angular.isObject(cluster)) {
+                    cluster.connected = true;
+                }
+
+                // Unknown error that we currently don't track so log
+                // it to the console.
+                console.log(error);
+            }
+        }
+
+        // Update the node with new data on the region.
+        function updateNode(node) {
+            NodesManager.updateItem(node).then(function(node) {
+                // If it was able to save correctly then the cluster is
+                // connected. An error would have been raised if it wasn't.
+                var cluster = ClustersManager.getItemFromList(
+                    node.nodegroup.id);
+                if(angular.isObject(cluster)) {
+                    cluster.connected = true;
+                }
+                updateSummary();
+            }, function(error) {
+                handleSaveError(error);
+                updateSummary();
+            });
         }
 
         // Get the power state text to show.
@@ -232,6 +376,19 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 });
         };
 
+        // Return true if the current architecture selection is invalid.
+        $scope.invalidArchitecture = function() {
+            return (
+                $scope.summary.architecture.selected === "" ||
+                $scope.summary.architecture.options.indexOf(
+                    $scope.summary.architecture.selected) === -1);
+        };
+
+        // Return true when the edit buttons can be clicked.
+        $scope.canEdit = function() {
+            return !isErrorViewable("cluster_disconnected");
+        };
+
         // Called to enter edit mode in the summary section.
         $scope.editSummary = function() {
             $scope.summary.editing = true;
@@ -239,15 +396,36 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Called to cancel editing in the summary section.
         $scope.cancelEditSummary = function() {
-            $scope.summary.editing = false;
+            // Leave edit mode only if node has valid architecture.
+            if(!hasInvalidArchitecture($scope.node)) {
+                $scope.summary.editing = false;
+            }
+
             updateSummary();
         };
 
         // Called to save the changes made in the summary section.
         $scope.saveEditSummary = function() {
-            // XXX blake_r - TODO the actual saving. Currently does nothing.
+            // Do nothing if invalidArchitecture.
+            if($scope.invalidArchitecture()) {
+                return;
+            }
+
             $scope.summary.editing = false;
-            updateSummary();
+
+            // Copy the node and make the changes.
+            var node = angular.copy($scope.node);
+            node.nodegroup = angular.copy($scope.summary.cluster.selected);
+            node.zone = angular.copy($scope.summary.zone.selected);
+            node.architecture = $scope.summary.architecture.selected;
+
+            // Update the node.
+            updateNode(node);
+        };
+
+        // Return true if the current power type selection is invalid.
+        $scope.invalidPowerType = function() {
+            return !angular.isObject($scope.power.type);
         };
 
         // Called to enter edit mode in the power section.
@@ -257,15 +435,28 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Called to cancel editing in the power section.
         $scope.cancelEditPower = function() {
-            $scope.power.editing = false;
+            // Only leave edit mode if node has valid power type.
+            if($scope.node.power_type !== "") {
+                $scope.power.editing = false;
+            }
             updatePower();
         };
 
         // Called to save the changes made in the power section.
         $scope.saveEditPower = function() {
-            // XXX blake_r - TODO the actual saving. Currently does nothing.
+            // Does nothing if invalid power type.
+            if($scope.invalidPowerType()) {
+                return;
+            }
             $scope.power.editing = false;
-            updatePower();
+
+            // Copy the node and make the changes.
+            var node = angular.copy($scope.node);
+            node.power_type = $scope.power.type.name;
+            node.power_parameters = angular.copy($scope.power.parameters);
+
+            // Update the node.
+            updateNode(node);
         };
 
         // Load all the required managers.

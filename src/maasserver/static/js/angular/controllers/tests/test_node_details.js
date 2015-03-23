@@ -44,7 +44,8 @@ describe("NodeDetailsController", function() {
             id: makeInteger(0, 10000),
             name: makeName("cluster"),
             uuid: makeName("uuid"),
-            power_types: []
+            power_types: [],
+            connected: true
         };
         ClustersManager._items.push(cluster);
         return cluster;
@@ -112,6 +113,22 @@ describe("NodeDetailsController", function() {
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
+    }
+
+    // Make the controller and resolve the setActiveItem call.
+    function makeControllerResolveSetActiveItem() {
+        var setActiveDefer = $q.defer();
+        spyOn(NodesManager, "setActiveItem").and.returnValue(
+            setActiveDefer.promise);
+        var defer = $q.defer();
+        var controller = makeController(defer);
+
+        defer.resolve();
+        $rootScope.$digest();
+        setActiveDefer.resolve(node);
+        $rootScope.$digest();
+
+        return controller;
     }
 
     it("sets title to loading and page to nodes", function() {
@@ -185,53 +202,92 @@ describe("NodeDetailsController", function() {
     });
 
     it("sets node and loaded once setActiveItem resolves", function() {
-        var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
-            setActiveDefer.promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-
-        defer.resolve();
-        $rootScope.$digest();
-        setActiveDefer.resolve(node);
-        $rootScope.$digest();
-
+        var controller = makeControllerResolveSetActiveItem();
         expect($scope.node).toBe(node);
         expect($scope.loaded).toBe(true);
     });
 
     it("title is updated once setActiveItem resolves", function() {
-        var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
-            setActiveDefer.promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-
-        defer.resolve();
-        $rootScope.$digest();
-        setActiveDefer.resolve(node);
-        $rootScope.$digest();
-
+        var controller = makeControllerResolveSetActiveItem();
         expect($rootScope.title).toBe(node.fqdn);
     });
 
+    it("invalid_arch error visible if node architecture empty", function() {
+        node.architecture = "";
+
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.errors.invalid_arch.viewable).toBe(true);
+    });
+
+    it("invalid_arch error visible if node architecture not present",
+        function() {
+            GeneralManager._data.architectures.data = [makeName("arch")];
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.errors.invalid_arch.viewable).toBe(true);
+        });
+
+    it("invalid_arch error not visible if node architecture present",
+        function() {
+            GeneralManager._data.architectures.data = [node.architecture];
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.errors.invalid_arch.viewable).toBe(false);
+        });
+
+    it("summary section placed in edit mode if architecture blank",
+        function() {
+            node.architecture = "";
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.summary.editing).toBe(true);
+        });
+
+    it("summary section not placed in edit mode if architecture present",
+        function() {
+            GeneralManager._data.architectures.data = [node.architecture];
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.summary.editing).toBe(false);
+        });
+
+    it("cluster_disconnected error visible if cluster disconnected",
+        function() {
+            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+            cluster.connected = false;
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.errors.cluster_disconnected.viewable).toBe(true);
+        });
+
+    it("cluster_disconnected error not visible if cluster connected",
+        function() {
+            var cluster = ClustersManager.getItemFromList(node.nodegroup.id);
+            cluster.connected = true;
+
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.errors.cluster_disconnected.viewable).toBe(false);
+        });
+
     it("summary section is updated once setActiveItem resolves", function() {
-        var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
-            setActiveDefer.promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-
-        defer.resolve();
-        $rootScope.$digest();
-        setActiveDefer.resolve(node);
-        $rootScope.$digest();
-
+        var controller = makeControllerResolveSetActiveItem();
         expect($scope.summary.cluster.selected).toBe(
             ClustersManager.getItemFromList(node.nodegroup.id));
         expect($scope.summary.zone.selected).toBe(
             ZonesManager.getItemFromList(node.zone.id));
         expect($scope.summary.architecture.selected).toBe(node.architecture);
+    });
+
+    it("missing_power error visible if node power_type empty", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.errors.missing_power.viewable).toBe(true);
+    });
+
+    it("missing_power error not visible if node power_type empty", function() {
+        node.power_type = makeName("power");
+
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.errors.missing_power.viewable).toBe(false);
     });
 
     it("power section is updated once setActiveItem resolves", function() {
@@ -253,21 +309,23 @@ describe("NodeDetailsController", function() {
             data: makeName("data")
         };
 
-        var setActiveDefer = $q.defer();
-        spyOn(NodesManager, "setActiveItem").and.returnValue(
-            setActiveDefer.promise);
-        var defer = $q.defer();
-        var controller = makeController(defer);
-
-        defer.resolve();
-        $rootScope.$digest();
-        setActiveDefer.resolve(node);
-        $rootScope.$digest();
-
+        var controller = makeControllerResolveSetActiveItem();
         expect($scope.power.types).toBe(power_types);
         expect($scope.power.type).toBe(power_types[0]);
         expect($scope.power.parameters).toEqual(node.power_parameters);
         expect($scope.power.parameters).not.toBe(node.power_parameters);
+    });
+
+    it("power section placed in edit mode if power_type blank", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.power.editing).toBe(true);
+    });
+
+    it("power section not placed in edit mode if power_type", function() {
+        node.power_type = makeName("power");
+
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.power.editing).toBe(false);
     });
 
     it("starts watching once setActiveItem resolves", function() {
@@ -513,6 +571,30 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("invalidArchitecture", function() {
+
+        it("returns true if selected architecture empty", function() {
+            var controller = makeController();
+            $scope.summary.architecture.selected = "";
+            expect($scope.invalidArchitecture()).toBe(true);
+        });
+
+        it("returns true if selected architecture not in options", function() {
+            var controller = makeController();
+            $scope.summary.architecture.options = [makeName("arch")];
+            $scope.summary.architecture.selected = makeName("arch");
+            expect($scope.invalidArchitecture()).toBe(true);
+        });
+
+        it("returns false if selected architecture in options", function() {
+            var controller = makeController();
+            var arch = makeName("arch");
+            $scope.summary.architecture.options = [arch];
+            $scope.summary.architecture.selected = arch;
+            expect($scope.invalidArchitecture()).toBe(false);
+        });
+    });
+
     describe("editSummary", function() {
 
         it("sets editing to true for summary section", function() {
@@ -528,14 +610,24 @@ describe("NodeDetailsController", function() {
         it("sets editing to false for summary section", function() {
             var controller = makeController();
             $scope.node = node;
+            $scope.summary.architecture.options = [node.architecture];
             $scope.summary.editing = true;
             $scope.cancelEditSummary();
             expect($scope.summary.editing).toBe(false);
         });
 
+        it("doesnt set editing to false if invalid architecture", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.summary.editing = true;
+            $scope.cancelEditSummary();
+            expect($scope.summary.editing).toBe(true);
+        });
+
         it("calls updateSummary", function() {
             var controller = makeController();
             $scope.node = node;
+            $scope.summary.architecture.options = [node.architecture];
             $scope.summary.editing = true;
             $scope.cancelEditSummary();
 
@@ -549,25 +641,243 @@ describe("NodeDetailsController", function() {
 
     describe("saveEditSummary", function() {
 
-        it("sets editing to false for summary section", function() {
+        // Configures the summary area in the scope to have a new cluster,
+        // zone, and architecture.
+        function configureSummary() {
+            $scope.summary.editing = true;
+            $scope.summary.cluster.selected = makeCluster();
+            $scope.summary.zone.selected = makeZone();
+            $scope.summary.architecture.selected = makeName("architecture");
+        }
+
+        it("does nothing if invalidArchitecture", function() {
             var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(true);
+            $scope.node = node;
+            var editing = {};
+            $scope.summary.editing = editing;
+            $scope.saveEditSummary();
+
+            // Editing remains the same then the method exited early.
+            expect($scope.summary.editing).toBe(editing);
+        });
+
+        it("sets editing to false", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
             $scope.node = node;
             $scope.summary.editing = true;
             $scope.saveEditSummary();
+
             expect($scope.summary.editing).toBe(false);
         });
 
-        it("calls updateSummary", function() {
+        it("calls updateItem with copy of node", function() {
             var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
             $scope.node = node;
             $scope.summary.editing = true;
             $scope.saveEditSummary();
+
+            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithNode).not.toBe(node);
+        });
+
+        it("calls updateItem with new copied values on node", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
+            $scope.node = node;
+            configureSummary();
+            var newCluster = $scope.summary.cluster.selected;
+            var newZone = $scope.summary.zone.selected;
+            var newArchitecture = $scope.summary.architecture.selected;
+            $scope.saveEditSummary();
+
+            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithNode.nodegroup).toEqual(newCluster);
+            expect(calledWithNode.nodegroup).not.toBe(newCluster);
+            expect(calledWithNode.zone).toEqual(newZone);
+            expect(calledWithNode.zone).not.toBe(newZone);
+            expect(calledWithNode.architecture).toBe(newArchitecture);
+        });
+
+        it("calls updateSummary once updateItem resolves", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            configureSummary();
+            $scope.saveEditSummary();
+
+            defer.resolve(node);
+            $rootScope.$digest();
 
             // Since updateSummary is private in the controller, check
             // that the selected cluster is set, this will prove that
             // the method was called.
             expect($scope.summary.cluster.selected).toBe(
                 ClustersManager.getItemFromList(node.nodegroup.id));
+        });
+
+        it("sets cluster connected once updateItem resolves", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            var cluster = ClustersManager.getItemFromList(
+                node.nodegroup.id);
+            cluster.connected = false;
+
+            $scope.node = node;
+            configureSummary();
+            $scope.summary.cluster.selected = node.nodegroup;
+            $scope.saveEditSummary();
+
+            defer.resolve(node);
+            $rootScope.$digest();
+
+            expect(cluster.connected).toBe(true);
+        });
+
+        it("calls updateSummary once updateItem is rejected", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            configureSummary();
+            $scope.saveEditSummary();
+
+            spyOn(console, "log");
+            defer.reject(makeName("error"));
+            $rootScope.$digest();
+
+            // Since updateSummary is private in the controller, check
+            // that the selected cluster is set, this will prove that
+            // the method was called.
+            expect($scope.summary.cluster.selected).toBe(
+                ClustersManager.getItemFromList(node.nodegroup.id));
+        });
+
+        it("logs error if not disconnected error", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            configureSummary();
+            $scope.saveEditSummary();
+
+            spyOn(console, "log");
+            var error = makeName("error");
+            defer.reject(error);
+            $rootScope.$digest();
+
+            expect(console.log).toHaveBeenCalledWith(error);
+        });
+
+        it("doesnt log error if disconnected error", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            configureSummary();
+            $scope.saveEditSummary();
+
+            spyOn(console, "log");
+            defer.reject("Unable to get RPC connection for cluster");
+            $rootScope.$digest();
+
+            expect(console.log).not.toHaveBeenCalled();
+        });
+
+        it("sets cluster disconnected if disconnected error", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            var cluster = ClustersManager.getItemFromList(
+                node.nodegroup.id);
+            cluster.connected = true;
+
+            $scope.node = node;
+            configureSummary();
+            $scope.saveEditSummary();
+
+            defer.reject("Unable to get RPC connection for cluster");
+            $rootScope.$digest();
+
+            expect(cluster.connected).toBe(false);
+        });
+
+        it("sets cluster connected if not disconnected error", function() {
+            var controller = makeController();
+            spyOn($scope, "invalidArchitecture").and.returnValue(false);
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            var cluster = ClustersManager.getItemFromList(
+                node.nodegroup.id);
+            cluster.connected = false;
+
+            $scope.node = node;
+            configureSummary();
+            $scope.summary.cluster.selected = node.nodegroup;
+            $scope.saveEditSummary();
+
+            spyOn(console, "log");
+            defer.reject(makeName("error"));
+            $rootScope.$digest();
+
+            expect(cluster.connected).toBe(true);
+        });
+    });
+
+    describe("invalidPowerType", function() {
+
+        it("returns true if missing power type", function() {
+            var controller = makeController();
+            $scope.power.type = null;
+            expect($scope.invalidPowerType()).toBe(true);
+        });
+
+        it("returns false if selected power type", function() {
+            var controller = makeController();
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            expect($scope.invalidPowerType()).toBe(false);
         });
     });
 
@@ -585,10 +895,19 @@ describe("NodeDetailsController", function() {
 
         it("sets editing to false for power section", function() {
             var controller = makeController();
+            node.power_type = makeName("power");
             $scope.node = node;
             $scope.power.editing = true;
             $scope.cancelEditPower();
             expect($scope.power.editing).toBe(false);
+        });
+
+        it("doesnt sets editing to false when no power_type", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.cancelEditPower();
+            expect($scope.power.editing).toBe(true);
         });
 
         it("calls updatePower", function() {
@@ -616,34 +935,181 @@ describe("NodeDetailsController", function() {
 
     describe("saveEditPower", function() {
 
-        it("sets editing to false for power section", function() {
+        it("does nothing if no selected power_type", function() {
             var controller = makeController();
             $scope.node = node;
-            $scope.power.editing = true;
+            var editing = {};
+            $scope.power.editing = editing;
+            $scope.power.type = null;
             $scope.saveEditPower();
+            // Editing should still be true, because the function exitted
+            // early.
+            expect($scope.power.editing).toBe(editing);
+        });
+
+        it("sets editing to false", function() {
+            var controller = makeController();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            $scope.saveEditPower();
+
             expect($scope.power.editing).toBe(false);
         });
 
-        it("calls updatePower", function() {
+        it("calls updateItem with copy of node", function() {
             var controller = makeController();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
             $scope.node = node;
             $scope.power.editing = true;
-
-            // Set power_types so we can check that updatePower is called.
-            var cluster = ClustersManager.getItemFromList(
-                node.nodegroup.id);
-            cluster.power_types = [
-                {
-                    type: makeName("power")
-                }
-            ];
-
+            $scope.power.type = {
+                name: makeName("power")
+            };
             $scope.saveEditPower();
 
-            // Since updatePower is private in the controller, check
-            // that the power types are set from the cluster, this will
-            // prove that the method was called.
-            expect($scope.power.types).toEqual(cluster.power_types);
+            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithNode).not.toBe(node);
+        });
+
+        it("calls updateItem with new copied values on node", function() {
+            var controller = makeController();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                $q.defer().promise);
+
+            var newPowerType = {
+                name: makeName("power")
+            };
+            var newPowerParameters = {
+                foo: makeName("bar")
+            };
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = newPowerType;
+            $scope.power.parameters = newPowerParameters;
+            $scope.saveEditPower();
+
+            var calledWithNode = NodesManager.updateItem.calls.argsFor(0)[0];
+            expect(calledWithNode.power_type).toBe(newPowerType.name);
+            expect(calledWithNode.power_parameters).toEqual(
+                newPowerParameters);
+            expect(calledWithNode.power_parameters).not.toBe(
+                newPowerParameters);
+        });
+
+        it("calls updateSummary once updateItem resolves", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            $scope.power.parameters = {
+                foo: makeName("bar")
+            };
+            $scope.saveEditPower();
+
+            defer.resolve(node);
+            $rootScope.$digest();
+
+            // Since updateSummary is private in the controller, check
+            // that the selected cluster is set, this will prove that
+            // the method was called.
+            expect($scope.summary.cluster.selected).toBe(
+                ClustersManager.getItemFromList(node.nodegroup.id));
+        });
+
+        it("sets cluster connected once updateItem resolves", function() {
+            var controller = makeController();
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            var cluster = ClustersManager.getItemFromList(
+                node.nodegroup.id);
+            cluster.connected = false;
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            $scope.power.parameters = {
+                foo: makeName("bar")
+            };
+            $scope.saveEditPower();
+
+            defer.resolve(node);
+            $rootScope.$digest();
+
+            expect(cluster.connected).toBe(true);
+        });
+
+        it("calls updateSummary once updateItem is rejected", function() {
+            var controller = makeController();
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            $scope.power.parameters = {
+                foo: makeName("bar")
+            };
+            $scope.saveEditPower();
+
+            spyOn(console, "log");
+            defer.reject(makeName("error"));
+            $rootScope.$digest();
+
+            // Since updateSummary is private in the controller, check
+            // that the selected cluster is set, this will prove that
+            // the method was called.
+            expect($scope.summary.cluster.selected).toBe(
+                ClustersManager.getItemFromList(node.nodegroup.id));
+        });
+
+        it("calls handleSaveError once updateItem is rejected", function() {
+            var controller = makeController();
+
+            var defer = $q.defer();
+            spyOn(NodesManager, "updateItem").and.returnValue(
+                defer.promise);
+
+            $scope.node = node;
+            $scope.power.editing = true;
+            $scope.power.type = {
+                name: makeName("power")
+            };
+            $scope.power.parameters = {
+                foo: makeName("bar")
+            };
+            $scope.saveEditPower();
+
+            spyOn(console, "log");
+            var error = makeName("error");
+            defer.reject(error);
+            $rootScope.$digest();
+
+            // If the error message was logged to the console then
+            // handleSaveError was called.
+            expect(console.log).toHaveBeenCalledWith(error);
         });
     });
 });
