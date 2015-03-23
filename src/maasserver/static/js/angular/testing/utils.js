@@ -41,3 +41,7 @@ function makeFakeResponse(data, error) {
         });
     }
 }
+
+function makeInteger(min, max) {
+    return Math.floor(Math.random() * (max - min)) + min;
+}
