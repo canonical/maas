@@ -19,11 +19,16 @@ __all__ = [
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
-from maasserver.forms import AdminNodeWithMACAddressesForm
+from maasserver.forms import (
+    AdminNodeForm,
+    AdminNodeWithMACAddressesForm,
+    )
 from maasserver.models.node import Node
+from maasserver.models.nodegroup import NodeGroup
 from maasserver.node_action import compile_node_actions
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
+    HandlerError,
     HandlerPermissionError,
     )
 from maasserver.websockets.handlers.timestampedmodel import (
@@ -43,7 +48,7 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get', 'create', 'action']
+        allowed_methods = ['list', 'get', 'create', 'update', 'action']
         form = AdminNodeWithMACAddressesForm
         exclude = [
             "id",
@@ -208,25 +213,36 @@ class NodeHandler(TimestampedModelHandler):
             macs.insert(0, data["pxe_mac"])
         return macs
 
+    def get_form_class(self, action):
+        """Return the form class used for `action`."""
+        if action == "create":
+            return AdminNodeWithMACAddressesForm
+        elif action == "update":
+            return AdminNodeForm
+        else:
+            raise HandlerError("Unknown action: %s" % action)
+
     def preprocess_form(self, action, params):
         """Process the `params` to before passing the data to the form."""
         new_params = {}
-        if action == "create":
-            # Only copy the allowed fields into `new_params` to be passed into
-            # the form.
-            new_params["mac_addresses"] = self.get_mac_addresses(params)
-            new_params["hostname"] = params.get("hostname")
-            new_params["architecture"] = params.get("architecture")
-            new_params["power_type"] = params.get("power_type")
-            if "zone" in params:
-                new_params["zone"] = params["zone"]["name"]
-            if "nodegroup" in params:
-                new_params["nodegroup"] = params["nodegroup"]["uuid"]
 
-            # Cleanup any fields that have a None value.
-            for key, value in new_params.items():
-                if value is None:
-                    del new_params[key]
+        # Only copy the allowed fields into `new_params` to be passed into
+        # the form.
+        new_params["mac_addresses"] = self.get_mac_addresses(params)
+        new_params["hostname"] = params.get("hostname")
+        new_params["architecture"] = params.get("architecture")
+        new_params["power_type"] = params.get("power_type")
+        if "zone" in params:
+            new_params["zone"] = params["zone"]["name"]
+        if "nodegroup" in params:
+            new_params["nodegroup"] = params["nodegroup"]["uuid"]
+
+        # Cleanup any fields that have a None value.
+        new_params = {
+            key: value
+            for key, value in new_params.viewitems()
+            if value is not None
+        }
 
         return super(NodeHandler, self).preprocess_form(action, new_params)
 
@@ -240,6 +256,22 @@ class NodeHandler(TimestampedModelHandler):
         # form will not save this information.
         data = super(NodeHandler, self).create(params)
         node_obj = Node.objects.get(system_id=data['system_id'])
+        node_obj.power_parameters = params.get("power_parameters", {})
+        node_obj.save()
+        return self.full_dehydrate(node_obj)
+
+    def update(self, params):
+        """Update the object from params."""
+        # Only admin users can perform update.
+        if not self.user.is_superuser:
+            raise HandlerPermissionError()
+
+        # Update the node with the form. The form will not update the
+        # nodegroup or power_parameters, so we perform that logic here.
+        data = super(NodeHandler, self).update(params)
+        node_obj = Node.objects.get(system_id=data['system_id'])
+        node_obj.nodegroup = NodeGroup.objects.get(
+            uuid=params['nodegroup']['uuid'])
         node_obj.power_parameters = params.get("power_parameters", {})
         node_obj.save()
         return self.full_dehydrate(node_obj)

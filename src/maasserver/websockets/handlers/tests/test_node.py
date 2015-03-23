@@ -20,6 +20,10 @@ from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
+from maasserver.forms import (
+    AdminNodeForm,
+    AdminNodeWithMACAddressesForm,
+    )
 from maasserver.node_action import compile_node_actions
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
@@ -28,6 +32,7 @@ from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
+    HandlerError,
     HandlerPermissionError,
     HandlerValidationError,
     )
@@ -245,6 +250,27 @@ class TestNodeHandler(MAASServerTestCase):
             HandlerDoesNotExistError,
             handler.get_object, {"system_id": node.system_id})
 
+    def test_get_form_class_for_create(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        self.assertEquals(
+            AdminNodeWithMACAddressesForm,
+            handler.get_form_class("create"))
+
+    def test_get_form_class_for_update(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        self.assertEquals(
+            AdminNodeForm,
+            handler.get_form_class("update"))
+
+    def test_get_form_class_raises_error_for_unknown_action(self):
+        user = factory.make_User()
+        handler = NodeHandler(user)
+        self.assertRaises(
+            HandlerError,
+            handler.get_form_class, factory.make_name())
+
     def test_create_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
         handler = NodeHandler(user)
@@ -324,6 +350,60 @@ class TestNodeHandler(MAASServerTestCase):
         self.expectThat(created_node["power_type"], Equals("ether_wake"))
         self.expectThat(created_node["power_parameters"], Equals({
             "mac_address": mac,
+            }))
+
+    def test_update_raise_permissions_error_for_non_admin(self):
+        user = factory.make_User()
+        handler = NodeHandler(user)
+        self.assertRaises(
+            HandlerPermissionError,
+            handler.update, {})
+
+    def test_update_raises_validation_error_for_invalid_architecture(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        node = factory.make_Node(mac=True)
+        node_data = self.dehydrate_node(node, user)
+        arch = factory.make_name("arch")
+        node_data["architecture"] = arch
+        with ExpectedException(
+                HandlerValidationError,
+                re.escape(
+                    "{u'architecture': [u\"'%s' is not a valid architecture.  "
+                    "It should be one of: ''.\"]}" % arch)):
+            handler.update(node_data)
+
+    def test_update_updates_node(self):
+        user = factory.make_admin()
+        handler = NodeHandler(user)
+        node = factory.make_Node(mac=True)
+        node_data = self.dehydrate_node(node, user)
+        new_nodegroup = factory.make_NodeGroup()
+        new_zone = factory.make_Zone()
+        new_hostname = factory.make_name("hostname")
+        new_architecture = make_usable_architecture(self)
+        node_data["hostname"] = new_hostname
+        node_data["architecture"] = new_architecture
+        node_data["zone"] = {
+            "name": new_zone.name,
+            }
+        node_data["nodegroup"] = {
+            "uuid": new_nodegroup.uuid,
+            }
+        node_data["power_type"] = "ether_wake"
+        power_mac = factory.make_mac_address()
+        node_data["power_parameters"] = {
+            "mac_address": power_mac,
+            }
+        updated_node = handler.update(node_data)
+        self.expectThat(updated_node["hostname"], Equals(new_hostname))
+        self.expectThat(updated_node["architecture"], Equals(new_architecture))
+        self.expectThat(updated_node["zone"]["id"], Equals(new_zone.id))
+        self.expectThat(
+            updated_node["nodegroup"]["id"], Equals(new_nodegroup.id))
+        self.expectThat(updated_node["power_type"], Equals("ether_wake"))
+        self.expectThat(updated_node["power_parameters"], Equals({
+            "mac_address": power_mac,
             }))
 
     def test_missing_action_raises_error(self):
