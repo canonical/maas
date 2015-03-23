@@ -470,7 +470,10 @@ def update_node_physical_block_devices(node, output, exit_status):
     assert isinstance(output, bytes)
     if exit_status != 0:
         return
-    blockdevs = json.loads(output)
+    try:
+        blockdevs = json.loads(output)
+    except ValueError as e:
+        raise ValueError(e.message + ': ' + output)
     PhysicalBlockDevice.objects.filter(node=node).delete()
     for block_info in blockdevs:
         # Skip the read-only devices. We keep them in the output for
