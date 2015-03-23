@@ -37,8 +37,7 @@ def connect_to_field_change(callback, model, fields, delete=False):
     The signature of the callback method should be the following:
 
     >>> def callback(instance, old_values, deleted):
-        ...
-        pass
+    ...     pass
 
     Where `instance` is the object which has just being saved to the
     database, `old_values` is a tuple of the original values for `fields`
@@ -54,7 +53,15 @@ def connect_to_field_change(callback, model, fields, delete=False):
     :param delete: Should the deletion of an object be considered a change
         in the field?
     :type delete: bool
+
+    :return: A ``(connect, disconnect)`` tuple, where ``connect`` and
+        ``disconnect`` are no-argument functions that connect and disconnect
+        fields changes respectively. ``connect`` has already been called when
+        this function returns.
     """
+    # Capture the fields in case an iterator was passed.
+    fields = tuple(fields)
+
     combined_fields_name = '__'.join(fields)
     last_seen_flag = '_fields_last_seen_values__%s' % combined_fields_name
     delta_flag = '_fields_delta__%s' % combined_fields_name
@@ -66,20 +73,18 @@ def connect_to_field_change(callback, model, fields, delete=False):
             for field_name in fields
             )
 
-    # Record the original values of the fields we're interested in.
-    def post_init_callback(sender, instance, **kwargs):
+    # Set 'last_seen_flag' to hold the field' current values.
+    def record_last_seen_flag(sender, instance, **kwargs):
         original_values = snapshot_values(instance)
         setattr(instance, last_seen_flag, original_values)
-    post_init.connect(post_init_callback, sender=model, weak=False)
 
     # Set 'delta_flag' to hold the fields' old and new values.
     def record_delta_flag(sender, instance, **kwargs):
         original_values = getattr(instance, last_seen_flag)
         new_values = snapshot_values(instance)
         setattr(instance, delta_flag, (new_values, original_values))
-    pre_save.connect(record_delta_flag, sender=model, weak=False)
 
-    # Call the `callback` if the field has changed.
+    # Call the `callback` if any field has changed.
     def post_save_callback(sender, instance, created, **kwargs):
         (new_values, original_values) = getattr(instance, delta_flag)
         # Call the callback method is the field has changed.
@@ -87,13 +92,38 @@ def connect_to_field_change(callback, model, fields, delete=False):
             callback(instance, original_values, deleted=False)
         setattr(instance, last_seen_flag, new_values)
 
-    if delete:
-        pre_delete.connect(record_delta_flag, sender=model, weak=False)
+    # Assemble the relevant signals and their handlers.
+    signals = (
+        (post_init, record_last_seen_flag),
+        (pre_save, record_delta_flag),
+        (post_save, post_save_callback),
+    )
 
+    if delete:
+        # Call the `callback` if the instance is being deleted.
         def post_delete_callback(sender, instance, **kwargs):
             (new_values, original_values) = getattr(instance, delta_flag)
             callback(instance, original_values, deleted=True)
 
-        post_delete.connect(post_delete_callback, sender=model, weak=False)
+        signals += (
+            (pre_delete, record_delta_flag),
+            (post_delete, post_delete_callback),
+        )
 
-    post_save.connect(post_save_callback, sender=model, weak=False)
+    def connect():
+        for signal, handler in signals:
+            signal.connect(handler, sender=model, weak=False)
+
+    def disconnect():
+        for signal, handler in signals:
+            signal.disconnect(handler, sender=model, weak=False)
+
+    connect.__doc__ = "Connect to %s for changes in %s." % (
+        model.__name__, " or ".join(fields))
+    disconnect.__doc__ = "Disconnect from %s for changes in (%s)." % (
+        model.__name__, " or ".join(fields))
+
+    # The caller expects to be connected initially.
+    connect()
+
+    return connect, disconnect
