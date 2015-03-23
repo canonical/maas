@@ -62,6 +62,7 @@
     }
 
     &[disabled="disabled"] {
+        -webkit-text-fill-color: #333;
         border-color: #D2D2D2;
         background-color: transparent;
     }
@@ -141,36 +142,6 @@ form {
         }
     }
 
-    input[type="checkbox"] {
-        visibility: hidden;
-        width: 0;
-        height: 0;
-        margin-right: 0;
-
-        & + label {
-            padding-left: 20px;
-            position: relative;
-
-            &:before {
-                content: "";
-                display: inline-block;
-                width: 20px;
-                height: 20px;
-                position: absolute;
-                top: 0;
-                left: 0;
-                background: url('../img/checkbox.svg') no-repeat;
-                background-size: 13px 13px;
-                background-position: 0px 3px;
-            }
-        }
-
-        &:checked + label:before {
-            background: url('../img/checkbox-checked.svg') no-repeat;
-            background-position: 0px 3px;
-        }
-    }
-
     textarea {
         @extend %input--styles;
         overflow: auto;
@@ -219,6 +190,37 @@ form {
         background: none;
         margin-left: 0;
         padding: 0;
+    }
+}
+
+.checkbox {
+    visibility: hidden;
+    width: 0;
+    height: 0;
+    margin-right: 0;
+    position: absolute;
+
+    & + .checkbox-label {
+        padding-left: 20px;
+        position: relative;
+
+        &:before {
+            content: "";
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: url('../img/checkbox.svg') no-repeat;
+            background-size: 13px 13px;
+            background-position: 0px 3px;
+        }
+    }
+
+    &:checked + .checkbox-label:before {
+        background: url('../img/checkbox-checked.svg') no-repeat;
+        background-position: 0px 3px;
     }
 }
 
@@ -330,5 +332,5 @@ form {
 .controls {
     position: absolute;
     top: 0;
-    right: 20px;
+    right: 0;
 }

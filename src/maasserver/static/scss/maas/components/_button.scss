@@ -104,8 +104,15 @@ form input[type='submit'] {
         border: 1px solid #b2b2b2;
         background: #eee;
 
+        &.external {
+            background-image: url('../img/external-link-black.svg');
+            background-size: 16px 16px;
+            background-repeat: no-repeat;
+            background-position: top 8px right 8px;
+        }
+
         &:hover {
-            background: #fff;
+            background-color: #fff;
         }
 
         &.disabled {
@@ -158,6 +165,7 @@ a.link-cta-ubuntu {
         background-repeat: no-repeat;
         background-position: top 17px right 15px;
         width: 100%;
+        line-height: 1;
     }
 
     /**

@@ -13,6 +13,8 @@ table {
     text-align: left;
     width: 100%;
     margin-bottom: 40px;
+    border-collapse: collapse;
+    border-spacing: 0;
 
     th,
     td {
@@ -39,11 +41,11 @@ table {
                 }
 
                 &.sort-asc {
-                    background-image: url('../img/sort_ascending.svg');
+                    background-image: url('../img/icon/sort_asce.svg');
                 }
 
                 &.sort-desc {
-                    background-image: url('../img/sort_descending.svg');
+                    background-image: url('../img/icon/sort_desc.svg');
                 }
             }
         }
@@ -63,16 +65,29 @@ table {
 
         td {
             border-bottom: 1px dotted #B2B2B2;
+            position: relative;
 
             &.icon-controls {
                 text-align: right;
                 opacity: 0;
+            }
+
+            input[type="text"] {
+                position: absolute;
+                left: 10px;
+                top: 6px;
+                width: 80%;
             }
         }
     }
 }
 
 .table-listing {
+    text-align: left;
+    width: 100%;
+    margin-bottom: 40px;
+    border-collapse: collapse;
+    border-spacing: 0;
 
     .table-listing__row {
 
@@ -94,20 +109,172 @@ table {
     }
 
     .table-listing__header {
+        background: transparent;
+        color: #B2B2B2;
+        border-bottom: 1px solid #B2B2B2;
 
+        a {
+            background-repeat: no-repeat;
+            background-position: top 8px right 0;
+
+            &:hover {
+                color: $ubuntu-orange;
+                text-decoration: none;
+            }
+
+            &.sort-asce {
+                color: #333;
+                background-image: url('../img/icons/sort_asce.svg');
+                padding-right: 12px;
+            }
+
+            &.sort-desc {
+                color: #333;
+                background-image: url('../img/icons/sort_desc.svg');
+                padding-right: 12px;
+            }
+
+        }
     }
 
     .table-listing__cell {
+        border-bottom: 1px dotted #B2B2B2;
+        position: relative;
 
-        &.fixed {
-            max-width: 200px;
-            min-width: 200px;
-            width: 200px;
-            padding-left: 0;
+        &.icon-controls {
+            text-align: right;
+            opacity: 0;
+        }
 
-            th & {
-                padding-left: 0;
-            }
+        input[type="text"] {
+            position: absolute;
+            left: 10px;
+            top: 6px;
+            width: 80%;
         }
     }
+
+    .fixed {
+        max-width: 200px;
+        min-width: 200px;
+        width: 200px;
+        padding-left: 0;
+
+        .table-listing__header & {
+            padding-left: 0;
+        }
+    }
+}
+
+/* TABLE GRID --------------------------------------------------------
+--------------------------------------------------------------------*/
+
+.t1 {
+    width: 1%;
+}
+
+.t5 {
+    width: 5%;
+}
+
+.t10 {
+    width: 10%;
+}
+
+.t12 {
+    width: 12.5%;
+}
+ /* 1/8 */
+.t15 {
+    width: 15%;
+}
+
+.t19 {
+    width: 19%;
+}
+
+.t20 {
+    width: 20%;
+}
+
+.t24 {
+    width: 24%;
+}
+
+.t25 {
+    width: 25%;
+}
+   /* 1/4 */
+.t30 {
+    width: 30%;
+}
+
+.t33 {
+    width: 33.333%;
+}   /* 1/3 */
+.t35 {
+    width: 35%;
+}
+
+.t37 {
+    width: 37.5%;
+}
+ /* 3/8 */
+.t40 {
+    width: 40%;
+}
+
+.t45 {
+    width: 45%;
+}
+
+.t50 {
+    width: 50%;
+}
+   /* 1/2 */
+.t55 {
+    width: 55%;
+}
+
+.t60 {
+    width: 60%;
+}
+
+.t62 {
+    width: 62.5%;
+}
+ /* 5/8 */
+.t65 {
+    width: 65%;
+}
+
+.t66 {
+    width: 66.666%;
+}   /* 2/3 */
+.t70 {
+    width: 70%;
+}
+
+.t75 {
+    width: 75%;
+}
+   /* 3/4*/
+.t80 {
+    width: 80%;
+}
+
+.t85 {
+    width: 85%;
+}
+
+.t87 {
+    width: 87.5%;
+}
+ /* 7/8 */
+.t90 {
+    width: 90%;
+}
+
+.t95 {
+    width: 95%;
 }

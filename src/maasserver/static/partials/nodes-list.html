@@ -7,6 +7,7 @@
                     data-ng-class="{ active: currentpage === 'nodes' }"
                     data-ng-click="toggleTab('nodes')">{$ nodes.length $} <ng-pluralize count="nodes.length" when="{'one': 'Node', 'other': 'Nodes'}"></ng-pluralize>
                 </a>
+                <span class="divide"></span>
                 <a href=""
                     data-ng-class="{ active: currentpage === 'devices' }"
                     data-ng-click="toggleTab('devices')">{$ devices.length $} <ng-pluralize count="devices.length" when="{'one': 'Device', 'other': 'Devices'}"></ng-pluralize>
@@ -141,11 +142,11 @@
                         </div>
                     </li>
                 </ul>
-                <form action="post" class="twelve-col ng-hide" data-ng-show="showChassis()">
+                <form action="post" class="twelve-col ng-hide border-bottom" data-ng-show="showChassis()">
                     <fieldset class="six-col">
                         <div class="inline">
-                            <label for="cluser">Cluster</label>
-                            <select name="cluster" id="cluster" placeholder="Choose a cluster"
+                            <label for="cluser" class="two-col">Cluster</label>
+                            <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
                                 data-ng-model="chassis.cluster"
                                 data-ng-options="cluster as cluster.cluster_name for cluster in clusters">
                             </select>
@@ -271,10 +272,10 @@
                     <tr class="table-listing__row">
                         <th>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <input type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
-                            <label for="check-all"></label>
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleCheckAll('nodes')" data-ng-model="tabs.nodes.allViewableChecked" id="check-all" />
+                            <label class="checkbox-label" for="check-all"></label>
                         </th>
-                        <th colspan="2" class="table-listing__cell fixed">
+                        <th colspan="2" class="table-listing__header fixed">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <a href="" data-ng-click="predicate='fqdn'; tabs.nodes.reverse=!tabs.nodes.reverse; tabs.nodes.column='fqdn'">
                                 <acronym title="Fully Qualified Domain Name">FQDN</acronym>
@@ -322,8 +323,8 @@
                         data-ng-click="toggleChecked(node, 'nodes')">
                         <td>
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
-                            <input type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
-                            <label for="{$ node.fqdn $}"></label>
+                            <input class="checkbox" type="checkbox" data-ng-click="toggleChecked(node, 'nodes')" data-ng-model="node.$selected" id="{$ node.fqdn $}" />
+                            <label class="checkbox-label" for="{$ node.fqdn $}"></label>
                         </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
@@ -361,23 +362,23 @@
             <table class="table-listing" id="nodes-listing">
                 <thead>
                     <tr class="table-listing__row">
-                        <th>
+                        <th class="table-listing__header t1">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <input type="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
-                            <label for="check-all-devices"></label>
+                            <input type="checkbox" class="checkbox" data-ng-click="toggleCheckAll('devices')" data-ng-model="tabs.devices.allViewableChecked" id="check-all-devices" />
+                            <label for="check-all-devices" class="checkbox-label"></label>
                         </th>
-                        <th colspan="4" class="table-listing__cell fixed">
+                        <th class="table-listing__header t19">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                             <a href="" data-ng-click="tabs.devices.predicate='fqdn'; tabs.devices.reverse=!tabs.devices.reverse;">
                                 <acronym title="Fully Qualified Domain Name">FQDN</acronym>
                             </a>
                         </th>
-                        <th class="">
+                        <th class="table-listing__header t60">
                             <a href="" data-ng-click="tabs.devices.predicate='pxe_mac'; tabs.devices.reverse=!tabs.devices.reverse;">
                                 <acronym title="Media Access Control addresses">MAC</acronym>
                             </a>
                         </th>
-                        <th>
+                        <th class="table-listing__header t20">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                             <a href="" data-ng-click="tabs.devices.predicate='owner'; tabs.devices.reverse=!tabs.devices.reverse">Owner</a>
                         </th>
@@ -388,21 +389,21 @@
                     <tr class="table-listing__row"
                         data-ng-repeat="device in tabs.devices.filtered_items = (devices | nodesFilter:tabs.devices.search | orderBy:tabs.devices.predicate:tabs.devices.reverse) track by device.system_id"
                         data-ng-class="{ error: !supportsAction(device, 'devices'), selected: device.$selected }">
-                        <td colspan="4" >
+                        <td class="t1">
                             <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                            <input type="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
-                            <label for="{$ device.fqdn $}"></label>
+                            <input type="checkbox" class="checkbox" data-ng-click="toggleChecked(device, 'devices')" data-ng-model="device.$selected" id="{$ device.fqdn $}"/>
+                            <label for="{$ device.fqdn $}" class="checkbox-label"></label>
                         </td>
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <td class="table-listing__cell fixed">
+                        <td class="t19">
                             <a href="{$ device.url $}">{$ device.fqdn $}</a>
                         </td>
                         <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
-                        <td>
+                        <td class="t60">
                             {$ device.pxe_mac $}
                             <span data-ng-show="device.extra_macs.length">(+{$ device.extra_macs.length $})</span>
                         </td>
-                        <td>{$ device.owner $}</td>
+                        <td class="t20">{$ device.owner $}</td>
                     </tr>
                 </tbody>
             </table>

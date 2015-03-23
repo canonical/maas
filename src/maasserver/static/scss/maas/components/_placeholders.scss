@@ -17,6 +17,8 @@
     text-indent: 999em;
     overflow: hidden;
     background-repeat: no-repeat;
+    background-size: 16px 16px;
+    vertical-align: middle;
 
     &.info {
         background-image: url('../img/icons/info.png');
@@ -38,7 +40,8 @@
         background-image: url('../img/icons/warning.svg'), none;
     }
 
-    &.success {
+    &.success,
+    &.tick {
         background-image: url('../img/icons/success.png');
         background-image: url('../img/icons/success.svg'), none;
     }

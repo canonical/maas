@@ -87,14 +87,16 @@
                             <option value="" disabled="disabled">Choose an architecture</option>
                         </select>
                     </div>
-                    <div class="inline">
-                        <label for="owner" class="two-col">Owner</label>
-                        <div class="three-col"><p>{$ node.owner || "Unassigned" $}</p></div>
-                    </div>
-                    <div class="inline">
-                        <label for="tags" class="two-col">Tags</label>
-                        <div class="three-col"><p>{$ node.tags.join(', ') $}</p></div>
-                    </div>
+                    <dl>
+                        <dt class="two-col">Owner</dt>
+                            <dd class="four-col last-col">
+                                {$ node.owner || "Unassigned" $}
+                            </dd>
+                        <dt class="two-col">Tags</dt>
+                            <dd class="four-col last-col">
+                                {$ node.tags.join(', ') $}
+                            </dd>
+                    </dl>
                 </fieldset>
                 <div class="six-col last-col">
                     <dl>
@@ -114,15 +116,19 @@
                             <dd class="four-col last-col">{$ getOSText() $}</dd>
                     </dl>
                 </div>
-                <div class="controls" data-ng-hide="summary.editing">
-                    <a href="" class="link-cta-ubuntu secondary"
+                <div class="controls two-col last-col" data-ng-hide="summary.editing">
+                    <a href="" class="link-cta-ubuntu secondary full"
                         data-ng-click="editSummary()">Edit</a>
                 </div>
-                <div class="controls ng-hide" data-ng-show="summary.editing">
-                    <a href="" class="link-cta-ubuntu clear"
-                        data-ng-click="cancelEditSummary()">Cancel</a>
-                    <button class="cta-ubuntu"
-                        data-ng-click="saveEditSummary()">Save changes</button>
+                <div class="controls four-col last-col ng-hide" data-ng-show="summary.editing">
+                    <div class="two-col no-margin-bottom">
+                        <a href="" class="link-cta-ubuntu clear right"
+                           data-ng-click="cancelEditSummary()">Cancel</a>
+                    </div>
+                    <div class="two-col last-col right no-margin-bottom">
+                        <button class="cta-ubuntu full"
+                            data-ng-click="saveEditSummary()">Save changes</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -138,15 +144,19 @@
                     data-maas-power-parameters="power.types"
                     data-ng-model="power">
                 </fieldset>
-                <div class="controls" data-ng-hide="power.editing">
-                    <a href="" class="link-cta-ubuntu secondary"
+                <div class="controls two-col last-col" data-ng-hide="power.editing">
+                    <a href="" class="link-cta-ubuntu secondary full"
                         data-ng-click="editPower()">Edit</a>
                 </div>
-                <div class="controls ng-hide" data-ng-show="power.editing">
-                    <a href="" class="link-cta-ubuntu clear"
+                <div class="controls four-col last-col ng-hide" data-ng-show="power.editing">
+                    <div class="two-col no-margin-bottom">
+                        <a href="" class="link-cta-ubuntu clear right"
                         data-ng-click="cancelEditPower()">Cancel</a>
-                    <button class="cta-ubuntu"
+                    </div>
+                    <div class="two-col last-col no-margin-bottom">
+                        <button class="cta-ubuntu full"
                         data-ng-click="saveEditPower()">Save changes</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -158,68 +168,72 @@
                     <h3 class="title">Network</h3>
                 </div>
                 <table class="table-listing">
-                    <thead>
-                        <tr class="table-listing__row">
-                            <th>
-                                <input type="checkbox" id="network-check-all" />
-                                <label for="network-check-all"></label>
-                            </th>
-                            <th>Interface</th>
-                            <th>MAC</th>
-                            <th>IP</th>
-                            <th>Subnet</th>
-                            <th>DNS Name</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="table-listing__row">
-                            <td>
-                                <input type="checkbox" name="eth0" id="eth0">
-                                <label for="eth0"></label>
-                            </td>
-                            <td>eth0</td>
-                            <td>ec:a8:6b:fa:6e:32</td>
-                            <td>10.20.67.10</td>
-                            <td>10.20.67.0/1</td>
-                            <td>maas-eth0</td>
-                        </tr>
-                        <tr class="table-listing__row">
-                            <td>
-                                <input type="checkbox" name="eth0" id="eth0">
-                                <label for="eth0"></label>
-                            </td>
-                            <td>eth0</td>
-                            <td>ec:a8:6b:fa:6e:32</td>
-                            <td>10.20.67.10</td>
-                            <td>10.20.67.0/1</td>
-                            <td>maas-eth0</td>
-                        </tr>
-                        <tr class="table-listing__row">
-                            <td>
-                                <input type="checkbox" name="eth0" id="eth0">
-                                <label for="eth0"></label>
-                            </td>
-                            <td>eth0</td>
-                            <td>ec:a8:6b:fa:6e:32</td>
-                            <td>10.20.67.10</td>
-                            <td>10.20.67.0/1</td>
-                            <td>maas-eth0</td>
-                        </tr>
-                        <tr class="table-listing__row">
-                            <td>
-                                <input type="checkbox" name="eth0" id="eth0">
-                                <label for="eth0"></label>
-                            </td>
-                            <td>eth0</td>
-                            <td>ec:a8:6b:fa:6e:32</td>
-                            <td>10.20.67.10</td>
-                            <td>10.20.67.0/1</td>
-                            <td>maas-eth0</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="controls">
-                    <div class="cta-group">
+                <thead>
+                    <tr class="table-listing__row table-listing-row">
+                        <th class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" id="network-check-all" />
+                            <label for="network-check-all" class="checkbox-label"></label>
+                        </th>
+                        <th class="t25 no-padding-left">Interface</th>
+                        <th class="t19">MAC</th>
+                        <th class="t15">IP</th>
+                        <th class="t15">Subnet</th>
+                        <th class="t25">DNS Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="table-listing__row table-listing-row">
+                        <td class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" name="eth0" id="eth0">
+                            <label for="eth0" class="checkbox-label"></label>
+                        </td>
+                        <td class="t25 no-padding-left">eth0</td>
+                        <td class="t19">ec:a8:6b:fa:6e:32</td>
+                        <td class="t15">10.20.67.10</td>
+                        <td class="t15">10.20.67.0/1</td>
+                        <td class="t25">maas-eth0</td>
+                    </tr>
+                    <tr class="table-listing__row table-listing-row">
+                        <td class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" name="eth1" id="eth1">
+                            <label for="eth1" class="checkbox-label"></label>
+                        </td>
+                        <td class="t25 no-padding-left">eth1</td>
+                        <td class="t19">ec:a8:6b:fa:6e:32</td>
+                        <td colspan="3"></td>
+                    </tr>
+                    <tr class="table-listing__row table-listing-row">
+                        <td class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" name="eth1" id="eth2">
+                            <label for="eth2" class="checkbox-label"></label>
+                        </td>
+                        <td class="t25 no-padding-left">eth2</td>
+                        <td class="t19">ec:a8:6b:fa:6e:32</td>
+                        <td colspan="3"></td>
+                    </tr>
+                    <tr class="table-listing__row table-listing-row">
+                        <td class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" name="eth3" id="eth3">
+                            <label for="eth3" class="checkbox-label"></label>
+                        </td>
+                        <td class="t25 no-padding-left">eth3</td>
+                        <td class="t19">ec:a8:6b:fa:6e:32</td>
+                        <td colspan="3"></td>
+                    </tr>
+                    <tr class="table-listing__row table-listing-row">
+                        <td class="t1 no-padding-left no-padding-rght">
+                            <input type="checkbox" class="checkbox" name="eth4" id="eth4">
+                            <label for="eth4" class="checkbox-label"></label>
+                        </td>
+                        <td class="t25 no-padding-left">eth4</td>
+                        <td class="t19">ec:a8:6b:fa:6e:32</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="controls four-col last-col">
+                <div class="two-col last-col no-margin-bottom right">
+                    <div class="cta-group secondary">
                         <a class="cta-group__link">Configure</a>
                         <a class="cta-group__link--toggle">
                             <span class="chevron"></span>
@@ -240,6 +254,7 @@
                         </ul>
                     </div>
                 </div>
+            </div>
             </form>
         </div>
     </div>
@@ -255,22 +270,29 @@
                 <table class="table-listing ng-hide" data-ng-show="node.physical_disks.length">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Path</th>
-                            <th>Size (GB)</th>
-                            <th>Model</th>
-                            <th>Serial</th>
-                            <th>Tags</th>
+                            <th class="t20">Name</th>
+                            <th class="t25">Path</th>
+                            <th class="t10">Size (GB)</th>
+                            <th class="t25" colspan="2">
+                                <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
+                                <a href="" data-ng-click="tabs.nodes.column='model'">
+                                    Model
+                                </a> |
+                                <a href="" data-ng-click="tabs.nodes.column='serial'">
+                                    Serial
+                                </a>
+                            </th>
+                            <th class="t20">Tags</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="table-listing__row" data-ng-repeat="disk in node.physical_disks">
-                            <td>{$ disk.name $}</td>
-                            <td>{$ disk.path $}</td>
-                            <td>{$ disk.size_gb $}</td>
-                            <td>{$ disk.model $}</td>
-                            <td>{$ disk.serial $}</td>
-                            <td>{$ disk.tags.join(', ') $}</td>
+                            <td class="t20">{$ disk.name $}</td>
+                            <td class="t25">{$ disk.path $}</td>
+                            <td class="t10">{$ disk.size_gb $}</td>
+                            <td class="t25" colspan="2" data-ng-show="tabs.nodes.column === 'model'">{$ disk.model $}</td>
+                            <td class="t25 ng-hide" colspan="2" data-ng-show="tabs.nodes.column === 'serial'">{$ disk.serial $}</td>
+                            <td class="t20">{$ disk.tags.join(', ') $}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -285,60 +307,64 @@
             <table class="table-listing">
                 <thead>
                     <tr class="table-listing__row">
-                        <th>Event</th>
-                        <th>Time</th>
+                        <th class="t75">Event</th>
+                        <th class="t25">Time</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                     <tr class="table-listing__row">
-                        <td>Node powered on</td>
-                        <td>
+                        <td class="t75">Node powered on</td>
+                        <td class="t25">
                             <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                         </td>
                     </tr>
                 </tbody>
             </table>
-            <div class="controls">
-                <a href="#" class="link-cta-ubuntu clear">Download</a>
-                <a href="#" class="link-cta-ubuntu secondary external">View all</a>
+            <div class="controls four-col last-col no-margin-bottom">
+                <div class="two-col no-margin-bottom">
+                   <a href="#" class="link-cta-ubuntu clear right">Download</a>
+                </div>
+                <div class="two-col last-col no-margin-bottom">
+                    <a href="#" class="link-cta-ubuntu secondary external full">View all</a>
+                </div>
             </div>
-            <p><a href="#">Load next 10 events</a></p>
+            <p class="twelve-col text-center"><a href="#">Load next 10 events</a></p>
         </div>
     </div>
     <div class="row ng-hide">
@@ -346,75 +372,107 @@
             <div class="twelve-col">
                 <h3 class="title">Machine output
                     <span class="title__indicator">
-                        <a href="#" class="active">YML</a>
-                        <a href="#">XML</a>
+                        <a href="#" class="title__link active">YML</a>
+                        <span class="divide"></span>
+                        <a href="#" class="title__link">XML</a>
                     </span>
                 </h3>
             </div>
             <div class="twelve-col yml">
                 <pre>
-                    <code>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Eum sapiente vel rem, ex eaque voluptate optio suscipit hic? Et sint quae totam sunt nemo rem dolore beatae, assumenda in, cum sapiente, architecto numquam iusto deserunt dicta inventore, esse nisi repellendus!</code>
+                    <code>
+- list:
+  - lldp:lldp:
+    label: LLDP neighbors
+  - lshw:list:
+    - lshw:node:
+      id: belle
+      claimed: true
+      class: system
+      handle: DMI:0001
+      - lshw:description:
+        Desktop Computer
+      - lshw:product:
+        (To be filled by O.E.M.)
+      - lshw:width:
+        units: bits
+        64
+      - lshw:configuration:
+        - lshw:setting:
+          id: boot
+          value: normal
+        - lshw:setting:
+          id: chassis
+          value: desktop
+        - lshw:setting:
+          id: family
+          value: To be filled by O.E.M.
+        - lshw:setting:
+          id: sku
+          value: To be filled by O.E.M.
+        - lshw:setting:
+                    </code>
                 </pre>
             </div>
             <div class="twelve-col">
                 <table class="table-listing">
                     <thead>
                         <tr class="table-listing__row">
-                            <th></th>
-                            <th>Filename</th>
-                            <th>Time</th>
-                            <th>Output</th>
+                            <th class="t1 no-padding-left no-padding-right"></th>
+                            <th class="t35">Filename</th>
+                            <th class="t30">Time</th>
+                            <th class="t30">Output</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="table-listing__row">
-                            <td>
-                                <span class="icon tick"></span>
+                            <td class="t1 no-padding-right no-padding-left">
+                                <span class="icon success"></span>
                             </td>
-                            <td><a href="#">99-maas-02-capture-lldp.out</a></td>
-                            <td>
+                            <td class="t35"><a href="#">99-maas-02-capture-lldp.out</a></td>
+                            <td class="t30">
                                 <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                             </td>
-                            <td>Output 3 lines</td>
+                            <td class="t30">Output 3 lines</td>
                         </tr>
                         <tr class="table-listing__row">
-                            <td>
-                                <span class="icon tick"></span>
+                            <td class="t1 no-padding-right no-padding-left">
+                                <span class="icon error"></span>
                             </td>
-                            <td><a href="#">99-maas-02-capture-lldp.out</a></td>
-                            <td>
+                            <td class="t35"><a href="#">99-maas-02-capture-lldp.out</a></td>
+                            <td class="t30">
                                 <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                             </td>
-                            <td>Output 3 lines</td>
+                            <td class="t30">Output 3 lines</td>
                         </tr>
                         <tr class="table-listing__row">
-                            <td>
-                                <span class="icon tick"></span>
+                            <td class="t1 no-padding-right no-padding-left">
+                                <span class="icon success"></span>
                             </td>
-                            <td><a href="#">99-maas-02-capture-lldp.out</a></td>
-                            <td>
+                            <td class="t35"><a href="#">99-maas-02-capture-lldp.out</a></td>
+                            <td class="t30">
                                 <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                             </td>
-                            <td>Output 3 lines</td>
+                            <td class="t30">Output 3 lines</td>
                         </tr>
                         <tr class="table-listing__row">
-                            <td>
-                                <span class="icon tick"></span>
+                            <td class="t1 no-padding-right no-padding-left">
+                                <span class="icon error"></span>
                             </td>
-                            <td><a href="#">99-maas-02-capture-lldp.out</a></td>
-                            <td>
+                            <td class="t35"><a href="#">99-maas-02-capture-lldp.out</a></td>
+                            <td class="t30">
                                 <time datetime="2015-01-28T11:47+00:00">Wed, 28 Jan 2015 11:47</time>
                             </td>
-                            <td>Output 3 lines</td>
+                            <td class="t30">Output 3 lines</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <div class="controls four-col last-col">
-                <div class="two-col no-margin-bottom last-col">
+            <div class="controls five-col last-col">
+                <div class="two-col no-margin-bottom">
                     <a href="#" class="link-cta-ubuntu clear right">Download</a>
                 </div>
-                <div class="two-col no-margin-bottom last-col">
+                <div class="three-col no-margin-bottom last-col">
                     <div class="cta-group">
                         <a class="cta-group__link">Commissioning summary</a>
                         <a class="cta-group__link--toggle">

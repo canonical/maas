@@ -247,13 +247,12 @@ header.banner {
             width: auto;
             display: inline-block;
             position: relative;
-            top: -3px;
+            top: 0px;
             padding-left: 20px;
-            margin-left: 20px;
+            margin-left: 10px;
 
             a {
                 color: #888;
-                margin-right: 10px;
 
                 &:hover {
                     text-decoration: none;
@@ -269,6 +268,15 @@ header.banner {
                         cursor: default;
                     }
                 }
+            }
+
+            .divide {
+                width: 1px;
+                display: inline-block;
+                background: #D2D2D2;
+                height: 11px;
+                padding: 0;
+                margin: 0 5px;
             }
         }
     }
@@ -331,6 +339,37 @@ header.banner {
                     background-image: url('../img/icons/error.svg'), none;
                 }
             }
+        }
+    }
+}
+
+.title {
+
+    .title__indicator {
+
+        .title__link {
+            color: #888;
+            font-size: 20px;
+
+            &:hover {
+                color: #333;
+                text-decoration: none;
+                border-bottom: 1px solid #333;
+            }
+
+            &.active {
+                color: #333;
+                border-bottom: 1px $ubuntu-orange solid;
+            }
+        }
+
+        .divide {
+            width: 1px;
+            display: inline-block;
+            background: #D2D2D2;
+            height: 11px;
+            padding: 0;
+            margin: 0 5px;
         }
     }
 }

@@ -102,11 +102,11 @@ describe("NodesListController", function() {
         expect($scope.addHardwareOptions).toEqual([
             {
                 name: "hardware",
-                title: "Add Nodes"
+                title: "Machine"
             },
             {
                 name: "chassis",
-                title: "Add Chassis"
+                title: "Chassis"
             }
         ]);
         expect($scope.addHardwareScope).toBeNull();

@@ -68,11 +68,11 @@ angular.module('MAAS').controller('NodesListController', [
         $scope.addHardwareOptions = [
             {
                 name: "hardware",
-                title: "Add Nodes"
+                title: "Machine"
             },
             {
                 name: "chassis",
-                title: "Add Chassis"
+                title: "Chassis"
             }
         ];
 
