@@ -12,11 +12,10 @@
 .flash-messages {
     margin: 0px auto 20px;
     padding: 0;
-    overflow: hidden;
     max-width: 1440px;
 
     @media screen and (max-width: 1030px) {
-        margin: 20px 10px 0;
+        margin: 0px 10px 20px;
     }
 
     .flash-messages__item {
@@ -30,7 +29,7 @@
         background:#FFF;
         background-position: top 50% left 15px;
         background-repeat: no-repeat;
-        margin: 0 0 10px;
+        margin: 20px 0 0;
         box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
 
         &.info {
