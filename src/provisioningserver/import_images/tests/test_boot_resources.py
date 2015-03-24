@@ -32,10 +32,12 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     MockAnyCall,
     MockCalledWith,
+    MockCallsMatch,
     )
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import age_file
 import mock
+from mock import call
 from provisioningserver.boot import BootMethodRegistry
 import provisioningserver.config
 from provisioningserver.config import BootSources
@@ -96,6 +98,89 @@ class TestTgtEntry(MAASTestCase):
         self.addDetail('tgt-stderr', Content(UTF8_TEXT, lambda: [stderr]))
         self.addDetail('tgt-stdout', Content(UTF8_TEXT, lambda: [stdout]))
         self.assertEqual(0, cmd.returncode)
+
+
+class TestUpdateCurrentSymlink(MAASTestCase):
+
+    def make_test_dirs(self):
+        storage_dir = self.make_dir()
+        target_dir = os.path.join(storage_dir, factory.make_name("target"))
+        return storage_dir, target_dir
+
+    def assertLinkIsUpdated(self, storage_dir, target_dir):
+        boot_resources.update_current_symlink(storage_dir, target_dir)
+        link_path = os.path.join(storage_dir, "current")
+        self.assertEqual(target_dir, os.readlink(link_path))
+
+    def test_creates_current_symlink(self):
+        storage_dir, target_dir = self.make_test_dirs()
+        self.assertLinkIsUpdated(storage_dir, target_dir)
+
+    def test_creates_current_symlink_when_link_exists(self):
+        storage_dir = self.make_dir()
+        self.assertLinkIsUpdated(storage_dir, "target01")
+        self.assertLinkIsUpdated(storage_dir, "target02")
+
+    def test_creates_current_symlink_when_temp_link_exists(self):
+        symlink_real = os.symlink
+        symlink = self.patch(os, "symlink")
+
+        def os_symlink(src, dst):
+            if symlink.call_count in (1, 2):
+                raise OSError(errno.EEXIST, dst)
+            else:
+                return symlink_real(src, dst)
+
+        # The first two times that os.symlink() is called, it will raise
+        # OSError with EEXIST; update_current_symlink() handles this and
+        # tries to create a new symlink with a different suffix.
+        symlink.side_effect = os_symlink
+
+        # Make the choice of provisional symlink less random, so that we can
+        # match against what's happening.
+        from provisioningserver.utils import fs
+        randint = self.patch_autospec(fs, "randint")
+        randint.side_effect = lambda a, b: randint.call_count
+
+        storage_dir, target_dir = self.make_test_dirs()
+        self.assertLinkIsUpdated(storage_dir, target_dir)
+        self.assertThat(symlink, MockCallsMatch(
+            call(target_dir, os.path.join(storage_dir, ".temp.000001")),
+            call(target_dir, os.path.join(storage_dir, ".temp.000002")),
+            call(target_dir, os.path.join(storage_dir, ".temp.000003")),
+        ))
+
+    def test_fails_when_creating_temp_link_exists_a_lot(self):
+        symlink = self.patch(os, "symlink")
+        symlink.side_effect = OSError(errno.EEXIST, "sorry buddy")
+        storage_dir, target_dir = self.make_test_dirs()
+        # If os.symlink() returns EEXIST more than 100 times, it gives up.
+        error = self.assertRaises(
+            OSError, boot_resources.update_current_symlink,
+            storage_dir, target_dir)
+        self.assertIs(error, symlink.side_effect)
+        self.assertEqual(100, symlink.call_count)
+
+    def test_fails_when_creating_temp_link_fails(self):
+        symlink = self.patch(os, "symlink")
+        symlink.side_effect = OSError(errno.EPERM, "just no")
+        storage_dir, target_dir = self.make_test_dirs()
+        # Errors from os.symlink() other than EEXIST are re-raised.
+        error = self.assertRaises(
+            OSError, boot_resources.update_current_symlink,
+            storage_dir, target_dir)
+        self.assertIs(error, symlink.side_effect)
+
+    def test_cleans_up_when_renaming_fails(self):
+        symlink = self.patch(os, "rename")
+        symlink.side_effect = OSError(errno.EPERM, "just no")
+        storage_dir, target_dir = self.make_test_dirs()
+        error = self.assertRaises(
+            OSError, boot_resources.update_current_symlink,
+            storage_dir, target_dir)
+        self.assertIs(error, symlink.side_effect)
+        # No intermediate files are left behind.
+        self.assertEqual([], os.listdir(storage_dir))
 
 
 def checksum_sha256(data):

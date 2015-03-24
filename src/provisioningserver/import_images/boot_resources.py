@@ -40,6 +40,7 @@ from provisioningserver.import_images.keyrings import write_all_keyrings
 from provisioningserver.import_images.product_mapping import map_products
 from provisioningserver.utils import get_cluster_config
 from provisioningserver.utils.fs import (
+    atomic_symlink,
     atomic_write,
     read_text_file,
     tempdir,
@@ -166,10 +167,7 @@ def meta_contains(storage, content):
 
 def update_current_symlink(storage, latest_snapshot):
     """Symlink `latest_snapshot` as the "current" snapshot."""
-    symlink_path = os.path.join(storage, 'current')
-    if os.path.lexists(symlink_path):
-        os.unlink(symlink_path)
-    os.symlink(latest_snapshot, symlink_path)
+    atomic_symlink(latest_snapshot, os.path.join(storage, 'current'))
 
 
 def write_snapshot_metadata(snapshot, meta_file_content):

@@ -23,13 +23,14 @@ __all__ = [
     'write_text_file',
     ]
 
-
 import codecs
 from contextlib import contextmanager
 import errno
+from itertools import count
 import os
 from os import environ
 from os.path import isdir
+from random import randint
 from shutil import rmtree
 from subprocess import (
     PIPE,
@@ -115,23 +116,50 @@ def atomic_write(content, filename, overwrite=True, mode=0600):
             os.remove(temp_file)
 
 
+def create_provisional_symlink(src_dir, dst):
+    """Create a temporary symlink in `src_dir` that points to `dst`.
+
+    It will try up to 100 times before it gives up.
+    """
+    for attempt in count(1):
+        rnd = randint(0, 999999)  # Inclusive range.
+        src = os.path.join(src_dir, ".temp.%06d" % rnd)
+        try:
+            os.symlink(dst, src)
+        except OSError as error:
+            # If we've already tried 100 times to create the
+            # symlink, give up, and re-raise the most recent
+            # exception.
+            if attempt >= 100:
+                raise
+            # If the symlink already exists we'll try again,
+            # otherwise re-raise the current exception.
+            if error.errno != errno.EEXIST:
+                raise
+        else:
+            # The symlink was created successfully, so return
+            # its full path.
+            return src
+
+
 def atomic_symlink(source, name):
     """Create a symbolic link pointing to `source` named `name`.
 
-    This method is meant to be a drop-in replacement of os.symlink.
+    This method is meant to be a drop-in replacement for `os.symlink`.
 
     The symlink creation will be atomic.  If a file/symlink named
     `name` already exists, it will be overwritten.
     """
-    temp_file = '%s.new' % name
+    prov = create_provisional_symlink(os.path.dirname(name), source)
+    # Move the provisionally created symlink into the desired
+    # end location, clobbering any existing link.
     try:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
-        os.symlink(source, temp_file)
-        os.rename(temp_file, name)
-    finally:
-        if os.path.isfile(temp_file):
-            os.remove(temp_file)
+        os.rename(prov, name)
+    except:
+        # Remove the provisionally created symlink so that
+        # garbage does not accumulate.
+        os.unlink(prov)
+        raise
 
 
 def pick_new_mtime(old_mtime=None, starting_age=1000):
