@@ -31,6 +31,7 @@ from maasserver.testing.testcase import (
     MAASServerTestCase,
     MAASTransactionServerTestCase,
     )
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
@@ -66,6 +67,13 @@ class TestStatusQueryEvent(MAASServerTestCase):
         node = factory.make_Node(status=old_status, power_type='virsh')
         node.status = get_failed_status(old_status)
         node.save()
+        # update_power_state_of_node_soon is registered as a post-commit task,
+        # so it's not called immediately.
+        self.expectThat(
+            node_query.update_power_state_of_node_soon,
+            MockNotCalled())
+        # One post-commit hooks have been fired, then it's called.
+        post_commit_hooks.fire()
         self.assertThat(
             node_query.update_power_state_of_node_soon,
             MockCalledOnceWith(node.system_id))

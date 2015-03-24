@@ -19,7 +19,10 @@ from urlparse import urlparse
 
 from django.core.urlresolvers import reverse
 from django.db import transaction
-from maasserver import locks
+from maasserver import (
+    locks,
+    node_query,
+    )
 from maasserver.clusterrpc.utils import get_error_message_for_exception
 from maasserver.enum import (
     NODE_PERMISSION,
@@ -619,6 +622,9 @@ class TestActionsErrorHandling(MAASServerTestCase):
         return action_class(node, admin)
 
     def test_Commission_handles_rpc_errors(self):
+        self.addCleanup(node_query.enable)
+        node_query.disable()
+
         action = self.make_action(Commission, NODE_STATUS.READY)
         self.patch_rpc_methods(action.node)
         exception = self.assertRaises(NodeActionError, action.execute)

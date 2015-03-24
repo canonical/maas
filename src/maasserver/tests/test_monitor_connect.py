@@ -17,6 +17,7 @@ __all__ = []
 
 import random
 
+from maasserver import node_query
 from maasserver.node_status import (
     get_failed_status,
     MONITORED_STATUSES,
@@ -47,6 +48,9 @@ class TestCancelMonitor(MAASServerTestCase):
         return self.useFixture(MockLiveRegionToClusterRPCFixture())
 
     def test_changing_status_of_monitored_node_cancels_related_monitor(self):
+        self.addCleanup(node_query.enable)
+        node_query.disable()
+
         rpc_fixture = self.prepare_rpc()
         status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)

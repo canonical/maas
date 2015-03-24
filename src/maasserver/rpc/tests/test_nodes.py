@@ -17,6 +17,7 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
+from maasserver import node_query
 from maasserver.enum import NODE_STATUS
 from maasserver.rpc.nodes import (
     commission_node,
@@ -277,6 +278,9 @@ class TestCommissionNode(MAASServerTestCase):
 class TestMarkNodeFailed(MAASServerTestCase):
 
     def test__marks_node_as_failed(self):
+        self.addCleanup(node_query.enable)
+        node_query.disable()
+
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         mark_node_failed(node.system_id, factory.make_name('error'))
         self.assertEqual(

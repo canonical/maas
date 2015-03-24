@@ -22,6 +22,7 @@ import random
 from random import randint
 
 import crochet
+from maasserver import node_query
 from maasserver.node_status import (
     get_failed_status,
     NODE_FAILURE_STATUS_TRANSITIONS,
@@ -73,6 +74,9 @@ class TestHandleMonitorExpired(MAASServerTestCase):
         return protocol
 
     def test_handle_monitor_expired(self):
+        self.addCleanup(node_query.enable)
+        node_query.disable()
+
         status = random.choice(NODE_FAILURE_STATUS_TRANSITIONS.keys())
         node = factory.make_Node(status=status)
         monitor_timeout = random.randint(1, 100)

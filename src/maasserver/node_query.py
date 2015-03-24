@@ -21,7 +21,10 @@ from maasserver.models import Node
 from maasserver.node_status import QUERY_TRANSITIONS
 from maasserver.rpc import getClientFor
 from maasserver.signals import connect_to_field_change
-from maasserver.utils.orm import transactional
+from maasserver.utils.orm import (
+    post_commit,
+    transactional,
+    )
 from provisioningserver.logger import get_maas_logger
 from provisioningserver.power.poweraction import (
     PowerActionFail,
@@ -34,6 +37,7 @@ from provisioningserver.rpc.exceptions import (
     )
 from provisioningserver.utils.twisted import (
     asynchronous,
+    callOut,
     FOREVER,
     synchronous,
     )
@@ -197,9 +201,11 @@ def signal_update_power_state_of_node(instance, old_values, **kwargs):
     # Only check the power state if it's an interesting transition.
     if old_status in QUERY_TRANSITIONS:
         if node.status in QUERY_TRANSITIONS[old_status]:
-            update_power_state_of_node_soon(node.system_id)
+            post_commit().addCallback(
+                callOut, update_power_state_of_node_soon, node.system_id)
 
 
-connect_to_field_change(
-    signal_update_power_state_of_node,
-    Node, ['status'], delete=False)
+# The `enable` and `disable` functions should be used by tests only. They are
+# not generally useful, and can cause failures if used mid-transaction.
+enable, disable = connect_to_field_change(
+    signal_update_power_state_of_node, Node, ['status'], delete=False)

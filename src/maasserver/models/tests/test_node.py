@@ -27,7 +27,10 @@ from django.core.exceptions import (
     )
 from django.db import transaction
 from fixtures import LoggerFixture
-from maasserver import preseed as preseed_module
+from maasserver import (
+    node_query,
+    preseed as preseed_module,
+    )
 from maasserver.clusterrpc import power as power_module
 from maasserver.clusterrpc.power_parameters import get_power_types
 from maasserver.clusterrpc.testing.boot_images import make_rpc_boot_image
@@ -248,6 +251,10 @@ def make_active_lease(nodegroup=None):
 
 
 class TestNode(MAASServerTestCase):
+
+    def disable_node_query(self):
+        self.addCleanup(node_query.enable)
+        node_query.disable()
 
     def test_system_id(self):
         # The generated system_id looks good.
@@ -802,6 +809,7 @@ class TestNode(MAASServerTestCase):
         # If start_disk_erasing encounters an error when calling start(), it
         # will transition the node to a sane state. Failures encountered in
         # one call to start_disk_erasing() won't affect subsequent calls.
+        self.disable_node_query()
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         generate_user_data = self.patch(disk_erasing, 'generate_user_data')
@@ -822,6 +830,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.FAILED_DISK_ERASING, node.status)
 
     def test_start_disk_erasing_logs_and_raises_errors_in_starting(self):
+        self.disable_node_query()
         admin = factory.make_admin()
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED)
         maaslog = self.patch(node_module, 'maaslog')
@@ -1702,6 +1711,7 @@ class TestNode(MAASServerTestCase):
             [mac_with_interface], node.mac_addresses_on_managed_interfaces())
 
     def test_mark_failed_updates_status(self):
+        self.disable_node_query()
         nodes_mapping = {
             status: factory.make_Node(status=status)
             for status in NODE_FAILURE_STATUS_TRANSITIONS
@@ -1713,6 +1723,7 @@ class TestNode(MAASServerTestCase):
             {status: node.status for status, node in nodes_mapping.items()})
 
     def test_mark_failed_updates_error_description(self):
+        self.disable_node_query()
         node = factory.make_Node(status=NODE_STATUS.COMMISSIONING)
         description = factory.make_name('error-description')
         node.mark_failed(description)
@@ -1855,6 +1866,7 @@ class TestNode(MAASServerTestCase):
         self.assertThat(deallocate_static_ip_addresses, MockNotCalled())
 
     def test_end_deployment_changes_state(self):
+        self.disable_node_query()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYING)
         node.end_deployment()
         self.assertEqual(NODE_STATUS.DEPLOYED, reload_object(node).status)
@@ -1865,6 +1877,7 @@ class TestNode(MAASServerTestCase):
         self.assertEqual(NODE_STATUS.DEPLOYING, reload_object(node).status)
 
     def test_handle_monitor_expired_marks_node_as_failed(self):
+        self.disable_node_query()
         status = random.choice(MONITORED_STATUSES)
         node = factory.make_Node(status=status)
         timeout = random.randint(1, 100)
