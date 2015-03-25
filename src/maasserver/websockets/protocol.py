@@ -79,6 +79,7 @@ class WebSocketProtocol(Protocol):
         self.messages = deque()
         self.factory = factory
         self.user = None
+        self.cache = {}
 
     def connectionMade(self):
         """Connection has been made to client."""
@@ -223,7 +224,7 @@ class WebSocketProtocol(Protocol):
                 STATUSES.PROTOCOL_ERROR,
                 "Handler %s does not exist." % handler_name)
             return None
-        handler = handler_class(self.user)
+        handler = handler_class(self.user, self.cache)
 
         # Wrap the handler.execute method in transactional. This will insure
         # the retry logic is performed and that any post_commit will be
@@ -337,7 +338,7 @@ class WebSocketFactory(Factory):
     @inlineCallbacks
     def onNotify(self, handler_class, channel, action, obj_id):
         for client in self.clients:
-            handler = handler_class(client.user)
+            handler = handler_class(client.user, client.cache)
             data = yield deferToThread(
                 self.processNotify, handler, channel, action, obj_id)
             if data is not None:

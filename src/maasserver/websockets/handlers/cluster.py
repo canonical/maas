@@ -30,7 +30,7 @@ class ClusterHandler(TimestampedModelHandler):
     class Meta:
         queryset = NodeGroup.objects.all()
         pk = 'id'
-        allowed_methods = ['list', 'get']
+        allowed_methods = ['list', 'get', 'set_active']
         exclude = [
             "api_token",
             "api_key",

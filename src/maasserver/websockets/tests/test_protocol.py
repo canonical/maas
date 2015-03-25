@@ -573,8 +573,20 @@ class TestWebSocketFactory(MAASTestCase):
         mock_class.return_value.on_listen.return_value = None
         yield factory.onNotify(
             mock_class, sentinel.channel, sentinel.action, sentinel.obj_id)
-        self.assertEquals(
+        self.assertIs(
             protocol.user, mock_class.call_args[0][0])
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test_onNotify_creates_handler_class_with_protocol_cache(self):
+        user = yield deferToThread(self.make_user)
+        protocol, factory = self.make_protocol_with_factory(user=user)
+        mock_class = MagicMock()
+        mock_class.return_value.on_listen.return_value = None
+        yield factory.onNotify(
+            mock_class, sentinel.channel, sentinel.action, sentinel.obj_id)
+        self.assertIs(
+            protocol.cache, mock_class.call_args[0][1])
 
     @wait_for_reactor
     @inlineCallbacks

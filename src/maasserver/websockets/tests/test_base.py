@@ -29,14 +29,21 @@ from maasserver.testing.orm import reload_object
 from maasserver.testing.testcase import MAASServerTestCase
 from maasserver.websockets.base import (
     Handler,
+    HandlerCache,
     HandlerDoesNotExistError,
     HandlerNoSuchMethodError,
     HandlerPKError,
     HandlerValidationError,
     )
-from maastesting.matchers import MockCalledOnceWith
+from maastesting.matchers import (
+    MockCalledOnceWith,
+    MockNotCalled,
+    )
 from maastesting.testcase import MAASTestCase
-from mock import sentinel
+from mock import (
+    MagicMock,
+    sentinel,
+    )
 from testtools.matchers import (
     Equals,
     Is,
@@ -54,11 +61,11 @@ def make_handler(name, **kwargs):
 class TestHandlerMeta(MAASTestCase):
 
     def test_creates_handler_with_default_meta(self):
-        handler = Handler(None)
+        handler = Handler(None, {})
         self.assertThat(handler._meta, MatchesStructure(
             abstract=Is(False),
             allowed_methods=Equals(
-                ["list", "get", "create", "update", "delete"]),
+                ["list", "get", "create", "update", "delete", "set_active"]),
             handler_name=Equals(""), object_class=Is(None), queryset=Is(None),
             pk=Equals("id"), fields=Is(None), exclude=Is(None),
             list_fields=Is(None), list_exclude=Is(None),
@@ -115,6 +122,68 @@ class TestHandlerMeta(MAASTestCase):
             list_fields=list_fields, list_exclude=list_exclude)
         self.assertEquals(list_fields, handler._meta.list_fields)
         self.assertEquals(list_exclude, handler._meta.list_exclude)
+
+
+class TestHandlerCache(MAASTestCase):
+
+    def test_sets_cache_prefix(self):
+        handler_name = factory.make_name("handler")
+        backend_cache = {}
+        cache = HandlerCache(handler_name, backend_cache)
+        self.assertEquals("%s_" % handler_name, cache._cache_prefix)
+
+    def test_sets_backend_cache(self):
+        handler_name = factory.make_name("handler")
+        backend_cache = {}
+        cache = HandlerCache(handler_name, backend_cache)
+        self.assertIs(backend_cache, cache._backend_cache)
+
+    def test_len_only_counts_entries_for_handler(self):
+        handler_name = factory.make_name("handler")
+        cache_entry = "%s_key" % handler_name
+        backend_cache = {
+            "other": factory.make_name("other_value"),
+            cache_entry: factory.make_name("value"),
+            }
+        cache = HandlerCache(handler_name, backend_cache)
+        self.assertEquals(1, len(cache))
+
+    def test_getitem_only_returns_entry_for_handler(self):
+        handler_name = factory.make_name("handler")
+        cache_entry = "%s_key" % handler_name
+        value = factory.make_name("value")
+        backend_cache = {
+            cache_entry: value,
+            }
+        cache = HandlerCache(handler_name, backend_cache)
+        self.assertEquals(value, cache["key"])
+
+    def test_setitem_places_entry_in_backend_cache_with_prefix(self):
+        handler_name = factory.make_name("handler")
+        backend_cache = {}
+        cache = HandlerCache(handler_name, backend_cache)
+        value = factory.make_name("value")
+        cache["key"] = value
+        self.assertEquals(value, backend_cache["%s_key" % handler_name])
+
+    def test_delitem_removes_entry_in_backend_cache_with_prefix(self):
+        handler_name = factory.make_name("handler")
+        cache_entry = "%s_key" % handler_name
+        backend_cache = {
+            cache_entry: factory.make_name("value"),
+            }
+        cache = HandlerCache(handler_name, backend_cache)
+        del cache["key"]
+        self.assertFalse(cache_entry in backend_cache)
+
+    def test_get_calls_get_on_the_backend_with_prefix(self):
+        handler_name = factory.make_name("handler")
+        cache = HandlerCache(handler_name, MagicMock())
+        default = factory.make_name("default")
+        cache.get("key", default=default)
+        self.assertThat(
+            cache._backend_cache.get,
+            MockCalledOnceWith("%s_key" % handler_name, default))
 
 
 class TestHandler(MAASServerTestCase):
@@ -510,3 +579,96 @@ class TestHandler(MAASServerTestCase):
         handler = self.make_nodes_handler()
         handler.delete({"system_id": node.system_id})
         self.assertIsNone(reload_object(node))
+
+    def test_set_active_does_nothing_if_no_active_obj_and_missing_pk(self):
+        handler = self.make_nodes_handler()
+        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        mock_get = self.patch(handler, "get")
+        handler.set_active({})
+        self.assertThat(mock_get, MockNotCalled())
+
+    def test_set_active_clears_active_if_missing_pk(self):
+        handler = self.make_nodes_handler()
+        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        handler.cache["active_pk"] = factory.make_name("system_id")
+        handler.set_active({})
+        self.assertFalse("active_pk" in handler.cache)
+
+    def test_set_active_returns_data_and_sets_active(self):
+        node = factory.make_Node()
+        handler = self.make_nodes_handler(fields=['system_id'])
+        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        node_data = handler.set_active({"system_id": node.system_id})
+        self.expectThat(node_data["system_id"], Equals(node.system_id))
+        self.expectThat(handler.cache["active_pk"], Equals(node.system_id))
+
+    def test_on_listen_calls_listen(self):
+        handler = self.make_nodes_handler()
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.return_value = None
+        handler.on_listen(sentinel.channel, sentinel.action, sentinel.pk)
+        self.assertThat(
+            mock_listen,
+            MockCalledOnceWith(
+                sentinel.channel, sentinel.action, sentinel.pk))
+
+    def test_on_listen_returns_None_if_listen_returns_None(self):
+        handler = self.make_nodes_handler()
+        mock_listen = self.patch(handler, "listen")
+        mock_listen.return_value = None
+        self.assertIsNone(
+            handler.on_listen(
+                sentinel.channel, sentinel.action, sentinel.pk))
+
+    def test_on_listen_delete_returns_handler_name_and_pk(self):
+        handler = self.make_nodes_handler()
+        self.assertEquals(
+            (handler._meta.handler_name, sentinel.pk),
+            handler.on_listen(
+                sentinel.channel, "delete", sentinel.pk))
+
+    def test_on_listen_other_calls_full_dehydrate_for_list_if_not_active(self):
+        node = factory.make_Node()
+        handler = self.make_nodes_handler()
+        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        mock_dehydrate = self.patch(handler, "full_dehydrate")
+        mock_dehydrate.return_value = sentinel.data
+        self.expectThat(
+            handler.on_listen(
+                sentinel.channel, "update", node.system_id),
+            Equals((handler._meta.handler_name, sentinel.data)))
+        self.expectThat(
+            mock_dehydrate,
+            MockCalledOnceWith(node, for_list=True))
+
+    def test_on_listen_other_calls_full_dehydrate_not_for_list_if_active(self):
+        node = factory.make_Node()
+        handler = self.make_nodes_handler()
+        handler.cache = HandlerCache(handler._meta.handler_name, {})
+        handler.cache["active_pk"] = node.system_id
+        mock_dehydrate = self.patch(handler, "full_dehydrate")
+        mock_dehydrate.return_value = sentinel.data
+        self.expectThat(
+            handler.on_listen(
+                sentinel.channel, "update", node.system_id),
+            Equals((handler._meta.handler_name, sentinel.data)))
+        self.expectThat(
+            mock_dehydrate,
+            MockCalledOnceWith(node, for_list=False))
+
+    def test_listen_returns_pk_on_delete_action(self):
+        handler = self.make_nodes_handler()
+        self.assertEquals(
+            sentinel.pk,
+            handler.listen(sentinel.channel, "delete", sentinel.pk))
+
+    def test_listen_calls_get_object_with_pk_on_other_actions(self):
+        handler = self.make_nodes_handler()
+        mock_get_object = self.patch(handler, "get_object")
+        mock_get_object.return_value = sentinel.obj
+        self.expectThat(
+            handler.listen(sentinel.channel, "update", sentinel.pk),
+            Equals(sentinel.obj))
+        self.expectThat(
+            mock_get_object,
+            MockCalledOnceWith({handler._meta.pk: sentinel.pk}))

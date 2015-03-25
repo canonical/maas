@@ -58,7 +58,14 @@ class HandlerOptions(object):
     the handler.
     """
     abstract = False
-    allowed_methods = ['list', 'get', 'create', 'update', 'delete']
+    allowed_methods = [
+        'list',
+        'get',
+        'create',
+        'update',
+        'delete',
+        'set_active',
+        ]
     handler_name = None
     object_class = None
     queryset = None
@@ -117,6 +124,41 @@ class HandlerMetaclass(type):
         return new_class
 
 
+class HandlerCache:
+    """Persistent cache for the handler.
+
+    This cache will persistent its content as long as the client is connected
+    over the websocket. Once the client has disconnected this cache will be
+    cleared. Each websocket connection will have a different cache.
+    """
+
+    def __init__(self, handler_name, backend_cache):
+        self._cache_prefix = "%s_" % handler_name
+        self._backend_cache = backend_cache
+
+    def __len__(self):
+        return len([
+            key
+            for key in self._backend_cache.keys()
+            if key.startswith(self._cache_prefix)
+            ])
+
+    def __contains__(self, key):
+        return self._cache_prefix + key in self._backend_cache
+
+    def __getitem__(self, key):
+        return self._backend_cache[self._cache_prefix + key]
+
+    def __setitem__(self, key, value):
+        self._backend_cache[self._cache_prefix + key] = value
+
+    def __delitem__(self, key):
+        del self._backend_cache[self._cache_prefix + key]
+
+    def get(self, key, default=None):
+        return self._backend_cache.get(self._cache_prefix + key, default)
+
+
 class Handler:
     """Base handler for all handlers in the WebSocket protocol.
 
@@ -136,8 +178,9 @@ class Handler:
 
     __metaclass__ = HandlerMetaclass
 
-    def __init__(self, user):
+    def __init__(self, user, backend_cache):
         self.user = user
+        self.cache = HandlerCache(self._meta.handler_name, backend_cache)
 
     def full_dehydrate(self, obj, for_list=False):
         """Convert the given object into a dictionary.
@@ -355,6 +398,23 @@ class Handler:
         obj = self.get_object(params)
         obj.delete()
 
+    def set_active(self, params):
+        """Set the active node for this connection.
+
+        This is the node that is being viewed in detail by the client.
+        """
+        # Calling this method without a primary key will clear the currently
+        # active object.
+        if self._meta.pk not in params:
+            if 'active_pk' in self.cache:
+                del self.cache['active_pk']
+            return
+
+        # Get the object data and set it as active.
+        obj_data = self.get(params)
+        self.cache['active_pk'] = obj_data[self._meta.pk]
+        return obj_data
+
     def on_listen(self, channel, action, pk):
         """Called by the protocol when a channel notification occurs.
 
@@ -366,10 +426,19 @@ class Handler:
         if action == "delete":
             return (self._meta.handler_name, obj)
         else:
-            return (
-                self._meta.handler_name,
-                self.full_dehydrate(obj, for_list=False),
-                )
+            if 'active_pk' in self.cache and pk == self.cache['active_pk']:
+                # Active so send all the data for the object.
+                return (
+                    self._meta.handler_name,
+                    self.full_dehydrate(obj, for_list=False),
+                    )
+            else:
+                # Not active so only send the data like it was comming from
+                # the list call.
+                return (
+                    self._meta.handler_name,
+                    self.full_dehydrate(obj, for_list=True),
+                    )
 
     def listen(self, channel, action, pk):
         """Called when the handler listens for events on channels with

@@ -48,7 +48,14 @@ class NodeHandler(TimestampedModelHandler):
                 .prefetch_related('tags')
                 .prefetch_related('blockdevice_set__physicalblockdevice'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get', 'create', 'update', 'action']
+        allowed_methods = [
+            'list',
+            'get',
+            'create',
+            'update',
+            'action',
+            'set_active',
+            ]
         form = AdminNodeWithMACAddressesForm
         exclude = [
             "id",

@@ -78,7 +78,7 @@ class TestDeviceHandler(MAASServerTestCase):
 
     def test_get(self):
         owner = factory.make_User()
-        handler = DeviceHandler(owner)
+        handler = DeviceHandler(owner, {})
         device = factory.make_Node(owner=owner, installable=False)
         self.assertEquals(
             self.dehydrate_device(device),
@@ -86,7 +86,7 @@ class TestDeviceHandler(MAASServerTestCase):
 
     def test_list(self):
         owner = factory.make_User()
-        handler = DeviceHandler(owner)
+        handler = DeviceHandler(owner, {})
         device = factory.make_Node(owner=owner, installable=False)
         self.assertItemsEqual(
             [self.dehydrate_device(device, for_list=True)],
@@ -94,7 +94,7 @@ class TestDeviceHandler(MAASServerTestCase):
 
     def test_list_ignores_nodes(self):
         owner = factory.make_User()
-        handler = DeviceHandler(owner)
+        handler = DeviceHandler(owner, {})
         device = factory.make_Node(owner=owner, installable=False)
         # Create a node.
         factory.make_Node(owner=owner)
@@ -104,7 +104,7 @@ class TestDeviceHandler(MAASServerTestCase):
 
     def test_list_num_queries_is_independent_of_num_devices(self):
         owner = factory.make_User()
-        handler = DeviceHandler(owner)
+        handler = DeviceHandler(owner, {})
         factory.make_Node(owner=owner, installable=False)
         nodegroup = factory.make_NodeGroup()
         self.make_devices(nodegroup, 10)
@@ -128,12 +128,11 @@ class TestDeviceHandler(MAASServerTestCase):
         user = factory.make_User()
         # Create another user.
         factory.make_User()
-        handler = DeviceHandler(user)
         device = factory.make_Node(owner=user, installable=False)
         # Create another device.
         factory.make_Node(
             owner=factory.make_User(), installable=False)
-        handler = DeviceHandler(user)
+        handler = DeviceHandler(user, {})
         self.assertItemsEqual([
             self.dehydrate_device(device, for_list=True),
             ], handler.list({}))
@@ -142,7 +141,7 @@ class TestDeviceHandler(MAASServerTestCase):
         admin = factory.make_admin()
         owner = factory.make_User()
         device = factory.make_Node(owner=owner, installable=False)
-        handler = DeviceHandler(admin)
+        handler = DeviceHandler(admin, {})
         self.assertEquals(
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
@@ -150,7 +149,7 @@ class TestDeviceHandler(MAASServerTestCase):
     def test_get_object_returns_node_if_owner(self):
         owner = factory.make_User()
         device = factory.make_Node(owner=owner, installable=False)
-        handler = DeviceHandler(owner)
+        handler = DeviceHandler(owner, {})
         self.assertEquals(
             device.system_id,
             handler.get_object({"system_id": device.system_id}).system_id)
@@ -158,5 +157,5 @@ class TestDeviceHandler(MAASServerTestCase):
     def test_get_object_returns_None_if_owner_by_another_user(self):
         user = factory.make_User()
         device = factory.make_Node(owner=factory.make_User())
-        handler = DeviceHandler(user)
+        handler = DeviceHandler(user, {})
         self.assertIsNone(handler.get_object({"system_id": device.system_id}))

@@ -32,11 +32,11 @@ class TestGeneralHandler(MAASServerTestCase):
             ]
         for arch in arches:
             factory.make_usable_boot_resource(architecture=arch)
-        handler = GeneralHandler(factory.make_User())
+        handler = GeneralHandler(factory.make_User(), {})
         self.assertEquals(sorted(arches), handler.architectures({}))
 
     def test_osinfo(self):
-        handler = GeneralHandler(factory.make_User())
+        handler = GeneralHandler(factory.make_User(), {})
         osystem = make_osystem_with_releases(self)
         releases = [("", "Default OS Release")]
         for release in osystem["releases"]:
@@ -53,7 +53,7 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertItemsEqual(expected_osinfo, handler.osinfo({}))
 
     def test_actions_for_admin(self):
-        handler = GeneralHandler(factory.make_admin())
+        handler = GeneralHandler(factory.make_admin(), {})
         actions_expected = [
             {
                 "name": name,
@@ -65,7 +65,7 @@ class TestGeneralHandler(MAASServerTestCase):
         self.assertItemsEqual(actions_expected, handler.actions({}))
 
     def test_actions_for_non_admin(self):
-        handler = GeneralHandler(factory.make_User())
+        handler = GeneralHandler(factory.make_User(), {})
         actions_expected = [
             {
                 "name": name,
@@ -83,7 +83,7 @@ class TestGeneralHandler(MAASServerTestCase):
         self.patch(
             general, "gen_candidate_names",
             lambda: iter(hostnames))
-        handler = GeneralHandler(factory.make_User())
+        handler = GeneralHandler(factory.make_User(), {})
         self.assertEqual("new-hostname", handler.random_hostname({}))
 
     def test_random_hostname_returns_empty_string_if_all_used(self):
@@ -92,5 +92,5 @@ class TestGeneralHandler(MAASServerTestCase):
         self.patch(
             general, "gen_candidate_names",
             lambda: iter(hostnames))
-        handler = GeneralHandler(factory.make_User())
+        handler = GeneralHandler(factory.make_User(), {})
         self.assertEqual("", handler.random_hostname({}))

@@ -35,7 +35,7 @@ class DeviceHandler(TimestampedModelHandler):
             .prefetch_related('zone')
             .prefetch_related('tags'))
         pk = 'system_id'
-        allowed_methods = ['list', 'get']
+        allowed_methods = ['list', 'get', 'set_active']
         exclude = [
             "id",
             "installable",

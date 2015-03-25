@@ -43,7 +43,7 @@ class TestClusterHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = ClusterHandler(user)
+        handler = ClusterHandler(user, {})
         nodegroup = factory.make_NodeGroup()
         self.assertEquals(
             self.dehydrate_cluster(nodegroup),
@@ -51,7 +51,7 @@ class TestClusterHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = ClusterHandler(user)
+        handler = ClusterHandler(user, {})
         nodegroup = factory.make_NodeGroup()
         self.assertItemsEqual(
             [self.dehydrate_cluster(nodegroup)],

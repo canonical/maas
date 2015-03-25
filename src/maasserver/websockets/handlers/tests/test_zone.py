@@ -34,7 +34,7 @@ class TestZoneHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = ZoneHandler(user)
+        handler = ZoneHandler(user, {})
         zone = factory.make_Zone()
         self.assertEquals(
             self.dehydrate_zone(zone),
@@ -42,7 +42,7 @@ class TestZoneHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = ZoneHandler(user)
+        handler = ZoneHandler(user, {})
         factory.make_Zone()
         expected_zones = [
             self.dehydrate_zone(zone)

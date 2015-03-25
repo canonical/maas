@@ -158,7 +158,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_get(self):
         user = factory.make_User()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_PhysicalBlockDevice(node)
         self.assertEquals(
@@ -167,7 +167,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_list(self):
         user = factory.make_User()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         factory.make_PhysicalBlockDevice(node)
         self.assertItemsEqual(
@@ -176,7 +176,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_list_ignores_devices(self):
         owner = factory.make_User()
-        handler = NodeHandler(owner)
+        handler = NodeHandler(owner, {})
         # Create a device.
         factory.make_Node(owner=owner, installable=False)
         node = factory.make_Node(owner=owner)
@@ -188,7 +188,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_User()
         user_ssh_prefetch = User.objects.filter(
             id=user.id).prefetch_related('sshkey_set').first()
-        handler = NodeHandler(user_ssh_prefetch)
+        handler = NodeHandler(user_ssh_prefetch, {})
         nodegroup = factory.make_NodeGroup()
         self.make_nodes(nodegroup, 10)
         query_10_count, _ = count_queries(handler.list, {})
@@ -215,7 +215,7 @@ class TestNodeHandler(MAASServerTestCase):
             owner=user, status=NODE_STATUS.ALLOCATED)
         factory.make_Node(
             owner=other_user, status=NODE_STATUS.ALLOCATED)
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertItemsEqual([
             self.dehydrate_node(node, user, for_list=True),
             self.dehydrate_node(ownered_node, user, for_list=True),
@@ -224,63 +224,63 @@ class TestNodeHandler(MAASServerTestCase):
     def test_get_object_returns_node_if_super_user(self):
         user = factory.make_admin()
         node = factory.make_Node()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_returns_node_if_owner(self):
         user = factory.make_User()
         node = factory.make_Node(owner=user)
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_returns_node_if_owner_empty(self):
         user = factory.make_User()
         node = factory.make_Node()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             node, handler.get_object({"system_id": node.system_id}))
 
     def test_get_object_raises_error_if_owner_by_another_user(self):
         user = factory.make_User()
         node = factory.make_Node(owner=factory.make_User())
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             HandlerDoesNotExistError,
             handler.get_object, {"system_id": node.system_id})
 
     def test_get_form_class_for_create(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             AdminNodeWithMACAddressesForm,
             handler.get_form_class("create"))
 
     def test_get_form_class_for_update(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             AdminNodeForm,
             handler.get_form_class("update"))
 
     def test_get_form_class_raises_error_for_unknown_action(self):
         user = factory.make_User()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             HandlerError,
             handler.get_form_class, factory.make_name())
 
     def test_create_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             HandlerPermissionError,
             handler.create, {})
 
     def test_create_raises_validation_error_for_missing_pxe_mac(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         nodegroup = factory.make_NodeGroup()
         zone = factory.make_Zone()
         params = {
@@ -299,7 +299,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_create_raises_validation_error_for_missing_architecture(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         nodegroup = factory.make_NodeGroup()
         zone = factory.make_Zone()
         params = {
@@ -320,7 +320,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_create_creates_node(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         nodegroup = factory.make_NodeGroup()
         zone = factory.make_Zone()
         mac = factory.make_mac_address()
@@ -354,14 +354,14 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_update_raise_permissions_error_for_non_admin(self):
         user = factory.make_User()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             HandlerPermissionError,
             handler.update, {})
 
     def test_update_raises_validation_error_for_invalid_architecture(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         node = factory.make_Node(mac=True)
         node_data = self.dehydrate_node(node, user)
         arch = factory.make_name("arch")
@@ -375,7 +375,7 @@ class TestNodeHandler(MAASServerTestCase):
 
     def test_update_updates_node(self):
         user = factory.make_admin()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         node = factory.make_Node(mac=True)
         node_data = self.dehydrate_node(node, user)
         new_nodegroup = factory.make_NodeGroup()
@@ -409,7 +409,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_missing_action_raises_error(self):
         user = factory.make_User()
         node = factory.make_Node()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             NodeActionError,
             handler.action, {"system_id": node.system_id})
@@ -417,7 +417,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_invalid_action_raises_error(self):
         user = factory.make_User()
         node = factory.make_Node()
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             NodeActionError,
             handler.action, {"system_id": node.system_id, "action": "unknown"})
@@ -425,7 +425,7 @@ class TestNodeHandler(MAASServerTestCase):
     def test_not_available_action_raises_error(self):
         user = factory.make_User()
         node = factory.make_Node(status=NODE_STATUS.DEPLOYED, owner=user)
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertRaises(
             NodeActionError,
             handler.action, {"system_id": node.system_id, "action": "unknown"})
@@ -434,7 +434,7 @@ class TestNodeHandler(MAASServerTestCase):
         user = factory.make_User()
         factory.make_SSHKey(user)
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.assertEquals(
             handler.action({"system_id": node.system_id, "action": "deploy"}),
             "This node has been asked to deploy.")
@@ -444,7 +444,7 @@ class TestNodeHandler(MAASServerTestCase):
         factory.make_SSHKey(user)
         node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
         osystem = make_osystem_with_releases(self)
-        handler = NodeHandler(user)
+        handler = NodeHandler(user, {})
         self.expectThat(
             handler.action({
                 "system_id": node.system_id,

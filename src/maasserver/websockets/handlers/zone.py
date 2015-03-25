@@ -27,7 +27,7 @@ class ZoneHandler(TimestampedModelHandler):
     class Meta:
         queryset = Zone.objects.all()
         pk = 'id'
-        allowed_methods = ['list', 'get']
+        allowed_methods = ['list', 'get', 'set_active']
         listen_channels = [
             "zone",
             ]
