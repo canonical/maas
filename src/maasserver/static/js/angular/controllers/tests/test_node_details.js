@@ -869,8 +869,17 @@ describe("NodeDetailsController", function() {
 
     describe("editSummary", function() {
 
+        it("doesnt sets editing to true if cannot edit", function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.summary.editing = false;
+            $scope.editSummary();
+            expect($scope.summary.editing).toBe(false);
+        });
+
         it("sets editing to true for summary section", function() {
             var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(true);
             $scope.summary.editing = false;
             $scope.editSummary();
             expect($scope.summary.editing).toBe(true);
@@ -1155,8 +1164,17 @@ describe("NodeDetailsController", function() {
 
     describe("editPower", function() {
 
+        it("doesnt sets editing to true if cannot edit", function() {
+            var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(false);
+            $scope.power.editing = false;
+            $scope.editPower();
+            expect($scope.power.editing).toBe(false);
+        });
+
         it("sets editing to true for power section", function() {
             var controller = makeController();
+            spyOn($scope, "canEdit").and.returnValue(true);
             $scope.power.editing = false;
             $scope.editPower();
             expect($scope.power.editing).toBe(true);

@@ -9,25 +9,32 @@ angular.module('MAAS').run(['$templateCache', function ($templateCache) {
     $templateCache.put('directive/templates/power-parameters.html', [
         '<div class="inline">',
             '<label for="power-type" class="two-col">Power type</label>',
-            '<select name="power-type" id="power-type" class="three-col" ',
-                'placeholder="Choose a power type" ',
-                'data-ng-disabled="ngDisabled" ',
-                'data-ng-class="{ invalid: !ngModel.type }" ',
-                'data-ng-model="ngModel.type" ',
-                'data-ng-options="',
-                'type as type.description for type in maasPowerParameters">',
-                '<option value="" disabled selected>',
-                    'Select your power type',
-                '</option>',
-            '</select>',
+            '<div class="three-col" ',
+                'data-maas-dbl-click-overlay="dblClickOverlay()">',
+                '<select name="power-type" id="power-type" ',
+                    'placeholder="Choose a power type" ',
+                    'data-ng-disabled="ngDisabled" ',
+                    'data-ng-class="{ invalid: !ngModel.type }" ',
+                    'data-ng-model="ngModel.type" ',
+                    'data-ng-options="',
+                    'type as type.description ',
+                    'for type in maasPowerParameters">',
+                    '<option value="" disabled selected>',
+                        'Select your power type',
+                    '</option>',
+                '</select>',
+            '</div>',
         '</div>',
         '<div class="inline" data-ng-repeat="field in ngModel.type.fields">',
             '<label for="{$ field.name $}" class="two-col">',
                 '{$ field.label $}',
             '</label>',
-            '<maas-power-input field="field" ',
-                'data-ng-disabled="ngDisabled" ',
-                'data-ng-model="ngModel.parameters[field.name]">',
+            '<div class="three-col" ',
+                'data-maas-dbl-click-overlay="dblClickOverlay()">',
+                '<maas-power-input field="field" ',
+                    'data-ng-disabled="ngDisabled" ',
+                    'data-ng-model="ngModel.parameters[field.name]">',
+            '</div>',
         '</div>'
     ].join(''));
 }]);
@@ -48,7 +55,7 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                 if(type === "string" || type === "mac_address") {
                     // Build an input element with the correct attributes.
                     html =
-                        '<input type="text" class="three-col" ' +
+                        '<input type="text" ' +
                         'name="' + scope.field.name + '" ' +
                         req + 'data-ng-model="' + attrs.ngModel + '" ' +
                         'data-ng-disabled="' + attrs.ngDisabled + '" ';
@@ -73,7 +80,7 @@ angular.module('MAAS').directive('maasPowerInput', ['$compile',
                         'data-ng-disabled="' + attrs.ngDisabled + '" ' +
                         'data-ng-options="' +
                         'choice[0] as choice[1] for choice in field.choices' +
-                        '" class="three-col">';
+                        '">';
                     html += '</select>';
 
                     // Set the default choice on the model.
@@ -107,7 +114,8 @@ angular.module('MAAS').directive('maasPowerParameters', function() {
         scope: {
             maasPowerParameters: '=',
             ngModel: '=',
-            ngDisabled: '='
+            ngDisabled: '=',
+            dblClickOverlay: '&'
         },
         templateUrl: 'directive/templates/power-parameters.html'
     };

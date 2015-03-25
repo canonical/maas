@@ -517,6 +517,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Called to enter edit mode in the summary section.
         $scope.editSummary = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
             $scope.summary.editing = true;
         };
 
@@ -556,6 +559,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Called to enter edit mode in the power section.
         $scope.editPower = function() {
+            if(!$scope.canEdit()) {
+                return;
+            }
             $scope.power.editing = true;
         };
 
