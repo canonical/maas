@@ -15,14 +15,19 @@ __metaclass__ = type
 __all__ = []
 
 import httplib
+import io
 from random import randint
 from weakref import WeakSet
 
+from apiclient.multipart import encode_multipart_data
 from django.core import signals
-from django.core.handlers.wsgi import WSGIHandler
+from django.core.handlers.wsgi import (
+    WSGIHandler,
+    WSGIRequest,
+    )
 from django.core.urlresolvers import get_resolver
 from django.db import connection
-from django.http import HttpRequest
+from django.http import HttpResponse
 from django.http.response import HttpResponseServerError
 from fixtures import FakeLogger
 from maasserver.testing.testcase import SerializationFailureTestCase
@@ -34,6 +39,7 @@ from maastesting.matchers import (
     MockCallsMatch,
     )
 from maastesting.testcase import MAASTestCase
+from maastesting.utils import sample_binary_data
 from mock import (
     call,
     sentinel,
@@ -47,13 +53,22 @@ from testtools.matchers import (
     Not,
     )
 from twisted.python import log
+from twisted.web import wsgi
+
+
+def make_request():
+    # Return a minimal WSGIRequest.
+    return WSGIRequest({
+        "REQUEST_METHOD": "GET",
+        "wsgi.input": wsgi._InputStream(io.BytesIO()),
+    })
 
 
 class TestLogRetry(MAASTestCase):
     """Tests for :py:func:`maasserver.utils.views.log_retry`."""
 
     def test__logs_warning(self):
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         attempt = randint(1, 10)
 
@@ -69,22 +84,10 @@ class TestResetRequest(MAASTestCase):
     """Tests for :py:func:`maasserver.utils.views.reset_request`."""
 
     def test__clears_messages_from_cookies(self):
-        request = HttpRequest()
+        request = make_request()
         request.COOKIES["messages"] = sentinel.messages
-        views.reset_request(request)
+        request = views.reset_request(request)
         self.assertEqual({}, request.COOKIES)
-
-    def test__clears_only_messages_from_cookies(self):
-        request = HttpRequest()
-        request.COOKIES["messages"] = sentinel.messages
-        request.COOKIES.update({
-            factory.make_name("cookie"): sentinel.cookie
-            for _ in xrange(10)
-        })
-        keys_before = set(request.COOKIES)
-        views.reset_request(request)
-        keys_after = set(request.COOKIES)
-        self.assertEqual({"messages"}, keys_before - keys_after)
 
 
 class TestWebApplicationHandler(SerializationFailureTestCase):
@@ -109,7 +112,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
     def test__handle_uncaught_exception_notes_serialization_failure(self):
         handler = views.WebApplicationHandler()
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         failure = self.capture_serialization_failure()
         response = handler.handle_uncaught_exception(
@@ -125,7 +128,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
     def test__handle_uncaught_exception_does_not_note_other_failure(self):
         handler = views.WebApplicationHandler()
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         failure_type = factory.make_exception_type()
         failure = failure_type, failure_type(), None
@@ -142,7 +145,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
 
     def test__handle_uncaught_exception_logs_other_failure(self):
         handler = views.WebApplicationHandler()
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         exc_type = factory.make_exception_type()
         exc_info = exc_type, exc_type(), None
@@ -164,7 +167,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             lambda request: self.cause_serialization_failure())
 
         handler = views.WebApplicationHandler(1)
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
@@ -182,7 +185,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             signals.got_request_exception, "send")
 
         handler = views.WebApplicationHandler(1)
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         handler.get_response(request)
 
@@ -195,7 +198,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         get_response_original.return_value = sentinel.response
 
         handler = views.WebApplicationHandler()
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
@@ -218,7 +221,10 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         get_response_original = self.patch(WSGIHandler, "get_response")
         get_response_original.side_effect = set_retry
 
-        request = HttpRequest()
+        reset_request = self.patch_autospec(views, "reset_request")
+        reset_request.side_effect = lambda request: request
+
+        request = make_request()
         request.path = factory.make_name("path")
         response = handler.get_response(request)
 
@@ -241,7 +247,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         log_retry = self.patch_autospec(views, "log_retry")
         reset_request = self.patch_autospec(views, "reset_request")
 
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         handler.get_response(request)
 
@@ -257,8 +263,46 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         get_response_original = self.patch(WSGIHandler, "get_response")
         get_response_original.side_effect = check_in_transaction
 
-        request = HttpRequest()
+        request = make_request()
         request.path = factory.make_name("path")
         handler.get_response(request)
 
         self.assertThat(get_response_original, MockCalledOnceWith(request))
+
+    def test__get_response_restores_files_across_requests(self):
+        handler = views.WebApplicationHandler(3)
+        file_content = sample_binary_data
+        file_name = 'content'
+
+        recorder = []
+
+        def get_response_read_content_files(self, request):
+            # Simple get_response method which returns the 'file_name' file
+            # from the request in the response.
+            content = request.FILES[file_name].read()
+            # Record calls.
+            recorder.append(content)
+            response = HttpResponse(
+                content=content,
+                status=httplib.OK,
+                mimetype=b"text/plain; charset=utf-8")
+            handler._WebApplicationHandler__retry.add(response)
+            return response
+
+        self.patch(
+            WSGIHandler, "get_response", get_response_read_content_files)
+
+        body, headers = encode_multipart_data(
+            [], [[file_name, io.BytesIO(file_content)]])
+        env = {
+            'REQUEST_METHOD': 'POST',
+            'wsgi.input': wsgi._InputStream(io.BytesIO(body)),
+            'CONTENT_TYPE': headers['Content-Type'],
+            'CONTENT_LENGTH': headers['Content-Length'],
+            'HTTP_MIME_VERSION': headers['MIME-Version'],
+        }
+        request = WSGIRequest(env)
+
+        response = handler.get_response(request)
+        self.assertEqual(file_content, response.content)
+        self.assertEqual(recorder, [file_content] * 3)

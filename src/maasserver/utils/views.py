@@ -30,6 +30,7 @@ from maasserver.utils.orm import (
 from provisioningserver.logger.log import get_maas_logger
 from twisted.python import log
 from twisted.python.failure import Failure
+from twisted.web import wsgi
 
 
 maaslog = get_maas_logger("views")
@@ -41,13 +42,28 @@ def log_retry(request, attempt):
 
 
 def reset_request(request):
-    """Undo non-transaction changes to the request.
+    """Return a pristine new request object.
 
-    Clear any message from the previous attempt. TODO: this assumes
-    we're using the cookies as a container for messages; we need to
-    clear the session as well.
+    Use this after a transaction failure, before retrying.
+
+    This is needed so that we don't carry over messages, for example.
+    TODO: this assumes we're using the cookies as a container for
+    messages; we need to clear the session as well.
+
+    This also resets the input stream.
     """
-    request.COOKIES.pop('messages', None)
+    wsgi_input = request.environ.get("wsgi.input")
+    if isinstance(wsgi_input, wsgi._InputStream):
+        # This is what we are going to see within Twisted. The wrapped
+        # file supports seeking so this is safe.
+        wsgi_input._wrapped.seek(0)
+    else:
+        # Neither PEP 0333 nor PEP 3333 require that the input stream
+        # supports seeking, but we need it, and it would be better that
+        # this crashed here than continuing on if it's not available.
+        wsgi_input.seek(0)
+
+    return request.__class__(request.environ)
 
 
 class WebApplicationHandler(WSGIHandler):
@@ -57,7 +73,6 @@ class WebApplicationHandler(WSGIHandler):
     :ivar __retry: A weak set containing responses that have been generated as
         a result of a serialization failure.
     """
-
     def __init__(self, attempts=10):
         super(WebApplicationHandler, self).__init__()
         self.__attempts = attempts
@@ -124,7 +139,7 @@ class WebApplicationHandler(WSGIHandler):
             response = get_response(request)
             if response in self.__retry:
                 log_retry(request, attempt)
-                reset_request(request)
+                request = reset_request(request)
                 continue
             else:
                 return response
