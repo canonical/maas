@@ -24,9 +24,11 @@ from django.db.models import (
     CharField,
     ForeignKey,
     IntegerField,
+    Manager,
     )
 from maasserver import DefaultMeta
 from maasserver.enum import (
+    NODEGROUP_STATUS,
     NODEGROUPINTERFACE_MANAGEMENT,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES,
     NODEGROUPINTERFACE_MANAGEMENT_CHOICES_DICT,
@@ -61,6 +63,32 @@ if REVEAL_IPv6:
     BROADCAST_IP_HELP += " (for IPv4 networks only)."
 
 
+class NodeGroupInterfaceManager(Manager):
+    """Manager for NodeGroupInterface objects"""
+
+    def get_by_network(self, network):
+        """Find the NodeGroupInterface for a particular netaddr.IPNetwork"""
+        interfaces = (
+            self.filter(nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
+                .exclude(static_ip_range_low__isnull=True)
+                .exclude(static_ip_range_high__isnull=True)
+        )
+        for interface in interfaces:
+            if network == interface.network:
+                return interface
+
+    def get_by_address(self, address):
+        """Find the NodeGroupInterface for a particular netaddr.IPAddress"""
+        interfaces = (
+            self.filter(nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
+                .exclude(static_ip_range_low__isnull=True)
+                .exclude(static_ip_range_high__isnull=True)
+        )
+        for interface in interfaces:
+            if address in interface.network:
+                return interface
+
+
 class NodeGroupInterface(CleanSave, TimestampedModel):
     """Cluster interface.
 
@@ -76,6 +104,8 @@ class NodeGroupInterface(CleanSave, TimestampedModel):
     class Meta(DefaultMeta):
         # The API identifies a NodeGroupInterface by cluster and name.
         unique_together = ('nodegroup', 'name')
+
+    objects = NodeGroupInterfaceManager()
 
     # Static IP of the network interface.
     ip = MAASIPAddressField(

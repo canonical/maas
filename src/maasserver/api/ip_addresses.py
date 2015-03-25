@@ -9,6 +9,7 @@ from __future__ import (
     unicode_literals,
     )
 
+
 str = None
 
 __metaclass__ = type
@@ -16,7 +17,6 @@ __all__ = [
     'IPAddressesHandler',
     ]
 
-from django.db import transaction
 from django.shortcuts import get_object_or_404
 from maasserver.api.support import (
     operation,
@@ -30,21 +30,23 @@ from maasserver.clusterrpc.dhcp import (
     remove_host_maps,
     update_host_maps,
     )
-from maasserver.enum import (
-    IPADDRESS_TYPE,
-    NODEGROUP_STATUS,
-    )
+from maasserver.enum import IPADDRESS_TYPE
 from maasserver.exceptions import (
     MAASAPIBadRequest,
     StaticIPAlreadyExistsForMACAddress,
     )
-from maasserver.models import (
-    NodeGroupInterface,
-    StaticIPAddress,
-    )
+from maasserver.models import StaticIPAddress
 from maasserver.models.macaddress import MACAddress
-from maasserver.utils.orm import commit_within_atomic_block
-import netaddr
+from maasserver.models.nodegroupinterface import NodeGroupInterface
+from maasserver.utils.orm import (
+    commit_within_atomic_block,
+    transactional,
+    )
+from netaddr import (
+    IPAddress,
+    IPNetwork,
+    )
+from netaddr.core import AddrFormatError
 from provisioningserver.logger import get_maas_logger
 
 
@@ -63,8 +65,10 @@ class IPAddressesHandler(OperationsHandler):
     def resource_uri(cls, *args, **kwargs):
         return ('ipaddresses_handler', [])
 
-    @transaction.atomic
-    def claim_ip(self, user, interface, requested_address, mac=None):
+    @transactional
+    def claim_ip(
+            self, user, interface, requested_address, mac=None,
+            hostname=None):
         """Attempt to get a USER_RESERVED StaticIPAddress for `user` on
         `interface`.
 
@@ -76,7 +80,7 @@ class IPAddressesHandler(OperationsHandler):
                 range_high=interface.static_ip_range_high,
                 alloc_type=IPADDRESS_TYPE.USER_RESERVED,
                 requested_address=requested_address,
-                user=user)
+                user=user, hostname=hostname)
             commit_within_atomic_block()
             maaslog.info("User %s was allocated IP %s", user.username, sip.ip)
         else:
@@ -86,7 +90,7 @@ class IPAddressesHandler(OperationsHandler):
                 mac_address=mac, cluster_interface=interface)
             ips_on_interface = (
                 addr.ip for addr in mac_address.ip_addresses.all()
-                if netaddr.IPAddress(addr.ip) in interface.network)
+                if IPAddress(addr.ip) in interface.network)
             if any(ips_on_interface):
                 # If this MAC already has static IPs on the interface in
                 # question we raise an error, since we can't sanely
@@ -132,35 +136,56 @@ class IPAddressesHandler(OperationsHandler):
         devices and Nodes to use; it is free for use by the requesting user
         until released by the user.
 
+        The user may supply either a range matching the subnet of an
+        existing cluster interface, or a specific IP address within the
+        static IP address range on a cluster interface.
+
         :param network: CIDR representation of the network on which the IP
             reservation is required. e.g. 10.1.2.0/24
+        :param requested_address: the requested address, which must be within
+            a static IP address range managed by MAAS.
+        :param hostname: the hostname to use for the specified IP address
         :type network: unicode
 
-        Returns 400 if there is no network in MAAS matching the provided one.
+        Returns 400 if there is no network in MAAS matching the provided one,
+        or a requested_address is supplied, but a corresponding network
+        could not be found.
         Returns 503 if there are no more IP addresses available.
         """
-        network = get_mandatory_param(request.POST, "network")
+        network = get_optional_param(request.POST, "network")
         requested_address = get_optional_param(
             request.POST, "requested_address")
+        hostname = get_optional_param(request.POST, "hostname")
         mac_address = get_optional_param(request.POST, "mac")
-        # Validate the passed network.
-        try:
-            valid_network = netaddr.IPNetwork(network)
-        except netaddr.core.AddrFormatError:
-            raise MAASAPIBadRequest("Invalid network parameter %s" % network)
 
-        # Match the network to a nodegroupinterface.
-        interfaces = (
-            NodeGroupInterface.objects.filter(
-                nodegroup__status=NODEGROUP_STATUS.ACCEPTED)
-            .exclude(static_ip_range_low__isnull=True)
-            .exclude(static_ip_range_high__isnull=True)
-        )
-        for interface in interfaces:
-            if valid_network == interface.network:
-                # Winner winner chicken dinner.
-                return self.claim_ip(
-                    request.user, interface, requested_address, mac_address)
+        if requested_address is not None:
+            try:
+                # Validate the passed address.
+                valid_address = IPAddress(requested_address)
+                ngi = NodeGroupInterface.objects.get_by_address(valid_address)
+            except AddrFormatError:
+                raise MAASAPIBadRequest(
+                    "Invalid requested_address parameter: %s" %
+                    requested_address)
+        elif network is not None:
+            try:
+                # Validate the passed network.
+                valid_network = IPNetwork(network)
+                ngi = NodeGroupInterface.objects.get_by_network(valid_network)
+            except AddrFormatError:
+                raise MAASAPIBadRequest(
+                    "Invalid network parameter: %s" % network)
+        else:
+            raise MAASAPIBadRequest(
+                "Must supply either a network or a requested_address.")
+
+        if ngi is not None:
+            sip = self.claim_ip(
+                request.user, ngi, requested_address, mac_address,
+                hostname=hostname)
+            from maasserver.dns.config import dns_update_zones
+            dns_update_zones([ngi.nodegroup])
+            return sip
         raise MAASAPIBadRequest(
             "No network found matching %s; you may be requesting an IP "
             "on a network with no static IP range defined." % network)

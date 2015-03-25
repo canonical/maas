@@ -19,6 +19,7 @@ import json
 
 from django.core.urlresolvers import reverse
 from maasserver.api import ip_addresses as ip_addresses_module
+from maasserver.dns import config as dns_config_module
 from maasserver.enum import (
     IPADDRESS_TYPE,
     NODEGROUP_STATUS,
@@ -46,23 +47,28 @@ class TestNetworksAPI(APITestCase):
         cluster = factory.make_NodeGroup(status=status, **kwargs)
         return factory.make_NodeGroupInterface(cluster)
 
-    def post_reservation_request(self, net, requested_address=None, mac=None):
+    def post_reservation_request(
+            self, net=None, requested_address=None, mac=None, hostname=None):
         params = {
             'op': 'reserve',
-            'network': unicode(net),
         }
         if requested_address is not None:
             params["requested_address"] = requested_address
+        if net is not None:
+            params["network"] = unicode(net)
         if mac is not None:
             params["mac"] = mac
+        if hostname is not None:
+            params["hostname"] = hostname
         return self.client.post(reverse('ipaddresses_handler'), params)
 
     def post_release_request(self, ip, mac=None):
         params = {
             'op': 'release',
             'ip': ip,
-            'mac': mac,
         }
+        if mac is not None:
+            params["mac"] = mac
         return self.client.post(reverse('ipaddresses_handler'), params)
 
     def assertNoMatchingNetworkError(self, response, net):
@@ -103,7 +109,7 @@ class TestNetworksAPI(APITestCase):
         net = interface.network
         mac = factory.make_mac_address()
 
-        response = self.post_reservation_request(net, mac=mac)
+        response = self.post_reservation_request(net=net, mac=mac)
         self.assertEqual(httplib.OK, response.status_code)
         returned_address = json.loads(response.content)
         [staticipaddress] = StaticIPAddress.objects.all()
@@ -130,7 +136,7 @@ class TestNetworksAPI(APITestCase):
         net = interface.network
         mac = factory.make_mac_address()
 
-        response = self.post_reservation_request(net, mac=mac)
+        response = self.post_reservation_request(net=net, mac=mac)
         self.expectThat(
             response.status_code, Equals(httplib.SERVICE_UNAVAILABLE))
         # No static IP has been created.
@@ -146,7 +152,7 @@ class TestNetworksAPI(APITestCase):
         mac.claim_static_ips()
         net = interface.network
 
-        response = self.post_reservation_request(net, mac=mac.mac_address)
+        response = self.post_reservation_request(net=net, mac=mac.mac_address)
         self.expectThat(
             response.status_code, Equals(httplib.CONFLICT))
         # No new static IP has been created.
@@ -161,7 +167,7 @@ class TestNetworksAPI(APITestCase):
         net = interface.network
         mac = factory.make_MACAddress(cluster_interface=interface)
 
-        response = self.post_reservation_request(net, mac=mac.mac_address)
+        response = self.post_reservation_request(net=net, mac=mac.mac_address)
         self.expectThat(response.status_code, Equals(httplib.OK))
         [staticipaddress] = StaticIPAddress.objects.all()
         self.assertEqual(
@@ -171,7 +177,7 @@ class TestNetworksAPI(APITestCase):
     def test_POST_reserve_errors_for_no_matching_interface(self):
         interface = self.make_interface()
         net = factory.make_ipv4_network(but_not=[interface.network])
-        response = self.post_reservation_request(net)
+        response = self.post_reservation_request(net=net)
         self.assertNoMatchingNetworkError(response, net)
 
     def test_POST_reserve_errors_for_interface_with_no_IP_range(self):
@@ -185,18 +191,19 @@ class TestNetworksAPI(APITestCase):
 
     def test_POST_reserve_errors_for_invalid_network(self):
         net = factory.make_string()
-        response = self.post_reservation_request(net)
+        response = self.post_reservation_request(net=net)
         self.assertEqual(
             httplib.BAD_REQUEST, response.status_code, response.content)
         self.assertEqual(
-            "Invalid network parameter %s" % net,
+            "Invalid network parameter: %s" % net,
             response.content)
 
     def test_POST_reserve_creates_requested_address(self):
         interface = self.make_interface()
         net = interface.network
         ip_in_network = interface.static_ip_range_low
-        response = self.post_reservation_request(net, ip_in_network)
+        response = self.post_reservation_request(
+            net=net, requested_address=ip_in_network)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         returned_address = json.loads(response.content)
         [staticipaddress] = StaticIPAddress.objects.all()
@@ -213,7 +220,8 @@ class TestNetworksAPI(APITestCase):
         response = self.post_reservation_request(net, ip_in_network)
         self.assertEqual(httplib.OK, response.status_code, response.content)
         # Do same request again and check it is rejected.
-        response = self.post_reservation_request(net, ip_in_network)
+        response = self.post_reservation_request(
+            net=net, requested_address=ip_in_network)
         self.expectThat(response.status_code, Equals(httplib.NOT_FOUND))
         self.expectThat(
             response.content, Equals(
@@ -224,9 +232,45 @@ class TestNetworksAPI(APITestCase):
         net = interface.network
         ip_not_in_network = unicode(
             IPAddress(interface.static_ip_range_low) - 1)
-        response = self.post_reservation_request(net, ip_not_in_network)
+        response = self.post_reservation_request(
+            net=net, requested_address=ip_not_in_network)
         self.assertEqual(
             httplib.FORBIDDEN, response.status_code, response.content)
+
+    def test_POST_reserve_with_hostname_creates_ip_with_hostname(self):
+        dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
+        interface = self.make_interface()
+        net = interface.network
+        hostname = factory.make_hostname()
+        response = self.post_reservation_request(net=net, hostname=hostname)
+        self.assertEqual(httplib.OK, response.status_code)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(staticipaddress.hostname, Equals(hostname))
+        self.expectThat(dns_update_zones.call_count, Equals(1))
+
+    def test_POST_reserve_with_hostname_and_ip_creates_ip_with_hostname(self):
+        dns_update_zones = self.patch(dns_config_module, 'dns_update_zones')
+        interface = self.make_interface()
+        net = interface.network
+        hostname = factory.make_hostname()
+        ip_in_network = interface.static_ip_range_low
+        response = self.post_reservation_request(
+            net=net, requested_address=ip_in_network, hostname=hostname)
+        self.assertEqual(httplib.OK, response.status_code, response.content)
+        returned_address = json.loads(response.content)
+        [staticipaddress] = StaticIPAddress.objects.all()
+        self.expectThat(
+            returned_address["alloc_type"],
+            Equals(IPADDRESS_TYPE.USER_RESERVED))
+        self.expectThat(returned_address["ip"], Equals(ip_in_network))
+        self.expectThat(staticipaddress.ip, Equals(ip_in_network))
+        self.expectThat(staticipaddress.hostname, Equals(hostname))
+        self.expectThat(dns_update_zones.call_count, Equals(1))
+
+    def test_POST_reserve_with_no_parameters_fails_with_bad_request(self):
+        response = self.post_reservation_request()
+        self.assertEqual(
+            httplib.BAD_REQUEST, response.status_code, response.content)
 
     def test_GET_returns_ipaddresses(self):
         original_ipaddress = factory.make_StaticIPAddress(

@@ -157,7 +157,8 @@ class StaticIPAddressManager(Manager):
 
         if requested_address is None:
             return self._find_free_ip(
-                range_low, range_high, static_range, alloc_type, user)
+                range_low, range_high, static_range, alloc_type, user,
+                hostname=hostname)
         else:
             requested_address = IPAddress(requested_address)
             if requested_address not in static_range:
@@ -179,7 +180,7 @@ class StaticIPAddressManager(Manager):
         return mappings
 
     def _find_free_ip(self, range_low, range_high, static_range, alloc_type,
-                      user):
+                      user, hostname=None):
         """Helper function that finds a free IP address using a lock."""
         with locks.staticip_acquire:
             # The set of _allocated_ addresses in the range is going to be
@@ -204,7 +205,8 @@ class StaticIPAddressManager(Manager):
                 if requested_address not in existing:
                     try:
                         return self._attempt_allocation(
-                            requested_address, alloc_type, user)
+                            requested_address, alloc_type, user,
+                            hostname=hostname)
                     except StaticIPAddressUnavailable:
                         # That address has been taken since we obtained the
                         # list of existing addresses from the database. This
