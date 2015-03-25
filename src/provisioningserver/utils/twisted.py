@@ -25,11 +25,13 @@ __all__ = [
     'synchronous',
     ]
 
+from collections import Iterable
 from contextlib import contextmanager
 from functools import (
     partial,
     wraps,
     )
+from itertools import repeat
 import sys
 import threading
 
@@ -214,22 +216,56 @@ def reactor_sync():
             sync.notify()
 
 
-def retries(timeout=30, interval=1, clock=reactor):
+def retries(timeout=30, intervals=1, clock=reactor):
     """Helper for retrying something, sleeping between attempts.
 
-    Yields ``(elapsed, remaining, wait)`` tuples, giving times in
-    seconds. The last item, `wait`, is the suggested amount of time to
-    sleep before trying again.
+    Returns a generator that yields ``(elapsed, remaining, wait)`` tuples,
+    giving times in seconds. The last item, `wait`, is the suggested amount of
+    time to sleep before trying again.
 
-    @param timeout: From now, how long to keep iterating, in seconds.
-    @param interval: The sleep between each iteration, in seconds.
-    @param clock: An optional `IReactorTime` provider. Defaults to the
+    :param timeout: From now, how long to keep iterating, in seconds. This can
+        be specified as a number, or as an iterable. In the latter case, the
+        iterator is advanced each time an interval is needed. This allows for
+        back-off strategies.
+    :param intervals: The sleep between each iteration, in seconds, an an
+        iterable from which to obtain intervals.
+    :param clock: An optional `IReactorTime` provider. Defaults to the
         installed reactor.
-
     """
     start = clock.seconds()
     end = start + timeout
-    while True:
+
+    if isinstance(intervals, Iterable):
+        intervals = iter(intervals)
+    else:
+        intervals = repeat(intervals)
+
+    return gen_retries(start, end, intervals, clock)
+
+
+def gen_retries(start, end, intervals, clock=reactor):
+    """Helper for retrying something, sleeping between attempts.
+
+    Yields ``(elapsed, remaining, wait)`` tuples, giving times in seconds. The
+    last item, `wait`, is the suggested amount of time to sleep before trying
+    again.
+
+    This function works in concert with `retries`. It's split out so that
+    `retries` can capture the correct start time rather than the time at which
+    it is first iterated.
+
+    :param start: The start time, in seconds, of this generator. This must be
+        congruent with the `IReactorTime` argument passed to this generator.
+    :param end: The desired end time, in seconds, of this generator. This must
+        be congruent with the `IReactorTime` argument passed to this
+        generator.
+    :param intervals: A iterable of intervals, each in seconds, which should
+        be used as hints for the `wait` value that's generated.
+    :param clock: An optional `IReactorTime` provider. Defaults to the
+        installed reactor.
+
+    """
+    for interval in intervals:
         now = clock.seconds()
         if now < end:
             wait = min(interval, end - now)

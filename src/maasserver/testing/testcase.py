@@ -31,6 +31,7 @@ import crochet
 import django
 from django.core.urlresolvers import reverse
 from django.db import (
+    close_old_connections,
     connection,
     transaction,
     )
@@ -278,9 +279,12 @@ class SerializationFailureTestCase(
         # transaction commits. This doesn't need to run with serializable
         # isolation.
         def do_conflicting_update():
-            with transaction.atomic():
-                with closing(connection.cursor()) as cursor:
-                    cursor.execute("UPDATE stest SET a = 2")
+            try:
+                with transaction.atomic():
+                    with closing(connection.cursor()) as cursor:
+                        cursor.execute("UPDATE stest SET a = 2")
+            finally:
+                close_old_connections()
 
         def trigger_serialization_failure():
             # Fetch something first. This ensures that we're inside the

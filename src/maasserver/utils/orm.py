@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = [
     'commit_within_atomic_block',
+    'gen_retry_intervals',
     'get_exception_class',
     'get_first',
     'get_one',
@@ -33,7 +34,13 @@ __all__ = [
 
 from contextlib import contextmanager
 from functools import wraps
-from itertools import islice
+from itertools import (
+    chain,
+    islice,
+    repeat,
+    takewhile,
+    )
+from time import sleep
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
@@ -44,6 +51,10 @@ from django.db import (
 from django.db.transaction import TransactionManagementError
 from django.db.utils import OperationalError
 from maasserver.utils.async import DeferredHooks
+from provisioningserver.utils.backoff import (
+    exponential_growth,
+    full_jitter,
+    )
 from provisioningserver.utils.twisted import callOut
 import psycopg2
 from psycopg2.errorcodes import SERIALIZATION_FAILURE
@@ -238,6 +249,27 @@ def request_transaction_retry():
     raise make_serialization_failure()
 
 
+def gen_retry_intervals(base=0.01, rate=2.5, maximum=10.0):
+    """Generate retry intervals based on an exponential series.
+
+    Once any interval exceeds `maximum` the interval generated will forever be
+    `maximum`; this effectively disconnects from the exponential series. All
+    intervals will be subject to "jitter" as a final step.
+
+    The defaults seem like reasonable coefficients for a capped, full-jitter,
+    exponential back-off series, and were derived by experimentation at the
+    command-line. Real-world experience may teach us better values.
+    """
+    # An exponentially growing series...
+    intervals = exponential_growth(base, rate)
+    # from which we stop pulling one we've hit a maximum...
+    intervals = takewhile((lambda i: i < maximum), intervals)
+    # and thereafter return the maximum value indefinitely...
+    intervals = chain(intervals, repeat(maximum))
+    # and to which we add some randomness.
+    return full_jitter(intervals)
+
+
 def noop():
     """Do nothing."""
 
@@ -263,12 +295,14 @@ def retry_on_serialization_failure(func, reset=noop):
     """
     @wraps(func)
     def retrier(*args, **kwargs):
+        intervals = gen_retry_intervals()
         for _ in xrange(9):
             try:
                 return func(*args, **kwargs)
             except OperationalError as error:
                 if is_serialization_failure(error):
-                    reset()
+                    reset()  # Which may do nothing.
+                    sleep(next(intervals))
                 else:
                     raise
         else:

@@ -14,6 +14,7 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+from itertools import cycle
 import operator
 from random import (
     randint,
@@ -398,6 +399,49 @@ class TestRetries(MAASTestCase):
         # remaining figures are still calculated with reference to the current
         # time. The wait time never goes below zero.
         self.assertRetry(clock, next(gen_retries), 104, -99, 0)
+        # All done.
+        self.assertRaises(StopIteration, next, gen_retries)
+
+    def test_captures_start_time_when_called(self):
+        # Take control of time.
+        clock = Clock()
+
+        gen_retries = retries(5, 2, clock=clock)
+        clock.advance(4)
+        # 4 seconds have passed, so 1 second remains, and it suggests sleeping
+        # for 1 second.
+        self.assertRetry(clock, next(gen_retries), 4, 1, 1)
+
+    def test_intervals_can_be_an_iterable(self):
+        # Take control of time.
+        clock = Clock()
+        # Use intervals of 1s, 2s, 3, and then back to 1s.
+        intervals = cycle((1.0, 2.0, 3.0))
+
+        gen_retries = retries(5, intervals, clock=clock)
+        # No time has passed, 5 seconds remain, and it suggests sleeping
+        # for 1 second, then 2, then 3, then 1 again.
+        self.assertRetry(clock, next(gen_retries), 0, 5, 1)
+        self.assertRetry(clock, next(gen_retries), 0, 5, 2)
+        self.assertRetry(clock, next(gen_retries), 0, 5, 3)
+        self.assertRetry(clock, next(gen_retries), 0, 5, 1)
+        # Mimic sleeping for 3.5 seconds, more than the suggested.
+        clock.advance(3.5)
+        # Now 3.5 seconds have passed, 1.5 seconds remain, and it suggests
+        # sleeping for 1.5 seconds, 0.5 less than the next expected interval
+        # of 2.0 seconds.
+        self.assertRetry(clock, next(gen_retries), 3.5, 1.5, 1.5)
+        # Don't sleep, ask again immediately, and the same answer is given.
+        self.assertRetry(clock, next(gen_retries), 3.5, 1.5, 1.5)
+        # Don't sleep, ask again immediately, and 1.0 seconds is given,
+        # because we're back to the 1.0 second interval.
+        self.assertRetry(clock, next(gen_retries), 3.5, 1.5, 1.0)
+        # Mimic sleeping for 100 seconds, much more than the suggested.
+        clock.advance(100)
+        # There's always a final chance to try something, but the elapsed and
+        # remaining figures are still calculated with reference to the current
+        # time. The wait time never goes below zero.
+        self.assertRetry(clock, next(gen_retries), 103.5, -98.5, 0.0)
         # All done.
         self.assertRaises(StopIteration, next, gen_retries)
 

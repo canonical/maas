@@ -16,7 +16,11 @@ __all__ = []
 
 import httplib
 import io
-from random import randint
+import logging
+from random import (
+    randint,
+    random,
+    )
 from weakref import WeakSet
 
 from apiclient.multipart import encode_multipart_data
@@ -41,6 +45,7 @@ from maastesting.matchers import (
 from maastesting.testcase import MAASTestCase
 from maastesting.utils import sample_binary_data
 from mock import (
+    ANY,
     call,
     sentinel,
     )
@@ -52,6 +57,7 @@ from testtools.matchers import (
     IsInstance,
     Not,
     )
+from twisted.internet.task import Clock
 from twisted.python import log
 from twisted.web import wsgi
 
@@ -64,19 +70,44 @@ def make_request():
     })
 
 
-class TestLogRetry(MAASTestCase):
-    """Tests for :py:func:`maasserver.utils.views.log_retry`."""
+class TestLogFunctions(MAASTestCase):
+    """Tests for `log_failed_attempt` and `log_final_failed_attempt`."""
 
-    def test__logs_warning(self):
+    def capture_logs(self):
+        return FakeLogger(
+            views.__name__, level=logging.DEBUG,
+            format="%(levelname)s: %(message)s")
+
+    def test_log_failed_attempt_logs_warning(self):
         request = make_request()
         request.path = factory.make_name("path")
         attempt = randint(1, 10)
+        elapsed = random() * 10
+        remaining = random() * 10
+        pause = random()
 
-        with FakeLogger("maas", format="%(levelname)s: %(message)s") as logger:
-            views.log_retry(request, attempt)
+        with self.capture_logs() as logger:
+            views.log_failed_attempt(
+                request, attempt, elapsed, remaining, pause)
 
         self.assertEqual(
-            "WARNING: Retry #%d for %s\n" % (attempt, request.path),
+            "DEBUG: Attempt #%d for %s failed; will retry in %.0fms (%.1fs "
+            "now elapsed, %.1fs remaining)\n" % (
+                attempt, request.path, pause * 1000.0, elapsed, remaining),
+            logger.output)
+
+    def test_log_final_failed_attempt_logs_error(self):
+        request = make_request()
+        request.path = factory.make_name("path")
+        attempt = randint(1, 10)
+        elapsed = random() * 10
+
+        with self.capture_logs() as logger:
+            views.log_final_failed_attempt(request, attempt, elapsed)
+
+        self.assertEqual(
+            "ERROR: Attempt #%d for %s failed; giving up (%.1fs elapsed in "
+            "total)\n" % (attempt, request.path, elapsed),
             logger.output)
 
 
@@ -92,11 +123,21 @@ class TestResetRequest(MAASTestCase):
 
 class TestWebApplicationHandler(SerializationFailureTestCase):
 
+    def setUp(self):
+        super(TestWebApplicationHandler, self).setUp()
+        # Wire time.sleep() directly up to clock.advance() to avoid needless
+        # sleeps, and to simulate the march of time without intervention.
+        clock = self.patch(views, "clock", Clock())
+        self.patch(views, "sleep", clock.advance)
+
     def test__init_defaults(self):
         handler = views.WebApplicationHandler()
         self.expectThat(
-            handler._WebApplicationHandler__attempts,
+            handler._WebApplicationHandler__retry_attempts,
             Equals(10))
+        self.expectThat(
+            handler._WebApplicationHandler__retry_timeout,
+            Equals(90))
         self.expectThat(
             handler._WebApplicationHandler__retry,
             IsInstance(WeakSet))
@@ -105,10 +146,17 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             HasLength(0))
 
     def test__init_attempts_can_be_set(self):
-        handler = views.WebApplicationHandler(sentinel.attempts)
+        attempts = randint(1, 100)
+        handler = views.WebApplicationHandler(attempts)
         self.expectThat(
-            handler._WebApplicationHandler__attempts,
-            Is(sentinel.attempts))
+            handler._WebApplicationHandler__retry_attempts,
+            Equals(attempts))
+
+    def test__init_timeout_can_be_set(self):
+        handler = views.WebApplicationHandler(timeout=sentinel.timeout)
+        self.expectThat(
+            handler._WebApplicationHandler__retry_timeout,
+            Is(sentinel.timeout))
 
     def test__handle_uncaught_exception_notes_serialization_failure(self):
         handler = views.WebApplicationHandler()
@@ -162,8 +210,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         self.expectThat(_why, Equals("500 Error - %s" % request.path))
 
     def test__get_response_catches_serialization_failures(self):
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.side_effect = (
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = (
             lambda request: self.cause_serialization_failure())
 
         handler = views.WebApplicationHandler(1)
@@ -172,13 +220,13 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         response = handler.get_response(request)
 
         self.assertThat(
-            get_response_original, MockCalledOnceWith(request))
+            get_response, MockCalledOnceWith(request))
         self.assertThat(
             response, IsInstance(HttpResponseServerError))
 
     def test__get_response_sends_signal_on_serialization_failures(self):
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.side_effect = (
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = (
             lambda request: self.cause_serialization_failure())
 
         send_request_exception = self.patch_autospec(
@@ -194,8 +242,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
                 sender=views.WebApplicationHandler, request=request))
 
     def test__get_response_tries_only_once(self):
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.return_value = sentinel.response
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.return_value = sentinel.response
 
         handler = views.WebApplicationHandler()
         request = make_request()
@@ -203,7 +251,7 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         response = handler.get_response(request)
 
         self.assertThat(
-            get_response_original, MockCalledOnceWith(request))
+            get_response, MockCalledOnceWith(request))
         self.assertThat(
             response, Is(sentinel.response))
 
@@ -218,8 +266,8 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
             handler._WebApplicationHandler__retry.add(response)
             return response
 
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.side_effect = set_retry
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = set_retry
 
         reset_request = self.patch_autospec(views, "reset_request")
         reset_request.side_effect = lambda request: request
@@ -229,29 +277,37 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         response = handler.get_response(request)
 
         self.assertThat(
-            get_response_original, MockCallsMatch(
+            get_response, MockCallsMatch(
                 call(request), call(request), call(request)))
         self.assertThat(response, Is(sentinel.r3))
 
     def test__get_response_logs_retry_and_resets_request(self):
-        handler = views.WebApplicationHandler(2)
+        timeout = 1.0 + (random() * 99)
+        handler = views.WebApplicationHandler(2, timeout)
 
         def set_retry(request):
             response = sentinel.response
             handler._WebApplicationHandler__retry.add(response)
             return response
 
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.side_effect = set_retry
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = set_retry
 
-        log_retry = self.patch_autospec(views, "log_retry")
+        self.patch_autospec(views, "log_failed_attempt")
+        self.patch_autospec(views, "log_final_failed_attempt")
         reset_request = self.patch_autospec(views, "reset_request")
+        reset_request.side_effect = lambda request: request
 
         request = make_request()
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.expectThat(log_retry, MockCalledOnceWith(request, 1))
+        self.expectThat(
+            views.log_failed_attempt,
+            MockCalledOnceWith(request, 1, ANY, ANY, ANY))
+        self.expectThat(
+            views.log_final_failed_attempt,
+            MockCalledOnceWith(request, 2, ANY))
         self.expectThat(reset_request, MockCalledOnceWith(request))
 
     def test__get_response_up_calls_in_transaction(self):
@@ -260,14 +316,14 @@ class TestWebApplicationHandler(SerializationFailureTestCase):
         def check_in_transaction(request):
             validate_in_transaction(connection)
 
-        get_response_original = self.patch(WSGIHandler, "get_response")
-        get_response_original.side_effect = check_in_transaction
+        get_response = self.patch(WSGIHandler, "get_response")
+        get_response.side_effect = check_in_transaction
 
         request = make_request()
         request.path = factory.make_name("path")
         handler.get_response(request)
 
-        self.assertThat(get_response_original, MockCalledOnceWith(request))
+        self.assertThat(get_response, MockCalledOnceWith(request))
 
     def test__get_response_restores_files_across_requests(self):
         handler = views.WebApplicationHandler(3)

@@ -17,11 +17,13 @@ __all__ = []
 from maastesting import matchers
 from maastesting.factory import factory
 from maastesting.matchers import (
+    GreaterThanOrEqual,
     HasAttribute,
     IsCallable,
     IsCallableMock,
     IsFiredDeferred,
     IsUnfiredDeferred,
+    LessThanOrEqual,
     MockAnyCall,
     MockCalledOnceWith,
     MockCalledWith,
@@ -320,3 +322,37 @@ class TestIsUnfiredDeferred(MAASTestCase, MockTestMixin):
         self.assertMismatch(
             IsUnfiredDeferred().match(object()),
             " is not a Deferred")
+
+
+class TestGreaterThanOrEqual(MAASTestCase, MockTestMixin):
+
+    def test__matches_greater_than(self):
+        self.assertThat(5, GreaterThanOrEqual(4))
+        self.assertThat("bbb", GreaterThanOrEqual("aaa"))
+
+    def test__matches_equal_to(self):
+        self.assertThat(5, GreaterThanOrEqual(5))
+        self.assertThat("bbb", GreaterThanOrEqual("bbb"))
+
+    def test__does_not_match_less_than(self):
+        self.assertMismatch(
+            GreaterThanOrEqual(6).match(5), "Differences:")
+        self.assertMismatch(
+            GreaterThanOrEqual("ccc").match("bbb"), "Differences:")
+
+
+class TestLessThanOrEqual(MAASTestCase, MockTestMixin):
+
+    def test__matches_less_than(self):
+        self.assertThat(5, LessThanOrEqual(6))
+        self.assertThat("bbb", LessThanOrEqual("ccc"))
+
+    def test__matches_equal_to(self):
+        self.assertThat(5, LessThanOrEqual(5))
+        self.assertThat("bbb", LessThanOrEqual("bbb"))
+
+    def test__does_not_match_greater_than(self):
+        self.assertMismatch(
+            LessThanOrEqual(4).match(5), "Differences:")
+        self.assertMismatch(
+            LessThanOrEqual("aaa").match("bbb"), "Differences:")

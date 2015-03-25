@@ -14,7 +14,12 @@ str = None
 __metaclass__ = type
 __all__ = []
 
-from itertools import repeat
+from itertools import (
+    islice,
+    repeat,
+    )
+from random import randint
+import time
 
 from django.core.exceptions import MultipleObjectsReturned
 from django.db import (
@@ -50,6 +55,7 @@ from maastesting.factory import factory
 from maastesting.matchers import (
     HasLength,
     IsFiredDeferred,
+    LessThanOrEqual,
     MockCalledOnceWith,
     MockCallsMatch,
     MockNotCalled,
@@ -70,6 +76,7 @@ from psycopg2.errorcodes import SERIALIZATION_FAILURE
 from testtools import ExpectedException
 from testtools.deferredruntest import extract_result
 from testtools.matchers import (
+    AllMatch,
     Equals,
     Is,
     IsInstance,
@@ -81,6 +88,16 @@ from twisted.internet.defer import (
     passthru,
     )
 from twisted.python.failure import Failure
+
+
+def setUp():
+    # Prevent real sleeps.
+    orm.sleep = lambda _: None
+
+
+def tearDown():
+    # Re-enable real sleeps.
+    orm.sleep = time.sleep
 
 
 class FakeModel:
@@ -361,6 +378,35 @@ class TestRequestTransactionRetry(MAASTestCase):
             OperationalError, request_transaction_retry)
         self.assertThat(exception, MatchesPredicate(
             is_serialization_failure, "%r is not a serialization failure."))
+
+
+class TestGenRetryIntervals(MAASTestCase):
+    """Tests for `orm.gen_retry_intervals`."""
+
+    def remove_jitter(self):
+        # Remove the effect of randomness.
+        full_jitter = self.patch(orm, "full_jitter")
+        full_jitter.side_effect = lambda thing: thing
+
+    def test__unjittered_series_begins(self):
+        self.remove_jitter()
+        # Get the first 10 intervals, without jitter.
+        intervals = islice(orm.gen_retry_intervals(), 10)
+        # Convert from seconds to milliseconds, and round.
+        intervals = [int(interval * 1000) for interval in intervals]
+        # They start off small, but grow rapidly to the maximum.
+        self.assertThat(intervals, Equals(
+            [25, 62, 156, 390, 976, 2441, 6103, 10000, 10000, 10000]))
+
+    def test__pulls_from_exponential_series_until_maximum_is_reached(self):
+        self.remove_jitter()
+        # repeat() is the tail-end of the interval series.
+        repeat = self.patch(orm, "repeat")
+        repeat.return_value = [sentinel.end]
+        maximum = randint(10, 100)
+        intervals = list(orm.gen_retry_intervals(maximum=maximum))
+        self.assertThat(intervals[-1], Is(sentinel.end))
+        self.assertThat(intervals[:-1], AllMatch(LessThanOrEqual(maximum)))
 
 
 class TestPostCommitHooks(MAASTestCase):

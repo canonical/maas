@@ -16,7 +16,10 @@ __all__ = [
     'WebApplicationHandler',
 ]
 
+from itertools import count
+import logging
 import sys
+from time import sleep
 from weakref import WeakSet
 
 from django.core import signals
@@ -24,21 +27,33 @@ from django.core.handlers.wsgi import WSGIHandler
 from django.core.urlresolvers import get_resolver
 from django.db import transaction
 from maasserver.utils.orm import (
+    gen_retry_intervals,
     is_serialization_failure,
     post_commit_hooks,
     )
-from provisioningserver.logger.log import get_maas_logger
+from provisioningserver.utils.twisted import retries
+from twisted.internet import reactor as clock
 from twisted.python import log
 from twisted.python.failure import Failure
 from twisted.web import wsgi
 
 
-maaslog = get_maas_logger("views")
+logger = logging.getLogger(__name__)
 
 
-def log_retry(request, attempt):
-    """Log a message about retrying the given request."""
-    maaslog.warning("Retry #%d for %s", attempt, request.path)
+def log_failed_attempt(request, attempt, elapsed, remaining, pause):
+    """Log about a failed attempt to answer the given request."""
+    logger.debug(
+        "Attempt #%d for %s failed; will retry in %.0fms (%.1fs now elapsed, "
+        "%.1fs remaining)", attempt, request.path, pause * 1000.0, elapsed,
+        remaining)
+
+
+def log_final_failed_attempt(request, attempt, elapsed):
+    """Log about the final failed attempt to answer the given request."""
+    logger.error(
+        "Attempt #%d for %s failed; giving up (%.1fs elapsed in total)",
+        attempt, request.path, elapsed)
 
 
 def reset_request(request):
@@ -69,13 +84,18 @@ def reset_request(request):
 class WebApplicationHandler(WSGIHandler):
     """Request handler that retries when there are serialisation failures.
 
-    :ivar __attempts: The number of times to attempt each request.
+    :ivar __retry_attempts: The number of times to attempt each request.
+    :ivar __retry_timeout: The number of seconds after which this request will
+        no longer be considered for a retry.
     :ivar __retry: A weak set containing responses that have been generated as
         a result of a serialization failure.
     """
-    def __init__(self, attempts=10):
+
+    def __init__(self, attempts=10, timeout=90.0):
         super(WebApplicationHandler, self).__init__()
-        self.__attempts = attempts
+        assert attempts >= 1, "The minimum attempts is 1, not %d" % attempts
+        self.__retry_attempts = attempts
+        self.__retry_timeout = timeout
         self.__retry = WeakSet()
 
     def handle_uncaught_exception(self, request, resolver, exc_info):
@@ -134,15 +154,25 @@ class WebApplicationHandler(WSGIHandler):
                 return self.handle_uncaught_exception(
                     request, get_resolver(None), sys.exc_info())
 
-        # Loop up to (attempts - 1) times.
-        for attempt in xrange(1, self.__attempts):
+        # Attempt to start new transactions for up to `__retry_timeout`
+        # seconds, at intervals defined by `gen_retry_intervals`, but don't
+        # try more than `__retry_attempts` times.
+        retry_intervals = gen_retry_intervals()
+        retry_details = retries(self.__retry_timeout, retry_intervals, clock)
+        retry_attempts = self.__retry_attempts
+        retry_set = self.__retry
+
+        for attempt in count(1):
             response = get_response(request)
-            if response in self.__retry:
-                log_retry(request, attempt)
+            if response in retry_set:
+                elapsed, remaining, wait = next(retry_details)
+                if attempt == retry_attempts or wait == 0:
+                    # Time's up: this was the final attempt.
+                    log_final_failed_attempt(request, attempt, elapsed)
+                    return response
+                # We'll retry after a brief interlude.
+                log_failed_attempt(request, attempt, elapsed, remaining, wait)
                 request = reset_request(request)
-                continue
+                sleep(wait)
             else:
                 return response
-        else:
-            # Last chance, unadorned by retry logic.
-            return get_response(request)

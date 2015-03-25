@@ -2,6 +2,7 @@
 *.egg-info
 *.log
 /.db.lock
+/.hypothesis
 /.idea
 /.installed.cfg
 /.noseids

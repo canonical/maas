@@ -79,11 +79,12 @@ install-dependencies:
 
 bin/python:
 	$(virtualenv) --python=$(python) --system-site-packages $(CURDIR)
+	bin/pip install hypothesis==0.7.2  # buildout can't install this.
 
 bin/buildout: bin/python bootstrap/zc.buildout-1.5.2.tar.gz
 	bin/python -m pip --quiet install --ignore-installed \
 	    --no-dependencies bootstrap/zc.buildout-1.5.2.tar.gz
-	$(RM) -f README.txt  # zc.buildout installs an annoying README.txt.
+	$(RM) README.txt  # zc.buildout installs an annoying README.txt.
 	@touch --no-create $@  # Ensure it's newer than its dependencies.
 
 bin/database: bin/buildout buildout.cfg versions.cfg setup.py

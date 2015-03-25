@@ -13,11 +13,13 @@ str = None
 
 __metaclass__ = type
 __all__ = [
+    'GreaterThanOrEqual',
     'HasAttribute',
     'IsCallable',
     'IsCallableMock',
     'IsFiredDeferred',
     'IsUnfiredDeferred',
+    'LessThanOrEqual',
     'MockAnyCall',
     'MockCalledOnceWith',
     'MockCalledWith',
@@ -32,10 +34,13 @@ from testtools.matchers import (
     AfterPreprocessing,
     Annotate,
     Equals,
+    GreaterThan,
     HasLength,
     IsInstance,
+    LessThan,
     Matcher,
     MatchesAll,
+    MatchesAny,
     MatchesPredicate,
     MatchesStructure,
     Mismatch,
@@ -270,3 +275,11 @@ class MatchesPartialCall(Matcher):
             first_only=True,
         )
         return matcher.match(observed)
+
+
+def GreaterThanOrEqual(value):
+    return MatchesAny(GreaterThan(value), Equals(value))
+
+
+def LessThanOrEqual(value):
+    return MatchesAny(LessThan(value), Equals(value))
