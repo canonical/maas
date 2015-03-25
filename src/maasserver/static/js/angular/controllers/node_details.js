@@ -69,6 +69,25 @@ angular.module('MAAS').controller('NodeDetailsController', [
             parameters: {}
         };
 
+        // Storage section.
+        $scope.storage = {
+            column: 'model'
+        };
+
+        // Events section.
+        $scope.events = {
+            limit: 10
+        };
+
+        // Machine output section.
+        $scope.machine_output = {
+            viewable: false,
+            selectedView: null,
+            views: [],
+            showSummaryToggle: true,
+            summaryType: 'yaml'
+        };
+
         // Show given error.
         function showError(name) {
             $scope.errors[name].viewable = true;
@@ -217,6 +236,75 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updatePower();
         }
 
+        // Updates the machine output section.
+        function updateMachineOutput() {
+            // Set if it should even be viewable.
+            $scope.machine_output.viewable = (
+                angular.isString($scope.node.summary_xml) ||
+                angular.isString($scope.node.summary_yaml) ||
+                $scope.node.commissioning_results.length > 0 ||
+                $scope.node.installation_results.length > 0);
+
+            // Grab the selected view name, so it can be kept the same if
+            // possible.
+            var viewName = null;
+            if(angular.isObject($scope.machine_output.selectedView)) {
+                viewName = $scope.machine_output.selectedView.name;
+            }
+
+            // If the viewName is empty, then a default one was not selected.
+            // We want the installation output to be the default if possible.
+            if(!angular.isString(viewName)) {
+                viewName = "install";
+            }
+
+            // Setup the views that are viewable.
+            $scope.machine_output.views = [];
+            if(angular.isString($scope.node.summary_xml) ||
+                angular.isString($scope.node.summary_yaml)) {
+                $scope.machine_output.views.push({
+                    name: "summary",
+                    title: "Commissioning Summary"
+                });
+            }
+            if($scope.node.commissioning_results.length > 0) {
+                $scope.machine_output.views.push({
+                    name: "output",
+                    title: "Commissioning Output"
+                });
+            }
+            if($scope.node.installation_results.length > 0) {
+                $scope.machine_output.views.push({
+                    name: "install",
+                    title: "Installation Output"
+                });
+            }
+
+            // Set the selected view to its previous value or to the first
+            // entry in the views list.
+            var selectedView = null;
+            angular.forEach($scope.machine_output.views, function(view) {
+                if(view.name === viewName) {
+                    selectedView = view;
+                }
+            });
+            if(angular.isObject(selectedView)) {
+                $scope.machine_output.selectedView = selectedView;
+            } else if ($scope.machine_output.views.length > 0) {
+                $scope.machine_output.selectedView =
+                    $scope.machine_output.views[0];
+            } else {
+                $scope.machine_output.selectedView = null;
+            }
+
+            // Show the summary toggle if in the summary view.
+            $scope.machine_output.showSummaryToggle = false;
+            if(angular.isObject($scope.machine_output.selectedView) &&
+                $scope.machine_output.selectedView.name === "summary") {
+                $scope.machine_output.showSummaryToggle = true;
+            }
+        }
+
         // Starts the watchers on the scope.
         function startWatching() {
             // Update the title when the node fqdn changes.
@@ -247,6 +335,13 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // are updated.
             $scope.$watch("node.power_type", updatePower);
             $scope.$watch("node.power_parameters", updatePower);
+
+            // Update the machine output view when summary, commissioning, or
+            // installation results are updated on the node.
+            $scope.$watch("node.summary_xml", updateMachineOutput);
+            $scope.$watch("node.summary_yaml", updateMachineOutput);
+            $scope.$watch("node.commissioning_results", updateMachineOutput);
+            $scope.$watch("node.installation_results", updateMachineOutput);
         }
 
         // Return true if the given error is because of RPC.
@@ -459,6 +554,86 @@ angular.module('MAAS').controller('NodeDetailsController', [
             updateNode(node);
         };
 
+        // Return the ip address text for the given nic.
+        $scope.getIPAddressText = function(nic) {
+            return nic.ip_addresses.map(function(ipAddress) {
+                return ipAddress.ip_address + " (" + ipAddress.type + ")";
+            }).join(', ');
+        };
+
+        // Return the network text for the given nic.
+        $scope.getNetworkText = function(nic) {
+            return nic.networks.map(function(network) {
+                return network.name + " (" + network.cidr + ")";
+            }).join(', ');
+        };
+
+        // Return true if the "load more" events button should be available.
+        $scope.allowShowMoreEvents = function() {
+            if(!angular.isObject($scope.node)) {
+                return false;
+            }
+            return (
+                $scope.node.events.length > 0 &&
+                $scope.node.events.length > $scope.events.limit &&
+                $scope.events.limit < 50);
+        };
+
+        // Show another 10 events.
+        $scope.showMoreEvents = function() {
+            $scope.events.limit += 10;
+        };
+
+        // Return the nice text for the given event.
+        $scope.getEventText = function(event) {
+            var text = event.type.description;
+            if(angular.isString(event.description) &&
+                event.description.length > 0) {
+                text += " - " + event.description;
+            }
+            return text;
+        };
+
+        // Called when the machine output view has changed.
+        $scope.machineOutputViewChanged = function() {
+            if(angular.isObject($scope.machine_output.selectedView) &&
+                $scope.machine_output.selectedView.name === "summary") {
+                $scope.machine_output.showSummaryToggle = true;
+            } else {
+                $scope.machine_output.showSummaryToggle = false;
+            }
+        };
+
+        // Return the commissioning summary output data.
+        $scope.getSummaryData = function() {
+            // Can be called by angular before the node is set in the scope,
+            // in that case return blank string. It will be called once the
+            // node is set to get the correct information.
+            if(!angular.isObject($scope.node)) {
+                return "";
+            }
+            return $scope.node["summary_" + $scope.machine_output.summaryType];
+        };
+
+        // Return the installation log data.
+        $scope.getInstallationData = function() {
+            // Can be called by angular before the node is set in the scope,
+            // in that case return blank string. It will be called once the
+            // node is set to get the correct information.
+            if(!angular.isObject($scope.node)) {
+                return "";
+            }
+            // It is possible for the node to have multiple installation
+            // results, but it is unused. Only one installation result will
+            // exists for a node. Grab the first one in the array.
+            var results = $scope.node.installation_results;
+            if(results.length === 0) {
+                return "";
+            } else {
+                return results[0].data;
+            }
+        };
+
         // Load all the required managers.
         ManagerHelperService.loadManagers([
             NodesManager,
@@ -474,6 +649,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
                     updateTitle();
                     updateSummary();
+                    updateMachineOutput();
                     startWatching();
                 }, function(error) {
                     ErrorService.raiseError(error);

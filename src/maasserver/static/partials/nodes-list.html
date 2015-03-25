@@ -328,12 +328,12 @@
                         </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <td class="node-column table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'fqdn'" colspan="2">
-                            <a href="{$ node.url $}">{$ node.fqdn $}</a>
+                            <a href="#/node/{$ node.system_id $}">{$ node.fqdn $}</a>
                         </td>
                         <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                         <td class="ng-hide table-listing__cell fixed" data-ng-show="tabs.nodes.column === 'pxe_mac'" colspan="2">
-                            <a href="{$ node.url $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
-                            <a href="{$ node.url $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
+                            <a href="#/node/{$ node.system_id $}" title="{$ node.pxe_mac_vendor $}">{$ node.pxe_mac $}</a>
+                            <a href="#/node/{$ node.system_id $}" class="extra-macs" data-ng-show="node.extra_macs.length">(+{$ node.extra_macs.length $})</a>
                         </td>
                         <td class="powerstate align-center">
                             <span title="{$ node.power_state $}" class="powerstates power-{$ node.power_state $}"></span>

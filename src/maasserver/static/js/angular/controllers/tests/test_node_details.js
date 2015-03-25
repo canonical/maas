@@ -73,10 +73,25 @@ describe("NodeDetailsController", function() {
             nodegroup: angular.copy(cluster),
             zone: angular.copy(zone),
             power_type: "",
-            power_parameters: null
+            power_parameters: null,
+            summary_xml: null,
+            summary_yaml: null,
+            commissioning_results: [],
+            installation_results: [],
+            events: []
         };
         NodesManager._items.push(node);
         return node;
+    }
+
+    // Make a fake event.
+    function makeEvent() {
+        return {
+            type: {
+                description: makeName("type")
+            },
+            description: makeName("description")
+        };
     }
 
     // Create the node that will be used and set the routeParams.
@@ -179,6 +194,31 @@ describe("NodeDetailsController", function() {
             editing: false,
             type: null,
             parameters: {}
+        });
+    });
+
+    it("sets initial values for storage section", function() {
+        var controller = makeController();
+        expect($scope.storage).toEqual({
+            column: 'model'
+        });
+    });
+
+    it("sets initial values for events section", function() {
+        var controller = makeController();
+        expect($scope.events).toEqual({
+            limit: 10
+        });
+    });
+
+    it("sets initial values for machine output section", function() {
+        var controller = makeController();
+        expect($scope.machine_output).toEqual({
+            viewable: false,
+            selectedView: null,
+            views: [],
+            showSummaryToggle: true,
+            summaryType: 'yaml'
         });
     });
 
@@ -328,6 +368,112 @@ describe("NodeDetailsController", function() {
         expect($scope.power.editing).toBe(false);
     });
 
+    it("machine output not visible if all required data missing", function() {
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.machine_output.viewable).toBe(false);
+    });
+
+    it("machine output visible if summary_xml and summary_yaml", function() {
+        node.summary_xml = node.summary_yaml = "summary";
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.machine_output.viewable).toBe(true);
+    });
+
+    it("machine output visible if commissioning_results", function() {
+        node.commissioning_results.push({});
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.machine_output.viewable).toBe(true);
+    });
+
+    it("machine output visible if installation_results", function() {
+        node.installation_results.push({});
+        var controller = makeControllerResolveSetActiveItem();
+        expect($scope.machine_output.viewable).toBe(true);
+    });
+
+    it("machine output summary view available if summary_xml and summary_yaml",
+        function() {
+            node.summary_xml = node.summary_yaml = "summary";
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.views).toEqual([{
+                name: "summary",
+                title: "Commissioning Summary"
+            }]);
+        });
+
+    it("machine output output view available if commissioning_results",
+        function() {
+            node.commissioning_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.views).toEqual([{
+                name: "output",
+                title: "Commissioning Output"
+            }]);
+        });
+
+    it("machine output install view available if installation_results",
+        function() {
+            node.installation_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.views).toEqual([{
+                name: "install",
+                title: "Installation Output"
+            }]);
+        });
+
+    it("machine output first available view is set as selectedView",
+        function() {
+            node.commissioning_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.selectedView).toEqual({
+                name: "output",
+                title: "Commissioning Output"
+            });
+        });
+
+    it("machine output previous selected view is still selected",
+        function() {
+            node.commissioning_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+
+            // Add summary output and make updateMachineOutput be called
+            // again, but forcing a digest cycle.
+            node.summary_xml = node.summary_yaml = "summary";
+            $rootScope.$digest();
+
+            // Output view should still be selected as it was initially
+            // selected.
+            expect($scope.machine_output.selectedView).toEqual({
+                name: "output",
+                title: "Commissioning Output"
+            });
+        });
+
+    it("machine output install view is always selected first if possible",
+        function() {
+            node.commissioning_results.push({});
+            node.installation_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.selectedView).toEqual({
+                name: "install",
+                title: "Installation Output"
+            });
+        });
+
+    it("machine output summary toggle is viewable when summary view selected",
+        function() {
+            node.summary_xml = node.summary_yaml = "summary";
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.showSummaryToggle).toBe(true);
+        });
+
+    it("machine output summary toggle is not viewable when not summary view",
+        function() {
+            node.commissioning_results.push({});
+            var controller = makeControllerResolveSetActiveItem();
+            expect($scope.machine_output.showSummaryToggle).toBe(false);
+        });
+
     it("starts watching once setActiveItem resolves", function() {
         var setActiveDefer = $q.defer();
         spyOn(NodesManager, "setActiveItem").and.returnValue(
@@ -362,7 +508,11 @@ describe("NodeDetailsController", function() {
             "node.architecture",
             "node.zone.id",
             "node.power_type",
-            "node.power_parameters"
+            "node.power_parameters",
+            "node.summary_xml",
+            "node.summary_yaml",
+            "node.commissioning_results",
+            "node.installation_results"
         ]);
         expect(watchCollections).toEqual([
             $scope.summary.cluster.options,
@@ -1110,6 +1260,206 @@ describe("NodeDetailsController", function() {
             // If the error message was logged to the console then
             // handleSaveError was called.
             expect(console.log).toHaveBeenCalledWith(error);
+        });
+    });
+
+    describe("getIPAddressText", function() {
+
+        it("joins ip address with each ip address type", function() {
+            var controller = makeController();
+            var nic = {
+                ip_addresses: [
+                    {
+                        ip_address: "192.168.122.2",
+                        type: "static"
+                    },
+                    {
+                        ip_address: "192.168.122.102",
+                        type: "dynamic"
+                    }
+                ]
+            };
+            expect($scope.getIPAddressText(nic)).toBe(
+                "192.168.122.2 (static), 192.168.122.102 (dynamic)");
+        });
+    });
+
+    describe("getNetworkText", function() {
+
+        it("joins network name with each cidr value", function() {
+            var controller = makeController();
+            var nic = {
+                networks: [
+                    {
+                        name: "maas-eth0",
+                        cidr: "192.168.122.0/24"
+                    },
+                    {
+                        name: "maas-eth1",
+                        cidr: "192.168.1.1/24"
+                    }
+                ]
+            };
+            expect($scope.getNetworkText(nic)).toBe(
+                "maas-eth0 (192.168.122.0/24), maas-eth1 (192.168.1.1/24)");
+        });
+    });
+
+    describe("allowShowMoreEvents", function() {
+
+        it("returns false if node is null", function() {
+            var controller = makeController();
+            $scope.node = null;
+            expect($scope.allowShowMoreEvents()).toBe(false);
+        });
+
+        it("returns false if node has no events", function() {
+            var controller = makeController();
+            $scope.node = node;
+            expect($scope.allowShowMoreEvents()).toBe(false);
+        });
+
+        it("returns false if node events less then the limit", function() {
+            var controller = makeController();
+            $scope.node = node;
+            $scope.node.events = [
+                makeEvent(),
+                makeEvent()
+            ];
+            $scope.events.limit = 10;
+            expect($scope.allowShowMoreEvents()).toBe(false);
+        });
+
+        it("returns false if events limit greater than 50", function() {
+            var controller = makeController();
+            $scope.node = node;
+            var i;
+            for(i = 0; i < 50; i++) {
+                $scope.node.events.push(makeEvent());
+            }
+            $scope.events.limit = 50;
+            expect($scope.allowShowMoreEvents()).toBe(false);
+        });
+
+        it("returns true if more events than limit", function() {
+            var controller = makeController();
+            $scope.node = node;
+            var i;
+            for(i = 0; i < 20; i++) {
+                $scope.node.events.push(makeEvent());
+            }
+            $scope.events.limit = 10;
+            expect($scope.allowShowMoreEvents()).toBe(true);
+        });
+    });
+
+    describe("showMoreEvents", function() {
+
+        it("increments events limit by 10", function() {
+            var controller = makeController();
+            $scope.showMoreEvents();
+            expect($scope.events.limit).toBe(20);
+            $scope.showMoreEvents();
+            expect($scope.events.limit).toBe(30);
+        });
+    });
+
+    describe("getEventText", function() {
+
+        it("returns just event type description without dash", function() {
+            var controller = makeController();
+            var evt = makeEvent();
+            delete evt.description;
+            expect($scope.getEventText(evt)).toBe(evt.type.description);
+        });
+
+        it("returns event type description with event description",
+            function() {
+                var controller = makeController();
+                var evt = makeEvent();
+                expect($scope.getEventText(evt)).toBe(
+                    evt.type.description + " - " + evt.description);
+            });
+    });
+
+    describe("machineOutputViewChanged", function() {
+
+        it("sets showSummaryToggle to false if no selectedView", function() {
+            var controller = makeController();
+            $scope.machine_output.selectedView = null;
+            $scope.machineOutputViewChanged();
+            expect($scope.machine_output.showSummaryToggle).toBe(false);
+        });
+
+        it("sets showSummaryToggle to false if not summary view", function() {
+            var controller = makeController();
+            $scope.machine_output.selectedView = {
+                name: "output"
+            };
+            $scope.machineOutputViewChanged();
+            expect($scope.machine_output.showSummaryToggle).toBe(false);
+        });
+
+        it("sets showSummaryToggle to true if summary view", function() {
+            var controller = makeController();
+            $scope.machine_output.selectedView = {
+                name: "summary"
+            };
+            $scope.machineOutputViewChanged();
+            expect($scope.machine_output.showSummaryToggle).toBe(true);
+        });
+    });
+
+    describe("getSummaryData", function() {
+
+        it("returns blank string if node is null", function() {
+            var controller = makeController();
+            expect($scope.getSummaryData()).toBe("");
+        });
+
+        it("returns summary_xml when summaryType equal xml", function() {
+            var controller = makeController();
+            $scope.node = makeNode();
+            var summary_xml = {};
+            $scope.node.summary_xml = summary_xml;
+            $scope.machine_output.summaryType = "xml";
+            expect($scope.getSummaryData()).toBe(summary_xml);
+        });
+
+        it("returns summary_yaml when summaryType equal yaml", function() {
+            var controller = makeController();
+            $scope.node = makeNode();
+            var summary_yaml = {};
+            $scope.node.summary_yaml = summary_yaml;
+            $scope.machine_output.summaryType = "yaml";
+            expect($scope.getSummaryData()).toBe(summary_yaml);
+        });
+    });
+
+    describe("getInstallationData", function() {
+
+        it("returns blank string if node is null", function() {
+            var controller = makeController();
+            expect($scope.getInstallationData()).toBe("");
+        });
+
+        it("returns blank string if no installation results", function() {
+            var controller = makeController();
+            $scope.node = makeNode();
+            expect($scope.getInstallationData()).toBe("");
+        });
+
+        it("returns first installation result data", function() {
+            var controller = makeController();
+            $scope.node = makeNode();
+            var install_result = {};
+            $scope.node.installation_results.push({
+                data: install_result
+            });
+            $scope.node.installation_results.push({
+                data: {}
+            });
+            expect($scope.getInstallationData()).toBe(install_result);
         });
     });
 });
