@@ -14,22 +14,28 @@ str = None
 __metaclass__ = type
 __all__ = []
 
+import logging
+from operator import itemgetter
 import re
 
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
+from lxml import etree
 from maasserver.enum import NODE_STATUS
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     )
+from maasserver.models.event import Event
+from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
 from maasserver.testing.architecture import make_usable_architecture
 from maasserver.testing.factory import factory
 from maasserver.testing.orm import reload_object
 from maasserver.testing.osystems import make_osystem_with_releases
 from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.utils.converters import XMLToYAML
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -38,6 +44,10 @@ from maasserver.websockets.base import (
     )
 from maasserver.websockets.handlers.node import NodeHandler
 from maastesting.djangotestcase import count_queries
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models import NodeResult
+from metadataserver.models.commissioningscript import LLDP_OUTPUT_NAME
+from provisioningserver.tags import merge_details_cleanly
 from testtools import ExpectedException
 from testtools.matchers import Equals
 
@@ -56,23 +66,103 @@ class TestNodeHandler(MAASServerTestCase):
             "serial": blockdevice.serial,
             }
 
+    def dehydrate_event(self, event):
+        return {
+            "id": event.id,
+            "type": {
+                "id": event.type.id,
+                "name": event.type.name,
+                "description": event.type.description,
+                "level": event.type.level,
+                },
+            "description": event.description,
+            "created": event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            }
+
+    def dehydrate_node_result(self, result):
+        return {
+            "id": result.id,
+            "result": result.script_result,
+            "name": result.name,
+            "data": result.data,
+            "line_count": len(result.data.splitlines()),
+            "created": result.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            }
+
+    def dehydrate_interface(self, mac_address, node):
+        ip_addresses = [
+            {
+                "type": "static",
+                "alloc_type": ip_address.alloc_type,
+                "ip_address": "%s" % ip_address.ip,
+            }
+            for ip_address in mac_address.ip_addresses.all()
+            ]
+        static_addresses = [
+            ip_address["ip_address"]
+            for ip_address in ip_addresses
+            ]
+        ip_addresses += [
+            {
+                "type": "dynamic",
+                "ip_address": lease.ip,
+            }
+            for lease in node.nodegroup.dhcplease_set.all()
+            if (lease.mac == mac_address.mac_address and
+                lease.ip not in static_addresses)
+            ]
+        networks = [
+            {
+                "id": network.id,
+                "name": network.name,
+                "ip": network.ip,
+                "cidr": "%s" % network.get_network().cidr,
+                "vlan": network.vlan_tag,
+            }
+            for network in mac_address.networks.all()
+            ]
+        return {
+            "id": mac_address.id,
+            "is_pxe": mac_address == node.pxe_mac,
+            "mac_address": "%s" % mac_address.mac_address,
+            "ip_addresses": ip_addresses,
+            "networks": networks,
+        }
+
+    def dehydrate_interfaces(self, node):
+        return sorted([
+            self.dehydrate_interface(mac_address, node)
+            for mac_address in node.macaddress_set.all().order_by('id')
+            ], key=itemgetter('is_pxe'), reverse=True)
+
     def get_all_disk_tags(self, physicalblockdevices):
         tags = set()
         for blockdevice in physicalblockdevices:
             tags = tags.union(blockdevice.tags)
         return list(tags)
 
-    def dehydrate_node(self, node, user, for_list=False):
+    def dehydrate_node(
+            self, node, user, for_list=False, include_summary=False):
         pxe_mac = node.get_pxe_mac()
         pxe_mac_vendor = node.get_pxe_mac_vendor()
         physicalblockdevices = list(
             node.physicalblockdevice_set.all().order_by('name'))
         power_parameters = (
             None if node.power_parameters == "" else node.power_parameters)
+        events = (
+            Event.objects.filter(node=node)
+            .exclude(type__level=logging.DEBUG)
+            .select_related("type")
+            .order_by('-id')[:50])
         data = {
             "actions": compile_node_actions(node, user).keys(),
             "architecture": node.architecture,
             "boot_type": node.boot_type,
+            "commissioning_results": [
+                self.dehydrate_node_result(result)
+                for result in NodeResult.objects.filter(
+                    node=node, result_type=RESULT_TYPE.COMMISSIONING)
+                ],
             "cpu_count": node.cpu_count,
             "created": "%s" % node.created,
             "disable_ipv4": node.disable_ipv4,
@@ -81,13 +171,23 @@ class TestNodeHandler(MAASServerTestCase):
             "distro_series": node.get_distro_series(),
             "error": node.error,
             "error_description": node.error_description,
+            "events": [
+                self.dehydrate_event(event)
+                for event in events
+                ],
+            "events_total": Event.objects.filter(node=node).count(),
             "extra_macs": [
                 "%s" % mac_address.mac_address
                 for mac_address in node.get_extra_macs()
                 ],
             "fqdn": node.fqdn,
             "hostname": node.hostname,
-            "ip_addresses": list(node.ip_addresses()),
+            "installation_results": [
+                self.dehydrate_node_result(result)
+                for result in NodeResult.objects.filter(
+                    node=node, result_type=RESULT_TYPE.INSTALLATION)
+                ],
+            "interfaces": self.dehydrate_interfaces(node),
             "license_key": node.license_key,
             "memory": node.display_memory(),
             "nodegroup": {
@@ -147,6 +247,15 @@ class TestNodeHandler(MAASServerTestCase):
             for key in data.keys():
                 if key not in allowed_fields:
                     del data[key]
+        if include_summary:
+            probed_details = merge_details_cleanly(
+                get_single_probed_details(node.system_id))
+            data['summary_xml'] = etree.tostring(
+                probed_details, encoding=unicode, pretty_print=True)
+            data['summary_yaml'] = XMLToYAML(
+                etree.tostring(
+                    probed_details, encoding=unicode,
+                    pretty_print=True)).convert()
         return data
 
     def make_nodes(self, nodegroup, number):
@@ -159,10 +268,31 @@ class TestNodeHandler(MAASServerTestCase):
     def test_get(self):
         user = factory.make_User()
         handler = NodeHandler(user, {})
-        node = factory.make_Node(status=NODE_STATUS.ALLOCATED, owner=user)
+        node = factory.make_Node_with_MACAddress_and_NodeGroupInterface()
+        node.owner = user
+        node.save()
+        for _ in range(100):
+            factory.make_Event(node=node)
+        lldp_data = "<foo>bar</foo>".encode("utf-8")
+        factory.make_NodeResult_for_commissioning(
+            node=node, name=LLDP_OUTPUT_NAME, script_result=0, data=lldp_data)
         factory.make_PhysicalBlockDevice(node)
+
+        mac_address = node.macaddress_set.all()[0]
+        factory.make_StaticIPAddress(mac=mac_address)
+        factory.make_DHCPLease(
+            nodegroup=node.nodegroup, mac=mac_address.mac_address)
+
+        pxe_mac_address = factory.make_MACAddress(node=node)
+        node.pxe_mac = pxe_mac_address
+        node.save()
+
+        network = factory.make_Network()
+        pxe_mac_address.networks.add(network)
+        pxe_mac_address.save()
+
         self.assertEquals(
-            self.dehydrate_node(node, user),
+            self.dehydrate_node(node, user, include_summary=True),
             handler.get({"system_id": node.system_id}))
 
     def test_list(self):

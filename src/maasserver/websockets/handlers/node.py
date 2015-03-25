@@ -16,16 +16,23 @@ __all__ = [
     "NodeHandler",
     ]
 
+import logging
+from operator import itemgetter
+
 from django.core.urlresolvers import reverse
+from lxml import etree
 from maasserver.enum import NODE_PERMISSION
 from maasserver.exceptions import NodeActionError
 from maasserver.forms import (
     AdminNodeForm,
     AdminNodeWithMACAddressesForm,
     )
+from maasserver.models.event import Event
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
+from maasserver.models.nodeprobeddetails import get_single_probed_details
 from maasserver.node_action import compile_node_actions
+from maasserver.utils.converters import XMLToYAML
 from maasserver.websockets.base import (
     HandlerDoesNotExistError,
     HandlerError,
@@ -34,6 +41,9 @@ from maasserver.websockets.base import (
 from maasserver.websockets.handlers.timestampedmodel import (
     TimestampedModelHandler,
     )
+from metadataserver.enum import RESULT_TYPE
+from metadataserver.models import NodeResult
+from provisioningserver.tags import merge_details_cleanly
 
 
 class NodeHandler(TimestampedModelHandler):
@@ -164,12 +174,34 @@ class NodeHandler(TimestampedModelHandler):
         if not for_list:
             data["osystem"] = obj.get_osystem()
             data["distro_series"] = obj.get_distro_series()
-            data["ip_addresses"] = list(
-                obj.ip_addresses())
+
+            # Network
+            mac_addresses = obj.macaddress_set.all().prefetch_related(
+                'ip_addresses').order_by('id')
+            interfaces = [
+                self.dehydrate_interface(mac_address, obj)
+                for mac_address in mac_addresses
+                ]
+            data["interfaces"] = sorted(
+                interfaces, key=itemgetter("is_pxe"), reverse=True)
+
+            # Storage
             data["physical_disks"] = [
                 self.dehydrate_physicalblockdevice(blockdevice)
                 for blockdevice in physicalblockdevices
                 ]
+
+            # Events
+            data["events"] = self.dehydrate_events(obj)
+            data["events_total"] = Event.objects.filter(node=obj).count()
+
+            # Machine output
+            data = self.dehydrate_summary_output(obj, data)
+            data["commissioning_results"] = self.dehydrate_node_results(
+                obj, RESULT_TYPE.COMMISSIONING)
+            data["installation_results"] = self.dehydrate_node_results(
+                obj, RESULT_TYPE.INSTALLATION)
+
         return data
 
     def dehydrate_physicalblockdevice(self, blockdevice):
@@ -184,6 +216,117 @@ class NodeHandler(TimestampedModelHandler):
             "model": blockdevice.model,
             "serial": blockdevice.serial,
             }
+
+    def dehydrate_interface(self, mac_address, obj):
+        """Dehydrate a `mac_address` into a interface definition."""
+        # Statically assigned ip addresses.
+        ip_addresses = [
+            {
+                "type": "static",
+                "alloc_type": ip_address.alloc_type,
+                "ip_address": "%s" % ip_address.ip,
+            }
+            for ip_address in mac_address.ip_addresses.all()
+            ]
+
+        # Dynamically assigned ip addresses come from parsing the leases file.
+        # This will also contain the statically assigned ip addresses as they
+        # show up in the leases file. Remove any that already appear in the
+        # static ip address table.
+        static_addresses = [
+            ip_address["ip_address"]
+            for ip_address in ip_addresses
+            ]
+        ip_addresses += [
+            {
+                "type": "dynamic",
+                "ip_address": lease.ip,
+            }
+            for lease in obj.nodegroup.dhcplease_set.all()
+            if (lease.mac == mac_address.mac_address and
+                lease.ip not in static_addresses)
+            ]
+
+        # Connected networks.
+        networks = [
+            {
+                "id": network.id,
+                "name": network.name,
+                "ip": network.ip,
+                "cidr": "%s" % network.get_network().cidr,
+                "vlan": network.vlan_tag,
+            }
+            for network in mac_address.networks.all()
+            ]
+        return {
+            "id": mac_address.id,
+            "is_pxe": mac_address == obj.pxe_mac,
+            "mac_address": "%s" % mac_address.mac_address,
+            "ip_addresses": ip_addresses,
+            "networks": networks,
+            }
+
+    def dehydrate_summary_output(self, obj, data):
+        """Dehydrate the machine summary output."""
+        # Produce a "clean" composite details document.
+        probed_details = merge_details_cleanly(
+            get_single_probed_details(obj.system_id))
+
+        # We check here if there's something to show instead of after
+        # the call to get_single_probed_details() because here the
+        # details will be guaranteed well-formed.
+        if len(probed_details.xpath('/*/*')) == 0:
+            data['summary_xml'] = None
+            data['summary_yaml'] = None
+        else:
+            data['summary_xml'] = etree.tostring(
+                probed_details, encoding=unicode, pretty_print=True)
+            data['summary_yaml'] = XMLToYAML(
+                etree.tostring(
+                    probed_details, encoding=unicode,
+                    pretty_print=True)).convert()
+        return data
+
+    def dehydrate_node_results(self, obj, result_type):
+        """Dehydrate node results with the given `result_type`."""
+        return [
+            {
+                "id": result.id,
+                "result": result.script_result,
+                "name": result.name,
+                "data": result.data,
+                "line_count": len(result.data.splitlines()),
+                "created": result.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            }
+            for result in NodeResult.objects.filter(
+                node=obj, result_type=result_type)
+            ]
+
+    def dehydrate_events(self, obj):
+        """Dehydrate the node events.
+
+        The latests 50 not including DEBUG events will be dehydrated. The
+        `EventsHandler` needs to be used if more are required.
+        """
+        events = (
+            Event.objects.filter(node=obj)
+            .exclude(type__level=logging.DEBUG)
+            .select_related("type")
+            .order_by('-id')[:50])
+        return [
+            {
+                "id": event.id,
+                "type": {
+                    "id": event.type.id,
+                    "name": event.type.name,
+                    "description": event.type.description,
+                    "level": event.type.level,
+                    },
+                "description": event.description,
+                "created": event.created.strftime('%a, %d %b. %Y %H:%M:%S'),
+            }
+            for event in events
+            ]
 
     def get_all_disk_tags(self, physicalblockdevices):
         """Return list of all disk tags in `physicalblockdevices`."""
