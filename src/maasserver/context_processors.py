@@ -49,6 +49,7 @@ def static_resources(context):
             'js/angular/factories/clusters.js',
             'js/angular/factories/zones.js',
             'js/angular/factories/general.js',
+            'js/angular/factories/users.js',
             'js/angular/services/search.js',
             'js/angular/services/manager.js',
             'js/angular/services/managerhelper.js',
