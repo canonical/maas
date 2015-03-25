@@ -273,8 +273,6 @@ latex_documents = [
 man_pages = [
     ('man/maas.8', 'maas', u'MAAS API commandline utility',
      [u'Canonical 2013-2014'], 8),
-    ('man/maas-import-pxe-files.8', 'maas-import-pxe-files', u'MAAS helper script',
-     [u'Canonical 2013'], 8),
     ('man/maas-region-admin.8', 'maas-region-admin', u'MAAS administration tool',
      [u'Canonical 2013-2014'], 8)
 ]

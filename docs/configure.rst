@@ -221,6 +221,7 @@ which case you should also specify these::
 
   $ sudo apt-get install maas-cluster-controller maas-dhcp maas-dns
 
+
 Configuring the cluster controller
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -233,14 +234,12 @@ configure the software::
 .. image:: media/cluster-config.*
 
 The configuration script should then bring up a screen where you can
-enter the IP address of the region controller. Additionally, you will need
-to run the ``maas-import-pxe-files`` script to install the distro image files
-locally for commissioning::
+enter the IP address of the region controller. Additionally, you will
+need to import the distro image files locally for commissioning::
 
   $ maas maas node-groups import-boot-images
 
-...and optionally set up the DHCP and DNS for
-the cluster by either:
+…and optionally set up the DHCP and DNS for the cluster by either:
 
 *Using the web UI*
   Follow the instructions at :doc:`cluster-configuration` to

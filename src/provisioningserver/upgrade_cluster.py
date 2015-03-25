@@ -86,25 +86,23 @@ BOOTRESOURCES_HEADER = "# THIS FILE IS OBSOLETE."
 # file is obsolete.
 BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
     #
-    # The configuration below is no longer in use, and can be removed.
-    # By default, cluster controllers now import images for all supported
-    # Ubuntu LTS releases in all supported architectures.
+    # The configuration below is no longer in use, and can be removed. By
+    # default, cluster controllers now import images for all supported Ubuntu
+    # LTS releases in all supported architectures.
     #
     # Imports can now be configured through the MAAS region controller API:
     # See http://maas.ubuntu.com/docs/api.html#boot-source
     #
-    # To do this, define a boot source through a POST to the nodegroup's
-    # boot-sources endpoint
-    # (e.g. http://<server>/api/1.0/nodegroups/<uuid>/boot-sources), and then
-    # POST to the resulting boot source to define selections.  Each cluster
-    # can have any number of boot sources, and each boot source can have any
-    # number of selections, as in the old configuration.
+    # To do this, first POST to the nodegroup's boot-sources endpoint (e.g.
+    # http://<server>/api/1.0/nodegroups/<uuid>/boot-sources), and then POST
+    # to the resulting boot source to define selections. Each cluster can have
+    # any number of boot sources, and each boot source can have any number of
+    # selections, as in the old configuration.
     #
-    # The same thing can be done using the command-line front-end for the API.
-    # After logging in to the MAAS to create a profile, run:
+    # The same thing can be done using the command-line front-end for the API:
     #
-    # maas <my-profile> boot-sources create <cluster-uuid>\
-    url=<path> keyring_filename=<keyring>
+    #  maas <my-profile> boot-sources create \\
+    #      <cluster-uuid> url=<path> keyring_filename=<keyring>
     #
     # Here,
     #  * <my-profile> is your login profile in the 'maas' command.
@@ -114,14 +112,10 @@ BOOTRESOURCES_WARNING = BOOTRESOURCES_HEADER + '\n' + dedent("""\
     #
     # Full documentation can be found at http://maas.ubuntu.com/docs/
     #
-    # The maas-import-pxe-files import script is now deprecated; use the
-    # MAAS web UI, region-controller, or the "maas" command to trigger any
-    # manual imports.
+    # The maas-import-pxe-files import script has been removed. Instead use
+    # the MAAS web UI, web API, or the "maas" command to trigger manual
+    # imports.
     #
-    # If you do wish to continue using maas-import-pxe-files for the time
-    # being, the script now requires a sources definition consisting of
-    # just the contents of the "sources" section as found in this
-    # configuration file.  See the script's man page for an example.
     """) + '\n'
 
 
