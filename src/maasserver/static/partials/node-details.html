@@ -16,12 +16,13 @@
                 </span>
             </h1>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-            <div>
+            <div data-ng-show="availableActionOptions.length">
                 <div class="page-header__actions four-col last-col">
                      <div class="page-header__cta two-col no-margin-bottom last-col">
                         <div class="two-col no-margin-bottom last-col">
                             <div data-maas-cta="availableActionOptions"
-                                data-ng-model="actionOption">
+                                data-ng-model="actionOption"
+                                data-ng-change="actionOptionChanged()">
                             </div>
                         </div>
                     </div>
@@ -29,7 +30,7 @@
                 <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                 <div class="page-header__dropdown ng-hide" data-ng-show="actionOption">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
-                    <form class="form-inline" data-ng-hide="isDeployError()">
+                    <form class="form-inline" data-ng-hide="isActionError()">
                         <span class="ng-hide" data-ng-show="actionOption.name === 'deploy'">
                             <label for="image">Choose your image</label>
                             <span data-maas-os-select="osinfo" data-ng-model="osSelection"></span>
@@ -39,6 +40,17 @@
                             <button class="cta-ubuntu" data-ng-click="actionGo()">Go</button>
                         </div>
                     </form>
+
+                    <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
+                    <div class="page-header__feedback ng-hide" data-ng-show="isActionError()">
+                        <p class="page-header__feedback-message info">
+                            Node failed to be {$ actionOption.sentence $}, because of the following error: {$ actionError $}
+                        </p>
+                        <div class="right">
+                            <a href="" class="margin-right" data-ng-click="actionCancel()">Cancel</a>
+                            <button class="cta-ubuntu" data-ng-click="actionGo()">Retry</button>
+                        </div>
+                    </div>
 
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <div class="page-header__feedback ng-hide" data-ng-show="isDeployError()">
@@ -67,44 +79,70 @@
                     <h3 class="title">Machine summary</h3>
                 </div>
                 <fieldset class="six-col">
-                    <div class="inline">
-                        <label for="cluser" class="two-col">Cluster</label>
-                        <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
-                            data-ng-disabled="!summary.editing"
-                            data-ng-model="summary.cluster.selected"
-                            data-ng-options="cluster as cluster.name for cluster in summary.cluster.options">
-                            <option value="" disabled="disabled">Choose a cluster</option>
-                        </select>
+                    <div class="ng-hide" data-ng-show="isSuperUser()">
+                        <div class="inline">
+                            <label for="cluser" class="two-col">Cluster</label>
+                            <select name="cluster" id="cluster" class="three-col" placeholder="Choose a cluster"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.cluster.selected"
+                                data-ng-options="cluster as cluster.name for cluster in summary.cluster.options">
+                                <option value="" disabled="disabled">Choose a cluster</option>
+                            </select>
+                        </div>
+                        <div class="inline">
+                            <label for="zone" class="two-col">Zone</label>
+                            <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.zone.selected"
+                                data-ng-options="zone as zone.name for zone in summary.zone.options">
+                                <option value="" disabled="disabled">Choose a zone</option>
+                            </select>
+                        </div>
+                        <div class="inline">
+                            <label for="architecture" class="two-col">Architecture</label>
+                            <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
+                                data-ng-disabled="!summary.editing"
+                                data-ng-model="summary.architecture.selected"
+                                data-ng-options="arch for arch in summary.architecture.options"
+                                data-ng-class="{ invalid: invalidArchitecture() }">
+                                <option value="" disabled="disabled">Choose an architecture</option>
+                            </select>
+                        </div>
+                        <dl>
+                            <dt class="two-col">Owner</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.owner || "Unassigned" $}
+                                </dd>
+                            <dt class="two-col">Tags</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.tags.join(', ') $}
+                                </dd>
+                        </dl>
                     </div>
-                    <div class="inline">
-                        <label for="zone" class="two-col">Zone</label>
-                        <select name="zone" id="zone" class="three-col" placeholder="Choose a zone"
-                            data-ng-disabled="!summary.editing"
-                            data-ng-model="summary.zone.selected"
-                            data-ng-options="zone as zone.name for zone in summary.zone.options">
-                            <option value="" disabled="disabled">Choose a zone</option>
-                        </select>
+                    <div data-ng-hide="isSuperUser()">
+                        <dl>
+                            <dt class="two-col">Cluster</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.nodegroup.name $}
+                                </dd>
+                            <dt class="two-col">Zone</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.zone.name $}
+                                </dd>
+                            <dt class="two-col">Architecture</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.architecture || "Missing" $}
+                                </dd>
+                            <dt class="two-col">Owner</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.owner || "Unassigned" $}
+                                </dd>
+                            <dt class="two-col">Tags</dt>
+                                <dd class="four-col last-col">
+                                    {$ node.tags.join(', ') $}
+                                </dd>
+                        </dl>
                     </div>
-                    <div class="inline">
-                        <label for="architecture" class="two-col">Architecture</label>
-                        <select name="architecture" id="architecture" class="three-col" placeholder="Choose an architecture"
-                            data-ng-disabled="!summary.editing"
-                            data-ng-model="summary.architecture.selected"
-                            data-ng-options="arch for arch in summary.architecture.options"
-                            data-ng-class="{ invalid: invalidArchitecture() }">
-                            <option value="" disabled="disabled">Choose an architecture</option>
-                        </select>
-                    </div>
-                    <dl>
-                        <dt class="two-col">Owner</dt>
-                            <dd class="four-col last-col">
-                                {$ node.owner || "Unassigned" $}
-                            </dd>
-                        <dt class="two-col">Tags</dt>
-                            <dd class="four-col last-col">
-                                {$ node.tags.join(', ') $}
-                            </dd>
-                    </dl>
                 </fieldset>
                 <div class="six-col last-col">
                     <dl>
@@ -143,7 +181,7 @@
             </form>
         </div>
     </div>
-    <div class="row">
+    <div class="row ng-hide" data-ng-show="isSuperUser()">
         <div class="inner-wrapper">
             <form class="disabled">
                 <div class="twelve-col">

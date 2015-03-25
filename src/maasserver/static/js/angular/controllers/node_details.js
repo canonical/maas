@@ -7,10 +7,10 @@
 angular.module('MAAS').controller('NodeDetailsController', [
     '$scope', '$rootScope', '$routeParams', '$location',
     'NodesManager', 'ClustersManager', 'ZonesManager', 'GeneralManager',
-    'ManagerHelperService', 'ErrorService', function(
+    'UsersManager', 'ManagerHelperService', 'ErrorService', function(
         $scope, $rootScope, $routeParams, $location,
         NodesManager, ClustersManager, ZonesManager, GeneralManager,
-        ManagerHelperService, ErrorService) {
+        UsersManager, ManagerHelperService, ErrorService) {
 
         // Set title and page.
         $rootScope.title = "Loading...";
@@ -22,6 +22,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
         $scope.actionOption = null;
         $scope.allActionOptions = GeneralManager.getData("actions");
         $scope.availableActionOptions = [];
+        $scope.actionError = null;
         $scope.osinfo = GeneralManager.getData("osinfo");
 
         // Holds errors that are displayed on the details page.
@@ -30,7 +31,7 @@ angular.module('MAAS').controller('NodeDetailsController', [
                 viewable: false,
                 message: "The cluster this node belongs to is disconnected. " +
                     "No changes can be made to this node until the cluster " +
-                    "is reconnected"
+                    "is reconnected."
             },
             invalid_arch: {
                 viewable: false,
@@ -313,6 +314,10 @@ angular.module('MAAS').controller('NodeDetailsController', [
             // Update the availableActionOptions when the node actions change.
             $scope.$watch("node.actions", updateAvailableActionOptions);
 
+            // Update the errors when the selected cluster becomes connected
+            // or disconnected.
+            $scope.$watch("summary.cluster.selected.connected", updateErrors);
+
             // Update the summary when the node or clusters list is
             // updated.
             $scope.$watch("node.nodegroup.id", updateSummary);
@@ -436,8 +441,18 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return os_release;
         };
 
+        // Return true if there is an action error.
+        $scope.isActionError = function() {
+            return $scope.actionError !== null;
+        };
+
         // Return True if in deploy action and the osinfo is missing.
         $scope.isDeployError = function() {
+            // Never a deploy error when there is an action error.
+            if($scope.isActionError()) {
+                return false;
+            }
+
             var missing_osinfo = (
                 angular.isUndefined($scope.osinfo.osystems) ||
                 $scope.osinfo.osystems.length === 0);
@@ -449,9 +464,16 @@ angular.module('MAAS').controller('NodeDetailsController', [
             return false;
         };
 
+        // Called when the actionOption has changed.
+        $scope.actionOptionChanged = function() {
+            // Clear the action error.
+            $scope.actionError = null;
+        };
+
         // Cancel the action.
         $scope.actionCancel = function() {
             $scope.actionOption = null;
+            $scope.actionError = null;
         };
 
         // Perform the action.
@@ -463,12 +485,19 @@ angular.module('MAAS').controller('NodeDetailsController', [
                         $location.path("/nodes");
                     }
                     $scope.actionOption = null;
+                    $scope.actionError = null;
                 }, function(error) {
-                    // Report error loading. This is simple handlng for
-                    // now but this should show a nice error dialog or
-                    // something.
-                    console.log(error);
+                    $scope.actionError = error;
                 });
+        };
+
+        // Return true if the authenticated user is super user.
+        $scope.isSuperUser = function() {
+            var authUser = UsersManager.getAuthUser();
+            if(!angular.isObject(authUser)) {
+                return false;
+            }
+            return authUser.is_superuser;
         };
 
         // Return true if the current architecture selection is invalid.
@@ -481,7 +510,9 @@ angular.module('MAAS').controller('NodeDetailsController', [
 
         // Return true when the edit buttons can be clicked.
         $scope.canEdit = function() {
-            return !isErrorViewable("cluster_disconnected");
+            return (
+                $scope.isSuperUser() &&
+                !isErrorViewable("cluster_disconnected"));
         };
 
         // Called to enter edit mode in the summary section.
@@ -639,7 +670,8 @@ angular.module('MAAS').controller('NodeDetailsController', [
             NodesManager,
             ClustersManager,
             ZonesManager,
-            GeneralManager
+            GeneralManager,
+            UsersManager
         ]).then(function() {
             // Get the active node and set loaded to true.
             NodesManager.setActiveItem(

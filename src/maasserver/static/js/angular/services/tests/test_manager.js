@@ -377,13 +377,14 @@ describe("Manager", function() {
         });
 
         it("removes missing nodes from items list", function(done) {
-            var currentNodes = [makeNode(), makeNode(), makeNode()];
+            var currentNodes = [
+                makeNode(false), makeNode(false), makeNode(false)];
             var removedNodes = angular.copy(currentNodes);
             removedNodes.splice(1, 1);
             NodesManager._items = currentNodes;
             webSocket.returnData.push(makeFakeResponse(removedNodes));
             NodesManager.reloadItems().then(function(nodes) {
-                expect(nodes).toEqual(removedNodes);
+                expect(nodes).toEqual(addSelectedOnNodes(removedNodes, false));
                 done();
             });
         });
@@ -402,14 +403,15 @@ describe("Manager", function() {
         });
 
         it("updates nodes in items list", function(done) {
-            var currentNodes = [makeNode(), makeNode()];
+            var currentNodes = [makeNode(false), makeNode(false)];
             var updatedNodes = angular.copy(currentNodes);
             updatedNodes[0].name = makeName("name");
             updatedNodes[1].name = makeName("name");
             NodesManager._items = currentNodes;
             webSocket.returnData.push(makeFakeResponse(updatedNodes));
             NodesManager.reloadItems().then(function(nodes) {
-                expect(nodes).toEqual(updatedNodes);
+                expect(nodes).toEqual(
+                    addSelectedOnNodes(updatedNodes, false));
                 done();
             });
         });

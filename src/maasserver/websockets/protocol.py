@@ -252,12 +252,9 @@ class WebSocketProtocol(Protocol):
     def sendError(self, request_id, handler, method, failure):
         """Log and send error to client."""
         error = failure.getErrorMessage()
-        msgFormat = (
-            "Error on request (%(request_id)r) "
-            "%(handler)r.%(method)r: %(error)r")
-        log.msg(
-            format=msgFormat, request_id=request_id,
-            handler=handler._meta.handler_name, method=method, error=error)
+        why = "Error on request (%s) %s.%s: %s" % (
+            request_id, handler._meta.handler_name, method, error)
+        log.err(failure, _why=why)
 
         error_msg = {
             "type": MSG_TYPE.RESPONSE,

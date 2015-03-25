@@ -87,7 +87,7 @@ angular.module('MAAS').service(
             if(idx >= 0) {
                 // Keep the current selection on the item.
                 item.$selected = array[idx].$selected;
-                array[idx] = item;
+                angular.copy(item, array[idx]);
             }
         };
 
@@ -186,12 +186,12 @@ angular.module('MAAS').service(
                         self._removeItemByIdFromArray(
                             self._selectedItems, item[self._pk]);
                     } else {
+                        var updatedItem = items[updatedIdx];
                         self._updateMetadata(
-                            items[updatedIdx], METADATA_ACTIONS.UPDATE);
-                        self._items[i] = items[updatedIdx];
+                            updatedItem, METADATA_ACTIONS.UPDATE);
+                        updatedItem.$selected = item.$selected;
+                        angular.copy(items[updatedIdx], item);
                         items.splice(updatedIdx, 1);
-                        self._replaceItemInArray(
-                            self._selectedItems, self._items[i]);
                     }
                 }
 
@@ -256,15 +256,6 @@ angular.module('MAAS').service(
         Manager.prototype._replaceItem = function(item) {
             this._updateMetadata(item, METADATA_ACTIONS.UPDATE);
             this._replaceItemInArray(this._items, item);
-            this._replaceItemInArray(this._selectedItems, item);
-
-            // Update the active item if updated item has the same primary key.
-            if(angular.isObject(this._activeItem) &&
-                this._activeItem[this._pk] === item[this._pk]) {
-                // Copy the item into the activeItem. This keeps the reference
-                // the same, not requiring another call to getActiveItem.
-                angular.copy(item, this._activeItem);
-            }
         };
 
         // Remove item in the items and selectedItems list.

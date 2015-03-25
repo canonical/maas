@@ -19,16 +19,16 @@ describe("NodeDetailsController", function() {
         $q = $injector.get("$q");
     }));
 
-    // Load the NodesManager, ClustersManager, ZonesManager, GeneralManager,
-    // RegionConnection, ManagerHelperService, ErrorService and mock the
-    // websocket connection.
-    var NodesManager, DevicesManager, GeneralManager, RegionConnection;
-    var ManagerHelperService, ErrorService, webSocket;
+    // Load the required dependencies for the NodeDetails controller and
+    // mock the websocket connection.
+    var NodesManager, DevicesManager, GeneralManager, UsersManager;
+    var RegionConnection, ManagerHelperService, ErrorService, webSocket;
     beforeEach(inject(function($injector) {
         NodesManager = $injector.get("NodesManager");
         ClustersManager = $injector.get("ClustersManager");
         ZonesManager = $injector.get("ZonesManager");
         GeneralManager = $injector.get("GeneralManager");
+        UsersManager = $injector.get("UsersManager");
         RegionConnection = $injector.get("RegionConnection");
         ManagerHelperService = $injector.get("ManagerHelperService");
         ErrorService = $injector.get("ErrorService");
@@ -116,6 +116,11 @@ describe("NodeDetailsController", function() {
         // RegionConnection.
         RegionConnection.connect("");
 
+        // Set the authenticated user, and by default make them superuser.
+        UsersManager._authUser = {
+            is_superuser: true
+        };
+
         return $controller("NodeDetailsController", {
             $scope: $scope,
             $rootScope: $rootScope,
@@ -125,6 +130,7 @@ describe("NodeDetailsController", function() {
             ClustersManager: ClustersManager,
             ZonesManager: ZonesManager,
             GeneralManager: GeneralManager,
+            UsersManager: UsersManager,
             ManagerHelperService: ManagerHelperService,
             ErrorService: ErrorService
         });
@@ -160,6 +166,7 @@ describe("NodeDetailsController", function() {
         expect($scope.allActionOptions).toBe(
             GeneralManager.getData("actions"));
         expect($scope.availableActionOptions).toEqual([]);
+        expect($scope.actionError).toBeNull();
         expect($scope.osinfo).toBe(GeneralManager.getData("osinfo"));
     });
 
@@ -225,7 +232,8 @@ describe("NodeDetailsController", function() {
     it("calls loadManagers with all needed managers", function() {
         var controller = makeController();
         expect(ManagerHelperService.loadManagers).toHaveBeenCalledWith([
-            NodesManager, ClustersManager, ZonesManager, GeneralManager]);
+            NodesManager, ClustersManager, ZonesManager, GeneralManager,
+            UsersManager]);
     });
 
     it("calls setActiveItem onces managers loaded", function() {
@@ -504,6 +512,7 @@ describe("NodeDetailsController", function() {
         expect(watches).toEqual([
             "node.fqdn",
             "node.actions",
+            "summary.cluster.selected.connected",
             "node.nodegroup.id",
             "node.architecture",
             "node.zone.id",
@@ -618,7 +627,28 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("isActionError", function() {
+
+        it("returns true if actionError", function() {
+            var controller = makeController();
+            $scope.actionError = makeName("error");
+            expect($scope.isActionError()).toBe(true);
+        });
+
+        it("returns false if not actionError", function() {
+            var controller = makeController();
+            $scope.actionError = null;
+            expect($scope.isActionError()).toBe(false);
+        });
+    });
+
     describe("isDeployError", function() {
+
+        it("returns false if already actionError", function() {
+            var controller = makeController();
+            $scope.actionError = makeName("error");
+            expect($scope.isDeployError()).toBe(false);
+        });
 
         it("returns true if deploy action and missing osinfo", function() {
             var controller = makeController();
@@ -664,6 +694,16 @@ describe("NodeDetailsController", function() {
         });
     });
 
+    describe("actionOptionChanged", function() {
+
+        it("clears actionError", function() {
+            var controller = makeController();
+            $scope.actionError = makeName("error");
+            $scope.actionOptionChanged();
+            expect($scope.actionError).toBeNull();
+        });
+    });
+
     describe("actionCancel", function() {
 
         it("sets actionOption to null", function() {
@@ -671,6 +711,13 @@ describe("NodeDetailsController", function() {
             $scope.actionOption = {};
             $scope.actionCancel();
             expect($scope.actionOption).toBeNull();
+        });
+
+        it("clears actionError", function() {
+            var controller = makeController();
+            $scope.actionError = makeName("error");
+            $scope.actionCancel();
+            expect($scope.actionError).toBeNull();
         });
     });
 
@@ -704,6 +751,22 @@ describe("NodeDetailsController", function() {
             expect($scope.actionOption).toBeNull();
         });
 
+        it("clears actionError on resolve", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            $scope.actionError = makeName("error");
+            $scope.actionGo();
+            defer.resolve();
+            $rootScope.$digest();
+            expect($scope.actionError).toBeNull();
+        });
+
         it("changes path to node listing on delete", function() {
             var controller = makeController();
             var defer = $q.defer();
@@ -718,6 +781,43 @@ describe("NodeDetailsController", function() {
             defer.resolve();
             $rootScope.$digest();
             expect($location.path).toHaveBeenCalledWith("/nodes");
+        });
+
+        it("sets actionError when rejected", function() {
+            var controller = makeController();
+            var defer = $q.defer();
+            spyOn(NodesManager, "performAction").and.returnValue(
+                defer.promise);
+            $scope.node = node;
+            $scope.actionOption = {
+                name: "deploy"
+            };
+            var error = makeName("error");
+            $scope.actionGo();
+            defer.reject(error);
+            $rootScope.$digest();
+            expect($scope.actionError).toBe(error);
+        });
+    });
+
+    describe("isSuperUser", function() {
+
+        it("returns false if no authUser", function() {
+            var controller = makeController();
+            UsersManager._authUser = null;
+            expect($scope.isSuperUser()).toBe(false);
+        });
+
+        it("returns false if authUser.is_superuser is false", function() {
+            var controller = makeController();
+            UsersManager._authUser.is_superuser = false;
+            expect($scope.isSuperUser()).toBe(false);
+        });
+
+        it("returns true if authUser.is_superuser is true", function() {
+            var controller = makeController();
+            UsersManager._authUser.is_superuser = true;
+            expect($scope.isSuperUser()).toBe(true);
         });
     });
 
@@ -743,6 +843,28 @@ describe("NodeDetailsController", function() {
             $scope.summary.architecture.selected = arch;
             expect($scope.invalidArchitecture()).toBe(false);
         });
+    });
+
+    describe("canEdit", function() {
+
+        it("returns false if not super user", function() {
+            var controller = makeController();
+            spyOn($scope, "isSuperUser").and.returnValue(false);
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns false if cluster_disconnected error viewable", function() {
+            var controller = makeController();
+            $scope.errors.cluster_disconnected.viewable = true;
+            expect($scope.canEdit()).toBe(false);
+        });
+
+        it("returns true if super user and not cluster_disconnected error",
+            function() {
+                var controller = makeController();
+                $scope.errors.cluster_disconnected.viewable = false;
+                expect($scope.canEdit()).toBe(true);
+            });
     });
 
     describe("editSummary", function() {
