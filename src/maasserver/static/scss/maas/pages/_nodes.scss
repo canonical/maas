@@ -176,48 +176,6 @@
     }
 }
 
-/* 2. NODE SEARCH ----------------------------------------------------
---------------------------------------------------------------------*/
-
-.node-search {
-    position: relative;
-    padding-bottom: 20px;
-
-    .node-search__input {
-        @include box-sizing();
-        @include rounded-corners(4px);
-        list-style: none;
-        background:#FFF;
-        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-        width: 100%;
-        border: none;
-        padding: 13px 20px;
-        font-size: 1.25em;
-    }
-
-    .node-search__submit {
-        position: absolute;
-        top: 15px;
-        right: 25px;
-        background-color: transparent;
-        background-image: url('../img/search-icon.svg');
-        background-repeat: no-repeat;
-        text-indent: -999em;
-        display: block;
-        width: 21px;
-        height: 20px;
-        overflow: hidden;
-        outline: none;
-        padding: 0;
-        border: none;
-
-        &.close {
-            background-image: url('../img/icons/filter-remove.svg');
-            background-size: 20px 20px;
-        }
-    }
-}
-
 /* 3. ADD MACHINE LIST -----------------------------------------------
 --------------------------------------------------------------------*/
 
@@ -245,108 +203,6 @@
         }
     }
 }
-
-/* 4. ACCORDION ------------------------------------------------------
---------------------------------------------------------------------*/
-
-.accordion {
-    @include box-sizing();
-    @include rounded-corners(2px);
-    list-style: none;
-    background:#FFF;
-    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
-    margin-bottom: 40px;
-
-    /**
-     * accordion main sidebar title
-     */
-    .accordion__title {
-        border-bottom: 1px dotted #B2B2B2;
-        padding: 13px 20px 12px;
-        margin: 0;
-        font-size: 1.3em;
-    }
-
-    /**
-     * accordion data block, contains all filter links and controls.
-     */
-    .accordion__tab {
-        border-bottom: 1px dotted #B2B2B2;
-
-        &:last-of-type {
-            border: none;
-        }
-
-        /**
-         * Block level title
-         */
-        .accordion__tab-title {
-            padding: 12px 20px;
-            margin: 0;
-            color: #888;
-            cursor: pointer;
-            background: transparent url('../img/icons/accordion-open.svg') top 20px right 20px no-repeat;
-
-            &.active {
-                background-image: url('../img/icons/accordion-close.svg');
-
-                & + .accordion__tab-content {
-                    display: block;
-                }
-            }
-        }
-
-        /**
-         * Filter list
-         */
-        .accordion__tab-content {
-            display: none;
-
-            .accordion__tab-list {
-                list-style-type: none;
-                padding: 0 20px 14px;
-                margin: 0;
-
-                .accordion__tab-item {
-                    margin-bottom: 0.15em;
-
-                    .accordion__tab-link {
-                        @include box-sizing();
-                        color: #333;
-                        width: 100%;
-                        display: inline-block;
-                        padding-right: 20px;
-
-                        &:hover {
-                            color: $ubuntu-orange;
-                            text-decoration: none;
-                        }
-                    }
-
-                    &.active {
-                        font-weight: 400;
-
-                        .accordion__tab-link {
-                            background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
-                        }
-
-                        &:hover {
-                            color: $ubuntu-orange;
-
-                            .accordion__tab-link {
-                                color: $ubuntu-orange;
-                                background-image: url('../img/icons/remove-orange.svg');
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-/* 5. NODE STATUS ----------------------------------------------------
---------------------------------------------------------------------*/
 
 .power-status {
     display: inline-block;
@@ -381,6 +237,19 @@
             padding-left: 20px;
             color: #DB3832;
             background: transparent url('../img/icons/power-error.svg') left top 4px no-repeat;
+        }
+
+        .power-check {
+            font-size: 0.75em;
+            color: #D2D2D2;
+            display: inline-block;
+            padding: 0;
+
+            .power-check__link {
+                color: #888;
+                text-decoration: none;
+                margin-left: 5px;
+            }
         }
     }
 }

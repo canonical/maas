@@ -44,15 +44,6 @@
         text-decoration: none;
         background-color: darken($ubuntu-orange, 6.2%);
     }
-
-    &.disabled {
-        cursor: default;
-        opacity: .5;
-
-        &:hover {
-            background-color: $ubuntu-orange;
-        }
-    }
 }
 
 %secondary-cta {
@@ -62,15 +53,6 @@
 
     &:hover {
         background-color: #fff;
-    }
-
-    &.disabled {
-        cursor: default;
-        opacity: .5;
-
-        &:hover {
-            background-color: #eee;
-        }
     }
 }
 
@@ -85,13 +67,9 @@ form input[type='submit'] {
     font-size: 1em;
     border: none;
 
-    &.disabled {
+    &[disabled] {
         cursor: default;
         opacity: .5;
-
-        &:hover {
-            background-color: $ubuntu-orange;
-        }
     }
 
     &.clear {
@@ -115,12 +93,14 @@ form input[type='submit'] {
             background-color: #fff;
         }
 
-        &.disabled {
+        &[disabled] {
             cursor: default;
-            opacity: .5;
+            color: lighten(#333, 50%);
+            border: 1px solid #b2b2b2;
+            background: #eee;
 
             &:hover {
-                background-color: #eee;
+                background: #EEE;
             }
         }
     }

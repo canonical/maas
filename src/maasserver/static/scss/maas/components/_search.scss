@@ -1,0 +1,58 @@
+@charset "UTF-8";
+
+////
+/// MAAS search styles
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
+
+.search {
+    position: relative;
+    padding-bottom: 20px;
+
+    .search__input {
+        @include box-sizing();
+        @include rounded-corners(4px);
+        list-style: none;
+        background:#FFF;
+        box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+        width: 100%;
+        border: none;
+        padding: 13px 20px;
+        font-size: 1.25em;
+    }
+
+    .search__submit {
+        position: absolute;
+        top: 15px;
+        right: 25px;
+        background-color: transparent;
+        background-image: url('../img/search-icon.svg');
+        background-repeat: no-repeat;
+        text-indent: -999em;
+        display: block;
+        width: 21px;
+        height: 20px;
+        overflow: hidden;
+        outline: none;
+        padding: 0;
+        border: none;
+
+        &:hover {
+            background-color: transparent;
+            background-image: url('../img/search-icon.svg');
+        }
+
+        &.close {
+            background-image: url('../img/icons/filter-remove.svg');
+            background-size: 20px 20px;
+
+            &:hover {
+                background-image: url('../img/icons/filter-remove.svg');
+            }
+        }
+    }
+}

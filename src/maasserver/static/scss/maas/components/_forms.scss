@@ -201,6 +201,7 @@ form {
     position: absolute;
 
     & + .checkbox-label {
+        @include user-select();
         padding-left: 20px;
         position: relative;
 
@@ -332,5 +333,5 @@ form {
 .controls {
     position: absolute;
     top: 0;
-    right: 0;
+    right: 20px;
 }

@@ -28,7 +28,7 @@
                     {% for token in user.get_profile.get_authorisation_tokens %}
                     <li class="bundle">
                         <a href="#" class="delete-link icon right">
-                            <img title="Delete MAAS key" src="{{ STATIC_URL }}img/delete.png" />
+                            <img title="Delete MAAS key" class="left" src="{{ STATIC_URL }}img/delete.png" />
                         </a>
                         <input type="text" value="{{ token.consumer.key }}:{{ token.key }}:{{ token.secret }}" id="{{ token.key }}" class="disabled" />
                     </li>
@@ -44,7 +44,7 @@
                     {% for key in user.sshkey_set.all %}
                     <li>
                         <a href="{% url 'prefs-delete-sshkey' key.id %}" class="icon right">
-                            <img title="Delete SSH key" src="{{ STATIC_URL }}img/delete.png" />
+                            <img title="Delete SSH key" class="left" src="{{ STATIC_URL }}img/delete.png" />
                         </a>
                         {{ key.display_html }}
                     </li>
@@ -60,7 +60,7 @@
                     {% for key in user.sslkey_set.all %}
                     <li>
                         <a href="{% url 'prefs-delete-sslkey' key.id %}" class="icon right">
-                            <img title="Delete SSL key" src="{{ STATIC_URL }}img/delete.png" />
+                            <img title="Delete SSL key" class="left" src="{{ STATIC_URL }}img/delete.png" />
                         </a>
                         {{ key.display_html }}
                     </li>

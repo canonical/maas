@@ -54,10 +54,6 @@ table {
     tbody {
 
         tr {
-            &:hover td {
-                background: #FFF;
-            }
-
             &:hover .icon-controls {
                 opacity: 1;
             }
@@ -146,7 +142,8 @@ table {
             opacity: 0;
         }
 
-        input[type="text"] {
+        input[type="text"],
+        select {
             position: absolute;
             left: 10px;
             top: 6px;
@@ -162,6 +159,17 @@ table {
 
         .table-listing__header & {
             padding-left: 0;
+        }
+    }
+
+    &.no-hover {
+
+        .table-listing__row:hover {
+
+            .table-listing__cell,
+            td {
+                background-color: transparent;
+            }
         }
     }
 }

@@ -40,6 +40,11 @@
         background-image: url('../img/icons/warning.svg'), none;
     }
 
+    &.debug {
+        background-image: url('../img/icons/debug.png');
+        background-image: url('../img/icons/debug.svg'), none;
+    }
+
     &.success,
     &.tick {
         background-image: url('../img/icons/success.png');

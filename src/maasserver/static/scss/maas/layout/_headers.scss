@@ -59,6 +59,10 @@ header.banner {
             }
         }
 
+        li:hover ul:after {
+            display: none;
+        }
+
         @media screen and (max-width: 768px) {
             ul {
                 border-right: none;
@@ -228,6 +232,11 @@ header.banner {
     position: relative;
     z-index: 10;
 
+    .page-header__nav {
+        position: absolute;
+        top: 10px;
+        z-index: 1000;
+    }
     /**
      * Main page title
      */
@@ -237,6 +246,32 @@ header.banner {
         padding: 31px 0;
         margin: 0;
         float: left;
+
+        [contenteditable="true"] {
+            display: inline-block;
+            padding: 10px;
+            width: auto;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+            margin: -10px 0 -10px -10px;
+            border-radius: 2px;
+            color: #333;
+
+            &:hover {
+                border: 1px solid #D2D2D2;
+            }
+
+            &:active,
+            &:focus {
+                outline: none;
+                background-color: #FFF;
+                border: 1px solid #B2B2B2;
+
+                + span {
+                    display: none;
+                }
+            }
+        }
 
         /**
          * Title identicator is used to show any sub pages and where
@@ -259,6 +294,11 @@ header.banner {
                     border-bottom: 1px solid #888;
                 }
 
+                &:focus,
+                &:active {
+                    text-decoration: none;
+                }
+
                 &.active {
                     color: #333;
                     border-bottom: 1px solid $ubuntu-orange;
@@ -278,6 +318,12 @@ header.banner {
                 padding: 0;
                 margin: 0 5px;
             }
+        }
+
+        .link-cta-ubuntu,
+        .alt {
+            font-size: 16px;
+            margin-right: 20px;
         }
     }
 
@@ -325,18 +371,22 @@ header.banner {
          * Feedback style, mainly used for actions feedback
          */
         .page-header__feedback {
-            padding: 6px 0 5px;
+            display: inline-block;
+            width: 100%;
 
             .page-header__feedback-message {
                 @include box-sizing();
                 margin: 0;
                 background-position: top 3px left 0px;
                 background-repeat: no-repeat;
-                padding-left: 25px;
+                padding: 6px 0 5px 25px;
+                width: auto;
+                display: inline-block;
 
                 &.info {
                     background-image: url('../img/icons/error.png');
                     background-image: url('../img/icons/error.svg'), none;
+                    background-position: 0px 6px;
                 }
             }
         }
@@ -355,6 +405,11 @@ header.banner {
                 color: #333;
                 text-decoration: none;
                 border-bottom: 1px solid #333;
+            }
+
+            &:focus,
+            &:active {
+                text-decoration: none;
             }
 
             &.active {

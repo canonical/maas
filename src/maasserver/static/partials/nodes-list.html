@@ -259,15 +259,15 @@
     </aside>
     <div class="nine-col last-col" data-ng-show="currentpage === 'nodes'">
         <form>
-            <div id="search-bar" class="node-search">
+            <div id="search-bar" class="search">
                 <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                 <input
-                    type="search" placeholder="Search nodes" class="node-search__input"
+                    type="search" placeholder="Search nodes" class="search__input"
                     data-ng-model="tabs.nodes.search" data-ng-change="updateFilters('nodes')"
                     data-ng-class="{ error: !tabs.nodes.searchValid }" />
-                <input type="submit" class="node-search__submit" />
+                <input type="submit" class="search__submit" />
             </div>
-            <table class="table-listing nodes-listing" id="nodes-listing">
+            <table class="table-listing " id="nodes-listing">
                 <thead>
                     <tr class="table-listing__row">
                         <th>
@@ -284,7 +284,7 @@
                                 <acronym title="Media Access Control addresses">MAC</acronym>
                             </a>
                         </th>
-                        <th>
+                        <th class="align-center">
                             <!-- XXX blake_r 2015-02-18 - Need to add e2e test. -->
                             <a href="" class="align-center" data-ng-click="tabs.nodes.predicate='power_state'; tabs.nodes.reverse=!tabs.nodes.reverse">Power</a>
                         </th>
@@ -351,13 +351,13 @@
     </div>
     <div class="nine-col last-col" class="ng-hide" data-ng-show="currentpage === 'devices'">
         <form>
-            <div id="search-bar" class="node-search">
+            <div class="search">
                 <!-- XXX rvba 2015-02-25 - Need to add e2e test. -->
                 <input
-                    type="search" placeholder="Search devices" class="node-search__input"
+                    type="search" placeholder="Search devices" class="search__input"
                     data-ng-model="tabs.devices.search" data-ng-change="updateFilters('devices')"
                     data-ng-class="{ error: !tabs.devices.searchValid }" />
-                <input type="submit" class="node-search__submit" />
+                <input type="submit" class="search__submit" />
             </div>
             <table class="table-listing" id="nodes-listing">
                 <thead>

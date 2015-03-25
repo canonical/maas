@@ -8,12 +8,18 @@
 <div class="ng-hide" data-ng-show="loaded">
     <header class="page-header">
         <div class="inner-wrapper">
-            <h1 class="page-header__title eight-col">{$ node.fqdn $}
+            <nav class="page-header__nav">
+                <a href="#">&lsaquo;&nbsp;Back</a>
+            </nav>
+            <h1 class="page-header__title eight-col">
+                <span contenteditable="true">{$ node.fqdn $}</span>
                 <span class="page-header__title--identicator" id="bulk-actions">
                     <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
                     <span class="power-status">{$ node.status $}</span>
-                    <span class="power-status--power {$ node.power_state $}">{$ getPowerStateText() $}</span>
+                    <span class="power-status--power {$ node.power_state $}">{$ getPowerStateText() $} <span class="power-check">3 minutes ago <a href="#" class="power-check__link">check now</a></span></span>
                 </span>
+                <a href="#" class="link-cta-ubuntu ng-hide">Save</a>
+                <a href="#" class="alt ng-hide">Cancel</a>
             </h1>
             <!-- XXX blake_r 2015-02-19 - Need to add e2e test. -->
             <div data-ng-show="availableActionOptions.length">
@@ -289,7 +295,7 @@
             <h4 data-ng-hide="node.events.length">
                 No events.
             </h4>
-            <table class="table-listing" data-ng-show="node.events.length">
+            <table class="table-listing no-hover" data-ng-show="node.events.length">
                 <thead>
                     <tr class="table-listing__row">
                         <th class="t75">Event</th>
@@ -338,7 +344,7 @@
                 </pre>
             </div>
             <div class="twelve-col ng-hide" data-ng-show="machine_output.selectedView.name === 'output'">
-                <table class="table-listing">
+                <table class="table-listing no-hover">
                     <thead>
                         <tr class="table-listing__row">
                             <th class="t1 no-padding-left no-padding-right"></th>

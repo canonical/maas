@@ -1,0 +1,99 @@
+@charset "UTF-8";
+
+////
+/// MAAS accordion styles
+///
+/// @project     MAAS
+/// @author      Web Team at Canonical Ltd
+/// @copyright   2015 Canonical Ltd
+///
+////
+
+.accordion {
+    @include box-sizing();
+    @include rounded-corners(2px);
+    list-style: none;
+    background:#FFF;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, .1);
+    margin-bottom: 40px;
+
+
+    // accordion main sidebar title
+    .accordion__title {
+        border-bottom: 1px dotted #B2B2B2;
+        padding: 13px 20px 12px;
+        margin: 0;
+        font-size: 1.3em;
+    }
+
+    // accordion data block, contains all filter links and controls.
+    .accordion__tab {
+        border-bottom: 1px dotted #B2B2B2;
+
+        &:last-of-type {
+            border: none;
+        }
+
+        // Block level title
+        .accordion__tab-title {
+            padding: 12px 20px;
+            margin: 0;
+            color: #888;
+            cursor: pointer;
+            background: transparent url('../img/icons/accordion-open.svg') top 20px right 20px no-repeat;
+
+            &.active {
+                background-image: url('../img/icons/accordion-close.svg');
+
+                & + .accordion__tab-content {
+                    display: block;
+                }
+            }
+        }
+
+        // Filter list
+        .accordion__tab-content {
+            display: none;
+
+            .accordion__tab-list {
+                list-style-type: none;
+                padding: 0 20px 14px;
+                margin: 0;
+
+                .accordion__tab-item {
+                    margin-bottom: 0.15em;
+
+                    .accordion__tab-link {
+                        @include box-sizing();
+                        color: #333;
+                        width: 100%;
+                        display: inline-block;
+                        padding-right: 20px;
+
+                        &:hover {
+                            color: $ubuntu-orange;
+                            text-decoration: none;
+                        }
+                    }
+
+                    &.active {
+                        font-weight: 400;
+
+                        .accordion__tab-link {
+                            background: transparent url('../img/icons/filter-remove.svg') top 7px right 0px no-repeat;
+                        }
+
+                        &:hover {
+                            color: $ubuntu-orange;
+
+                            .accordion__tab-link {
+                                color: $ubuntu-orange;
+                                background-image: url('../img/icons/remove-orange.svg');
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
