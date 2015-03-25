@@ -33,6 +33,7 @@
 ./parts
 ./run/*
 ./services/*/supervise
+./src/maasserver/static/**/*.moved
 ./src/maasserver/static/js/enums.js
 ./TAGS
 ./tags

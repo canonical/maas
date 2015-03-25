@@ -31,6 +31,7 @@ from django.db import (
     IntegrityError,
     )
 from django.db.models import (
+    CharField,
     ForeignKey,
     IntegerField,
     Manager,
@@ -49,6 +50,10 @@ from maasserver.fields import MAASIPAddressField
 from maasserver.models.cleansave import CleanSave
 from maasserver.models.timestampedmodel import TimestampedModel
 from maasserver.utils import strip_domain
+from maasserver.utils.dns import (
+    get_ip_based_hostname,
+    validate_hostname,
+    )
 from netaddr import (
     IPAddress,
     IPRange,
@@ -81,7 +86,8 @@ class StaticIPAddressManager(Manager):
                     "Must not provide user for alloc_type other "
                     "than USER_RESERVED.")
 
-    def _attempt_allocation(self, requested_address, alloc_type, user=None):
+    def _attempt_allocation(
+            self, requested_address, alloc_type, user=None, hostname=None):
         """Attempt to allocate `requested_address`.
 
         All parameters must have been checked first.  This method relies on
@@ -100,7 +106,8 @@ class StaticIPAddressManager(Manager):
         :raise StaticIPAddressUnavailable: if the address was already taken.
         """
         ipaddress = StaticIPAddress(
-            ip=requested_address.format(), alloc_type=alloc_type)
+            ip=requested_address.format(), alloc_type=alloc_type,
+            hostname=hostname)
         try:
             # Try to save this address to the database.
             ipaddress.save()
@@ -120,7 +127,7 @@ class StaticIPAddressManager(Manager):
 
     def allocate_new(self, range_low, range_high,
                      alloc_type=IPADDRESS_TYPE.AUTO, user=None,
-                     requested_address=None):
+                     requested_address=None, hostname=None):
         """Return a new StaticIPAddress.
 
         :param range_low: The lowest address to allocate in a range
@@ -159,7 +166,17 @@ class StaticIPAddressManager(Manager):
                         requested_address.format(), range_low.format(),
                         range_high.format()))
             return self._attempt_allocation(
-                requested_address, alloc_type, user)
+                requested_address, alloc_type, user=user, hostname=hostname)
+
+    def _get_user_reserved_mappings(self):
+        mappings = []
+        for mapping in self.filter(alloc_type=IPADDRESS_TYPE.USER_RESERVED):
+            hostname = mapping.hostname
+            ip = mapping.ip
+            if hostname is None or hostname == '':
+                hostname = get_ip_based_hostname(ip)
+            mappings.append((hostname, ip))
+        return mappings
 
     def _find_free_ip(self, range_low, range_high, static_range, alloc_type,
                       user):
@@ -267,6 +284,9 @@ class StaticIPAddressManager(Manager):
         for hostname, ip in cursor.fetchall():
             hostname = strip_domain(hostname)
             mapping[hostname].append(ip)
+        for hostname, ip in self._get_user_reserved_mappings():
+            hostname = strip_domain(hostname)
+            mapping[hostname].append(ip)
         return mapping
 
 
@@ -287,6 +307,13 @@ class StaticIPAddress(CleanSave, TimestampedModel):
 
     alloc_type = IntegerField(
         editable=False, null=False, blank=False, default=IPADDRESS_TYPE.AUTO)
+
+    # XXX: removing the null=True here causes dozens of tests to fail with
+    # NOT NULL constraint violations. (an empty string an NULL should mean
+    # the same thing here.)
+    hostname = CharField(
+        max_length=255, default='', blank=True, unique=False, null=True,
+        validators=[validate_hostname])
 
     user = ForeignKey(
         User, default=None, blank=True, null=True, editable=False)

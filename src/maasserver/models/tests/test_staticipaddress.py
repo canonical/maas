@@ -8,6 +8,8 @@ from __future__ import (
     print_function,
     unicode_literals,
     )
+from testtools.matchers import HasLength
+
 
 str = None
 
@@ -36,6 +38,7 @@ from netaddr import (
     IPRange,
     )
 from provisioningserver.utils.enum import map_enum
+from random import randint
 
 
 class StaticIPAddressManagerTest(MAASServerTestCase):
@@ -386,3 +389,41 @@ class StaticIPAddressTest(MAASServerTestCase):
         ipaddress2 = factory.make_StaticIPAddress()
         ipaddress.deallocate()
         self.assertEqual([ipaddress2], list(StaticIPAddress.objects.all()))
+
+
+class UserReservedStaticIPAddressTest(MAASServerTestCase):
+
+    def test_user_reserved_addresses_have_default_hostnames(self):
+        num_ips = randint(3, 5)
+        ips = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            for _ in range(num_ips)
+        ]
+        mappings = StaticIPAddress.objects._get_user_reserved_mappings()
+        self.expectThat(mappings, HasLength(len(ips)))
+
+    def test_user_reserved_addresses_included_in_get_hostname_ip_mapping(self):
+        num_ips = randint(3, 5)
+        nodegroup = factory.make_NodeGroup()
+        ips = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            for _ in range(num_ips)
+        ]
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup)
+        self.expectThat(mappings, HasLength(len(ips)))
+
+    def test_user_reserved_addresses_included_in_all_nodegroups(self):
+        num_ips = randint(3, 5)
+        nodegroup1 = factory.make_NodeGroup()
+        nodegroup2 = factory.make_NodeGroup()
+        ips = [
+            factory.make_StaticIPAddress(
+                alloc_type=IPADDRESS_TYPE.USER_RESERVED)
+            for _ in range(num_ips)
+        ]
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup1)
+        self.expectThat(mappings, HasLength(len(ips)))
+        mappings = StaticIPAddress.objects.get_hostname_ip_mapping(nodegroup2)
+        self.expectThat(mappings, HasLength(len(ips)))
