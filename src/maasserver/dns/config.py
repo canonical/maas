@@ -21,9 +21,18 @@ __all__ = [
     'dns_update_zones_now',
     ]
 
+from itertools import (
+    chain,
+    imap,
+    )
+import threading
+
 from django.conf import settings
 from maasserver import locks
-from maasserver.dns.zonegenerator import ZoneGenerator
+from maasserver.dns.zonegenerator import (
+    sequence,
+    ZoneGenerator,
+    )
 from maasserver.enum import NODEGROUPINTERFACE_MANAGEMENT
 from maasserver.models.config import Config
 from maasserver.models.network import Network
@@ -48,7 +57,10 @@ from provisioningserver.dns.actions import (
     bind_write_zones,
     )
 from provisioningserver.logger import get_maas_logger
-from provisioningserver.utils.twisted import callOutToThread
+from provisioningserver.utils.twisted import (
+    callOut,
+    callOutToThread,
+    )
 
 
 maaslog = get_maas_logger("dns")
@@ -116,8 +128,7 @@ def dns_add_zones(clusters):
     """
     if is_dns_enabled():
         if DNS_DEFER_UPDATES:
-            return post_commit().addCallback(
-                callOutToThread, transactional(dns_add_zones_now), clusters)
+            return consolidator.add_zones(clusters)
         else:
             return dns_add_zones_now(clusters)
     else:
@@ -151,8 +162,7 @@ def dns_update_zones(clusters):
     """
     if is_dns_enabled():
         if DNS_DEFER_UPDATES:
-            return post_commit().addCallback(
-                callOutToThread, transactional(dns_update_zones_now), clusters)
+            return consolidator.update_zones(clusters)
         else:
             return dns_update_zones_now(clusters)
     else:
@@ -161,7 +171,7 @@ def dns_update_zones(clusters):
 
 @synchronised(locks.dns)
 def dns_update_all_zones_now(reload_retry=False, force=False):
-    """Update all zone files for the given cluster(s), and serve them.
+    """Update all zone files for all clusters.
 
     Serving these zone files means updating BIND's configuration to include
     them, then asking it to load the new configuration.
@@ -212,14 +222,122 @@ def dns_update_all_zones(reload_retry=False, force=False):
     """
     if is_dns_enabled():
         if DNS_DEFER_UPDATES:
-            return post_commit().addCallback(
-                callOutToThread, transactional(dns_update_all_zones_now),
+            return consolidator.update_all_zones(
                 reload_retry=reload_retry, force=force)
         else:
             return dns_update_all_zones_now(
                 reload_retry=reload_retry, force=force)
     else:
         return None
+
+
+def flatten(things):
+    return chain.from_iterable(imap(sequence, things))
+
+
+class Changes:
+    """A record of pending DNS changes, and the means to apply them."""
+
+    def __init__(self):
+        super(Changes, self).__init__()
+        self.reset()
+
+    def reset(self):
+        self.hook = None
+        self.zones_to_add = []
+        self.zones_to_update = []
+        self.update_all_zones = False
+        self.update_all_zones_reload_retry = False
+        self.update_all_zones_force = False
+
+    def activate(self):
+        """Arrange for a post-commit hook to be called.
+
+        The hook will apply any pending changes and reset this object to a
+        pristine state.
+
+        Can be called multiple times; only one hook will be added.
+        """
+        if self.hook is None:
+            self.hook = post_commit()
+            self.hook.addCallback(callOutToThread, self.apply)
+            self.hook.addBoth(callOut, self.reset)
+        return self.hook
+
+    @transactional
+    @synchronised(locks.dns)
+    def apply(self):
+        """Apply all requested changes.
+
+        A request to update all zones will do just that, and ignore any zones
+        individually requested for adding or updating, because both those
+        things will happen as part of the process.
+
+        Assuming that's not the case, requests to *add* specific zones will be
+        acted on next, followed by requests to *update* specific zones. If
+        there's a request to add and update a zone, only the add will be done
+        because the update will be a wasteful no-op.
+        """
+        if self.update_all_zones:
+            # We've been asked to do the full-monty; just do it and get out.
+            dns_update_all_zones_now(
+                reload_retry=self.update_all_zones_reload_retry,
+                force=self.update_all_zones_force)
+        else:
+            # Call `dns_add_zones_now` for each zone to add. We consolidate
+            # changes into a dict, keyed by ID because Django's ORM does not
+            # guarantee the same instance for the same database row.
+            zones_to_add = {
+                cluster.id: cluster
+                for cluster in flatten(self.zones_to_add)
+            }
+            if len(self.zones_to_add) != 0:
+                dns_add_zones_now(zones_to_add.values())
+
+            # Call `dns_update_zones_now` for each zone to update, *excluding*
+            # those we've only just added; there's no point doing them again.
+            # We consolidate changes into a dict for the same reason as above.
+            zones_to_update = {
+                cluster.id: cluster
+                for cluster in flatten(self.zones_to_update)
+                if cluster.id not in zones_to_add
+            }
+            if len(zones_to_update) != 0:
+                dns_update_zones_now(zones_to_update.values())
+
+
+class ChangeConsolidator(threading.local):
+    """A singleton used to consolidate DNS changes.
+
+    Maintains a thread-local `Changes` instance into which changes are
+    written. Requesting any change within a transaction automatically arranges
+    a post-commit call to apply those changes, after consolidation.
+    """
+
+    def __init__(self):
+        super(ChangeConsolidator, self).__init__()
+        self.changes = Changes()
+
+    def add_zones(self, clusters):
+        """Request that zones for `clusters` be added."""
+        self.changes.zones_to_add.append(clusters)
+        return self.changes.activate()
+
+    def update_zones(self, clusters):
+        """Request that zones for `clusters` be updated."""
+        self.changes.zones_to_update.append(clusters)
+        return self.changes.activate()
+
+    def update_all_zones(self, reload_retry=False, force=False):
+        """Request that zones for all clusters be updated."""
+        self.changes.update_all_zones = True
+        self.changes.update_all_zones_reload_retry |= reload_retry
+        self.changes.update_all_zones_force |= force
+        return self.changes.activate()
+
+
+# Singleton, for internal use only.
+consolidator = ChangeConsolidator()
 
 
 def get_upstream_dns():

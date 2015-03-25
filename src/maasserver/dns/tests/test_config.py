@@ -23,6 +23,7 @@ from django.core.management import call_command
 from maasserver import locks
 from maasserver.dns import config as dns_config_module
 from maasserver.dns.config import (
+    consolidator,
     dns_add_zones,
     dns_add_zones_now,
     dns_update_all_zones,
@@ -53,7 +54,10 @@ from maastesting.matchers import (
     MockCalledOnceWith,
     MockNotCalled,
     )
-from mock import sentinel
+from mock import (
+    Mock,
+    sentinel,
+    )
 from netaddr import (
     IPAddress,
     IPNetwork,
@@ -80,6 +84,7 @@ from testtools.matchers import (
     Is,
     IsInstance,
     MatchesStructure,
+    Not,
     )
 from twisted.internet.defer import Deferred
 
@@ -113,13 +118,13 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         ("dns_add_zones", {
             "now_function": dns_add_zones_now,
             "calling_function": dns_add_zones,
-            "args": [sentinel.cluster],
+            "args": [[Mock(id=random.randint(1, 1000))]],
             "kwargs": {},
         }),
         ("dns_update_zones", {
             "now_function": dns_update_zones_now,
             "calling_function": dns_update_zones,
-            "args": [sentinel.cluster],
+            "args": [[Mock(id=random.randint(1, 1000))]],
             "kwargs": {},
         }),
         ("dns_update_all_zones", {
@@ -127,8 +132,8 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
             "calling_function": dns_update_all_zones,
             "args": [],
             "kwargs": {
-                "reload_retry": sentinel.reload_retry,
-                "force": sentinel.force,
+                "reload_retry": factory.pick_bool(),
+                "force": factory.pick_bool(),
             },
         }),
     )
@@ -165,6 +170,142 @@ class TestDeferringChangesPostCommit(MAASServerTestCase):
         self.assertThat(result, Is(sentinel.okay_now))
         self.assertThat(func, MockCalledOnceWith(*self.args, **self.kwargs))
         self.assertThat(post_commit_hooks.hooks, HasLength(0))
+
+
+class TestConsolidatingChanges(MAASServerTestCase):
+    """Tests for `Changes` and `ChangeConsolidator`."""
+
+    def make_managed_nodegroup(self):
+        return factory.make_NodeGroup(
+            management=NODEGROUPINTERFACE_MANAGEMENT.DHCP_AND_DNS,
+            status=NODEGROUP_STATUS.ACCEPTED)
+
+    def test__added_zones_applied_post_commit(self):
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster)
+        self.assertThat(dns_add_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+
+    def test__added_zones_are_consolidated(self):
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster)
+        consolidator.add_zones(cluster)
+        consolidator.add_zones([cluster, cluster])
+        post_commit_hooks.fire()
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+
+    def test__updated_zones_applied_post_commit(self):
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.update_zones(cluster)
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(dns_update_zones_now, MockCalledOnceWith([cluster]))
+
+    def test__updated_zones_are_consolidated(self):
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.update_zones(cluster)
+        consolidator.update_zones(cluster)
+        consolidator.update_zones([cluster, cluster])
+        post_commit_hooks.fire()
+        self.assertThat(dns_update_zones_now, MockCalledOnceWith([cluster]))
+
+    def test__added_zones_supersede_updated_zones(self):
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster)
+        consolidator.update_zones(cluster)
+        post_commit_hooks.fire()
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+
+    def test__update_all_zones_does_just_that(self):
+        dns_update_all_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones_now")
+        consolidator.update_all_zones()
+        self.assertThat(dns_update_all_zones_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(
+            dns_update_all_zones_now, MockCalledOnceWith(
+                reload_retry=False, force=False))
+
+    def test__update_all_zones_combines_flags_with_or(self):
+        dns_update_all_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones_now")
+        consolidator.update_all_zones(False, True)
+        consolidator.update_all_zones(True, False)
+        post_commit_hooks.fire()
+        self.assertThat(
+            dns_update_all_zones_now, MockCalledOnceWith(
+                reload_retry=True, force=True))
+
+    def test__update_all_zones_supersedes_individual_add_and_update(self):
+        dns_add_zones_now = self.patch_autospec(
+            dns_config_module, "dns_add_zones_now")
+        dns_update_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_zones_now")
+        dns_update_all_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones_now")
+        cluster = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster)
+        consolidator.update_zones(cluster)
+        consolidator.update_all_zones()
+        post_commit_hooks.fire()
+        self.assertThat(dns_add_zones_now, MockNotCalled())
+        self.assertThat(dns_update_zones_now, MockNotCalled())
+        self.assertThat(
+            dns_update_all_zones_now, MockCalledOnceWith(
+                reload_retry=False, force=False))
+
+    # A matcher to check that a `Changes` object is empty, or not.
+    changes_are_empty = MatchesStructure.byEquality(
+        hook=None, zones_to_add=[], zones_to_update=[],
+        update_all_zones=False, update_all_zones_reload_retry=False,
+        update_all_zones_force=False)
+    changes_are_not_empty = Not(changes_are_empty)
+
+    def test__changes_are_reset_post_commit(self):
+        self.patch_autospec(dns_config_module, "dns_update_all_zones_now")
+
+        # The changes start empty.
+        self.assertThat(consolidator.changes, self.changes_are_empty)
+
+        cluster = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster)
+        consolidator.update_zones(cluster)
+        consolidator.update_all_zones()
+
+        # The changes are not empty now.
+        self.assertThat(consolidator.changes, self.changes_are_not_empty)
+
+        # They are once again empty after the post-commit hook fires.
+        post_commit_hooks.fire()
+        self.assertThat(consolidator.changes, self.changes_are_empty)
+
+    def test__changes_are_reset_post_commit_on_failure(self):
+        exception_type = factory.make_exception_type()
+
+        dns_update_all_zones_now = self.patch_autospec(
+            dns_config_module, "dns_update_all_zones_now")
+        dns_update_all_zones_now.side_effect = exception_type
+
+        # This is going to crash.
+        consolidator.update_all_zones()
+
+        # The changes are empty after the post-commit hook fires.
+        self.assertRaises(exception_type, post_commit_hooks.fire)
+        self.assertThat(consolidator.changes, self.changes_are_empty)
 
 
 class TestDNSServer(MAASServerTestCase):
