@@ -17,7 +17,6 @@ __all__ = []
 import random
 
 from django.core.exceptions import ValidationError
-from maasserver import node_query
 from maasserver.enum import NODE_STATUS
 from maasserver.rpc.nodes import (
     commission_node,
@@ -278,6 +277,7 @@ class TestCommissionNode(MAASServerTestCase):
 class TestMarkNodeFailed(MAASServerTestCase):
 
     def test__marks_node_as_failed(self):
+        from maasserver import node_query  # Circular import.
         self.addCleanup(node_query.enable)
         node_query.disable()
 

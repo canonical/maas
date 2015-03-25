@@ -238,6 +238,10 @@ def flatten(things):
 class Changes:
     """A record of pending DNS changes, and the means to apply them."""
 
+    # FIXME: This has elements in common with the Changes class in
+    # maasserver.dhcp. Consider extracting the common parts into a shared
+    # superclass.
+
     def __init__(self):
         super(Changes, self).__init__()
         self.reset()
@@ -313,6 +317,10 @@ class ChangeConsolidator(threading.local):
     written. Requesting any change within a transaction automatically arranges
     a post-commit call to apply those changes, after consolidation.
     """
+
+    # FIXME: This has elements in common with the ChangeConsolidator class in
+    # maasserver.dhcp. Consider extracting the common parts into a shared
+    # superclass.
 
     def __init__(self):
         super(ChangeConsolidator, self).__init__()

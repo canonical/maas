@@ -17,9 +17,11 @@ __all__ = []
 import random
 
 from django.conf import settings
+from django.db import transaction
 from maasserver import dhcp
 from maasserver.dhcp import (
     configure_dhcp,
+    consolidator,
     do_configure_dhcp,
     make_subnet_config,
     split_ipv4_ipv6_interfaces,
@@ -35,7 +37,11 @@ from maasserver.testing.eventloop import (
     RunningEventLoopFixture,
     )
 from maasserver.testing.factory import factory
-from maasserver.testing.testcase import MAASServerTestCase
+from maasserver.testing.testcase import (
+    MAASServerTestCase,
+    MAASTransactionServerTestCase,
+    )
+from maasserver.utils.orm import post_commit_hooks
 from maastesting.matchers import (
     MockCalledOnceWith,
     MockCallsMatch,
@@ -62,6 +68,7 @@ from testtools.matchers import (
     ContainsDict,
     Equals,
     IsInstance,
+    MatchesStructure,
     Not,
     )
 
@@ -204,6 +211,7 @@ class TestMakeSubnetConfig(MAASServerTestCase):
         interface = factory.make_NodeGroupInterface(factory.make_NodeGroup())
         interface.router_ip = None
         interface.save()
+        post_commit_hooks.fire()
         config = make_subnet_config(
             interface, factory.make_name('dns'), factory.make_name('ntp'))
         self.assertEqual(None, config['router_ip'])
@@ -314,73 +322,82 @@ class TestDoConfigureDHCPWrappers(MAASServerTestCase):
             6, sentinel.nodegroup, sentinel.interfaces, sentinel.ntp_server))
 
 
+def patch_configure_funcs(test):
+    """Patch `configure_dhcpv4` and `configure_dhcpv6`."""
+    return (
+        test.patch(dhcp, 'configure_dhcpv4'),
+        test.patch(dhcp, 'configure_dhcpv6'),
+    )
+
+
+def make_cluster(test, status=None, omapi_key=None, **kwargs):
+    """Create a `NodeGroup` without interfaces.
+
+    Status defaults to `ACCEPTED`.
+    """
+    if status is None:
+        status = NODEGROUP_STATUS.ACCEPTED
+    if omapi_key is None:
+        # Set an arbitrary OMAPI key, so that the cluster won't need to
+        # shell out to create one.
+        omapi_key = factory.make_name('key')
+    return factory.make_NodeGroup(
+        status=status, dhcp_key=omapi_key, **kwargs)
+
+
+def make_cluster_interface(
+        test, network, cluster=None, management=None, **kwargs):
+    if cluster is None:
+        cluster = test.make_cluster()
+    if management is None:
+        management = NODEGROUPINTERFACE_MANAGEMENT.DHCP
+    return factory.make_NodeGroupInterface(
+        cluster, network=network, management=management, **kwargs)
+
+
+def make_ipv4_interface(test, cluster=None, **kwargs):
+    """Create an IPv4 `NodeGroupInterface` for `cluster`.
+
+    The interface defaults to being managed.
+    """
+    return make_cluster_interface(
+        test, factory.make_ipv4_network(), cluster, **kwargs)
+
+
+def make_ipv6_interface(test, cluster=None, **kwargs):
+    """Create an IPv6 `NodeGroupInterface` for `cluster`.
+
+    The interface defaults to being managed.
+    """
+    return make_cluster_interface(
+        test, factory.make_ipv6_network(), cluster, **kwargs)
+
+
 class TestConfigureDHCP(MAASServerTestCase):
     """Tests for `configure_dhcp`."""
 
-    def patch_configure_funcs(self):
-        """Patch `configure_dhcpv4` and `configure_dhcpv6`."""
-        return (
-            self.patch(dhcp, 'configure_dhcpv4'),
-            self.patch(dhcp, 'configure_dhcpv6'),
-            )
-
-    def make_cluster(self, status=NODEGROUP_STATUS.ACCEPTED, omapi_key=None,
-                     **kwargs):
-        """Create a `NodeGroup` without interfaces.
-
-        Status defaults to `ACCEPTED`.
-        """
-        if omapi_key is None:
-            # Set an arbitrary OMAPI key, so that the cluster won't need to
-            # shell out to create one.
-            omapi_key = factory.make_name('key')
-        return factory.make_NodeGroup(
-            status=status, dhcp_key=omapi_key, **kwargs)
-
-    def make_cluster_interface(self, network, cluster=None,
-                               management=NODEGROUPINTERFACE_MANAGEMENT.DHCP,
-                               **kwargs):
-        if cluster is None:
-            cluster = self.make_cluster()
-        return factory.make_NodeGroupInterface(
-            cluster, network=network, management=management, **kwargs)
-
-    def make_ipv4_interface(self, cluster=None, **kwargs):
-        """Create an IPv4 `NodeGroupInterface` for `cluster`.
-
-        The interface defaults to being managed.
-        """
-        return self.make_cluster_interface(
-            factory.make_ipv4_network(), cluster, **kwargs)
-
-    def make_ipv6_interface(self, cluster=None, **kwargs):
-        """Create an IPv6 `NodeGroupInterface` for `cluster`.
-
-        The interface defaults to being managed.
-        """
-        return self.make_cluster_interface(
-            factory.make_ipv6_network(), cluster, **kwargs)
-
     def test__obeys_DHCP_CONNECT(self):
-        configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
-        cluster = self.make_cluster()
-        self.make_ipv4_interface(cluster)
-        self.make_ipv6_interface(cluster)
+        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
+        cluster = make_cluster(self)
+        make_ipv4_interface(self, cluster)
+        make_ipv6_interface(self, cluster)
         self.patch(settings, "DHCP_CONNECT", False)
 
-        configure_dhcp(cluster)
+        with post_commit_hooks:
+            configure_dhcp(cluster)
 
         self.expectThat(configure_dhcpv4, MockNotCalled())
         self.expectThat(configure_dhcpv6, MockNotCalled())
 
     def test__does_not_configure_interfaces_if_nodegroup_not_accepted(self):
-        configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
-        cluster = self.make_cluster(status=NODEGROUP_STATUS.PENDING)
-        self.make_ipv4_interface(cluster)
-        self.make_ipv6_interface(cluster)
+        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
+        cluster = make_cluster(self, status=NODEGROUP_STATUS.PENDING)
+        make_ipv4_interface(self, cluster)
+        make_ipv6_interface(self, cluster)
         self.patch(settings, "DHCP_CONNECT", True)
 
-        configure_dhcp(cluster)
+        with post_commit_hooks:
+            configure_dhcp(cluster)
 
         self.expectThat(configure_dhcpv4, MockCalledOnceWith(cluster, [], ANY))
         self.expectThat(configure_dhcpv6, MockCalledOnceWith(cluster, [], ANY))
@@ -388,11 +405,12 @@ class TestConfigureDHCP(MAASServerTestCase):
     def test__configures_dhcpv4(self):
         getClientFor = self.patch_autospec(dhcp, "getClientFor")
         ip = factory.make_ipv4_address()
-        cluster = self.make_cluster(maas_url='http://%s/' % ip)
-        self.make_ipv4_interface(cluster)
+        cluster = make_cluster(self, maas_url='http://%s/' % ip)
+        make_ipv4_interface(self, cluster)
         self.patch(settings, "DHCP_CONNECT", True)
 
-        configure_dhcp(cluster)
+        with post_commit_hooks:
+            configure_dhcp(cluster)
 
         self.assertThat(getClientFor, MockCallsMatch(
             call(cluster.uuid), call(cluster.uuid)))
@@ -411,39 +429,14 @@ class TestConfigureDHCP(MAASServerTestCase):
             subnet_configs, AllMatch(
                 ContainsDict({"dns_servers": Equals(ip)})))
 
-    def test__passes_only_IPv4_interfaces_to_DHCPv4(self):
-        configure_dhcpv4, _ = self.patch_configure_funcs()
-        cluster = self.make_cluster()
-        ipv4_interface = self.make_ipv4_interface(cluster)
-        self.make_ipv6_interface(cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        configure_dhcp(cluster)
-
-        self.assertThat(
-            configure_dhcpv4,
-            MockCalledOnceWith(cluster, [ipv4_interface], ANY))
-
-    def test__passes_only_IPv6_interfaces_to_DHCPv6(self):
-        configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
-        cluster = self.make_cluster()
-        ipv6_interface = self.make_ipv6_interface(cluster)
-        self.make_ipv4_interface(cluster)
-        self.patch(settings, "DHCP_CONNECT", True)
-
-        configure_dhcp(cluster)
-
-        self.assertThat(
-            configure_dhcpv6,
-            MockCalledOnceWith(cluster, [ipv6_interface], ANY))
-
     def test__uses_ntp_server_from_config(self):
-        configure_dhcpv4, configure_dhcpv6 = self.patch_configure_funcs()
-        cluster = self.make_cluster()
-        self.make_ipv4_interface(cluster)
+        configure_dhcpv4, configure_dhcpv6 = patch_configure_funcs(self)
+        cluster = make_cluster(self)
+        make_ipv4_interface(self, cluster)
         self.patch(settings, "DHCP_CONNECT", True)
 
-        configure_dhcp(cluster)
+        with post_commit_hooks:
+            configure_dhcp(cluster)
 
         ntp_server = Config.objects.get_config('ntp_server')
         self.assertThat(
@@ -452,6 +445,46 @@ class TestConfigureDHCP(MAASServerTestCase):
         self.assertThat(
             configure_dhcpv6,
             MockCalledOnceWith(ANY, ANY, ntp_server))
+
+
+class TestConfigureDHCPTransactional(MAASTransactionServerTestCase):
+    """Tests for `configure_dhcp` that require transactions.
+
+    Specifically, post-commit hooks are run in a separate thread, so changes
+    must be committed to the database in order that they're visible elsewhere.
+    """
+
+    def test__passes_only_IPv4_interfaces_to_DHCPv4(self):
+        configure_dhcpv4, _ = patch_configure_funcs(self)
+
+        with transaction.atomic():
+            cluster = make_cluster(self)
+            ipv4_interface = make_ipv4_interface(self, cluster)
+            make_ipv6_interface(self, cluster)
+        self.patch(settings, "DHCP_CONNECT", True)
+
+        with post_commit_hooks:
+            configure_dhcp(cluster)
+
+        self.assertThat(
+            configure_dhcpv4,
+            MockCalledOnceWith(cluster, [ipv4_interface], ANY))
+
+    def test__passes_only_IPv6_interfaces_to_DHCPv6(self):
+        _, configure_dhcpv6 = patch_configure_funcs(self)
+
+        with transaction.atomic():
+            cluster = make_cluster(self)
+            ipv6_interface = make_ipv6_interface(self, cluster)
+            make_ipv4_interface(self, cluster)
+        self.patch(settings, "DHCP_CONNECT", True)
+
+        with post_commit_hooks:
+            configure_dhcp(cluster)
+
+        self.assertThat(
+            configure_dhcpv6,
+            MockCalledOnceWith(cluster, [ipv6_interface], ANY))
 
 
 class TestDHCPConnect(MAASServerTestCase):
@@ -605,3 +638,73 @@ class TestDHCPConnect(MAASServerTestCase):
 
         self.assertThat(
             dhcp.configure_dhcp, MockCalledOnceWith(interface.nodegroup))
+
+
+# Matchers to check that a `Changes` object is empty, or not.
+changes_are_empty = MatchesStructure.byEquality(hook=None, clusters=[])
+changes_are_not_empty = Not(changes_are_empty)
+
+
+class TestConsolidatingChangesWhenDisconnected(MAASServerTestCase):
+    """Tests for `Changes` and `ChangeConsolidator` when disconnected.
+
+    Where "disconnected" means where `settings.DHCP_CONNECT` is `False`.
+    """
+
+    def test__does_nothing(self):
+        self.patch(settings, "DHCP_CONNECT", False)
+        consolidator.configure(sentinel.cluster)
+        self.assertThat(consolidator.changes, changes_are_empty)
+
+
+class TestConsolidatingChanges(MAASServerTestCase):
+    """Tests for `Changes` and `ChangeConsolidator`."""
+
+    def setUp(self):
+        super(TestConsolidatingChanges, self).setUp()
+        self.patch(settings, "DHCP_CONNECT", True)
+
+    def test__added_clusters_applied_post_commit(self):
+        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
+        cluster = make_cluster(self)
+        consolidator.configure(cluster)
+        self.assertThat(configure_dhcp_now, MockNotCalled())
+        post_commit_hooks.fire()
+        self.assertThat(configure_dhcp_now, MockCalledOnceWith(cluster))
+
+    def test__added_clusters_are_consolidated(self):
+        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
+        cluster = make_cluster(self)
+        consolidator.configure(cluster)
+        consolidator.configure(cluster)
+        post_commit_hooks.fire()
+        self.assertThat(configure_dhcp_now, MockCalledOnceWith(cluster))
+
+    def test__changes_are_reset_post_commit(self):
+        self.patch_autospec(dhcp, "configure_dhcp_now")
+
+        # The changes start empty.
+        self.assertThat(consolidator.changes, changes_are_empty)
+
+        cluster = make_cluster(self)
+        consolidator.configure(cluster)
+
+        # The changes are not empty now.
+        self.assertThat(consolidator.changes, changes_are_not_empty)
+
+        # They are once again empty after the post-commit hook fires.
+        post_commit_hooks.fire()
+        self.assertThat(consolidator.changes, changes_are_empty)
+
+    def test__changes_are_reset_post_commit_on_failure(self):
+        exception_type = factory.make_exception_type()
+
+        configure_dhcp_now = self.patch_autospec(dhcp, "configure_dhcp_now")
+        configure_dhcp_now.side_effect = exception_type
+
+        # This is going to crash later.
+        consolidator.configure(make_cluster(self))
+
+        # The changes are empty after the post-commit hook fires.
+        self.assertRaises(exception_type, post_commit_hooks.fire)
+        self.assertThat(consolidator.changes, changes_are_empty)

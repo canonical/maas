@@ -14,21 +14,31 @@ str = None
 __metaclass__ = type
 __all__ = [
     'configure_dhcp',
+    'configure_dhcp_now',
     ]
 
 from collections import defaultdict
+import threading
 
 from django.conf import settings
 from maasserver.enum import NODEGROUP_STATUS
 from maasserver.exceptions import UnresolvableHost
 from maasserver.models import Config
 from maasserver.rpc import getClientFor
+from maasserver.utils.orm import (
+    post_commit,
+    transactional,
+    )
 from netaddr import IPAddress
 from provisioningserver.rpc.cluster import (
     ConfigureDHCPv4,
     ConfigureDHCPv6,
     )
-from provisioningserver.utils.twisted import synchronous
+from provisioningserver.utils.twisted import (
+    callOut,
+    callOutToThread,
+    synchronous,
+    )
 
 
 def split_ipv4_ipv6_interfaces(interfaces):
@@ -132,7 +142,7 @@ def configure_dhcpv6(nodegroup, interfaces, ntp_server):
     return do_configure_dhcp(6, nodegroup, interfaces, ntp_server)
 
 
-def configure_dhcp(nodegroup):
+def configure_dhcp_now(nodegroup):
     """Write the DHCP configuration files and restart the DHCP servers."""
     # Let's get this out of the way first up shall we?
     if not settings.DHCP_CONNECT:
@@ -158,3 +168,73 @@ def configure_dhcp(nodegroup):
 
     configure_dhcpv4(nodegroup, ipv4_interfaces, ntp_server)
     configure_dhcpv6(nodegroup, ipv6_interfaces, ntp_server)
+
+
+class Changes:
+    """A record of pending DHCP changes, and the means to apply them."""
+
+    # FIXME: This has elements in common with the Changes class in
+    # maasserver.dns.config. Consider extracting the common parts into a
+    # shared superclass.
+
+    def __init__(self):
+        super(Changes, self).__init__()
+        self.reset()
+
+    def reset(self):
+        self.hook = None
+        self.clusters = []
+
+    def activate(self):
+        """Arrange for a post-commit hook to be called.
+
+        The hook will apply any pending changes and reset this object to a
+        pristine state.
+
+        Can be called multiple times; only one hook will be added.
+        """
+        if self.hook is None:
+            self.hook = post_commit()
+            self.hook.addCallback(callOutToThread, self.apply)
+            self.hook.addBoth(callOut, self.reset)
+        return self.hook
+
+    @transactional
+    def apply(self):
+        """Apply all requested changes."""
+        clusters = {cluster.id: cluster for cluster in self.clusters}
+        for cluster in clusters.viewvalues():
+            configure_dhcp_now(cluster)
+
+
+class ChangeConsolidator(threading.local):
+    """A singleton used to consolidate DHCP changes.
+
+    Maintains a thread-local `Changes` instance into which changes are
+    written. Requesting any change within a transaction automatically arranges
+    a post-commit call to apply those changes, after consolidation.
+    """
+
+    # FIXME: This has elements in common with the ChangeConsolidator class in
+    # maasserver.dns.config. Consider extracting the common parts into a
+    # shared superclass.
+
+    def __init__(self):
+        super(ChangeConsolidator, self).__init__()
+        self.changes = Changes()
+
+    def configure(self, cluster):
+        """Request that DHCP be configured for `cluster`.
+
+        This does nothing if `settings.DHCP_CONNECT` is `False`.
+        """
+        if settings.DHCP_CONNECT:
+            self.changes.clusters.append(cluster)
+            return self.changes.activate()
+
+
+# Singleton, for internal use only.
+consolidator = ChangeConsolidator()
+
+# The public API.
+configure_dhcp = consolidator.configure
