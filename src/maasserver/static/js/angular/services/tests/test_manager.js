@@ -334,6 +334,19 @@ describe("Manager", function() {
             });
         });
 
+        it("calls setActiveItem after loading", function(done) {
+            var activeNode = makeNode();
+            NodesManager._activeItem = activeNode;
+            spyOn(NodesManager, "setActiveItem");
+
+            webSocket.returnData.push(makeFakeResponse([makeNode()]));
+            NodesManager.reloadItems().then(function() {
+                expect(NodesManager.setActiveItem).toHaveBeenCalledWith(
+                    activeNode.system_id);
+                done();
+            });
+        });
+
         it("calls defer error handler on error", function(done) {
             var errorMsg = "Unable to reload the nodes.";
             webSocket.returnData.push(makeFakeResponse(errorMsg, true));
@@ -635,11 +648,18 @@ describe("Manager", function() {
             var node = makeNode();
             NodesManager._items.push(node);
             var defer = $q.defer();
-            spyOn(NodesManager, "getItem").and.returnValue(defer.promise);
+            spyOn(RegionConnection, "callMethod").and.returnValue(
+                defer.promise);
             NodesManager.setActiveItem(node.system_id).then(
                 function(activeItem) {
                     expect(NodesManager._activeItem).toBe(activeItem);
                     expect(NodesManager._activeItem).toBe(node);
+
+                    expect(RegionConnection.callMethod).toHaveBeenCalledWith(
+                        NodesManager._handler + ".set_active", {
+                            system_id: node.system_id
+                        });
+
                     done();
                 });
             defer.resolve(angular.copy(node));

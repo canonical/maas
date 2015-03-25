@@ -210,6 +210,13 @@ angular.module('MAAS').service(
                 updateItems(items);
                 self._isLoading = false;
                 self.processActions();
+
+                // Set the activeItem again so the region knows that its
+                // the active item.
+                if(angular.isObject(self._activeItem)) {
+                    self.setActiveItem(self._activeItem[self._pk]);
+                }
+
                 return self._items;
             });
         };
@@ -344,12 +351,17 @@ angular.module('MAAS').service(
                 this._activeItem = this._items[idx];
                 // Data that is loaded from the list call is limited and
                 // doesn't contain all of the needed data for an activeItem.
-                // Perform a get to make sure the node in the manager has
-                // all the required information.
+                // Call set_active on the handler for the region to know
+                // this item needs all information when updated.
                 var self = this;
-                return this.getItem(pk_value).then(function() {
-                    return self._activeItem;
-                });
+                var method = this._handler + ".set_active";
+                var params = {};
+                params[this._pk] = pk_value;
+                return RegionConnection.callMethod(
+                    method, params).then(function(item) {
+                        self._replaceItem(item);
+                        return self._activeItem;
+                    });
             }
         };
 
