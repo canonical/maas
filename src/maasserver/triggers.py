@@ -238,3 +238,20 @@ def register_all_triggers():
     register_procedure(TAG_NODES_NOTIFY)
     register_trigger(
         "maasserver_tag", "tag_update_node_device_notify", "update")
+
+    # User table
+    register_procedure(
+        get_notification_procedure(
+            'user_create_notify', 'user_create', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'user_update_notify', 'user_update', 'NEW.id'))
+    register_procedure(
+        get_notification_procedure(
+            'user_delete_notify', 'user_delete', 'OLD.id'))
+    register_trigger(
+        "auth_user", "user_create_notify", "insert")
+    register_trigger(
+        "auth_user", "user_update_notify", "update")
+    register_trigger(
+        "auth_user", "user_delete_notify", "delete")

@@ -15,6 +15,7 @@ __metaclass__ = type
 __all__ = []
 
 from crochet import wait_for_reactor
+from django.contrib.auth.models import User
 from django.db import connection
 from maasserver.models.node import Node
 from maasserver.models.nodegroup import NodeGroup
@@ -240,6 +241,25 @@ class TransactionalHelpersMixin:
         tag.name = new_name
         tag.save()
         return tag
+
+    @transactional
+    def create_user(self, params=None):
+        if params is None:
+            params = {}
+        return factory.make_User(**params)
+
+    @transactional
+    def update_user(self, id, params):
+        user = User.objects.get(id=id)
+        for key, value in params.items():
+            setattr(user, key, value)
+        return user.save()
+
+    @transactional
+    def delete_user(self, id):
+        user = User.objects.get(id=id)
+        user.consumers.all().delete()
+        user.delete()
 
 
 class TestNodeListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
@@ -490,5 +510,61 @@ class TestNodeTagListener(
                 self.update_tag, tag, factory.make_name("tag"))
             yield dv.get(timeout=2)
             self.assertEqual(('update', '%s' % node.system_id), dv.value)
+        finally:
+            yield listener.stop()
+
+
+class TestUserListener(DjangoTransactionTestCase, TransactionalHelpersMixin):
+    """End-to-end test of both the listeners code and the user
+    triggers code."""
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_create_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        yield listener.start()
+        try:
+            user = yield deferToThread(self.create_user)
+            yield dv.get(timeout=2)
+            self.assertEqual(('create', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_update_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        user = yield deferToThread(self.create_user)
+
+        yield listener.start()
+        try:
+            yield deferToThread(
+                self.update_user,
+                user.id,
+                {'username': factory.make_name('username')})
+            yield dv.get(timeout=2)
+            self.assertEqual(('update', '%s' % user.id), dv.value)
+        finally:
+            yield listener.stop()
+
+    @wait_for_reactor
+    @inlineCallbacks
+    def test__calls_handler_on_delete_notification(self):
+        yield deferToThread(register_all_triggers)
+        listener = PostgresListener()
+        dv = DeferredValue()
+        listener.register("user", lambda *args: dv.set(args))
+        user = yield deferToThread(self.create_user)
+        yield listener.start()
+        try:
+            yield deferToThread(self.delete_user, user.id)
+            yield dv.get(timeout=2)
+            self.assertEqual(('delete', '%s' % user.id), dv.value)
         finally:
             yield listener.stop()

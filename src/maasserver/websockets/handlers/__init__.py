@@ -17,6 +17,7 @@ __all__ = [
     "DeviceHandler",
     "GeneralHandler"
     "ClusterHandler",
+    "UserHandler",
     "ZoneHandler",
     ]
 
@@ -25,6 +26,7 @@ from maasserver.websockets.handlers.cluster import ClusterHandler
 from maasserver.websockets.handlers.device import DeviceHandler
 from maasserver.websockets.handlers.general import GeneralHandler
 from maasserver.websockets.handlers.node import NodeHandler
+from maasserver.websockets.handlers.user import UserHandler
 from maasserver.websockets.handlers.zone import ZoneHandler
 
 
@@ -32,4 +34,5 @@ ignore_unused(ClusterHandler)
 ignore_unused(DeviceHandler)
 ignore_unused(GeneralHandler)
 ignore_unused(NodeHandler)
+ignore_unused(UserHandler)
 ignore_unused(ZoneHandler)
