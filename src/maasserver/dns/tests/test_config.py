@@ -55,6 +55,7 @@ from maastesting.matchers import (
     MockNotCalled,
     )
 from mock import (
+    ANY,
     Mock,
     sentinel,
     )
@@ -183,11 +184,16 @@ class TestConsolidatingChanges(MAASServerTestCase):
     def test__added_zones_applied_post_commit(self):
         dns_add_zones_now = self.patch_autospec(
             dns_config_module, "dns_add_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.add_zones(cluster)
+        cluster1 = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster1)
+        cluster2 = self.make_managed_nodegroup()
+        consolidator.add_zones(cluster2)
         self.assertThat(dns_add_zones_now, MockNotCalled())
         post_commit_hooks.fire()
-        self.assertThat(dns_add_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_add_zones_now, MockCalledOnceWith(ANY))
+        # There's no guaranteed ordering, so we must extract and compare.
+        [clusters], _ = dns_add_zones_now.call_args
+        self.assertItemsEqual([cluster1, cluster2], clusters)
 
     def test__added_zones_are_consolidated(self):
         dns_add_zones_now = self.patch_autospec(
@@ -202,11 +208,16 @@ class TestConsolidatingChanges(MAASServerTestCase):
     def test__updated_zones_applied_post_commit(self):
         dns_update_zones_now = self.patch_autospec(
             dns_config_module, "dns_update_zones_now")
-        cluster = self.make_managed_nodegroup()
-        consolidator.update_zones(cluster)
+        cluster1 = self.make_managed_nodegroup()
+        consolidator.update_zones(cluster1)
+        cluster2 = self.make_managed_nodegroup()
+        consolidator.update_zones(cluster2)
         self.assertThat(dns_update_zones_now, MockNotCalled())
         post_commit_hooks.fire()
-        self.assertThat(dns_update_zones_now, MockCalledOnceWith([cluster]))
+        self.assertThat(dns_update_zones_now, MockCalledOnceWith(ANY))
+        # There's no guaranteed ordering, so we must extract and compare.
+        [clusters], _ = dns_update_zones_now.call_args
+        self.assertItemsEqual([cluster1, cluster2], clusters)
 
     def test__updated_zones_are_consolidated(self):
         dns_update_zones_now = self.patch_autospec(
@@ -268,7 +279,7 @@ class TestConsolidatingChanges(MAASServerTestCase):
             dns_update_all_zones_now, MockCalledOnceWith(
                 reload_retry=False, force=False))
 
-    # A matcher to check that a `Changes` object is empty, or not.
+    # A pair of matchers to check that a `Changes` object is empty, or not.
     changes_are_empty = MatchesStructure.byEquality(
         hook=None, zones_to_add=[], zones_to_update=[],
         update_all_zones=False, update_all_zones_reload_retry=False,
