@@ -132,6 +132,7 @@ Developing MAAS
    development/preseeds
    development/metadata
    development/rpc
+   development/transactions
 
 
 ******************
